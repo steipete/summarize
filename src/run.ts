@@ -1,4 +1,5 @@
 import { Command, CommanderError } from 'commander'
+import { loadSummarizeConfig } from './config.js'
 import { createLinkPreviewClient } from './content/index.js'
 import { createFirecrawlScraper } from './firecrawl.js'
 import {
@@ -6,10 +7,11 @@ import {
   parseFirecrawlMode,
   parseLengthArg,
   parseMarkdownMode,
-  parseProviderMode,
   parseYoutubeMode,
 } from './flags.js'
+import { generateTextWithModelId } from './llm/generate-text.js'
 import { createHtmlToMarkdownConverter } from './llm/html-to-markdown.js'
+import { normalizeGatewayStyleModelId, parseGatewayStyleModelId } from './llm/model-id.js'
 import {
   buildLinkSummaryPrompt,
   estimateMaxCompletionTokensForCharacters,
@@ -30,21 +32,20 @@ type JsonOutput = {
     youtube: string
     firecrawl: string
     markdown: string
-    provider: string
     length: { kind: 'preset'; preset: string } | { kind: 'chars'; maxCharacters: number }
     model: string
   }
   env: {
+    hasXaiKey: boolean
     hasOpenAIKey: boolean
     hasApifyToken: boolean
     hasFirecrawlKey: boolean
     hasGoogleKey: boolean
-    hasAiGatewayKey: boolean
   }
   extracted: unknown
   prompt: string
   llm: {
-    provider: 'gateway' | 'openai' | 'prompt-only'
+    provider: 'xai' | 'openai' | 'google' | 'prompt-only'
     model: string
     maxCompletionTokens: number
     strategy: 'single' | 'map-reduce'
@@ -59,9 +60,7 @@ const MAP_REDUCE_CHUNK_CHARACTERS = 60_000
 function buildProgram() {
   return new Command()
     .name('summarize')
-    .description(
-      'Summarize web pages and YouTube links (prompt-only when no LLM key is available).'
-    )
+    .description('Summarize web pages and YouTube links (uses direct provider API keys).')
     .argument('[url]', 'URL to summarize')
     .option(
       '--youtube <mode>',
@@ -88,10 +87,13 @@ function buildProgram() {
       'Timeout for content fetching and LLM request: 30 (seconds), 30s, 2m, 5000ms',
       '2m'
     )
-    .option('--provider <provider>', 'Summarization provider: auto|gateway|openai', 'auto')
+    .option(
+      '--config <path>',
+      'Optional config file path (JSON). Default: ~/.config/summarize/config.json'
+    )
     .option(
       '--model <model>',
-      'Summarization model (default: xai/grok-4.1-fast-non-reasoning when AI_GATEWAY_API_KEY is set; otherwise gpt-5.2)',
+      'LLM model id (gateway-style): xai/..., openai/..., google/... (default: xai/grok-4-fast-non-reasoning)',
       undefined
     )
     .option(
@@ -145,184 +147,46 @@ ${heading('Examples')}
   ${cmd('summarize "https://example.com" --extract-only')} ${dim('# website markdown (prefers Firecrawl when configured)')}
   ${cmd('summarize "https://example.com" --extract-only --markdown llm')} ${dim('# website markdown via LLM')}
   ${cmd('summarize "https://www.youtube.com/watch?v=I845O57ZSy4&t=11s" --extract-only --youtube web')}
-  ${cmd('summarize "https://example.com" --length 20k --timeout 2m --model gpt-5.2')}
+  ${cmd('summarize "https://example.com" --length 20k --timeout 2m --model openai/gpt-5.2')}
   ${cmd('summarize "https://example.com" --json --verbose')}
 
 ${heading('Env Vars')}
-  OPENAI_API_KEY        optional (OpenAI provider + Markdown fallback)
+  XAI_API_KEY           optional (required for xai/... models)
+  OPENAI_API_KEY        optional (required for openai/... models)
+  GOOGLE_GENERATIVE_AI_API_KEY optional (required for google/... models)
   SUMMARIZE_MODEL       optional (overrides default model selection)
+  SUMMARIZE_CONFIG      optional (path to config.json)
   FIRECRAWL_API_KEY     optional website extraction fallback (Markdown)
   APIFY_API_TOKEN       optional YouTube transcript fallback
-  GOOGLE_GENERATIVE_AI_API_KEY optional LLM website Markdown conversion (Gemini)
-  AI_GATEWAY_API_KEY    optional (Vercel AI Gateway; enables xai/grok-4.1-fast-non-reasoning + google/gemini-3-flash)
 `
   )
 }
 
-async function summarizeWithOpenAI({
-  apiKey,
-  model,
+async function summarizeWithModelId({
+  modelId,
   prompt,
   maxOutputTokens,
   timeoutMs,
   fetchImpl,
+  apiKeys,
 }: {
-  apiKey: string
-  model: string
+  modelId: string
   prompt: string
   maxOutputTokens: number
   timeoutMs: number
   fetchImpl: typeof fetch
-}): Promise<string> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    const response = await fetchImpl('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model,
-        max_completion_tokens: maxOutputTokens,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-
-    if (!response.ok) {
-      const body = await response.text().catch(() => '')
-      throw new Error(`OpenAI request failed (${response.status}): ${body}`)
-    }
-
-    const json = (await response.json()) as unknown
-    const firstMessage = readFirstChoiceMessage(json)
-    if (!firstMessage) {
-      const error = new Error('OpenAI response missing message content')
-      error.name = 'OpenAIResponseFormatError'
-      throw error
-    }
-
-    const { content, refusal } = readMessageContentOrRefusal(firstMessage)
-    if (content === null) {
-      if (refusal) {
-        throw new Error(`OpenAI refusal: ${refusal}`)
-      }
-
-      const error = new Error('OpenAI response missing message content')
-      error.name = 'OpenAIResponseFormatError'
-      throw error
-    }
-
-    return content
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('OpenAI request timed out')
-    }
-    throw error
-  } finally {
-    clearTimeout(timeout)
-  }
-}
-
-async function summarizeWithGateway({
-  apiKey,
-  model,
-  prompt,
-  maxOutputTokens,
-  timeoutMs,
-  fetchImpl,
-}: {
-  apiKey: string
-  model: string
-  prompt: string
-  maxOutputTokens: number
-  timeoutMs: number
-  fetchImpl: typeof fetch
-}): Promise<string> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    const { createGateway, generateText } = await import('ai')
-    const gateway = createGateway({ apiKey, fetch: fetchImpl })
-    const result = await generateText({
-      model: gateway(model),
-      prompt,
-      temperature: 0,
-      maxOutputTokens,
-      abortSignal: controller.signal,
-    })
-    return result.text
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('LLM request timed out')
-    }
-    throw error
-  } finally {
-    clearTimeout(timeout)
-  }
-}
-
-type ChatCompletionMessage = Record<string, unknown> & {
-  content?: unknown
-  refusal?: unknown
-}
-
-type ChatCompletionContentPart = Record<string, unknown> & {
-  type?: unknown
-  text?: unknown
-}
-
-function readFirstChoiceMessage(payload: unknown): ChatCompletionMessage | null {
-  if (!payload || typeof payload !== 'object') {
-    return null
-  }
-  const choices = (payload as Record<string, unknown>).choices
-  if (!Array.isArray(choices) || choices.length === 0) {
-    return null
-  }
-  const first = choices[0]
-  if (!first || typeof first !== 'object') {
-    return null
-  }
-  const message = (first as Record<string, unknown>).message
-  if (!message || typeof message !== 'object') {
-    return null
-  }
-  return message as ChatCompletionMessage
-}
-
-function readMessageContentOrRefusal(message: ChatCompletionMessage): {
-  content: string | null
-  refusal: string | null
-} {
-  const refusal = typeof message.refusal === 'string' ? message.refusal : null
-  const content = message.content
-
-  if (typeof content === 'string') {
-    return { content, refusal }
-  }
-
-  if (Array.isArray(content)) {
-    const text = content
-      .map((partUnknown) => {
-        if (!partUnknown || typeof partUnknown !== 'object') {
-          return ''
-        }
-        const part = partUnknown as ChatCompletionContentPart
-        if (part.type !== 'text') {
-          return ''
-        }
-        return typeof part.text === 'string' ? part.text : ''
-      })
-      .join('')
-    return { content: text, refusal }
-  }
-
-  return { content: null, refusal }
+  apiKeys: { xaiApiKey: string | null; openaiApiKey: string | null; googleApiKey: string | null }
+}): Promise<{ text: string; provider: 'xai' | 'openai' | 'google'; canonicalModelId: string }> {
+  const result = await generateTextWithModelId({
+    modelId,
+    apiKeys,
+    prompt,
+    temperature: 0,
+    maxOutputTokens,
+    timeoutMs,
+    fetchImpl,
+  })
+  return { text: result.text, provider: result.provider, canonicalModelId: result.canonicalModelId }
 }
 
 function splitTextIntoChunks(input: string, maxCharacters: number): string[] {
@@ -362,17 +226,6 @@ function splitTextIntoChunks(input: string, maxCharacters: number): string[] {
   }
 
   return chunks.filter((chunk) => chunk.length > 0)
-}
-
-function normalizeSummarizeModelId(raw: string): string {
-  const trimmed = raw.trim()
-  if (trimmed === 'grok-4-1-fast-non-reasoning') {
-    return 'xai/grok-4.1-fast-non-reasoning'
-  }
-  if (trimmed === 'xai/grok-4-1-fast-non-reasoning') {
-    return 'xai/grok-4.1-fast-non-reasoning'
-  }
-  return trimmed
 }
 
 const VERBOSE_PREFIX = '[summarize]'
@@ -455,7 +308,6 @@ export async function runCli(
   const json = Boolean(program.opts().json)
   const verbose = Boolean(program.opts().verbose)
   const markdownMode = parseMarkdownMode(program.opts().markdown as string)
-  const providerMode = parseProviderMode(program.opts().provider as string)
   const raw = Boolean(program.opts().raw)
 
   const isYoutubeUrl = /youtube\.com|youtu\.be/i.test(url)
@@ -474,31 +326,36 @@ export async function runCli(
   const modelArg =
     typeof program.opts().model === 'string' ? (program.opts().model as string) : null
 
+  const configPathArg =
+    typeof program.opts().config === 'string' ? (program.opts().config as string) : null
+  const { config, path: configPath } = loadSummarizeConfig({ env, configPathArg })
+
+  const xaiKeyRaw = typeof env.XAI_API_KEY === 'string' ? env.XAI_API_KEY : null
   const apiKey = typeof env.OPENAI_API_KEY === 'string' ? env.OPENAI_API_KEY : null
   const apifyToken = typeof env.APIFY_API_TOKEN === 'string' ? env.APIFY_API_TOKEN : null
   const firecrawlKey = typeof env.FIRECRAWL_API_KEY === 'string' ? env.FIRECRAWL_API_KEY : null
   const googleKeyRaw =
     typeof env.GOOGLE_GENERATIVE_AI_API_KEY === 'string' ? env.GOOGLE_GENERATIVE_AI_API_KEY : null
-  const aiGatewayKeyRaw = typeof env.AI_GATEWAY_API_KEY === 'string' ? env.AI_GATEWAY_API_KEY : null
 
   const firecrawlApiKey = firecrawlKey && firecrawlKey.trim().length > 0 ? firecrawlKey : null
   const firecrawlConfigured = firecrawlApiKey !== null
+  const xaiApiKey = xaiKeyRaw?.trim() ?? null
   const googleApiKey = googleKeyRaw?.trim() ?? null
-  const aiGatewayApiKey = aiGatewayKeyRaw?.trim() ?? null
   const googleConfigured = typeof googleApiKey === 'string' && googleApiKey.length > 0
-  const aiGatewayConfigured = typeof aiGatewayApiKey === 'string' && aiGatewayApiKey.length > 0
+  const xaiConfigured = typeof xaiApiKey === 'string' && xaiApiKey.length > 0
 
   const resolvedDefaultModel = (() => {
     if (typeof env.SUMMARIZE_MODEL === 'string' && env.SUMMARIZE_MODEL.trim().length > 0) {
       return env.SUMMARIZE_MODEL.trim()
     }
-    if (aiGatewayConfigured) {
-      return 'xai/grok-4.1-fast-non-reasoning'
+    if (typeof config?.model === 'string' && config.model.trim().length > 0) {
+      return config.model.trim()
     }
-    return 'gpt-5.2'
+    return 'xai/grok-4-fast-non-reasoning'
   })()
 
-  const model = normalizeSummarizeModelId((modelArg?.trim() ?? '') || resolvedDefaultModel)
+  const model = normalizeGatewayStyleModelId((modelArg?.trim() ?? '') || resolvedDefaultModel)
+  const parsedModelForLlm = parseGatewayStyleModelId(model)
 
   const verboseColor = supportsColor(stderr, env)
 
@@ -521,18 +378,22 @@ export async function runCli(
 
   const effectiveMarkdownMode = raw ? 'off' : markdownMode
   const markdownRequested = extractOnly && !isYoutubeUrl && effectiveMarkdownMode !== 'off'
-  const markdownProvider = aiGatewayConfigured
-    ? 'vercel-gateway'
-    : googleConfigured
-      ? 'google'
-      : apiKey
-        ? 'openai'
-        : 'none'
+  const hasKeyForModel =
+    parsedModelForLlm.provider === 'xai'
+      ? xaiConfigured
+      : parsedModelForLlm.provider === 'google'
+        ? googleConfigured
+        : Boolean(apiKey)
+  const markdownProvider = hasKeyForModel ? parsedModelForLlm.provider : 'none'
 
-  if (markdownRequested && effectiveMarkdownMode === 'llm' && markdownProvider === 'none') {
-    throw new Error(
-      '--markdown llm requires AI_GATEWAY_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, or OPENAI_API_KEY'
-    )
+  if (markdownRequested && effectiveMarkdownMode === 'llm' && !hasKeyForModel) {
+    const required =
+      parsedModelForLlm.provider === 'xai'
+        ? 'XAI_API_KEY'
+        : parsedModelForLlm.provider === 'google'
+          ? 'GOOGLE_GENERATIVE_AI_API_KEY'
+          : 'OPENAI_API_KEY'
+    throw new Error(`--markdown llm requires ${required} for model ${parsedModelForLlm.canonical}`)
   }
 
   writeVerbose(
@@ -540,13 +401,21 @@ export async function runCli(
     verbose,
     `config url=${url} timeoutMs=${timeoutMs} youtube=${youtubeMode} firecrawl=${firecrawlMode} length=${
       lengthArg.kind === 'preset' ? lengthArg.preset : `${lengthArg.maxCharacters} chars`
-    } json=${json} extractOnly=${extractOnly} prompt=${printPrompt} markdown=${effectiveMarkdownMode} provider=${providerMode} model=${model} raw=${raw}`,
+    } json=${json} extractOnly=${extractOnly} prompt=${printPrompt} markdown=${effectiveMarkdownMode} model=${model} raw=${raw}`,
     verboseColor
   )
   writeVerbose(
     stderr,
     verbose,
-    `env openaiKey=${Boolean(apiKey)} apifyToken=${Boolean(apifyToken)} firecrawlKey=${firecrawlConfigured} googleKey=${googleConfigured} aiGatewayKey=${aiGatewayConfigured}`,
+    `configFile path=${formatOptionalString(configPath)} model=${formatOptionalString(
+      config?.model ?? null
+    )}`,
+    verboseColor
+  )
+  writeVerbose(
+    stderr,
+    verbose,
+    `env xaiKey=${xaiConfigured} openaiKey=${Boolean(apiKey)} googleKey=${googleConfigured} apifyToken=${Boolean(apifyToken)} firecrawlKey=${firecrawlConfigured}`,
     verboseColor
   )
   writeVerbose(
@@ -564,7 +433,8 @@ export async function runCli(
   const convertHtmlToMarkdown =
     markdownRequested && (effectiveMarkdownMode === 'llm' || markdownProvider !== 'none')
       ? createHtmlToMarkdownConverter({
-          aiGatewayApiKey: aiGatewayConfigured ? aiGatewayApiKey : null,
+          modelId: model,
+          xaiApiKey: xaiConfigured ? xaiApiKey : null,
           googleApiKey: googleConfigured ? googleApiKey : null,
           openaiApiKey: apiKey,
           fetchImpl: fetch,
@@ -657,7 +527,6 @@ export async function runCli(
           youtube: youtubeMode,
           firecrawl: firecrawlMode,
           markdown: effectiveMarkdownMode,
-          provider: providerMode,
           length:
             lengthArg.kind === 'preset'
               ? { kind: 'preset', preset: lengthArg.preset }
@@ -665,11 +534,11 @@ export async function runCli(
           model,
         },
         env: {
+          hasXaiKey: Boolean(xaiApiKey),
           hasOpenAIKey: Boolean(apiKey),
           hasApifyToken: Boolean(apifyToken),
           hasFirecrawlKey: firecrawlConfigured,
           hasGoogleKey: googleConfigured,
-          hasAiGatewayKey: aiGatewayConfigured,
         },
         extracted,
         prompt,
@@ -684,54 +553,8 @@ export async function runCli(
     return
   }
 
-  const resolvedSummarizer = (() => {
-    const normalizedOpenAIModel = model.startsWith('openai/')
-      ? model.slice('openai/'.length)
-      : model
-    const looksLikeGatewayModel = model.includes('/')
-
-    if (providerMode === 'gateway') {
-      if (!aiGatewayConfigured) {
-        throw new Error('--provider gateway requires AI_GATEWAY_API_KEY')
-      }
-      return { provider: 'gateway' as const, model: model }
-    }
-
-    if (providerMode === 'openai') {
-      if (!apiKey) {
-        throw new Error('--provider openai requires OPENAI_API_KEY')
-      }
-      if (looksLikeGatewayModel && !model.startsWith('openai/')) {
-        throw new Error(
-          '--provider openai does not support gateway model ids (e.g. xai/..., google/...)'
-        )
-      }
-      return { provider: 'openai' as const, model: normalizedOpenAIModel }
-    }
-
-    if (printPrompt) {
-      return { provider: 'prompt-only' as const, model }
-    }
-
-    if (aiGatewayConfigured && looksLikeGatewayModel) {
-      return { provider: 'gateway' as const, model }
-    }
-
-    if (apiKey && (!looksLikeGatewayModel || model.startsWith('openai/'))) {
-      return { provider: 'openai' as const, model: normalizedOpenAIModel }
-    }
-
-    return { provider: 'prompt-only' as const, model }
-  })()
-
-  if (resolvedSummarizer.provider === 'prompt-only') {
+  if (printPrompt) {
     writeVerbose(stderr, verbose, 'mode prompt-only', verboseColor)
-    if (!json && !printPrompt) {
-      const missing = model.includes('/')
-        ? 'Missing AI_GATEWAY_API_KEY; printing prompt instead.'
-        : 'Missing OPENAI_API_KEY; printing prompt instead.'
-      stderr.write(`${missing}\n`)
-    }
 
     if (json) {
       const payload: JsonOutput = {
@@ -741,7 +564,6 @@ export async function runCli(
           youtube: youtubeMode,
           firecrawl: firecrawlMode,
           markdown: effectiveMarkdownMode,
-          provider: providerMode,
           length:
             lengthArg.kind === 'preset'
               ? { kind: 'preset', preset: lengthArg.preset }
@@ -749,11 +571,11 @@ export async function runCli(
           model,
         },
         env: {
+          hasXaiKey: Boolean(xaiApiKey),
           hasOpenAIKey: Boolean(apiKey),
           hasApifyToken: Boolean(apifyToken),
           hasFirecrawlKey: firecrawlConfigured,
           hasGoogleKey: googleConfigured,
-          hasAiGatewayKey: aiGatewayConfigured,
         },
         extracted,
         prompt,
@@ -768,10 +590,35 @@ export async function runCli(
     return
   }
 
+  const parsedModel = parseGatewayStyleModelId(model)
+  const apiKeysForLlm = {
+    xaiApiKey,
+    openaiApiKey: apiKey,
+    googleApiKey: googleConfigured ? googleApiKey : null,
+  }
+
+  const requiredKeyEnv =
+    parsedModel.provider === 'xai'
+      ? 'XAI_API_KEY'
+      : parsedModel.provider === 'google'
+        ? 'GOOGLE_GENERATIVE_AI_API_KEY'
+        : 'OPENAI_API_KEY'
+  const hasRequiredKey =
+    parsedModel.provider === 'xai'
+      ? Boolean(xaiApiKey)
+      : parsedModel.provider === 'google'
+        ? googleConfigured
+        : Boolean(apiKey)
+  if (!hasRequiredKey) {
+    throw new Error(
+      `Missing ${requiredKeyEnv} for model ${parsedModel.canonical}. Set the env var or choose a different --model.`
+    )
+  }
+
   writeVerbose(
     stderr,
     verbose,
-    `mode summarize provider=${resolvedSummarizer.provider} model=${resolvedSummarizer.model}`,
+    `mode summarize provider=${parsedModel.provider} model=${parsedModel.canonical}`,
     verboseColor
   )
   const maxCompletionTokens =
@@ -786,24 +633,15 @@ export async function runCli(
   let summary: string
   if (!isLargeContent) {
     writeVerbose(stderr, verbose, 'summarize strategy=single', verboseColor)
-    summary =
-      resolvedSummarizer.provider === 'gateway'
-        ? await summarizeWithGateway({
-            apiKey: aiGatewayApiKey ?? '',
-            model: resolvedSummarizer.model,
-            prompt,
-            maxOutputTokens: maxCompletionTokens,
-            timeoutMs,
-            fetchImpl: fetch,
-          })
-        : await summarizeWithOpenAI({
-            apiKey: apiKey ?? '',
-            model: resolvedSummarizer.model,
-            prompt,
-            maxOutputTokens: maxCompletionTokens,
-            timeoutMs,
-            fetchImpl: fetch,
-          })
+    const result = await summarizeWithModelId({
+      modelId: parsedModel.canonical,
+      prompt,
+      maxOutputTokens: maxCompletionTokens,
+      timeoutMs,
+      fetchImpl: fetch,
+      apiKeys: apiKeysForLlm,
+    })
+    summary = result.text
   } else {
     strategy = 'map-reduce'
     const chunks = splitTextIntoChunks(extracted.content, MAP_REDUCE_CHUNK_CHARACTERS)
@@ -831,33 +669,15 @@ export async function runCli(
         content: chunks[i] ?? '',
       })
 
-      let notes = ''
-      try {
-        notes =
-          resolvedSummarizer.provider === 'gateway'
-            ? await summarizeWithGateway({
-                apiKey: aiGatewayApiKey ?? '',
-                model: resolvedSummarizer.model,
-                prompt: chunkPrompt,
-                maxOutputTokens: SUMMARY_LENGTH_TO_TOKENS.medium,
-                timeoutMs,
-                fetchImpl: fetch,
-              })
-            : await summarizeWithOpenAI({
-                apiKey: apiKey ?? '',
-                model: resolvedSummarizer.model,
-                prompt: chunkPrompt,
-                maxOutputTokens: SUMMARY_LENGTH_TO_TOKENS.medium,
-                timeoutMs,
-                fetchImpl: fetch,
-              })
-      } catch (error) {
-        if (error instanceof Error && error.name === 'OpenAIResponseFormatError') {
-          stderr.write(`OpenAI returned an empty response for chunk ${i + 1}; skipping.\n`)
-          continue
-        }
-        throw error
-      }
+      const notesResult = await summarizeWithModelId({
+        modelId: parsedModel.canonical,
+        prompt: chunkPrompt,
+        maxOutputTokens: SUMMARY_LENGTH_TO_TOKENS.medium,
+        timeoutMs,
+        fetchImpl: fetch,
+        apiKeys: apiKeysForLlm,
+      })
+      const notes = notesResult.text
 
       chunkNotes.push(notes.trim())
     }
@@ -882,24 +702,15 @@ export async function runCli(
       shares: [],
     })
 
-    summary =
-      resolvedSummarizer.provider === 'gateway'
-        ? await summarizeWithGateway({
-            apiKey: aiGatewayApiKey ?? '',
-            model: resolvedSummarizer.model,
-            prompt: mergedPrompt,
-            maxOutputTokens: maxCompletionTokens,
-            timeoutMs,
-            fetchImpl: fetch,
-          })
-        : await summarizeWithOpenAI({
-            apiKey: apiKey ?? '',
-            model: resolvedSummarizer.model,
-            prompt: mergedPrompt,
-            maxOutputTokens: maxCompletionTokens,
-            timeoutMs,
-            fetchImpl: fetch,
-          })
+    const mergedResult = await summarizeWithModelId({
+      modelId: parsedModel.canonical,
+      prompt: mergedPrompt,
+      maxOutputTokens: maxCompletionTokens,
+      timeoutMs,
+      fetchImpl: fetch,
+      apiKeys: apiKeysForLlm,
+    })
+    summary = mergedResult.text
   }
 
   summary = summary.trim()
@@ -915,7 +726,6 @@ export async function runCli(
         youtube: youtubeMode,
         firecrawl: firecrawlMode,
         markdown: effectiveMarkdownMode,
-        provider: providerMode,
         length:
           lengthArg.kind === 'preset'
             ? { kind: 'preset', preset: lengthArg.preset }
@@ -923,17 +733,17 @@ export async function runCli(
         model,
       },
       env: {
+        hasXaiKey: Boolean(xaiApiKey),
         hasOpenAIKey: Boolean(apiKey),
         hasApifyToken: Boolean(apifyToken),
         hasFirecrawlKey: firecrawlConfigured,
         hasGoogleKey: googleConfigured,
-        hasAiGatewayKey: aiGatewayConfigured,
       },
       extracted,
       prompt,
       llm: {
-        provider: resolvedSummarizer.provider,
-        model: resolvedSummarizer.model,
+        provider: parsedModel.provider,
+        model: parsedModel.canonical,
         maxCompletionTokens,
         strategy,
         chunkCount,

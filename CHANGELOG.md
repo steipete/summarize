@@ -13,11 +13,11 @@ All notable changes to this project are documented here.
   - optional Apify fallback (requires `APIFY_API_TOKEN`)
   - fallback to `ytInitialPlayerResponse.videoDetails.shortDescription` when transcripts are unavailable
 - LLM summarization:
-  - Default model selection: `xai/grok-4.1-fast-non-reasoning` when `AI_GATEWAY_API_KEY` is set, otherwise `gpt-5.2`.
-  - Override via `SUMMARIZE_MODEL` or `--model`.
-  - Provider selection via `--provider auto|gateway|openai`.
+  - Default model: `xai/grok-4-fast-non-reasoning` (direct provider API keys; no gateway).
+  - Override via config file (`model`), `SUMMARIZE_MODEL`, or `--model`.
+  - Supports `xai/...`, `openai/...`, and `google/...` model ids.
 - `--extract-only` prefers Firecrawl Markdown for websites when `FIRECRAWL_API_KEY` is configured (override via `--firecrawl off`).
-- `--extract-only --markdown auto|llm` can convert HTML → Markdown via an LLM (Gemini via `GOOGLE_GENERATIVE_AI_API_KEY` or Vercel AI Gateway via `AI_GATEWAY_API_KEY`).
+- `--extract-only --markdown auto|llm` can convert HTML → Markdown via an LLM using the configured `--model`.
 - CLI defaults: `--timeout 2m`.
 - `--help` includes examples and required env vars.
 - `--extract-only` (no LLM call), `--prompt` (prompt-only), `--json` (structured output), `--verbose`.

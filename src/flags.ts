@@ -3,7 +3,6 @@ import type { SummaryLength } from './shared/contracts.js'
 export type YoutubeMode = 'auto' | 'web' | 'apify'
 export type FirecrawlMode = 'off' | 'auto' | 'always'
 export type MarkdownMode = 'off' | 'auto' | 'llm'
-export type ProviderMode = 'auto' | 'gateway' | 'openai'
 
 export type LengthArg =
   | { kind: 'preset'; preset: SummaryLength }
@@ -30,13 +29,6 @@ export function parseMarkdownMode(raw: string): MarkdownMode {
   const normalized = raw.trim().toLowerCase()
   if (normalized === 'off' || normalized === 'auto' || normalized === 'llm') return normalized
   throw new Error(`Unsupported --markdown: ${raw}`)
-}
-
-export function parseProviderMode(raw: string): ProviderMode {
-  const normalized = raw.trim().toLowerCase()
-  if (normalized === 'auto' || normalized === 'gateway' || normalized === 'openai')
-    return normalized
-  throw new Error(`Unsupported --provider: ${raw}`)
 }
 
 export function parseDurationMs(raw: string): number {

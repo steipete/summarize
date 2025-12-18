@@ -8,7 +8,7 @@ Use this for non-YouTube URLs.
 - Extracts “article-ish” content and normalizes it into clean text.
 - If extraction looks blocked or too thin, it can retry via Firecrawl (Markdown).
 - In `--extract-only` mode, the CLI prefers Firecrawl Markdown by default when `FIRECRAWL_API_KEY` is configured.
-- In `--extract-only` mode, `--markdown auto` can also convert HTML → Markdown via an LLM (Gemini/OpenAI) when configured.
+- In `--extract-only` mode, `--markdown auto|llm` can also convert HTML → Markdown via an LLM using the configured `--model` (no provider fallback).
 
 ## Flags
 
@@ -23,5 +23,4 @@ Use this for non-YouTube URLs.
 ## API keys
 
 - Optional: `FIRECRAWL_API_KEY` (for the Firecrawl fallback / preferred Markdown output)
-- Optional: `GOOGLE_GENERATIVE_AI_API_KEY` (LLM HTML→Markdown conversion; used by `--markdown auto|llm`)
-- Optional: `AI_GATEWAY_API_KEY` (Vercel AI Gateway; enables `google/gemini-3-flash` for `--markdown auto|llm`)
+- Optional: `XAI_API_KEY` / `OPENAI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` (required only when `--markdown llm` is used, or when `--markdown auto` falls back to LLM conversion)

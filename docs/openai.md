@@ -1,18 +1,16 @@
-# OpenAI mode
+# OpenAI models
 
-This is the OpenAI-specific provider for summarization.
+Use OpenAI directly by choosing an `openai/...` model id.
 
 For the full model/provider matrix, see `docs/llm.md`.
 
 ## Env
 
-- `OPENAI_API_KEY` (required for `--provider openai`)
+- `OPENAI_API_KEY` (required for `openai/...` models)
 
 ## Flags
 
-- `--provider openai`
-- `--model <model>` (default is `gpt-5.2` when no gateway is configured)
-  - `openai/<model>` is accepted and the prefix is stripped.
+- `--model openai/<model>`
 - `--length short|medium|long|xl|xxl|<chars>`
   - This is *soft guidance* to the model (no hard truncation).
 - `--prompt` (print prompt and exit)

@@ -60,7 +60,7 @@ describe('cli error handling', () => {
         stdout: noopStream(),
         stderr: noopStream(),
       })
-    ).rejects.toThrow(/--markdown llm requires/)
+    ).rejects.toThrow(/--markdown llm requires XAI_API_KEY/)
   })
 
   it('does not error for --markdown auto without keys', async () => {
@@ -88,39 +88,19 @@ describe('cli error handling', () => {
     expect(stdoutText.length).toBeGreaterThan(0)
   })
 
-  it('errors when --provider openai is set without OPENAI_API_KEY', async () => {
+  it('errors when summarizing without the required model API key', async () => {
+    const html = `<!doctype html><html><head><title>Ok</title></head><body><article><p>${'A'.repeat(
+      260
+    )}</p></article></body></html>`
+
     await expect(
-      runCli(['--provider', 'openai', 'https://example.com'], {
+      runCli(['--timeout', '2s', 'https://example.com'], {
         env: {},
-        fetch: vi.fn(
-          async () => new Response('<html></html>', { status: 200 })
-        ) as unknown as typeof fetch,
+        fetch: vi.fn(async () => new Response(html, { status: 200 })) as unknown as typeof fetch,
         stdout: noopStream(),
         stderr: noopStream(),
       })
-    ).rejects.toThrow('--provider openai requires OPENAI_API_KEY')
-  })
-
-  it('errors when --provider gateway is set without AI_GATEWAY_API_KEY', async () => {
-    await expect(
-      runCli(
-        [
-          '--provider',
-          'gateway',
-          '--model',
-          'xai/grok-4.1-fast-non-reasoning',
-          'https://example.com',
-        ],
-        {
-          env: {},
-          fetch: vi.fn(
-            async () => new Response('<html></html>', { status: 200 })
-          ) as unknown as typeof fetch,
-          stdout: noopStream(),
-          stderr: noopStream(),
-        }
-      )
-    ).rejects.toThrow('--provider gateway requires AI_GATEWAY_API_KEY')
+    ).rejects.toThrow(/Missing XAI_API_KEY/)
   })
 
   it('errors when --raw is combined with --firecrawl or --markdown', async () => {

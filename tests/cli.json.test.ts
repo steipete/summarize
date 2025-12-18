@@ -10,7 +10,7 @@ const htmlResponse = (html: string, status = 200) =>
   })
 
 describe('cli --json', () => {
-  it('prints JSON with prompt when OPENAI_API_KEY is missing', async () => {
+  it('prints JSON with prompt in --prompt mode (no LLM call)', async () => {
     const html =
       '<!doctype html><html><head><title>Ok</title><meta name="description" content="Desc" /></head>' +
       `<body><article><p>${'A'.repeat(260)}</p></article></body></html>`
@@ -39,7 +39,7 @@ describe('cli --json', () => {
       },
     })
 
-    await runCli(['--json', '--timeout', '2s', 'https://example.com'], {
+    await runCli(['--json', '--prompt', '--timeout', '2s', 'https://example.com'], {
       env: {},
       fetch: fetchMock as unknown as typeof fetch,
       stdout,
@@ -48,12 +48,13 @@ describe('cli --json', () => {
 
     expect(stderrText).toBe('')
     const parsed = JSON.parse(stdoutText) as {
-      env: { hasOpenAIKey: boolean; hasAiGatewayKey: boolean }
+      env: { hasXaiKey: boolean; hasOpenAIKey: boolean; hasGoogleKey: boolean }
       llm: unknown
       summary: unknown
     }
+    expect(parsed.env.hasXaiKey).toBe(false)
     expect(parsed.env.hasOpenAIKey).toBe(false)
-    expect(parsed.env.hasAiGatewayKey).toBe(false)
+    expect(parsed.env.hasGoogleKey).toBe(false)
     expect(parsed.llm).toBeNull()
     expect(parsed.summary).toBeNull()
   })

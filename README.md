@@ -11,6 +11,7 @@ Docs (by mode):
 - `docs/firecrawl.md`
 - `docs/llm.md`
 - `docs/extract-only.md`
+- `docs/config.md`
 
 ## Features
 
@@ -21,9 +22,8 @@ Docs (by mode):
   - Apify transcript actor (optional fallback, requires `APIFY_API_TOKEN`)
   - If transcripts are blocked, we still extract `ytInitialPlayerResponse.videoDetails.shortDescription` so YouTube links summarize meaningfully.
 - **Firecrawl fallback for blocked sites**: if direct HTML fetching is blocked or yields too little content, we retry via Firecrawl to get Markdown (requires `FIRECRAWL_API_KEY`).
-- **LLM HTML→Markdown (optional)**: in `--extract-only` website mode, `--markdown auto|llm` can convert HTML → clean Markdown (Gemini/OpenAI, depending on which keys are configured).
-- **Prompt-only mode**: print the generated prompt and use any model/provider you want.
-- **LLM mode**: uses Vercel AI Gateway (Grok) when `AI_GATEWAY_API_KEY` is set, otherwise OpenAI when `OPENAI_API_KEY` is set.
+- **LLM HTML→Markdown (optional)**: in `--extract-only` website mode, `--markdown auto|llm` can convert HTML → clean Markdown using the configured `--model` (no provider fallback).
+- **Prompt-only mode**: print the generated prompt (`--prompt`) and use any model/provider you want.
 - **Structured output**: `--json` emits a single JSON object with extraction diagnostics + the prompt + (optional) summary.
 - **Extract-only mode**: `--extract-only` prints the extracted content (no LLM call).
 
@@ -76,7 +76,8 @@ summarize "https://example.com" --prompt
 Change model, length, YouTube mode, and timeout:
 
 ```bash
-summarize "https://example.com" --length 20k --timeout 30s --model gpt-5.2
+summarize "https://example.com" --length 20k --timeout 30s --model openai/gpt-5.2
+summarize "https://example.com" --length long --model xai/grok-4-fast-non-reasoning
 summarize "https://www.youtube.com/watch?v=I845O57ZSy4&t=11s" --youtube auto --length 8k
 ```
 
@@ -105,13 +106,13 @@ summarize "https://example.com" --json
 - `--length short|medium|long|xl|xxl|<chars>`
   - Presets influence formatting; `<chars>` (e.g. `20k`, `1500`) adds a soft “target length” instruction (no hard truncation).
 - `--timeout <duration>`: `30` (seconds), `30s`, `2m`, `5000ms` (default: `2m`)
-- `--provider auto|gateway|openai`
-  - `auto` (default): uses AI Gateway for `xai/...`/`google/...` model ids when `AI_GATEWAY_API_KEY` is set; otherwise uses OpenAI when `OPENAI_API_KEY` is set
-  - `gateway`: require `AI_GATEWAY_API_KEY`
-  - `openai`: require `OPENAI_API_KEY`
 - `--model <model>`
-  - Default: `xai/grok-4.1-fast-non-reasoning` when `AI_GATEWAY_API_KEY` is set, otherwise `gpt-5.2`.
-  - Override via `SUMMARIZE_MODEL` or `--model`.
+  - Default: `xai/grok-4-fast-non-reasoning`
+  - Override via `SUMMARIZE_MODEL`, config file (`model`), or `--model`.
+  - Uses gateway-style ids:
+    - `xai/grok-4-fast-non-reasoning`
+    - `openai/gpt-5.2`
+    - `google/gemini-2.0-flash`
 - `--prompt`: print prompt and exit (never calls an LLM)
 - `--extract-only`: print extracted content and exit (never calls an LLM)
 - `--json`: emit a single JSON object instead of plain text
@@ -121,11 +122,13 @@ summarize "https://example.com" --json
 
 ### LLM (optional, required for “actual summarization”)
 
-If neither `AI_GATEWAY_API_KEY` nor `OPENAI_API_KEY` is set, the CLI prints the prompt instead of calling an LLM.
+By default the CLI uses `xai/grok-4-fast-non-reasoning`, so you’ll want `XAI_API_KEY` set unless you override `--model`.
 
-- `AI_GATEWAY_API_KEY` (optional; Vercel AI Gateway; enables `xai/grok-4.1-fast-non-reasoning`)
-- `OPENAI_API_KEY` (optional; used for `--provider openai` and as a fallback when the gateway isn’t configured)
+- `XAI_API_KEY` (required for `xai/...` models)
+- `OPENAI_API_KEY` (required for `openai/...` models)
+- `GOOGLE_GENERATIVE_AI_API_KEY` (required for `google/...` models)
 - `SUMMARIZE_MODEL` (optional; overrides default model selection)
+- `SUMMARIZE_CONFIG` (optional; path to config file)
 
 ### Apify (optional YouTube fallback)
 
@@ -143,9 +146,10 @@ Used only as a fallback for non-YouTube URLs when direct HTML fetching/extractio
 
 Used only for `--extract-only` website URLs when `--markdown auto|llm` is enabled.
 
-- `AI_GATEWAY_API_KEY` (optional; uses Vercel AI Gateway; default model `google/gemini-3-flash`)
-- `GOOGLE_GENERATIVE_AI_API_KEY` (optional; calls Gemini directly; default model `gemini-3-flash`)
-- `OPENAI_API_KEY` (optional fallback for Markdown conversion when neither Gemini key is present; default model `gpt-5.2`)
+- Requires the API key matching your configured `--model`:
+  - `XAI_API_KEY` for `xai/...`
+  - `OPENAI_API_KEY` for `openai/...`
+  - `GOOGLE_GENERATIVE_AI_API_KEY` for `google/...`
 
 ## Library API (for other Node programs)
 
