@@ -6,6 +6,7 @@ import {
   parseFirecrawlMode,
   parseLengthArg,
   parseMarkdownMode,
+  parseProviderMode,
   parseYoutubeMode,
 } from './flags.js'
 import { createHtmlToMarkdownConverter } from './llm/html-to-markdown.js'
@@ -29,7 +30,9 @@ type JsonOutput = {
     youtube: string
     firecrawl: string
     markdown: string
+    provider: string
     length: { kind: 'preset'; preset: string } | { kind: 'chars'; maxCharacters: number }
+    model: string
   }
   env: {
     hasOpenAIKey: boolean
@@ -40,7 +43,8 @@ type JsonOutput = {
   }
   extracted: unknown
   prompt: string
-  openai: {
+  llm: {
+    provider: 'gateway' | 'openai' | 'prompt-only'
     model: string
     maxCompletionTokens: number
     strategy: 'single' | 'map-reduce'
@@ -56,7 +60,7 @@ function buildProgram() {
   return new Command()
     .name('summarize')
     .description(
-      'Summarize web pages and YouTube links (prompt-only when OPENAI_API_KEY is missing).'
+      'Summarize web pages and YouTube links (prompt-only when no LLM key is available).'
     )
     .argument('[url]', 'URL to summarize')
     .option(
@@ -81,10 +85,20 @@ function buildProgram() {
     )
     .option(
       '--timeout <duration>',
-      'Timeout for content fetching and OpenAI request: 30 (seconds), 30s, 2m, 5000ms',
+      'Timeout for content fetching and LLM request: 30 (seconds), 30s, 2m, 5000ms',
       '2m'
     )
-    .option('--model <model>', 'OpenAI model', undefined)
+    .option('--provider <provider>', 'Summarization provider: auto|gateway|openai', 'auto')
+    .option(
+      '--model <model>',
+      'Summarization model (default: xai/grok-4.1-fast-non-reasoning when AI_GATEWAY_API_KEY is set; otherwise gpt-5.2)',
+      undefined
+    )
+    .option(
+      '--raw',
+      'Raw website extraction (disables Firecrawl + LLM Markdown conversion). Shorthand for --firecrawl off --markdown off.',
+      false
+    )
     .option('--prompt', 'Print the prompt and exit', false)
     .option('--extract-only', 'Print extracted content and exit', false)
     .option('--json', 'Output structured JSON', false)
@@ -135,12 +149,12 @@ ${heading('Examples')}
   ${cmd('summarize "https://example.com" --json --verbose')}
 
 ${heading('Env Vars')}
-  OPENAI_API_KEY        required for summarization (otherwise prompt-only)
-  OPENAI_MODEL          optional (default: gpt-5.2)
+  OPENAI_API_KEY        optional (OpenAI provider + Markdown fallback)
+  SUMMARIZE_MODEL       optional (overrides default model selection)
   FIRECRAWL_API_KEY     optional website extraction fallback (Markdown)
   APIFY_API_TOKEN       optional YouTube transcript fallback
   GOOGLE_GENERATIVE_AI_API_KEY optional LLM website Markdown conversion (Gemini)
-  AI_GATEWAY_API_KEY    optional LLM website Markdown conversion (Vercel AI Gateway)
+  AI_GATEWAY_API_KEY    optional (Vercel AI Gateway; enables xai/grok-4.1-fast-non-reasoning + google/gemini-3-flash)
 `
   )
 }
@@ -206,6 +220,45 @@ async function summarizeWithOpenAI({
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error('OpenAI request timed out')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function summarizeWithGateway({
+  apiKey,
+  model,
+  prompt,
+  maxOutputTokens,
+  timeoutMs,
+  fetchImpl,
+}: {
+  apiKey: string
+  model: string
+  prompt: string
+  maxOutputTokens: number
+  timeoutMs: number
+  fetchImpl: typeof fetch
+}): Promise<string> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const { createGateway, generateText } = await import('ai')
+    const gateway = createGateway({ apiKey, fetch: fetchImpl })
+    const result = await generateText({
+      model: gateway(model),
+      prompt,
+      temperature: 0,
+      maxOutputTokens,
+      abortSignal: controller.signal,
+    })
+    return result.text
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('LLM request timed out')
     }
     throw error
   } finally {
@@ -391,21 +444,24 @@ export async function runCli(
   const json = Boolean(program.opts().json)
   const verbose = Boolean(program.opts().verbose)
   const markdownMode = parseMarkdownMode(program.opts().markdown as string)
+  const providerMode = parseProviderMode(program.opts().provider as string)
+  const raw = Boolean(program.opts().raw)
 
   const isYoutubeUrl = /youtube\.com|youtu\.be/i.test(url)
   const firecrawlExplicitlySet = normalizedArgv.some(
     (arg) => arg === '--firecrawl' || arg.startsWith('--firecrawl=')
   )
   const requestedFirecrawlMode = parseFirecrawlMode(program.opts().firecrawl as string)
+  const markdownExplicitlySet = normalizedArgv.some(
+    (arg) => arg === '--markdown' || arg.startsWith('--markdown=')
+  )
 
   if (printPrompt && extractOnly) {
     throw new Error('--prompt and --extract-only are mutually exclusive')
   }
 
-  const model =
-    (typeof program.opts().model === 'string' ? (program.opts().model as string) : null) ??
-    env.OPENAI_MODEL ??
-    'gpt-5.2'
+  const modelArg =
+    typeof program.opts().model === 'string' ? (program.opts().model as string) : null
 
   const apiKey = typeof env.OPENAI_API_KEY === 'string' ? env.OPENAI_API_KEY : null
   const apifyToken = typeof env.APIFY_API_TOKEN === 'string' ? env.APIFY_API_TOKEN : null
@@ -421,9 +477,24 @@ export async function runCli(
   const googleConfigured = typeof googleApiKey === 'string' && googleApiKey.length > 0
   const aiGatewayConfigured = typeof aiGatewayApiKey === 'string' && aiGatewayApiKey.length > 0
 
+  const resolvedDefaultModel = (() => {
+    if (typeof env.SUMMARIZE_MODEL === 'string' && env.SUMMARIZE_MODEL.trim().length > 0) {
+      return env.SUMMARIZE_MODEL.trim()
+    }
+    if (aiGatewayConfigured) {
+      return 'xai/grok-4.1-fast-non-reasoning'
+    }
+    return 'gpt-5.2'
+  })()
+
+  const model = (modelArg?.trim() ?? '') || resolvedDefaultModel
+
   const verboseColor = supportsColor(stderr, env)
 
   const firecrawlMode = (() => {
+    if (raw) {
+      return 'off'
+    }
     if (extractOnly && !isYoutubeUrl && !firecrawlExplicitlySet && firecrawlConfigured) {
       return 'always'
     }
@@ -433,7 +504,12 @@ export async function runCli(
     throw new Error('--firecrawl always requires FIRECRAWL_API_KEY')
   }
 
-  const markdownRequested = extractOnly && !isYoutubeUrl && markdownMode !== 'off'
+  if (raw && (firecrawlExplicitlySet || markdownExplicitlySet)) {
+    throw new Error('--raw cannot be combined with --firecrawl or --markdown')
+  }
+
+  const effectiveMarkdownMode = raw ? 'off' : markdownMode
+  const markdownRequested = extractOnly && !isYoutubeUrl && effectiveMarkdownMode !== 'off'
   const markdownProvider = aiGatewayConfigured
     ? 'vercel-gateway'
     : googleConfigured
@@ -442,7 +518,7 @@ export async function runCli(
         ? 'openai'
         : 'none'
 
-  if (markdownRequested && markdownMode === 'llm' && markdownProvider === 'none') {
+  if (markdownRequested && effectiveMarkdownMode === 'llm' && markdownProvider === 'none') {
     throw new Error(
       '--markdown llm requires AI_GATEWAY_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, or OPENAI_API_KEY'
     )
@@ -453,13 +529,13 @@ export async function runCli(
     verbose,
     `config url=${url} timeoutMs=${timeoutMs} youtube=${youtubeMode} firecrawl=${firecrawlMode} length=${
       lengthArg.kind === 'preset' ? lengthArg.preset : `${lengthArg.maxCharacters} chars`
-    } json=${json} extractOnly=${extractOnly} prompt=${printPrompt} markdown=${markdownMode}`,
+    } json=${json} extractOnly=${extractOnly} prompt=${printPrompt} markdown=${effectiveMarkdownMode} provider=${providerMode} model=${model} raw=${raw}`,
     verboseColor
   )
   writeVerbose(
     stderr,
     verbose,
-    `env openaiKey=${Boolean(apiKey)} apifyToken=${Boolean(apifyToken)} firecrawlKey=${firecrawlConfigured} googleKey=${googleConfigured} aiGatewayKey=${aiGatewayConfigured} model=${model}`,
+    `env openaiKey=${Boolean(apiKey)} apifyToken=${Boolean(apifyToken)} firecrawlKey=${firecrawlConfigured} googleKey=${googleConfigured} aiGatewayKey=${aiGatewayConfigured}`,
     verboseColor
   )
   writeVerbose(
@@ -475,7 +551,7 @@ export async function runCli(
       : null
 
   const convertHtmlToMarkdown =
-    markdownRequested && (markdownMode === 'llm' || markdownProvider !== 'none')
+    markdownRequested && (effectiveMarkdownMode === 'llm' || markdownProvider !== 'none')
       ? createHtmlToMarkdownConverter({
           aiGatewayApiKey: aiGatewayConfigured ? aiGatewayApiKey : null,
           googleApiKey: googleConfigured ? googleApiKey : null,
@@ -569,11 +645,13 @@ export async function runCli(
           timeoutMs,
           youtube: youtubeMode,
           firecrawl: firecrawlMode,
-          markdown: markdownMode,
+          markdown: effectiveMarkdownMode,
+          provider: providerMode,
           length:
             lengthArg.kind === 'preset'
               ? { kind: 'preset', preset: lengthArg.preset }
               : { kind: 'chars', maxCharacters: lengthArg.maxCharacters },
+          model,
         },
         env: {
           hasOpenAIKey: Boolean(apiKey),
@@ -584,7 +662,7 @@ export async function runCli(
         },
         extracted,
         prompt,
-        openai: null,
+        llm: null,
         summary: null,
       }
       stdout.write(`${JSON.stringify(payload, null, 2)}\n`)
@@ -595,15 +673,53 @@ export async function runCli(
     return
   }
 
-  if (printPrompt || !apiKey) {
-    writeVerbose(
-      stderr,
-      verbose,
-      printPrompt ? 'mode prompt-only' : 'mode prompt-only (no OPENAI_API_KEY)',
-      verboseColor
-    )
-    if (!apiKey && !json) {
-      stderr.write('Missing OPENAI_API_KEY; printing prompt instead.\n')
+  const resolvedSummarizer = (() => {
+    const normalizedOpenAIModel = model.startsWith('openai/')
+      ? model.slice('openai/'.length)
+      : model
+    const looksLikeGatewayModel = model.includes('/')
+
+    if (providerMode === 'gateway') {
+      if (!aiGatewayConfigured) {
+        throw new Error('--provider gateway requires AI_GATEWAY_API_KEY')
+      }
+      return { provider: 'gateway' as const, model: model }
+    }
+
+    if (providerMode === 'openai') {
+      if (!apiKey) {
+        throw new Error('--provider openai requires OPENAI_API_KEY')
+      }
+      if (looksLikeGatewayModel && !model.startsWith('openai/')) {
+        throw new Error(
+          '--provider openai does not support gateway model ids (e.g. xai/..., google/...)'
+        )
+      }
+      return { provider: 'openai' as const, model: normalizedOpenAIModel }
+    }
+
+    if (printPrompt) {
+      return { provider: 'prompt-only' as const, model }
+    }
+
+    if (aiGatewayConfigured && looksLikeGatewayModel) {
+      return { provider: 'gateway' as const, model }
+    }
+
+    if (apiKey && (!looksLikeGatewayModel || model.startsWith('openai/'))) {
+      return { provider: 'openai' as const, model: normalizedOpenAIModel }
+    }
+
+    return { provider: 'prompt-only' as const, model }
+  })()
+
+  if (resolvedSummarizer.provider === 'prompt-only') {
+    writeVerbose(stderr, verbose, 'mode prompt-only', verboseColor)
+    if (!json && !printPrompt) {
+      const missing = model.includes('/')
+        ? 'Missing AI_GATEWAY_API_KEY; printing prompt instead.'
+        : 'Missing OPENAI_API_KEY; printing prompt instead.'
+      stderr.write(`${missing}\n`)
     }
 
     if (json) {
@@ -613,11 +729,13 @@ export async function runCli(
           timeoutMs,
           youtube: youtubeMode,
           firecrawl: firecrawlMode,
-          markdown: markdownMode,
+          markdown: effectiveMarkdownMode,
+          provider: providerMode,
           length:
             lengthArg.kind === 'preset'
               ? { kind: 'preset', preset: lengthArg.preset }
               : { kind: 'chars', maxCharacters: lengthArg.maxCharacters },
+          model,
         },
         env: {
           hasOpenAIKey: Boolean(apiKey),
@@ -628,7 +746,7 @@ export async function runCli(
         },
         extracted,
         prompt,
-        openai: null,
+        llm: null,
         summary: null,
       }
       stdout.write(`${JSON.stringify(payload, null, 2)}\n`)
@@ -639,7 +757,12 @@ export async function runCli(
     return
   }
 
-  writeVerbose(stderr, verbose, 'mode summarize (OpenAI)', verboseColor)
+  writeVerbose(
+    stderr,
+    verbose,
+    `mode summarize provider=${resolvedSummarizer.provider} model=${resolvedSummarizer.model}`,
+    verboseColor
+  )
   const maxCompletionTokens =
     lengthArg.kind === 'preset'
       ? SUMMARY_LENGTH_TO_TOKENS[lengthArg.preset]
@@ -652,14 +775,24 @@ export async function runCli(
   let summary: string
   if (!isLargeContent) {
     writeVerbose(stderr, verbose, 'summarize strategy=single', verboseColor)
-    summary = await summarizeWithOpenAI({
-      apiKey,
-      model,
-      prompt,
-      maxOutputTokens: maxCompletionTokens,
-      timeoutMs,
-      fetchImpl: fetch,
-    })
+    summary =
+      resolvedSummarizer.provider === 'gateway'
+        ? await summarizeWithGateway({
+            apiKey: aiGatewayApiKey ?? '',
+            model: resolvedSummarizer.model,
+            prompt,
+            maxOutputTokens: maxCompletionTokens,
+            timeoutMs,
+            fetchImpl: fetch,
+          })
+        : await summarizeWithOpenAI({
+            apiKey: apiKey ?? '',
+            model: resolvedSummarizer.model,
+            prompt,
+            maxOutputTokens: maxCompletionTokens,
+            timeoutMs,
+            fetchImpl: fetch,
+          })
   } else {
     strategy = 'map-reduce'
     const chunks = splitTextIntoChunks(extracted.content, MAP_REDUCE_CHUNK_CHARACTERS)
@@ -689,14 +822,24 @@ export async function runCli(
 
       let notes = ''
       try {
-        notes = await summarizeWithOpenAI({
-          apiKey,
-          model,
-          prompt: chunkPrompt,
-          maxOutputTokens: SUMMARY_LENGTH_TO_TOKENS.medium,
-          timeoutMs,
-          fetchImpl: fetch,
-        })
+        notes =
+          resolvedSummarizer.provider === 'gateway'
+            ? await summarizeWithGateway({
+                apiKey: aiGatewayApiKey ?? '',
+                model: resolvedSummarizer.model,
+                prompt: chunkPrompt,
+                maxOutputTokens: SUMMARY_LENGTH_TO_TOKENS.medium,
+                timeoutMs,
+                fetchImpl: fetch,
+              })
+            : await summarizeWithOpenAI({
+                apiKey: apiKey ?? '',
+                model: resolvedSummarizer.model,
+                prompt: chunkPrompt,
+                maxOutputTokens: SUMMARY_LENGTH_TO_TOKENS.medium,
+                timeoutMs,
+                fetchImpl: fetch,
+              })
       } catch (error) {
         if (error instanceof Error && error.name === 'OpenAIResponseFormatError') {
           stderr.write(`OpenAI returned an empty response for chunk ${i + 1}; skipping.\n`)
@@ -728,19 +871,29 @@ export async function runCli(
       shares: [],
     })
 
-    summary = await summarizeWithOpenAI({
-      apiKey,
-      model,
-      prompt: mergedPrompt,
-      maxOutputTokens: maxCompletionTokens,
-      timeoutMs,
-      fetchImpl: fetch,
-    })
+    summary =
+      resolvedSummarizer.provider === 'gateway'
+        ? await summarizeWithGateway({
+            apiKey: aiGatewayApiKey ?? '',
+            model: resolvedSummarizer.model,
+            prompt: mergedPrompt,
+            maxOutputTokens: maxCompletionTokens,
+            timeoutMs,
+            fetchImpl: fetch,
+          })
+        : await summarizeWithOpenAI({
+            apiKey: apiKey ?? '',
+            model: resolvedSummarizer.model,
+            prompt: mergedPrompt,
+            maxOutputTokens: maxCompletionTokens,
+            timeoutMs,
+            fetchImpl: fetch,
+          })
   }
 
   summary = summary.trim()
   if (summary.length === 0) {
-    throw new Error('OpenAI returned an empty summary')
+    throw new Error('LLM returned an empty summary')
   }
 
   if (json) {
@@ -750,14 +903,16 @@ export async function runCli(
         timeoutMs,
         youtube: youtubeMode,
         firecrawl: firecrawlMode,
-        markdown: markdownMode,
+        markdown: effectiveMarkdownMode,
+        provider: providerMode,
         length:
           lengthArg.kind === 'preset'
             ? { kind: 'preset', preset: lengthArg.preset }
             : { kind: 'chars', maxCharacters: lengthArg.maxCharacters },
+        model,
       },
       env: {
-        hasOpenAIKey: true,
+        hasOpenAIKey: Boolean(apiKey),
         hasApifyToken: Boolean(apifyToken),
         hasFirecrawlKey: firecrawlConfigured,
         hasGoogleKey: googleConfigured,
@@ -765,7 +920,13 @@ export async function runCli(
       },
       extracted,
       prompt,
-      openai: { model, maxCompletionTokens, strategy, chunkCount },
+      llm: {
+        provider: resolvedSummarizer.provider,
+        model: resolvedSummarizer.model,
+        maxCompletionTokens,
+        strategy,
+        chunkCount,
+      },
       summary,
     }
 

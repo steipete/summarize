@@ -14,8 +14,9 @@ Use this for non-YouTube URLs.
 
 - `--firecrawl off|auto|always`
 - `--markdown off|auto|llm` (default: `auto`; only affects `--extract-only` for non-YouTube URLs)
+- `--raw` (shorthand for `--firecrawl off --markdown off`)
 - `--timeout 30s|30|2m|5000ms` (default: `2m`)
-- `--extract-only` (print extracted content, no OpenAI call)
+- `--extract-only` (print extracted content, no LLM call)
 - `--json` (emit a single JSON object)
 - `--verbose` (progress + which extractor was used)
 

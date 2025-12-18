@@ -47,8 +47,14 @@ describe('cli --json', () => {
     })
 
     expect(stderrText).toBe('')
-    const parsed = JSON.parse(stdoutText) as { env: { hasOpenAIKey: boolean }; summary: unknown }
+    const parsed = JSON.parse(stdoutText) as {
+      env: { hasOpenAIKey: boolean; hasAiGatewayKey: boolean }
+      llm: unknown
+      summary: unknown
+    }
     expect(parsed.env.hasOpenAIKey).toBe(false)
+    expect(parsed.env.hasAiGatewayKey).toBe(false)
+    expect(parsed.llm).toBeNull()
     expect(parsed.summary).toBeNull()
   })
 })

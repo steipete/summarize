@@ -64,12 +64,13 @@ describe('cli map-reduce summarization', () => {
     })
 
     const parsed = JSON.parse(stdoutText) as {
-      openai: { strategy: string; chunkCount: number } | null
+      llm: { provider: string; strategy: string; chunkCount: number } | null
       summary: string | null
     }
 
-    expect(parsed.openai?.strategy).toBe('map-reduce')
-    expect(parsed.openai?.chunkCount).toBe(3)
+    expect(parsed.llm?.provider).toBe('openai')
+    expect(parsed.llm?.strategy).toBe('map-reduce')
+    expect(parsed.llm?.chunkCount).toBe(3)
     expect(parsed.summary).toBe('FINAL')
     expect(stderrText).toContain('summarizing in 3 chunks')
     expect(openAiCall).toBe(4)
@@ -127,12 +128,13 @@ describe('cli map-reduce summarization', () => {
     })
 
     const parsed = JSON.parse(stdoutText) as {
-      openai: { strategy: string; chunkCount: number } | null
+      llm: { provider: string; strategy: string; chunkCount: number } | null
       summary: string | null
     }
 
-    expect(parsed.openai?.strategy).toBe('map-reduce')
-    expect(parsed.openai?.chunkCount).toBe(3)
+    expect(parsed.llm?.provider).toBe('openai')
+    expect(parsed.llm?.strategy).toBe('map-reduce')
+    expect(parsed.llm?.chunkCount).toBe(3)
     expect(parsed.summary).toBe('FINAL')
     expect(stderrText).toContain('OpenAI returned an empty response for chunk 2; skipping.')
     expect(openAiCall).toBe(4)

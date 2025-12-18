@@ -12,7 +12,10 @@ All notable changes to this project are documented here.
   - `captionTracks` timedtext extraction (best-effort)
   - optional Apify fallback (requires `APIFY_API_TOKEN`)
   - fallback to `ytInitialPlayerResponse.videoDetails.shortDescription` when transcripts are unavailable
-- OpenAI summarization (Chat Completions API) with default model `gpt-5.2` (`OPENAI_API_KEY`, optional `OPENAI_MODEL`).
+- LLM summarization:
+  - Default model selection: `xai/grok-4.1-fast-non-reasoning` when `AI_GATEWAY_API_KEY` is set, otherwise `gpt-5.2`.
+  - Override via `SUMMARIZE_MODEL` or `--model`.
+  - Provider selection via `--provider auto|gateway|openai`.
 - `--extract-only` prefers Firecrawl Markdown for websites when `FIRECRAWL_API_KEY` is configured (override via `--firecrawl off`).
 - `--extract-only --markdown auto|llm` can convert HTML → Markdown via an LLM (Gemini via `GOOGLE_GENERATIVE_AI_API_KEY` or Vercel AI Gateway via `AI_GATEWAY_API_KEY`).
 - CLI defaults: `--timeout 2m`.

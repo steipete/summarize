@@ -10,3 +10,4 @@
   - Force plain HTML extraction with `--firecrawl off`.
 - For non-YouTube URLs, `--markdown auto` can convert HTML → Markdown via an LLM when configured.
   - Force it with `--markdown llm`.
+- Shorthand: `--raw` disables both Firecrawl and LLM Markdown conversion.

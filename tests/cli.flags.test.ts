@@ -5,6 +5,7 @@ import {
   parseFirecrawlMode,
   parseLengthArg,
   parseMarkdownMode,
+  parseProviderMode,
   parseYoutubeMode,
 } from '../src/flags.js'
 
@@ -37,6 +38,13 @@ describe('cli flag parsing', () => {
     expect(parseMarkdownMode('auto')).toBe('auto')
     expect(parseMarkdownMode('llm')).toBe('llm')
     expect(() => parseMarkdownMode('nope')).toThrow(/Unsupported --markdown/)
+  })
+
+  it('parses --provider', () => {
+    expect(parseProviderMode('auto')).toBe('auto')
+    expect(parseProviderMode('gateway')).toBe('gateway')
+    expect(parseProviderMode('openai')).toBe('openai')
+    expect(() => parseProviderMode('nope')).toThrow(/Unsupported --provider/)
   })
 
   it('parses --length as preset or character count', () => {
