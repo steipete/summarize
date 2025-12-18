@@ -1,12 +1,11 @@
 import { Command, CommanderError } from 'commander'
-import { render as renderMarkdownAnsi } from 'markdansi'
+import { createLiveRenderer, render as renderMarkdownAnsi } from 'markdansi'
 import { loadSummarizeConfig } from './config.js'
 import { createLinkPreviewClient } from './content/index.js'
 import { buildRunCostReport } from './costs.js'
 import type { LlmCall } from './costs.js'
 import { createFirecrawlScraper } from './firecrawl.js'
 import { loadLiteLlmCatalog, resolveLiteLlmPricingForModelId } from './pricing/litellm.js'
-import { createLiveMarkdownRenderer } from './tty/live-markdown.js'
 import {
   parseDurationMs,
   parseFirecrawlMode,
@@ -879,10 +878,14 @@ export async function runCli(
       })
       let streamed = ''
       const liveRenderer = shouldLiveRenderSummary
-        ? createLiveMarkdownRenderer({
-            stdout,
-            width: terminalWidth(stdout, env),
-            color: supportsColor(stdout, env),
+        ? createLiveRenderer({
+            write: (chunk) => stdout.write(chunk),
+            renderFrame: (markdown) =>
+              renderMarkdownAnsi(markdown, {
+                width: terminalWidth(stdout, env),
+                wrap: true,
+                color: supportsColor(stdout, env),
+              }),
           })
         : null
       let lastFrameAtMs = 0
@@ -1030,10 +1033,14 @@ export async function runCli(
       })
       let streamed = ''
       const liveRenderer = shouldLiveRenderSummary
-        ? createLiveMarkdownRenderer({
-            stdout,
-            width: terminalWidth(stdout, env),
-            color: supportsColor(stdout, env),
+        ? createLiveRenderer({
+            write: (chunk) => stdout.write(chunk),
+            renderFrame: (markdown) =>
+              renderMarkdownAnsi(markdown, {
+                width: terminalWidth(stdout, env),
+                wrap: true,
+                color: supportsColor(stdout, env),
+              }),
           })
         : null
       let lastFrameAtMs = 0
