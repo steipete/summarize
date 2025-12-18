@@ -1,187 +1,144 @@
-# summarize 🗜️ — Link → clean text → summary.
+# @steipete/summarize
 
-Personal URL summarization CLI + a small reusable library.
+Fast CLI for summarizing *anything you can point at*:
 
-One npm package: `@steipete/summarize` (CLI + library exports).
+- Web pages
+- YouTube links (best-effort transcripts, optional Apify fallback)
+- Local files (PDFs, images, etc. — forwarded to the model; support depends on provider/model)
 
-Docs (by mode):
+It streams output by default on TTY and renders Markdown to ANSI (via `markdansi`). At the end it prints a single “Finished in …” line with timing, token usage, and estimated cost (when available).
 
-- `docs/website.md`
-- `docs/youtube.md`
-- `docs/firecrawl.md`
-- `docs/llm.md`
-- `docs/extract-only.md`
-- `docs/config.md`
-
-## Features
-
-- **URL → clean text**: fetches HTML, extracts the main article-ish content, normalizes it for prompts.
-- **YouTube transcripts** (when the URL is a YouTube link):
-  - `youtubei` transcript endpoint (best-effort)
-  - `captionTracks` (best-effort)
-  - Apify transcript actor (optional fallback, requires `APIFY_API_TOKEN`)
-  - If transcripts are blocked, we still extract `ytInitialPlayerResponse.videoDetails.shortDescription` so YouTube links summarize meaningfully.
-- **Firecrawl fallback for blocked sites**: if direct HTML fetching is blocked or yields too little content, we retry via Firecrawl to get Markdown (requires `FIRECRAWL_API_KEY`).
-- **LLM HTML→Markdown (optional)**: in `--extract-only` website mode, `--markdown auto|llm` can convert HTML → clean Markdown using the configured `--model` (no provider fallback).
-- **Structured output**: `--json` emits a single JSON object with extraction diagnostics + the prompt + (optional) summary.
-- **Extract-only mode**: `--extract-only` prints the extracted content (no LLM call).
-
-## CLI usage
-
-Preferred install (global):
+## Quickstart
 
 ```bash
-npm install -g @steipete/summarize
+npx -y @steipete/summarize "https://example.com" --model openai/gpt-5.2
 ```
 
-Run:
+Input can be a URL or a local file path:
 
 ```bash
-summarize "https://example.com"
+npx -y @steipete/summarize "/path/to/file.pdf" --model google/gemini-3-flash-preview
+npx -y @steipete/summarize "/path/to/image.jpeg" --model google/gemini-3-flash-preview
 ```
 
-One-off (no install):
+YouTube (supports `youtube.com` and `youtu.be`):
 
 ```bash
-npx -y @steipete/summarize "https://example.com"
+npx -y @steipete/summarize "https://youtu.be/dQw4w9WgXcQ" --youtube auto
 ```
 
-Local dev:
+## Model ids
+
+Use “gateway-style” ids: `<provider>/<model>`.
+
+Examples:
+
+- `openai/gpt-5.2`
+- `anthropic/claude-opus-4-5`
+- `xai/grok-4-fast-non-reasoning`
+- `google/gemini-3-flash-preview`
+
+Note: some models/providers don’t support streaming or certain file media types. When that happens, the CLI prints a friendly error (or auto-disables streaming for that model when supported by the provider).
+
+## Output length
+
+`--length` controls *how much output we ask for* (guideline), not a hard truncation.
+
+```bash
+npx -y @steipete/summarize "https://example.com" --length long
+npx -y @steipete/summarize "https://example.com" --length 20k
+```
+
+- Presets: `short|medium|long|xl|xxl`
+- Character targets: `1500`, `20k`, `20000`
+
+Internally we pass a `maxOutputTokens` limit to the provider request. There is **no global cap**; when possible we clamp only to the provider/model’s own max output tokens (from the LiteLLM catalog) to avoid request failures.
+
+## Common flags
+
+```bash
+npx -y @steipete/summarize <input> [flags]
+```
+
+- `--model <provider/model>`: which model to use (defaults to `xai/grok-4-fast-non-reasoning`)
+- `--timeout <duration>`: `30s`, `2m`, `5000ms` (default `2m`)
+- `--length short|medium|long|xl|xxl|<chars>`
+- `--stream auto|on|off`: stream LLM output (`auto` = TTY only; disabled in `--json` mode)
+- `--render auto|md-live|md|plain`: Markdown rendering (`auto` = best default for TTY)
+- `--extract-only`: print extracted content (no LLM call) — only for URLs
+- `--json`: machine-readable output with diagnostics, prompt, and optional summary
+- `--verbose`: debug/diagnostics on stderr
+- `--cost`: detailed token + cost breakdown on stderr
+
+## Website extraction (Firecrawl + Markdown)
+
+Non-YouTube URLs go through a “fetch → extract” pipeline. When the direct fetch/extraction is blocked or too thin, `--firecrawl auto` can fall back to Firecrawl (if configured).
+
+- `--firecrawl off|auto|always` (default `auto`)
+- `--markdown off|auto|llm` (default `auto`; only affects `--extract-only` for non-YouTube URLs)
+- `--raw`: disables Firecrawl + LLM Markdown conversion (shorthand for `--firecrawl off --markdown off`)
+
+## YouTube transcripts (Apify fallback)
+
+`--youtube auto` tries best-effort web transcript endpoints first, then falls back to Apify *only if* `APIFY_API_TOKEN` is set.
+
+Apify uses a single actor (`faVsWy9VTSNVIhWpR`). It costs money but tends to be more reliable.
+
+## Configuration
+
+Single config location:
+
+- `~/.summarize/config.json`
+
+Supported keys today:
+
+```json
+{
+  "model": "openai/gpt-5.2"
+}
+```
+
+Precedence:
+
+1) `--model`
+2) `SUMMARIZE_MODEL`
+3) `~/.summarize/config.json`
+4) default
+
+## Environment variables
+
+Set the key matching your chosen `--model`:
+
+- `OPENAI_API_KEY` (for `openai/...`)
+- `ANTHROPIC_API_KEY` (for `anthropic/...`)
+- `XAI_API_KEY` (for `xai/...`)
+- `GOOGLE_GENERATIVE_AI_API_KEY` (for `google/...`)  
+  - also accepts `GEMINI_API_KEY` and `GOOGLE_API_KEY` as aliases
+
+Optional services:
+
+- `FIRECRAWL_API_KEY` (website extraction fallback)
+- `APIFY_API_TOKEN` (YouTube transcript fallback)
+
+## Pricing + cost reporting
+
+`--cost` and the final “Finished in …” line use the LiteLLM model catalog for pricing and model limits:
+
+- Downloaded from: `https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json`
+- Cached at: `~/.summarize/cache/`
+
+USD cost is best-effort; token counts are the source of truth.
+
+## Library usage (optional)
+
+This package also exports a small library:
+
+- `@steipete/summarize/content`
+- `@steipete/summarize/prompts`
+
+## Development
 
 ```bash
 pnpm install
-pnpm build
-```
-
-Run without building (direct TS via `tsx`):
-
-```bash
-pnpm summarize -- "https://example.com"
-```
-
-Summarize a URL:
-
-```bash
-summarize "https://example.com"
-```
-
-Change model, length, YouTube mode, and timeout:
-
-```bash
-summarize "https://example.com" --length 20k --timeout 30s --model openai/gpt-5.2
-summarize "https://example.com" --length long --model xai/grok-4-fast-non-reasoning
-summarize "https://www.youtube.com/watch?v=I845O57ZSy4&t=11s" --youtube auto --length 8k
-```
-
-Structured JSON output:
-
-```bash
-summarize "https://example.com" --json
-```
-
-### Flags
-
-- `--youtube auto|web|apify`
-  - `auto` (default): try YouTube web endpoints first (`youtubei` / `captionTracks`), then fall back to Apify
-  - `web`: only try YouTube web endpoints (no Apify)
-  - `apify`: only try Apify (no web endpoints)
-- `--firecrawl off|auto|always`
-  - `off`: never use Firecrawl
-  - `auto` (default): use Firecrawl only as a fallback when HTML fetch/extraction looks blocked or too thin
-  - `always`: try Firecrawl first (still falls back to HTML when Firecrawl is unavailable/empty)
-- `--markdown off|auto|llm`
-  - `off`: never attempt LLM HTML→Markdown conversion
-  - `auto` (default): in `--extract-only` website mode, prefer Firecrawl Markdown when configured; otherwise convert via LLM when configured
-  - `llm`: force LLM HTML→Markdown conversion (errors when no LLM keys are configured)
-- `--raw`
-  - Raw website extraction (disables Firecrawl + LLM Markdown conversion). Shorthand for `--firecrawl off --markdown off`.
-- `--length short|medium|long|xl|xxl|<chars>`
-  - Presets influence formatting; `<chars>` (e.g. `20k`, `1500`) adds a soft “target length” instruction (no hard truncation).
-- `--timeout <duration>`: `30` (seconds), `30s`, `2m`, `5000ms` (default: `2m`)
-- `--model <model>`
-  - Default: `xai/grok-4-fast-non-reasoning`
-  - Override via `SUMMARIZE_MODEL`, config file (`model`), or `--model`.
-  - Uses gateway-style ids:
-    - `xai/grok-4-fast-non-reasoning`
-    - `openai/gpt-5.2`
-    - `google/gemini-2.0-flash`
-    - `anthropic/claude-sonnet-4-5`
-- `--extract-only`: print extracted content and exit (never calls an LLM)
-- `--json`: emit a single JSON object instead of plain text
-- `--stream auto|on|off`
-  - `auto` (default): stream only when stdout is a TTY (disabled in `--json` mode)
-  - In `--render md` mode, streaming output is buffered and rendered at the end.
-  - In `--render md-live` mode, streaming output is re-rendered live (TTY only).
-- `--render auto|md-live|md|plain`
-  - `auto` (default): on TTY, uses `md-live` when streaming; otherwise `md`
-  - `md-live`: live Markdown rendering (TTY only, uses terminal synchronized output when supported)
-  - `md`: render Markdown to ANSI using `markdansi` (TTY only)
-  - `plain`: no Markdown rendering
-- `--verbose`: print detailed progress + extraction diagnostics to stderr
-- `--cost`: print token usage + estimated costs to stderr (also included in `--json` output when enabled)
-
-Note: a `Finished in ...` line is always printed to stderr (elapsed time + tokens + service counts + estimated cost when available).
-
-## Required services & API keys
-
-### LLM (optional, required for “actual summarization”)
-
-By default the CLI uses `xai/grok-4-fast-non-reasoning`, so you’ll want `XAI_API_KEY` set unless you override `--model`.
-
-- `XAI_API_KEY` (required for `xai/...` models)
-- `OPENAI_API_KEY` (required for `openai/...` models)
-- `GOOGLE_GENERATIVE_AI_API_KEY` (required for `google/...` models)
-- `GEMINI_API_KEY` (alias for `GOOGLE_GENERATIVE_AI_API_KEY`)
-- `ANTHROPIC_API_KEY` (required for `anthropic/...` models)
-- `SUMMARIZE_MODEL` (optional; overrides default model selection)
-- `SUMMARIZE_CONFIG` (optional; path to config file)
-
-### Cost reporting (optional)
-
-`--cost` prints token usage plus an *estimated* USD cost for LLM calls.
-
-Pricing is automatically derived from the LiteLLM model catalog and cached locally under `~/.summarize/cache/`.
-
-Notes:
-
-- Token counts and request counts are the source of truth.
-- USD is best-effort and can drift when providers change pricing.
-
-### Apify (optional YouTube fallback)
-
-Used only as a fallback when YouTube transcript endpoints fail and only if the token is present.
-
-- `APIFY_API_TOKEN` (optional)
-
-### Firecrawl (optional website fallback)
-
-Used only as a fallback for non-YouTube URLs when direct HTML fetching/extraction looks blocked or too thin.
-
-- `FIRECRAWL_API_KEY` (optional)
-
-### LLM website Markdown (optional)
-
-Used only for `--extract-only` website URLs when `--markdown auto|llm` is enabled.
-
-- Requires the API key matching your configured `--model`:
-  - `XAI_API_KEY` for `xai/...`
-  - `OPENAI_API_KEY` for `openai/...`
-  - `GOOGLE_GENERATIVE_AI_API_KEY` for `google/...`
-
-## Library API (for other Node programs)
-
-`@steipete/summarize` exports entry points:
-
-- `@steipete/summarize/content`
-  - `createLinkPreviewClient({ fetch?, scrapeWithFirecrawl?, apifyApiToken?, convertHtmlToMarkdown? })`
-  - `client.fetchLinkContent(url, { timeoutMs?, youtubeTranscript?, firecrawl?, format? })`
-- `@steipete/summarize/prompts`
-  - `buildLinkSummaryPrompt(...)` (`summaryLength` supports presets or `{ maxCharacters }`)
-  - `SUMMARY_LENGTH_TO_TOKENS`
-
-## Dev
-
-```bash
-pnpm check     # biome + build + tests
-pnpm lint:fix  # apply Biome fixes
+pnpm check
 ```
