@@ -21,8 +21,8 @@ importers:
         specifier: ^21.1.1
         version: 21.1.1
       markdansi:
-        specifier: 0.1.5
-        version: 0.1.5
+        specifier: 0.1.6
+        version: 0.1.6
       mime:
         specifier: ^4.1.0
         version: 4.1.0
@@ -832,8 +832,8 @@ packages:
     resolution: {integrity: sha512-hXdUTZYIVOt1Ex//jAQi+wTZZpUpwBj/0QsOzqegb3rGMMeJiSEu5xLHnYfBrRV4RH2+OCSOO95Is/7x1WJ4bw==}
     engines: {node: '>=10'}
 
-  markdansi@0.1.5:
-    resolution: {integrity: sha512-Bvy7kxCf/ilqcXnBsgEHQpz1/teeFucgX7e/iXaCMP4bNormhu9mM+h9FWIaqRjS9ZRml3kDeEKL8wl1CRE0Tw==}
+  markdansi@0.1.6:
+    resolution: {integrity: sha512-75guo0/7IMh26c4w3lkXb3r7/cdmpajKMtDxy7jOAluiqRvGvbutggbyOSJv8lEXMkYAMr1D4ZBawHnBHFfsxA==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -1848,7 +1848,7 @@ snapshots:
     dependencies:
       semver: 7.7.3
 
-  markdansi@0.1.5:
+  markdansi@0.1.6:
     dependencies:
       chalk: 5.6.2
       mdast-util-from-markdown: 2.0.2
