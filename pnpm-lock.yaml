@@ -21,8 +21,8 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       osc-progress:
-        specifier: github:steipete/osc-progress#e43bd6afebe4f4a88b6ce71d00f657c51e1ac98a
-        version: https://codeload.github.com/steipete/osc-progress/tar.gz/e43bd6afebe4f4a88b6ce71d00f657c51e1ac98a
+        specifier: ^0.1.0
+        version: 0.1.0
       sanitize-html:
         specifier: ^2.17.0
         version: 2.17.0
@@ -994,9 +994,8 @@ packages:
     resolution: {integrity: sha512-m0pg2zscbYgWbqRR6ABga5c3sZdEon7bSgjnlXC64kxtxLOyjRcbbUkLj7HFyy/FTD+P2xdBWu8snGhYI0jc4A==}
     engines: {node: '>=20'}
 
-  osc-progress@https://codeload.github.com/steipete/osc-progress/tar.gz/e43bd6afebe4f4a88b6ce71d00f657c51e1ac98a:
-    resolution: {tarball: https://codeload.github.com/steipete/osc-progress/tar.gz/e43bd6afebe4f4a88b6ce71d00f657c51e1ac98a}
-    version: 0.1.0
+  osc-progress@0.1.0:
+    resolution: {integrity: sha512-9HrEuN+6C/ZsbLI58ZVIOMMfk3K9y1wEf7v1KA9eiChfWoe/HCOVJrRdPhP815tY/CB4wt5snJMfFMEBPZDhng==}
     engines: {node: '>=20'}
 
   parse-srcset@1.0.2:
@@ -2203,7 +2202,7 @@ snapshots:
       string-width: 8.1.0
       strip-ansi: 7.1.2
 
-  osc-progress@https://codeload.github.com/steipete/osc-progress/tar.gz/e43bd6afebe4f4a88b6ce71d00f657c51e1ac98a: {}
+  osc-progress@0.1.0: {}
 
   parse-srcset@1.0.2: {}
 
