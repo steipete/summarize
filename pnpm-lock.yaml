@@ -18,7 +18,7 @@ importers:
         specifier: ^1.43.0
         version: 1.43.0
       file-type:
-        specifier: ^21.0.0
+        specifier: ^21.1.1
         version: 21.1.1
       markdansi:
         specifier: 0.1.5
@@ -55,7 +55,7 @@ importers:
         specifier: ^2.16.0
         version: 2.16.0
       '@vitest/coverage-v8':
-        specifier: ^4.0.0
+        specifier: ^4.0.16
         version: 4.0.16(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(tsx@4.21.0))
       ai:
         specifier: 6.0.0-beta.159
@@ -70,7 +70,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
       vitest:
-        specifier: ^4.0.0
+        specifier: ^4.0.16
         version: 4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(tsx@4.21.0)
 
   packages/cli:
