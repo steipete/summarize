@@ -1,14 +1,16 @@
 import path from 'node:path'
 
 import {
+  type LiteLlmCatalog,
+  type LiteLlmLoadResult,
   loadLiteLlmCatalog as loadLiteLlmCatalogTokentally,
   resolveLiteLlmMaxOutputTokens as resolveLiteLlmMaxOutputTokensTokentally,
   resolveLiteLlmPricing as resolveLiteLlmPricingTokentally,
-  type LiteLlmCatalog,
-  type LiteLlmLoadResult,
 } from 'tokentally/node'
 
-function withDefaultCacheDir(env: Record<string, string | undefined>): Record<string, string | undefined> {
+function withDefaultCacheDir(
+  env: Record<string, string | undefined>
+): Record<string, string | undefined> {
   if (typeof env.TOKENTALLY_CACHE_DIR === 'string' && env.TOKENTALLY_CACHE_DIR.trim().length > 0) {
     return env
   }

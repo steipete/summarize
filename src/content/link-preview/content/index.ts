@@ -1,8 +1,7 @@
 import type { FirecrawlScrapeResult, LinkPreviewDeps } from '../deps.js'
 import { resolveTranscriptForLink } from '../transcript/index.js'
-import { isYouTubeUrl } from '../transcript/utils.js'
+import { extractYouTubeVideoId, isYouTubeUrl, isYouTubeVideoUrl } from '../transcript/utils.js'
 import type { FirecrawlDiagnostics, MarkdownDiagnostics } from '../types.js'
-
 import { extractArticleContent, sanitizeHtmlForMarkdownConversion } from './article.js'
 import { normalizeForPrompt } from './cleaner.js'
 import { fetchHtmlDocument, fetchWithFirecrawl } from './fetcher.js'
@@ -21,7 +20,6 @@ import {
   selectBaseContent,
 } from './utils.js'
 import { extractYouTubeShortDescription } from './youtube.js'
-import { extractYouTubeVideoId, isYouTubeVideoUrl } from '../transcript/utils.js'
 
 const LEADING_CONTROL_PATTERN = /^[\\s\\p{Cc}]+/u
 const BLOCKED_HTML_HINT_PATTERN =

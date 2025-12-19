@@ -18,8 +18,8 @@ import {
   parseDurationMs,
   parseFirecrawlMode,
   parseLengthArg,
-  parseMaxOutputTokensArg,
   parseMarkdownMode,
+  parseMaxOutputTokensArg,
   parseMetricsMode,
   parseRenderMode,
   parseStreamMode,
@@ -591,7 +591,11 @@ function writeFinishLine({
       ? `tok(i/o/t)=${promptTokens?.toLocaleString() ?? 'unknown'}/${completionTokens?.toLocaleString() ?? 'unknown'}/${totalTokens?.toLocaleString() ?? 'unknown'}`
       : 'tok(i/o/t)=unknown'
 
-  const parts: string[] = [model, costUsd != null ? `cost=${formatUSD(costUsd)}` : 'cost=N/A', tokPart]
+  const parts: string[] = [
+    model,
+    costUsd != null ? `cost=${formatUSD(costUsd)}` : 'cost=N/A',
+    tokPart,
+  ]
 
   if (report.services.firecrawl.requests > 0) {
     parts.push(`firecrawl=${report.services.firecrawl.requests}`)
@@ -784,7 +788,8 @@ export async function runCli(
       const pricing = resolveLiteLlmPricingForModelId(catalog, call.model)
       if (!pricing) continue
 
-      total += promptTokens * pricing.inputUsdPerToken + completionTokens * pricing.outputUsdPerToken
+      total +=
+        promptTokens * pricing.inputUsdPerToken + completionTokens * pricing.outputUsdPerToken
       any = true
     }
 

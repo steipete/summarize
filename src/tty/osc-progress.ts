@@ -1,5 +1,5 @@
 export {
+  type OscProgressOptions,
   startOscProgress,
   supportsOscProgress,
-  type OscProgressOptions as OscProgressOptions,
 } from 'osc-progress'

@@ -63,7 +63,7 @@ describe('--max-output-tokens', () => {
     )
 
     const args = generateTextMock.mock.calls[0]?.[0] as Record<string, unknown>
-    expect(Object.prototype.hasOwnProperty.call(args, 'maxOutputTokens')).toBe(false)
+    expect(Object.hasOwn(args, 'maxOutputTokens')).toBe(false)
   })
 
   it('passes --max-output-tokens through to the provider call', async () => {

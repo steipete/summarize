@@ -1,5 +1,4 @@
 import type { SummaryLengthTarget } from './link-summary.js'
-import { pickSummaryLengthForCharacters } from './link-summary.js'
 
 export function buildFileSummaryPrompt({
   filename,
@@ -10,11 +9,6 @@ export function buildFileSummaryPrompt({
   mediaType: string | null
   summaryLength: SummaryLengthTarget
 }): string {
-  const preset =
-    typeof summaryLength === 'string'
-      ? summaryLength
-      : pickSummaryLengthForCharacters(summaryLength.maxCharacters)
-
   const maxCharactersLine =
     typeof summaryLength === 'string'
       ? ''
