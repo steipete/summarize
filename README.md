@@ -1,6 +1,4 @@
-# @steipete/summarize
-
-👉 Point at it. Get the gist.
+# Summarize 👉 Point at it. Get the gist.
 
 Fast CLI for summarizing *anything you can point at*:
 
