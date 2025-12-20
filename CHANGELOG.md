@@ -27,6 +27,8 @@
 ### Changes
 
 - Add native OpenRouter support via `OPENROUTER_API_KEY` with optional provider ordering (`OPENROUTER_PROVIDERS`).
+- Add `--model auto` for context-aware model selection via OpenRouter (smaller inputs use cheaper models).
+  - Configurable via `OPENROUTER_MODEL_SMALL`, `OPENROUTER_MODEL_LARGE`, `OPENROUTER_THRESHOLD_*`, `OPENROUTER_PROVIDERS_*`
 - Remove map-reduce summarization; reject inputs that exceed the model's context window.
 - Preflight text prompts with the GPT tokenizer and the model’s max input tokens.
 - Reject text files over 10 MB before tokenization.

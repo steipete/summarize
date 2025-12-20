@@ -190,6 +190,30 @@ OPENROUTER_API_KEY=sk-or-... OPENROUTER_PROVIDERS="groq,google-vertex" summarize
 
 Legacy: `OPENAI_BASE_URL=https://openrouter.ai/api/v1` with `OPENAI_API_KEY` also works.
 
+### Context-aware model selection (`--model auto`)
+
+Use `--model auto` to automatically select models based on input token count. Smaller inputs use cheaper/faster models, larger inputs use models with bigger context windows.
+
+```bash
+OPENROUTER_API_KEY=sk-or-... summarize "https://example.com" --model auto
+```
+
+Default configuration (same as chatpod-backend):
+- **< 95K tokens**: `openai/gpt-oss-20b` via `groq,clarifai/fp4,google-vertex`
+- **95K-950K tokens**: `google/gemini-2.5-flash-lite-preview-09-2025` via `google-ai-studio,google-vertex`
+- **> 950K tokens**: Error (no truncation)
+
+Customize via environment variables:
+
+| Variable | Default |
+|----------|---------|
+| `OPENROUTER_MODEL_SMALL` | `openai/gpt-oss-20b` |
+| `OPENROUTER_MODEL_LARGE` | `google/gemini-2.5-flash-lite-preview-09-2025` |
+| `OPENROUTER_THRESHOLD_SMALL` | `95000` |
+| `OPENROUTER_THRESHOLD_MAX` | `950000` |
+| `OPENROUTER_PROVIDERS_SMALL` | `groq,clarifai/fp4,google-vertex` |
+| `OPENROUTER_PROVIDERS_LARGE` | `google-ai-studio,google-vertex` |
+
 Optional services:
 
 - `FIRECRAWL_API_KEY` (website extraction fallback)

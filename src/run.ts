@@ -91,6 +91,59 @@ function isExecutable(filePath: string): boolean {
   }
 }
 
+// OpenRouter auto model selection configuration
+type OpenRouterAutoConfig = {
+  modelSmall: string
+  modelLarge: string
+  thresholdSmall: number
+  thresholdMax: number
+  providersSmall: string[]
+  providersLarge: string[]
+}
+
+function parseOpenRouterAutoConfig(env: Record<string, string | undefined>): OpenRouterAutoConfig {
+  const parseProviders = (value: string | undefined, defaults: string[]): string[] =>
+    value
+      ? value
+          .split(',')
+          .map((p) => p.trim())
+          .filter(Boolean)
+      : defaults
+
+  return {
+    modelSmall: env.OPENROUTER_MODEL_SMALL ?? 'openai/gpt-oss-20b',
+    modelLarge: env.OPENROUTER_MODEL_LARGE ?? 'google/gemini-2.5-flash-lite-preview-09-2025',
+    thresholdSmall: parseInt(env.OPENROUTER_THRESHOLD_SMALL ?? '95000', 10),
+    thresholdMax: parseInt(env.OPENROUTER_THRESHOLD_MAX ?? '950000', 10),
+    providersSmall: parseProviders(env.OPENROUTER_PROVIDERS_SMALL, [
+      'groq',
+      'clarifai/fp4',
+      'google-vertex',
+    ]),
+    providersLarge: parseProviders(env.OPENROUTER_PROVIDERS_LARGE, [
+      'google-ai-studio',
+      'google-vertex',
+    ]),
+  }
+}
+
+function resolveOpenRouterAutoModel(
+  tokenCount: number,
+  config: OpenRouterAutoConfig
+): { model: string; providers: string[] } {
+  if (tokenCount > config.thresholdMax) {
+    throw new Error(
+      `Input (${formatCount(tokenCount)} tokens) exceeds max context (${formatCount(config.thresholdMax)}). ` +
+        `Adjust OPENROUTER_THRESHOLD_MAX or reduce input size.`
+    )
+  }
+
+  if (tokenCount < config.thresholdSmall) {
+    return { model: config.modelSmall, providers: config.providersSmall }
+  }
+  return { model: config.modelLarge, providers: config.providersLarge }
+}
+
 function hasBirdCli(env: Record<string, string | undefined>): boolean {
   const candidates: string[] = []
   const pathEnv = env.PATH ?? process.env.PATH ?? ''
@@ -534,13 +587,14 @@ ${heading('Examples')}
   ${cmd('summarize "https://www.youtube.com/watch?v=I845O57ZSy4&t=11s" --extract-only --youtube web')}
   ${cmd('summarize "https://example.com" --length 20k --max-output-tokens 2k --timeout 2m --model openai/gpt-5.2')}
   ${cmd('OPENROUTER_API_KEY=... summarize "https://example.com" --model openai/openai/gpt-oss-20b')}
+  ${cmd('OPENROUTER_API_KEY=... summarize "https://example.com" --model auto')} ${dim('# auto-select model by token count')}
   ${cmd('summarize "https://example.com" --json --verbose')}
 
 ${heading('Env Vars')}
   XAI_API_KEY           optional (required for xai/... models)
   OPENAI_API_KEY        optional (required for openai/... models)
   OPENAI_BASE_URL       optional (OpenAI-compatible API endpoint; e.g. OpenRouter)
-  OPENROUTER_API_KEY    optional (routes openai/... models through OpenRouter)
+  OPENROUTER_API_KEY    optional (routes openai/... models through OpenRouter; required for --model auto)
   OPENROUTER_PROVIDERS  optional (provider fallback order, e.g. "groq,google-vertex")
   GEMINI_API_KEY        optional (required for google/... models)
   ANTHROPIC_API_KEY     optional (required for anthropic/... models)
@@ -549,6 +603,14 @@ ${heading('Env Vars')}
   APIFY_API_TOKEN       optional YouTube transcript fallback
   YT_DLP_PATH           optional path to yt-dlp binary for audio extraction
   FAL_KEY               optional FAL AI API key for audio transcription
+
+${heading('Env Vars for --model auto')}
+  OPENROUTER_MODEL_SMALL       small context model (default: openai/gpt-oss-20b)
+  OPENROUTER_MODEL_LARGE       large context model (default: google/gemini-2.5-flash-lite-preview-09-2025)
+  OPENROUTER_THRESHOLD_SMALL   max tokens for small model (default: 95000)
+  OPENROUTER_THRESHOLD_MAX     max tokens overall, error above (default: 950000)
+  OPENROUTER_PROVIDERS_SMALL   provider order for small (default: groq,clarifai/fp4,google-vertex)
+  OPENROUTER_PROVIDERS_LARGE   provider order for large (default: google-ai-studio,google-vertex)
 `
   )
 }
@@ -939,8 +1001,18 @@ export async function runCli(
     return 'google/gemini-3-flash-preview'
   })()
 
-  const model = normalizeGatewayStyleModelId((modelArg?.trim() ?? '') || resolvedDefaultModel)
-  const parsedModelForLlm = parseGatewayStyleModelId(model)
+  const rawModelArg = (modelArg?.trim() ?? '') || resolvedDefaultModel
+  const isAutoModel = rawModelArg.toLowerCase() === 'auto'
+  const openrouterAutoConfig = parseOpenRouterAutoConfig(env)
+
+  // For --model auto, validate OpenRouter is configured
+  if (isAutoModel && !openrouterConfigured) {
+    throw new Error('--model auto requires OPENROUTER_API_KEY to be set')
+  }
+
+  // For non-auto models, normalize and parse now; for auto, defer until token count is known
+  const model = isAutoModel ? 'auto' : normalizeGatewayStyleModelId(rawModelArg)
+  const parsedModelForLlm = isAutoModel ? null : parseGatewayStyleModelId(model)
 
   const verboseColor = supportsColor(stderr, env)
   const effectiveStreamMode = (() => {
@@ -994,7 +1066,6 @@ export async function runCli(
     sourceLabel: string
     attachment: Awaited<ReturnType<typeof loadLocalAsset>>['attachment']
   }) => {
-    const parsedModel = parseGatewayStyleModelId(model)
     const apiKeysForLlm = {
       xaiApiKey,
       openaiApiKey: apiKey,
@@ -1002,6 +1073,44 @@ export async function runCli(
       anthropicApiKey: anthropicConfigured ? anthropicApiKey : null,
       openrouterApiKey: openrouterConfigured ? openrouterApiKey : null,
     }
+
+    // Build prompt first to get token count for auto model resolution
+    const textContent = getTextContentFromAttachment(attachment)
+    if (textContent && textContent.bytes > MAX_TEXT_BYTES_DEFAULT) {
+      throw new Error(
+        `Text file too large (${formatBytes(textContent.bytes)}). Limit is ${formatBytes(MAX_TEXT_BYTES_DEFAULT)}.`
+      )
+    }
+    const summaryLengthTarget =
+      lengthArg.kind === 'preset' ? lengthArg.preset : { maxCharacters: lengthArg.maxCharacters }
+    const promptText = buildFileSummaryPrompt({
+      filename: attachment.filename,
+      mediaType: attachment.mediaType,
+      summaryLength: summaryLengthTarget,
+      contentLength: textContent?.content.length ?? null,
+    })
+    const promptPayload = buildAssetPromptPayload({ promptText, attachment, textContent })
+
+    // Resolve model - for auto, use token count to pick model
+    let resolvedModelId = model
+    let openrouterOptions: { providers: string[] } | undefined = openRouterProviders
+      ? { providers: openRouterProviders }
+      : undefined
+
+    if (isAutoModel) {
+      const tokenCount = typeof promptPayload === 'string' ? countTokens(promptPayload) : 0
+      const autoResolved = resolveOpenRouterAutoModel(tokenCount, openrouterAutoConfig)
+      resolvedModelId = autoResolved.model
+      openrouterOptions = { providers: autoResolved.providers }
+      writeVerbose(
+        stderr,
+        verbose,
+        `auto model: ${formatCount(tokenCount)} tokens → ${autoResolved.model} (providers: ${autoResolved.providers.join(',')})`,
+        verboseColor
+      )
+    }
+
+    const parsedModel = parseGatewayStyleModelId(resolvedModelId)
 
     const requiredKeyEnv =
       parsedModel.provider === 'xai'
@@ -1047,34 +1156,24 @@ export async function runCli(
     const maxOutputTokensForCall = await resolveMaxOutputTokensForCall(
       parsedModelEffective.canonical
     )
-    const textContent = getTextContentFromAttachment(attachment)
-    if (textContent && textContent.bytes > MAX_TEXT_BYTES_DEFAULT) {
-      throw new Error(
-        `Text file too large (${formatBytes(textContent.bytes)}). Limit is ${formatBytes(MAX_TEXT_BYTES_DEFAULT)}.`
-      )
-    }
-    const summaryLengthTarget =
-      lengthArg.kind === 'preset' ? lengthArg.preset : { maxCharacters: lengthArg.maxCharacters }
-    const promptText = buildFileSummaryPrompt({
-      filename: attachment.filename,
-      mediaType: attachment.mediaType,
-      summaryLength: summaryLengthTarget,
-      contentLength: textContent?.content.length ?? null,
-    })
 
-    const promptPayload = buildAssetPromptPayload({ promptText, attachment, textContent })
-    const maxInputTokensForCall = await resolveMaxInputTokensForCall(parsedModelEffective.canonical)
-    if (
-      typeof maxInputTokensForCall === 'number' &&
-      Number.isFinite(maxInputTokensForCall) &&
-      maxInputTokensForCall > 0 &&
-      typeof promptPayload === 'string'
-    ) {
-      const tokenCount = countTokens(promptPayload)
-      if (tokenCount > maxInputTokensForCall) {
-        throw new Error(
-          `Input token count (${formatCount(tokenCount)}) exceeds model input limit (${formatCount(maxInputTokensForCall)}). Tokenized with GPT tokenizer; prompt included.`
-        )
+    // Validate input tokens against model limit (skip for auto model since we already validated)
+    if (!isAutoModel) {
+      const maxInputTokensForCall = await resolveMaxInputTokensForCall(
+        parsedModelEffective.canonical
+      )
+      if (
+        typeof maxInputTokensForCall === 'number' &&
+        Number.isFinite(maxInputTokensForCall) &&
+        maxInputTokensForCall > 0 &&
+        typeof promptPayload === 'string'
+      ) {
+        const tokenCount = countTokens(promptPayload)
+        if (tokenCount > maxInputTokensForCall) {
+          throw new Error(
+            `Input token count (${formatCount(tokenCount)}) exceeds model input limit (${formatCount(maxInputTokensForCall)}). Tokenized with GPT tokenizer; prompt included.`
+          )
+        }
       }
     }
 
@@ -1507,26 +1606,36 @@ export async function runCli(
 
   const effectiveMarkdownMode = markdownMode
   const markdownRequested = extractOnly && !isYoutubeUrl && effectiveMarkdownMode !== 'off'
-  const hasKeyForModel =
-    parsedModelForLlm.provider === 'xai'
+  const hasKeyForModel = isAutoModel
+    ? openrouterConfigured // auto model uses OpenRouter
+    : parsedModelForLlm!.provider === 'xai'
       ? xaiConfigured
-      : parsedModelForLlm.provider === 'google'
+      : parsedModelForLlm!.provider === 'google'
         ? googleConfigured
-        : parsedModelForLlm.provider === 'anthropic'
+        : parsedModelForLlm!.provider === 'anthropic'
           ? anthropicConfigured
           : Boolean(apiKey)
-  const markdownProvider = hasKeyForModel ? parsedModelForLlm.provider : 'none'
+  const markdownProvider: 'xai' | 'openai' | 'google' | 'anthropic' | 'none' = isAutoModel
+    ? openrouterConfigured
+      ? 'openai'
+      : 'none' // auto model uses OpenRouter (openai provider)
+    : hasKeyForModel
+      ? parsedModelForLlm!.provider
+      : 'none'
 
   if (markdownRequested && effectiveMarkdownMode === 'llm' && !hasKeyForModel) {
+    if (isAutoModel) {
+      throw new Error('--markdown llm with --model auto requires OPENROUTER_API_KEY')
+    }
     const required =
-      parsedModelForLlm.provider === 'xai'
+      parsedModelForLlm!.provider === 'xai'
         ? 'XAI_API_KEY'
-        : parsedModelForLlm.provider === 'google'
+        : parsedModelForLlm!.provider === 'google'
           ? 'GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY)'
-          : parsedModelForLlm.provider === 'anthropic'
+          : parsedModelForLlm!.provider === 'anthropic'
             ? 'ANTHROPIC_API_KEY'
             : 'OPENAI_API_KEY'
-    throw new Error(`--markdown llm requires ${required} for model ${parsedModelForLlm.canonical}`)
+    throw new Error(`--markdown llm requires ${required} for model ${parsedModelForLlm!.canonical}`)
   }
 
   writeVerbose(
@@ -2032,7 +2141,26 @@ export async function runCli(
       return
     }
 
-    const parsedModel = parseGatewayStyleModelId(model)
+    // Resolve model - for auto, use token count to pick model
+    let resolvedModelId = model
+    let openrouterOptions: { providers: string[] } | undefined = openRouterProviders
+      ? { providers: openRouterProviders }
+      : undefined
+
+    if (isAutoModel) {
+      const tokenCount = countTokens(prompt)
+      const autoResolved = resolveOpenRouterAutoModel(tokenCount, openrouterAutoConfig)
+      resolvedModelId = autoResolved.model
+      openrouterOptions = { providers: autoResolved.providers }
+      writeVerbose(
+        stderr,
+        verbose,
+        `auto model: ${formatCount(tokenCount)} tokens → ${autoResolved.model} (providers: ${autoResolved.providers.join(',')})`,
+        verboseColor
+      )
+    }
+
+    const parsedModel = parseGatewayStyleModelId(resolvedModelId)
     const apiKeysForLlm = {
       xaiApiKey,
       openaiApiKey: apiKey,
@@ -2084,17 +2212,23 @@ export async function runCli(
     const maxOutputTokensForCall = await resolveMaxOutputTokensForCall(
       parsedModelEffective.canonical
     )
-    const maxInputTokensForCall = await resolveMaxInputTokensForCall(parsedModelEffective.canonical)
-    if (
-      typeof maxInputTokensForCall === 'number' &&
-      Number.isFinite(maxInputTokensForCall) &&
-      maxInputTokensForCall > 0
-    ) {
-      const tokenCount = countTokens(prompt)
-      if (tokenCount > maxInputTokensForCall) {
-        throw new Error(
-          `Input token count (${formatCount(tokenCount)}) exceeds model input limit (${formatCount(maxInputTokensForCall)}). Tokenized with GPT tokenizer; prompt included.`
-        )
+
+    // Validate input tokens against model limit (skip for auto model since we already validated)
+    if (!isAutoModel) {
+      const maxInputTokensForCall = await resolveMaxInputTokensForCall(
+        parsedModelEffective.canonical
+      )
+      if (
+        typeof maxInputTokensForCall === 'number' &&
+        Number.isFinite(maxInputTokensForCall) &&
+        maxInputTokensForCall > 0
+      ) {
+        const tokenCount = countTokens(prompt)
+        if (tokenCount > maxInputTokensForCall) {
+          throw new Error(
+            `Input token count (${formatCount(tokenCount)}) exceeds model input limit (${formatCount(maxInputTokensForCall)}). Tokenized with GPT tokenizer; prompt included.`
+          )
+        }
       }
     }
     const shouldBufferSummaryForRender =
