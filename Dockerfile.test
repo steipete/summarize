@@ -1,0 +1,31 @@
+FROM node:22-slim
+
+# Install yt-dlp and ffmpeg (required for audio extraction)
+RUN apt-get update && apt-get install -y python3 python3-pip ffmpeg curl && \
+    curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
+    chmod a+rx /usr/local/bin/yt-dlp && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@10.25.0 --activate
+
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package.json pnpm-lock.yaml tsconfig*.json ./
+
+# Remove prepare script to prevent build before source is copied
+RUN sed -i 's/"prepare":.*,//' package.json
+
+# Install dependencies (tokentally gets built via its own prepare script)
+RUN CI=true pnpm install --frozen-lockfile
+
+# Copy source code
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+
+# Build
+RUN pnpm build
+
+# Default: run the CLI
+ENTRYPOINT ["pnpm", "summarize"]

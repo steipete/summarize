@@ -12,6 +12,7 @@ import {
 } from './youtube/api.js'
 import { fetchTranscriptWithApify } from './youtube/apify.js'
 import { fetchTranscriptFromCaptionTracks } from './youtube/captions.js'
+import { fetchTranscriptWithYtDlp } from './youtube/yt-dlp.js'
 
 const YOUTUBE_URL_PATTERN = /youtube\.com|youtu\.be/i
 
@@ -38,7 +39,8 @@ export const fetchTranscript = async (
     return { text: null, source: null, attemptedProviders }
   }
 
-  if (mode !== 'apify') {
+  // Try web methods (youtubei, captionTracks) if mode is 'auto' or 'web'
+  if (mode === 'auto' || mode === 'web') {
     const config = extractYoutubeiTranscriptConfig(html)
     if (config) {
       attemptedProviders.push('youtubei')
@@ -72,7 +74,26 @@ export const fetchTranscript = async (
     }
   }
 
-  if (mode !== 'web') {
+  // Try yt-dlp (audio download + FAL AI transcription) if mode is 'auto' or 'yt-dlp'
+  if (mode === 'auto' || mode === 'yt-dlp') {
+    attemptedProviders.push('yt-dlp')
+    const ytdlpTranscript = await fetchTranscriptWithYtDlp(
+      options.ytDlpPath,
+      options.falApiKey,
+      url
+    )
+    if (ytdlpTranscript) {
+      return {
+        text: normalizeTranscriptText(ytdlpTranscript),
+        source: 'yt-dlp',
+        metadata: { provider: 'yt-dlp' },
+        attemptedProviders,
+      }
+    }
+  }
+
+  // Try apify if mode is 'auto' or 'apify'
+  if (mode === 'auto' || mode === 'apify') {
     attemptedProviders.push('apify')
     const apifyTranscript = await fetchTranscriptWithApify(
       options.fetch,

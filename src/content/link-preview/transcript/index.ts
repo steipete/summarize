@@ -73,6 +73,8 @@ export const resolveTranscriptForLink = async (
   const providerResult = await executeProvider(provider, baseContext, {
     fetch: deps.fetch,
     apifyApiToken: deps.apifyApiToken,
+    ytDlpPath: deps.ytDlpPath,
+    falApiKey: deps.falApiKey,
     youtubeTranscriptMode: youtubeTranscriptMode ?? 'auto',
   })
   diagnostics.provider = providerResult.source

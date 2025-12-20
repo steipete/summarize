@@ -4,7 +4,11 @@
 
 ### Changes
 
-- Remove map-reduce summarization; reject inputs that exceed the model’s context window.
+- Add yt-dlp + FAL AI Wizper transcription as YouTube fallback (`--youtube yt-dlp`).
+  - Downloads audio via yt-dlp, transcribes with FAL AI's Wizper model
+  - Requires `YT_DLP_PATH` and `FAL_KEY` environment variables
+  - Runs after captionTracks, before Apify in the fallback chain
+- Remove map-reduce summarization; reject inputs that exceed the model's context window.
 - Preflight text prompts with the GPT tokenizer and the model’s max input tokens.
 - Reject text files over 10 MB before tokenization.
 - Reject too-small numeric `--length` and `--max-output-tokens` values.
@@ -18,6 +22,10 @@
 - Preserve parentheses in URL paths when resolving inputs.
 - Stop forcing Firecrawl for --extract-only; only use it as a fallback.
 - Avoid Firecrawl fallback when block keywords only appear in scripts/styles.
+
+### Fixes
+
+- Fix CLI hanging after completion due to pending async operations.
 
 ### Tests
 
@@ -35,6 +43,7 @@
 ### Dev
 
 - Add a tokenization benchmark script.
+- Add Dockerfile.test for containerized testing with yt-dlp.
 
 ## 0.1.1 - 2025-12-19
 

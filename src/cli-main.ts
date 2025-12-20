@@ -84,6 +84,9 @@ export async function runCliMain({
 
   try {
     await runCli(argv, { env, fetch, stdout, stderr })
+    // Explicit exit to terminate any lingering async operations (timers, intervals, open handles).
+    // Without this, the process may hang indefinitely even after successful completion.
+    exit(0)
   } catch (error: unknown) {
     const isTty = Boolean((stderr as unknown as { isTTY?: boolean }).isTTY)
     if (isTty) stderr.write('\n')
@@ -94,12 +97,14 @@ export async function runCliMain({
       if (cause instanceof Error && typeof cause.stack === 'string') {
         stderr.write(`Caused by: ${cause.stack}\n`)
       }
-      setExitCode(1)
+      // Explicit exit to ensure process terminates despite any pending async work.
+      exit(1)
       return
     }
 
     const message = error instanceof Error ? error.message : error ? String(error) : 'Unknown error'
     stderr.write(`${stripAnsi(message)}\n`)
-    setExitCode(1)
+    // Explicit exit to ensure process terminates despite any pending async work.
+    exit(1)
   }
 }
