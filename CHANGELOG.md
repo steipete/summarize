@@ -40,6 +40,7 @@
 
 - Preserve balanced parentheses/brackets in URL paths (e.g. Wikipedia titles).
 - Avoid Firecrawl fallback when block keywords only appear in scripts/styles.
+- Add a Bird install tip when Twitter/X fetch fails without bird installed.
 
 ## 0.1.1 - 2025-12-19
 

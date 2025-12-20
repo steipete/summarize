@@ -100,4 +100,17 @@ describe('cli error handling', () => {
       })
     ).rejects.toThrow(/Missing GEMINI_API_KEY/)
   })
+
+  it('adds a bird tip when Twitter fetch fails and bird is unavailable', async () => {
+    const fetchMock = vi.fn(async () => new Response('nope', { status: 404 }))
+
+    await expect(
+      runCli(['--extract-only', 'https://x.com/user/status/123'], {
+        env: { SUMMARIZE_BIRD_DISABLED: '1' },
+        fetch: fetchMock as unknown as typeof fetch,
+        stdout: noopStream(),
+        stderr: noopStream(),
+      })
+    ).rejects.toThrow(/Tip: Install bird🐦 for better Twitter support/)
+  })
 })

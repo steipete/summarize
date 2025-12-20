@@ -1,4 +1,7 @@
+import { accessSync, constants as fsConstants } from 'node:fs'
 import fs from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
 import type { ModelMessage } from 'ai'
 import { Command, CommanderError, Option } from 'commander'
 import { countTokens } from 'gpt-tokenizer'
@@ -47,6 +50,57 @@ type RunEnv = {
   fetch: typeof fetch
   stdout: NodeJS.WritableStream
   stderr: NodeJS.WritableStream
+}
+
+const BIRD_TIP = 'Tip: Install bird🐦 for better Twitter support: https://github.com/steipete/bird'
+const TWITTER_HOSTS = new Set(['x.com', 'twitter.com', 'mobile.twitter.com'])
+
+function isTwitterStatusUrl(raw: string): boolean {
+  try {
+    const parsed = new URL(raw)
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '')
+    if (!TWITTER_HOSTS.has(host)) return false
+    return /\/status\/\d+/.test(parsed.pathname)
+  } catch {
+    return false
+  }
+}
+
+function isExecutable(filePath: string): boolean {
+  try {
+    accessSync(filePath, fsConstants.X_OK)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function hasBirdCli(env: Record<string, string | undefined>): boolean {
+  if (env.SUMMARIZE_BIRD_DISABLED === '1') return false
+  const candidates: string[] = []
+  const home = env.HOME ?? process.env.HOME ?? os.homedir()
+  if (home) {
+    candidates.push(path.join(home, 'Projects', 'bird', 'bird'))
+  }
+  const pathEnv = env.PATH ?? process.env.PATH ?? ''
+  for (const entry of pathEnv.split(path.delimiter)) {
+    if (!entry) continue
+    candidates.push(path.join(entry, 'bird'))
+  }
+  return candidates.some((candidate) => isExecutable(candidate))
+}
+
+function withBirdTip(
+  error: unknown,
+  url: string | null,
+  env: Record<string, string | undefined>
+): Error {
+  if (!url || !isTwitterStatusUrl(url) || hasBirdCli(env)) {
+    return error instanceof Error ? error : new Error(String(error))
+  }
+  const message = error instanceof Error ? error.message : String(error)
+  const combined = `${message}\n${BIRD_TIP}`
+  return error instanceof Error ? new Error(combined, { cause: error }) : new Error(combined)
 }
 
 type JsonOutput = {
@@ -1600,12 +1654,17 @@ export async function runCli(
   }
   clearProgressBeforeStdout = stopProgress
   try {
-    const extracted = await client.fetchLinkContent(url, {
-      timeoutMs,
-      youtubeTranscript: youtubeMode,
-      firecrawl: firecrawlMode,
-      format: markdownRequested ? 'markdown' : 'text',
-    })
+    let extracted: Awaited<ReturnType<typeof client.fetchLinkContent>>
+    try {
+      extracted = await client.fetchLinkContent(url, {
+        timeoutMs,
+        youtubeTranscript: youtubeMode,
+        firecrawl: firecrawlMode,
+        format: markdownRequested ? 'markdown' : 'text',
+      })
+    } catch (error) {
+      throw withBirdTip(error, url, env)
+    }
     const extractedContentBytes = Buffer.byteLength(extracted.content, 'utf8')
     const extractedContentSize = formatBytes(extractedContentBytes)
     const viaFirecrawl = extracted.diagnostics.firecrawl.used ? ', Firecrawl' : ''
