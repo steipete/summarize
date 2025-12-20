@@ -1,6 +1,7 @@
 # Releasing `@steipete/summarize` (npm + Homebrew/Bun)
 
 Hard rule: **do not publish, tag, or create GitHub releases without explicit approval**.
+Release is **not done** until the Homebrew tap is bumped and a `brew install` verifies the new version.
 
 ## Version sources (keep in sync)
 
