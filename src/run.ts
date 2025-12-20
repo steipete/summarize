@@ -1818,17 +1818,17 @@ export async function runCli(
         let lastFrameAtMs = 0
         try {
           let cleared = false
-        for await (const delta of streamResult.textStream) {
-          const merged = mergeStreamingChunk(streamed, delta)
-          streamed = merged.next
-          if (shouldStreamSummaryToStdout) {
-            if (!cleared) {
-              clearProgressForStdout()
-              cleared = true
+          for await (const delta of streamResult.textStream) {
+            const merged = mergeStreamingChunk(streamed, delta)
+            streamed = merged.next
+            if (shouldStreamSummaryToStdout) {
+              if (!cleared) {
+                clearProgressForStdout()
+                cleared = true
+              }
+              if (merged.appended) stdout.write(merged.appended)
+              continue
             }
-            if (merged.appended) stdout.write(merged.appended)
-            continue
-          }
 
             if (liveRenderer) {
               const now = Date.now()
