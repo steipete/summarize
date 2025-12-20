@@ -121,11 +121,18 @@ Non-YouTube URLs go through a “fetch → extract” pipeline. When the direct 
 - `--markdown off|auto|llm` (default `auto`; only affects `--extract-only` for non-YouTube URLs)
 - Plain-text mode: use `--firecrawl off --markdown off`.
 
-## YouTube transcripts (Apify fallback)
+## YouTube transcripts
 
-`--youtube auto` tries best-effort web transcript endpoints first, then falls back to Apify *only if* `APIFY_API_TOKEN` is set.
+`--youtube auto` tries best-effort web transcript endpoints first. When captions aren't available, it falls back to:
 
-Apify uses a single actor (`faVsWy9VTSNVIhWpR`). It costs money but tends to be more reliable.
+1. **yt-dlp + Whisper** (if `YT_DLP_PATH` and `FAL_KEY` are set): Downloads audio via yt-dlp, transcribes with FAL AI's Wizper (Whisper v3)
+2. **Apify** (if `APIFY_API_TOKEN` is set): Uses a scraping actor (`faVsWy9VTSNVIhWpR`)
+
+Environment variables for yt-dlp mode:
+- `YT_DLP_PATH` - path to yt-dlp binary
+- `FAL_KEY` - FAL AI API key
+
+Apify costs money but tends to be more reliable when captions exist.
 
 ## Configuration
 
@@ -181,6 +188,8 @@ Legacy: `OPENAI_BASE_URL=https://openrouter.ai/api/v1` with `OPENAI_API_KEY` als
 Optional services:
 
 - `FIRECRAWL_API_KEY` (website extraction fallback)
+- `YT_DLP_PATH` (path to yt-dlp binary for audio extraction)
+- `FAL_KEY` (FAL AI API key for audio transcription via Whisper)
 - `APIFY_API_TOKEN` (YouTube transcript fallback)
 
 ## Model limits

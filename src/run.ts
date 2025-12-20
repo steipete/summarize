@@ -216,7 +216,7 @@ function buildProgram() {
     .argument('[input]', 'URL or local file path to summarize')
     .option(
       '--youtube <mode>',
-      'YouTube transcript source: auto (web then apify), web (youtubei/captionTracks), apify',
+      'YouTube transcript source: auto, web (youtubei/captionTracks), yt-dlp (audio+whisper), apify',
       'auto'
     )
     .option(
@@ -547,6 +547,8 @@ ${heading('Env Vars')}
   SUMMARIZE_MODEL       optional (overrides default model selection)
   FIRECRAWL_API_KEY     optional website extraction fallback (Markdown)
   APIFY_API_TOKEN       optional YouTube transcript fallback
+  YT_DLP_PATH           optional path to yt-dlp binary for audio extraction
+  FAL_KEY               optional FAL AI API key for audio transcription
 `
   )
 }
@@ -805,6 +807,8 @@ export async function runCli(
       ? (openRouterKeyRaw ?? openaiKeyRaw)
       : openaiKeyRaw
   const apifyToken = typeof env.APIFY_API_TOKEN === 'string' ? env.APIFY_API_TOKEN : null
+  const ytDlpPath = typeof env.YT_DLP_PATH === 'string' ? env.YT_DLP_PATH : null
+  const falApiKey = typeof env.FAL_KEY === 'string' ? env.FAL_KEY : null
   const firecrawlKey = typeof env.FIRECRAWL_API_KEY === 'string' ? env.FIRECRAWL_API_KEY : null
   const anthropicKeyRaw = typeof env.ANTHROPIC_API_KEY === 'string' ? env.ANTHROPIC_API_KEY : null
   const googleKeyRaw =
@@ -1764,6 +1768,8 @@ export async function runCli(
 
   const client = createLinkPreviewClient({
     apifyApiToken: apifyToken,
+    ytDlpPath,
+    falApiKey,
     scrapeWithFirecrawl,
     convertHtmlToMarkdown,
     readTweetWithBird: readTweetWithBirdClient,

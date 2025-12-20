@@ -16,6 +16,8 @@ export interface LinkPreviewClientOptions {
   fetch?: typeof fetch
   scrapeWithFirecrawl?: ScrapeWithFirecrawl | null
   apifyApiToken?: string | null
+  ytDlpPath?: string | null
+  falApiKey?: string | null
   convertHtmlToMarkdown?: ConvertHtmlToMarkdown | null
   transcriptCache?: TranscriptCache | null
   readTweetWithBird?: LinkPreviewDeps['readTweetWithBird']
@@ -27,6 +29,8 @@ export function createLinkPreviewClient(options: LinkPreviewClientOptions = {}):
     options.fetch ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args))
   const scrape: ScrapeWithFirecrawl | null = options.scrapeWithFirecrawl ?? null
   const apifyApiToken = typeof options.apifyApiToken === 'string' ? options.apifyApiToken : null
+  const ytDlpPath = typeof options.ytDlpPath === 'string' ? options.ytDlpPath : null
+  const falApiKey = typeof options.falApiKey === 'string' ? options.falApiKey : null
   const convertHtmlToMarkdown: ConvertHtmlToMarkdown | null = options.convertHtmlToMarkdown ?? null
   const transcriptCache: TranscriptCache | null = options.transcriptCache ?? null
   const readTweetWithBird =
@@ -39,6 +43,8 @@ export function createLinkPreviewClient(options: LinkPreviewClientOptions = {}):
         fetch: fetchImpl,
         scrapeWithFirecrawl: scrape,
         apifyApiToken,
+        ytDlpPath,
+        falApiKey,
         convertHtmlToMarkdown,
         transcriptCache,
         readTweetWithBird,

@@ -1,26 +1,18 @@
 # Changelog
 
-## 0.2.1 - Unreleased
+## 0.2.0 - Unreleased
 
 ### Changes
 
-- Respect `OPENAI_BASE_URL` when set, even with OpenRouter keys.
-- Apply OpenRouter provider ordering headers to HTML→Markdown conversion.
-- Add OpenRouter configuration tests. Thanks @dougvk for the initial OpenRouter support.
-
-## 0.2.0 - 2025-12-20
-
-### Changes
-
-- Add native OpenRouter support via `OPENROUTER_API_KEY` with optional provider ordering (`OPENROUTER_PROVIDERS`).
+- Add yt-dlp + FAL AI Wizper transcription as YouTube fallback (`--youtube yt-dlp`).
+  - Downloads audio via yt-dlp, transcribes with FAL AI's Wizper model
+  - Requires `YT_DLP_PATH` and `FAL_KEY` environment variables
+  - Runs after captionTracks, before Apify in the fallback chain
 - Remove map-reduce summarization; reject inputs that exceed the model's context window.
 - Preflight text prompts with the GPT tokenizer and the model’s max input tokens.
 - Reject text files over 10 MB before tokenization.
 - Reject too-small numeric `--length` and `--max-output-tokens` values.
 - Cap summaries to the extracted content length when a requested size is larger.
-- Skip summarization for tweets when extracted content is already below the requested length.
-- Use bird CLI for tweet extraction when available and surface it in the status line.
-- Fall back to Nitter for tweet extraction when bird fails; report a clear error when tweet data is unavailable.
 - Compute cost totals via tokentally’s tally helpers.
 - Improve fetch spinner with elapsed time and throughput updates.
 - Show Firecrawl fallback status and reason when scraping kicks in.
@@ -31,14 +23,16 @@
 - Stop forcing Firecrawl for --extract-only; only use it as a fallback.
 - Avoid Firecrawl fallback when block keywords only appear in scripts/styles.
 
+### Fixes
+
+- Fix CLI hanging after completion due to pending async operations.
+
 ### Tests
 
 - Add CLI + live coverage for prompt length capping.
 - Add coverage for cumulative stream merge handling.
 - Add coverage for streaming timeout fallback.
 - Add live coverage for Wikipedia URLs with parentheses.
-- Add coverage for tweet summaries that bypass the LLM when short.
-- Add coverage for content budget paths and TOKENTALLY cache dir overrides.
 
 ### Docs
 
@@ -49,13 +43,7 @@
 ### Dev
 
 - Add a tokenization benchmark script.
-
-### Fixes
-
-- Preserve balanced parentheses/brackets in URL paths (e.g. Wikipedia titles).
-- Avoid Firecrawl fallback when block keywords only appear in scripts/styles.
-- Add a Bird install tip when Twitter/X fetch fails without bird installed.
-- Graceful error when tweet extraction fails after bird + Nitter fallback.
+- Add Dockerfile.test for containerized testing with yt-dlp.
 
 ## 0.1.1 - 2025-12-19
 

@@ -84,6 +84,8 @@ export interface LinkPreviewDeps {
   fetch: typeof fetch
   scrapeWithFirecrawl: ScrapeWithFirecrawl | null
   apifyApiToken: string | null
+  ytDlpPath: string | null
+  falApiKey: string | null
   convertHtmlToMarkdown: ConvertHtmlToMarkdown | null
   transcriptCache: TranscriptCache | null
   readTweetWithBird?: ReadTweetWithBird | null

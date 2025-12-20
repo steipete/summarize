@@ -8,7 +8,7 @@ import type {
 export const DEFAULT_TIMEOUT_MS = 120_000
 export const DEFAULT_MAX_CONTENT_CHARACTERS = 8000
 export const DEFAULT_CACHE_MODE: CacheMode = 'default'
-export type YoutubeTranscriptMode = 'auto' | 'web' | 'apify'
+export type YoutubeTranscriptMode = 'auto' | 'web' | 'apify' | 'yt-dlp'
 export type FirecrawlMode = 'off' | 'auto' | 'always'
 export type ContentFormat = 'text' | 'markdown'
 

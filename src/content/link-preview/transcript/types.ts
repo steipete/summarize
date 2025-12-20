@@ -13,6 +13,8 @@ export interface ProviderFetchOptions {
   fetch: typeof fetch
   apifyApiToken: string | null
   youtubeTranscriptMode: YoutubeTranscriptMode
+  ytDlpPath: string | null
+  falApiKey: string | null
 }
 
 export interface ProviderResult extends TranscriptResolution {
