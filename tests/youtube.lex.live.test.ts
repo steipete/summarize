@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createLinkPreviewClient } from '../src/content/index.js'
 
-const LIVE = process.env.SUMMARIZE_LIVE_TESTS === '1'
+const LIVE = process.env.SUMMARIZE_LIVE_TEST === '1'
 
 describe('live YouTube transcript (Lex URL)', () => {
   const run = LIVE ? it : it.skip
