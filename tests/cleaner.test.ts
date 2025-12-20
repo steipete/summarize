@@ -30,6 +30,7 @@ describe('content cleaner utilities', () => {
     const input = 'First sentence. Second sentence. Third sentence.'
     expect(clipAtSentenceBoundary(input, 22)).toBe('First sentence.')
     expect(clipAtSentenceBoundary(input, 3)).toBe('Fir')
+    expect(clipAtSentenceBoundary(input, 200)).toBe(input)
   })
 
   it('applies a content budget and counts words', () => {
@@ -39,5 +40,18 @@ describe('content cleaner utilities', () => {
     expect(result.totalCharacters).toBe(content.length)
     expect(result.content.length).toBeLessThanOrEqual(10)
     expect(result.wordCount).toBeGreaterThan(0)
+  })
+
+  it('keeps content when under budget and reports empty word count', () => {
+    const content = 'Short line.'
+    const result = applyContentBudget(content, 100)
+    expect(result.truncated).toBe(false)
+    expect(result.content).toBe(content)
+    expect(result.wordCount).toBeGreaterThan(0)
+
+    const empty = applyContentBudget('', 10)
+    expect(empty.truncated).toBe(false)
+    expect(empty.content).toBe('')
+    expect(empty.wordCount).toBe(0)
   })
 })

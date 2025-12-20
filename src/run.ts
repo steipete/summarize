@@ -1,4 +1,7 @@
+import { execFile } from 'node:child_process'
+import { accessSync, constants as fsConstants } from 'node:fs'
 import fs from 'node:fs/promises'
+import path from 'node:path'
 import type { ModelMessage } from 'ai'
 import { Command, CommanderError, Option } from 'commander'
 import { countTokens } from 'gpt-tokenizer'
@@ -38,6 +41,7 @@ import {
   resolveLiteLlmPricingForModelId,
 } from './pricing/litellm.js'
 import { buildFileSummaryPrompt, buildLinkSummaryPrompt } from './prompts/index.js'
+import type { SummaryLength } from './shared/contracts.js'
 import { startOscProgress } from './tty/osc-progress.js'
 import { startSpinner } from './tty/spinner.js'
 import { resolvePackageVersion } from './version.js'
@@ -47,6 +51,117 @@ type RunEnv = {
   fetch: typeof fetch
   stdout: NodeJS.WritableStream
   stderr: NodeJS.WritableStream
+}
+
+const BIRD_TIP = 'Tip: Install bird🐦 for better Twitter support: https://github.com/steipete/bird'
+const TWITTER_HOSTS = new Set(['x.com', 'twitter.com', 'mobile.twitter.com'])
+const SUMMARY_LENGTH_MAX_CHARACTERS: Record<SummaryLength, number> = {
+  short: 1200,
+  medium: 2500,
+  long: 6000,
+  xl: 14000,
+  xxl: Number.POSITIVE_INFINITY,
+}
+
+function resolveTargetCharacters(
+  lengthArg: { kind: 'preset'; preset: SummaryLength } | { kind: 'chars'; maxCharacters: number }
+): number {
+  return lengthArg.kind === 'chars'
+    ? lengthArg.maxCharacters
+    : SUMMARY_LENGTH_MAX_CHARACTERS[lengthArg.preset]
+}
+
+function isTwitterStatusUrl(raw: string): boolean {
+  try {
+    const parsed = new URL(raw)
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '')
+    if (!TWITTER_HOSTS.has(host)) return false
+    return /\/status\/\d+/.test(parsed.pathname)
+  } catch {
+    return false
+  }
+}
+
+function isExecutable(filePath: string): boolean {
+  try {
+    accessSync(filePath, fsConstants.X_OK)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function hasBirdCli(env: Record<string, string | undefined>): boolean {
+  const candidates: string[] = []
+  const pathEnv = env.PATH ?? process.env.PATH ?? ''
+  for (const entry of pathEnv.split(path.delimiter)) {
+    if (!entry) continue
+    candidates.push(path.join(entry, 'bird'))
+  }
+  return candidates.some((candidate) => isExecutable(candidate))
+}
+
+type BirdTweetPayload = {
+  id?: string
+  text: string
+  author?: { username?: string; name?: string }
+  createdAt?: string
+}
+
+async function readTweetWithBird(args: {
+  url: string
+  timeoutMs: number
+  env: Record<string, string | undefined>
+}): Promise<BirdTweetPayload> {
+  return await new Promise((resolve, reject) => {
+    execFile(
+      'bird',
+      ['read', args.url, '--json'],
+      {
+        timeout: args.timeoutMs,
+        env: { ...process.env, ...args.env },
+        maxBuffer: 1024 * 1024,
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          const detail = stderr?.trim()
+          const suffix = detail ? `: ${detail}` : ''
+          reject(new Error(`bird read failed${suffix}`))
+          return
+        }
+        const trimmed = stdout.trim()
+        if (!trimmed) {
+          reject(new Error('bird read returned empty output'))
+          return
+        }
+        try {
+          const parsed = JSON.parse(trimmed) as BirdTweetPayload | BirdTweetPayload[]
+          const tweet = Array.isArray(parsed) ? parsed[0] : parsed
+          if (!tweet || typeof tweet.text !== 'string') {
+            reject(new Error('bird read returned invalid payload'))
+            return
+          }
+          resolve(tweet)
+        } catch (parseError) {
+          const message = parseError instanceof Error ? parseError.message : String(parseError)
+          reject(new Error(`bird read returned invalid JSON: ${message}`))
+        }
+      }
+    )
+  })
+}
+
+function withBirdTip(
+  error: unknown,
+  url: string | null,
+  env: Record<string, string | undefined>
+): Error {
+  if (!url || !isTwitterStatusUrl(url) || hasBirdCli(env)) {
+    return error instanceof Error ? error : new Error(String(error))
+  }
+  const message = error instanceof Error ? error.message : String(error)
+  const combined = `${message}\n${BIRD_TIP}`
+  return error instanceof Error ? new Error(combined, { cause: error }) : new Error(combined)
 }
 
 type JsonOutput = {
@@ -1440,6 +1555,10 @@ export async function runCli(
           },
         })
       : null
+  const readTweetWithBirdClient = hasBirdCli(env)
+    ? ({ url, timeoutMs }: { url: string; timeoutMs: number }) =>
+        readTweetWithBird({ url, timeoutMs, env })
+    : null
 
   writeVerbose(stderr, verbose, 'extract start', verboseColor)
   const stopOscProgress = startOscProgress({
@@ -1459,7 +1578,7 @@ export async function runCli(
     if (!progressEnabled) return null
 
     const state: {
-      phase: 'fetching' | 'firecrawl' | 'idle'
+      phase: 'fetching' | 'firecrawl' | 'bird' | 'nitter' | 'idle'
       htmlDownloadedBytes: number
       htmlTotalBytes: number | null
       fetchStartedAtMs: number | null
@@ -1546,6 +1665,10 @@ export async function runCli(
               markdownBytes: number | null
               htmlBytes: number | null
             }
+          | { kind: 'bird-start'; url: string }
+          | { kind: 'bird-done'; url: string; ok: boolean; textBytes: number | null }
+          | { kind: 'nitter-start'; url: string }
+          | { kind: 'nitter-done'; url: string; ok: boolean; textBytes: number | null }
       ) => {
         if (event.kind === 'fetch-html-start') {
           state.phase = 'fetching'
@@ -1562,6 +1685,42 @@ export async function runCli(
           state.htmlDownloadedBytes = event.downloadedBytes
           state.htmlTotalBytes = event.totalBytes
           updateSpinner(renderFetchLine())
+          return
+        }
+
+        if (event.kind === 'bird-start') {
+          state.phase = 'bird'
+          stopTicker()
+          updateSpinner('Bird: reading tweet…', { force: true })
+          return
+        }
+
+        if (event.kind === 'bird-done') {
+          state.phase = 'bird'
+          stopTicker()
+          if (event.ok && typeof event.textBytes === 'number') {
+            updateSpinner(`Bird: got ${formatBytes(event.textBytes)}…`, { force: true })
+            return
+          }
+          updateSpinner('Bird: failed; fallback…', { force: true })
+          return
+        }
+
+        if (event.kind === 'nitter-start') {
+          state.phase = 'nitter'
+          stopTicker()
+          updateSpinner('Nitter: fetching…', { force: true })
+          return
+        }
+
+        if (event.kind === 'nitter-done') {
+          state.phase = 'nitter'
+          stopTicker()
+          if (event.ok && typeof event.textBytes === 'number') {
+            updateSpinner(`Nitter: got ${formatBytes(event.textBytes)}…`, { force: true })
+            return
+          }
+          updateSpinner('Nitter: failed; fallback…', { force: true })
           return
         }
 
@@ -1593,6 +1752,7 @@ export async function runCli(
     falApiKey,
     scrapeWithFirecrawl,
     convertHtmlToMarkdown,
+    readTweetWithBird: readTweetWithBirdClient,
     fetch: trackedFetch,
     onProgress: websiteProgress?.onProgress ?? null,
   })
@@ -1606,21 +1766,36 @@ export async function runCli(
   }
   clearProgressBeforeStdout = stopProgress
   try {
-    const extracted = await client.fetchLinkContent(url, {
-      timeoutMs,
-      youtubeTranscript: youtubeMode,
-      firecrawl: firecrawlMode,
-      format: markdownRequested ? 'markdown' : 'text',
-    })
+    let extracted: Awaited<ReturnType<typeof client.fetchLinkContent>>
+    try {
+      extracted = await client.fetchLinkContent(url, {
+        timeoutMs,
+        youtubeTranscript: youtubeMode,
+        firecrawl: firecrawlMode,
+        format: markdownRequested ? 'markdown' : 'text',
+      })
+    } catch (error) {
+      throw withBirdTip(error, url, env)
+    }
     const extractedContentBytes = Buffer.byteLength(extracted.content, 'utf8')
     const extractedContentSize = formatBytes(extractedContentBytes)
-    const viaFirecrawl = extracted.diagnostics.firecrawl.used ? ', Firecrawl' : ''
+    const viaSources: string[] = []
+    if (extracted.diagnostics.strategy === 'bird') {
+      viaSources.push('bird')
+    }
+    if (extracted.diagnostics.strategy === 'nitter') {
+      viaSources.push('Nitter')
+    }
+    if (extracted.diagnostics.firecrawl.used) {
+      viaSources.push('Firecrawl')
+    }
+    const viaSourceLabel = viaSources.length > 0 ? `, ${viaSources.join('+')}` : ''
     if (progressEnabled) {
       websiteProgress?.stop?.()
       spinner.setText(
         extractOnly
-          ? `Extracted (${extractedContentSize})`
-          : `Summarizing (sent ${extractedContentSize}${viaFirecrawl})…`
+          ? `Extracted (${extractedContentSize}${viaSourceLabel})`
+          : `Summarizing (sent ${extractedContentSize}${viaSourceLabel})…`
       )
     }
     writeVerbose(
@@ -1718,6 +1893,84 @@ export async function runCli(
           llm: null,
           metrics: metricsEnabled ? finishReport : null,
           summary: null,
+        }
+        if (metricsDetailed && finishReport) {
+          writeMetricsReport(finishReport)
+        }
+        stdout.write(`${JSON.stringify(payload, null, 2)}\n`)
+        if (metricsEnabled && finishReport) {
+          const costUsd = await estimateCostUsd()
+          writeFinishLine({
+            stderr,
+            elapsedMs: Date.now() - runStartedAtMs,
+            model,
+            report: finishReport,
+            costUsd,
+            color: verboseColor,
+          })
+        }
+        return
+      }
+
+      stdout.write(`${extracted.content}\n`)
+      const report = shouldComputeReport ? await buildReport() : null
+      if (metricsDetailed && report) writeMetricsReport(report)
+      if (metricsEnabled && report) {
+        const costUsd = await estimateCostUsd()
+        writeFinishLine({
+          stderr,
+          elapsedMs: Date.now() - runStartedAtMs,
+          model,
+          report,
+          costUsd,
+          color: verboseColor,
+        })
+      }
+      return
+    }
+
+    const shouldSkipTweetSummary =
+      isTwitterStatusUrl(url) &&
+      extracted.content.length > 0 &&
+      extracted.content.length <= resolveTargetCharacters(lengthArg)
+    if (shouldSkipTweetSummary) {
+      clearProgressForStdout()
+      writeVerbose(
+        stderr,
+        verbose,
+        `skip summary: tweet content length=${extracted.content.length} target=${resolveTargetCharacters(lengthArg)}`,
+        verboseColor
+      )
+      if (json) {
+        const finishReport = shouldComputeReport ? await buildReport() : null
+        const payload: JsonOutput = {
+          input: {
+            kind: 'url',
+            url,
+            timeoutMs,
+            youtube: youtubeMode,
+            firecrawl: firecrawlMode,
+            markdown: effectiveMarkdownMode,
+            length:
+              lengthArg.kind === 'preset'
+                ? { kind: 'preset', preset: lengthArg.preset }
+                : { kind: 'chars', maxCharacters: lengthArg.maxCharacters },
+            maxOutputTokens: maxOutputTokensArg,
+            model,
+          },
+          env: {
+            hasXaiKey: Boolean(xaiApiKey),
+            hasOpenAIKey: Boolean(apiKey),
+            hasApifyToken: Boolean(apifyToken),
+            hasFirecrawlKey: firecrawlConfigured,
+            hasGoogleKey: googleConfigured,
+            hasAnthropicKey: anthropicConfigured,
+          },
+          extracted,
+          prompt,
+          llm: null,
+          metrics: metricsEnabled ? finishReport : null,
+          summary: extracted.content,
         }
         if (metricsDetailed && finishReport) {
           writeMetricsReport(finishReport)

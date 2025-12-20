@@ -122,6 +122,62 @@ describe('LiteLLM pricing catalog', () => {
     expect(fetchMock).toHaveBeenCalledTimes(0)
   })
 
+  it('honors TOKENTALLY_CACHE_DIR when set', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'summarize-litellm-'))
+    const cacheDir = join(root, 'tokentally-cache')
+    mkdirSync(cacheDir, { recursive: true })
+
+    const catalogPath = join(cacheDir, 'litellm-model_prices_and_context_window.json')
+    const metaPath = join(cacheDir, 'litellm-model_prices_and_context_window.meta.json')
+
+    writeFileSync(
+      catalogPath,
+      JSON.stringify({ 'gpt-5.2': { input_cost_per_token: 0.1, output_cost_per_token: 0.2 } }),
+      'utf8'
+    )
+    writeFileSync(metaPath, JSON.stringify({ fetchedAtMs: 1_000 }), 'utf8')
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error('unexpected fetch')
+    })
+    const result = await loadLiteLlmCatalog({
+      env: { HOME: join(root, 'unused-home'), TOKENTALLY_CACHE_DIR: cacheDir },
+      fetchImpl: fetchMock as unknown as typeof fetch,
+      nowMs: 2_000,
+    })
+
+    expect(result.source).toBe('cache')
+    expect(fetchMock).toHaveBeenCalledTimes(0)
+  })
+
+  it('ignores empty TOKENTALLY_CACHE_DIR values', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'summarize-litellm-'))
+    const cacheDir = join(root, '.summarize', 'cache')
+    mkdirSync(cacheDir, { recursive: true })
+
+    const catalogPath = join(cacheDir, 'litellm-model_prices_and_context_window.json')
+    const metaPath = join(cacheDir, 'litellm-model_prices_and_context_window.meta.json')
+
+    writeFileSync(
+      catalogPath,
+      JSON.stringify({ 'gpt-5.2': { input_cost_per_token: 0.1, output_cost_per_token: 0.2 } }),
+      'utf8'
+    )
+    writeFileSync(metaPath, JSON.stringify({ fetchedAtMs: 1_000 }), 'utf8')
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error('unexpected fetch')
+    })
+    const result = await loadLiteLlmCatalog({
+      env: { HOME: root, TOKENTALLY_CACHE_DIR: '   ' },
+      fetchImpl: fetchMock as unknown as typeof fetch,
+      nowMs: 2_000,
+    })
+
+    expect(result.source).toBe('cache')
+    expect(fetchMock).toHaveBeenCalledTimes(0)
+  })
+
   it('loads from cache when fresh', async () => {
     const root = mkdtempSync(join(tmpdir(), 'summarize-litellm-'))
     const cacheDir = join(root, '.summarize', 'cache')

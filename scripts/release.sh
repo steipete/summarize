@@ -50,7 +50,7 @@ phase_tag() {
   banner "Tag"
   require_clean_git
   local version
-  version="$(node -p "require('./package.json').version")"
+  version="$(node -p 'require("./package.json").version')"
   run git tag -a "v${version}" -m "v${version}"
   run git push --tags
 }

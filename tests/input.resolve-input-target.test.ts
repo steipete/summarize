@@ -10,6 +10,11 @@ describe('resolveInputTarget', () => {
     })
   })
 
+  it('preserves balanced parentheses in URL paths', () => {
+    const url = 'https://en.wikipedia.org/wiki/Set_(mathematics)'
+    expect(resolveInputTarget(url)).toEqual({ kind: 'url', url })
+  })
+
   it('unescapes common pasted backslash escapes for query separators', () => {
     expect(resolveInputTarget('https://www.youtube.com/watch\\?v\\=497Ov6kV4KM')).toEqual({
       kind: 'url',
@@ -70,13 +75,12 @@ describe('resolveInputTarget', () => {
     })
   })
 
-  it('preserves parentheses inside URL paths', () => {
-    expect(resolveInputTarget('https://en.wikipedia.org/wiki/Set_(mathematics)')).toEqual({
+  it('keeps trailing parentheses inside pasted URLs with surrounding punctuation', () => {
+    expect(resolveInputTarget('(https://en.wikipedia.org/wiki/Set_(mathematics)).')).toEqual({
       kind: 'url',
       url: 'https://en.wikipedia.org/wiki/Set_(mathematics)',
     })
   })
-
   it('throws when neither file nor URL can be resolved', () => {
     expect(() => resolveInputTarget('not a url')).toThrow(/Invalid URL or file path/i)
   })

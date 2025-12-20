@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 - Unreleased
+## 0.2.0 - 2025-12-20
 
 ### Changes
 
@@ -13,6 +13,9 @@
 - Reject text files over 10 MB before tokenization.
 - Reject too-small numeric `--length` and `--max-output-tokens` values.
 - Cap summaries to the extracted content length when a requested size is larger.
+- Skip summarization for tweets when extracted content is already below the requested length.
+- Use bird CLI for tweet extraction when available and surface it in the status line.
+- Fall back to Nitter for tweet extraction when bird fails; report a clear error when tweet data is unavailable.
 - Compute cost totals via tokentally’s tally helpers.
 - Improve fetch spinner with elapsed time and throughput updates.
 - Show Firecrawl fallback status and reason when scraping kicks in.
@@ -33,6 +36,8 @@
 - Add coverage for cumulative stream merge handling.
 - Add coverage for streaming timeout fallback.
 - Add live coverage for Wikipedia URLs with parentheses.
+- Add coverage for tweet summaries that bypass the LLM when short.
+- Add coverage for content budget paths and TOKENTALLY cache dir overrides.
 
 ### Docs
 
@@ -44,6 +49,13 @@
 
 - Add a tokenization benchmark script.
 - Add Dockerfile.test for containerized testing with yt-dlp.
+
+### Fixes
+
+- Preserve balanced parentheses/brackets in URL paths (e.g. Wikipedia titles).
+- Avoid Firecrawl fallback when block keywords only appear in scripts/styles.
+- Add a Bird install tip when Twitter/X fetch fails without bird installed.
+- Graceful error when tweet extraction fails after bird + Nitter fallback.
 
 ## 0.1.1 - 2025-12-19
 

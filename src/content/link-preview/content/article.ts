@@ -146,7 +146,21 @@ export function collectSegmentsFromHtml(html: string): string[] {
 }
 
 export function extractPlainText(html: string): string {
-  const stripped = sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} })
+  const stripped = sanitizeHtml(html, {
+    allowedTags: [],
+    allowedAttributes: {},
+    nonTextTags: [
+      'style',
+      'script',
+      'noscript',
+      'template',
+      'svg',
+      'canvas',
+      'iframe',
+      'object',
+      'embed',
+    ],
+  })
   return decodeHtmlEntities(stripped)
 }
 

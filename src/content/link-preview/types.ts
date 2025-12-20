@@ -37,7 +37,7 @@ export interface MarkdownDiagnostics {
 }
 
 export interface ContentFetchDiagnostics {
-  strategy: 'firecrawl' | 'html'
+  strategy: 'bird' | 'firecrawl' | 'html' | 'nitter'
   firecrawl: FirecrawlDiagnostics
   markdown: MarkdownDiagnostics
   transcript: TranscriptDiagnostics

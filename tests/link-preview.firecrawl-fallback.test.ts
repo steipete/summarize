@@ -103,7 +103,6 @@ describe('link preview extraction (Firecrawl fallback)', () => {
     expect(result.diagnostics.strategy).toBe('html')
     expect(scrapeWithFirecrawl).not.toHaveBeenCalled()
   })
-
   it('falls back to Firecrawl when extracted HTML looks thin but document is large', async () => {
     const html =
       '<!doctype html><html><head><title>App Shell</title></head><body><main>' +

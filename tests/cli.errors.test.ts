@@ -100,4 +100,42 @@ describe('cli error handling', () => {
       })
     ).rejects.toThrow(/Missing GEMINI_API_KEY/)
   })
+
+  it('adds a bird tip when Twitter fetch fails and bird is unavailable', async () => {
+    const fetchMock = vi.fn(async () => new Response('nope', { status: 404 }))
+
+    await expect(
+      runCli(['--extract-only', 'https://x.com/user/status/123'], {
+        env: { PATH: '' },
+        fetch: fetchMock as unknown as typeof fetch,
+        stdout: noopStream(),
+        stderr: noopStream(),
+      })
+    ).rejects.toThrow(/Tip: Install bird🐦 for better Twitter support/)
+  })
+
+  it('fails gracefully when Twitter content is unavailable after bird and nitter', async () => {
+    const tweetUrl = 'https://x.com/user/status/123'
+    const nitterUrl = 'https://nitter.net/user/status/123'
+    const blockedHtml = `<!doctype html><html><body><p>Something went wrong, but don’t fret — let’s give it another shot.</p></body></html>`
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.url
+      if (url === tweetUrl || url === nitterUrl) {
+        return new Response(blockedHtml, {
+          status: 200,
+          headers: { 'Content-Type': 'text/html' },
+        })
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    await expect(
+      runCli(['--extract-only', tweetUrl], {
+        env: { PATH: '' },
+        fetch: fetchMock as unknown as typeof fetch,
+        stdout: noopStream(),
+        stderr: noopStream(),
+      })
+    ).rejects.toThrow(/Unable to fetch tweet content from X/)
+  })
 })
