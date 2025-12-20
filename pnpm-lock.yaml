@@ -15,7 +15,7 @@ importers:
         specifier: ^1.43.0
         version: 1.43.0
       gpt-tokenizer:
-        specifier: ^3.0.0
+        specifier: ^3.4.0
         version: 3.4.0
       sanitize-html:
         specifier: ^2.17.0
