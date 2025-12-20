@@ -158,6 +158,7 @@ async function downloadAudio(ytDlpPath: string, url: string, outputFile: string)
       '-x',
       '--audio-format',
       'mp3',
+      '--no-playlist',
       '--retries',
       '3',
       '--no-warnings',

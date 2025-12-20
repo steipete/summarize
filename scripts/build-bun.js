@@ -66,16 +66,11 @@ function buildOne({ target, outName }) {
   return outPath
 }
 
-function buildMacosUniversal({ version }) {
-  const x64 = buildOne({ target: 'bun-darwin-x64', outName: 'summarize-bun-darwin-x64' })
-  const arm64 = buildOne({ target: 'bun-darwin-arm64', outName: 'summarize-bun-darwin-arm64' })
+function buildMacosArm64({ version }) {
+  const outPath = buildOne({ target: 'bun-darwin-arm64', outName: 'summarize' })
+  chmodX(outPath)
 
-  const universal = join(distDir, 'summarize')
-  console.log('\n🍱 Creating macOS universal binary…')
-  run('lipo', ['-create', x64, arm64, '-output', universal])
-  chmodX(universal)
-
-  const tarName = `summarize-macos-universal-v${version}.tar.gz`
+  const tarName = `summarize-macos-arm64-v${version}.tar.gz`
   const tarPath = join(distDir, tarName)
   console.log('\n📦 Packaging tarball…')
   run('tar', ['-czf', tarPath, '-C', distDir, 'summarize'])
@@ -83,7 +78,7 @@ function buildMacosUniversal({ version }) {
   console.log('\n🔐 sha256:')
   run('shasum', ['-a', '256', tarPath])
 
-  return { universal, tarPath }
+  return { binary: outPath, tarPath }
 }
 
 function main() {
@@ -96,12 +91,12 @@ function main() {
     mkdirSync(distDir, { recursive: true })
   }
 
-  const { universal } = buildMacosUniversal({ version })
+  const { binary } = buildMacosArm64({ version })
 
   if (process.argv.includes('--test')) {
     console.log('\n🧪 Smoke…')
-    run(universal, ['--version'])
-    run(universal, ['--help'])
+    run(binary, ['--version'])
+    run(binary, ['--help'])
   }
 
   console.log(`\n✨ Done. dist: ${distDir}`)

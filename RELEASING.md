@@ -46,10 +46,11 @@ Prefer running `scripts/release.sh all` so publish + smoke + tag happen in one g
 ## Homebrew (Bun-compiled binary w/ bytecode)
 
 Goal:
-- Build a **macOS universal** Bun binary named `summarize`
-- Package as `dist-bun/summarize-macos-universal-v<ver>.tar.gz`
+- Build a **macOS arm64** Bun binary named `summarize`
+- Package as `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`
 - Upload tarball as a GitHub Release asset
 - Point Homebrew formula at that asset + sha256
+- Formula should install the compiled `summarize` binary directly (no Bun wrapper script).
 
 1) Build the Bun artifact
    - `pnpm build:bun`
@@ -62,7 +63,7 @@ Goal:
 
 3) GitHub Release (when approved)
    - Create a release for tag `v<ver>`
-   - Upload `dist-bun/summarize-macos-universal-v<ver>.tar.gz`
+   - Upload `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`
 
 4) Homebrew tap update (when approved + after asset is live)
    - Repo: `~/Projects/homebrew-tap`

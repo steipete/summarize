@@ -25,6 +25,8 @@ npx -y @steipete/summarize "https://example.com" --model google/gemini-3-flash-p
 brew install steipete/tap/summarize
 ```
 
+Apple Silicon only (arm64).
+
 ## Quickstart
 
 ```bash

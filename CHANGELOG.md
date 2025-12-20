@@ -1,19 +1,22 @@
 # Changelog
 
-## 0.2.1 - Unreleased
+## 0.3.0 - 2025-12-20
 
 ### Changes
 
 - Add yt-dlp audio transcription fallback for YouTube; prefer OpenAI Whisper with FAL fallback. Thanks @dougvk.
+- Add `--no-playlist` to yt-dlp downloads to avoid transcript mismatches.
 - Run yt-dlp after web + Apify in `--youtube auto`, and error early for missing keys in `--youtube yt-dlp`.
 - Require Node 22+.
 - Respect `OPENAI_BASE_URL` when set, even with OpenRouter keys.
 - Apply OpenRouter provider ordering headers to HTML→Markdown conversion.
 - Add OpenRouter configuration tests. Thanks @dougvk for the initial OpenRouter support.
+- Build and ship a Bun bytecode arm64 binary for Homebrew.
 
 ### Tests
 
 - Add coverage for yt-dlp ordering, missing-key errors, and helper paths.
+- Add live coverage for yt-dlp transcript mode and missing-caption YouTube pages.
 
 ### Dev
 

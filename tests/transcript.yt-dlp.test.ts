@@ -97,6 +97,23 @@ describe('yt-dlp transcript helper', () => {
     expect(result.error?.message).toMatch(/yt-dlp exited with code 1/)
   })
 
+  it('passes --no-playlist to yt-dlp', async () => {
+    mockSpawnSuccess()
+    ;(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(JSON.stringify({ text: 'OpenAI transcript' }), { status: 200 })
+    )
+
+    await fetchTranscriptWithYtDlp({
+      ytDlpPath: '/usr/bin/yt-dlp',
+      openaiApiKey: 'OPENAI',
+      falApiKey: null,
+      url: 'https://youtu.be/dQw4w9WgXcQ',
+    })
+
+    const args = spawnMock.mock.calls[0]?.[1] ?? []
+    expect(args).toContain('--no-playlist')
+  })
+
   it('uses OpenAI when available', async () => {
     mockSpawnSuccess()
     ;(globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
