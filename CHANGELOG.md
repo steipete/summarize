@@ -4,7 +4,8 @@
 
 ### Changes
 
-- Remove map-reduce summarization; reject inputs that exceed the model’s context window.
+- Add native OpenRouter support via `OPENROUTER_API_KEY` with optional provider ordering (`OPENROUTER_PROVIDERS`).
+- Remove map-reduce summarization; reject inputs that exceed the model's context window.
 - Preflight text prompts with the GPT tokenizer and the model’s max input tokens.
 - Reject text files over 10 MB before tokenization.
 - Reject too-small numeric `--length` and `--max-output-tokens` values.

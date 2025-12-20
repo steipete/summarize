@@ -43,6 +43,7 @@ export function createHtmlToMarkdownConverter({
   googleApiKey,
   openaiApiKey,
   anthropicApiKey,
+  openrouterApiKey,
   fetchImpl,
   onUsage,
 }: {
@@ -52,6 +53,7 @@ export function createHtmlToMarkdownConverter({
   openaiApiKey: string | null
   fetchImpl: typeof fetch
   anthropicApiKey: string | null
+  openrouterApiKey: string | null
   onUsage?: (usage: {
     model: string
     provider: 'xai' | 'openai' | 'google' | 'anthropic'
@@ -70,7 +72,7 @@ export function createHtmlToMarkdownConverter({
 
     const result = await generateTextWithModelId({
       modelId,
-      apiKeys: { xaiApiKey, googleApiKey, openaiApiKey, anthropicApiKey },
+      apiKeys: { xaiApiKey, googleApiKey, openaiApiKey, anthropicApiKey, openrouterApiKey },
       system,
       prompt,
       timeoutMs,

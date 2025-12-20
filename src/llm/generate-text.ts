@@ -6,6 +6,11 @@ export type LlmApiKeys = {
   openaiApiKey: string | null
   googleApiKey: string | null
   anthropicApiKey: string | null
+  openrouterApiKey: string | null
+}
+
+export type OpenRouterOptions = {
+  providers: string[] | null
 }
 
 export type LlmTokenUsage = {
@@ -95,6 +100,7 @@ export async function generateTextWithModelId({
   maxOutputTokens,
   timeoutMs,
   fetchImpl,
+  openrouter,
 }: {
   modelId: string
   apiKeys: LlmApiKeys
@@ -104,6 +110,7 @@ export async function generateTextWithModelId({
   maxOutputTokens?: number
   timeoutMs: number
   fetchImpl: typeof fetch
+  openrouter?: OpenRouterOptions
 }): Promise<{
   text: string
   canonicalModelId: string
@@ -184,13 +191,45 @@ export async function generateTextWithModelId({
       }
     }
 
-    const apiKey = apiKeys.openaiApiKey
-    if (!apiKey) throw new Error('Missing OPENAI_API_KEY for openai/... model')
-    const { createOpenAI } = await import('@ai-sdk/openai')
-    const openai = createOpenAI({ apiKey, fetch: fetchImpl })
+    // Detect OpenRouter: via OPENROUTER_API_KEY or OPENAI_BASE_URL containing openrouter.ai
     const baseUrl = typeof process !== 'undefined' ? process.env.OPENAI_BASE_URL : undefined
-    const useChatCompletions =
+    const isOpenRouterViaBaseUrl =
       typeof baseUrl === 'string' && /openrouter\.ai/i.test(baseUrl) && baseUrl.length > 0
+    const isOpenRouter = apiKeys.openrouterApiKey != null || isOpenRouterViaBaseUrl
+
+    const apiKey = isOpenRouter
+      ? (apiKeys.openrouterApiKey ?? apiKeys.openaiApiKey)
+      : apiKeys.openaiApiKey
+    if (!apiKey) {
+      throw new Error(
+        isOpenRouter
+          ? 'Missing OPENROUTER_API_KEY for OpenRouter'
+          : 'Missing OPENAI_API_KEY for openai/... model'
+      )
+    }
+
+    const { createOpenAI } = await import('@ai-sdk/openai')
+
+    // Build fetch wrapper with OpenRouter provider ordering header
+    const openrouterProviders = openrouter?.providers
+    const wrappedFetch: typeof fetch = isOpenRouter && openrouterProviders?.length
+      ? (url, init) => {
+          const headers = new Headers(init?.headers)
+          headers.set('HTTP-Referer', 'https://github.com/steipete/summarize')
+          headers.set('X-Title', 'summarize')
+          headers.set('X-OpenRouter-Provider-Order', openrouterProviders.join(','))
+          return fetchImpl(url, { ...init, headers })
+        }
+      : fetchImpl
+
+    const openai = createOpenAI({
+      apiKey,
+      ...(isOpenRouter ? { baseURL: 'https://openrouter.ai/api/v1' } : {}),
+      fetch: wrappedFetch,
+    })
+
+    // OpenRouter requires chat completions endpoint
+    const useChatCompletions = isOpenRouter
     const responsesModelId = parsed.model as unknown as Parameters<typeof openai>[0]
     const chatModelId = parsed.model as unknown as Parameters<typeof openai.chat>[0]
     const result = await generateText({
@@ -230,6 +269,7 @@ export async function streamTextWithModelId({
   maxOutputTokens,
   timeoutMs,
   fetchImpl,
+  openrouter,
 }: {
   modelId: string
   apiKeys: LlmApiKeys
@@ -239,6 +279,7 @@ export async function streamTextWithModelId({
   maxOutputTokens?: number
   timeoutMs: number
   fetchImpl: typeof fetch
+  openrouter?: OpenRouterOptions
 }): Promise<{
   textStream: AsyncIterable<string>
   canonicalModelId: string
@@ -397,13 +438,45 @@ export async function streamTextWithModelId({
       }
     }
 
-    const apiKey = apiKeys.openaiApiKey
-    if (!apiKey) throw new Error('Missing OPENAI_API_KEY for openai/... model')
-    const { createOpenAI } = await import('@ai-sdk/openai')
-    const openai = createOpenAI({ apiKey, fetch: fetchImpl })
+    // Detect OpenRouter: via OPENROUTER_API_KEY or OPENAI_BASE_URL containing openrouter.ai
     const baseUrl = typeof process !== 'undefined' ? process.env.OPENAI_BASE_URL : undefined
-    const useChatCompletions =
+    const isOpenRouterViaBaseUrl =
       typeof baseUrl === 'string' && /openrouter\.ai/i.test(baseUrl) && baseUrl.length > 0
+    const isOpenRouter = apiKeys.openrouterApiKey != null || isOpenRouterViaBaseUrl
+
+    const apiKey = isOpenRouter
+      ? (apiKeys.openrouterApiKey ?? apiKeys.openaiApiKey)
+      : apiKeys.openaiApiKey
+    if (!apiKey) {
+      throw new Error(
+        isOpenRouter
+          ? 'Missing OPENROUTER_API_KEY for OpenRouter'
+          : 'Missing OPENAI_API_KEY for openai/... model'
+      )
+    }
+
+    const { createOpenAI } = await import('@ai-sdk/openai')
+
+    // Build fetch wrapper with OpenRouter provider ordering header
+    const openrouterProviders = openrouter?.providers
+    const wrappedFetch: typeof fetch = isOpenRouter && openrouterProviders?.length
+      ? (url, init) => {
+          const headers = new Headers(init?.headers)
+          headers.set('HTTP-Referer', 'https://github.com/steipete/summarize')
+          headers.set('X-Title', 'summarize')
+          headers.set('X-OpenRouter-Provider-Order', openrouterProviders.join(','))
+          return fetchImpl(url, { ...init, headers })
+        }
+      : fetchImpl
+
+    const openai = createOpenAI({
+      apiKey,
+      ...(isOpenRouter ? { baseURL: 'https://openrouter.ai/api/v1' } : {}),
+      fetch: wrappedFetch,
+    })
+
+    // OpenRouter requires chat completions endpoint
+    const useChatCompletions = isOpenRouter
     const responsesModelId = parsed.model as unknown as Parameters<typeof openai>[0]
     const chatModelId = parsed.model as unknown as Parameters<typeof openai.chat>[0]
     const result = streamText({

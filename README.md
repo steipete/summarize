@@ -160,9 +160,23 @@ Set the key matching your chosen `--model`:
 
 OpenRouter (OpenAI-compatible):
 
-- Set `OPENAI_BASE_URL=https://openrouter.ai/api/v1`
-- Prefer `OPENROUTER_API_KEY=...` (instead of reusing `OPENAI_API_KEY`)
-- Use OpenRouter models via the `openai/...` prefix, e.g. `--model openai/xiaomi/mimo-v2-flash:free`
+- Set `OPENROUTER_API_KEY=...` to route `openai/...` models through OpenRouter
+- Use OpenRouter models via the `openai/...` prefix, e.g. `--model openai/openai/gpt-oss-20b`
+- Optional: `OPENROUTER_PROVIDERS=...` to specify provider fallback order (e.g. `groq,google-vertex`)
+
+Example:
+
+```bash
+OPENROUTER_API_KEY=sk-or-... summarize "https://example.com" --model openai/openai/gpt-oss-20b
+```
+
+With provider ordering (falls back through providers in order):
+
+```bash
+OPENROUTER_API_KEY=sk-or-... OPENROUTER_PROVIDERS="groq,google-vertex" summarize "https://example.com"
+```
+
+Legacy: `OPENAI_BASE_URL=https://openrouter.ai/api/v1` with `OPENAI_API_KEY` also works.
 
 Optional services:
 

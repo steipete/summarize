@@ -533,14 +533,15 @@ ${heading('Examples')}
   ${cmd('summarize "https://example.com" --extract-only --markdown llm')} ${dim('# website markdown via LLM')}
   ${cmd('summarize "https://www.youtube.com/watch?v=I845O57ZSy4&t=11s" --extract-only --youtube web')}
   ${cmd('summarize "https://example.com" --length 20k --max-output-tokens 2k --timeout 2m --model openai/gpt-5.2')}
-  ${cmd('OPENAI_BASE_URL=https://openrouter.ai/api/v1 OPENROUTER_API_KEY=... summarize "https://example.com" --model openai/xiaomi/mimo-v2-flash:free')}
+  ${cmd('OPENROUTER_API_KEY=... summarize "https://example.com" --model openai/openai/gpt-oss-20b')}
   ${cmd('summarize "https://example.com" --json --verbose')}
 
 ${heading('Env Vars')}
   XAI_API_KEY           optional (required for xai/... models)
   OPENAI_API_KEY        optional (required for openai/... models)
   OPENAI_BASE_URL       optional (OpenAI-compatible API endpoint; e.g. OpenRouter)
-  OPENROUTER_API_KEY    optional (used when OPENAI_BASE_URL points to OpenRouter)
+  OPENROUTER_API_KEY    optional (routes openai/... models through OpenRouter)
+  OPENROUTER_PROVIDERS  optional (provider fallback order, e.g. "groq,google-vertex")
   GEMINI_API_KEY        optional (required for google/... models)
   ANTHROPIC_API_KEY     optional (required for anthropic/... models)
   SUMMARIZE_MODEL       optional (overrides default model selection)
@@ -557,6 +558,7 @@ async function summarizeWithModelId({
   timeoutMs,
   fetchImpl,
   apiKeys,
+  openrouter,
 }: {
   modelId: string
   prompt: string | ModelMessage[]
@@ -568,7 +570,9 @@ async function summarizeWithModelId({
     openaiApiKey: string | null
     googleApiKey: string | null
     anthropicApiKey: string | null
+    openrouterApiKey: string | null
   }
+  openrouter?: { providers: string[] | null }
 }): Promise<{
   text: string
   provider: 'xai' | 'openai' | 'google' | 'anthropic'
@@ -578,6 +582,7 @@ async function summarizeWithModelId({
   const result = await generateTextWithModelId({
     modelId,
     apiKeys,
+    openrouter,
     prompt,
     temperature: 0,
     maxOutputTokens,
@@ -789,6 +794,11 @@ export async function runCli(
   const openaiBaseUrl = typeof env.OPENAI_BASE_URL === 'string' ? env.OPENAI_BASE_URL : null
   const openRouterKeyRaw =
     typeof env.OPENROUTER_API_KEY === 'string' ? env.OPENROUTER_API_KEY : null
+  const openRouterProvidersRaw =
+    typeof env.OPENROUTER_PROVIDERS === 'string' ? env.OPENROUTER_PROVIDERS : null
+  const openRouterProviders = openRouterProvidersRaw
+    ? openRouterProvidersRaw.split(',').map((p) => p.trim()).filter(Boolean)
+    : null
   const openaiKeyRaw = typeof env.OPENAI_API_KEY === 'string' ? env.OPENAI_API_KEY : null
   const apiKey =
     typeof openaiBaseUrl === 'string' && /openrouter\.ai/i.test(openaiBaseUrl)
@@ -811,9 +821,11 @@ export async function runCli(
   const xaiApiKey = xaiKeyRaw?.trim() ?? null
   const googleApiKey = googleKeyRaw?.trim() ?? null
   const anthropicApiKey = anthropicKeyRaw?.trim() ?? null
+  const openrouterApiKey = openRouterKeyRaw?.trim() ?? null
   const googleConfigured = typeof googleApiKey === 'string' && googleApiKey.length > 0
   const xaiConfigured = typeof xaiApiKey === 'string' && xaiApiKey.length > 0
   const anthropicConfigured = typeof anthropicApiKey === 'string' && anthropicApiKey.length > 0
+  const openrouterConfigured = typeof openrouterApiKey === 'string' && openrouterApiKey.length > 0
 
   const llmCalls: LlmCall[] = []
   let firecrawlRequests = 0
@@ -979,7 +991,9 @@ export async function runCli(
       openaiApiKey: apiKey,
       googleApiKey: googleConfigured ? googleApiKey : null,
       anthropicApiKey: anthropicConfigured ? anthropicApiKey : null,
+      openrouterApiKey: openrouterConfigured ? openrouterApiKey : null,
     }
+    const openrouterOptions = openRouterProviders ? { providers: openRouterProviders } : undefined
 
     const requiredKeyEnv =
       parsedModel.provider === 'xai'
@@ -988,7 +1002,7 @@ export async function runCli(
           ? 'GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY)'
           : parsedModel.provider === 'anthropic'
             ? 'ANTHROPIC_API_KEY'
-            : 'OPENAI_API_KEY'
+            : 'OPENAI_API_KEY (or OPENROUTER_API_KEY)'
     const hasRequiredKey =
       parsedModel.provider === 'xai'
         ? Boolean(xaiApiKey)
@@ -996,7 +1010,7 @@ export async function runCli(
           ? googleConfigured
           : parsedModel.provider === 'anthropic'
             ? anthropicConfigured
-            : Boolean(apiKey)
+            : Boolean(apiKey) || openrouterConfigured
     if (!hasRequiredKey) {
       throw new Error(
         `Missing ${requiredKeyEnv} for model ${parsedModel.canonical}. Set the env var or choose a different --model.`
@@ -1073,6 +1087,7 @@ export async function runCli(
         streamResult = await streamTextWithModelId({
           modelId: parsedModelEffective.canonical,
           apiKeys: apiKeysForLlm,
+          openrouter: openrouterOptions,
           prompt: promptPayload,
           temperature: 0,
           maxOutputTokens: maxOutputTokensForCall ?? undefined,
@@ -1094,6 +1109,7 @@ export async function runCli(
             timeoutMs,
             fetchImpl: trackedFetch,
             apiKeys: apiKeysForLlm,
+            openrouter: openrouterOptions,
           })
           llmCalls.push({
             provider: result.provider,
@@ -1120,6 +1136,7 @@ export async function runCli(
             timeoutMs,
             fetchImpl: trackedFetch,
             apiKeys: apiKeysForLlm,
+            openrouter: openrouterOptions,
           })
           llmCalls.push({
             provider: result.provider,
@@ -1229,6 +1246,7 @@ export async function runCli(
           timeoutMs,
           fetchImpl: trackedFetch,
           apiKeys: apiKeysForLlm,
+          openrouter: openrouterOptions,
         })
       } catch (error) {
         if (isUnsupportedAttachmentError(error)) {
@@ -1522,7 +1540,7 @@ export async function runCli(
   writeVerbose(
     stderr,
     verbose,
-    `env xaiKey=${xaiConfigured} openaiKey=${Boolean(apiKey)} googleKey=${googleConfigured} anthropicKey=${anthropicConfigured} apifyToken=${Boolean(apifyToken)} firecrawlKey=${firecrawlConfigured}`,
+    `env xaiKey=${xaiConfigured} openaiKey=${Boolean(apiKey)} googleKey=${googleConfigured} anthropicKey=${anthropicConfigured} openrouterKey=${openrouterConfigured} apifyToken=${Boolean(apifyToken)} firecrawlKey=${firecrawlConfigured}`,
     verboseColor
   )
   writeVerbose(
@@ -1545,6 +1563,7 @@ export async function runCli(
           googleApiKey: googleConfigured ? googleApiKey : null,
           openaiApiKey: apiKey,
           anthropicApiKey: anthropicConfigured ? anthropicApiKey : null,
+          openrouterApiKey: openrouterConfigured ? openrouterApiKey : null,
           fetchImpl: trackedFetch,
           onUsage: ({ model: usedModel, provider, usage }) => {
             llmCalls.push({ provider, model: usedModel, usage, purpose: 'markdown' })
@@ -2007,7 +2026,9 @@ export async function runCli(
       openaiApiKey: apiKey,
       googleApiKey: googleConfigured ? googleApiKey : null,
       anthropicApiKey: anthropicConfigured ? anthropicApiKey : null,
+      openrouterApiKey: openrouterConfigured ? openrouterApiKey : null,
     }
+    const openrouterOptions = openRouterProviders ? { providers: openRouterProviders } : undefined
 
     const requiredKeyEnv =
       parsedModel.provider === 'xai'
@@ -2016,7 +2037,7 @@ export async function runCli(
           ? 'GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY)'
           : parsedModel.provider === 'anthropic'
             ? 'ANTHROPIC_API_KEY'
-            : 'OPENAI_API_KEY'
+            : 'OPENAI_API_KEY (or OPENROUTER_API_KEY)'
     const hasRequiredKey =
       parsedModel.provider === 'xai'
         ? Boolean(xaiApiKey)
@@ -2024,7 +2045,7 @@ export async function runCli(
           ? googleConfigured
           : parsedModel.provider === 'anthropic'
             ? anthropicConfigured
-            : Boolean(apiKey)
+            : Boolean(apiKey) || openrouterConfigured
     if (!hasRequiredKey) {
       throw new Error(
         `Missing ${requiredKeyEnv} for model ${parsedModel.canonical}. Set the env var or choose a different --model.`
@@ -2109,6 +2130,7 @@ export async function runCli(
             timeoutMs,
             fetchImpl: trackedFetch,
             apiKeys: apiKeysForLlm,
+            openrouter: openrouterOptions,
           })
           llmCalls.push({
             provider: result.provider,
@@ -2135,6 +2157,7 @@ export async function runCli(
             timeoutMs,
             fetchImpl: trackedFetch,
             apiKeys: apiKeysForLlm,
+            openrouter: openrouterOptions,
           })
           llmCalls.push({
             provider: result.provider,
@@ -2225,6 +2248,7 @@ export async function runCli(
         timeoutMs,
         fetchImpl: trackedFetch,
         apiKeys: apiKeysForLlm,
+        openrouter: openrouterOptions,
       })
       llmCalls.push({
         provider: result.provider,
