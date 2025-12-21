@@ -1,4 +1,4 @@
-# Smoke Test Plan (21 combos)
+# Smoke Test Plan (20 combos)
 
 Goal: exercise URL + file inputs, extraction + LLM summary paths, multiple models.
 
@@ -10,7 +10,7 @@ Goal: exercise URL + file inputs, extraction + LLM summary paths, multiple model
 - `openai/gpt-5-nano`
 - `google/gemini-3-flash-preview`
 
-## Matrix (21 cases)
+## Matrix (20 cases)
 
 ### Websites (LLM summary, 10)
 1) Static HTML: `https://example.com` (model: gemini-3-flash)
@@ -24,22 +24,21 @@ Goal: exercise URL + file inputs, extraction + LLM summary paths, multiple model
 9) JS-heavy page: `https://vercel.com` (model: gemini-3-flash)
 10) 404 page: `https://example.com/does-not-exist` (model: gpt-5-nano)
 
-### YouTube (LLM summary, 3)
-11) Multi-language manual captions: `https://www.youtube.com/watch?v=5MuIMqhT8DM` (model: gemini-3-flash, `--youtube auto`)
-12) Multi-language manual captions: `https://www.youtube.com/watch?v=gUV5DJb6KGs` (model: gpt-5-nano, `--youtube auto`)
-13) No captions: pick a random channel upload w/o captions (model: gemini-3-flash, `--youtube auto`)
+### YouTube (LLM summary, 2)
+11) Captions available: pick a popular talk/interview (model: gemini-3-flash, `--youtube auto`)
+12) No captions: pick a random channel upload w/o captions (model: gpt-5-nano, `--youtube auto`)
 
 ### Remote files (LLM summary, 4)
-14) PDF URL: any public PDF report (model: gemini-3-flash)
-15) PNG URL: any public PNG (model: gpt-5-nano)
-16) MP3 URL: any public MP3 sample (model: gemini-3-flash)
-17) CSV URL: any public CSV sample (model: gpt-5-nano)
+13) PDF URL: any public PDF report (model: gemini-3-flash)
+14) PNG URL: `https://upload.wikimedia.org/wikipedia/commons/7/70/Example.png` (model: gpt-5-nano)
+15) MP3 URL: any public MP3 sample (model: gemini-3-flash)
+16) CSV URL: any public CSV sample (model: gpt-5-nano)
 
 ### Local files (LLM summary, 4)
-18) `tests/fixtures/sample.txt` (create if missing) (model: gemini-3-flash)
-19) `tests/fixtures/sample.md` (create if missing) (model: gpt-5-nano)
-20) `tests/fixtures/sample.json` (create if missing) (model: gemini-3-flash)
-21) `tests/fixtures/sample.png` (create if missing) (model: gpt-5-nano)
+17) `tests/fixtures/sample.txt` (create if missing) (model: gemini-3-flash)
+18) `tests/fixtures/sample.md` (create if missing) (model: gpt-5-nano)
+19) `tests/fixtures/sample.json` (create if missing) (model: gemini-3-flash)
+20) `tests/fixtures/sample.png` (create if missing; use a real PNG, not 1x1) (model: gpt-5-nano)
 
 ## Commands (template)
 - Website: `pnpm summarize -- "<url>" --model <model> --length short`
@@ -50,7 +49,6 @@ Goal: exercise URL + file inputs, extraction + LLM summary paths, multiple model
 ## Capture
 - Log: stdout + stderr, exit code, and timing line.
 - Note extraction path (HTML vs Firecrawl vs YouTube transcript).
-- YouTube multi-language: confirm English manual track is selected when available.
 - File errors: media type rejection, size limits, token preflight.
 
 ## Bug bar

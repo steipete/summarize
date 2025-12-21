@@ -114,6 +114,7 @@ npx -y @steipete/summarize <input> [flags]
 
 - `--model <provider/model>`: which model to use (defaults to `google/gemini-3-flash-preview`)
 - `--timeout <duration>`: `30s`, `2m`, `5000ms` (default `2m`)
+- `--retries <count>`: LLM retry attempts on timeout (default `1`)
 - `--length short|medium|long|xl|xxl|<chars>`
 - `--max-output-tokens <count>`: hard cap for LLM output tokens (optional)
 - `--stream auto|on|off`: stream LLM output (`auto` = TTY only; disabled in `--json` mode)

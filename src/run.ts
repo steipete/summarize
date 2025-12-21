@@ -28,6 +28,7 @@ import {
   parseMaxOutputTokensArg,
   parseMetricsMode,
   parsePreprocessMode,
+  parseRetriesArg,
   parseRenderMode,
   parseStreamMode,
   parseYoutubeMode,
@@ -297,6 +298,7 @@ function buildProgram() {
       'Timeout for content fetching and LLM request: 30 (seconds), 30s, 2m, 5000ms',
       '2m'
     )
+    .option('--retries <count>', 'LLM retry attempts on timeout (default: 1).', '1')
     .option(
       '--model <model>',
       'LLM model id (gateway-style): xai/..., openai/..., google/... (default: google/gemini-3-flash-preview)',
@@ -636,6 +638,8 @@ async function summarizeWithModelId({
   fetchImpl,
   apiKeys,
   openrouter,
+  retries,
+  onRetry,
 }: {
   modelId: string
   prompt: string | ModelMessage[]
@@ -650,6 +654,8 @@ async function summarizeWithModelId({
     openrouterApiKey: string | null
   }
   openrouter?: { providers: string[] | null }
+  retries: number
+  onRetry?: (notice: { attempt: number; maxRetries: number; delayMs: number; error: unknown }) => void
 }): Promise<{
   text: string
   provider: 'xai' | 'openai' | 'google' | 'anthropic'
@@ -665,6 +671,8 @@ async function summarizeWithModelId({
     maxOutputTokens,
     timeoutMs,
     fetchImpl,
+    retries,
+    onRetry,
   })
   return {
     text: result.text,
@@ -687,6 +695,27 @@ function writeVerbose(
   }
   const prefix = ansi('36', VERBOSE_PREFIX, color)
   stderr.write(`${prefix} ${message}\n`)
+}
+
+function createRetryLogger({
+  stderr,
+  verbose,
+  color,
+  modelId,
+}: {
+  stderr: NodeJS.WritableStream
+  verbose: boolean
+  color: boolean
+  modelId: string
+}) {
+  return (notice: { attempt: number; maxRetries: number; delayMs: number }) => {
+    writeVerbose(
+      stderr,
+      verbose,
+      `LLM timeout for ${modelId}; retry ${notice.attempt}/${notice.maxRetries} in ${notice.delayMs}ms.`,
+      color
+    )
+  }
 }
 
 function formatOptionalString(value: string | null | undefined): string {
@@ -883,6 +912,7 @@ export async function runCli(
     program.opts().maxOutputTokens as string | undefined
   )
   const timeoutMs = parseDurationMs(program.opts().timeout as string)
+  const retries = parseRetriesArg(program.opts().retries as string)
   const extractMode = Boolean(program.opts().extract) || Boolean(program.opts().extractOnly)
   const json = Boolean(program.opts().json)
   const streamMode = parseStreamMode(program.opts().stream as string)
@@ -1365,6 +1395,13 @@ export async function runCli(
             fetchImpl: trackedFetch,
             apiKeys: apiKeysForLlm,
             openrouter: openrouterOptions,
+            retries,
+            onRetry: createRetryLogger({
+              stderr,
+              verbose,
+              color: verboseColor,
+              modelId: parsedModelEffective.canonical,
+            }),
           })
           llmCalls.push({
             provider: result.provider,
@@ -1392,6 +1429,13 @@ export async function runCli(
             fetchImpl: trackedFetch,
             apiKeys: apiKeysForLlm,
             openrouter: openrouterOptions,
+            retries,
+            onRetry: createRetryLogger({
+              stderr,
+              verbose,
+              color: verboseColor,
+              modelId: parsedModelEffective.canonical,
+            }),
           })
           llmCalls.push({
             provider: result.provider,
@@ -1502,6 +1546,13 @@ export async function runCli(
           fetchImpl: trackedFetch,
           apiKeys: apiKeysForLlm,
           openrouter: openrouterOptions,
+          retries,
+          onRetry: createRetryLogger({
+            stderr,
+            verbose,
+            color: verboseColor,
+            modelId: parsedModelEffective.canonical,
+          }),
         })
       } catch (error) {
         if (isUnsupportedAttachmentError(error)) {
@@ -1793,7 +1844,7 @@ export async function runCli(
     verbose,
     `config url=${url} timeoutMs=${timeoutMs} youtube=${youtubeMode} firecrawl=${firecrawlMode} length=${
       lengthArg.kind === 'preset' ? lengthArg.preset : `${lengthArg.maxCharacters} chars`
-    } maxOutputTokens=${formatOptionalNumber(maxOutputTokensArg)} json=${json} extract=${extractMode} format=${format} preprocess=${preprocessMode} markdownMode=${markdownMode} model=${model} stream=${effectiveStreamMode} render=${effectiveRenderMode}`,
+    } maxOutputTokens=${formatOptionalNumber(maxOutputTokensArg)} retries=${retries} json=${json} extract=${extractMode} format=${format} preprocess=${preprocessMode} markdownMode=${markdownMode} model=${model} stream=${effectiveStreamMode} render=${effectiveRenderMode}`,
     verboseColor
   )
   writeVerbose(
@@ -1833,6 +1884,13 @@ export async function runCli(
           openrouterApiKey: openrouterConfigured ? openrouterApiKey : null,
           openrouter: openrouterOptions,
           fetchImpl: trackedFetch,
+          retries,
+          onRetry: createRetryLogger({
+            stderr,
+            verbose,
+            color: verboseColor,
+            modelId: model,
+          }),
           onUsage: ({ model: usedModel, provider, usage }) => {
             llmCalls.push({ provider, model: usedModel, usage, purpose: 'markdown' })
           },
@@ -2470,6 +2528,13 @@ export async function runCli(
             fetchImpl: trackedFetch,
             apiKeys: apiKeysForLlm,
             openrouter: openrouterOptions,
+            retries,
+            onRetry: createRetryLogger({
+              stderr,
+              verbose,
+              color: verboseColor,
+              modelId: parsedModelEffective.canonical,
+            }),
           })
           llmCalls.push({
             provider: result.provider,
@@ -2497,6 +2562,13 @@ export async function runCli(
             fetchImpl: trackedFetch,
             apiKeys: apiKeysForLlm,
             openrouter: openrouterOptions,
+            retries,
+            onRetry: createRetryLogger({
+              stderr,
+              verbose,
+              color: verboseColor,
+              modelId: parsedModelEffective.canonical,
+            }),
           })
           llmCalls.push({
             provider: result.provider,
@@ -2588,6 +2660,13 @@ export async function runCli(
         fetchImpl: trackedFetch,
         apiKeys: apiKeysForLlm,
         openrouter: openrouterOptions,
+        retries,
+        onRetry: createRetryLogger({
+          stderr,
+          verbose,
+          color: verboseColor,
+          modelId: parsedModelEffective.canonical,
+        }),
       })
       llmCalls.push({
         provider: result.provider,

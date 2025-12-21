@@ -18,6 +18,8 @@ const DURATION_PATTERN = /^(?<value>\d+(?:\.\d+)?)(?<unit>ms|s|m|h)?$/i
 const COUNT_PATTERN = /^(?<value>\d+(?:\.\d+)?)(?<unit>k|m)?$/i
 const MIN_LENGTH_CHARS = 50
 const MIN_MAX_OUTPUT_TOKENS = 16
+const MIN_RETRIES = 0
+const MAX_RETRIES = 5
 
 export function parseYoutubeMode(raw: string): YoutubeMode {
   const normalized = raw.trim().toLowerCase()
@@ -143,4 +145,19 @@ export function parseMaxOutputTokensArg(raw: string | undefined): number | null 
     throw new Error(`Unsupported --max-output-tokens: ${raw} (minimum ${MIN_MAX_OUTPUT_TOKENS})`)
   }
   return maxOutputTokens
+}
+
+export function parseRetriesArg(raw: string): number {
+  const normalized = raw.trim()
+  if (!normalized) {
+    throw new Error(`Unsupported --retries: ${raw}`)
+  }
+  const numeric = Number(normalized)
+  if (!Number.isFinite(numeric) || !Number.isInteger(numeric)) {
+    throw new Error(`Unsupported --retries: ${raw}`)
+  }
+  if (numeric < MIN_RETRIES || numeric > MAX_RETRIES) {
+    throw new Error(`Unsupported --retries: ${raw} (range ${MIN_RETRIES}-${MAX_RETRIES})`)
+  }
+  return numeric
 }

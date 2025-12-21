@@ -26,12 +26,16 @@ By default `summarize` will call an LLM using **direct provider API keys**.
     - `xai/grok-4-fast-non-reasoning`
     - `google/gemini-2.0-flash`
     - `anthropic/claude-sonnet-4-5`
+- `--model auto`
+  - See `docs/model-auto.md` (design)
 - `--length short|medium|long|xl|xxl|<chars>`
   - This is *soft guidance* to the model (no hard truncation).
   - Minimum numeric value: 50 chars.
 - `--max-output-tokens <count>`
   - Hard cap for output tokens (optional).
   - Minimum numeric value: 16.
+- `--retries <count>`
+  - LLM retry attempts on timeout (default: 1).
 - `--json` (includes prompt + summary in one JSON object)
 
 ## Input limits

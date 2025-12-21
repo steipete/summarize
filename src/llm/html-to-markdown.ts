@@ -46,6 +46,8 @@ export function createHtmlToMarkdownConverter({
   openrouterApiKey,
   openrouter,
   fetchImpl,
+  retries = 0,
+  onRetry,
   onUsage,
 }: {
   modelId: string
@@ -56,6 +58,8 @@ export function createHtmlToMarkdownConverter({
   anthropicApiKey: string | null
   openrouterApiKey: string | null
   openrouter?: OpenRouterOptions
+  retries?: number
+  onRetry?: (notice: { attempt: number; maxRetries: number; delayMs: number; error: unknown }) => void
   onUsage?: (usage: {
     model: string
     provider: 'xai' | 'openai' | 'google' | 'anthropic'
@@ -80,6 +84,8 @@ export function createHtmlToMarkdownConverter({
       prompt,
       timeoutMs,
       fetchImpl,
+      retries,
+      onRetry,
     })
     onUsage?.({ model: result.canonicalModelId, provider: result.provider, usage: result.usage })
     return result.text

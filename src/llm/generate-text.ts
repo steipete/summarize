@@ -19,6 +19,13 @@ export type LlmTokenUsage = {
   totalTokens: number | null
 }
 
+type RetryNotice = {
+  attempt: number
+  maxRetries: number
+  delayMs: number
+  error: unknown
+}
+
 type OpenAiClientConfig = {
   apiKey: string
   baseURL?: string
@@ -159,6 +166,8 @@ export async function generateTextWithModelId({
   timeoutMs,
   fetchImpl,
   openrouter,
+  retries = 0,
+  onRetry,
 }: {
   modelId: string
   apiKeys: LlmApiKeys
@@ -169,6 +178,8 @@ export async function generateTextWithModelId({
   timeoutMs: number
   fetchImpl: typeof fetch
   openrouter?: OpenRouterOptions
+  retries?: number
+  onRetry?: (notice: RetryNotice) => void
 }): Promise<{
   text: string
   canonicalModelId: string
@@ -177,19 +188,95 @@ export async function generateTextWithModelId({
 }> {
   const parsed = parseGatewayStyleModelId(modelId)
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  const maxRetries = Math.max(0, retries)
+  let attempt = 0
 
-  try {
-    const { generateText } = await import('ai')
+  while (attempt <= maxRetries) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const { generateText } = await import('ai')
 
-    if (parsed.provider === 'xai') {
-      const apiKey = apiKeys.xaiApiKey
-      if (!apiKey) throw new Error('Missing XAI_API_KEY for xai/... model')
-      const { createXai } = await import('@ai-sdk/xai')
-      const xai = createXai({ apiKey, fetch: fetchImpl })
+      if (parsed.provider === 'xai') {
+        const apiKey = apiKeys.xaiApiKey
+        if (!apiKey) throw new Error('Missing XAI_API_KEY for xai/... model')
+        const { createXai } = await import('@ai-sdk/xai')
+        const xai = createXai({ apiKey, fetch: fetchImpl })
+        const result = await generateText({
+          model: xai(parsed.model),
+          system,
+          ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
+          ...(typeof temperature === 'number' ? { temperature } : {}),
+          ...(typeof maxOutputTokens === 'number' ? { maxOutputTokens } : {}),
+          abortSignal: controller.signal,
+        })
+        return {
+          text: result.text,
+          canonicalModelId: parsed.canonical,
+          provider: parsed.provider,
+          usage: normalizeTokenUsage((result as unknown as { usage?: unknown }).usage),
+        }
+      }
+
+      if (parsed.provider === 'google') {
+        const apiKey = apiKeys.googleApiKey
+        if (!apiKey)
+          throw new Error(
+            'Missing GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY) for google/... model'
+          )
+        const { createGoogleGenerativeAI } = await import('@ai-sdk/google')
+        const google = createGoogleGenerativeAI({ apiKey, fetch: fetchImpl })
+        const result = await generateText({
+          model: google(parsed.model),
+          system,
+          ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
+          ...(typeof temperature === 'number' ? { temperature } : {}),
+          ...(typeof maxOutputTokens === 'number' ? { maxOutputTokens } : {}),
+          abortSignal: controller.signal,
+        })
+        return {
+          text: result.text,
+          canonicalModelId: parsed.canonical,
+          provider: parsed.provider,
+          usage: normalizeTokenUsage((result as unknown as { usage?: unknown }).usage),
+        }
+      }
+
+      if (parsed.provider === 'anthropic') {
+        const apiKey = apiKeys.anthropicApiKey
+        if (!apiKey) throw new Error('Missing ANTHROPIC_API_KEY for anthropic/... model')
+        const { createAnthropic } = await import('@ai-sdk/anthropic')
+        const anthropic = createAnthropic({ apiKey, fetch: fetchImpl })
+        const result = await generateText({
+          model: anthropic(parsed.model),
+          system,
+          ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
+          ...(typeof temperature === 'number' ? { temperature } : {}),
+          ...(typeof maxOutputTokens === 'number' ? { maxOutputTokens } : {}),
+          abortSignal: controller.signal,
+        })
+        return {
+          text: result.text,
+          canonicalModelId: parsed.canonical,
+          provider: parsed.provider,
+          usage: normalizeTokenUsage((result as unknown as { usage?: unknown }).usage),
+        }
+      }
+
+      const { createOpenAI } = await import('@ai-sdk/openai')
+      const openaiConfig = resolveOpenAiClientConfig({ apiKeys, openrouter, fetchImpl })
+      const openai = createOpenAI({
+        apiKey: openaiConfig.apiKey,
+        ...(openaiConfig.baseURL ? { baseURL: openaiConfig.baseURL } : {}),
+        fetch: openaiConfig.fetch,
+      })
+
+      // OpenRouter requires chat completions endpoint
+      const useChatCompletions = openaiConfig.useChatCompletions
+      const responsesModelId = parsed.model as unknown as Parameters<typeof openai>[0]
+      const chatModelId = parsed.model as unknown as Parameters<typeof openai.chat>[0]
       const result = await generateText({
-        model: xai(parsed.model),
+        model: useChatCompletions ? openai.chat(chatModelId) : openai(responsesModelId),
         system,
         ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
         ...(typeof temperature === 'number' ? { temperature } : {}),
@@ -202,91 +289,52 @@ export async function generateTextWithModelId({
         provider: parsed.provider,
         usage: normalizeTokenUsage((result as unknown as { usage?: unknown }).usage),
       }
-    }
-
-    if (parsed.provider === 'google') {
-      const apiKey = apiKeys.googleApiKey
-      if (!apiKey)
-        throw new Error(
-          'Missing GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY) for google/... model'
-        )
-      const { createGoogleGenerativeAI } = await import('@ai-sdk/google')
-      const google = createGoogleGenerativeAI({ apiKey, fetch: fetchImpl })
-      const result = await generateText({
-        model: google(parsed.model),
-        system,
-        ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
-        ...(typeof temperature === 'number' ? { temperature } : {}),
-        ...(typeof maxOutputTokens === 'number' ? { maxOutputTokens } : {}),
-        abortSignal: controller.signal,
-      })
-      return {
-        text: result.text,
-        canonicalModelId: parsed.canonical,
-        provider: parsed.provider,
-        usage: normalizeTokenUsage((result as unknown as { usage?: unknown }).usage),
+    } catch (error) {
+      const normalizedError =
+        error instanceof DOMException && error.name === 'AbortError'
+          ? new Error(`LLM request timed out after ${timeoutMs}ms (model ${parsed.canonical}).`)
+          : error
+      if (parsed.provider === 'anthropic') {
+        const normalized = normalizeAnthropicModelAccessError(normalizedError, parsed.model)
+        if (normalized) throw normalized
       }
-    }
-
-    if (parsed.provider === 'anthropic') {
-      const apiKey = apiKeys.anthropicApiKey
-      if (!apiKey) throw new Error('Missing ANTHROPIC_API_KEY for anthropic/... model')
-      const { createAnthropic } = await import('@ai-sdk/anthropic')
-      const anthropic = createAnthropic({ apiKey, fetch: fetchImpl })
-      const result = await generateText({
-        model: anthropic(parsed.model),
-        system,
-        ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
-        ...(typeof temperature === 'number' ? { temperature } : {}),
-        ...(typeof maxOutputTokens === 'number' ? { maxOutputTokens } : {}),
-        abortSignal: controller.signal,
-      })
-      return {
-        text: result.text,
-        canonicalModelId: parsed.canonical,
-        provider: parsed.provider,
-        usage: normalizeTokenUsage((result as unknown as { usage?: unknown }).usage),
+      if (isRetryableTimeoutError(normalizedError) && attempt < maxRetries) {
+        const delayMs = computeRetryDelayMs(attempt)
+        onRetry?.({ attempt: attempt + 1, maxRetries, delayMs, error: normalizedError })
+        await sleep(delayMs)
+        attempt += 1
+        continue
       }
+      throw normalizedError
+    } finally {
+      clearTimeout(timeout)
     }
-
-    const { createOpenAI } = await import('@ai-sdk/openai')
-    const openaiConfig = resolveOpenAiClientConfig({ apiKeys, openrouter, fetchImpl })
-    const openai = createOpenAI({
-      apiKey: openaiConfig.apiKey,
-      ...(openaiConfig.baseURL ? { baseURL: openaiConfig.baseURL } : {}),
-      fetch: openaiConfig.fetch,
-    })
-
-    // OpenRouter requires chat completions endpoint
-    const useChatCompletions = openaiConfig.useChatCompletions
-    const responsesModelId = parsed.model as unknown as Parameters<typeof openai>[0]
-    const chatModelId = parsed.model as unknown as Parameters<typeof openai.chat>[0]
-    const result = await generateText({
-      model: useChatCompletions ? openai.chat(chatModelId) : openai(responsesModelId),
-      system,
-      ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
-      ...(typeof temperature === 'number' ? { temperature } : {}),
-      ...(typeof maxOutputTokens === 'number' ? { maxOutputTokens } : {}),
-      abortSignal: controller.signal,
-    })
-    return {
-      text: result.text,
-      canonicalModelId: parsed.canonical,
-      provider: parsed.provider,
-      usage: normalizeTokenUsage((result as unknown as { usage?: unknown }).usage),
-    }
-  } catch (error) {
-    if (parsed.provider === 'anthropic') {
-      const normalized = normalizeAnthropicModelAccessError(error, parsed.model)
-      if (normalized) throw normalized
-    }
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('LLM request timed out')
-    }
-    throw error
-  } finally {
-    clearTimeout(timeout)
   }
+
+  throw new Error(`LLM request failed after ${maxRetries + 1} attempts.`)
+}
+
+function isRetryableTimeoutError(error: unknown): boolean {
+  if (!error) return false
+  const message =
+    typeof error === 'string'
+      ? error
+      : error instanceof Error
+        ? error.message
+        : typeof (error as { message?: unknown }).message === 'string'
+          ? String((error as { message?: unknown }).message)
+          : ''
+  return /timed out/i.test(message)
+}
+
+function computeRetryDelayMs(attempt: number): number {
+  const base = 500
+  const jitter = Math.floor(Math.random() * 200)
+  return Math.min(2000, base * (attempt + 1) + jitter)
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export async function streamTextWithModelId({
