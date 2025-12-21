@@ -339,11 +339,12 @@ const extractTranscriptFromPlayerPayload = async (
     const bTrack = b as CaptionTrackRecord
     const aKind = typeof aTrack.kind === 'string' ? aTrack.kind : ''
     const bKind = typeof bTrack.kind === 'string' ? bTrack.kind : ''
+    // Prefer manual captions over auto-generated (ASR)
     if (aKind === 'asr' && bKind !== 'asr') {
-      return -1
+      return 1
     }
     if (bKind === 'asr' && aKind !== 'asr') {
-      return 1
+      return -1
     }
     const aLang = typeof aTrack.languageCode === 'string' ? aTrack.languageCode : ''
     const bLang = typeof bTrack.languageCode === 'string' ? bTrack.languageCode : ''
