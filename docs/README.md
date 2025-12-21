@@ -5,6 +5,7 @@
 - `docs/firecrawl.md` — Firecrawl mode + API key
 - `docs/llm.md` — LLM summarization + model config (Gateway/OpenAI)
 - `docs/extract-only.md` — extract mode (no summary LLM call)
+- `docs/model-auto.md` — auto model selection (design)
 
 ## Website
 
