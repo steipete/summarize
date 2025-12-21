@@ -62,8 +62,12 @@ Goal:
    - Optional: run one real file/link summary.
 
 3) GitHub Release (when approved)
-   - Create a release for tag `v<ver>`
+   - Create a release for tag `v<ver>` with clean notes (no duplicated version header inside the notes body):
+     - Prefer `--title "v<ver>"` and `--notes-file …` (avoid pasting text with escaped `\\n`)
+     - Notes should start with sections like `### Changes`, not `## v<ver>` (the release already has a title)
    - Upload `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`
+   - Verify notes render correctly:
+     - `gh release view v<ver> --json body --jq .body` (should show real newlines, not literal `\\n`)
 
 4) Homebrew tap update (when approved + after asset is live)
    - Repo: `~/Projects/homebrew-tap`
