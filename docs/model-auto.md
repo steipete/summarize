@@ -55,28 +55,18 @@ Example:
 {
   "model": "auto",
   "media": { "videoMode": "auto" },
-  "auto": {
-    "rules": [
-      {
-        "when": { "kind": "video" },
-        "candidates": [
-          { "model": "google/gemini-3-flash-preview" }
-        ]
-      },
-      {
-        "when": { "kind": "website" },
-        "candidates": [
-          { "model": "openai/gpt-5-nano" },
-          { "model": "xai/grok-4-fast-non-reasoning" }
-        ]
-      },
-      {
-        "candidates": [
-          { "model": "openai/gpt-5-nano" },
-          { "model": "openrouter/openai/gpt-5-nano" }
-        ]
-      }
-    ]
-  }
+  "auto": [
+    {
+      "when": "video",
+      "candidates": ["google/gemini-3-flash-preview"]
+    },
+    {
+      "when": { "kind": ["website", "youtube"] },
+      "candidates": ["openai/gpt-5-nano", "xai/grok-4-fast-non-reasoning"]
+    },
+    {
+      "candidates": ["openai/gpt-5-nano", "openrouter/openai/gpt-5-nano"]
+    }
+  ]
 }
 ```

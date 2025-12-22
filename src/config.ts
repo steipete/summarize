@@ -48,6 +48,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function parseAutoRuleKind(value: unknown): AutoRuleKind | null {
+  return value === 'text' ||
+    value === 'website' ||
+    value === 'youtube' ||
+    value === 'image' ||
+    value === 'video' ||
+    value === 'file'
+    ? (value as AutoRuleKind)
+    : null
+}
+
+function parseAutoRuleKinds(value: unknown): AutoRuleKind[] | null {
+  if (typeof value === 'string') {
+    const kind = parseAutoRuleKind(value)
+    return kind ? [kind] : null
+  }
+
+  if (isRecord(value)) {
+    const kindRaw = value.kind
+    if (typeof kindRaw === 'string') {
+      const kind = parseAutoRuleKind(kindRaw)
+      return kind ? [kind] : null
+    }
+    if (Array.isArray(kindRaw)) {
+      const kinds = kindRaw.map(parseAutoRuleKind).filter(Boolean) as AutoRuleKind[]
+      return kinds.length > 0 ? kinds : null
+    }
+  }
+
+  return null
+}
+
 function assertNoComments(raw: string, path: string): void {
   let inString: '"' | "'" | null = null
   let escaped = false
@@ -141,9 +173,15 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
 
   const auto = (() => {
     const value = parsed.auto
-    if (!isRecord(value)) return undefined
-    const rulesRaw = value.rules
+
+    const rulesRaw = (() => {
+      if (Array.isArray(value)) return value
+      if (!isRecord(value)) return null
+      return Array.isArray(value.rules) ? value.rules : null
+    })()
+
     if (!Array.isArray(rulesRaw)) return undefined
+
     const rules: AutoRule[] = []
     for (const entry of rulesRaw) {
       if (!isRecord(entry)) continue
@@ -151,36 +189,44 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       if (!Array.isArray(candidatesRaw) || candidatesRaw.length === 0) continue
       const candidates: AutoRuleCandidate[] = []
       for (const c of candidatesRaw) {
-        if (!isRecord(c)) continue
-        const modelId = typeof c.model === 'string' ? c.model : null
+        const modelId =
+          typeof c === 'string'
+            ? c
+            : isRecord(c) && typeof c.model === 'string'
+              ? c.model
+              : null
         if (!modelId || modelId.trim().length === 0) continue
-        const openrouterProviders = Array.isArray(c.openrouterProviders)
-          ? c.openrouterProviders.filter((p) => typeof p === 'string' && p.trim().length > 0)
-          : undefined
-        const score = isRecord(c.score)
-          ? {
-              quality: typeof c.score.quality === 'number' ? c.score.quality : undefined,
-              speed: typeof c.score.speed === 'number' ? c.score.speed : undefined,
-              cost: typeof c.score.cost === 'number' ? c.score.cost : undefined,
-            }
-          : undefined
-        candidates.push({ model: modelId, ...(openrouterProviders ? { openrouterProviders } : {}), ...(score ? { score } : {}) })
+
+        const openrouterProviders =
+          isRecord(c) && Array.isArray(c.openrouterProviders)
+            ? c.openrouterProviders.filter((p) => typeof p === 'string' && p.trim().length > 0)
+            : undefined
+        const score =
+          isRecord(c) && isRecord(c.score)
+            ? {
+                quality: typeof c.score.quality === 'number' ? c.score.quality : undefined,
+                speed: typeof c.score.speed === 'number' ? c.score.speed : undefined,
+                cost: typeof c.score.cost === 'number' ? c.score.cost : undefined,
+              }
+            : undefined
+
+        candidates.push({
+          model: modelId,
+          ...(openrouterProviders ? { openrouterProviders } : {}),
+          ...(score ? { score } : {}),
+        })
       }
       if (candidates.length === 0) continue
-      const when = isRecord(entry.when)
-        ? {
-            kind:
-              entry.when.kind === 'text' ||
-              entry.when.kind === 'website' ||
-              entry.when.kind === 'youtube' ||
-              entry.when.kind === 'image' ||
-              entry.when.kind === 'video' ||
-              entry.when.kind === 'file'
-                ? (entry.when.kind as AutoRuleKind)
-                : undefined,
-          }
-        : undefined
-      rules.push({ ...(when ? { when } : {}), candidates })
+
+      const whenKinds = parseAutoRuleKinds(entry.when)
+      if (!whenKinds) {
+        rules.push({ candidates })
+        continue
+      }
+
+      for (const kind of whenKinds) {
+        rules.push({ when: { kind }, candidates })
+      }
     }
     return rules.length > 0 ? { rules } : undefined
   })()
