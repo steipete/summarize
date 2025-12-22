@@ -34,4 +34,26 @@ describe('config error handling', () => {
 
     expect(() => loadSummarizeConfig({ env: { HOME: root } })).toThrow(/expected an object/)
   })
+
+  it('throws when auto is not an array', () => {
+    const root = mkdtempSync(join(tmpdir(), 'summarize-config-'))
+    const configPath = join(root, '.summarize', 'config.json')
+    mkdirSync(join(root, '.summarize'), { recursive: true })
+    writeFileSync(configPath, JSON.stringify({ model: 'auto', auto: { rules: [] } }), 'utf8')
+
+    expect(() => loadSummarizeConfig({ env: { HOME: root } })).toThrow(/\"auto\" must be an array/i)
+  })
+
+  it('throws when auto[].when is not a string', () => {
+    const root = mkdtempSync(join(tmpdir(), 'summarize-config-'))
+    const configPath = join(root, '.summarize', 'config.json')
+    mkdirSync(join(root, '.summarize'), { recursive: true })
+    writeFileSync(
+      configPath,
+      JSON.stringify({ model: 'auto', auto: [{ when: { kind: 'video' }, candidates: ['openai/gpt-5-nano'] }] }),
+      'utf8'
+    )
+
+    expect(() => loadSummarizeConfig({ env: { HOME: root } })).toThrow(/auto\[\]\.when.*must be a string/i)
+  })
 })

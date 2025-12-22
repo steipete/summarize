@@ -34,7 +34,7 @@ OpenRouter provider ordering:
 
 ## How selection works
 
-- Uses the order you provide in `auto.rules[].candidates[]`.
+- Uses the order you provide in `auto[].candidates[]`.
 - Filters out candidates that can’t fit the prompt (max input tokens, LiteLLM catalog).
 - For a native candidate, auto mode may add an OpenRouter fallback attempt right after it (when `OPENROUTER_API_KEY` is set and video understanding isn’t required).
 
@@ -61,7 +61,7 @@ Example:
       "candidates": ["google/gemini-3-flash-preview"]
     },
     {
-      "when": { "kind": ["website", "youtube"] },
+      "when": "website, youtube",
       "candidates": ["openai/gpt-5-nano", "xai/grok-4-fast-non-reasoning"]
     },
     {

@@ -44,7 +44,7 @@ Additional keys (optional):
       "candidates": ["google/gemini-3-flash-preview"]
     },
     {
-      "when": { "kind": ["website", "youtube"] },
+      "when": "website, youtube",
       "candidates": ["openai/gpt-5-nano", "xai/grok-4-fast-non-reasoning"]
     },
     {

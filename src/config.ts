@@ -59,25 +59,26 @@ function parseAutoRuleKind(value: unknown): AutoRuleKind | null {
     : null
 }
 
-function parseAutoRuleKinds(value: unknown): AutoRuleKind[] | null {
-  if (typeof value === 'string') {
-    const kind = parseAutoRuleKind(value)
-    return kind ? [kind] : null
+function parseWhenKinds(text: string, path: string): AutoRuleKind[] {
+  const rawParts = text
+    .split(/[,\s]+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0)
+
+  if (rawParts.length === 0) {
+    throw new Error(`Invalid config file ${path}: "when" must not be empty.`)
   }
 
-  if (isRecord(value)) {
-    const kindRaw = value.kind
-    if (typeof kindRaw === 'string') {
-      const kind = parseAutoRuleKind(kindRaw)
-      return kind ? [kind] : null
+  const kinds: AutoRuleKind[] = []
+  for (const part of rawParts) {
+    const kind = parseAutoRuleKind(part)
+    if (!kind) {
+      throw new Error(`Invalid config file ${path}: unknown "when" kind "${part}".`)
     }
-    if (Array.isArray(kindRaw)) {
-      const kinds = kindRaw.map(parseAutoRuleKind).filter(Boolean) as AutoRuleKind[]
-      return kinds.length > 0 ? kinds : null
-    }
+    if (!kinds.includes(kind)) kinds.push(kind)
   }
 
-  return null
+  return kinds
 }
 
 function assertNoComments(raw: string, path: string): void {
@@ -174,16 +175,13 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
   const auto = (() => {
     const value = parsed.auto
 
-    const rulesRaw = (() => {
-      if (Array.isArray(value)) return value
-      if (!isRecord(value)) return null
-      return Array.isArray(value.rules) ? value.rules : null
-    })()
-
-    if (!Array.isArray(rulesRaw)) return undefined
+    if (typeof value === 'undefined') return undefined
+    if (!Array.isArray(value)) {
+      throw new Error(`Invalid config file ${path}: "auto" must be an array.`)
+    }
 
     const rules: AutoRule[] = []
-    for (const entry of rulesRaw) {
+    for (const entry of value) {
       if (!isRecord(entry)) continue
       const candidatesRaw = entry.candidates
       if (!Array.isArray(candidatesRaw) || candidatesRaw.length === 0) continue
@@ -218,12 +216,16 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       }
       if (candidates.length === 0) continue
 
-      const whenKinds = parseAutoRuleKinds(entry.when)
-      if (!whenKinds) {
+      if (typeof entry.when === 'undefined') {
         rules.push({ candidates })
         continue
       }
 
+      if (typeof entry.when !== 'string') {
+        throw new Error(`Invalid config file ${path}: "auto[].when" must be a string.`)
+      }
+
+      const whenKinds = parseWhenKinds(entry.when, path)
       for (const kind of whenKinds) {
         rules.push({ when: { kind }, candidates })
       }
