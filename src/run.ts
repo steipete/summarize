@@ -1178,7 +1178,7 @@ export async function runCli(
   ;(globalThis as unknown as { AI_SDK_LOG_WARNINGS?: boolean }).AI_SDK_LOG_WARNINGS = false
 
   const normalizedArgv = argv.filter((arg) => arg !== '--')
-  if (normalizedArgv[0]?.toLowerCase() === 'generate-free') {
+  if (normalizedArgv[0]?.toLowerCase() === 'refresh-free') {
     const verbose = normalizedArgv.includes('--verbose') || normalizedArgv.includes('--debug')
     const help =
       normalizedArgv.includes('--help') ||
@@ -1203,7 +1203,7 @@ export async function runCli(
     if (help) {
       stdout.write(
         [
-          'Usage: summarizer generate-free [--runs 3] [--smart 3] [--verbose]',
+          'Usage: summarizer refresh-free [--runs 3] [--smart 3] [--verbose]',
           '',
           'Writes ~/.summarize/config.json (models.free) with working OpenRouter :free candidates.',
         ].join('\n') + '\n'
@@ -2362,7 +2362,7 @@ export async function runCli(
         if (!isNamedModelSelection || !wantsFreeNamedModel) return message
         return (
           `${message}\n` +
-          `Tip: run "summarize generate-free" to refresh the free model candidates (writes ~/.summarize/config.json).`
+          `Tip: run "summarize refresh-free" to refresh the free model candidates (writes ~/.summarize/config.json).`
         )
       }
 
@@ -3524,7 +3524,7 @@ export async function runCli(
         if (!isNamedModelSelection || !wantsFreeNamedModel) return message
         return (
           `${message}\n` +
-          `Tip: run "summarize generate-free" to refresh the free model candidates (writes ~/.summarize/config.json).`
+          `Tip: run "summarize refresh-free" to refresh the free model candidates (writes ~/.summarize/config.json).`
         )
       }
 

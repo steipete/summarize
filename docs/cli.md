@@ -85,7 +85,7 @@ Notes:
 To regenerate the candidate list (and persist it in your config):
 
 ```bash
-summarize generate-free
+summarize refresh-free
 ```
 
 Options:

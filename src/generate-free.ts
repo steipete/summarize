@@ -163,7 +163,7 @@ export async function generateFree({
       ? env.OPENROUTER_API_KEY.trim()
       : null
   if (!openrouterKey) {
-    throw new Error('Missing OPENROUTER_API_KEY (required for generate-free)')
+    throw new Error('Missing OPENROUTER_API_KEY (required for refresh-free)')
   }
 
   const resolved: GenerateFreeOptions = {

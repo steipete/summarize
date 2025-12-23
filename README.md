@@ -244,7 +244,7 @@ OpenRouter (OpenAI-compatible):
 - Prefer forcing OpenRouter per model id: `--model openrouter/<author>/<slug>` (e.g. `openrouter/meta-llama/llama-3.1-8b-instruct:free`)
 - Built-in preset: `--model free` (uses a default set of OpenRouter `:free` models).
 
-### `summarize generate-free`
+### `summarize refresh-free`
 
 Regenerates the `free` preset (writes `models.free` into `~/.summarize/config.json`) by:
 
@@ -256,7 +256,7 @@ Regenerates the `free` preset (writes `models.free` into `~/.summarize/config.js
 If `--model free` stops working (rate limits, allowed-provider restrictions, models removed), run:
 
 ```bash
-summarize generate-free
+summarize refresh-free
 ```
 
 Flags:

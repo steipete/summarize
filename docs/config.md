@@ -76,7 +76,7 @@ Define presets you can select via `--model <preset>`:
 Notes:
 
 - `auto` is reserved and can’t be defined as a preset.
-- `free` is built-in (OpenRouter `:free` candidates). Override it by defining `models.free` in your config, or regenerate it via `summarize generate-free`.
+- `free` is built-in (OpenRouter `:free` candidates). Override it by defining `models.free` in your config, or regenerate it via `summarize refresh-free`.
 
 Use a preset as your default `model`:
 
