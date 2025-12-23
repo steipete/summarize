@@ -59,12 +59,12 @@ describe('config loading', () => {
     })
   })
 
-  it('supports model shorthand strings ("auto", "free", provider/model)', () => {
+  it('supports model shorthand strings ("auto", bag, provider/model)', () => {
     const { root, configPath } = writeJsonConfig({ model: 'auto' })
     expect(loadSummarizeConfig({ env: { HOME: root } }).config).toEqual({ model: { mode: 'auto' } })
 
-    writeFileSync(configPath, JSON.stringify({ model: 'free' }), 'utf8')
-    expect(loadSummarizeConfig({ env: { HOME: root } }).config).toEqual({ model: { mode: 'free' } })
+    writeFileSync(configPath, JSON.stringify({ model: 'mybag' }), 'utf8')
+    expect(loadSummarizeConfig({ env: { HOME: root } }).config).toEqual({ model: { bag: 'mybag' } })
 
     writeFileSync(configPath, JSON.stringify({ model: 'openai/gpt-5-mini' }), 'utf8')
     expect(loadSummarizeConfig({ env: { HOME: root } }).config).toEqual({
@@ -123,9 +123,34 @@ describe('config loading', () => {
     )
   })
 
-  it('rejects model configs without id or mode', () => {
-    const { root } = writeJsonConfig({ model: { rules: [] } })
+  it('rejects model configs without id, bag, or auto mode', () => {
+    const { root } = writeJsonConfig({ model: {} })
     expect(() => loadSummarizeConfig({ env: { HOME: root } })).toThrow(/must include either "id"/)
+  })
+
+  it('loads named models (bags alias)', () => {
+    const { root } = writeJsonConfig({
+      model: 'auto',
+      bags: {
+        fast: { id: 'openai/gpt-5-mini' },
+        or: 'openrouter/openai/gpt-5-mini',
+      },
+    })
+
+    expect(loadSummarizeConfig({ env: { HOME: root } }).config).toEqual({
+      model: { mode: 'auto' },
+      models: {
+        fast: { id: 'openai/gpt-5-mini' },
+        or: { id: 'openrouter/openai/gpt-5-mini' },
+      },
+    })
+  })
+
+  it('rejects reserved bag name "auto"', () => {
+    const { root } = writeJsonConfig({
+      bags: { auto: { id: 'openai/gpt-5-mini' } },
+    })
+    expect(() => loadSummarizeConfig({ env: { HOME: root } })).toThrow(/auto.*reserved/i)
   })
 
   it('rejects non-array model.rules', () => {

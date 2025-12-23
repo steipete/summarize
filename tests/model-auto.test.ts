@@ -12,7 +12,6 @@ describe('auto model selection', () => {
       },
     }
     const attempts = buildAutoModelAttempts({
-      mode: 'auto',
       kind: 'text',
       promptTokens: 100,
       desiredOutputTokens: 50,
@@ -34,7 +33,6 @@ describe('auto model selection', () => {
       model: { mode: 'auto', rules: [{ candidates: ['openai/gpt-5-mini'] }] },
     }
     const attempts = buildAutoModelAttempts({
-      mode: 'auto',
       kind: 'text',
       promptTokens: 100,
       desiredOutputTokens: 50,
@@ -55,7 +53,6 @@ describe('auto model selection', () => {
       model: { mode: 'auto', rules: [{ candidates: ['google/gemini-3-flash-preview'] }] },
     }
     const attempts = buildAutoModelAttempts({
-      mode: 'auto',
       kind: 'video',
       promptTokens: 100,
       desiredOutputTokens: 50,
@@ -74,7 +71,6 @@ describe('auto model selection', () => {
       model: { mode: 'auto', rules: [{ candidates: ['openrouter/openai/gpt-5-nano'] }] },
     }
     const attempts = buildAutoModelAttempts({
-      mode: 'auto',
       kind: 'text',
       promptTokens: 100,
       desiredOutputTokens: 50,
@@ -97,7 +93,6 @@ describe('auto model selection', () => {
       },
     }
     const attempts = buildAutoModelAttempts({
-      mode: 'auto',
       kind: 'text',
       promptTokens: 100,
       desiredOutputTokens: 50,
@@ -130,7 +125,6 @@ describe('auto model selection', () => {
     }
 
     const attempts = buildAutoModelAttempts({
-      mode: 'auto',
       kind: 'text',
       promptTokens: 200,
       desiredOutputTokens: 50,
@@ -142,38 +136,6 @@ describe('auto model selection', () => {
     })
 
     expect(attempts[0]?.userModelId).toBe('openai/gpt-5-mini')
-  })
-
-  it('free mode only keeps openrouter/...:free candidates', () => {
-    const config: SummarizeConfig = {
-      model: {
-        mode: 'free',
-        rules: [
-          {
-            candidates: [
-              'openrouter/allenai/olmo-3.1-32b-think:free',
-              'openrouter/allenai/olmo-3.1-32b-think',
-            ],
-          },
-        ],
-      },
-    }
-
-    const attempts = buildAutoModelAttempts({
-      mode: 'free',
-      kind: 'website',
-      promptTokens: 100,
-      desiredOutputTokens: 50,
-      requiresVideoUnderstanding: false,
-      env: { OPENROUTER_API_KEY: 'sk-or-test' },
-      config,
-      catalog: null,
-      openrouterProvidersFromEnv: null,
-    })
-
-    expect(attempts).toHaveLength(1)
-    expect(attempts[0]?.userModelId).toBe('openrouter/allenai/olmo-3.1-32b-think:free')
-    expect(attempts[0]?.forceOpenRouter).toBe(true)
   })
 
   it('filters candidates by LiteLLM max input tokens (skips too-small context)', () => {
@@ -190,7 +152,6 @@ describe('auto model selection', () => {
     }
 
     const attempts = buildAutoModelAttempts({
-      mode: 'auto',
       kind: 'text',
       promptTokens: 100,
       desiredOutputTokens: 50,
@@ -216,7 +177,6 @@ describe('auto model selection', () => {
     }
 
     const attemptsWebsite = buildAutoModelAttempts({
-      mode: 'auto',
       kind: 'website',
       promptTokens: 100,
       desiredOutputTokens: 50,
@@ -229,7 +189,6 @@ describe('auto model selection', () => {
     expect(attemptsWebsite[0]?.userModelId).toBe('openai/gpt-5-nano')
 
     const attemptsText = buildAutoModelAttempts({
-      mode: 'auto',
       kind: 'text',
       promptTokens: 100,
       desiredOutputTokens: 50,
@@ -244,7 +203,6 @@ describe('auto model selection', () => {
 
   it('does not prepend CLI candidates unless enabled', () => {
     const attempts = buildAutoModelAttempts({
-      mode: 'auto',
       kind: 'text',
       promptTokens: 100,
       desiredOutputTokens: 50,
@@ -265,7 +223,6 @@ describe('auto model selection', () => {
       model: { mode: 'auto', rules: [{ candidates: ['openai/gpt-5-mini'] }] },
     }
     const attempts = buildAutoModelAttempts({
-      mode: 'auto',
       kind: 'text',
       promptTokens: 100,
       desiredOutputTokens: 50,

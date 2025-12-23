@@ -117,7 +117,7 @@ npx -y @steipete/summarize <input> [flags]
 
 - `--model <provider/model>`: which model to use (defaults to `auto`)
 - `--model auto`: automatic model selection + fallback (default)
-- `--model free` (alias: `--model 3`): OpenRouter `:free` models only
+- `--model <name>`: use a config-defined model (see “Configuration”)
 - `--timeout <duration>`: `30s`, `2m`, `5000ms` (default `2m`)
 - `--retries <count>`: LLM retry attempts on timeout (default `1`)
 - `--length short|medium|long|xl|xxl|<chars>`
@@ -132,7 +132,7 @@ npx -y @steipete/summarize <input> [flags]
   - Deprecated alias: `--extract-only`
 - `--json`: machine-readable output with diagnostics, prompt, `metrics`, and optional summary
 - `--verbose`: debug/diagnostics on stderr
-- `--metrics off|on|detailed`: metrics output (default `on`; `detailed` prints a breakdown to stderr)
+- `--metrics off|on|detailed`: metrics output (default `on`; `detailed` adds a compact 2nd-line breakdown on stderr)
 
 ## Auto model ordering
 
@@ -214,8 +214,8 @@ Shorthand (equivalent):
 Also supported:
 
 - `model: { "mode": "auto" }` (automatic model selection + fallback; see `docs/model-auto.md`)
-- `model: { "mode": "free" }` (OpenRouter `:free` models only; alias: `--model 3`)
 - `model.rules` (customize candidates / ordering)
+- `models` (define named models selectable via `--model <name>`)
 - `media.videoMode: "auto"|"transcript"|"understand"`
 
 Note: the config is parsed leniently (JSON5), but **comments are not allowed**.
@@ -250,7 +250,7 @@ OPENROUTER_API_KEY=sk-or-... summarize "https://example.com" --model openrouter/
 ```
 
 If your OpenRouter account enforces an allowed-provider list, make sure at least one provider
-is allowed for the selected model. (`--model free` prints the exact providers to allow when routing fails.)
+is allowed for the selected model. (When routing fails, `summarize` prints the exact providers to allow.)
 
 Legacy: `OPENAI_BASE_URL=https://openrouter.ai/api/v1` (and either `OPENAI_API_KEY` or `OPENROUTER_API_KEY`) also works.
 

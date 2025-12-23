@@ -75,7 +75,7 @@ describe('cli config precedence', () => {
     expect(createOpenAIMock).toHaveBeenCalledTimes(1)
   })
 
-  it('uses config file model mode "free" when --model and SUMMARIZE_MODEL are absent', async () => {
+  it('uses config file model bag when --model and SUMMARIZE_MODEL are absent', async () => {
     generateTextMock.mockReset().mockResolvedValue({ text: 'OK' })
     createOpenAIMock.mockClear()
 
@@ -92,7 +92,19 @@ describe('cli config precedence', () => {
     const tempRoot = mkdtempSync(join(tmpdir(), 'summarize-cli-config-'))
     const configPath = join(tempRoot, '.summarize', 'config.json')
     mkdirSync(join(tempRoot, '.summarize'), { recursive: true })
-    writeFileSync(configPath, JSON.stringify({ model: 'free' }), 'utf8')
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        model: 'mybag',
+        bags: {
+          mybag: {
+            mode: 'auto',
+            rules: [{ candidates: ['openai/gpt-5.2'] }],
+          },
+        },
+      }),
+      'utf8'
+    )
 
     const stdout = captureStream()
 
@@ -104,7 +116,7 @@ describe('cli config precedence', () => {
     })
 
     const parsed = JSON.parse(stdout.getText()) as { input: { model: string } }
-    expect(parsed.input.model).toBe('free')
+    expect(parsed.input.model).toBe('mybag')
 
     // --extract means no LLM calls; ensure we didn't try to init a provider.
     expect(createOpenAIMock).toHaveBeenCalledTimes(0)

@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { Writable } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -13,11 +16,21 @@ const noopStream = () =>
   })
 
 describe('cli missing API key errors', () => {
-  it('errors when --model free is set without OPENROUTER_API_KEY', async () => {
+  it('errors when a bag uses OpenRouter but OPENROUTER_API_KEY is missing', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'summarize-missing-key-'))
+    mkdirSync(join(root, '.summarize'), { recursive: true })
+    writeFileSync(
+      join(root, '.summarize', 'config.json'),
+      JSON.stringify({
+        bags: { free: { mode: 'auto', rules: [{ candidates: ['openrouter/openai/gpt-5-mini'] }] } },
+      }),
+      'utf8'
+    )
+
     await expect(
       runCli(['--model', 'free', '--timeout', '2s', 'https://example.com'], {
-        env: {},
-        fetch: vi.fn() as unknown as typeof fetch,
+        env: { HOME: root },
+        fetch: vi.fn(async () => new Response('ok', { status: 200 })) as unknown as typeof fetch,
         stdout: noopStream(),
         stderr: noopStream(),
       })

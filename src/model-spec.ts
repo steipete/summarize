@@ -37,10 +37,7 @@ export type FixedModelSpec =
       cliModel: string | null
     }
 
-export type RequestedModel =
-  | { kind: 'auto' }
-  | { kind: 'free' }
-  | ({ kind: 'fixed' } & FixedModelSpec)
+export type RequestedModel = { kind: 'auto' } | ({ kind: 'fixed' } & FixedModelSpec)
 
 export function parseRequestedModelId(raw: string): RequestedModel {
   const trimmed = raw.trim()
@@ -48,7 +45,6 @@ export function parseRequestedModelId(raw: string): RequestedModel {
 
   const lower = trimmed.toLowerCase()
   if (lower === 'auto') return { kind: 'auto' }
-  if (lower === 'free' || lower === '3') return { kind: 'free' }
 
   if (lower.startsWith('openrouter/')) {
     const openrouterModelId = trimmed.slice('openrouter/'.length).trim()
@@ -98,6 +94,12 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       cliProvider,
       cliModel,
     }
+  }
+
+  if (!trimmed.includes('/')) {
+    throw new Error(
+      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., anthropic/..., xai/..., openrouter/... or cli/....`
+    )
   }
 
   const userModelId = normalizeGatewayStyleModelId(trimmed)

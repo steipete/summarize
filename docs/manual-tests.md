@@ -1,6 +1,6 @@
 # Manual tests
 
-Goal: sanity-check auto/free selection + fallbacks end-to-end.
+Goal: sanity-check auto selection + model bags end-to-end.
 
 ## Setup
 
@@ -21,12 +21,11 @@ Tip: use `--verbose` to see model attempts + the chosen model.
 - Missing-key skip (configure only one key; should skip other providers, still succeed):
   - Set only `OPENAI_API_KEY`, then run a website summary; should not try Gemini/Anthropic/XAI.
 
-## Free mode
+## Model bags
 
-- Free-only OpenRouter (`--model free` or `--model 3`):
-- `summarize --model free --max-output-tokens 200 https://example.com` (note: OpenRouter ignores the hard cap)
-- No `OPENROUTER_API_KEY` (should print extracted text; footer should mention extraction + “no model”):
-  - Unset `OPENROUTER_API_KEY` then rerun.
+- Define a bag in `~/.summarize/config.json` (see `docs/config.md` → “Model bags”), then:
+  - `summarize --model <bag> --max-output-tokens 200 https://example.com`
+  - If the bag contains OpenRouter models, ensure `OPENROUTER_API_KEY` is set.
 
 ## Images
 

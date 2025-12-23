@@ -51,12 +51,23 @@ export type ModelConfig =
       id: string
     }
   | {
-      mode: 'auto' | 'free'
+      mode: 'auto'
       rules?: AutoRule[]
     }
+  | { bag: string }
 
 export type SummarizeConfig = {
   model?: ModelConfig
+  /**
+   * Named model presets selectable via `--model <name>`.
+   *
+   * Note: `auto` is reserved and cannot be defined here.
+   */
+  models?: Record<string, ModelConfig>
+  /**
+   * Deprecated alias for `models`.
+   */
+  bags?: Record<string, ModelConfig>
   media?: {
     videoMode?: VideoMode
   }
@@ -315,46 +326,61 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
     throw new Error(`Invalid config file ${path}: expected an object at the top level`)
   }
 
-  const model = (() => {
-    const raw = parsed.model
+  const parseModelConfig = (raw: unknown, label: string): ModelConfig | undefined => {
     if (typeof raw === 'undefined') return undefined
 
     // Shorthand:
     // - "auto" -> { mode: "auto" }
-    // - "free" -> { mode: "free" }
     // - "<provider>/<model>" or "openrouter/<provider>/<model>" -> { id: "..." }
+    // - "<bag>" -> { bag: "<bag>" }
     if (typeof raw === 'string') {
       const value = raw.trim()
       if (value.length === 0) {
-        throw new Error(`Invalid config file ${path}: "model" must not be empty.`)
+        throw new Error(`Invalid config file ${path}: "${label}" must not be empty.`)
       }
       if (value.toLowerCase() === 'auto') {
         return { mode: 'auto' } satisfies ModelConfig
       }
-      if (value.toLowerCase() === 'free') {
-        return { mode: 'free' } satisfies ModelConfig
+      if (value.includes('/')) {
+        return { id: value } satisfies ModelConfig
       }
-      return { id: value } satisfies ModelConfig
+      return { bag: value } satisfies ModelConfig
     }
 
     if (!isRecord(raw)) {
-      throw new Error(`Invalid config file ${path}: "model" must be an object.`)
+      throw new Error(`Invalid config file ${path}: "${label}" must be an object.`)
+    }
+
+    if (typeof raw.bag === 'string') {
+      const bag = raw.bag.trim()
+      if (bag.length === 0) {
+        throw new Error(`Invalid config file ${path}: "${label}.bag" must not be empty.`)
+      }
+      if (bag.toLowerCase() === 'auto') {
+        throw new Error(`Invalid config file ${path}: "${label}.bag" must not be "auto".`)
+      }
+      return { bag } satisfies ModelConfig
     }
 
     if (typeof raw.id === 'string') {
       const id = raw.id.trim()
       if (id.length === 0) {
-        throw new Error(`Invalid config file ${path}: "model.id" must not be empty.`)
+        throw new Error(`Invalid config file ${path}: "${label}.id" must not be empty.`)
+      }
+      if (!id.includes('/')) {
+        throw new Error(
+          `Invalid config file ${path}: "${label}.id" must be provider-prefixed (e.g. "openai/gpt-5-mini").`
+        )
       }
       return { id } satisfies ModelConfig
     }
 
-    if (raw.mode === 'auto' || raw.mode === 'free') {
-      const mode = raw.mode
+    const hasRules = typeof raw.rules !== 'undefined'
+    if (raw.mode === 'auto' || (!('mode' in raw) && hasRules)) {
       const rules = (() => {
         if (typeof raw.rules === 'undefined') return undefined
         if (!Array.isArray(raw.rules)) {
-          throw new Error(`Invalid config file ${path}: "model.rules" must be an array.`)
+          throw new Error(`Invalid config file ${path}: "${label}.rules" must be an array.`)
         }
         const rulesParsed: AutoRule[] = []
         for (const entry of raw.rules) {
@@ -366,7 +392,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
           const hasBands = typeof entry.bands !== 'undefined'
           if (hasCandidates && hasBands) {
             throw new Error(
-              `Invalid config file ${path}: "model.rules[]" must use either "candidates" or "bands" (not both).`
+              `Invalid config file ${path}: "${label}.rules[]" must use either "candidates" or "bands" (not both).`
             )
           }
 
@@ -379,7 +405,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
           if (hasBands) {
             if (!Array.isArray(entry.bands) || entry.bands.length === 0) {
               throw new Error(
-                `Invalid config file ${path}: "model.rules[].bands" must be a non-empty array.`
+                `Invalid config file ${path}: "${label}.rules[].bands" must be a non-empty array.`
               )
             }
             const bands = entry.bands.map((b) => parseTokenBand(b, path))
@@ -388,17 +414,61 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
           }
 
           throw new Error(
-            `Invalid config file ${path}: "model.rules[]" must include "candidates" or "bands".`
+            `Invalid config file ${path}: "${label}.rules[]" must include "candidates" or "bands".`
           )
         }
         return rulesParsed
       })()
-      return { mode, ...(rules ? { rules } : {}) } satisfies ModelConfig
+      return { mode: 'auto', ...(rules ? { rules } : {}) } satisfies ModelConfig
     }
 
     throw new Error(
-      `Invalid config file ${path}: "model" must include either "id" or { "mode": "auto"|"free" }.`
+      `Invalid config file ${path}: "${label}" must include either "id", "bag", or { "mode": "auto" }.`
     )
+  }
+
+  const model = (() => {
+    return parseModelConfig(parsed.model, 'model')
+  })()
+
+  const models = (() => {
+    const root = parsed as Record<string, unknown>
+    const raw = typeof root.models !== 'undefined' ? root.models : root.bags
+    if (typeof raw === 'undefined') return undefined
+    if (!isRecord(raw)) {
+      throw new Error(`Invalid config file ${path}: "models" must be an object.`)
+    }
+
+    const out: Record<string, ModelConfig> = {}
+    const seen = new Set<string>()
+    for (const [keyRaw, value] of Object.entries(raw)) {
+      const key = keyRaw.trim()
+      if (!key) continue
+      const keyLower = key.toLowerCase()
+      if (keyLower === 'auto') {
+        throw new Error(`Invalid config file ${path}: model name "auto" is reserved.`)
+      }
+      if (seen.has(keyLower)) {
+        throw new Error(`Invalid config file ${path}: duplicate model name "${key}".`)
+      }
+      if (/\s/.test(key)) {
+        throw new Error(`Invalid config file ${path}: model name "${key}" must not contain spaces.`)
+      }
+      if (key.includes('/')) {
+        throw new Error(`Invalid config file ${path}: model name "${key}" must not include "/".`)
+      }
+      const parsedModel = parseModelConfig(value, `models.${key}`)
+      if (!parsedModel) continue
+      if ('bag' in parsedModel) {
+        throw new Error(
+          `Invalid config file ${path}: "models.${key}" must not reference another model.`
+        )
+      }
+      seen.add(keyLower)
+      out[key] = parsedModel
+    }
+
+    return Object.keys(out).length > 0 ? out : undefined
   })()
 
   const media = (() => {
@@ -463,7 +533,12 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
   })()
 
   return {
-    config: { ...(model ? { model } : {}), ...(media ? { media } : {}), ...(cli ? { cli } : {}) },
+    config: {
+      ...(model ? { model } : {}),
+      ...(models ? { models } : {}),
+      ...(media ? { media } : {}),
+      ...(cli ? { cli } : {}),
+    },
     path,
   }
 }

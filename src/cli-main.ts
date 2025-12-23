@@ -124,7 +124,11 @@ export async function runCliMain({
   handlePipeErrors(stdout, exit)
   handlePipeErrors(stderr, exit)
 
-  const verbose = argv.includes('--verbose') || argv.includes('--verbose=true')
+  const verbose =
+    argv.includes('--verbose') ||
+    argv.includes('--verbose=true') ||
+    argv.includes('--debug') ||
+    argv.includes('--debug=true')
 
   try {
     const mergedEnv = env === process.env ? { ...(await loadDotenvFromCwd()), ...env } : env

@@ -7,7 +7,6 @@ import {
 } from './pricing/litellm.js'
 
 export type AutoSelectionInput = {
-  mode: 'auto' | 'free'
   kind: AutoRuleKind
   promptTokens: number | null
   desiredOutputTokens: number | null
@@ -97,20 +96,6 @@ const DEFAULT_RULES: AutoRule[] = [
   },
 ]
 
-const DEFAULT_FREE_RULES: AutoRule[] = [
-  {
-    candidates: [
-      'openrouter/allenai/olmo-3.1-32b-think:free',
-      'openrouter/google/gemini-2.0-flash-exp:free',
-      'openrouter/openai/gpt-oss-20b:free',
-      'openrouter/mistralai/mistral-small-3.1-24b-instruct:free',
-      'openrouter/meta-llama/llama-3.3-70b-instruct:free',
-      'openrouter/google/gemma-3-12b-it:free',
-      'openrouter/deepseek/deepseek-r1-0528:free',
-    ],
-  },
-]
-
 const DEFAULT_CLI_MODELS: Record<CliProvider, string> = {
   claude: 'sonnet',
   codex: 'gpt-5.2',
@@ -151,12 +136,6 @@ function normalizeOpenRouterModelId(raw: string): string | null {
   if (trimmed.length === 0) return null
   if (!trimmed.includes('/')) return null
   return trimmed.toLowerCase()
-}
-
-function isOpenRouterFreeCandidate(modelId: string): boolean {
-  const lower = modelId.trim().toLowerCase()
-  if (!lower.startsWith('openrouter/')) return false
-  return lower.endsWith(':free')
 }
 
 function requiredEnvForCandidate(modelId: string): AutoModelAttempt['requiredEnv'] {
@@ -212,12 +191,10 @@ function tokenMatchesBand({
 }
 
 function resolveRuleCandidates({
-  mode,
   kind,
   promptTokens,
   config,
 }: {
-  mode: 'auto' | 'free'
   kind: AutoRuleKind
   promptTokens: number | null
   config: SummarizeConfig | null
@@ -227,13 +204,13 @@ function resolveRuleCandidates({
     if (
       model &&
       'mode' in model &&
-      model.mode === mode &&
+      model.mode === 'auto' &&
       Array.isArray(model.rules) &&
       model.rules.length > 0
     ) {
       return model.rules
     }
-    return mode === 'free' ? DEFAULT_FREE_RULES : DEFAULT_RULES
+    return DEFAULT_RULES
   })()
 
   for (const rule of rules) {
@@ -328,24 +305,16 @@ function isVideoUnderstandingCapable(modelId: string): boolean {
 
 export function buildAutoModelAttempts(input: AutoSelectionInput): AutoModelAttempt[] {
   const baseCandidates = resolveRuleCandidates({
-    mode: input.mode,
     kind: input.kind,
     promptTokens: input.promptTokens,
     config: input.config,
   })
-  const candidates =
-    input.mode === 'free'
-      ? baseCandidates
-      : prependCliCandidates({ candidates: baseCandidates, config: input.config })
+  const candidates = prependCliCandidates({ candidates: baseCandidates, config: input.config })
 
   const attempts: AutoModelAttempt[] = []
   for (const modelRawEntry of candidates) {
     const modelRaw = modelRawEntry.trim()
     if (modelRaw.length === 0) continue
-
-    if (input.mode === 'free' && !isOpenRouterFreeCandidate(modelRaw)) {
-      continue
-    }
 
     const explicitCli = isCandidateCli(modelRaw)
     const explicitOpenRouter = isCandidateOpenRouter(modelRaw)
@@ -459,10 +428,6 @@ export function buildAutoModelAttempts(input: AutoSelectionInput): AutoModelAtte
         openrouterProviders: input.openrouterProvidersFromEnv,
         transport: 'openrouter',
       })
-      continue
-    }
-
-    if (input.mode === 'free') {
       continue
     }
 

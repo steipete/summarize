@@ -90,7 +90,7 @@ describe('cli --json', () => {
       stderr,
     })
 
-    expect(stderrText).toContain('Finished in')
+    expect(stderrText).toContain('· auto')
     const parsed = JSON.parse(stdoutText) as {
       env: {
         hasXaiKey: boolean

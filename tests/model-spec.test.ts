@@ -7,9 +7,9 @@ describe('model spec parsing', () => {
     expect(() => parseRequestedModelId('   ')).toThrow(/Missing model id/)
   })
 
-  it('parses free mode', () => {
-    expect(parseRequestedModelId('free').kind).toBe('free')
-    expect(parseRequestedModelId('3').kind).toBe('free')
+  it('rejects unknown keyword-like model ids', () => {
+    expect(() => parseRequestedModelId('free')).toThrow(/Unknown model/)
+    expect(() => parseRequestedModelId('foobar')).toThrow(/Unknown model/)
   })
 
   it('parses cli model ids', () => {

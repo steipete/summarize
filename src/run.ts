@@ -9,7 +9,7 @@ import { countTokens } from 'gpt-tokenizer'
 import { createLiveRenderer, render as renderMarkdownAnsi } from 'markdansi'
 import mime from 'mime'
 import { normalizeTokenUsage, tallyCosts } from 'tokentally'
-import { type CliProvider, loadSummarizeConfig } from './config.js'
+import { type CliProvider, loadSummarizeConfig, type ModelConfig } from './config.js'
 import {
   buildAssetPromptMessages,
   classifyUrl,
@@ -166,7 +166,7 @@ async function buildOpenRouterNoAllowedProvidersMessage({
   const providersHint =
     allProviders.length > 0 ? ` Providers to allow: ${truncateList(allProviders, 10)}.` : ''
 
-  return `OpenRouter could not route any :free models with this API key (no allowed providers). Tried: ${tried}.${providersHint} (OpenRouter: Settings → API Keys → edit key → Allowed providers.)`
+  return `OpenRouter could not route any models with this API key (no allowed providers). Tried: ${tried}.${providersHint} Hint: increase --timeout (e.g. 10m) and/or use --debug/--verbose to see per-model failures. (OpenRouter: Settings → API Keys → edit key → Allowed providers.)`
 }
 
 function resolveTargetCharacters(
@@ -452,7 +452,7 @@ function buildProgram() {
     .option('--retries <count>', 'LLM retry attempts on timeout (default: 1).', '1')
     .option(
       '--model <model>',
-      'LLM model id: auto, free, cli/<provider>/<model>, xai/..., openai/..., google/..., anthropic/... or openrouter/<author>/<slug> (default: auto)',
+      'LLM model id: auto, <bag>, cli/<provider>/<model>, xai/..., openai/..., google/..., anthropic/... or openrouter/<author>/<slug> (default: auto)',
       undefined
     )
     .addOption(
@@ -475,6 +475,7 @@ function buildProgram() {
       'auto'
     )
     .option('--verbose', 'Print detailed progress info to stderr', false)
+    .option('--debug', 'Alias for --verbose (and defaults --metrics to detailed)', false)
     .addOption(
       new Option('--metrics <mode>', 'Metrics output: off, on, detailed')
         .choices(['off', 'on', 'detailed'])
@@ -804,7 +805,7 @@ ${heading('Examples')}
   ${cmd('summarize "https://example.com" --extract --format md --markdown-mode llm')} ${dim('# extracted markdown via LLM')}
   ${cmd('summarize "https://www.youtube.com/watch?v=I845O57ZSy4&t=11s" --extract --youtube web')}
   ${cmd('summarize "https://example.com" --length 20k --max-output-tokens 2k --timeout 2m --model openai/gpt-5-mini')}
-  ${cmd('OPENROUTER_API_KEY=... summarize "https://example.com" --model free')} ${dim('# OpenRouter free-tier models only')}
+  ${cmd('summarize "https://example.com" --model mybag')} ${dim('# config-defined bag')}
   ${cmd('summarize "https://example.com" --json --verbose')}
 
 ${heading('Env Vars')}
@@ -1037,6 +1038,7 @@ function writeFinishLine({
   model,
   report,
   costUsd,
+  detailed,
   extraParts,
   color,
 }: {
@@ -1045,6 +1047,7 @@ function writeFinishLine({
   model: string
   report: ReturnType<typeof buildRunMetricsReport>
   costUsd: number | null
+  detailed: boolean
   extraParts?: string[] | null
   color: boolean
 }): void {
@@ -1052,45 +1055,54 @@ function writeFinishLine({
   const completionTokens = sumNumbersOrNull(report.llm.map((row) => row.completionTokens))
   const totalTokens = sumNumbersOrNull(report.llm.map((row) => row.totalTokens))
 
-  const tokPart =
-    promptTokens !== null || completionTokens !== null || totalTokens !== null
-      ? `tok(i/o/t)=${promptTokens?.toLocaleString() ?? 'unknown'}/${completionTokens?.toLocaleString() ?? 'unknown'}/${totalTokens?.toLocaleString() ?? 'unknown'}`
-      : null
+  const hasAnyTokens = promptTokens !== null || completionTokens !== null || totalTokens !== null
+  const tokensPart = hasAnyTokens
+    ? `${promptTokens?.toLocaleString() ?? 'unknown'}/${completionTokens?.toLocaleString() ?? 'unknown'}/${totalTokens?.toLocaleString() ?? 'unknown'} (in/out/Σ)`
+    : null
 
-  const parts: string[] = [model]
-  if (costUsd != null) {
-    parts.push(`cost=${formatUSD(costUsd)}`)
-  }
-  if (tokPart) {
-    parts.push(tokPart)
-  }
-  if (extraParts && extraParts.length > 0) {
-    parts.push(...extraParts)
-  }
+  const summaryParts: Array<string | null> = [
+    formatElapsedMs(elapsedMs),
+    costUsd != null ? formatUSD(costUsd) : null,
+    model,
+    tokensPart,
+  ]
+  const line1 = summaryParts.filter((part): part is string => typeof part === 'string').join(' · ')
 
-  if (report.services.firecrawl.requests > 0) {
-    parts.push(`firecrawl=${report.services.firecrawl.requests}`)
-  }
-  if (report.services.apify.requests > 0) {
-    parts.push(`apify=${report.services.apify.requests}`)
-  }
+  const totalCalls = report.llm.reduce((sum, row) => sum + row.calls, 0)
 
-  const line = `Finished in ${formatElapsedMs(elapsedMs)} (${parts.join(' | ')})`
   stderr.write('\n')
-  stderr.write(`${ansi('1;32', line, color)}\n`)
-}
+  stderr.write(`${ansi('1;32', line1, color)}\n`)
+  if (detailed) {
+    const lenParts =
+      extraParts?.filter((part) => part.startsWith('input=') || part.startsWith('transcript=')) ??
+      []
+    const miscParts =
+      extraParts?.filter((part) => !part.startsWith('input=') && !part.startsWith('transcript=')) ??
+      []
 
-function buildDetailedMetricsParts(report: ReturnType<typeof buildRunMetricsReport>): string[] {
-  const calls = report.llm.reduce((sum, row) => sum + row.calls, 0)
-  if (calls <= 1) return []
-  return [`calls=${calls.toLocaleString()}`]
-}
+    const line2Segments: string[] = []
+    if (lenParts.length > 0) {
+      line2Segments.push(`len ${lenParts.join(' ')}`)
+    }
+    line2Segments.push(`calls=${totalCalls.toLocaleString()}`)
+    if (report.services.firecrawl.requests > 0 || report.services.apify.requests > 0) {
+      const svcParts: string[] = []
+      if (report.services.firecrawl.requests > 0) {
+        svcParts.push(`firecrawl=${report.services.firecrawl.requests.toLocaleString()}`)
+      }
+      if (report.services.apify.requests > 0) {
+        svcParts.push(`apify=${report.services.apify.requests.toLocaleString()}`)
+      }
+      line2Segments.push(`svc ${svcParts.join(' ')}`)
+    }
+    if (miscParts.length > 0) {
+      line2Segments.push(...miscParts)
+    }
 
-function mergeOptionalParts(a: string[] | null, b: string[] | null): string[] | null {
-  const left = a && a.length > 0 ? a : null
-  const right = b && b.length > 0 ? b : null
-  if (left && right) return [...left, ...right]
-  return left ?? right
+    if (line2Segments.length > 0) {
+      stderr.write(`${ansi('0;90', line2Segments.join(' | '), color)}\n`)
+    }
+  }
 }
 
 function formatCompactCount(value: number): string {
@@ -1210,8 +1222,14 @@ export async function runCli(
   const json = Boolean(program.opts().json)
   const streamMode = parseStreamMode(program.opts().stream as string)
   const renderMode = parseRenderMode(program.opts().render as string)
-  const verbose = Boolean(program.opts().verbose)
-  const metricsMode = parseMetricsMode(program.opts().metrics as string)
+  const debug = Boolean(program.opts().debug)
+  const verbose = Boolean(program.opts().verbose) || debug
+  const metricsExplicitlySet = normalizedArgv.some(
+    (arg) => arg === '--metrics' || arg.startsWith('--metrics=')
+  )
+  const metricsMode = parseMetricsMode(
+    debug && !metricsExplicitlySet ? 'detailed' : (program.opts().metrics as string)
+  )
   const metricsEnabled = metricsMode !== 'off'
   const metricsDetailed = metricsMode === 'detailed'
   const preprocessMode = parsePreprocessMode(program.opts().preprocess as string)
@@ -1437,6 +1455,16 @@ export async function runCli(
     return fetch(input as RequestInfo, init)
   }
 
+  const bagMap = (() => {
+    const raw = config?.models ?? config?.bags
+    if (!raw) return new Map<string, { name: string; model: ModelConfig }>()
+    const out = new Map<string, { name: string; model: ModelConfig }>()
+    for (const [name, model] of Object.entries(raw)) {
+      out.set(name.toLowerCase(), { name, model })
+    }
+    return out
+  })()
+
   const resolvedDefaultModel = (() => {
     if (typeof env.SUMMARIZE_MODEL === 'string' && env.SUMMARIZE_MODEL.trim().length > 0) {
       return env.SUMMARIZE_MODEL.trim()
@@ -1447,28 +1475,53 @@ export async function runCli(
         const id = modelFromConfig.id.trim()
         if (id.length > 0) return id
       }
+      if ('bag' in modelFromConfig && typeof modelFromConfig.bag === 'string') {
+        const bag = modelFromConfig.bag.trim()
+        if (bag.length > 0) return bag
+      }
       if ('mode' in modelFromConfig && modelFromConfig.mode === 'auto') return 'auto'
-      if ('mode' in modelFromConfig && modelFromConfig.mode === 'free') return 'free'
     }
     return 'auto'
   })()
 
-  const requestedModel: RequestedModel = parseRequestedModelId(
-    ((explicitModelArg?.trim() ?? '') || resolvedDefaultModel).trim()
-  )
-  const requestedModelLabel =
-    requestedModel.kind === 'auto'
-      ? 'auto'
-      : requestedModel.kind === 'free'
-        ? 'free'
-        : requestedModel.userModelId
-  const isFallbackModel = requestedModel.kind === 'auto' || requestedModel.kind === 'free'
+  const requestedModelInput = ((explicitModelArg?.trim() ?? '') || resolvedDefaultModel).trim()
+  const requestedModelInputLower = requestedModelInput.toLowerCase()
 
-  if (!extractMode && requestedModel.kind === 'free' && !openrouterConfigured) {
-    throw new Error(
-      'Missing OPENROUTER_API_KEY for --model free. Set OPENROUTER_API_KEY (or set OPENAI_BASE_URL to openrouter.ai and provide OPENAI_API_KEY).'
-    )
-  }
+  const bagMatch =
+    requestedModelInputLower !== 'auto' ? (bagMap.get(requestedModelInputLower) ?? null) : null
+  const bagModelConfig = bagMatch?.model ?? null
+  const isBagSelection = Boolean(bagMatch)
+
+  const configForModelSelection =
+    isBagSelection && bagModelConfig
+      ? ({ ...(configForCli ?? {}), model: bagModelConfig } as const)
+      : configForCli
+
+  const requestedModel: RequestedModel = (() => {
+    if (isBagSelection && bagModelConfig) {
+      if ('id' in bagModelConfig) return parseRequestedModelId(bagModelConfig.id)
+      if ('mode' in bagModelConfig && bagModelConfig.mode === 'auto') return { kind: 'auto' }
+      throw new Error(
+        `Invalid bag "${bagMatch?.name ?? requestedModelInput}": unsupported model config`
+      )
+    }
+
+    if (requestedModelInputLower !== 'auto' && !requestedModelInput.includes('/')) {
+      throw new Error(
+        `Unknown model "${requestedModelInput}". Define it as a bag in ${configPath ?? '~/.summarize/config.json'} under "bags", or use a provider-prefixed id like openai/...`
+      )
+    }
+
+    return parseRequestedModelId(requestedModelInput)
+  })()
+
+  const requestedModelLabel = isBagSelection
+    ? requestedModelInput
+    : requestedModel.kind === 'auto'
+      ? 'auto'
+      : requestedModel.userModelId
+
+  const isFallbackModel = requestedModel.kind === 'auto'
 
   const verboseColor = supportsColor(stderr, env)
   const effectiveStreamMode = (() => {
@@ -2080,13 +2133,12 @@ export async function runCli(
       if (isFallbackModel) {
         const catalog = await getLiteLlmCatalog()
         const all = buildAutoModelAttempts({
-          mode: requestedModel.kind === 'free' ? 'free' : 'auto',
           kind,
           promptTokens: promptTokensForAuto,
           desiredOutputTokens,
           requiresVideoUnderstanding,
           env: envForAuto,
-          config: configForCli,
+          config: configForModelSelection,
           catalog,
           openrouterProvidersFromEnv: null,
           cliAvailability,
@@ -2173,11 +2225,17 @@ export async function runCli(
     } | null = null
     let usedAttempt: ModelAttempt | null = null
     let lastError: unknown = null
+    let sawOpenRouterNoAllowedProviders = false
+    const missingRequiredEnvs = new Set<ModelAttempt['requiredEnv']>()
 
     for (const attempt of attempts) {
       const hasKey = envHasKeyFor(attempt.requiredEnv)
       if (!hasKey) {
         if (isFallbackModel) {
+          if (isBagSelection) {
+            missingRequiredEnvs.add(attempt.requiredEnv)
+            continue
+          }
           writeVerbose(
             stderr,
             verbose,
@@ -2201,6 +2259,13 @@ export async function runCli(
         break
       } catch (error) {
         lastError = error
+        if (
+          isBagSelection &&
+          error instanceof Error &&
+          /No allowed providers are available for the selected model/i.test(error.message)
+        ) {
+          sawOpenRouterNoAllowedProviders = true
+        }
         if (requestedModel.kind === 'fixed') {
           if (isUnsupportedAttachmentError(error)) {
             throw new Error(
@@ -2220,11 +2285,14 @@ export async function runCli(
     }
 
     if (!summaryResult || !usedAttempt) {
-      if (requestedModel.kind === 'free') {
+      if (isBagSelection) {
+        if (lastError === null && missingRequiredEnvs.size > 0) {
+          throw new Error(
+            `Missing ${Array.from(missingRequiredEnvs).sort().join(', ')} for --model ${requestedModelInput}.`
+          )
+        }
         if (lastError instanceof Error) {
-          if (
-            /No allowed providers are available for the selected model/i.test(lastError.message)
-          ) {
+          if (sawOpenRouterNoAllowedProviders) {
             const message = await buildOpenRouterNoAllowedProvidersMessage({
               attempts,
               fetchImpl: trackedFetch,
@@ -2234,7 +2302,7 @@ export async function runCli(
           }
           throw lastError
         }
-        throw new Error('No model available for --model free')
+        throw new Error(`No model available for --model ${requestedModelInput}`)
       }
       if (textContent) {
         clearProgressForStdout()
@@ -2315,7 +2383,8 @@ export async function runCli(
           model: usedAttempt.userModelId,
           report: finishReport,
           costUsd,
-          extraParts: metricsDetailed ? buildDetailedMetricsParts(finishReport) : null,
+          detailed: metricsDetailed,
+          extraParts: null,
           color: verboseColor,
         })
       }
@@ -2350,7 +2419,8 @@ export async function runCli(
         model: usedAttempt.userModelId,
         report,
         costUsd,
-        extraParts: metricsDetailed ? buildDetailedMetricsParts(report) : null,
+        detailed: metricsDetailed,
+        extraParts: null,
         color: verboseColor,
       })
     }
@@ -2581,8 +2651,8 @@ export async function runCli(
         const model = config?.model
         if (!model) return null
         if ('id' in model) return model.id
+        if ('bag' in model) return model.bag
         if ('mode' in model && model.mode === 'auto') return 'auto'
-        if ('mode' in model && model.mode === 'free') return 'free'
         return null
       })()
     )}`,
@@ -3134,12 +3204,8 @@ export async function runCli(
             model: requestedModelLabel,
             report: finishReport,
             costUsd,
-            extraParts: metricsDetailed
-              ? mergeOptionalParts(
-                  buildDetailedMetricsParts(finishReport),
-                  buildDetailedLengthPartsForExtracted(extracted)
-                )
-              : null,
+            detailed: metricsDetailed,
+            extraParts: metricsDetailed ? buildDetailedLengthPartsForExtracted(extracted) : null,
             color: verboseColor,
           })
         }
@@ -3157,12 +3223,8 @@ export async function runCli(
           model: requestedModelLabel,
           report,
           costUsd,
-          extraParts: metricsDetailed
-            ? mergeOptionalParts(
-                buildDetailedMetricsParts(report),
-                buildDetailedLengthPartsForExtracted(extracted)
-              )
-            : null,
+          detailed: metricsDetailed,
+          extraParts: metricsDetailed ? buildDetailedLengthPartsForExtracted(extracted) : null,
           color: verboseColor,
         })
       }
@@ -3223,12 +3285,8 @@ export async function runCli(
             model: requestedModelLabel,
             report: finishReport,
             costUsd,
-            extraParts: metricsDetailed
-              ? mergeOptionalParts(
-                  buildDetailedMetricsParts(finishReport),
-                  buildDetailedLengthPartsForExtracted(extracted)
-                )
-              : null,
+            detailed: metricsDetailed,
+            extraParts: metricsDetailed ? buildDetailedLengthPartsForExtracted(extracted) : null,
             color: verboseColor,
           })
         }
@@ -3246,12 +3304,8 @@ export async function runCli(
           model: requestedModelLabel,
           report,
           costUsd,
-          extraParts: metricsDetailed
-            ? mergeOptionalParts(
-                buildDetailedMetricsParts(report),
-                buildDetailedLengthPartsForExtracted(extracted)
-              )
-            : null,
+          detailed: metricsDetailed,
+          extraParts: metricsDetailed ? buildDetailedLengthPartsForExtracted(extracted) : null,
           color: verboseColor,
         })
       }
@@ -3265,13 +3319,12 @@ export async function runCli(
       if (isFallbackModel) {
         const catalog = await getLiteLlmCatalog()
         const list = buildAutoModelAttempts({
-          mode: requestedModel.kind === 'free' ? 'free' : 'auto',
           kind: kindForAuto,
           promptTokens,
           desiredOutputTokens,
           requiresVideoUnderstanding: false,
           env: envForAuto,
-          config: configForCli,
+          config: configForModelSelection,
           catalog,
           openrouterProvidersFromEnv: null,
           cliAvailability,
@@ -3331,11 +3384,17 @@ export async function runCli(
     } | null = null
     let usedAttempt: ModelAttempt | null = null
     let lastError: unknown = null
+    let sawOpenRouterNoAllowedProviders = false
+    const missingRequiredEnvs = new Set<ModelAttempt['requiredEnv']>()
 
     for (const attempt of attempts) {
       const hasKey = envHasKeyFor(attempt.requiredEnv)
       if (!hasKey) {
         if (isFallbackModel) {
+          if (isBagSelection) {
+            missingRequiredEnvs.add(attempt.requiredEnv)
+            continue
+          }
           writeVerbose(
             stderr,
             verbose,
@@ -3358,6 +3417,13 @@ export async function runCli(
         break
       } catch (error) {
         lastError = error
+        if (
+          isBagSelection &&
+          error instanceof Error &&
+          /No allowed providers are available for the selected model/i.test(error.message)
+        ) {
+          sawOpenRouterNoAllowedProviders = true
+        }
         if (requestedModel.kind === 'fixed') {
           throw error
         }
@@ -3371,11 +3437,14 @@ export async function runCli(
     }
 
     if (!summaryResult || !usedAttempt) {
-      if (requestedModel.kind === 'free') {
+      if (isBagSelection) {
+        if (lastError === null && missingRequiredEnvs.size > 0) {
+          throw new Error(
+            `Missing ${Array.from(missingRequiredEnvs).sort().join(', ')} for --model ${requestedModelInput}.`
+          )
+        }
         if (lastError instanceof Error) {
-          if (
-            /No allowed providers are available for the selected model/i.test(lastError.message)
-          ) {
+          if (sawOpenRouterNoAllowedProviders) {
             const message = await buildOpenRouterNoAllowedProvidersMessage({
               attempts,
               fetchImpl: trackedFetch,
@@ -3385,7 +3454,7 @@ export async function runCli(
           }
           throw lastError
         }
-        throw new Error('No model available for --model free')
+        throw new Error(`No model available for --model ${requestedModelInput}`)
       }
       clearProgressForStdout()
       if (json) {
@@ -3483,12 +3552,8 @@ export async function runCli(
           model: usedAttempt.userModelId,
           report: finishReport,
           costUsd,
-          extraParts: metricsDetailed
-            ? mergeOptionalParts(
-                buildDetailedMetricsParts(finishReport),
-                buildDetailedLengthPartsForExtracted(extracted)
-              )
-            : null,
+          detailed: metricsDetailed,
+          extraParts: metricsDetailed ? buildDetailedLengthPartsForExtracted(extracted) : null,
           color: verboseColor,
         })
       }
@@ -3521,12 +3586,8 @@ export async function runCli(
         model: modelMeta.canonical,
         report,
         costUsd,
-        extraParts: metricsDetailed
-          ? mergeOptionalParts(
-              buildDetailedMetricsParts(report),
-              buildDetailedLengthPartsForExtracted(extracted)
-            )
-          : null,
+        detailed: metricsDetailed,
+        extraParts: metricsDetailed ? buildDetailedLengthPartsForExtracted(extracted) : null,
         color: verboseColor,
       })
     }

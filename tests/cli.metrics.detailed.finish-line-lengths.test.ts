@@ -58,7 +58,7 @@ describe('--metrics detailed', () => {
       stderr,
     })
 
-    expect(stderrText).toContain('Finished in')
+    expect(stderrText).toContain('calls=')
     expect(stderrText).toMatch(/\binput=/)
     expect(stderrText).toMatch(/\btranscript=/)
   })

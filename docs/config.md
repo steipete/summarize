@@ -51,21 +51,39 @@ Shorthand (equivalent):
 }
 ```
 
-`model` can also be free-only (OpenRouter `:free` models):
+## Model bags
+
+Define named models you can select via `--model <name>`:
 
 ```json
 {
-  "model": { "mode": "free" }
+  "models": {
+    "fast": { "id": "openai/gpt-5-mini" },
+    "or-free": {
+      "rules": [
+        {
+          "candidates": [
+            "openrouter/google/gemini-2.0-flash-exp:free",
+            "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+          ]
+        }
+      ]
+    }
+  }
 }
 ```
 
-Shorthand (equivalent):
+Use a bag as your default `model`:
 
 ```json
 {
-  "model": "free"
+  "model": "fast"
 }
 ```
+
+Notes:
+
+- For named models, `"mode": "auto"` is optional when `"rules"` is present.
 
 For auto selection with rules:
 

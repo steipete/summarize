@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Writable } from 'node:stream'
@@ -26,9 +26,19 @@ vi.mock('../src/llm/generate-text.js', () => ({
   }),
 }))
 
-describe('--model free OpenRouter provider routing errors', () => {
+describe('model bags: OpenRouter provider routing errors', () => {
   it('fails loudly instead of returning extracted text', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'summarize-free-openrouter-no-provider-'))
+    const root = mkdtempSync(join(tmpdir(), 'summarize-bag-openrouter-no-provider-'))
+    mkdirSync(join(root, '.summarize'), { recursive: true })
+    writeFileSync(
+      join(root, '.summarize', 'config.json'),
+      JSON.stringify({
+        bags: {
+          free: { mode: 'auto', rules: [{ candidates: ['openrouter/openai/gpt-5-nano'] }] },
+        },
+      }),
+      'utf8'
+    )
     const html = `<!doctype html><html><head><title>Ok</title></head><body><article><p>${'A'.repeat(
       2000
     )}</p></article></body></html>`

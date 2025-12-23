@@ -37,8 +37,8 @@ installed, auto mode can use local CLI models when `cli.enabled` is set (see `do
   - Examples: `--cli claude`, `--cli Gemini`, `--cli codex` (equivalent to `--model cli/<provider>`); `--cli` alone uses auto selection with CLI enabled.
 - `--model auto`
   - See `docs/model-auto.md`
-- `--model free` (alias: `--model 3`)
-  - Uses OpenRouter `:free` models only.
+- `--model <bag>`
+  - Uses a config-defined bag (see `docs/config.md` → “Model bags”).
 - `--video-mode auto|transcript|understand`
   - Only relevant for video inputs / video-only pages.
 - `--length short|medium|long|xl|xxl|<chars>`

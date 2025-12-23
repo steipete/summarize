@@ -62,6 +62,7 @@ describe('cli --metrics off', () => {
     })
 
     expect(stdoutText).toContain('Hello')
-    expect(stderrText).not.toContain('Finished in')
+    expect(stderrText).not.toContain('(in/out/Σ)')
+    expect(stderrText).not.toContain('calls=')
   })
 })
