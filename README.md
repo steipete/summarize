@@ -242,7 +242,27 @@ OpenRouter (OpenAI-compatible):
 
 - Set `OPENROUTER_API_KEY=...`
 - Prefer forcing OpenRouter per model id: `--model openrouter/<author>/<slug>` (e.g. `openrouter/meta-llama/llama-3.1-8b-instruct:free`)
-- Built-in preset: `--model free` (uses a default set of OpenRouter `:free` models). If it stops working, run `summarize generate-free` to refresh `models.free` in `~/.summarize/config.json`.
+- Built-in preset: `--model free` (uses a default set of OpenRouter `:free` models).
+
+### `summarize generate-free`
+
+Regenerates the `free` preset (writes `models.free` into `~/.summarize/config.json`) by:
+
+- Fetching OpenRouter `/models`, filtering `:free`
+- Testing which ones return non-empty text (concurrency 4, timeout 10s)
+- Picking a mix of “smart-ish” (bigger `context_length` / output cap) and fast models
+- Refining timings for the final selection and writing the sorted list back
+
+If `--model free` stops working (rate limits, allowed-provider restrictions, models removed), run:
+
+```bash
+summarize generate-free
+```
+
+Flags:
+
+- `--runs 3` (default): timing runs per selected model (median/avg)
+- `--smart 3` (default): how many “smart-first” picks (rest filled by fastest)
 
 Example:
 
