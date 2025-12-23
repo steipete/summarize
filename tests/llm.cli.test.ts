@@ -63,6 +63,28 @@ describe('runCliModel', () => {
     expect(seen[0]?.includes('--yolo')).toBe(true)
   })
 
+  it('adds provider and call-site extra args', async () => {
+    const seen: string[][] = []
+    const execFileImpl = makeStub((args) => {
+      seen.push(args)
+      return { stdout: JSON.stringify({ result: 'ok' }) }
+    })
+    const result = await runCliModel({
+      provider: 'claude',
+      prompt: 'Test',
+      model: null,
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: { claude: { extraArgs: ['--foo'] } },
+      extraArgs: ['--bar'],
+    })
+    expect(result.text).toBe('ok')
+    expect(seen[0]).toContain('--foo')
+    expect(seen[0]).toContain('--bar')
+  })
+
   it('reads the Codex output file', async () => {
     const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
       const outputIndex = args.indexOf('--output-last-message')
@@ -95,6 +117,21 @@ describe('runCliModel', () => {
     expect(result.text).toBe('ok')
   })
 
+  it('returns Codex stdout when present', async () => {
+    const execFileImpl = makeStub(() => ({ stdout: 'from stdout' }))
+    const result = await runCliModel({
+      provider: 'codex',
+      prompt: 'Test',
+      model: 'gpt-5.2',
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    })
+    expect(result.text).toBe('from stdout')
+  })
+
   it('falls back to plain text output', async () => {
     const execFileImpl = makeStub(() => ({ stdout: 'plain text' }))
     const result = await runCliModel({
@@ -108,6 +145,21 @@ describe('runCliModel', () => {
       config: null,
     })
     expect(result.text).toBe('plain text')
+  })
+
+  it('falls back to plain text when JSON lacks result', async () => {
+    const execFileImpl = makeStub(() => ({ stdout: JSON.stringify({ ok: true }) }))
+    const result = await runCliModel({
+      provider: 'claude',
+      prompt: 'Test',
+      model: 'sonnet',
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    })
+    expect(result.text).toBe('{"ok":true}')
   })
 
   it('throws on empty output', async () => {
@@ -125,6 +177,28 @@ describe('runCliModel', () => {
       })
     ).rejects.toThrow(/empty output/)
   })
+
+  it('surfaces exec errors with stderr', async () => {
+    const execFileImpl: ExecFileFn = ((_cmd, _args, _options, cb) => {
+      cb?.(new Error('boom'), '', 'nope')
+      return {
+        stdin: { write: () => {}, end: () => {} },
+      } as unknown as ReturnType<ExecFileFn>
+    }) as ExecFileFn
+
+    await expect(
+      runCliModel({
+        provider: 'claude',
+        prompt: 'Test',
+        model: 'sonnet',
+        allowTools: false,
+        timeoutMs: 1000,
+        env: {},
+        execFileImpl,
+        config: null,
+      })
+    ).rejects.toThrow(/boom: nope/)
+  })
 })
 
 describe('cli helpers', () => {
@@ -141,5 +215,6 @@ describe('cli helpers', () => {
     expect(resolveCliBinary('codex', null, { SUMMARIZE_CLI_CODEX: '/opt/codex' })).toBe(
       '/opt/codex'
     )
+    expect(resolveCliBinary('gemini', null, {})).toBe('gemini')
   })
 })

@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { loadLocalAsset, loadRemoteAsset } from '../src/content/asset.js'
+import {
+  buildAssetPromptMessages,
+  classifyUrl,
+  loadLocalAsset,
+  loadRemoteAsset,
+  resolveInputTarget,
+} from '../src/content/asset.js'
 
 describe('asset loaders', () => {
   it('rejects non-files and oversize local files', async () => {
@@ -85,5 +91,90 @@ describe('asset loaders', () => {
           }),
       })
     ).rejects.toThrow(/appears to be a website/i)
+  })
+
+  it('loads a remote asset when headers specify media type', async () => {
+    const loaded = await loadRemoteAsset({
+      url: 'https://example.com/image.png',
+      timeoutMs: 2000,
+      fetchImpl: async () =>
+        new Response(new Uint8Array([1, 2, 3, 4]), {
+          status: 200,
+          headers: { 'content-type': 'image/png' },
+        }),
+    })
+
+    expect(loaded.attachment.mediaType).toBe('image/png')
+    expect(loaded.attachment.part.type).toBe('image')
+  })
+})
+
+describe('asset helpers', () => {
+  it('resolves input targets from files and urls', () => {
+    const root = mkdtempSync(join(tmpdir(), 'summarize-input-'))
+    const filePath = join(root, 'doc.txt')
+    writeFileSync(filePath, 'hello')
+
+    expect(resolveInputTarget(filePath)).toEqual({ kind: 'file', filePath })
+
+    expect(resolveInputTarget('https://example.com/file.pdf')).toEqual({
+      kind: 'url',
+      url: 'https://example.com/file.pdf',
+    })
+  })
+
+  it('resolves embedded urls and trims punctuation', () => {
+    const target = resolveInputTarget('See https://example.com/file.pdf).')
+    expect(target).toEqual({ kind: 'url', url: 'https://example.com/file.pdf' })
+  })
+
+  it('handles file urls and rejects unsupported protocols', () => {
+    const root = mkdtempSync(join(tmpdir(), 'summarize-file-url-'))
+    const filePath = join(root, 'report.txt')
+    writeFileSync(filePath, 'hello')
+    const fileUrl = new URL(`file://${filePath}`)
+
+    expect(resolveInputTarget(fileUrl.toString())).toEqual({ kind: 'file', filePath })
+    expect(() => resolveInputTarget('ftp://example.com/file.pdf')).toThrow(/Only HTTP and HTTPS/)
+  })
+
+  it('rescues embedded http urls from non-http schemes', () => {
+    const target = resolveInputTarget('ftp://example.com/http://example.com/asset.png')
+    expect(target).toEqual({ kind: 'url', url: 'http://example.com/asset.png' })
+  })
+
+  it('throws on invalid inputs', () => {
+    expect(() => resolveInputTarget('')).toThrow(/Missing input/)
+    expect(() => resolveInputTarget('not a url')).toThrow(/Invalid URL or file path/)
+  })
+
+  it('classifies urls as assets or websites', async () => {
+    await expect(
+      classifyUrl({
+        url: 'https://example.com/image.jpg',
+        fetchImpl: fetch,
+        timeoutMs: 10,
+      })
+    ).resolves.toEqual({ kind: 'asset' })
+
+    await expect(
+      classifyUrl({
+        url: 'https://example.com/page.html',
+        fetchImpl: fetch,
+        timeoutMs: 10,
+      })
+    ).resolves.toEqual({ kind: 'website' })
+  })
+
+  it('builds prompt messages with attachments', () => {
+    const attachment = {
+      mediaType: 'image/png',
+      filename: 'image.png',
+      part: { type: 'image', image: new Uint8Array([1, 2, 3]), mediaType: 'image/png' },
+    }
+    const messages = buildAssetPromptMessages({ promptText: 'Summarize', attachment })
+    expect(messages[0]?.role).toBe('user')
+    const content = messages[0]?.content ?? []
+    expect(content).toHaveLength(2)
   })
 })
