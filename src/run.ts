@@ -42,7 +42,7 @@ import { generateTextWithModelId, streamTextWithModelId } from './llm/generate-t
 import { resolveGoogleModelForUsage } from './llm/google-models.js'
 import { createHtmlToMarkdownConverter } from './llm/html-to-markdown.js'
 import { parseGatewayStyleModelId } from './llm/model-id.js'
-import { resolveOutputLanguage } from './language.js'
+import { formatOutputLanguageForJson, parseOutputLanguage, type OutputLanguage } from './language.js'
 import { convertToMarkdownWithMarkitdown, type ExecFileFn } from './markitdown.js'
 import { buildAutoModelAttempts } from './model-auto.js'
 import { type FixedModelSpec, parseRequestedModelId, type RequestedModel } from './model-spec.js'
@@ -354,7 +354,7 @@ type JsonOutput = {
     length: { kind: 'preset'; preset: string } | { kind: 'chars'; maxCharacters: number }
     maxOutputTokens: number | null
     model: string
-    language: string
+    language: ReturnType<typeof formatOutputLanguageForJson>
   } & (
     | {
         kind: 'url'
@@ -467,6 +467,11 @@ function buildProgram() {
       '--length <length>',
       'Summary length: short|medium|long|xl|xxl or a character limit like 20000, 20k',
       'xl'
+    )
+    .option(
+      '--language, --lang <language>',
+      'Output language: auto (match source), en, de, english, german, ... (default: auto; configurable in ~/.summarize/config.json via output.language)',
+      undefined
     )
     .option(
       '--max-output-tokens <count>',
@@ -1079,6 +1084,91 @@ function mergeStreamingChunk(previous: string, chunk: string): { next: string; a
   return { next: prev + nextChunk, appended: nextChunk }
 }
 
+function materializeInlineMarkdownLinks(markdown: string): string {
+  // markdansi renders Markdown links as styled labels, which makes URLs non-clickable in many terminals.
+  // Convert links into `Label (https://...)` so the raw URL is visible.
+  const lines = markdown.split(/\r?\n/)
+  let inFence = false
+  const out: string[] = []
+  for (const line of lines) {
+    const trimmed = line.trimStart()
+    if (trimmed.startsWith('```')) {
+      inFence = !inFence
+      out.push(line)
+      continue
+    }
+    if (inFence) {
+      out.push(line)
+      continue
+    }
+    out.push(
+      line.replace(/(?<!!)\[([^\]]+)\]\((\S+?)\)/g, (_full, label, url) => {
+        const safeLabel = String(label ?? '').trim()
+        const safeUrl = String(url ?? '').trim()
+        if (!safeLabel || !safeUrl) return _full
+        return `${safeLabel} (${safeUrl})`
+      })
+    )
+  }
+  return out.join('\n')
+}
+
+function inlineReferenceStyleLinks(markdown: string): string {
+  // Some models like emitting reference-style links:
+  //   [Label][1]
+  //   [1]: https://example.com
+  // Many terminals won't auto-link the label, so we inline them to keep links clickable.
+  const lines = markdown.split(/\r?\n/)
+  const definitions = new Map<string, string>()
+  for (const line of lines) {
+    const match = line.match(/^\s*\[([^\]]+)\]:\s*(\S+)\s*$/)
+    if (!match?.[1] || !match[2]) continue
+    definitions.set(match[1].trim().toLowerCase(), match[2].trim())
+  }
+  if (definitions.size === 0) return markdown
+
+  const used = new Set<string>()
+  const inlined = markdown.replace(/\[([^\]]+)\]\[([^\]]*)\]/g, (full, rawLabel, rawRef) => {
+    const label = String(rawLabel ?? '').trim()
+    const ref = String(rawRef ?? '').trim()
+    const key = (ref || label).toLowerCase()
+    const url = definitions.get(key)
+    if (!url) return full
+    used.add(key)
+    return `[${label}](${url})`
+  })
+
+  if (used.size === 0) return inlined
+  const withoutDefinitions = inlined
+    .split(/\r?\n/)
+    .filter((line) => {
+      const match = line.match(/^\s*\[([^\]]+)\]:\s*(\S+)\s*$/)
+      if (!match?.[1]) return true
+      return !used.has(match[1].trim().toLowerCase())
+    })
+    .join('\n')
+  return withoutDefinitions
+}
+
+function prepareMarkdownForTerminal(markdown: string): string {
+  return materializeInlineMarkdownLinks(inlineReferenceStyleLinks(markdown))
+}
+
+function formatModelLabelForDisplay(model: string): string {
+  const trimmed = model.trim()
+  if (!trimmed) return trimmed
+
+  // Tricky UX: OpenRouter models routed via the OpenAI-compatible API often appear as
+  // `openai/<publisher>/<model>` in the "model" field, which reads like we're using OpenAI.
+  // Collapse that to `<publisher>/<model>` for display.
+  const parts = trimmed.split('/').filter(Boolean)
+  if (parts.length >= 3 && parts[0] === 'openai') {
+    return `${parts[1]}/${parts.slice(2).join('/')}`
+  }
+
+  return trimmed
+}
+
 function writeFinishLine({
   stderr,
   elapsedMs,
@@ -1112,7 +1202,7 @@ function writeFinishLine({
   const summaryParts: Array<string | null> = [
     formatElapsedMs(elapsedMs),
     costUsd != null ? formatUSD(costUsd) : null,
-    model,
+    formatModelLabelForDisplay(model),
     tokensPart,
   ]
   const line1 = summaryParts.filter((part): part is string => typeof part === 'string').join(' · ')
@@ -1127,7 +1217,6 @@ function writeFinishLine({
     extraParts?.filter((part) => !part.startsWith('input=') && !part.startsWith('transcript=')) ??
     []
 
-  // Metrics "on": keep it short; show transcript length when we have one.
   if (!detailed) {
     const transcriptParts = lenParts.filter((part) => part.startsWith('transcript='))
     if (transcriptParts.length > 0) {
@@ -1136,31 +1225,27 @@ function writeFinishLine({
     return
   }
 
-  if (detailed) {
-    const line2Segments: string[] = []
-    if (lenParts.length > 0) {
-      line2Segments.push(`len ${lenParts.join(' ')}`)
+  const line2Segments: string[] = []
+  if (lenParts.length > 0) {
+    line2Segments.push(`len ${lenParts.join(' ')}`)
+  }
+  if (totalCalls > 1) line2Segments.push(`calls=${formatCompactCount(totalCalls)}`)
+  if (report.services.firecrawl.requests > 0 || report.services.apify.requests > 0) {
+    const svcParts: string[] = []
+    if (report.services.firecrawl.requests > 0) {
+      svcParts.push(`firecrawl=${formatCompactCount(report.services.firecrawl.requests)}`)
     }
-    if (totalCalls !== 1) {
-      line2Segments.push(`calls=${formatCompactCount(totalCalls)}`)
+    if (report.services.apify.requests > 0) {
+      svcParts.push(`apify=${formatCompactCount(report.services.apify.requests)}`)
     }
-    if (report.services.firecrawl.requests > 0 || report.services.apify.requests > 0) {
-      const svcParts: string[] = []
-      if (report.services.firecrawl.requests > 0) {
-        svcParts.push(`firecrawl=${formatCompactCount(report.services.firecrawl.requests)}`)
-      }
-      if (report.services.apify.requests > 0) {
-        svcParts.push(`apify=${formatCompactCount(report.services.apify.requests)}`)
-      }
-      line2Segments.push(`svc ${svcParts.join(' ')}`)
-    }
-    if (miscParts.length > 0) {
-      line2Segments.push(...miscParts)
-    }
+    line2Segments.push(`svc ${svcParts.join(' ')}`)
+  }
+  if (miscParts.length > 0) {
+    line2Segments.push(...miscParts)
+  }
 
-    if (line2Segments.length > 0) {
-      stderr.write(`${ansi('0;90', line2Segments.join(' | '), color)}\n`)
-    }
+  if (line2Segments.length > 0) {
+    stderr.write(`${ansi('0;90', line2Segments.join(' | '), color)}\n`)
   }
 }
 
@@ -1179,7 +1264,7 @@ function buildBasicLengthPartsForExtracted(extracted: {
   const durationPart =
     typeof extracted.mediaDurationSeconds === 'number' && extracted.mediaDurationSeconds > 0
       ? formatDurationSecondsSmart(extracted.mediaDurationSeconds)
-      : `~${minutesEstimate}m audio`
+      : `~${formatDurationSecondsSmart(minutesEstimate * 60)}`
 
   return [`transcript=${durationPart} (~${formatCompactCount(transcriptWords)} words)`]
 }
@@ -1203,9 +1288,17 @@ function buildDetailedLengthPartsForExtracted(extracted: {
     extracted.siteName === 'YouTube' || /youtube\.com|youtu\.be/i.test(extracted.url)
   if (!isYouTube && !extracted.transcriptCharacters) return parts
 
-  parts.push(
-    `input=${formatCompactCount(extracted.totalCharacters)} chars (~${formatCompactCount(extracted.wordCount)} words)`
-  )
+  const transcriptChars = extracted.transcriptCharacters
+  const shouldOmitInput =
+    typeof transcriptChars === 'number' &&
+    transcriptChars > 0 &&
+    extracted.totalCharacters > 0 &&
+    transcriptChars / extracted.totalCharacters >= 0.95
+  if (!shouldOmitInput) {
+    parts.push(
+      `input=${formatCompactCount(extracted.totalCharacters)} chars (~${formatCompactCount(extracted.wordCount)} words)`
+    )
+  }
 
   if (typeof extracted.transcriptCharacters === 'number' && extracted.transcriptCharacters > 0) {
     // Transcript stats:
@@ -1223,7 +1316,7 @@ function buildDetailedLengthPartsForExtracted(extracted: {
     const durationPart =
       typeof extracted.mediaDurationSeconds === 'number' && extracted.mediaDurationSeconds > 0
         ? formatDurationSecondsSmart(extracted.mediaDurationSeconds)
-        : `~${minutesEstimate}m audio`
+        : `~${formatDurationSecondsSmart(minutesEstimate * 60)}`
 
     parts.push(`transcript=${durationPart} (${details.join(', ')})`)
   }
@@ -1244,8 +1337,18 @@ function buildDetailedLengthPartsForExtracted(extracted: {
     if (cachePart) txParts.push(`cache=${cachePart}`)
     parts.push(txParts.join(' '))
   }
-
   return parts
+}
+
+function buildLengthPartsForFinishLine(
+  extracted: Parameters<typeof buildDetailedLengthPartsForExtracted>[0],
+  detailed: boolean
+): string[] | null {
+  const parts = buildDetailedLengthPartsForExtracted(extracted)
+  if (parts.length === 0) return null
+  if (detailed) return parts
+  const transcriptOnly = parts.filter((part) => part.startsWith('transcript='))
+  return transcriptOnly.length > 0 ? transcriptOnly : parts
 }
 
 export async function runCli(
@@ -1459,10 +1562,11 @@ export async function runCli(
       : typeof (program.opts() as { lang?: unknown }).lang === 'string'
         ? ((program.opts() as { lang?: string }).lang as string)
         : null
-  const resolvedLanguage = resolveOutputLanguage(
-    languageExplicitlySet
+  const defaultLanguageRaw = (config?.output?.language ?? config?.language ?? 'auto') as string
+  const outputLanguage: OutputLanguage = parseOutputLanguage(
+    languageExplicitlySet && typeof cliLanguageRaw === 'string' && cliLanguageRaw.trim().length > 0
       ? cliLanguageRaw
-      : ((config?.language as string | undefined) ?? cliLanguageRaw)
+      : defaultLanguageRaw
   )
   const openaiWhisperUsdPerMinute = (() => {
     const value = config?.openai?.whisperUsdPerMinute
@@ -2136,7 +2240,7 @@ export async function runCli(
     if (streamResult) {
       getLastStreamError = streamResult.lastError
       let streamed = ''
-      const liveRenderer = shouldLiveRenderSummary
+          const liveRenderer = shouldLiveRenderSummary
         ? createLiveRenderer({
             write: (chunk) => {
               clearProgressForStdout()
@@ -2144,7 +2248,7 @@ export async function runCli(
             },
             width: markdownRenderWidth(stdout, env),
             renderFrame: (markdown) =>
-              renderMarkdownAnsi(markdown, {
+              renderMarkdownAnsi(prepareMarkdownForTerminal(markdown), {
                 width: markdownRenderWidth(stdout, env),
                 wrap: true,
                 color: supportsColor(stdout, env),
@@ -2270,9 +2374,9 @@ export async function runCli(
       promptText = buildFileSummaryPrompt({
         filename: attachment.filename,
         mediaType: attachment.mediaType,
-        outputLanguage: resolvedLanguage.label,
         summaryLength: summaryLengthTarget,
         contentLength: textContent?.content.length ?? null,
+        outputLanguage,
       })
       return buildAssetPromptPayload({ promptText, attachment, textContent })
     }
@@ -2282,9 +2386,9 @@ export async function runCli(
         filename: attachment.filename,
         originalMediaType: attachment.mediaType,
         contentMediaType: 'text/markdown',
-        outputLanguage: resolvedLanguage.label,
         summaryLength: summaryLengthTarget,
         contentLength: markdown.length,
+        outputLanguage,
       })
       return `${promptText}\n\n---\n\n${markdown}`.trim()
     }
@@ -2488,8 +2592,8 @@ export async function runCli(
           filePath,
           filename: attachment.filename,
           mediaType: attachment.mediaType,
-          outputLanguage: resolvedLanguage.label,
           summaryLength: summaryLengthTarget,
+          outputLanguage,
         }),
         allowTools: true,
         cwd: dir,
@@ -2630,7 +2734,7 @@ export async function runCli(
                   : { kind: 'chars', maxCharacters: lengthArg.maxCharacters },
               maxOutputTokens: maxOutputTokensArg,
               model: requestedModelLabel,
-              language: resolvedLanguage.tag,
+              language: formatOutputLanguageForJson(outputLanguage),
             }
           : {
               kind: 'asset-url',
@@ -2642,7 +2746,7 @@ export async function runCli(
                   : { kind: 'chars', maxCharacters: lengthArg.maxCharacters },
               maxOutputTokens: maxOutputTokensArg,
               model: requestedModelLabel,
-              language: resolvedLanguage.tag,
+              language: formatOutputLanguageForJson(outputLanguage),
             }
       const payload: JsonOutput = {
         input,
@@ -2687,7 +2791,7 @@ export async function runCli(
       clearProgressForStdout()
       const rendered =
         (effectiveRenderMode === 'md' || effectiveRenderMode === 'md-live') && isRichTty(stdout)
-          ? renderMarkdownAnsi(summary, {
+          ? renderMarkdownAnsi(prepareMarkdownForTerminal(summary), {
               width: markdownRenderWidth(stdout, env),
               wrap: true,
               color: supportsColor(stdout, env),
@@ -3124,7 +3228,6 @@ export async function runCli(
     enabled: progressEnabled,
     stream: stderr,
   })
-
   const websiteProgress = createWebsiteProgress({ enabled: progressEnabled, spinner })
 
   const client = createLinkPreviewClient({
@@ -3334,8 +3437,8 @@ export async function runCli(
 	    transcriptionCostLabel =
 	      typeof transcriptionCostUsd === 'number' ? `txcost=${formatUSD(transcriptionCostUsd)}` : null
 
-	    const isYouTube = extracted.siteName === 'YouTube'
-	    const prompt = buildLinkSummaryPrompt({
+    const isYouTube = extracted.siteName === 'YouTube'
+    const prompt = buildLinkSummaryPrompt({
       url: extracted.url,
       title: extracted.title,
       siteName: extracted.siteName,
@@ -3345,9 +3448,9 @@ export async function runCli(
       hasTranscript:
         isYouTube ||
         (extracted.transcriptSource !== null && extracted.transcriptSource !== 'unavailable'),
-      outputLanguage: resolvedLanguage.label,
       summaryLength:
         lengthArg.kind === 'preset' ? lengthArg.preset : { maxCharacters: lengthArg.maxCharacters },
+      outputLanguage,
       shares: [],
     })
 
@@ -3370,7 +3473,7 @@ export async function runCli(
                 : { kind: 'chars', maxCharacters: lengthArg.maxCharacters },
             maxOutputTokens: maxOutputTokensArg,
             model: requestedModelLabel,
-            language: resolvedLanguage.tag,
+            language: formatOutputLanguageForJson(outputLanguage),
           },
           env: {
             hasXaiKey: Boolean(xaiApiKey),
@@ -3397,12 +3500,13 @@ export async function runCli(
             report: finishReport,
             costUsd,
             detailed: metricsDetailed,
-            extraParts: [
-              ...(metricsDetailed
-                ? buildDetailedLengthPartsForExtracted(extracted)
-                : buildBasicLengthPartsForExtracted(extracted)),
-              ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
-            ],
+            extraParts: (() => {
+              const parts = [
+                ...(buildLengthPartsForFinishLine(extracted, metricsDetailed) ?? []),
+                ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
+              ]
+              return parts.length > 0 ? parts : null
+            })(),
             color: verboseColor,
           })
         }
@@ -3421,12 +3525,13 @@ export async function runCli(
           report,
           costUsd,
           detailed: metricsDetailed,
-          extraParts: [
-            ...(metricsDetailed
-              ? buildDetailedLengthPartsForExtracted(extracted)
-              : buildBasicLengthPartsForExtracted(extracted)),
-            ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
-          ],
+          extraParts: (() => {
+            const parts = [
+              ...(buildLengthPartsForFinishLine(extracted, metricsDetailed) ?? []),
+              ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
+            ]
+            return parts.length > 0 ? parts : null
+          })(),
           color: verboseColor,
         })
       }
@@ -3462,7 +3567,7 @@ export async function runCli(
                 : { kind: 'chars', maxCharacters: lengthArg.maxCharacters },
             maxOutputTokens: maxOutputTokensArg,
             model: requestedModelLabel,
-            language: resolvedLanguage.tag,
+            language: formatOutputLanguageForJson(outputLanguage),
           },
           env: {
             hasXaiKey: Boolean(xaiApiKey),
@@ -3489,12 +3594,13 @@ export async function runCli(
             report: finishReport,
             costUsd,
             detailed: metricsDetailed,
-            extraParts: [
-              ...(metricsDetailed
-                ? buildDetailedLengthPartsForExtracted(extracted)
-                : buildBasicLengthPartsForExtracted(extracted)),
-              ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
-            ],
+            extraParts: (() => {
+              const parts = [
+                ...(buildLengthPartsForFinishLine(extracted, metricsDetailed) ?? []),
+                ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
+              ]
+              return parts.length > 0 ? parts : null
+            })(),
             color: verboseColor,
           })
         }
@@ -3513,12 +3619,13 @@ export async function runCli(
           report,
           costUsd,
           detailed: metricsDetailed,
-          extraParts: [
-            ...(metricsDetailed
-              ? buildDetailedLengthPartsForExtracted(extracted)
-              : buildBasicLengthPartsForExtracted(extracted)),
-            ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
-          ],
+          extraParts: (() => {
+            const parts = [
+              ...(buildLengthPartsForFinishLine(extracted, metricsDetailed) ?? []),
+              ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
+            ]
+            return parts.length > 0 ? parts : null
+          })(),
           color: verboseColor,
         })
       }
@@ -3706,7 +3813,7 @@ export async function runCli(
                 : { kind: 'chars', maxCharacters: lengthArg.maxCharacters },
             maxOutputTokens: maxOutputTokensArg,
             model: requestedModelLabel,
-            language: resolvedLanguage.tag,
+            language: formatOutputLanguageForJson(outputLanguage),
           },
           env: {
             hasXaiKey: Boolean(xaiApiKey),
@@ -3755,7 +3862,7 @@ export async function runCli(
               : { kind: 'chars', maxCharacters: lengthArg.maxCharacters },
           maxOutputTokens: maxOutputTokensArg,
           model: requestedModelLabel,
-          language: resolvedLanguage.tag,
+          language: formatOutputLanguageForJson(outputLanguage),
         },
         env: {
           hasXaiKey: Boolean(xaiApiKey),
@@ -3787,15 +3894,16 @@ export async function runCli(
           report: finishReport,
           costUsd,
           detailed: metricsDetailed,
-            extraParts: [
-              ...(metricsDetailed
-                ? buildDetailedLengthPartsForExtracted(extracted)
-                : buildBasicLengthPartsForExtracted(extracted)),
+          extraParts: (() => {
+            const parts = [
+              ...(buildLengthPartsForFinishLine(extracted, metricsDetailed) ?? []),
               ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
-            ],
-            color: verboseColor,
-          })
-        }
+            ]
+            return parts.length > 0 ? parts : null
+          })(),
+          color: verboseColor,
+        })
+      }
       return
     }
 
@@ -3803,7 +3911,7 @@ export async function runCli(
       clearProgressForStdout()
       const rendered =
         (effectiveRenderMode === 'md' || effectiveRenderMode === 'md-live') && isRichTty(stdout)
-          ? renderMarkdownAnsi(summary, {
+          ? renderMarkdownAnsi(prepareMarkdownForTerminal(summary), {
               width: markdownRenderWidth(stdout, env),
               wrap: true,
               color: supportsColor(stdout, env),
@@ -3827,15 +3935,16 @@ export async function runCli(
         report,
         costUsd,
         detailed: metricsDetailed,
-          extraParts: [
-            ...(metricsDetailed
-              ? buildDetailedLengthPartsForExtracted(extracted)
-              : buildBasicLengthPartsForExtracted(extracted)),
+        extraParts: (() => {
+          const parts = [
+            ...(buildLengthPartsForFinishLine(extracted, metricsDetailed) ?? []),
             ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
-          ],
-          color: verboseColor,
-        })
-      }
+          ]
+          return parts.length > 0 ? parts : null
+        })(),
+        color: verboseColor,
+      })
+    }
   } finally {
     if (clearProgressBeforeStdout === stopProgress) {
       clearProgressBeforeStdout = null
