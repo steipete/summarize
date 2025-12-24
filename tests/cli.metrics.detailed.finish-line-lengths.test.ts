@@ -76,6 +76,7 @@ describe('--metrics detailed', () => {
     expect(stderrText).toMatch(/\btranscript=/)
     expect(stderrText).toMatch(/\btranscript=44s\b/)
     expect(stderrText).toMatch(/\btranscript=.*\bwords\b/)
+    expect(stderrText).toMatch(/\b\d+ words, 44s\b/)
     expect(stderrText).toMatch(/\btx=/)
   })
 

@@ -1203,8 +1203,9 @@ function writeFinishLine({
       } Δ${totalTokens != null ? formatCompactCount(totalTokens) : 'unknown'}`
     : null
 
-  const compactTranscript =
-    !detailed && extraParts ? (extraParts.find((part) => part.startsWith('txc=')) ?? null) : null
+  const compactTranscript = extraParts
+    ? (extraParts.find((part) => part.startsWith('txc=')) ?? null)
+    : null
   const compactTranscriptLabel = compactTranscript?.startsWith('txc=')
     ? compactTranscript.slice('txc='.length)
     : null
@@ -1337,11 +1338,13 @@ function buildLengthPartsForFinishLine(
   extracted: Parameters<typeof buildDetailedLengthPartsForExtracted>[0],
   detailed: boolean
 ): string[] | null {
-  const parts = buildDetailedLengthPartsForExtracted(extracted)
-  if (parts.length === 0) return null
-  if (detailed) return parts
   const compactTranscript = buildCompactTranscriptPart(extracted)
-  return compactTranscript ? [`txc=${compactTranscript}`] : null
+  if (!detailed) return compactTranscript ? [`txc=${compactTranscript}`] : null
+
+  const parts = buildDetailedLengthPartsForExtracted(extracted)
+  if (parts.length === 0 && !compactTranscript) return null
+  if (compactTranscript) parts.unshift(`txc=${compactTranscript}`)
+  return parts
 }
 
 function buildCompactTranscriptPart(
