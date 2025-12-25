@@ -108,6 +108,6 @@ describe('tweet summary behavior', () => {
     expect(streamTextWithModelIdMock).not.toHaveBeenCalled()
     expect(stdout.read()).toContain('LLM summary output.')
     expect(stdout.read()).not.toContain(baseExtracted.content)
-    expect(stderr.read()).toContain('via bird')
+    expect(stderr.read()).toContain('3 words via bird')
   })
 })

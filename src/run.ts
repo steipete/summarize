@@ -2562,7 +2562,7 @@ export async function runCli(
   }
 
   const buildSummaryFinishLabel = (args: {
-    extracted: { diagnostics: ExtractDiagnosticsForFinishLine }
+    extracted: { diagnostics: ExtractDiagnosticsForFinishLine; wordCount: number }
   }): string | null => {
     const strategy = String(args.extracted.diagnostics.strategy ?? '')
     const sources: string[] = []
@@ -2571,7 +2571,14 @@ export async function runCli(
     if (strategy === 'firecrawl' || args.extracted.diagnostics.firecrawl?.used) {
       sources.push('firecrawl')
     }
-    if (sources.length === 0) return null
+    const words =
+      typeof args.extracted.wordCount === 'number' && Number.isFinite(args.extracted.wordCount)
+        ? args.extracted.wordCount
+        : 0
+    const wordLabel = words > 0 ? `${formatCompactCount(words)} words` : null
+    if (sources.length === 0 && !wordLabel) return null
+    if (wordLabel && sources.length > 0) return `${wordLabel} via ${sources.join('+')}`
+    if (wordLabel) return wordLabel
     return `via ${sources.join('+')}`
   }
 
@@ -3549,7 +3556,7 @@ export async function runCli(
       }
 
       finishSourceLabel = buildSummaryFinishLabel({
-        extracted: { diagnostics: extracted.diagnostics },
+        extracted: { diagnostics: extracted.diagnostics, wordCount: extracted.wordCount },
       })
     }
 
