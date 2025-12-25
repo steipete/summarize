@@ -1216,6 +1216,12 @@ export async function runCli(
       getLastStreamError = streamResult.lastError
       let streamed = ''
       let liveOverflowed = false
+      const liveRows = terminalHeight(stdout, env)
+      const liveMaxRows = Math.max(1, liveRows - 1)
+      const liveTailRows = Math.min(
+        liveMaxRows,
+        Math.max(8, Math.min(24, Math.floor(liveRows / 2)))
+      )
       const liveRenderer = shouldLiveRenderSummary
         ? createLiveRenderer(
             {
@@ -1228,12 +1234,12 @@ export async function runCli(
                 renderMarkdownAnsi(prepareMarkdownForTerminal(markdown), {
                   width: markdownRenderWidth(stdout, env),
                   wrap: true,
-                  color: supportsColor(stdout, envForRun),
-                  hyperlinks: true,
-                }),
+                color: supportsColor(stdout, envForRun),
+                hyperlinks: true,
+              }),
               // markdansi supports tailRows/maxRows at runtime; typings lag behind.
-              tailRows: Math.max(12, terminalHeight(stdout, env) - 2),
-              maxRows: terminalHeight(stdout, env),
+              tailRows: liveTailRows,
+              maxRows: liveMaxRows,
               clearOnOverflow: true,
               clearScrollbackOnOverflow: false,
               onOverflow: () => {
