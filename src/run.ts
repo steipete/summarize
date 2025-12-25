@@ -556,6 +556,21 @@ function terminalWidth(
   return 80
 }
 
+function terminalHeight(
+  stream: NodeJS.WritableStream,
+  env: Record<string, string | undefined>
+): number {
+  const rows = (stream as unknown as { rows?: unknown }).rows
+  if (typeof rows === 'number' && Number.isFinite(rows) && rows > 0) {
+    return Math.floor(rows)
+  }
+  const fromEnv = env.LINES ? Number(env.LINES) : NaN
+  if (Number.isFinite(fromEnv) && fromEnv > 0) {
+    return Math.floor(fromEnv)
+  }
+  return 24
+}
+
 function markdownRenderWidth(
   stream: NodeJS.WritableStream,
   env: Record<string, string | undefined>
@@ -2382,6 +2397,7 @@ export async function runCli(
     if (streamResult) {
       getLastStreamError = streamResult.lastError
       let streamed = ''
+      let liveOverflowed = false
       const liveRenderer = shouldLiveRenderSummary
         ? createLiveRenderer({
             write: (chunk) => {
@@ -2396,6 +2412,11 @@ export async function runCli(
                 color: supportsColor(stdout, envForRun),
                 hyperlinks: true,
               }),
+            maxRows: terminalHeight(stdout, env),
+            clearOnOverflow: true,
+            onOverflow: () => {
+              liveOverflowed = true
+            },
           })
         : null
       let lastFrameAtMs = 0
@@ -2413,7 +2434,7 @@ export async function runCli(
             continue
           }
 
-          if (liveRenderer) {
+          if (liveRenderer && !liveOverflowed) {
             const now = Date.now()
             const due = now - lastFrameAtMs >= 120
             const hasNewline = delta.includes('\n')
@@ -2426,7 +2447,7 @@ export async function runCli(
 
         const trimmed = streamed.trim()
         streamed = trimmed
-        if (liveRenderer) {
+        if (liveRenderer && !liveOverflowed) {
           liveRenderer.render(trimmed)
           summaryAlreadyPrinted = true
         }
@@ -2537,6 +2558,20 @@ export async function runCli(
 
     // Default: avoid noisy "via html"
     return base
+  }
+
+  const buildSummaryFinishLabel = (args: {
+    extracted: { diagnostics: ExtractDiagnosticsForFinishLine }
+  }): string | null => {
+    const strategy = String(args.extracted.diagnostics.strategy ?? '')
+    const sources: string[] = []
+    if (strategy === 'bird') sources.push('bird')
+    if (strategy === 'nitter') sources.push('nitter')
+    if (strategy === 'firecrawl' || args.extracted.diagnostics.firecrawl?.used) {
+      sources.push('firecrawl')
+    }
+    if (sources.length === 0) return null
+    return `via ${sources.join('+')}`
   }
 
   const summarizeAsset = async ({
@@ -3477,6 +3512,7 @@ export async function runCli(
     let extractedContentSize = 'unknown'
     let viaSourceLabel = ''
     let footerBaseParts: string[] = []
+    let finishSourceLabel: string | null = null
 
     const recomputeExtractionUi = () => {
       const extractedContentBytes = Buffer.byteLength(extracted.content, 'utf8')
@@ -3510,6 +3546,10 @@ export async function runCli(
       if (extracted.isVideoOnly && extracted.video) {
         footerBaseParts.push(extracted.video.kind === 'youtube' ? 'video youtube' : 'video url')
       }
+
+      finishSourceLabel = buildSummaryFinishLabel({
+        extracted: { diagnostics: extracted.diagnostics },
+      })
     }
 
     recomputeExtractionUi()
@@ -3761,101 +3801,6 @@ export async function runCli(
           stderr,
           elapsedMs: Date.now() - runStartedAtMs,
           label: finishLabel,
-          model: finishModel,
-          report,
-          costUsd,
-          detailed: metricsDetailed,
-          extraParts: (() => {
-            const parts = [
-              ...(buildLengthPartsForFinishLine(extracted, metricsDetailed) ?? []),
-              ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
-            ]
-            return parts.length > 0 ? parts : null
-          })(),
-          color: verboseColor,
-        })
-      }
-      return
-    }
-
-    const shouldSkipTweetSummary =
-      isTwitterStatusUrl(url) &&
-      extracted.content.length > 0 &&
-      extracted.content.length <= resolveTargetCharacters(lengthArg)
-    if (shouldSkipTweetSummary) {
-      clearProgressForStdout()
-      writeVerbose(
-        stderr,
-        verbose,
-        `skip summary: tweet content length=${extracted.content.length} target=${resolveTargetCharacters(lengthArg)}`,
-        verboseColor
-      )
-      const finishModel = pickModelForFinishLine(requestedModelLabel)
-      if (json) {
-        const finishReport = shouldComputeReport ? await buildReport() : null
-        const payload: JsonOutput = {
-          input: {
-            kind: 'url',
-            url,
-            timeoutMs,
-            youtube: youtubeMode,
-            firecrawl: firecrawlMode,
-            format,
-            markdown: effectiveMarkdownMode,
-            length:
-              lengthArg.kind === 'preset'
-                ? { kind: 'preset', preset: lengthArg.preset }
-                : { kind: 'chars', maxCharacters: lengthArg.maxCharacters },
-            maxOutputTokens: maxOutputTokensArg,
-            model: requestedModelLabel,
-            language: formatOutputLanguageForJson(outputLanguage),
-          },
-          env: {
-            hasXaiKey: Boolean(xaiApiKey),
-            hasOpenAIKey: Boolean(apiKey),
-            hasOpenRouterKey: Boolean(openrouterApiKey),
-            hasApifyToken: Boolean(apifyToken),
-            hasFirecrawlKey: firecrawlConfigured,
-            hasGoogleKey: googleConfigured,
-            hasAnthropicKey: anthropicConfigured,
-          },
-          extracted,
-          prompt,
-          llm: null,
-          metrics: metricsEnabled ? finishReport : null,
-          summary: extracted.content,
-        }
-        stdout.write(`${JSON.stringify(payload, null, 2)}\n`)
-        if (metricsEnabled && finishReport) {
-          const costUsd = await estimateCostUsd()
-          writeFinishLine({
-            stderr,
-            elapsedMs: Date.now() - runStartedAtMs,
-            model: finishModel,
-            report: finishReport,
-            costUsd,
-            detailed: metricsDetailed,
-            extraParts: (() => {
-              const parts = [
-                ...(buildLengthPartsForFinishLine(extracted, metricsDetailed) ?? []),
-                ...(transcriptionCostLabel ? [transcriptionCostLabel] : []),
-              ]
-              return parts.length > 0 ? parts : null
-            })(),
-            color: verboseColor,
-          })
-        }
-        return
-      }
-
-      stdout.write(`${extracted.content}\n`)
-      writeViaFooter(footerBaseParts)
-      const report = shouldComputeReport ? await buildReport() : null
-      if (metricsEnabled && report) {
-        const costUsd = await estimateCostUsd()
-        writeFinishLine({
-          stderr,
-          elapsedMs: Date.now() - runStartedAtMs,
           model: finishModel,
           report,
           costUsd,
@@ -4132,6 +4077,7 @@ export async function runCli(
         writeFinishLine({
           stderr,
           elapsedMs: Date.now() - runStartedAtMs,
+          label: finishSourceLabel,
           model: usedAttempt.userModelId,
           report: finishReport,
           costUsd,
@@ -4173,6 +4119,7 @@ export async function runCli(
       writeFinishLine({
         stderr,
         elapsedMs: Date.now() - runStartedAtMs,
+        label: finishSourceLabel,
         model: modelMeta.canonical,
         report,
         costUsd,

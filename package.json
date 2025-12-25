@@ -76,7 +76,7 @@
     "commander": "^14.0.2",
     "esbuild": "^0.27.2",
     "file-type": "^21.1.1",
-    "markdansi": "0.1.7",
+    "markdansi": "0.1.8",
     "mime": "^4.1.0",
     "ora": "^9.0.0",
     "osc-progress": "github:steipete/osc-progress#v0.2.0",
