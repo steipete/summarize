@@ -357,6 +357,7 @@ export async function summarizeExtractedUrl({
     ctx.clearProgressForStdout()
     if (ctx.json) {
       const finishReport = ctx.shouldComputeReport ? await ctx.buildReport() : null
+      const finishModel = pickModelForFinishLine(ctx.llmCalls, null)
       const payload = {
         input: {
           kind: 'url' as const,
@@ -390,6 +391,24 @@ export async function summarizeExtractedUrl({
         summary: extracted.content,
       }
       ctx.stdout.write(`${JSON.stringify(payload, null, 2)}\n`)
+      if (ctx.metricsEnabled && finishReport) {
+        const costUsd = await ctx.estimateCostUsd()
+        writeFinishLine({
+          stderr: ctx.stderr,
+          elapsedMs: Date.now() - ctx.runStartedAtMs,
+          label: extractionUi.finishSourceLabel,
+          model: finishModel,
+          report: finishReport,
+          costUsd,
+          detailed: ctx.metricsDetailed,
+          extraParts: buildFinishExtras({
+            extracted,
+            metricsDetailed: ctx.metricsDetailed,
+            transcriptionCostLabel,
+          }),
+          color: ctx.verboseColor,
+        })
+      }
       return
     }
     ctx.stdout.write(`${extracted.content}\n`)
