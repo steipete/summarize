@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildPathSummaryPrompt } from '../src/prompts/index.js'
+import { buildPathSummaryPrompt } from '../packages/core/src/prompts/index.js'
 
 describe('buildPathSummaryPrompt', () => {
   it('builds a prompt for file summaries with soft length', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { ScrapeWithFirecrawl } from '../src/content/link-preview/deps.js'
+import type { ScrapeWithFirecrawl } from '../packages/core/src/content/link-preview/deps.js'
 
 async function importPodcastProvider() {
   vi.resetModules()
@@ -17,7 +17,7 @@ async function importPodcastProvider() {
     notes: [],
   }))
 
-  vi.doMock('../src/transcription/whisper.js', () => ({
+  vi.doMock('../packages/core/src/transcription/whisper.js', () => ({
     MAX_OPENAI_UPLOAD_BYTES: 100,
     isFfmpegAvailable: () => Promise.resolve(true),
     isWhisperCppReady: () => Promise.resolve(false),
@@ -27,7 +27,9 @@ async function importPodcastProvider() {
     transcribeMediaFileWithWhisper,
   }))
 
-  const mod = await import('../src/content/link-preview/transcript/providers/podcast.js')
+  const mod = await import(
+    '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
+  )
   return { ...mod, transcribeMediaWithWhisper, transcribeMediaFileWithWhisper }
 }
 

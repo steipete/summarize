@@ -4,7 +4,7 @@ import {
   normalizeApifyTranscript,
   normalizeTranscriptLines,
   normalizeTranscriptText,
-} from '../src/content/link-preview/transcript/normalize.js'
+} from '../packages/core/src/content/link-preview/transcript/normalize.js'
 
 describe('transcript normalization', () => {
   it('normalizes whitespace and NBSP in transcript text', () => {

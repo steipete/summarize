@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks'
 import { describe, expect, it } from 'vitest'
 
-import { extractReadabilityFromHtml } from '../src/content/link-preview/content/readability.js'
+import { extractReadabilityFromHtml } from '../packages/core/src/content/link-preview/content/readability.js'
 
 describe('readability (large inline CSS)', () => {
   it('does not get stuck parsing inline <style>', async () => {

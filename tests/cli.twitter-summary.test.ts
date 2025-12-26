@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { Writable } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 
-import { toNitterUrls } from '../src/content/link-preview/content/twitter-utils.js'
+import { toNitterUrls } from '../packages/core/src/content/link-preview/content/twitter-utils.js'
 import { runCli } from '../src/run.js'
 
 const noopStream = () =>

@@ -16,7 +16,7 @@ vi.mock('node:child_process', () => ({ spawn: spawnMock }))
 vi.mock('node:fs', () => ({ promises: fsMock }))
 vi.mock('@fal-ai/client', () => falMock)
 
-import { fetchTranscriptWithYtDlp } from '../src/content/link-preview/transcript/providers/youtube/yt-dlp.js'
+import { fetchTranscriptWithYtDlp } from '../packages/core/src/content/link-preview/transcript/providers/youtube/yt-dlp.js'
 
 const mockSpawnSuccess = () => {
   spawnMock.mockImplementation(() => {
@@ -38,6 +38,7 @@ describe('yt-dlp transcript helper', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv('SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP', '1')
     fsMock.stat.mockResolvedValue({ size: 5 })
     fsMock.readFile.mockResolvedValue(Buffer.from('audio'))
     fsMock.unlink.mockResolvedValue(undefined)
@@ -45,6 +46,7 @@ describe('yt-dlp transcript helper', () => {
   })
 
   afterEach(() => {
+    vi.unstubAllEnvs()
     globalThis.fetch = originalFetch
   })
 

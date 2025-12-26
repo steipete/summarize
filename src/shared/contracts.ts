@@ -1,2 +1,2 @@
-export const SUMMARY_LENGTHS = ['short', 'medium', 'long', 'xl', 'xxl'] as const
-export type SummaryLength = (typeof SUMMARY_LENGTHS)[number]
+export type { SummaryLength } from '@steipete/summarize-core'
+export { SUMMARY_LENGTHS } from '@steipete/summarize-core'

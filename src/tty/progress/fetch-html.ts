@@ -1,4 +1,4 @@
-import type { LinkPreviewProgressEvent } from '../../content/link-preview/deps.js'
+import type { LinkPreviewProgressEvent } from '@steipete/summarize-core/content'
 import { formatBytes, formatBytesPerSecond, formatElapsedMs } from '../format.js'
 import type { OscProgressController } from '../osc-progress.js'
 

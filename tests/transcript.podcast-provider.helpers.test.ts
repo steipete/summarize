@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
-import { __test__ } from '../src/content/link-preview/transcript/providers/podcast.js'
+import { __test__ } from '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
 
 describe('podcast transcript provider - helper branches', () => {
   it('parses and normalizes headers', () => {

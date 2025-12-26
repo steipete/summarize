@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { detectPrimaryVideoFromHtml } from '../src/content/link-preview/content/video.js'
+import { detectPrimaryVideoFromHtml } from '../packages/core/src/content/link-preview/content/video.js'
 
 const BASE_URL = 'https://example.com/article'
 const YT_ID = 'dQw4w9WgXcQ'

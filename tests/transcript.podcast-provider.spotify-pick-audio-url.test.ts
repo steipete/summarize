@@ -17,16 +17,18 @@ vi.mock('node:child_process', () => ({
   },
 }))
 
-import { fetchTranscript } from '../src/content/link-preview/transcript/providers/podcast.js'
+import { fetchTranscript } from '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
 
 describe('podcast transcript provider - spotify audio url selection branches', () => {
   it('falls back to the first embed audio URL when no scdn URL is present', async () => {
+    const longTranscript = 'hello from spotify '.repeat(20).trim()
+
     const embedHtml = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
       props: {
         pageProps: {
           state: {
             data: {
-              entity: { title: 'Ep 1', subtitle: 'Show' },
+              entity: { title: 'Ep 1', subtitle: 'Show', duration: 120_000 },
               defaultAudioFileObject: { url: ['https://cdn.example.com/a.mp4'] },
             },
           },
@@ -57,7 +59,7 @@ describe('podcast transcript provider - spotify audio url selection branches', (
     })
 
     const openaiFetch = vi.fn(async () => {
-      return new Response(JSON.stringify({ text: 'ok' }), {
+      return new Response(JSON.stringify({ text: longTranscript }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       })
@@ -78,7 +80,7 @@ describe('podcast transcript provider - spotify audio url selection branches', (
           onProgress: null,
         }
       )
-      expect(result.text).toBe('ok')
+      expect(result.text).toBe(longTranscript)
       expect(result.metadata?.kind).toBe('spotify_embed_audio')
       expect(result.metadata?.audioUrl).toBe('https://cdn.example.com/a.mp4')
       expect(result.notes).toContain('Resolved Spotify embed audio')

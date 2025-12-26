@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { TranscriptCache } from '../src/content/link-preview/deps.js'
+import type { TranscriptCache } from '../packages/core/src/content/link-preview/deps.js'
 import {
   readTranscriptCache,
   writeTranscriptCache,
-} from '../src/content/link-preview/transcript/cache.js'
-import { resolveTranscriptForLink } from '../src/content/link-preview/transcript/index.js'
+} from '../packages/core/src/content/link-preview/transcript/cache.js'
+import { resolveTranscriptForLink } from '../packages/core/src/content/link-preview/transcript/index.js'
 
 describe('transcript cache helpers', () => {
   it('reads a cached transcript hit', async () => {

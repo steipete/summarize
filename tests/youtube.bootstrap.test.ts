@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { extractYoutubeBootstrapConfig } from '../src/content/link-preview/transcript/utils.js'
+import { extractYoutubeBootstrapConfig } from '../packages/core/src/content/link-preview/transcript/utils.js'
 
 describe('YouTube bootstrap parsing', () => {
   it('parses nested ytcfg.set objects (balanced braces)', () => {

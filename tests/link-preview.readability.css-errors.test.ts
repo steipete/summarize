@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { extractReadabilityFromHtml } from '../src/content/link-preview/content/readability.js'
+import { extractReadabilityFromHtml } from '../packages/core/src/content/link-preview/content/readability.js'
 
 describe('readability (jsdom css parse noise)', () => {
   it('does not log "Could not parse CSS stylesheet"', async () => {

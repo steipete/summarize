@@ -1,0 +1,53 @@
+{
+  "name": "@steipete/summarize-core",
+  "version": "0.6.2",
+  "description": "Summarize core library (content extraction + prompts).",
+  "type": "module",
+  "main": "./dist/esm/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js"
+    },
+    "./content": {
+      "types": "./dist/types/content/index.d.ts",
+      "import": "./dist/esm/content/index.js"
+    },
+    "./prompts": {
+      "types": "./dist/types/prompts/index.d.ts",
+      "import": "./dist/esm/prompts/index.js"
+    },
+    "./language": {
+      "types": "./dist/types/language.d.ts",
+      "import": "./dist/esm/language.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "packageManager": "pnpm@10.25.0+sha512.5e82639027af37cf832061bcc6d639c219634488e0f2baebe785028a793de7b525ffcd3f7ff574f5e9860654e098fe852ba8ac5dd5cefe1767d23a020a92f501",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit"
+  },
+  "dependencies": {
+    "@fal-ai/client": "^1.2.1",
+    "@mozilla/readability": "0.6.0",
+    "cheerio": "^1.1.2",
+    "es-toolkit": "^1.43.0",
+    "jsdom": "27.3.0",
+    "sanitize-html": "^2.17.0"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^27.0.0",
+    "@types/node": "^25.0.3",
+    "@types/sanitize-html": "^2.16.0",
+    "typescript": "^5.9.3"
+  }
+}

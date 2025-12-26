@@ -22,26 +22,41 @@ require_clean_git() {
   fi
 }
 
+require_lockstep_versions() {
+  local root_version core_version
+  root_version="$(node -p 'require("./package.json").version')"
+  core_version="$(node -p 'require("./packages/core/package.json").version')"
+  if [ "$root_version" != "$core_version" ]; then
+    echo "Version mismatch: root=$root_version core=$core_version"
+    exit 1
+  fi
+}
+
 phase_gates() {
   banner "Gates"
   require_clean_git
+  require_lockstep_versions
   run pnpm check
 }
 
 phase_build() {
   banner "Build"
+  require_lockstep_versions
   run pnpm build
 }
 
 phase_publish() {
   banner "Publish to npm"
   require_clean_git
+  require_lockstep_versions
+  run pnpm -C packages/core publish --tag latest --access public
   run pnpm publish --tag latest --access public
 }
 
 phase_smoke() {
   banner "Smoke"
   run npm view @steipete/summarize version
+  run npm view @steipete/summarize-core version
   run pnpm -s dlx @steipete/summarize --help >/dev/null
   echo "ok"
 }

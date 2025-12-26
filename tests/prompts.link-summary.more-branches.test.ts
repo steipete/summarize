@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { parseOutputLanguage } from '../src/language.js'
 import {
   buildLinkSummaryPrompt,
   estimateMaxCompletionTokensForCharacters,
   pickSummaryLengthForCharacters,
-} from '../src/prompts/link-summary.js'
+} from '../packages/core/src/prompts/link-summary.js'
+import { parseOutputLanguage } from '../src/language.js'
 
 describe('prompts/link-summary - more branches', () => {
   it('picks summary length presets by character targets', () => {

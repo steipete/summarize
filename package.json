@@ -1,6 +1,6 @@
 {
   "name": "@steipete/summarize",
-  "version": "0.7.0",
+  "version": "0.6.2",
   "description": "Link → clean text → summary.",
   "type": "module",
   "bin": {
@@ -36,7 +36,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "pnpm build:lib && pnpm build:cli",
+    "build": "pnpm -C packages/core build && pnpm build:lib && pnpm build:cli",
     "build:lib": "tsc -p tsconfig.build.json",
     "build:cli": "node scripts/build-cli.mjs",
     "build:bun": "bun scripts/build-bun.js",
@@ -54,14 +54,7 @@
     "release": "bash scripts/release.sh"
   },
   "dependencies": {
-    "@fal-ai/client": "^1.2.1",
-    "@mozilla/readability": "0.6.0",
-    "cheerio": "^1.1.2",
-    "es-toolkit": "^1.43.0",
-    "gpt-tokenizer": "^3.4.0",
-    "jsdom": "27.3.0",
-    "json5": "^2.2.3",
-    "sanitize-html": "^2.17.0"
+    "@steipete/summarize-core": "0.6.2"
   },
   "devDependencies": {
     "@ai-sdk/anthropic": "3.0.1",
@@ -69,6 +62,7 @@
     "@ai-sdk/openai": "3.0.1",
     "@ai-sdk/xai": "3.0.1",
     "@biomejs/biome": "^2.3.10",
+    "@fal-ai/client": "^1.2.1",
     "@types/jsdom": "^27.0.0",
     "@types/node": "^25.0.3",
     "@types/sanitize-html": "^2.16.0",
@@ -77,6 +71,8 @@
     "commander": "^14.0.2",
     "esbuild": "^0.27.2",
     "file-type": "^21.1.1",
+    "gpt-tokenizer": "^3.4.0",
+    "json5": "^2.2.3",
     "markdansi": "file:../markdansi",
     "mime": "^4.1.0",
     "ora": "^9.0.0",

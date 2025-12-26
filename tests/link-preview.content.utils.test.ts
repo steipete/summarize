@@ -4,7 +4,7 @@ import {
   DEFAULT_CACHE_MODE,
   DEFAULT_MAX_CONTENT_CHARACTERS,
   DEFAULT_TIMEOUT_MS,
-} from '../src/content/link-preview/content/types.js'
+} from '../packages/core/src/content/link-preview/content/types.js'
 import {
   appendNote,
   ensureTranscriptDiagnostics,
@@ -17,11 +17,11 @@ import {
   safeHostname,
   selectBaseContent,
   summarizeTranscript,
-} from '../src/content/link-preview/content/utils.js'
+} from '../packages/core/src/content/link-preview/content/utils.js'
 import type {
   ContentFetchDiagnostics,
   TranscriptDiagnostics,
-} from '../src/content/link-preview/types.js'
+} from '../packages/core/src/content/link-preview/types.js'
 
 function makeDiagnostics(overrides?: Partial<ContentFetchDiagnostics>): ContentFetchDiagnostics {
   return {

@@ -7,7 +7,7 @@ import {
   normalizeCandidate,
   normalizeForPrompt,
   normalizeWhitespace,
-} from '../src/content/link-preview/content/cleaner.js'
+} from '../packages/core/src/content/link-preview/content/cleaner.js'
 
 describe('content cleaner utilities', () => {
   it('normalizes whitespace for prompts', () => {

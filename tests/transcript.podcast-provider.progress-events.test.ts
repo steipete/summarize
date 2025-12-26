@@ -49,7 +49,7 @@ async function importPodcastProvider({
     return { text: 'ok-file', provider: 'openai', error: null, notes: [] }
   })
 
-  vi.doMock('../src/transcription/whisper.js', () => ({
+  vi.doMock('../packages/core/src/transcription/whisper.js', () => ({
     MAX_OPENAI_UPLOAD_BYTES: maxUploadBytes,
     isFfmpegAvailable: () => Promise.resolve(ffmpegAvailable),
     isWhisperCppReady: () => Promise.resolve(false),
@@ -59,7 +59,9 @@ async function importPodcastProvider({
     transcribeMediaFileWithWhisper,
   }))
 
-  const mod = await import('../src/content/link-preview/transcript/providers/podcast.js')
+  const mod = await import(
+    '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
+  )
   return { ...mod, transcribeMediaWithWhisper, transcribeMediaFileWithWhisper }
 }
 

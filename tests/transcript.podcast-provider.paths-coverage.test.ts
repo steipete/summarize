@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { MAX_OPENAI_UPLOAD_BYTES } from '../src/transcription/whisper.js'
+import { MAX_OPENAI_UPLOAD_BYTES } from '../packages/core/src/transcription/whisper.js'
 
 vi.mock('node:child_process', () => ({
   spawn: (_cmd: string, args: string[]) => {
@@ -19,7 +19,7 @@ vi.mock('node:child_process', () => ({
   },
 }))
 
-import { fetchTranscript } from '../src/content/link-preview/transcript/providers/podcast.js'
+import { fetchTranscript } from '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
 
 const baseOptions = {
   fetch: vi.fn() as unknown as typeof fetch,
@@ -183,12 +183,14 @@ Hello from VTT
   })
 
   it('falls back to Firecrawl for Spotify embed success and prefers scdn audio URL', async () => {
+    const longTranscript = 'hello from spotify '.repeat(20).trim()
+
     const embedHtml = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
       props: {
         pageProps: {
           state: {
             data: {
-              entity: { title: 'Ep 1', subtitle: 'Show' },
+              entity: { title: 'Ep 1', subtitle: 'Show', duration: 120_000 },
               defaultAudioFileObject: {
                 url: ['https://cdn.example.com/a.mp4', 'https://scdn.co/file.mp4'],
                 format: 'DRM',
@@ -227,7 +229,7 @@ Hello from VTT
     })
 
     const openaiFetch = vi.fn(async () => {
-      return new Response(JSON.stringify({ text: 'ok' }), {
+      return new Response(JSON.stringify({ text: longTranscript }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       })
@@ -244,7 +246,7 @@ Hello from VTT
             scrapeWithFirecrawl as unknown as typeof baseOptions.scrapeWithFirecrawl,
         }
       )
-      expect(result.text).toBe('ok')
+      expect(result.text).toBe(longTranscript)
       expect(result.metadata?.kind).toBe('spotify_embed_audio')
       expect(String(result.metadata?.audioUrl)).toContain('scdn.co')
       expect(result.notes).toContain('Firecrawl')

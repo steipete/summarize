@@ -52,12 +52,27 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf _pack
-          pnpm pack --pack-destination _pack
-          ls -la _pack
-          TARBALL="$(find _pack -maxdepth 1 -type f \( -name '*.tgz' -o -name '*.tar.gz' \) | head -1)"
-          if [ -z "${TARBALL:-}" ]; then
-            echo "No pack artifact found in _pack" >&2
+          mkdir -p _pack/root _pack/core
+
+          pnpm pack --pack-destination _pack/root
+          pnpm -C packages/core pack --pack-destination _pack/core
+
+          echo "==> root"
+          ls -la _pack/root
+          ROOT_TARBALL="$(find _pack/root -maxdepth 1 -type f \( -name '*.tgz' -o -name '*.tar.gz' \) | head -1)"
+          if [ -z "${ROOT_TARBALL:-}" ]; then
+            echo "No root pack artifact found in _pack/root" >&2
             exit 1
           fi
-          tar -tf "$TARBALL" | sed -n '1,200p'
-          tar -tf "$TARBALL" | grep -E '^package/dist/cli\.cjs$'
+          tar -tf "$ROOT_TARBALL" | grep -E '^package/dist/cli\.cjs$'
+
+          echo "==> core"
+          ls -la _pack/core
+          CORE_TARBALL="$(find _pack/core -maxdepth 1 -type f \( -name '*.tgz' -o -name '*.tar.gz' \) | head -1)"
+          if [ -z "${CORE_TARBALL:-}" ]; then
+            echo "No core pack artifact found in _pack/core" >&2
+            exit 1
+          fi
+          tar -tf "$CORE_TARBALL" | grep -E '^package/dist/esm/index\.js$'
+          tar -tf "$CORE_TARBALL" | grep -E '^package/dist/esm/content/index\.js$'
+          tar -tf "$CORE_TARBALL" | grep -E '^package/dist/esm/prompts/index\.js$'

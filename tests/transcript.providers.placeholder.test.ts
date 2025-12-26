@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import * as generic from '../src/content/link-preview/transcript/providers/generic.js'
-import * as podcast from '../src/content/link-preview/transcript/providers/podcast.js'
+import * as generic from '../packages/core/src/content/link-preview/transcript/providers/generic.js'
+import * as podcast from '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
 import type {
   ProviderContext,
   ProviderFetchOptions,
-} from '../src/content/link-preview/transcript/types.js'
+} from '../packages/core/src/content/link-preview/transcript/types.js'
 
 const noopFetch = vi.fn(async () => new Response('nope', { status: 500 }))
 

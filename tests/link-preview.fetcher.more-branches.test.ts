@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   fetchHtmlDocument,
   fetchWithFirecrawl,
-} from '../src/content/link-preview/content/fetcher.js'
+} from '../packages/core/src/content/link-preview/content/fetcher.js'
 
 describe('link preview fetcher - more branches', () => {
   it('throws on non-OK response and unsupported content-type', async () => {

@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { TranscriptCache } from '../src/content/link-preview/deps.js'
+import type { TranscriptCache } from '../packages/core/src/content/link-preview/deps.js'
 import {
   DEFAULT_TTL_MS,
   mapCachedSource,
   NEGATIVE_TTL_MS,
   readTranscriptCache,
   writeTranscriptCache,
-} from '../src/content/link-preview/transcript/cache.js'
+} from '../packages/core/src/content/link-preview/transcript/cache.js'
 
 describe('transcript cache - more branches', () => {
   it('reads cache miss / bypass / expired / hit', async () => {

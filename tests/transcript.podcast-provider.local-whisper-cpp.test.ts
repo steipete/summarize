@@ -4,7 +4,7 @@ describe('podcast transcript provider: local whisper.cpp', () => {
   it('transcribes without API keys when whisper.cpp is available', async () => {
     vi.resetModules()
 
-    vi.doMock('../src/transcription/whisper.js', () => ({
+    vi.doMock('../packages/core/src/transcription/whisper.js', () => ({
       MAX_OPENAI_UPLOAD_BYTES: 24 * 1024 * 1024,
       isFfmpegAvailable: async () => false,
       isWhisperCppReady: async () => true,
@@ -26,7 +26,7 @@ describe('podcast transcript provider: local whisper.cpp', () => {
 
     try {
       const { fetchTranscript } = await import(
-        '../src/content/link-preview/transcript/providers/podcast.js'
+        '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
       )
 
       const enclosureUrl = 'https://example.com/episode.mp3'
@@ -68,7 +68,7 @@ describe('podcast transcript provider: local whisper.cpp', () => {
       expect(result.attemptedProviders).toEqual(['whisper'])
       expect(result.metadata?.durationSeconds).toBe(12 * 60 + 34)
     } finally {
-      vi.doUnmock('../src/transcription/whisper.js')
+      vi.doUnmock('../packages/core/src/transcription/whisper.js')
       vi.resetModules()
     }
   })

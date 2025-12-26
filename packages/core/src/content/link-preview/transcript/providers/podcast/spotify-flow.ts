@@ -55,7 +55,15 @@ export async function fetchSpotifyTranscript(
         filenameHint: 'episode.mp4',
         durationSecondsHint: embedDurationSeconds,
       })
-      if (result.text) {
+      const embedTranscriptChars = result.text?.trim().length ?? 0
+      const shouldTreatAsPreview =
+        embedTranscriptChars > 0 &&
+        (embedTranscriptChars < 200 ||
+          (embedTranscriptChars < 800 &&
+            (embedDurationSeconds == null ||
+              (typeof embedDurationSeconds === 'number' && embedDurationSeconds >= 600))))
+
+      if (result.text && !shouldTreatAsPreview) {
         flow.notes.push(
           via === 'firecrawl'
             ? 'Resolved Spotify embed audio via Firecrawl'
@@ -76,6 +84,11 @@ export async function fetchSpotifyTranscript(
             drmFormat: embedData.drmFormat,
           },
         })
+      }
+      if (shouldTreatAsPreview) {
+        flow.notes.push(
+          `Spotify embed audio looked like a short clip (${embedTranscriptChars} chars); falling back to iTunes RSS`
+        )
       }
       flow.notes.push(
         `Spotify embed audio transcription failed; falling back to iTunes RSS: ${

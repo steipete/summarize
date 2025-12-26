@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { fetchTranscript } from '../src/content/link-preview/transcript/providers/podcast.js'
+import { fetchTranscript } from '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
 
 describe('podcast transcript provider - invalid URL branches', () => {
   it('handles invalid URLs gracefully and returns no-enclosure metadata', async () => {

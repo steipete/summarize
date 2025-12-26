@@ -31,6 +31,5 @@ await build({
   logLevel: 'info',
   banner: { js: '#!/usr/bin/env node' },
   define: gitSha ? { 'process.env.SUMMARIZE_GIT_SHA': JSON.stringify(gitSha) } : undefined,
-  // Keep core dependencies external for the library build; CLI-only deps get bundled.
-  external: ['cheerio', 'es-toolkit', 'sanitize-html'],
+  external: ['@steipete/summarize-core', '@steipete/summarize-core/*'],
 })

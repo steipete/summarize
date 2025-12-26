@@ -27,7 +27,7 @@ async function importPodcastProvider({ ffmpegAvailable }: { ffmpegAvailable: boo
     })
   )
 
-  vi.doMock('../src/transcription/whisper.js', () => ({
+  vi.doMock('../packages/core/src/transcription/whisper.js', () => ({
     MAX_OPENAI_UPLOAD_BYTES: 25 * 1024 * 1024,
     isFfmpegAvailable: async () => ffmpegAvailable,
     isWhisperCppReady: () => Promise.resolve(false),
@@ -37,7 +37,9 @@ async function importPodcastProvider({ ffmpegAvailable }: { ffmpegAvailable: boo
     transcribeMediaFileWithWhisper,
   }))
 
-  const provider = await import('../src/content/link-preview/transcript/providers/podcast.js')
+  const provider = await import(
+    '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
+  )
   return { ...provider, transcribeMediaWithWhisper, transcribeMediaFileWithWhisper }
 }
 

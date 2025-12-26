@@ -1,6 +1,30 @@
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
+const rootDir = dirname(fileURLToPath(import.meta.url))
+
 export default defineConfig({
+  resolve: {
+    alias: [
+      {
+        find: /^@steipete\/summarize-core\/content$/,
+        replacement: resolve(rootDir, 'packages/core/src/content/index.ts'),
+      },
+      {
+        find: /^@steipete\/summarize-core\/prompts$/,
+        replacement: resolve(rootDir, 'packages/core/src/prompts/index.ts'),
+      },
+      {
+        find: /^@steipete\/summarize-core\/language$/,
+        replacement: resolve(rootDir, 'packages/core/src/language.ts'),
+      },
+      {
+        find: /^@steipete\/summarize-core$/,
+        replacement: resolve(rootDir, 'packages/core/src/index.ts'),
+      },
+    ],
+  },
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],

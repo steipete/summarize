@@ -3,27 +3,29 @@ import { describe, expect, it, vi } from 'vitest'
 async function importPodcastProvider() {
   vi.resetModules()
 
-  vi.doMock('../src/transcription/whisper.js', () => ({
+  const longTranscript = 'hello from spotify '.repeat(20).trim()
+
+  vi.doMock('../packages/core/src/transcription/whisper.js', () => ({
     MAX_OPENAI_UPLOAD_BYTES: 1024 * 1024,
     isFfmpegAvailable: () => Promise.resolve(true),
     isWhisperCppReady: () => Promise.resolve(false),
     probeMediaDurationSecondsWithFfprobe: async () => null,
     resolveWhisperCppModelNameForDisplay: async () => null,
     transcribeMediaWithWhisper: vi.fn(async () => ({
-      text: 'hello from spotify',
+      text: longTranscript,
       provider: 'openai',
       error: null,
       notes: [],
     })),
     transcribeMediaFileWithWhisper: vi.fn(async () => ({
-      text: 'hello from spotify (file)',
+      text: `${longTranscript} (file)`,
       provider: 'openai',
       error: null,
       notes: [],
     })),
   }))
 
-  return await import('../src/content/link-preview/transcript/providers/podcast.js')
+  return await import('../packages/core/src/content/link-preview/transcript/providers/podcast.js')
 }
 
 const baseOptions = {

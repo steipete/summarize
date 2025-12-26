@@ -66,7 +66,7 @@ describe('whisper.cpp readiness', () => {
     process.env.SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP = '1'
     process.env.VITEST_WHISPER_SPAWN_MODE = 'ok'
 
-    const mod = await import('../src/transcription/whisper')
+    const mod = await import('../packages/core/src/transcription/whisper')
     expect(await mod.isWhisperCppReady()).toBe(false)
   })
 
@@ -74,7 +74,7 @@ describe('whisper.cpp readiness', () => {
     process.env.SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP = '0'
     process.env.VITEST_WHISPER_SPAWN_MODE = 'error'
 
-    const mod = await import('../src/transcription/whisper')
+    const mod = await import('../packages/core/src/transcription/whisper')
     expect(await mod.isWhisperCppReady()).toBe(false)
   })
 
@@ -83,7 +83,7 @@ describe('whisper.cpp readiness', () => {
     process.env.VITEST_WHISPER_SPAWN_MODE = 'ok'
     process.env.SUMMARIZE_WHISPER_CPP_MODEL_PATH = join(tmpdir(), `missing-${Date.now()}.bin`)
 
-    const mod = await import('../src/transcription/whisper')
+    const mod = await import('../packages/core/src/transcription/whisper')
     expect(await mod.isWhisperCppReady()).toBe(false)
   })
 
@@ -96,7 +96,7 @@ describe('whisper.cpp readiness', () => {
     writeFileSync(modelPath, 'x')
     process.env.SUMMARIZE_WHISPER_CPP_MODEL_PATH = modelPath
 
-    const mod = await import('../src/transcription/whisper')
+    const mod = await import('../packages/core/src/transcription/whisper')
     expect(await mod.isWhisperCppReady()).toBe(true)
     expect(await mod.resolveWhisperCppModelNameForDisplay()).toBe('base')
   })
@@ -114,7 +114,7 @@ describe('whisper.cpp readiness', () => {
     mkdirSync(join(home, '.summarize', 'cache', 'whisper-cpp', 'models'), { recursive: true })
     writeFileSync(modelPath, 'x')
 
-    const mod = await import('../src/transcription/whisper')
+    const mod = await import('../packages/core/src/transcription/whisper')
     expect(await mod.isWhisperCppReady()).toBe(true)
     expect(await mod.resolveWhisperCppModelNameForDisplay()).toBe('base')
   })

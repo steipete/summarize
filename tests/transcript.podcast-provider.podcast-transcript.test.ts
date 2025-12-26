@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 async function importPodcastProviderWithoutTranscription() {
   vi.resetModules()
-  vi.doMock('../src/transcription/whisper.js', () => ({
+  vi.doMock('../packages/core/src/transcription/whisper.js', () => ({
     MAX_OPENAI_UPLOAD_BYTES: 24 * 1024 * 1024,
     isFfmpegAvailable: async () => false,
     isWhisperCppReady: async () => false,
@@ -17,9 +17,9 @@ async function importPodcastProviderWithoutTranscription() {
   }))
 
   try {
-    return await import('../src/content/link-preview/transcript/providers/podcast.js')
+    return await import('../packages/core/src/content/link-preview/transcript/providers/podcast.js')
   } finally {
-    vi.doUnmock('../src/transcription/whisper.js')
+    vi.doUnmock('../packages/core/src/transcription/whisper.js')
   }
 }
 

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-
+import type { ConvertHtmlToMarkdown } from '../packages/core/src/content/link-preview/deps.js'
 import { createLinkPreviewClient } from '../src/content/index.js'
-import type { ConvertHtmlToMarkdown } from '../src/content/link-preview/deps.js'
 
 const htmlResponse = (html: string, status = 200) =>
   new Response(html, {

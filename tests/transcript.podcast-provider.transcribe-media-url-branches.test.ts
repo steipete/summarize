@@ -44,7 +44,9 @@ async function importPodcastProvider({ spawnPlan }: { spawnPlan: SpawnPlan }) {
     },
   }))
 
-  const mod = await import('../src/content/link-preview/transcript/providers/podcast.js')
+  const mod = await import(
+    '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
+  )
   return mod
 }
 
