@@ -179,6 +179,7 @@ Notes:
 ```json
 {
   "openai": {
+    "baseUrl": "https://my-openai-proxy.example.com/v1",
     "useChatCompletions": true,
     "whisperUsdPerMinute": 0.006
   }
@@ -187,4 +188,35 @@ Notes:
 
 Notes:
 
+- `openai.baseUrl` overrides the API endpoint. Use this to point to a proxy, self-hosted endpoint, or OpenAI-compatible API. The `OPENAI_BASE_URL` env var takes precedence if set.
+- `openai.useChatCompletions` forces chat completions API (required for some proxies).
 - `openai.whisperUsdPerMinute` is only used to estimate transcription cost in the finish-line metrics when Whisper transcription runs via OpenAI.
+
+## Provider base URLs
+
+Override API endpoints for any provider to use proxies, self-hosted endpoints, or compatible APIs:
+
+```json
+{
+  "openai": { "baseUrl": "https://my-openai-proxy.example.com/v1" },
+  "anthropic": { "baseUrl": "https://my-anthropic-proxy.example.com" },
+  "google": { "baseUrl": "https://my-google-proxy.example.com" },
+  "xai": { "baseUrl": "https://my-xai-proxy.example.com" }
+}
+```
+
+Or via environment variables (which take precedence over config):
+
+| Provider   | Environment Variable(s)                     |
+| ---------- | ------------------------------------------- |
+| OpenAI     | `OPENAI_BASE_URL`                           |
+| Anthropic  | `ANTHROPIC_BASE_URL`                        |
+| Google     | `GOOGLE_BASE_URL` or `GEMINI_BASE_URL`      |
+| xAI        | `XAI_BASE_URL`                              |
+
+Notes:
+
+- Environment variables always take precedence over config file values.
+- Use this for corporate proxies, self-hosted models, or API-compatible alternatives.
+- Each provider section only supports `baseUrl` (except `openai` which has additional options).
+

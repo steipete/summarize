@@ -19,6 +19,12 @@ export type CliConfig = {
 }
 
 export type OpenAiConfig = {
+  /**
+   * Custom base URL for OpenAI API requests.
+   *
+   * Use this to point to a proxy, self-hosted endpoint, or compatible API.
+   */
+  baseUrl?: string
   useChatCompletions?: boolean
   /**
    * USD per minute for OpenAI Whisper transcription cost estimation.
@@ -26,6 +32,33 @@ export type OpenAiConfig = {
    * Default: 0.006 (per OpenAI pricing as of 2025-12-24).
    */
   whisperUsdPerMinute?: number
+}
+
+export type AnthropicConfig = {
+  /**
+   * Custom base URL for Anthropic API requests.
+   *
+   * Use this to point to a proxy, self-hosted endpoint, or compatible API.
+   */
+  baseUrl?: string
+}
+
+export type GoogleConfig = {
+  /**
+   * Custom base URL for Google Generative AI API requests.
+   *
+   * Use this to point to a proxy, self-hosted endpoint, or compatible API.
+   */
+  baseUrl?: string
+}
+
+export type XaiConfig = {
+  /**
+   * Custom base URL for xAI API requests.
+   *
+   * Use this to point to a proxy, self-hosted endpoint, or compatible API.
+   */
+  baseUrl?: string
 }
 
 export type AutoRule = {
@@ -93,6 +126,9 @@ export type SummarizeConfig = {
   }
   cli?: CliConfig
   openai?: OpenAiConfig
+  anthropic?: AnthropicConfig
+  google?: GoogleConfig
+  xai?: XaiConfig
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -590,6 +626,10 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
     if (!isRecord(value)) {
       throw new Error(`Invalid config file ${path}: "openai" must be an object.`)
     }
+    const baseUrl =
+      typeof value.baseUrl === 'string' && value.baseUrl.trim().length > 0
+        ? value.baseUrl.trim()
+        : undefined
     const useChatCompletions =
       typeof value.useChatCompletions === 'boolean' ? value.useChatCompletions : undefined
     const whisperUsdPerMinuteRaw = (value as { whisperUsdPerMinute?: unknown }).whisperUsdPerMinute
@@ -600,12 +640,54 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
         ? whisperUsdPerMinuteRaw
         : undefined
 
-    return typeof useChatCompletions === 'boolean' || typeof whisperUsdPerMinute === 'number'
+    return typeof baseUrl === 'string' ||
+      typeof useChatCompletions === 'boolean' ||
+      typeof whisperUsdPerMinute === 'number'
       ? {
+          ...(typeof baseUrl === 'string' ? { baseUrl } : {}),
           ...(typeof useChatCompletions === 'boolean' ? { useChatCompletions } : {}),
           ...(typeof whisperUsdPerMinute === 'number' ? { whisperUsdPerMinute } : {}),
         }
       : undefined
+  })()
+
+  const anthropic = (() => {
+    const value = parsed.anthropic
+    if (typeof value === 'undefined') return undefined
+    if (!isRecord(value)) {
+      throw new Error(`Invalid config file ${path}: "anthropic" must be an object.`)
+    }
+    const baseUrl =
+      typeof value.baseUrl === 'string' && value.baseUrl.trim().length > 0
+        ? value.baseUrl.trim()
+        : undefined
+    return typeof baseUrl === 'string' ? { baseUrl } : undefined
+  })()
+
+  const google = (() => {
+    const value = parsed.google
+    if (typeof value === 'undefined') return undefined
+    if (!isRecord(value)) {
+      throw new Error(`Invalid config file ${path}: "google" must be an object.`)
+    }
+    const baseUrl =
+      typeof value.baseUrl === 'string' && value.baseUrl.trim().length > 0
+        ? value.baseUrl.trim()
+        : undefined
+    return typeof baseUrl === 'string' ? { baseUrl } : undefined
+  })()
+
+  const xai = (() => {
+    const value = parsed.xai
+    if (typeof value === 'undefined') return undefined
+    if (!isRecord(value)) {
+      throw new Error(`Invalid config file ${path}: "xai" must be an object.`)
+    }
+    const baseUrl =
+      typeof value.baseUrl === 'string' && value.baseUrl.trim().length > 0
+        ? value.baseUrl.trim()
+        : undefined
+    return typeof baseUrl === 'string' ? { baseUrl } : undefined
   })()
 
   return {
@@ -617,6 +699,9 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       ...(output ? { output } : {}),
       ...(cli ? { cli } : {}),
       ...(openai ? { openai } : {}),
+      ...(anthropic ? { anthropic } : {}),
+      ...(google ? { google } : {}),
+      ...(xai ? { xai } : {}),
     },
     path,
   }

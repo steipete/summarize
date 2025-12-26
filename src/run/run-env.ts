@@ -20,6 +20,13 @@ export type EnvState = {
   falApiKey: string | null
   cliAvailability: Partial<Record<CliProvider, boolean>>
   envForAuto: Record<string, string | undefined>
+  /** Provider base URLs (env vars take precedence over config) */
+  providerBaseUrls: {
+    openai: string | null
+    anthropic: string | null
+    google: string | null
+    xai: string | null
+  }
 }
 
 export function resolveEnvState({
@@ -34,6 +41,15 @@ export function resolveEnvState({
   const xaiKeyRaw = typeof envForRun.XAI_API_KEY === 'string' ? envForRun.XAI_API_KEY : null
   const openaiBaseUrl =
     typeof envForRun.OPENAI_BASE_URL === 'string' ? envForRun.OPENAI_BASE_URL : null
+  const anthropicBaseUrl =
+    typeof envForRun.ANTHROPIC_BASE_URL === 'string' ? envForRun.ANTHROPIC_BASE_URL : null
+  const googleBaseUrl =
+    typeof envForRun.GOOGLE_BASE_URL === 'string'
+      ? envForRun.GOOGLE_BASE_URL
+      : typeof envForRun.GEMINI_BASE_URL === 'string'
+        ? envForRun.GEMINI_BASE_URL
+        : null
+  const xaiBaseUrl = typeof envForRun.XAI_BASE_URL === 'string' ? envForRun.XAI_BASE_URL : null
   const zaiKeyRaw =
     typeof envForRun.Z_AI_API_KEY === 'string'
       ? envForRun.Z_AI_API_KEY
@@ -99,6 +115,14 @@ export function resolveEnvState({
   const cliAvailability = resolveCliAvailability({ env, config: configForCli })
   const envForAuto = openrouterApiKey ? { ...env, OPENROUTER_API_KEY: openrouterApiKey } : env
 
+  // Provider base URLs (env vars take precedence over config)
+  const providerBaseUrls = {
+    openai: openaiBaseUrl?.trim() || configForCli?.openai?.baseUrl || null,
+    anthropic: anthropicBaseUrl?.trim() || configForCli?.anthropic?.baseUrl || null,
+    google: googleBaseUrl?.trim() || configForCli?.google?.baseUrl || null,
+    xai: xaiBaseUrl?.trim() || configForCli?.xai?.baseUrl || null,
+  }
+
   return {
     apiKey: apiKey?.trim() ?? null,
     openrouterApiKey,
@@ -118,5 +142,6 @@ export function resolveEnvState({
     falApiKey,
     cliAvailability,
     envForAuto,
+    providerBaseUrls,
   }
 }

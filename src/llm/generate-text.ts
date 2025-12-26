@@ -182,6 +182,9 @@ export async function generateTextWithModelId({
   fetchImpl,
   forceOpenRouter,
   openaiBaseUrlOverride,
+  anthropicBaseUrlOverride,
+  googleBaseUrlOverride,
+  xaiBaseUrlOverride,
   forceChatCompletions,
   retries = 0,
   onRetry,
@@ -196,6 +199,9 @@ export async function generateTextWithModelId({
   fetchImpl: typeof fetch
   forceOpenRouter?: boolean
   openaiBaseUrlOverride?: string | null
+  anthropicBaseUrlOverride?: string | null
+  googleBaseUrlOverride?: string | null
+  xaiBaseUrlOverride?: string | null
   forceChatCompletions?: boolean
   retries?: number
   onRetry?: (notice: RetryNotice) => void
@@ -222,7 +228,15 @@ export async function generateTextWithModelId({
         const apiKey = apiKeys.xaiApiKey
         if (!apiKey) throw new Error('Missing XAI_API_KEY for xai/... model')
         const { createXai } = await import('@ai-sdk/xai')
-        const xai = createXai({ apiKey, fetch: fetchImpl })
+        const xaiBaseUrl =
+          typeof xaiBaseUrlOverride === 'string' && xaiBaseUrlOverride.trim().length > 0
+            ? xaiBaseUrlOverride.trim()
+            : undefined
+        const xai = createXai({
+          apiKey,
+          fetch: fetchImpl,
+          ...(xaiBaseUrl ? { baseURL: xaiBaseUrl } : {}),
+        })
         const result = await generateText({
           model: xai(parsed.model),
           system,
@@ -247,7 +261,15 @@ export async function generateTextWithModelId({
             'Missing GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY) for google/... model'
           )
         const { createGoogleGenerativeAI } = await import('@ai-sdk/google')
-        const google = createGoogleGenerativeAI({ apiKey, fetch: fetchImpl })
+        const googleBaseUrl =
+          typeof googleBaseUrlOverride === 'string' && googleBaseUrlOverride.trim().length > 0
+            ? googleBaseUrlOverride.trim()
+            : undefined
+        const google = createGoogleGenerativeAI({
+          apiKey,
+          fetch: fetchImpl,
+          ...(googleBaseUrl ? { baseURL: googleBaseUrl } : {}),
+        })
         const result = await generateText({
           model: google(parsed.model),
           system,
@@ -269,7 +291,15 @@ export async function generateTextWithModelId({
         const apiKey = apiKeys.anthropicApiKey
         if (!apiKey) throw new Error('Missing ANTHROPIC_API_KEY for anthropic/... model')
         const { createAnthropic } = await import('@ai-sdk/anthropic')
-        const anthropic = createAnthropic({ apiKey, fetch: fetchImpl })
+        const anthropicBaseUrl =
+          typeof anthropicBaseUrlOverride === 'string' && anthropicBaseUrlOverride.trim().length > 0
+            ? anthropicBaseUrlOverride.trim()
+            : undefined
+        const anthropic = createAnthropic({
+          apiKey,
+          fetch: fetchImpl,
+          ...(anthropicBaseUrl ? { baseURL: anthropicBaseUrl } : {}),
+        })
         const result = await generateText({
           model: anthropic(parsed.model),
           system,
@@ -379,6 +409,9 @@ export async function streamTextWithModelId({
   fetchImpl,
   forceOpenRouter,
   openaiBaseUrlOverride,
+  anthropicBaseUrlOverride,
+  googleBaseUrlOverride,
+  xaiBaseUrlOverride,
   forceChatCompletions,
 }: {
   modelId: string
@@ -391,6 +424,9 @@ export async function streamTextWithModelId({
   fetchImpl: typeof fetch
   forceOpenRouter?: boolean
   openaiBaseUrlOverride?: string | null
+  anthropicBaseUrlOverride?: string | null
+  googleBaseUrlOverride?: string | null
+  xaiBaseUrlOverride?: string | null
   forceChatCompletions?: boolean
 }): Promise<{
   textStream: AsyncIterable<string>
@@ -486,7 +522,15 @@ export async function streamTextWithModelId({
       const apiKey = apiKeys.xaiApiKey
       if (!apiKey) throw new Error('Missing XAI_API_KEY for xai/... model')
       const { createXai } = await import('@ai-sdk/xai')
-      const xai = createXai({ apiKey, fetch: fetchImpl })
+      const xaiBaseUrl =
+        typeof xaiBaseUrlOverride === 'string' && xaiBaseUrlOverride.trim().length > 0
+          ? xaiBaseUrlOverride.trim()
+          : undefined
+      const xai = createXai({
+        apiKey,
+        fetch: fetchImpl,
+        ...(xaiBaseUrl ? { baseURL: xaiBaseUrl } : {}),
+      })
       const result = streamText({
         model: xai(parsed.model),
         system,
@@ -514,7 +558,15 @@ export async function streamTextWithModelId({
           'Missing GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY) for google/... model'
         )
       const { createGoogleGenerativeAI } = await import('@ai-sdk/google')
-      const google = createGoogleGenerativeAI({ apiKey, fetch: fetchImpl })
+      const googleBaseUrl =
+        typeof googleBaseUrlOverride === 'string' && googleBaseUrlOverride.trim().length > 0
+          ? googleBaseUrlOverride.trim()
+          : undefined
+      const google = createGoogleGenerativeAI({
+        apiKey,
+        fetch: fetchImpl,
+        ...(googleBaseUrl ? { baseURL: googleBaseUrl } : {}),
+      })
       const result = streamText({
         model: google(parsed.model),
         system,
@@ -539,7 +591,15 @@ export async function streamTextWithModelId({
       const apiKey = apiKeys.anthropicApiKey
       if (!apiKey) throw new Error('Missing ANTHROPIC_API_KEY for anthropic/... model')
       const { createAnthropic } = await import('@ai-sdk/anthropic')
-      const anthropic = createAnthropic({ apiKey, fetch: fetchImpl })
+      const anthropicBaseUrl =
+        typeof anthropicBaseUrlOverride === 'string' && anthropicBaseUrlOverride.trim().length > 0
+          ? anthropicBaseUrlOverride.trim()
+          : undefined
+      const anthropic = createAnthropic({
+        apiKey,
+        fetch: fetchImpl,
+        ...(anthropicBaseUrl ? { baseURL: anthropicBaseUrl } : {}),
+      })
       const result = streamText({
         model: anthropic(parsed.model),
         system,
