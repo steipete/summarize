@@ -148,6 +148,7 @@ describe('cli md-live rendering options', () => {
       expect(options?.maxRows).toBe(19)
       expect(options?.tailRows).toBe(12)
       expect(options?.clearOnOverflow).toBe(false)
+      expect(options?.appendWhenPossible).toBe(true)
       expect(renderer?.finish).toHaveBeenCalledWith('Hello **bold**')
     } finally {
       globalFetchSpy.mockRestore()

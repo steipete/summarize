@@ -393,6 +393,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
                 hyperlinks: true,
               }),
             // markdansi supports tailRows/maxRows at runtime; typings lag behind.
+            appendWhenPossible: true,
             tailRows: tailLiveRows,
             maxRows: maxLiveRows,
             clearOnOverflow: false,
