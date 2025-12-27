@@ -1,10 +1,11 @@
 import MarkdownIt from 'markdown-it'
 
+import { readPresetOrCustomValue, resolvePresetOrCustom } from '../../lib/combo'
 import { buildIdleSubtitle } from '../../lib/header'
-import { loadSettings, patchSettings } from '../../lib/settings'
-import { applyTheme, type ColorMode, type ColorScheme } from '../../lib/theme'
+import { defaultSettings, loadSettings, patchSettings } from '../../lib/settings'
 import { parseSseStream } from '../../lib/sse'
 import { splitStatusPercent } from '../../lib/status'
+import { applyTheme, type ColorMode, type ColorScheme } from '../../lib/theme'
 import { generateToken } from '../../lib/token'
 
 type PanelToBg =
@@ -14,14 +15,14 @@ type PanelToBg =
   | { type: 'panel:closed' }
   | { type: 'panel:rememberUrl'; url: string }
   | { type: 'panel:setAuto'; value: boolean }
-  | { type: 'panel:setModel'; value: string }
+  | { type: 'panel:setLength'; value: string }
   | { type: 'panel:openOptions' }
 
 type UiState = {
   panelOpen: boolean
   daemon: { ok: boolean; authed: boolean; error?: string }
   tab: { url: string | null; title: string | null }
-  settings: { autoSummarize: boolean; model: string; tokenPresent: boolean }
+  settings: { autoSummarize: boolean; model: string; length: string; tokenPresent: boolean }
   status: string
 }
 
@@ -59,11 +60,22 @@ const summarizeBtn = byId<HTMLButtonElement>('summarize')
 const drawerToggleBtn = byId<HTMLButtonElement>('drawerToggle')
 const advancedBtn = byId<HTMLButtonElement>('advanced')
 const autoEl = byId<HTMLInputElement>('auto')
-const modelEl = byId<HTMLInputElement>('model')
-const fontEl = byId<HTMLSelectElement>('font')
+const lengthPresetEl = byId<HTMLSelectElement>('lengthPreset')
+const lengthCustomEl = byId<HTMLInputElement>('lengthCustom')
 const sizeEl = byId<HTMLInputElement>('size')
-const schemeEl = byId<HTMLSelectElement>('scheme')
-const modeEl = byId<HTMLSelectElement>('mode')
+const schemeTriggerEl = byId<HTMLButtonElement>('schemeTrigger')
+const schemeLabelEl = byId<HTMLSpanElement>('schemeLabel')
+const schemeChipsEl = byId<HTMLSpanElement>('schemeChips')
+const schemeListEl = byId<HTMLDivElement>('schemeList')
+const schemeOptions = Array.from(schemeListEl.querySelectorAll<HTMLButtonElement>('.pickerOption'))
+const modeTriggerEl = byId<HTMLButtonElement>('modeTrigger')
+const modeLabelEl = byId<HTMLSpanElement>('modeLabel')
+const modeListEl = byId<HTMLDivElement>('modeList')
+const modeOptions = Array.from(modeListEl.querySelectorAll<HTMLButtonElement>('.pickerOption'))
+const fontTriggerEl = byId<HTMLButtonElement>('fontTrigger')
+const fontLabelEl = byId<HTMLSpanElement>('fontLabel')
+const fontListEl = byId<HTMLDivElement>('fontList')
+const fontOptions = Array.from(fontListEl.querySelectorAll<HTMLButtonElement>('.pickerOption'))
 
 const md = new MarkdownIt({
   html: false,
@@ -89,27 +101,7 @@ let lastMeta: { inputSummary: string | null; model: string | null; modelLabel: s
 }
 let drawerAnimation: Animation | null = null
 
-function ensureSelectValue(select: HTMLSelectElement, value: unknown): string {
-  const normalized = typeof value === 'string' ? value.trim() : ''
-  if (!normalized) {
-    const fallback = select.options[0]?.value ?? ''
-    if (fallback) select.value = fallback
-    if (select.selectedIndex === -1 && select.options.length > 0) select.selectedIndex = 0
-    return fallback
-  }
-
-  if (!Array.from(select.options).some((o) => o.value === normalized)) {
-    const label = normalized.split(',')[0]?.replace(/["']/g, '').trim() || 'Custom'
-    const option = document.createElement('option')
-    option.value = normalized
-    option.textContent = `Custom (${label})`
-    select.append(option)
-  }
-
-  select.value = normalized
-  if (select.selectedIndex === -1 && select.options.length > 0) select.selectedIndex = 0
-  return normalized
-}
+const lengthPresets = ['short', 'medium', 'long', 'xl', 'xxl', '20k']
 
 function setBaseSubtitle(text: string) {
   baseSubtitle = text
@@ -214,6 +206,185 @@ function applyTypography(fontFamily: string, fontSize: number) {
   document.documentElement.style.setProperty('--font-size', `${fontSize}px`)
 }
 
+type PickerState = {
+  el: HTMLElement
+  trigger: HTMLButtonElement
+  list: HTMLElement
+  isOpen: () => boolean
+  close: () => void
+}
+
+const pickerStates: PickerState[] = []
+
+function closeAllPickers(except?: PickerState) {
+  pickerStates.forEach((state) => {
+    if (state !== except) state.close()
+  })
+}
+
+document.addEventListener('click', (event) => {
+  const target = event.target as Node
+  pickerStates.forEach((state) => {
+    if (state.isOpen() && !state.el.contains(target)) state.close()
+  })
+})
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return
+  const openState = pickerStates.find((state) => state.isOpen())
+  if (!openState) return
+  event.preventDefault()
+  openState.close()
+  openState.trigger.focus()
+})
+
+function createPicker<T extends string>(opts: {
+  pickerEl: HTMLElement
+  triggerEl: HTMLButtonElement
+  labelEl: HTMLElement
+  listEl: HTMLElement
+  options: HTMLButtonElement[]
+  getLabel: (value: T) => string
+  renderValue?: (value: T) => void
+  onSelect: (value: T) => void
+  initialValue: T
+}) {
+  const { pickerEl, triggerEl, labelEl, listEl, options, getLabel, renderValue, onSelect } = opts
+  let current = opts.initialValue
+
+  const setOpen = (open: boolean) => {
+    pickerEl.setAttribute('data-open', open ? 'true' : 'false')
+    triggerEl.setAttribute('aria-expanded', open ? 'true' : 'false')
+    if (open) listEl.focus()
+  }
+
+  const state: PickerState = {
+    el: pickerEl,
+    trigger: triggerEl,
+    list: listEl,
+    isOpen: () => pickerEl.getAttribute('data-open') === 'true',
+    close: () => setOpen(false),
+  }
+  pickerStates.push(state)
+
+  function setValue(value: T) {
+    current = value
+    labelEl.textContent = getLabel(value)
+    renderValue?.(value)
+    options.forEach((option) => {
+      const selected = option.dataset.value === value
+      option.classList.toggle('isSelected', selected)
+      option.setAttribute('aria-selected', selected ? 'true' : 'false')
+    })
+  }
+
+  triggerEl.addEventListener('click', () => {
+    const open = state.isOpen()
+    if (!open) closeAllPickers(state)
+    setOpen(!open)
+  })
+
+  options.forEach((option) => {
+    option.addEventListener('click', () => {
+      const value = option.dataset.value as T | undefined
+      if (!value) return
+      setValue(value)
+      onSelect(value)
+      setOpen(false)
+    })
+  })
+
+  setValue(opts.initialValue)
+
+  return {
+    setValue,
+    getValue: () => current,
+  }
+}
+
+const schemeLabels: Record<ColorScheme, string> = {
+  slate: 'Slate',
+  cedar: 'Cedar',
+  mint: 'Mint',
+  ocean: 'Ocean',
+  ember: 'Ember',
+  iris: 'Iris',
+}
+
+const modeLabels: Record<ColorMode, string> = {
+  system: 'System',
+  light: 'Light',
+  dark: 'Dark',
+}
+
+const fontLabels = new Map<string, string>([
+  ['-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif', 'SF'],
+  ['Georgia, serif', 'Georgia'],
+  ['Iowan Old Style, Palatino, serif', 'Iowan'],
+  ['ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', 'Mono'],
+])
+
+const schemePickerEl = schemeTriggerEl.closest('.picker')
+if (!schemePickerEl) throw new Error('Missing scheme picker')
+const modePickerEl = modeTriggerEl.closest('.picker')
+if (!modePickerEl) throw new Error('Missing mode picker')
+const fontPickerEl = fontTriggerEl.closest('.picker')
+if (!fontPickerEl) throw new Error('Missing font picker')
+
+const _schemePicker = createPicker<ColorScheme>({
+  pickerEl: schemePickerEl,
+  triggerEl: schemeTriggerEl,
+  labelEl: schemeLabelEl,
+  listEl: schemeListEl,
+  options: schemeOptions,
+  getLabel: (value) => schemeLabels[value] ?? 'Custom',
+  renderValue: (value) => {
+    schemeChipsEl.className = `scheme-chips scheme-${value}`
+  },
+  onSelect: (value) => {
+    void (async () => {
+      const next = await patchSettings({ colorScheme: value })
+      applyTheme({ scheme: next.colorScheme, mode: next.colorMode })
+    })()
+  },
+  initialValue: 'slate',
+})
+
+const _modePicker = createPicker<ColorMode>({
+  pickerEl: modePickerEl,
+  triggerEl: modeTriggerEl,
+  labelEl: modeLabelEl,
+  listEl: modeListEl,
+  options: modeOptions,
+  getLabel: (value) => modeLabels[value] ?? 'System',
+  onSelect: (value) => {
+    void (async () => {
+      const next = await patchSettings({ colorMode: value })
+      applyTheme({ scheme: next.colorScheme, mode: next.colorMode })
+    })()
+  },
+  initialValue: 'system',
+})
+
+const _fontPicker = createPicker<string>({
+  pickerEl: fontPickerEl,
+  triggerEl: fontTriggerEl,
+  labelEl: fontLabelEl,
+  listEl: fontListEl,
+  options: fontOptions,
+  getLabel: (value) => fontLabels.get(value) ?? 'Custom',
+  renderValue: (value) => {
+    fontLabelEl.title = value
+  },
+  onSelect: (value) => {
+    void (async () => {
+      const next = await patchSettings({ fontFamily: value })
+      applyTypography(next.fontFamily, next.fontSize)
+    })()
+  },
+  initialValue: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
+})
+
 type PlatformKind = 'mac' | 'windows' | 'linux' | 'other'
 
 function resolvePlatformKind(): PlatformKind {
@@ -303,14 +474,15 @@ function installStepsHtml({
       </div>
     `
 
-  const troubleshooting = showTroubleshooting && isMac
-    ? `
+  const troubleshooting =
+    showTroubleshooting && isMac
+      ? `
       <div class="row">
         <button id="status" type="button">Copy Status Command</button>
         <button id="restart" type="button">Copy Restart Command</button>
       </div>
     `
-    : ''
+      : ''
 
   return `
     <h2>${headline}</h2>
@@ -423,7 +595,12 @@ function maybeShowSetup(state: UiState) {
 
 function updateControls(state: UiState) {
   autoEl.checked = state.settings.autoSummarize
-  modelEl.value = state.settings.model
+  {
+    const resolved = resolvePresetOrCustom({ value: state.settings.length, presets: lengthPresets })
+    lengthPresetEl.value = resolved.presetValue
+    lengthCustomEl.hidden = !resolved.isCustom
+    lengthCustomEl.value = resolved.customValue
+  }
   if (currentSource && state.tab.url && state.tab.url !== currentSource.url && !streaming) {
     currentSource = null
   }
@@ -542,15 +719,24 @@ drawerToggleBtn.addEventListener('click', () => toggleDrawer())
 advancedBtn.addEventListener('click', () => send({ type: 'panel:openOptions' }))
 
 autoEl.addEventListener('change', () => send({ type: 'panel:setAuto', value: autoEl.checked }))
-modelEl.addEventListener('change', () =>
-  send({ type: 'panel:setModel', value: modelEl.value.trim() || 'auto' })
-)
-
-fontEl.addEventListener('change', () => {
-  void (async () => {
-    const next = await patchSettings({ fontFamily: fontEl.value })
-    applyTypography(next.fontFamily, next.fontSize)
-  })()
+lengthPresetEl.addEventListener('change', () => {
+  lengthCustomEl.hidden = lengthPresetEl.value !== 'custom'
+  if (!lengthCustomEl.hidden) {
+    lengthCustomEl.focus()
+    return
+  }
+  send({ type: 'panel:setLength', value: lengthPresetEl.value || defaultSettings.length })
+})
+lengthCustomEl.addEventListener('change', () => {
+  if (lengthPresetEl.value !== 'custom') return
+  send({
+    type: 'panel:setLength',
+    value: readPresetOrCustomValue({
+      presetValue: lengthPresetEl.value,
+      customValue: lengthCustomEl.value,
+      defaultValue: defaultSettings.length,
+    }),
+  })
 })
 
 sizeEl.addEventListener('input', () => {
@@ -560,30 +746,20 @@ sizeEl.addEventListener('input', () => {
   })()
 })
 
-schemeEl.addEventListener('change', () => {
-  void (async () => {
-    const next = await patchSettings({ colorScheme: schemeEl.value as ColorScheme })
-    applyTheme({ scheme: next.colorScheme, mode: next.colorMode })
-  })()
-})
-
-modeEl.addEventListener('change', () => {
-  void (async () => {
-    const next = await patchSettings({ colorMode: modeEl.value as ColorMode })
-    applyTheme({ scheme: next.colorScheme, mode: next.colorMode })
-  })()
-})
-
 void (async () => {
   const s = await loadSettings()
-  const fontFamily = ensureSelectValue(fontEl, s.fontFamily)
-  if (fontFamily !== s.fontFamily) await patchSettings({ fontFamily })
   sizeEl.value = String(s.fontSize)
-  modelEl.value = s.model
   autoEl.checked = s.autoSummarize
-  schemeEl.value = s.colorScheme
-  modeEl.value = s.colorMode
-  applyTypography(fontEl.value, s.fontSize)
+  {
+    const resolved = resolvePresetOrCustom({ value: s.length, presets: lengthPresets })
+    lengthPresetEl.value = resolved.presetValue
+    lengthCustomEl.hidden = !resolved.isCustom
+    lengthCustomEl.value = resolved.customValue
+  }
+  fontPicker.setValue(s.fontFamily)
+  modePicker.setValue(s.colorMode)
+  schemePicker.setValue(s.colorScheme)
+  applyTypography(s.fontFamily, s.fontSize)
   applyTheme({ scheme: s.colorScheme, mode: s.colorMode })
   toggleDrawer(false, { animate: false })
   chrome.runtime.onMessage.addListener((msg: BgToPanel) => {

@@ -10,7 +10,7 @@ type PanelToBg =
   | { type: 'panel:closed' }
   | { type: 'panel:rememberUrl'; url: string }
   | { type: 'panel:setAuto'; value: boolean }
-  | { type: 'panel:setModel'; value: string }
+  | { type: 'panel:setLength'; value: string }
   | { type: 'panel:openOptions' }
 
 type RunStart = {
@@ -31,7 +31,7 @@ type UiState = {
   panelOpen: boolean
   daemon: { ok: boolean; authed: boolean; error?: string }
   tab: { url: string | null; title: string | null }
-  settings: { autoSummarize: boolean; model: string; tokenPresent: boolean }
+  settings: { autoSummarize: boolean; model: string; length: string; tokenPresent: boolean }
   status: string
 }
 
@@ -194,6 +194,7 @@ export default defineBackground(() => {
       settings: {
         autoSummarize: settings.autoSummarize,
         model: settings.model,
+        length: settings.length,
         tokenPresent: Boolean(settings.token.trim()),
       },
       status,
@@ -314,9 +315,9 @@ export default defineBackground(() => {
           if ((msg as { value: boolean }).value) void summarizeActiveTab('auto-enabled')
         })()
         break
-      case 'panel:setModel':
+      case 'panel:setLength':
         void (async () => {
-          await patchSettings({ model: (msg as { value: string }).value })
+          await patchSettings({ length: (msg as { value: string }).value })
           void emitState('')
         })()
         break

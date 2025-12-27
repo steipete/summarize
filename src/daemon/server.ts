@@ -6,6 +6,7 @@ import { formatModelLabelForDisplay } from '../run/finish-line.js'
 import { type DaemonRequestedMode, resolveAutoDaemonMode } from './auto-mode.js'
 import type { DaemonConfig } from './config.js'
 import { DAEMON_HOST, DAEMON_PORT_DEFAULT } from './constants.js'
+import { buildModelPickerOptions } from './models.js'
 import { streamSummaryForUrl, streamSummaryForVisiblePage } from './summarize.js'
 
 type SessionEvent =
@@ -210,6 +211,17 @@ export async function runDaemonServer({
 
       if (req.method === 'GET' && pathname === '/v1/ping') {
         json(res, 200, { ok: true }, cors)
+        return
+      }
+
+      if (req.method === 'GET' && pathname === '/v1/models') {
+        const result = await buildModelPickerOptions({
+          env,
+          envForRun: env,
+          configForCli: summarizeConfig,
+          fetchImpl,
+        })
+        json(res, 200, result, cors)
         return
       }
 

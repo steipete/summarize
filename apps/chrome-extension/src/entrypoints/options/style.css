@@ -7,21 +7,21 @@
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }
 
-:root[data-mode='light'] {
+:root[data-mode="light"] {
   color-scheme: light;
 }
 
-:root[data-mode='dark'] {
+:root[data-mode="dark"] {
   color-scheme: dark;
 }
 
-:root[data-mode='system'] {
+:root[data-mode="system"] {
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: light) {
   :root,
-  :root[data-theme='slate'][data-mode='system'] {
+  :root[data-theme="slate"][data-mode="system"] {
     --bg0: #f5f7fb;
     --bg1: #ffffff;
     --bg2: #eaf0f8;
@@ -36,7 +36,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root,
-  :root[data-theme='slate'][data-mode='system'] {
+  :root[data-theme="slate"][data-mode="system"] {
     --bg0: #151a22;
     --bg1: #1a2230;
     --bg2: #0f141b;
@@ -49,7 +49,7 @@
   }
 }
 
-:root[data-theme='slate'][data-mode='light'] {
+:root[data-theme="slate"][data-mode="light"] {
   --bg0: #f5f7fb;
   --bg1: #ffffff;
   --bg2: #eaf0f8;
@@ -61,7 +61,7 @@
   --accent: #4f76ff;
 }
 
-:root[data-theme='slate'][data-mode='dark'] {
+:root[data-theme="slate"][data-mode="dark"] {
   --bg0: #151a22;
   --bg1: #1a2230;
   --bg2: #0f141b;
@@ -74,7 +74,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root[data-theme='cedar'][data-mode='system'] {
+  :root[data-theme="cedar"][data-mode="system"] {
     --bg0: #fbf6f1;
     --bg1: #fffdf9;
     --bg2: #f1e8dd;
@@ -88,7 +88,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-theme='cedar'][data-mode='system'] {
+  :root[data-theme="cedar"][data-mode="system"] {
     --bg0: #1c1713;
     --bg1: #221b16;
     --bg2: #120f0c;
@@ -101,7 +101,7 @@
   }
 }
 
-:root[data-theme='cedar'][data-mode='light'] {
+:root[data-theme="cedar"][data-mode="light"] {
   --bg0: #fbf6f1;
   --bg1: #fffdf9;
   --bg2: #f1e8dd;
@@ -113,7 +113,7 @@
   --accent: #c46b2a;
 }
 
-:root[data-theme='cedar'][data-mode='dark'] {
+:root[data-theme="cedar"][data-mode="dark"] {
   --bg0: #1c1713;
   --bg1: #221b16;
   --bg2: #120f0c;
@@ -126,7 +126,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root[data-theme='mint'][data-mode='system'] {
+  :root[data-theme="mint"][data-mode="system"] {
     --bg0: #f1faf7;
     --bg1: #fbfffd;
     --bg2: #e4f3ef;
@@ -140,7 +140,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-theme='mint'][data-mode='system'] {
+  :root[data-theme="mint"][data-mode="system"] {
     --bg0: #0f1917;
     --bg1: #14201e;
     --bg2: #0a1211;
@@ -153,7 +153,7 @@
   }
 }
 
-:root[data-theme='mint'][data-mode='light'] {
+:root[data-theme="mint"][data-mode="light"] {
   --bg0: #f1faf7;
   --bg1: #fbfffd;
   --bg2: #e4f3ef;
@@ -165,7 +165,7 @@
   --accent: #2a9d8f;
 }
 
-:root[data-theme='mint'][data-mode='dark'] {
+:root[data-theme="mint"][data-mode="dark"] {
   --bg0: #0f1917;
   --bg1: #14201e;
   --bg2: #0a1211;
@@ -178,7 +178,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root[data-theme='ocean'][data-mode='system'] {
+  :root[data-theme="ocean"][data-mode="system"] {
     --bg0: #f1f7fb;
     --bg1: #fdfefe;
     --bg2: #e0edf6;
@@ -192,7 +192,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-theme='ocean'][data-mode='system'] {
+  :root[data-theme="ocean"][data-mode="system"] {
     --bg0: #101c23;
     --bg1: #14222b;
     --bg2: #0a1419;
@@ -205,7 +205,7 @@
   }
 }
 
-:root[data-theme='ocean'][data-mode='light'] {
+:root[data-theme="ocean"][data-mode="light"] {
   --bg0: #f1f7fb;
   --bg1: #fdfefe;
   --bg2: #e0edf6;
@@ -217,7 +217,7 @@
   --accent: #2b8db8;
 }
 
-:root[data-theme='ocean'][data-mode='dark'] {
+:root[data-theme="ocean"][data-mode="dark"] {
   --bg0: #101c23;
   --bg1: #14222b;
   --bg2: #0a1419;
@@ -230,7 +230,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root[data-theme='ember'][data-mode='system'] {
+  :root[data-theme="ember"][data-mode="system"] {
     --bg0: #fbf2ee;
     --bg1: #fffaf7;
     --bg2: #f3e4dc;
@@ -244,7 +244,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-theme='ember'][data-mode='system'] {
+  :root[data-theme="ember"][data-mode="system"] {
     --bg0: #201512;
     --bg1: #261916;
     --bg2: #140d0b;
@@ -257,7 +257,7 @@
   }
 }
 
-:root[data-theme='ember'][data-mode='light'] {
+:root[data-theme="ember"][data-mode="light"] {
   --bg0: #fbf2ee;
   --bg1: #fffaf7;
   --bg2: #f3e4dc;
@@ -269,7 +269,7 @@
   --accent: #d66a4a;
 }
 
-:root[data-theme='ember'][data-mode='dark'] {
+:root[data-theme="ember"][data-mode="dark"] {
   --bg0: #201512;
   --bg1: #261916;
   --bg2: #140d0b;
@@ -282,7 +282,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root[data-theme='iris'][data-mode='system'] {
+  :root[data-theme="iris"][data-mode="system"] {
     --bg0: #f6f3fb;
     --bg1: #fefcff;
     --bg2: #ece6f6;
@@ -296,7 +296,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-theme='iris'][data-mode='system'] {
+  :root[data-theme="iris"][data-mode="system"] {
     --bg0: #181420;
     --bg1: #1e1928;
     --bg2: #0f0c14;
@@ -309,7 +309,7 @@
   }
 }
 
-:root[data-theme='iris'][data-mode='light'] {
+:root[data-theme="iris"][data-mode="light"] {
   --bg0: #f6f3fb;
   --bg1: #fefcff;
   --bg2: #ece6f6;
@@ -321,7 +321,7 @@
   --accent: #7b6cf6;
 }
 
-:root[data-theme='iris'][data-mode='dark'] {
+:root[data-theme="iris"][data-mode="dark"] {
   --bg0: #181420;
   --bg1: #1e1928;
   --bg2: #0f0c14;
@@ -350,8 +350,7 @@ body {
       900px 520px at 110% 12%,
       color-mix(in srgb, var(--accent) 12%, transparent),
       transparent 60%
-    ),
-    linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 70%, var(--bg2) 100%);
+    ), linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 70%, var(--bg2) 100%);
 }
 
 main {
@@ -438,51 +437,87 @@ select {
   background-repeat: no-repeat;
 }
 
-select.schemeSelect {
-  appearance: base-select;
-  padding-right: 12px;
-  background-image: none;
+.picker {
+  position: relative;
 }
 
-select.schemeSelect::picker(select) {
-  appearance: base-select;
-  background: var(--panel);
+.pickerTrigger {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px 10px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pickerTrigger:focus-visible {
+  outline: none;
+  border-color: var(--ui-focus);
+}
+
+.pickerTrigger::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  margin-left: 6px;
+}
+
+.pickerTrigger .scheme-chips {
+  margin-left: auto;
+}
+
+.pickerList {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 6px;
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: none;
+  gap: 4px;
 }
 
-select.schemeSelect::picker-icon {
-  color: var(--muted);
-  margin-inline-end: 10px;
+.picker[data-open="true"] .pickerList {
+  display: grid;
 }
 
-select.schemeSelect::checkmark {
-  color: var(--accent);
-}
-
-select.schemeSelect option {
-  padding: 8px 10px;
-  border-radius: 10px;
-}
-
-select.schemeSelect option:checked {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-}
-
-selectedcontent {
-  display: inline-flex;
-  align-items: center;
-  width: 100%;
-}
-
-.scheme-option {
+.pickerOption {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
   gap: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pickerOption:hover,
+.pickerOption:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.pickerOption.isSelected {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .scheme-chips {
@@ -514,7 +549,7 @@ selectedcontent {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--chip-4) 60%, transparent);
 }
 
-selectedcontent .scheme-chips span {
+.pickerTrigger .scheme-chips span {
   width: 6px;
   height: 6px;
 }

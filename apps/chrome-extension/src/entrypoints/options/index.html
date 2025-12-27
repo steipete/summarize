@@ -10,7 +10,6 @@
     <main>
       <div class="top">
         <h1>Summarize Settings</h1>
-        <a class="docsLink" href="https://summarize.sh" target="_blank" rel="noreferrer">Docs</a>
       </div>
       <form id="form">
         <label>
@@ -32,29 +31,6 @@
             <option value="auto" label="Auto"></option>
             <option value="free" label="Free"></option>
           </datalist>
-        </label>
-        <label>
-          <span>Length</span>
-          <div class="combo">
-            <select id="lengthPreset">
-              <option value="short">short</option>
-              <option value="medium">medium</option>
-              <option value="long">long</option>
-              <option value="xl">xl</option>
-              <option value="xxl">xxl</option>
-              <option value="20k">20k</option>
-              <option value="custom">Custom…</option>
-            </select>
-            <input
-              id="lengthCustom"
-              type="text"
-              placeholder="Custom (e.g. 20k)"
-              autocapitalize="off"
-              autocomplete="off"
-              spellcheck="false"
-              hidden
-            />
-          </div>
         </label>
         <label>
           <span>Language</span>
@@ -114,59 +90,52 @@
         </label>
         <label>
           <span>Color scheme</span>
-          <select id="colorScheme" class="schemeSelect">
-            <button type="button">
-              <selectedcontent></selectedcontent>
+          <div class="picker" data-open="false">
+            <button id="schemeTrigger" type="button" class="pickerTrigger" aria-haspopup="listbox" aria-expanded="false">
+              <span class="scheme-label" id="schemeLabel">Slate</span>
+              <span class="scheme-chips scheme-slate" id="schemeChips" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+              </span>
             </button>
-            <option value="slate">
-              <span class="scheme-option">
+            <div id="schemeList" class="pickerList" role="listbox" tabindex="-1">
+              <button type="button" class="pickerOption" role="option" data-value="slate">
                 <span class="scheme-label">Slate</span>
                 <span class="scheme-chips scheme-slate" aria-hidden="true">
                   <span></span><span></span><span></span><span></span>
                 </span>
-              </span>
-            </option>
-            <option value="cedar">
-              <span class="scheme-option">
+              </button>
+              <button type="button" class="pickerOption" role="option" data-value="cedar">
                 <span class="scheme-label">Cedar</span>
                 <span class="scheme-chips scheme-cedar" aria-hidden="true">
                   <span></span><span></span><span></span><span></span>
                 </span>
-              </span>
-            </option>
-            <option value="mint">
-              <span class="scheme-option">
+              </button>
+              <button type="button" class="pickerOption" role="option" data-value="mint">
                 <span class="scheme-label">Mint</span>
                 <span class="scheme-chips scheme-mint" aria-hidden="true">
                   <span></span><span></span><span></span><span></span>
                 </span>
-              </span>
-            </option>
-            <option value="ocean">
-              <span class="scheme-option">
+              </button>
+              <button type="button" class="pickerOption" role="option" data-value="ocean">
                 <span class="scheme-label">Ocean</span>
                 <span class="scheme-chips scheme-ocean" aria-hidden="true">
                   <span></span><span></span><span></span><span></span>
                 </span>
-              </span>
-            </option>
-            <option value="ember">
-              <span class="scheme-option">
+              </button>
+              <button type="button" class="pickerOption" role="option" data-value="ember">
                 <span class="scheme-label">Ember</span>
                 <span class="scheme-chips scheme-ember" aria-hidden="true">
                   <span></span><span></span><span></span><span></span>
                 </span>
-              </span>
-            </option>
-            <option value="iris">
-              <span class="scheme-option">
+              </button>
+              <button type="button" class="pickerOption" role="option" data-value="iris">
                 <span class="scheme-label">Iris</span>
                 <span class="scheme-chips scheme-iris" aria-hidden="true">
                   <span></span><span></span><span></span><span></span>
                 </span>
-              </span>
-            </option>
-          </select>
+              </button>
+            </div>
+          </div>
         </label>
         <label>
           <span>Appearance</span>
