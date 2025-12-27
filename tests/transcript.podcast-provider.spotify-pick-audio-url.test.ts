@@ -17,7 +17,7 @@ vi.mock('node:child_process', () => ({
   },
 }))
 
-import { fetchTranscript } from '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
+import { fetchTranscript } from '../packages/core/src/content/transcript/providers/podcast.js'
 
 describe('podcast transcript provider - spotify audio url selection branches', () => {
   it('falls back to the first embed audio URL when no scdn URL is present', async () => {

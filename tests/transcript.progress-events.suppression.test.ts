@@ -9,13 +9,13 @@ const mocks = vi.hoisted(() => ({
   })),
 }))
 
-vi.mock('../packages/core/src/content/link-preview/transcript/providers/youtube.js', () => ({
+vi.mock('../packages/core/src/content/transcript/providers/youtube.js', () => ({
   canHandle: (ctx: { url: string }) =>
     ctx.url.includes('youtube.com') || ctx.url.includes('youtu.be'),
   fetchTranscript: mocks.fetchYoutube,
 }))
 
-import { resolveTranscriptForLink } from '../packages/core/src/content/link-preview/transcript/index.js'
+import { resolveTranscriptForLink } from '../packages/core/src/content/transcript/index.js'
 
 describe('transcript progress events', () => {
   it('does not emit transcript-start/done for generic pages', async () => {

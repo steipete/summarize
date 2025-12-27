@@ -16,7 +16,7 @@ vi.mock('node:child_process', () => ({ spawn: spawnMock }))
 vi.mock('node:fs', () => ({ promises: fsMock }))
 vi.mock('@fal-ai/client', () => falMock)
 
-import { fetchTranscriptWithYtDlp } from '../packages/core/src/content/link-preview/transcript/providers/youtube/yt-dlp.js'
+import { fetchTranscriptWithYtDlp } from '../packages/core/src/content/transcript/providers/youtube/yt-dlp.js'
 
 const mockSpawnSuccess = () => {
   spawnMock.mockImplementation(() => {

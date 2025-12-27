@@ -1,4 +1,4 @@
-import { isWhisperCppReady } from '../../../../transcription/whisper.js'
+import { isWhisperCppReady } from '../../../transcription/whisper.js'
 import { normalizeTranscriptText } from '../normalize.js'
 import type {
   ProviderContext,

@@ -37,9 +37,7 @@ async function importPodcastProvider({ ffmpegAvailable }: { ffmpegAvailable: boo
     transcribeMediaFileWithWhisper,
   }))
 
-  const provider = await import(
-    '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
-  )
+  const provider = await import('../packages/core/src/content/transcript/providers/podcast.js')
   return { ...provider, transcribeMediaWithWhisper, transcribeMediaFileWithWhisper }
 }
 

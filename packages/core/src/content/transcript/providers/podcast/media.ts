@@ -10,7 +10,7 @@ import {
   resolveWhisperCppModelNameForDisplay,
   transcribeMediaFileWithWhisper,
   transcribeMediaWithWhisper,
-} from '../../../../../transcription/whisper.js'
+} from '../../../../transcription/whisper.js'
 import type { ProviderFetchOptions } from '../../types.js'
 import { MAX_REMOTE_MEDIA_BYTES, TRANSCRIPTION_TIMEOUT_MS } from './constants.js'
 

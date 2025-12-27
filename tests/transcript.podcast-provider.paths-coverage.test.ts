@@ -19,7 +19,7 @@ vi.mock('node:child_process', () => ({
   },
 }))
 
-import { fetchTranscript } from '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
+import { fetchTranscript } from '../packages/core/src/content/transcript/providers/podcast.js'
 
 const baseOptions = {
   fetch: vi.fn() as unknown as typeof fetch,

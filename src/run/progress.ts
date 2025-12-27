@@ -12,9 +12,7 @@ export function createProgressGate(): ProgressGate {
       clearFn = fn
     },
     clearProgressForStdout: () => {
-      const fn = clearFn
-      clearFn = null
-      fn?.()
+      clearFn?.()
     },
     clearProgressIfCurrent: (fn) => {
       if (clearFn === fn) {

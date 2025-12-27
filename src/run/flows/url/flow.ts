@@ -126,7 +126,12 @@ export async function runUrlFlow({
     spinner.stopAndClear()
     oscProgress.clear()
   }
-  ctx.setClearProgressBeforeStdout(stopProgress)
+  const clearProgressLine = () => {
+    spinner.pause()
+    oscProgress.clear()
+    queueMicrotask(() => spinner.resume())
+  }
+  ctx.setClearProgressBeforeStdout(clearProgressLine)
   try {
     let extracted = await fetchLinkContentWithBirdTip({
       client,
@@ -286,7 +291,7 @@ export async function runUrlFlow({
       onModelChosen,
     })
   } finally {
-    ctx.clearProgressIfCurrent(stopProgress)
+    ctx.clearProgressIfCurrent(clearProgressLine)
     stopProgress()
   }
 }

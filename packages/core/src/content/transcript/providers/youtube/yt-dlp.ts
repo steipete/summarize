@@ -8,9 +8,9 @@ import {
   probeMediaDurationSecondsWithFfprobe,
   type TranscriptionProvider,
   transcribeMediaFileWithWhisper,
-} from '../../../../../transcription/whisper.js'
-import type { LinkPreviewProgressEvent } from '../../../deps.js'
-import { ProgressKind } from '../../../deps.js'
+} from '../../../../transcription/whisper.js'
+import type { LinkPreviewProgressEvent } from '../../../link-preview/deps.js'
+import { ProgressKind } from '../../../link-preview/deps.js'
 
 const YT_DLP_TIMEOUT_MS = 300_000
 const MAX_STDERR_BYTES = 8192

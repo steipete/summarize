@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from '../../../fetch-with-timeout.js'
+import { fetchWithTimeout } from '../../../link-preview/fetch-with-timeout.js'
 import { decodeHtmlEntities, sanitizeYoutubeJsonResponse } from '../../utils.js'
 import { extractYoutubeiBootstrap } from './api.js'
 

@@ -57,7 +57,11 @@ export async function handleFileInput(
     spinner.stopAndClear()
     stopOscProgress()
   }
-  ctx.setClearProgressBeforeStdout(stopProgress)
+  const clearProgressLine = () => {
+    spinner.pause()
+    queueMicrotask(() => spinner.resume())
+  }
+  ctx.setClearProgressBeforeStdout(clearProgressLine)
   try {
     const loaded = await loadLocalAsset({ filePath: inputTarget.filePath })
     assertAssetMediaTypeSupported({ attachment: loaded.attachment, sizeLabel })
@@ -85,7 +89,7 @@ export async function handleFileInput(
     })
     return true
   } finally {
-    ctx.clearProgressIfCurrent(stopProgress)
+    ctx.clearProgressIfCurrent(clearProgressLine)
     stopProgress()
   }
 }
@@ -119,7 +123,11 @@ export async function handleUrlAsset(
     spinner.stopAndClear()
     stopOscProgress()
   }
-  ctx.setClearProgressBeforeStdout(stopProgress)
+  const clearProgressLine = () => {
+    spinner.pause()
+    queueMicrotask(() => spinner.resume())
+  }
+  ctx.setClearProgressBeforeStdout(clearProgressLine)
   try {
     const loaded = await (async () => {
       try {
@@ -146,7 +154,7 @@ export async function handleUrlAsset(
     })
     return true
   } finally {
-    ctx.clearProgressIfCurrent(stopProgress)
+    ctx.clearProgressIfCurrent(clearProgressLine)
     stopProgress()
   }
 }

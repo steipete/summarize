@@ -1,5 +1,5 @@
+import { resolveTranscriptForLink } from '../../transcript/index.js'
 import type { FirecrawlScrapeResult, LinkPreviewDeps } from '../deps.js'
-import { resolveTranscriptForLink } from '../transcript/index.js'
 import type { FirecrawlDiagnostics } from '../types.js'
 import { extractArticleContent, extractPlainText } from './article.js'
 import { normalizeForPrompt } from './cleaner.js'

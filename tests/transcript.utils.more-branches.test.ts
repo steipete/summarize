@@ -8,7 +8,7 @@ import {
   isYouTubeUrl,
   isYouTubeVideoUrl,
   sanitizeYoutubeJsonResponse,
-} from '../packages/core/src/content/link-preview/transcript/utils.js'
+} from '../packages/core/src/content/transcript/utils.js'
 
 describe('transcript utils - more branches', () => {
   it('detects YouTube URLs even when URL parsing fails', () => {

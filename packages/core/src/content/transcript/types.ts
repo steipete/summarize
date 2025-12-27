@@ -1,6 +1,6 @@
-import type { YoutubeTranscriptMode } from '../content/types.js'
-import type { LinkPreviewProgressEvent, ScrapeWithFirecrawl } from '../deps.js'
-import type { TranscriptResolution, TranscriptSource } from '../types.js'
+import type { YoutubeTranscriptMode } from '../link-preview/content/types.js'
+import type { LinkPreviewProgressEvent, ScrapeWithFirecrawl } from '../link-preview/deps.js'
+import type { TranscriptResolution, TranscriptSource } from '../link-preview/types.js'
 
 export type TranscriptService = 'youtube' | 'podcast' | 'generic'
 
@@ -33,4 +33,4 @@ export interface ProviderModule {
   fetchTranscript(context: ProviderContext, options: ProviderFetchOptions): Promise<ProviderResult>
 }
 
-export type { TranscriptSource } from '../types.js'
+export type { TranscriptSource } from '../link-preview/types.js'

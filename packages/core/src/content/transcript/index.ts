@@ -1,5 +1,9 @@
-import type { LinkPreviewDeps } from '../deps.js'
-import type { CacheMode, TranscriptDiagnostics, TranscriptResolution } from '../types.js'
+import type { LinkPreviewDeps } from '../link-preview/deps.js'
+import type {
+  CacheMode,
+  TranscriptDiagnostics,
+  TranscriptResolution,
+} from '../link-preview/types.js'
 import { mapCachedSource, readTranscriptCache, writeTranscriptCache } from './cache.js'
 import {
   canHandle as canHandleGeneric,

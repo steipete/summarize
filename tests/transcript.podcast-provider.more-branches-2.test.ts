@@ -27,9 +27,7 @@ async function importPodcastProvider() {
     transcribeMediaFileWithWhisper,
   }))
 
-  const mod = await import(
-    '../packages/core/src/content/link-preview/transcript/providers/podcast.js'
-  )
+  const mod = await import('../packages/core/src/content/transcript/providers/podcast.js')
   return { ...mod, transcribeMediaWithWhisper, transcribeMediaFileWithWhisper }
 }
 

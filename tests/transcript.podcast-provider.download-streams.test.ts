@@ -39,7 +39,7 @@ async function importPodcastProviderWithFfmpeg(plan: SpawnPlan) {
     },
   }))
 
-  return await import('../packages/core/src/content/link-preview/transcript/providers/podcast.js')
+  return await import('../packages/core/src/content/transcript/providers/podcast.js')
 }
 
 const baseOptions = {

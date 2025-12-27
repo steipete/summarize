@@ -43,10 +43,16 @@ Ship is **not done** until:
 5) GitHub Release + asset
    ```bash
    ver="$(node -p 'require(\"./package.json\").version')"
-   awk -v ver="$ver" '
+
+   # Notes = full changelog section(s), but without a duplicated version header.
+   # If you skipped GitHub Releases for some versions, set prev to the last released version
+   # and include all sections since then.
+   prev="0.6.1"
+
+   awk -v start="$ver" -v stop="$prev" '
      BEGIN { p=0 }
-     $0 ~ ("^## " ver " ") { p=1; next }
-     /^## / { p=0 }
+     $0 ~ ("^## " start " ") { p=1; next }
+     $0 ~ ("^## " stop " ") { p=0 }
      p { print }
    ' CHANGELOG.md >"/tmp/summarize-v${ver}-notes.md"
 

@@ -4,8 +4,8 @@ import type { TranscriptCache } from '../packages/core/src/content/link-preview/
 import {
   readTranscriptCache,
   writeTranscriptCache,
-} from '../packages/core/src/content/link-preview/transcript/cache.js'
-import { resolveTranscriptForLink } from '../packages/core/src/content/link-preview/transcript/index.js'
+} from '../packages/core/src/content/transcript/cache.js'
+import { resolveTranscriptForLink } from '../packages/core/src/content/transcript/index.js'
 
 describe('transcript cache helpers', () => {
   it('reads a cached transcript hit', async () => {

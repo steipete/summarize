@@ -17,7 +17,7 @@ async function importPodcastProviderWithoutTranscription() {
   }))
 
   try {
-    return await import('../packages/core/src/content/link-preview/transcript/providers/podcast.js')
+    return await import('../packages/core/src/content/transcript/providers/podcast.js')
   } finally {
     vi.doUnmock('../packages/core/src/transcription/whisper.js')
   }

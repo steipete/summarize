@@ -28,6 +28,39 @@ function materializeInlineMarkdownLinks(markdown: string): string {
   return out.join('\n')
 }
 
+function collapseExtraBlankLines(markdown: string): string {
+  const lines = markdown.split(/\r?\n/)
+  let inFence = false
+  let blankRun = 0
+  const out: string[] = []
+
+  for (const line of lines) {
+    const trimmed = line.trimStart()
+    if (trimmed.startsWith('```')) {
+      inFence = !inFence
+      blankRun = 0
+      out.push(line)
+      continue
+    }
+    if (inFence) {
+      blankRun = 0
+      out.push(line)
+      continue
+    }
+
+    if (line.trim().length === 0) {
+      blankRun += 1
+      if (blankRun === 1) out.push('')
+      continue
+    }
+
+    blankRun = 0
+    out.push(line)
+  }
+
+  return out.join('\n')
+}
+
 export function prepareMarkdownLineForTerminal(line: string): string {
   return line.replace(/(?<!!)\[([^\]]+)\]\((\S+?)\)/g, (_full, label, url) => {
     const safeLabel = String(label ?? '').trim()
@@ -40,7 +73,7 @@ export function prepareMarkdownLineForTerminal(line: string): string {
 export function prepareMarkdownForTerminalStreaming(markdown: string): string {
   // Streaming is append-only; never rewrite earlier content (e.g. reference-style links).
   // Only apply local, fence-aware transformations.
-  return materializeInlineMarkdownLinks(markdown)
+  return collapseExtraBlankLines(materializeInlineMarkdownLinks(markdown))
 }
 
 function inlineReferenceStyleLinks(markdown: string): string {
@@ -81,5 +114,7 @@ function inlineReferenceStyleLinks(markdown: string): string {
 }
 
 export function prepareMarkdownForTerminal(markdown: string): string {
-  return materializeInlineMarkdownLinks(inlineReferenceStyleLinks(markdown))
+  return collapseExtraBlankLines(
+    materializeInlineMarkdownLinks(inlineReferenceStyleLinks(markdown))
+  )
 }

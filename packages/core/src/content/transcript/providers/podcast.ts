@@ -1,4 +1,4 @@
-import { isWhisperCppReady } from '../../../../transcription/whisper.js'
+import { isWhisperCppReady } from '../../../transcription/whisper.js'
 import type { ProviderContext, ProviderFetchOptions, ProviderResult } from '../types.js'
 import {
   fetchAppleTranscriptFromEmbeddedHtml,

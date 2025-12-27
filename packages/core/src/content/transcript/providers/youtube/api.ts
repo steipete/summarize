@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from '../../../fetch-with-timeout.js'
+import { fetchWithTimeout } from '../../../link-preview/fetch-with-timeout.js'
 import { extractYoutubeBootstrapConfig, isRecord } from '../../utils.js'
 
 const REQUEST_HEADERS: Record<string, string> = {

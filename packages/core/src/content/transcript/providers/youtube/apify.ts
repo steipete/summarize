@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from '../../../fetch-with-timeout.js'
+import { fetchWithTimeout } from '../../../link-preview/fetch-with-timeout.js'
 import { isRecord } from '../../utils.js'
 
 const PINTO_YOUTUBE_TRANSCRIPT_SCRAPER_ACTOR = 'faVsWy9VTSNVIhWpR'

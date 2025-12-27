@@ -11,14 +11,24 @@ export function startSpinner({
 }): {
   stop: () => void
   clear: () => void
+  pause: () => void
+  resume: () => void
   stopAndClear: () => void
   setText: (next: string) => void
 } {
   if (!enabled) {
-    return { stop: () => {}, clear: () => {}, stopAndClear: () => {}, setText: () => {} }
+    return {
+      stop: () => {},
+      clear: () => {},
+      pause: () => {},
+      resume: () => {},
+      stopAndClear: () => {},
+      setText: () => {},
+    }
   }
 
-  let stopped = false
+  let ended = false
+  let paused = false
 
   const oraStream = stream as typeof stream & {
     cursorTo?: (x: number, y?: number) => void
@@ -31,31 +41,46 @@ export function startSpinner({
   if (typeof oraStream.moveCursor !== 'function') oraStream.moveCursor = () => {}
 
   const clear = () => {
-    if (stopped) return
+    if (ended) return
     // Keep output clean in scrollback.
     // `ora` clears the line, but we also hard-clear as a fallback.
     spinner.clear()
     stream.write('\r\u001b[2K')
   }
 
+  const pause = () => {
+    if (ended || paused) return
+    paused = true
+    if (spinner.isSpinning) spinner.stop()
+    spinner.clear()
+    stream.write('\r\u001b[2K')
+  }
+
+  const resume = () => {
+    if (ended || !paused) return
+    paused = false
+    spinner.start()
+  }
+
   const stop = () => {
-    if (stopped) return
-    stopped = true
+    if (ended) return
+    ended = true
     if (spinner.isSpinning) spinner.stop()
   }
 
   const stopAndClear = () => {
-    if (stopped) return
-    stop()
-    // `stop()` sets stopped=true; do the actual clear anyway.
+    if (ended) return
+    ended = true
+    paused = false
+    if (spinner.isSpinning) spinner.stop()
     spinner.clear()
     stream.write('\r\u001b[2K')
   }
 
   const setText = (next: string) => {
-    if (stopped) return
+    if (ended) return
     spinner.text = next
-    spinner.render?.()
+    if (!paused) spinner.render?.()
   }
 
   const spinner = ora({
@@ -67,5 +92,5 @@ export function startSpinner({
     discardStdin: true,
   }).start()
 
-  return { stop, clear, stopAndClear, setText }
+  return { stop, clear, pause, resume, stopAndClear, setText }
 }

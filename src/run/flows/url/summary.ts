@@ -506,7 +506,8 @@ export async function summarizeExtractedUrl({
     if (!ctx.plain && isRichTty(ctx.stdout)) {
       ctx.stdout.write(`\n${rendered.replace(/^\n+/, '')}`)
     } else {
-      ctx.stdout.write(rendered)
+      if (isRichTty(ctx.stdout)) ctx.stdout.write('\n')
+      ctx.stdout.write(rendered.replace(/^\n+/, ''))
     }
     if (!rendered.endsWith('\n')) {
       ctx.stdout.write('\n')

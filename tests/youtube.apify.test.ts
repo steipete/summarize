@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { fetchTranscriptWithApify } from '../packages/core/src/content/link-preview/transcript/providers/youtube/apify.js'
+import { fetchTranscriptWithApify } from '../packages/core/src/content/transcript/providers/youtube/apify.js'
 
 describe('YouTube Apify transcript provider', () => {
   it('returns null when token is missing', async () => {

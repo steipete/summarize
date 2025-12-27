@@ -6,7 +6,7 @@ import {
   NEGATIVE_TTL_MS,
   readTranscriptCache,
   writeTranscriptCache,
-} from '../packages/core/src/content/link-preview/transcript/cache.js'
+} from '../packages/core/src/content/transcript/cache.js'
 
 describe('transcript cache - more branches', () => {
   it('reads cache miss / bypass / expired / hit', async () => {

@@ -1,10 +1,10 @@
-import type { TranscriptCache } from '../deps.js'
+import type { TranscriptCache } from '../link-preview/deps.js'
 import type {
   CacheMode,
   TranscriptDiagnostics,
   TranscriptResolution,
   TranscriptSource,
-} from '../types.js'
+} from '../link-preview/types.js'
 
 export const DEFAULT_TTL_MS = 1000 * 60 * 60 * 24 * 7
 export const NEGATIVE_TTL_MS = 1000 * 60 * 60 * 6

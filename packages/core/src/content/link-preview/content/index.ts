@@ -1,6 +1,6 @@
+import { resolveTranscriptForLink } from '../../transcript/index.js'
+import { isYouTubeUrl } from '../../transcript/utils.js'
 import type { FirecrawlScrapeResult, LinkPreviewDeps } from '../deps.js'
-import { resolveTranscriptForLink } from '../transcript/index.js'
-import { isYouTubeUrl } from '../transcript/utils.js'
 import type { FirecrawlDiagnostics } from '../types.js'
 import { normalizeForPrompt } from './cleaner.js'
 import { MIN_READABILITY_CONTENT_CHARACTERS } from './constants.js'

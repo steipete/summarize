@@ -1,9 +1,9 @@
+import { isYouTubeUrl } from '../../transcript/utils.js'
 import type {
   FirecrawlScrapeResult,
   LinkPreviewProgressEvent,
   ScrapeWithFirecrawl,
 } from '../deps.js'
-import { isYouTubeUrl } from '../transcript/utils.js'
 import type { CacheMode, FirecrawlDiagnostics } from '../types.js'
 
 import { appendNote } from './utils.js'

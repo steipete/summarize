@@ -14,21 +14,12 @@ const ytdlp = vi.hoisted(() => ({
   fetchTranscriptWithYtDlp: vi.fn(),
 }))
 
-vi.mock('../packages/core/src/content/link-preview/transcript/providers/youtube/api.js', () => api)
-vi.mock(
-  '../packages/core/src/content/link-preview/transcript/providers/youtube/captions.js',
-  () => captions
-)
-vi.mock(
-  '../packages/core/src/content/link-preview/transcript/providers/youtube/apify.js',
-  () => apify
-)
-vi.mock(
-  '../packages/core/src/content/link-preview/transcript/providers/youtube/yt-dlp.js',
-  () => ytdlp
-)
+vi.mock('../packages/core/src/content/transcript/providers/youtube/api.js', () => api)
+vi.mock('../packages/core/src/content/transcript/providers/youtube/captions.js', () => captions)
+vi.mock('../packages/core/src/content/transcript/providers/youtube/apify.js', () => apify)
+vi.mock('../packages/core/src/content/transcript/providers/youtube/yt-dlp.js', () => ytdlp)
 
-import { fetchTranscript } from '../packages/core/src/content/link-preview/transcript/providers/youtube.js'
+import { fetchTranscript } from '../packages/core/src/content/transcript/providers/youtube.js'
 
 const baseOptions = {
   fetch: vi.fn() as unknown as typeof fetch,

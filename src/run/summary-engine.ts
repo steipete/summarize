@@ -421,8 +421,10 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
             if (lastNl >= 0 && lastNl + 1 > plainFlushedLen) {
               if (!cleared) {
                 deps.clearProgressForStdout()
+                deps.stdout.write('\n')
                 cleared = true
               }
+              deps.clearProgressForStdout()
               deps.stdout.write(streamed.slice(plainFlushedLen, lastNl + 1))
               plainFlushedLen = lastNl + 1
             }
@@ -439,6 +441,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
               } else {
                 deps.stdout.write(out)
               }
+              cleared = true
             }
           }
         }

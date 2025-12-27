@@ -5,7 +5,7 @@ import {
   extractYoutubeiBootstrap,
   extractYoutubeiTranscriptConfig,
   fetchTranscriptFromTranscriptEndpoint,
-} from '../packages/core/src/content/link-preview/transcript/providers/youtube/api.js'
+} from '../packages/core/src/content/transcript/providers/youtube/api.js'
 
 describe('YouTube transcript parsing', () => {
   it('extracts youtubei transcript config from bootstrap HTML', () => {
