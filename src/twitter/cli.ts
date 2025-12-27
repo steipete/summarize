@@ -1,6 +1,5 @@
-import { execFile } from 'node:child_process'
-
 import { generateTextWithModelId } from '../llm/generate-text.js'
+import { searchTweetsWithBird, type TweetData } from '../run/bird.js'
 import { buildTwitterHelp } from '../run/help.js'
 
 export type TwitterCliContext = {
@@ -9,22 +8,6 @@ export type TwitterCliContext = {
   fetchImpl: typeof fetch
   stdout: NodeJS.WritableStream
   stderr: NodeJS.WritableStream
-}
-
-export type TweetData = {
-  id: string
-  text: string
-  author: {
-    username: string
-    name: string
-  }
-  authorId?: string
-  createdAt?: string
-  replyCount?: number
-  retweetCount?: number
-  likeCount?: number
-  conversationId?: string
-  inReplyToStatusId?: string
 }
 
 function readArgValue(argv: string[], name: string): string | null {
@@ -55,69 +38,6 @@ function validateDateFormat(value: string, flagName: string): void {
 
 function normalizeUsername(user: string): string {
   return user.startsWith('@') ? user.slice(1) : user
-}
-
-async function searchTweetsWithBird(args: {
-  user: string
-  since?: string
-  until?: string
-  count: number
-  timeoutMs: number
-  env: Record<string, string | undefined>
-}): Promise<{ success: true; tweets: TweetData[] } | { success: false; error: string }> {
-  const queryParts: string[] = [`from:${args.user}`]
-  if (args.since) queryParts.push(`since:${args.since}`)
-  if (args.until) queryParts.push(`until:${args.until}`)
-  const query = queryParts.join(' ')
-
-  // Support BIRD_PATH environment variable for custom bird binary location
-  const birdPath = args.env.BIRD_PATH || 'bird'
-
-  return new Promise((resolve) => {
-    execFile(
-      birdPath,
-      ['search', query, '--json', '-n', String(args.count)],
-      {
-        timeout: args.timeoutMs,
-        env: { ...process.env, ...args.env },
-        maxBuffer: 10 * 1024 * 1024, // 10MB for large tweet sets
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          const code = (error as NodeJS.ErrnoException).code
-          if (code === 'ENOENT') {
-            resolve({
-              success: false,
-              error: 'bird CLI not found. Install from https://github.com/steipete/bird',
-            })
-            return
-          }
-          const detail = stderr?.trim()
-          const suffix = detail ? `: ${detail}` : ''
-          resolve({ success: false, error: `bird search failed${suffix}` })
-          return
-        }
-
-        const trimmed = stdout.trim()
-        if (!trimmed) {
-          resolve({ success: true, tweets: [] })
-          return
-        }
-
-        try {
-          const parsed = JSON.parse(trimmed) as TweetData[]
-          if (!Array.isArray(parsed)) {
-            resolve({ success: false, error: 'bird search returned invalid JSON (expected array)' })
-            return
-          }
-          resolve({ success: true, tweets: parsed })
-        } catch (parseError) {
-          const message = parseError instanceof Error ? parseError.message : String(parseError)
-          resolve({ success: false, error: `bird search returned invalid JSON: ${message}` })
-        }
-      }
-    )
-  })
 }
 
 function formatDateForDisplay(dateStr: string): string {
@@ -301,7 +221,7 @@ export async function handleTwitterRequest(ctx: TwitterCliContext): Promise<bool
     throw new Error('--count cannot exceed 100')
   }
 
-  // Fetch tweets
+  // Fetch tweets using shared bird integration
   const timeoutMs = 60_000 // 1 minute timeout for bird
   const result = await searchTweetsWithBird({
     user,
