@@ -30,6 +30,7 @@ import {
   handleDaemonCliRequest,
   handleHelpRequest,
   handleRefreshFreeRequest,
+  handleTwitterCliRequest,
 } from './cli-preflight.js'
 import { parseCliProviderArg } from './env.js'
 import { handleFileInput, handleUrlAsset } from './flows/asset/input.js'
@@ -81,6 +82,17 @@ export async function runCli(
   }
   if (
     await handleDaemonCliRequest({
+      normalizedArgv,
+      envForRun,
+      fetchImpl: fetch,
+      stdout,
+      stderr,
+    })
+  ) {
+    return
+  }
+  if (
+    await handleTwitterCliRequest({
       normalizedArgv,
       envForRun,
       fetchImpl: fetch,

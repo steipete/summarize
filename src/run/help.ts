@@ -201,3 +201,30 @@ export function buildDaemonHelp(): string {
     '  --token <token>  (required for install)',
   ].join('\n')
 }
+
+export function buildTwitterHelp(): string {
+  return [
+    'Usage: summarize twitter --user <handle> [--since YYYY-MM-DD] [--until YYYY-MM-DD] [options]',
+    '',
+    'Fetch and summarize tweets from a Twitter/X user within a date range.',
+    'Requires the bird CLI to be installed and authenticated.',
+    '',
+    'Options:',
+    '  --user <handle>     Twitter username (with or without @)',
+    '  --since <date>      Start date in YYYY-MM-DD format',
+    '  --until <date>      End date in YYYY-MM-DD format',
+    '  -n, --count <n>     Number of tweets to fetch (default: 20, max: 100)',
+    '  --extract           Output tweets without summarization',
+    '  --json              Output as JSON',
+    '',
+    'Examples:',
+    '  summarize twitter --user steipete --since 2025-01-01 --until 2025-01-31',
+    '  summarize twitter --user @elonmusk --since 2025-01-01 -n 50',
+    '  summarize twitter --user steipete --since 2025-01-01 --extract',
+    '  summarize twitter --user steipete --since 2025-01-01 --extract --json',
+    '',
+    'Prerequisites:',
+    '  Install bird CLI: https://github.com/steipete/bird',
+    '  Authenticate: bird check',
+  ].join('\n')
+}

@@ -1,7 +1,8 @@
 import type { Command } from 'commander'
 import { handleDaemonRequest } from '../daemon/cli.js'
 import { refreshFree } from '../refresh-free.js'
-import { attachRichHelp, buildDaemonHelp, buildProgram, buildRefreshFreeHelp } from './help.js'
+import { handleTwitterRequest } from '../twitter/cli.js'
+import { attachRichHelp, buildDaemonHelp, buildProgram, buildRefreshFreeHelp, buildTwitterHelp } from './help.js'
 
 type HelpContext = {
   normalizedArgv: string[]
@@ -24,6 +25,10 @@ export function handleHelpRequest({
   }
   if (topic === 'daemon') {
     stdout.write(`${buildDaemonHelp()}\n`)
+    return true
+  }
+  if (topic === 'twitter') {
+    stdout.write(`${buildTwitterHelp()}\n`)
     return true
   }
 
@@ -125,6 +130,16 @@ export async function handleRefreshFreeRequest({
 
 export async function handleDaemonCliRequest(ctx: RefreshContext): Promise<boolean> {
   return handleDaemonRequest({
+    normalizedArgv: ctx.normalizedArgv,
+    envForRun: ctx.envForRun,
+    fetchImpl: ctx.fetchImpl,
+    stdout: ctx.stdout,
+    stderr: ctx.stderr,
+  })
+}
+
+export async function handleTwitterCliRequest(ctx: RefreshContext): Promise<boolean> {
+  return handleTwitterRequest({
     normalizedArgv: ctx.normalizedArgv,
     envForRun: ctx.envForRun,
     fetchImpl: ctx.fetchImpl,
