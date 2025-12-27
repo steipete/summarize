@@ -341,6 +341,7 @@ export async function runCli(
     falApiKey,
     cliAvailability,
     envForAuto,
+    providerBaseUrls,
   } = resolveEnvState({ env, envForRun, configForCli })
   if (markdownModeExplicitlySet && format !== 'markdown') {
     throw new Error('--markdown-mode is only supported with --format md')
@@ -440,6 +441,7 @@ export async function runCli(
       apiKey: zaiApiKey,
       baseUrl: zaiBaseUrl,
     },
+    providerBaseUrls,
   })
   const writeViaFooter = (parts: string[]) => {
     if (json) return
@@ -504,6 +506,7 @@ export async function runCli(
       anthropicConfigured,
       zaiApiKey,
       zaiBaseUrl,
+      providerBaseUrls,
     },
   }
 
@@ -596,6 +599,7 @@ export async function runCli(
       ytDlpPath,
       falApiKey,
       openaiTranscriptionKey,
+      providerBaseUrls,
     },
     trackedFetch,
     summaryEngine,

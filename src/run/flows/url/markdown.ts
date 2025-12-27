@@ -163,7 +163,11 @@ export function createMarkdownConverters(
           openaiApiKey: markdownModel.openaiApiKeyOverride ?? ctx.apiStatus.apiKey,
           anthropicApiKey: ctx.apiStatus.anthropicApiKey,
           openrouterApiKey: ctx.apiStatus.openrouterApiKey,
-          openaiBaseUrlOverride: markdownModel.openaiBaseUrlOverride ?? null,
+          openaiBaseUrlOverride:
+            markdownModel.openaiBaseUrlOverride ?? ctx.apiStatus.providerBaseUrls.openai,
+          anthropicBaseUrlOverride: ctx.apiStatus.providerBaseUrls.anthropic,
+          googleBaseUrlOverride: ctx.apiStatus.providerBaseUrls.google,
+          xaiBaseUrlOverride: ctx.apiStatus.providerBaseUrls.xai,
           forceChatCompletions:
             markdownModel.forceChatCompletions ??
             (ctx.openaiUseChatCompletions && markdownProvider === 'openai'),

@@ -48,6 +48,9 @@ export async function summarizeWithModelId({
   apiKeys,
   forceOpenRouter,
   openaiBaseUrlOverride,
+  anthropicBaseUrlOverride,
+  googleBaseUrlOverride,
+  xaiBaseUrlOverride,
   forceChatCompletions,
   retries,
   onRetry,
@@ -66,6 +69,9 @@ export async function summarizeWithModelId({
   }
   forceOpenRouter?: boolean
   openaiBaseUrlOverride?: string | null
+  anthropicBaseUrlOverride?: string | null
+  googleBaseUrlOverride?: string | null
+  xaiBaseUrlOverride?: string | null
   forceChatCompletions?: boolean
   retries: number
   onRetry?: (notice: {
@@ -85,6 +91,9 @@ export async function summarizeWithModelId({
     apiKeys,
     forceOpenRouter,
     openaiBaseUrlOverride,
+    anthropicBaseUrlOverride,
+    googleBaseUrlOverride,
+    xaiBaseUrlOverride,
     forceChatCompletions,
     prompt,
     temperature: 0,
