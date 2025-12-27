@@ -9,7 +9,7 @@ export function buildProgram() {
     .argument('[input]', 'URL or local file path to summarize')
     .option(
       '--youtube <mode>',
-      'YouTube transcript source: auto (web → yt-dlp → apify), web (youtubei/captionTracks), yt-dlp (audio+whisper), apify',
+      'YouTube transcript source: auto, web, no-auto (skip auto-generated captions), yt-dlp, apify',
       'auto'
     )
     .addOption(

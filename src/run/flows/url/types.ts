@@ -19,7 +19,7 @@ export type UrlFlowContext = {
   format: 'text' | 'markdown'
   markdownMode: 'off' | 'auto' | 'llm' | 'readability'
   preprocessMode: 'off' | 'auto' | 'always'
-  youtubeMode: 'auto' | 'web' | 'yt-dlp' | 'apify'
+  youtubeMode: 'auto' | 'web' | 'yt-dlp' | 'apify' | 'no-auto'
   firecrawlMode: 'off' | 'auto' | 'always'
   videoMode: 'auto' | 'transcript' | 'understand'
   outputLanguage: OutputLanguage
