@@ -59,6 +59,13 @@ describe('daemon summary cache', () => {
 
     const cachePath = join(summarizeDir, 'cache.sqlite')
     const store = await createCacheStore({ path: cachePath, maxBytes: 1024 * 1024 })
+    const cacheState = {
+      mode: 'default' as const,
+      store,
+      ttlMs: 30 * 24 * 60 * 60 * 1000,
+      maxBytes: 1024 * 1024,
+      path: cachePath,
+    }
 
     const runOnce = async () => {
       let out = ''
@@ -83,7 +90,7 @@ describe('daemon summary cache', () => {
         lengthRaw: 'xl',
         languageRaw: 'auto',
         sink,
-        cache: { store, ttlMs: 30 * 24 * 60 * 60 * 1000 },
+        cache: cacheState,
       })
 
       return out
