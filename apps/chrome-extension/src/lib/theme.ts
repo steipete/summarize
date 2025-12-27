@@ -1,4 +1,4 @@
-export const colorSchemes = ['slate', 'cedar', 'mint'] as const
+export const colorSchemes = ['slate', 'cedar', 'mint', 'ocean', 'ember', 'iris'] as const
 export type ColorScheme = (typeof colorSchemes)[number]
 
 export const colorModes = ['system', 'light', 'dark'] as const
