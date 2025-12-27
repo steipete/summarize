@@ -19,6 +19,13 @@ export type LlmTokenUsage = {
   totalTokens: number | null
 }
 
+/**
+ * Resolves an optional baseUrl override, trimming whitespace and returning undefined if empty.
+ */
+function resolveBaseUrl(override: string | null | undefined): string | undefined {
+  return typeof override === 'string' && override.trim().length > 0 ? override.trim() : undefined
+}
+
 function assertNonEmptyText(text: string, modelId: string): void {
   if (text.trim().length > 0) return
   throw new Error(`LLM returned an empty summary (model ${modelId}).`)
@@ -228,10 +235,7 @@ export async function generateTextWithModelId({
         const apiKey = apiKeys.xaiApiKey
         if (!apiKey) throw new Error('Missing XAI_API_KEY for xai/... model')
         const { createXai } = await import('@ai-sdk/xai')
-        const xaiBaseUrl =
-          typeof xaiBaseUrlOverride === 'string' && xaiBaseUrlOverride.trim().length > 0
-            ? xaiBaseUrlOverride.trim()
-            : undefined
+        const xaiBaseUrl = resolveBaseUrl(xaiBaseUrlOverride)
         const xai = createXai({
           apiKey,
           fetch: fetchImpl,
@@ -261,10 +265,7 @@ export async function generateTextWithModelId({
             'Missing GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY) for google/... model'
           )
         const { createGoogleGenerativeAI } = await import('@ai-sdk/google')
-        const googleBaseUrl =
-          typeof googleBaseUrlOverride === 'string' && googleBaseUrlOverride.trim().length > 0
-            ? googleBaseUrlOverride.trim()
-            : undefined
+        const googleBaseUrl = resolveBaseUrl(googleBaseUrlOverride)
         const google = createGoogleGenerativeAI({
           apiKey,
           fetch: fetchImpl,
@@ -291,10 +292,7 @@ export async function generateTextWithModelId({
         const apiKey = apiKeys.anthropicApiKey
         if (!apiKey) throw new Error('Missing ANTHROPIC_API_KEY for anthropic/... model')
         const { createAnthropic } = await import('@ai-sdk/anthropic')
-        const anthropicBaseUrl =
-          typeof anthropicBaseUrlOverride === 'string' && anthropicBaseUrlOverride.trim().length > 0
-            ? anthropicBaseUrlOverride.trim()
-            : undefined
+        const anthropicBaseUrl = resolveBaseUrl(anthropicBaseUrlOverride)
         const anthropic = createAnthropic({
           apiKey,
           fetch: fetchImpl,
@@ -522,10 +520,7 @@ export async function streamTextWithModelId({
       const apiKey = apiKeys.xaiApiKey
       if (!apiKey) throw new Error('Missing XAI_API_KEY for xai/... model')
       const { createXai } = await import('@ai-sdk/xai')
-      const xaiBaseUrl =
-        typeof xaiBaseUrlOverride === 'string' && xaiBaseUrlOverride.trim().length > 0
-          ? xaiBaseUrlOverride.trim()
-          : undefined
+      const xaiBaseUrl = resolveBaseUrl(xaiBaseUrlOverride)
       const xai = createXai({
         apiKey,
         fetch: fetchImpl,
@@ -558,10 +553,7 @@ export async function streamTextWithModelId({
           'Missing GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY) for google/... model'
         )
       const { createGoogleGenerativeAI } = await import('@ai-sdk/google')
-      const googleBaseUrl =
-        typeof googleBaseUrlOverride === 'string' && googleBaseUrlOverride.trim().length > 0
-          ? googleBaseUrlOverride.trim()
-          : undefined
+      const googleBaseUrl = resolveBaseUrl(googleBaseUrlOverride)
       const google = createGoogleGenerativeAI({
         apiKey,
         fetch: fetchImpl,
@@ -591,10 +583,7 @@ export async function streamTextWithModelId({
       const apiKey = apiKeys.anthropicApiKey
       if (!apiKey) throw new Error('Missing ANTHROPIC_API_KEY for anthropic/... model')
       const { createAnthropic } = await import('@ai-sdk/anthropic')
-      const anthropicBaseUrl =
-        typeof anthropicBaseUrlOverride === 'string' && anthropicBaseUrlOverride.trim().length > 0
-          ? anthropicBaseUrlOverride.trim()
-          : undefined
+      const anthropicBaseUrl = resolveBaseUrl(anthropicBaseUrlOverride)
       const anthropic = createAnthropic({
         apiKey,
         fetch: fetchImpl,

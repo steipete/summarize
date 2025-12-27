@@ -135,6 +135,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/**
+ * Parses a provider config section that only has a baseUrl field.
+ * Returns { baseUrl } if valid, undefined if empty/absent, or throws on invalid type.
+ */
+function parseProviderBaseUrlConfig(
+  value: unknown,
+  configPath: string,
+  providerName: string
+): { baseUrl: string } | undefined {
+  if (typeof value === 'undefined') return undefined
+  if (!isRecord(value)) {
+    throw new Error(`Invalid config file ${configPath}: "${providerName}" must be an object.`)
+  }
+  const baseUrl =
+    typeof value.baseUrl === 'string' && value.baseUrl.trim().length > 0
+      ? value.baseUrl.trim()
+      : undefined
+  return typeof baseUrl === 'string' ? { baseUrl } : undefined
+}
+
 function parseAutoRuleKind(value: unknown): AutoRuleKind | null {
   return value === 'text' ||
     value === 'website' ||
@@ -651,44 +671,9 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       : undefined
   })()
 
-  const anthropic = (() => {
-    const value = parsed.anthropic
-    if (typeof value === 'undefined') return undefined
-    if (!isRecord(value)) {
-      throw new Error(`Invalid config file ${path}: "anthropic" must be an object.`)
-    }
-    const baseUrl =
-      typeof value.baseUrl === 'string' && value.baseUrl.trim().length > 0
-        ? value.baseUrl.trim()
-        : undefined
-    return typeof baseUrl === 'string' ? { baseUrl } : undefined
-  })()
-
-  const google = (() => {
-    const value = parsed.google
-    if (typeof value === 'undefined') return undefined
-    if (!isRecord(value)) {
-      throw new Error(`Invalid config file ${path}: "google" must be an object.`)
-    }
-    const baseUrl =
-      typeof value.baseUrl === 'string' && value.baseUrl.trim().length > 0
-        ? value.baseUrl.trim()
-        : undefined
-    return typeof baseUrl === 'string' ? { baseUrl } : undefined
-  })()
-
-  const xai = (() => {
-    const value = parsed.xai
-    if (typeof value === 'undefined') return undefined
-    if (!isRecord(value)) {
-      throw new Error(`Invalid config file ${path}: "xai" must be an object.`)
-    }
-    const baseUrl =
-      typeof value.baseUrl === 'string' && value.baseUrl.trim().length > 0
-        ? value.baseUrl.trim()
-        : undefined
-    return typeof baseUrl === 'string' ? { baseUrl } : undefined
-  })()
+  const anthropic = parseProviderBaseUrlConfig(parsed.anthropic, path, 'anthropic')
+  const google = parseProviderBaseUrlConfig(parsed.google, path, 'google')
+  const xai = parseProviderBaseUrlConfig(parsed.xai, path, 'xai')
 
   return {
     config: {

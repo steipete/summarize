@@ -81,6 +81,12 @@ export type AssetSummaryContext = {
     anthropicConfigured: boolean
     zaiApiKey: string | null
     zaiBaseUrl: string
+    providerBaseUrls: {
+      openai: string | null
+      anthropic: string | null
+      google: string | null
+      xai: string | null
+    }
   }
 }
 

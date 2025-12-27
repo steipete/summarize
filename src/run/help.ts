@@ -128,6 +128,7 @@ ${heading('Examples')}
 
 ${heading('Env Vars')}
   XAI_API_KEY           optional (required for xai/... models)
+  XAI_BASE_URL          optional (override xAI API endpoint)
   OPENAI_API_KEY        optional (required for openai/... models)
   OPENAI_BASE_URL       optional (OpenAI-compatible API endpoint; e.g. OpenRouter)
   OPENAI_USE_CHAT_COMPLETIONS optional (force OpenAI chat completions)
@@ -135,7 +136,9 @@ ${heading('Env Vars')}
   Z_AI_API_KEY          optional (required for zai/... models)
   Z_AI_BASE_URL         optional (override default Z.AI base URL)
   GEMINI_API_KEY        optional (required for google/... models)
+  GOOGLE_BASE_URL       optional (override Google AI API endpoint)
   ANTHROPIC_API_KEY     optional (required for anthropic/... models)
+  ANTHROPIC_BASE_URL    optional (override Anthropic API endpoint)
   CLAUDE_PATH           optional (path to Claude CLI binary)
   CODEX_PATH            optional (path to Codex CLI binary)
   GEMINI_PATH           optional (path to Gemini CLI binary)

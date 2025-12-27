@@ -393,6 +393,7 @@ export async function runCli(
       anthropicConfigured,
       zaiApiKey,
       zaiBaseUrl,
+      providerBaseUrls,
     },
   }
 
