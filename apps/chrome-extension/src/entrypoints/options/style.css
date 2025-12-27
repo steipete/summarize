@@ -1,5 +1,6 @@
 :root {
   color-scheme: light dark;
+  accent-color: auto;
 
   --bg: #0b0c12;
   --bg2: #06070b;
@@ -9,7 +10,7 @@
   --border: rgba(255, 255, 255, 0.12);
   --text: #eef0ff;
   --muted: rgba(238, 240, 255, 0.7);
-  --accent: #7ae4f3;
+  --ui-focus: Highlight;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }
@@ -24,7 +25,6 @@
     --border: rgba(12, 18, 40, 0.14);
     --text: #0d1220;
     --muted: rgba(13, 18, 32, 0.8);
-    --accent: #0a7b8d;
   }
 }
 
@@ -37,8 +37,8 @@ body {
   font-family: var(--sans);
   color: var(--text);
   background:
-    radial-gradient(900px 520px at 18% -10%, rgba(122, 228, 243, 0.18), transparent 55%),
-    radial-gradient(900px 520px at 92% 10%, rgba(243, 198, 122, 0.18), transparent 55%),
+    radial-gradient(900px 520px at 18% -10%, rgba(255, 255, 255, 0.06), transparent 55%),
+    radial-gradient(900px 520px at 92% 10%, rgba(243, 198, 122, 0.14), transparent 55%),
     linear-gradient(180deg, var(--bgTop) 0%, var(--bg) 70%, var(--bg2) 100%);
 }
 
@@ -74,7 +74,7 @@ h1 {
 }
 
 .docsLink:hover {
-  border-color: rgba(122, 228, 243, 0.6);
+  border-color: color-mix(in srgb, var(--ui-focus) 55%, var(--border));
   color: var(--text);
 }
 
@@ -128,11 +128,11 @@ select {
 
 input:focus,
 textarea:focus {
-  border-color: rgba(122, 228, 243, 0.45);
+  border-color: var(--ui-focus);
 }
 
 select:focus {
-  border-color: rgba(122, 228, 243, 0.45);
+  border-color: var(--ui-focus);
 }
 
 textarea {
@@ -160,7 +160,7 @@ textarea {
 
 button {
   appearance: none;
-  border: 1px solid rgba(122, 228, 243, 0.35);
+  border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   padding: 10px 12px;
@@ -170,7 +170,7 @@ button {
 }
 
 button:hover {
-  border-color: rgba(122, 228, 243, 0.6);
+  border-color: color-mix(in srgb, var(--ui-focus) 55%, var(--border));
 }
 
 .status {

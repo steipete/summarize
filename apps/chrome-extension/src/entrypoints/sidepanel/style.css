@@ -1,5 +1,6 @@
 :root {
   color-scheme: light dark;
+  accent-color: auto;
 
   --bg0: #080a0f;
   --bg1: #0e1220;
@@ -10,7 +11,8 @@
   --text: #eef0ff;
   --muted: rgba(238, 240, 255, 0.68);
   --accent: #f3c67a;
-  --accent2: #7ae4f3;
+  --ui-focus: Highlight;
+  --ui-link: LinkText;
 
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   --btn-bg: rgba(10, 12, 20, 0.7);
@@ -32,7 +34,6 @@
     --text: #0d1220;
     --muted: rgba(13, 18, 32, 0.84);
     --accent: #c07d18;
-    --accent2: #0a7b8d;
     --shadow: 0 12px 32px rgba(6, 10, 25, 0.12);
     --btn-bg: rgba(255, 255, 255, 0.86);
     --btn-border: rgba(12, 18, 40, 0.14);
@@ -51,8 +52,8 @@ body {
 
 html {
   background:
-    radial-gradient(900px 520px at 18% -10%, rgba(122, 228, 243, 0.18), transparent 55%),
-    radial-gradient(900px 520px at 92% 10%, rgba(243, 198, 122, 0.18), transparent 55%),
+    radial-gradient(900px 520px at 18% -10%, rgba(255, 255, 255, 0.06), transparent 55%),
+    radial-gradient(900px 520px at 92% 10%, rgba(243, 198, 122, 0.14), transparent 55%),
     linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 60%, var(--bg2) 100%);
   background-attachment: fixed;
 }
@@ -153,7 +154,7 @@ button.icon svg {
 }
 
 button.icon.isActive {
-  border-color: rgba(122, 228, 243, 0.45);
+  border-color: color-mix(in srgb, var(--ui-focus) 55%, var(--btn-border));
 }
 
 button.icon.isActive svg {
@@ -167,7 +168,7 @@ button.ghost {
 }
 
 button.ghost:hover {
-  border-color: rgba(122, 228, 243, 0.35);
+  border-color: color-mix(in srgb, var(--ui-focus) 35%, var(--border));
   color: var(--text);
 }
 
@@ -213,7 +214,7 @@ select {
 
 input[type="text"]:focus,
 select:focus {
-  border-color: rgba(122, 228, 243, 0.35);
+  border-color: color-mix(in srgb, var(--ui-focus) 45%, var(--border));
 }
 
 input[type="range"] {
@@ -241,7 +242,7 @@ input[type="range"] {
 }
 
 .docsLink:hover {
-  border-color: rgba(122, 228, 243, 0.35);
+  border-color: color-mix(in srgb, var(--ui-focus) 35%, var(--border));
   color: var(--text);
 }
 
@@ -262,7 +263,7 @@ input[type="range"] {
   bottom: 0;
   height: 100%;
   width: 0%;
-  background: var(--accent2);
+  background: color-mix(in srgb, var(--ui-focus) 70%, transparent);
   will-change: left, width;
 }
 
@@ -426,7 +427,7 @@ main {
 }
 
 .render a {
-  color: var(--accent2);
+  color: var(--ui-link);
   text-decoration: none;
 }
 

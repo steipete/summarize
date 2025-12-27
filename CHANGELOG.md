@@ -28,6 +28,8 @@
 - Chrome Side Panel: avoid MV3 background stream stalls by streaming SSE from the panel page; improve auto-summarize de-dupe; keep background theme continuous on long summaries; avoid “disconnected port” errors by using runtime messaging; show a subtle summary metrics footer.
 - Chrome Side Panel: move “working” status into the header (no layout jump) and show progress as a 1px separator line; allow the subtitle to use full available width.
 - Chrome Side Panel: use the current page title as the header title; show `words/chars` (or media duration + words) + model in the idle subtitle after a run.
+- Chrome Side Panel: reduce “blue” UI accents by using system highlight/link colors (more native look, light/dark).
+- Chrome Side Panel: fix toolbar icon transparency (no white background).
 - Daemon: prefer the installed env snapshot over launchd’s minimal environment (fixes missing `yt-dlp` / `whisper.cpp` on PATH, especially for X/Twitter video transcription).
 - X/Twitter: cookie handling now delegates to `yt-dlp --cookies-from-browser` (no sweet-cookie dependency).
 - X/Twitter: skip yt-dlp transcript attempts for long-form tweet text (articles).
