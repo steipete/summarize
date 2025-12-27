@@ -59,6 +59,12 @@ export type SummaryEngineDeps = {
     apiKey: string | null
     baseUrl: string
   }
+  providerBaseUrls: {
+    openai: string | null
+    anthropic: string | null
+    google: string | null
+    xai: string | null
+  }
 }
 
 export function createSummaryEngine(deps: SummaryEngineDeps) {
@@ -239,7 +245,10 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         fetchImpl: deps.trackedFetch,
         apiKeys: apiKeysForLlm,
         forceOpenRouter: attempt.forceOpenRouter,
-        openaiBaseUrlOverride: attempt.openaiBaseUrlOverride ?? null,
+        openaiBaseUrlOverride: attempt.openaiBaseUrlOverride ?? deps.providerBaseUrls.openai,
+        anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
+        googleBaseUrlOverride: deps.providerBaseUrls.google,
+        xaiBaseUrlOverride: deps.providerBaseUrls.xai,
         forceChatCompletions,
         retries: deps.retries,
         onRetry: createRetryLogger({
@@ -286,7 +295,10 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         modelId: parsedModelEffective.canonical,
         apiKeys: apiKeysForLlm,
         forceOpenRouter: attempt.forceOpenRouter,
-        openaiBaseUrlOverride: attempt.openaiBaseUrlOverride ?? null,
+        openaiBaseUrlOverride: attempt.openaiBaseUrlOverride ?? deps.providerBaseUrls.openai,
+        anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
+        googleBaseUrlOverride: deps.providerBaseUrls.google,
+        xaiBaseUrlOverride: deps.providerBaseUrls.xai,
         forceChatCompletions,
         prompt,
         temperature: 0,
@@ -310,7 +322,10 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
           fetchImpl: deps.trackedFetch,
           apiKeys: apiKeysForLlm,
           forceOpenRouter: attempt.forceOpenRouter,
-          openaiBaseUrlOverride: attempt.openaiBaseUrlOverride ?? null,
+          openaiBaseUrlOverride: attempt.openaiBaseUrlOverride ?? deps.providerBaseUrls.openai,
+          anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
+          googleBaseUrlOverride: deps.providerBaseUrls.google,
+          xaiBaseUrlOverride: deps.providerBaseUrls.xai,
           forceChatCompletions,
           retries: deps.retries,
           onRetry: createRetryLogger({
@@ -346,6 +361,10 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
           fetchImpl: deps.trackedFetch,
           apiKeys: apiKeysForLlm,
           forceOpenRouter: attempt.forceOpenRouter,
+          openaiBaseUrlOverride: attempt.openaiBaseUrlOverride ?? deps.providerBaseUrls.openai,
+          anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
+          googleBaseUrlOverride: deps.providerBaseUrls.google,
+          xaiBaseUrlOverride: deps.providerBaseUrls.xai,
           retries: deps.retries,
           onRetry: createRetryLogger({
             stderr: deps.stderr,

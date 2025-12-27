@@ -68,6 +68,12 @@ export type UrlFlowContext = {
     ytDlpPath: string | null
     falApiKey: string | null
     openaiTranscriptionKey: string | null
+    providerBaseUrls: {
+      openai: string | null
+      anthropic: string | null
+      google: string | null
+      xai: string | null
+    }
   }
   trackedFetch: typeof fetch
   summaryEngine: ReturnType<typeof createSummaryEngine>
