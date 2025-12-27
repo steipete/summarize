@@ -113,7 +113,7 @@ describe('twitter subcommand', () => {
     ).rejects.toThrow(/--count must be a positive number/i)
   })
 
-  it('validates --count cannot exceed 100', async () => {
+  it('validates --count cannot exceed 100 without multi-day date range', async () => {
     const root = mkdtempSync(join(tmpdir(), 'summarize-twitter-'))
 
     await expect(
@@ -123,7 +123,7 @@ describe('twitter subcommand', () => {
         stdout: noopStream(),
         stderr: noopStream(),
       })
-    ).rejects.toThrow(/--count cannot exceed 100/i)
+    ).rejects.toThrow(/--count cannot exceed 100 without a multi-day date range/i)
   })
 
   it('handles bird CLI not found error', async () => {

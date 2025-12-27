@@ -40,6 +40,29 @@ function normalizeUsername(user: string): string {
   return user.startsWith('@') ? user.slice(1) : user
 }
 
+function* dateRange(since: string, until: string): Generator<{ since: string; until: string }> {
+  const start = new Date(since)
+  const end = new Date(until)
+
+  const current = new Date(start)
+  while (current < end) {
+    const next = new Date(current)
+    next.setDate(next.getDate() + 1)
+
+    const sinceStr = current.toISOString().split('T')[0]
+    const untilStr = next.toISOString().split('T')[0]
+
+    yield { since: sinceStr, until: untilStr }
+    current.setDate(current.getDate() + 1)
+  }
+}
+
+function daysBetween(since: string, until: string): number {
+  const start = new Date(since)
+  const end = new Date(until)
+  return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+}
+
 function formatDateForDisplay(dateStr: string): string {
   try {
     const date = new Date(dateStr)
@@ -83,18 +106,29 @@ function formatTweetsForContext(tweets: TweetData[], user: string): string {
   return lines.join('\n')
 }
 
-function formatTweetsForExtract(tweets: TweetData[], json: boolean): string {
+function formatShortDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr)
+    const month = date.toLocaleDateString('en-US', { month: 'short' })
+    const day = date.getDate()
+    return `${month} ${day}`
+  } catch {
+    return ''
+  }
+}
+
+function formatTweetsForExtract(tweets: TweetData[], json: boolean, user: string): string {
   if (json) {
     return JSON.stringify(tweets, null, 2)
   }
 
   const lines: string[] = []
+  lines.push(`# @${user} (${tweets.length} tweets)\n`)
+
   for (const tweet of tweets) {
-    const date = tweet.createdAt ? formatDateForDisplay(tweet.createdAt) : ''
-    lines.push(`@${tweet.author.username} (${date}):`)
-    lines.push(tweet.text)
-    lines.push(`https://x.com/${tweet.author.username}/status/${tweet.id}`)
-    lines.push('---')
+    const date = tweet.createdAt ? formatShortDate(tweet.createdAt) : ''
+    const text = tweet.text.replace(/\n/g, ' ').trim()
+    lines.push(`[${date}] ${text}`)
   }
   return lines.join('\n')
 }
@@ -217,26 +251,71 @@ export async function handleTwitterRequest(ctx: TwitterCliContext): Promise<bool
   if (isNaN(count) || count < 1) {
     throw new Error('--count must be a positive number')
   }
-  if (count > 100) {
-    throw new Error('--count cannot exceed 100')
-  }
 
   // Fetch tweets using shared bird integration
   const timeoutMs = 60_000 // 1 minute timeout for bird
-  const result = await searchTweetsWithBird({
-    user,
-    since: since ?? undefined,
-    until: until ?? undefined,
-    count,
-    timeoutMs,
-    env: envForRun,
-  })
+  const needsDailyIteration = count > 100 || (since && until && daysBetween(since, until) > 1)
 
-  if (!result.success) {
-    throw new Error(result.error)
+  let tweets: TweetData[] = []
+
+  if (needsDailyIteration && since && until) {
+    const days = [...dateRange(since, until)]
+    stderr.write(`Fetching tweets for ${days.length} days...\n`)
+
+    for (const { since: daySince, until: dayUntil } of days) {
+      const result = await searchTweetsWithBird({
+        user,
+        since: daySince,
+        until: dayUntil,
+        count: 100,
+        timeoutMs,
+        env: envForRun,
+      })
+
+      if (result.success && result.tweets.length > 0) {
+        tweets.push(...result.tweets)
+      }
+    }
+
+    // Deduplicate by tweet ID
+    const seen = new Set<string>()
+    tweets = tweets.filter((t) => {
+      if (seen.has(t.id)) return false
+      seen.add(t.id)
+      return true
+    })
+
+    // Sort by date descending
+    tweets.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return dateB - dateA
+    })
+
+    if (count && tweets.length > count) {
+      tweets = tweets.slice(0, count)
+    }
+  } else {
+    // Single fetch - enforce count <= 100
+    if (count > 100) {
+      throw new Error('--count cannot exceed 100 without a multi-day date range (use --since and --until)')
+    }
+
+    const result = await searchTweetsWithBird({
+      user,
+      since: since ?? undefined,
+      until: until ?? undefined,
+      count: Math.min(count, 100),
+      timeoutMs,
+      env: envForRun,
+    })
+
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+    tweets = result.tweets
   }
 
-  const tweets = result.tweets
   if (tweets.length === 0) {
     const range = since && until ? ` from ${since} to ${until}` : since ? ` since ${since}` : until ? ` until ${until}` : ''
     throw new Error(`No tweets found for @${user}${range}`)
@@ -244,7 +323,7 @@ export async function handleTwitterRequest(ctx: TwitterCliContext): Promise<bool
 
   // Extract mode: output tweets without summarization
   if (extractMode) {
-    const output = formatTweetsForExtract(tweets, jsonMode)
+    const output = formatTweetsForExtract(tweets, jsonMode, user)
     stdout.write(`${output}\n`)
     return true
   }
