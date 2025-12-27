@@ -41,7 +41,7 @@ export function buildProgram() {
     .addOption(
       new Option(
         '--markdown-mode <mode>',
-        'HTML→Markdown conversion: off, auto (prefer LLM when configured, then markitdown when available), llm (force LLM), readability (use Readability article HTML as input). Only affects --format md for non-YouTube URLs.'
+        'Markdown conversion: off, auto, llm (force LLM), readability. For websites: converts HTML→Markdown. For YouTube/transcripts: llm mode formats raw transcripts into clean markdown with headings and paragraphs.'
       ).default('readability')
     )
     .addOption(
@@ -129,6 +129,7 @@ ${heading('Examples')}
   ${cmd('summarize "https://example.com" --extract')} ${dim('# extracted plain text')}
   ${cmd('summarize "https://example.com" --extract --format md')} ${dim('# extracted markdown (prefers Firecrawl when configured)')}
   ${cmd('summarize "https://example.com" --extract --format md --markdown-mode llm')} ${dim('# extracted markdown via LLM')}
+  ${cmd('summarize "https://www.youtube.com/watch?v=..." --extract --format md --markdown-mode llm')} ${dim('# transcript as formatted markdown')}
   ${cmd('summarize "https://www.youtube.com/watch?v=I845O57ZSy4&t=11s" --extract --youtube web')}
   ${cmd('summarize "https://example.com" --length 20k --max-output-tokens 2k --timeout 2m --model openai/gpt-5-mini')}
   ${cmd('summarize "https://example.com" --model mymodel')} ${dim('# config preset')}
