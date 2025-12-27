@@ -1,0 +1,109 @@
+import type { LlmTokenUsage } from './generate-text.js'
+import { generateTextWithModelId } from './generate-text.js'
+
+const MAX_TRANSCRIPT_INPUT_CHARACTERS = 200_000
+
+function buildTranscriptToMarkdownPrompt({
+  title,
+  source,
+  transcript,
+}: {
+  title: string | null
+  source: string | null
+  transcript: string
+}): { system: string; prompt: string } {
+  const system = `You convert raw transcripts into clean GitHub-Flavored Markdown.
+
+Rules:
+- Add paragraph breaks at natural topic transitions
+- Add headings (##) for major topic changes
+- Format lists, quotes, and emphasis where appropriate
+- Light cleanup: remove filler words (um, uh, you know) and false starts
+- Do not invent content or change meaning
+- Preserve technical terms, names, and quotes accurately
+- Output ONLY Markdown (no JSON, no explanations, no code fences wrapping the output)`
+
+  const prompt = `Title: ${title ?? 'unknown'}
+Source: ${source ?? 'unknown'}
+
+Transcript:
+"""
+${transcript}
+"""`
+
+  return { system, prompt }
+}
+
+export type ConvertTranscriptToMarkdown = (args: {
+  title: string | null
+  source: string | null
+  transcript: string
+  timeoutMs: number
+}) => Promise<string>
+
+export function createTranscriptToMarkdownConverter({
+  modelId,
+  forceOpenRouter,
+  xaiApiKey,
+  googleApiKey,
+  openaiApiKey,
+  openaiBaseUrlOverride,
+  anthropicApiKey,
+  openrouterApiKey,
+  fetchImpl,
+  forceChatCompletions,
+  retries = 0,
+  onRetry,
+  onUsage,
+}: {
+  modelId: string
+  forceOpenRouter?: boolean
+  xaiApiKey: string | null
+  googleApiKey: string | null
+  openaiApiKey: string | null
+  openaiBaseUrlOverride?: string | null
+  fetchImpl: typeof fetch
+  anthropicApiKey: string | null
+  openrouterApiKey: string | null
+  forceChatCompletions?: boolean
+  retries?: number
+  onRetry?: (notice: {
+    attempt: number
+    maxRetries: number
+    delayMs: number
+    error: unknown
+  }) => void
+  onUsage?: (usage: {
+    model: string
+    provider: 'xai' | 'openai' | 'google' | 'anthropic' | 'zai'
+    usage: LlmTokenUsage | null
+  }) => void
+}): ConvertTranscriptToMarkdown {
+  return async ({ title, source, transcript, timeoutMs }) => {
+    const trimmedTranscript =
+      transcript.length > MAX_TRANSCRIPT_INPUT_CHARACTERS
+        ? transcript.slice(0, MAX_TRANSCRIPT_INPUT_CHARACTERS)
+        : transcript
+    const { system, prompt } = buildTranscriptToMarkdownPrompt({
+      title,
+      source,
+      transcript: trimmedTranscript,
+    })
+
+    const result = await generateTextWithModelId({
+      modelId,
+      apiKeys: { xaiApiKey, googleApiKey, openaiApiKey, anthropicApiKey, openrouterApiKey },
+      forceOpenRouter,
+      openaiBaseUrlOverride,
+      forceChatCompletions,
+      system,
+      prompt,
+      timeoutMs,
+      fetchImpl,
+      retries,
+      onRetry,
+    })
+    onUsage?.({ model: result.canonicalModelId, provider: result.provider, usage: result.usage })
+    return result.text
+  }
+}

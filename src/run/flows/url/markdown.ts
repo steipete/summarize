@@ -1,4 +1,8 @@
 import { createHtmlToMarkdownConverter } from '../../../llm/html-to-markdown.js'
+import {
+  createTranscriptToMarkdownConverter,
+  type ConvertTranscriptToMarkdown,
+} from '../../../llm/transcript-to-markdown.js'
 import { parseGatewayStyleModelId } from '../../../llm/model-id.js'
 import { convertToMarkdownWithMarkitdown } from '../../../markitdown.js'
 import { hasUvxCli } from '../../env.js'
@@ -17,6 +21,7 @@ export type MarkdownModel = {
 
 export type MarkdownConverters = {
   markdownRequested: boolean
+  transcriptMarkdownRequested: boolean
   effectiveMarkdownMode: 'off' | 'auto' | 'llm' | 'readability'
   markdownProvider: 'none' | 'xai' | 'openai' | 'google' | 'anthropic' | 'zai'
   markdownModel: MarkdownModel | null
@@ -29,22 +34,29 @@ export type MarkdownConverters = {
         timeoutMs: number
       }) => Promise<string>)
     | null
+  convertTranscriptToMarkdown: ConvertTranscriptToMarkdown | null
 }
 
 export function createMarkdownConverters(
   ctx: UrlFlowContext,
   options: { isYoutubeUrl: boolean }
 ): MarkdownConverters {
-  const wantsMarkdown = ctx.format === 'markdown' && !options.isYoutubeUrl
-  if (wantsMarkdown && ctx.markdownMode === 'off') {
+  // HTML markdown conversion (for non-YouTube URLs)
+  const wantsHtmlMarkdown = ctx.format === 'markdown' && !options.isYoutubeUrl
+  if (wantsHtmlMarkdown && ctx.markdownMode === 'off') {
     throw new Error('--format md conflicts with --markdown-mode off (use --format text)')
   }
 
-  const markdownRequested = wantsMarkdown
-  const effectiveMarkdownMode = markdownRequested ? ctx.markdownMode : 'off'
+  // Transcript markdown conversion (for YouTube URLs, only when --markdown-mode llm is explicit)
+  const wantsTranscriptMarkdown =
+    ctx.format === 'markdown' && options.isYoutubeUrl && ctx.markdownMode === 'llm'
+
+  const markdownRequested = wantsHtmlMarkdown
+  const transcriptMarkdownRequested = wantsTranscriptMarkdown
+  const effectiveMarkdownMode = markdownRequested || transcriptMarkdownRequested ? ctx.markdownMode : 'off'
 
   const markdownModel: MarkdownModel | null = (() => {
-    if (!markdownRequested) return null
+    if (!markdownRequested && !transcriptMarkdownRequested) return null
 
     // Prefer the explicitly chosen model when it is a native provider (keeps behavior stable).
     if (ctx.requestedModel.kind === 'fixed' && ctx.requestedModel.transport === 'native') {
@@ -130,7 +142,7 @@ export function createMarkdownConverters(
             : Boolean(ctx.apiStatus.apiKey)
   })()
 
-  if (markdownRequested && effectiveMarkdownMode === 'llm' && !hasKeyForMarkdownModel) {
+  if ((markdownRequested || transcriptMarkdownRequested) && effectiveMarkdownMode === 'llm' && !hasKeyForMarkdownModel) {
     const required = (() => {
       if (markdownModel?.forceOpenRouter) return 'OPENROUTER_API_KEY'
       if (markdownModel?.requiredEnv === 'Z_AI_API_KEY') return 'Z_AI_API_KEY'
@@ -246,11 +258,42 @@ export function createMarkdownConverters(
       }
     : null
 
+  // Transcript→Markdown converter (only for YouTube with --markdown-mode llm)
+  const convertTranscriptToMarkdown: ConvertTranscriptToMarkdown | null =
+    transcriptMarkdownRequested && markdownModel !== null
+      ? createTranscriptToMarkdownConverter({
+          modelId: markdownModel.llmModelId,
+          forceOpenRouter: markdownModel.forceOpenRouter,
+          xaiApiKey: ctx.apiStatus.xaiApiKey,
+          googleApiKey: ctx.apiStatus.googleApiKey,
+          openaiApiKey: markdownModel.openaiApiKeyOverride ?? ctx.apiStatus.apiKey,
+          anthropicApiKey: ctx.apiStatus.anthropicApiKey,
+          openrouterApiKey: ctx.apiStatus.openrouterApiKey,
+          openaiBaseUrlOverride: markdownModel.openaiBaseUrlOverride ?? null,
+          forceChatCompletions:
+            markdownModel.forceChatCompletions ??
+            (ctx.openaiUseChatCompletions && markdownProvider === 'openai'),
+          fetchImpl: ctx.trackedFetch,
+          retries: ctx.retries,
+          onRetry: createRetryLogger({
+            stderr: ctx.stderr,
+            verbose: ctx.verbose,
+            color: ctx.verboseColor,
+            modelId: markdownModel.llmModelId,
+          }),
+          onUsage: ({ model: usedModel, provider, usage }) => {
+            ctx.llmCalls.push({ provider, model: usedModel, usage, purpose: 'markdown' })
+          },
+        })
+      : null
+
   return {
     markdownRequested,
+    transcriptMarkdownRequested,
     effectiveMarkdownMode,
     markdownProvider,
     markdownModel,
     convertHtmlToMarkdown,
+    convertTranscriptToMarkdown,
   }
 }
