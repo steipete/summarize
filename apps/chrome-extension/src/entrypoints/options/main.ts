@@ -49,9 +49,7 @@ const setBuildInfo = () => {
 
 const resolveExtensionVersion = () => {
   const injected =
-    typeof __SUMMARIZE_VERSION__ === 'string' && __SUMMARIZE_VERSION__
-      ? __SUMMARIZE_VERSION__
-      : ''
+    typeof __SUMMARIZE_VERSION__ === 'string' && __SUMMARIZE_VERSION__ ? __SUMMARIZE_VERSION__ : ''
   return injected || chrome?.runtime?.getManifest?.().version || ''
 }
 
@@ -66,7 +64,14 @@ const setDaemonStatus = (text: string, state?: 'ok' | 'warn' | 'error') => {
 
 let daemonCheckId = 0
 async function checkDaemonStatus(token: string) {
-  const checkId = (daemonCheckId += 1)
+  const trimmedToken = token.trim()
+  if (!trimmedToken) {
+    setDaemonStatus('Add token to verify daemon', 'warn')
+    return
+  }
+
+  daemonCheckId += 1
+  const checkId = daemonCheckId
   setDaemonStatus('Checking daemon…')
 
   const controller = new AbortController()
@@ -84,11 +89,11 @@ async function checkDaemonStatus(token: string) {
     const extVersion = resolveExtensionVersion()
     const versionNote = daemonVersion ? `v${daemonVersion}` : 'version unknown'
 
-    if (token.trim()) {
+    if (trimmedToken) {
       try {
         const ping = await fetch('http://127.0.0.1:8787/v1/ping', {
           signal: controller.signal,
-          headers: { Authorization: `Bearer ${token.trim()}` },
+          headers: { Authorization: `Bearer ${trimmedToken}` },
         })
         if (checkId !== daemonCheckId) return
         if (!ping.ok) {

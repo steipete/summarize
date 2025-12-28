@@ -777,14 +777,14 @@ button:hover {
   font-size: 12px;
 }
 
-.daemonStatus[data-state='ok'] {
+.daemonStatus[data-state="ok"] {
   color: color-mix(in srgb, var(--text) 70%, var(--muted));
 }
 
-.daemonStatus[data-state='warn'] {
+.daemonStatus[data-state="warn"] {
   color: color-mix(in srgb, #b45309 80%, var(--text));
 }
 
-.daemonStatus[data-state='error'] {
+.daemonStatus[data-state="error"] {
   color: color-mix(in srgb, #dc2626 85%, var(--text));
 }
