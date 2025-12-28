@@ -90,8 +90,14 @@ function SelectField({
     api.valueAsString || items.find((item) => item.value === selectedValue)?.label || ''
   const portalRoot = getOverlayRoot()
 
+  const positionerProps = api.getPositionerProps()
+  const positionerStyle = {
+    ...(positionerProps.style ?? {}),
+    position: 'fixed',
+    zIndex: 9999,
+  }
   const content = (
-    <div className="pickerPositioner" {...api.getPositionerProps()}>
+    <div className="pickerPositioner" {...positionerProps} style={positionerStyle}>
       <div className="pickerContent" {...api.getContentProps()}>
         <div className="pickerList" {...api.getListProps()}>
           {items.map((item) => (
@@ -162,8 +168,14 @@ function LengthField({
     onValueChange(next)
   }
 
+  const positionerProps = api.getPositionerProps()
+  const positionerStyle = {
+    ...(positionerProps.style ?? {}),
+    position: 'fixed',
+    zIndex: 9999,
+  }
   const content = (
-    <div className="pickerPositioner" {...api.getPositionerProps()}>
+    <div className="pickerPositioner" {...positionerProps} style={positionerStyle}>
       <div className="pickerContent" {...api.getContentProps()}>
         <div className="pickerList" {...api.getListProps()}>
           {lengthItems.map((item) => (

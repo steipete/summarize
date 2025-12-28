@@ -578,6 +578,17 @@ button.ghost:hover {
   -webkit-backdrop-filter: blur(16px);
 }
 
+#summarize-overlay-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+#summarize-overlay-root .pickerPositioner {
+  pointer-events: auto;
+}
+
 .drawerGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -388,6 +388,17 @@ form {
   background: var(--panel);
 }
 
+#summarize-overlay-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+#summarize-overlay-root .pickerPositioner {
+  pointer-events: auto;
+}
+
 details.advanced {
   border: 1px solid var(--border);
   border-radius: 14px;
