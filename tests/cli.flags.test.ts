@@ -80,8 +80,9 @@ describe('cli flag parsing', () => {
     expect(parseLengthArg('20k')).toEqual({ kind: 'chars', maxCharacters: 20_000 })
     expect(parseLengthArg('1500')).toEqual({ kind: 'chars', maxCharacters: 1500 })
     expect(parseLengthArg('50')).toEqual({ kind: 'chars', maxCharacters: 50 })
+    expect(parseLengthArg('10')).toEqual({ kind: 'chars', maxCharacters: 10 })
     expect(() => parseLengthArg('1')).toThrow(/Unsupported --length/)
-    expect(() => parseLengthArg('49')).toThrow(/Unsupported --length/)
+    expect(() => parseLengthArg('9')).toThrow(/Unsupported --length/)
     expect(() => parseLengthArg('nope')).toThrow(/Unsupported --length/)
   })
 

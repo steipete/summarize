@@ -29,6 +29,8 @@ type SidepanelLengthPickerProps = {
 }
 
 const lengthPresets = ['short', 'medium', 'long', 'xl', 'xxl', '20k']
+const MIN_CUSTOM_LENGTH_CHARS = 10
+const LENGTH_COUNT_PATTERN = /^(?<value>\d+(?:\.\d+)?)(?<unit>k|m)?$/i
 
 const lengthItems: SelectItem[] = [
   { value: 'short', label: 'Short' },
@@ -173,10 +175,27 @@ function LengthField({
     requestAnimationFrame(() => inputRef.current?.focus())
   }, [presetValue])
 
+  const clampCustomLength = (raw: string) => {
+    const trimmed = raw.trim()
+    const match = LENGTH_COUNT_PATTERN.exec(trimmed)
+    if (!match?.groups) return trimmed
+    const numeric = Number(match.groups.value)
+    if (!Number.isFinite(numeric) || numeric <= 0) return trimmed
+    const unit = match.groups.unit?.toLowerCase() ?? null
+    const multiplier = unit === 'k' ? 1000 : unit === 'm' ? 1_000_000 : 1
+    const maxCharacters = Math.floor(numeric * multiplier)
+    if (maxCharacters < MIN_CUSTOM_LENGTH_CHARS) return String(MIN_CUSTOM_LENGTH_CHARS)
+    return trimmed
+  }
+
   const commitCustom = () => {
+    const clamped = clampCustomLength(customValue)
+    if (clamped !== customValue) {
+      setCustomValue(clamped)
+    }
     const next = readPresetOrCustomValue({
       presetValue: 'custom',
-      customValue,
+      customValue: clamped,
       defaultValue: defaultSettings.length,
     })
     onValueChange(next)

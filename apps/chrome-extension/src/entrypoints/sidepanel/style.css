@@ -679,9 +679,10 @@ label.length.mini .lengthCustomRow input[type="text"] {
 
 label.length.mini .presetsTrigger {
   width: auto;
-  min-width: 64px;
-  padding: 5px 6px;
-  font-size: 10px;
+  min-width: 88px;
+  padding: 7px 10px;
+  font-size: 11px;
+  min-height: 32px;
 }
 
 .drawer .combo {
@@ -950,7 +951,8 @@ input[type="range"] {
   height: 100%;
   width: 0%;
   background: color-mix(in srgb, var(--ui-focus) 70%, transparent);
-  will-change: left, width;
+  transform-origin: center;
+  will-change: left, width, transform;
 }
 
 header.isRunning .progressFill {
@@ -961,7 +963,7 @@ header.isRunning .progressFill {
 header.isRunning.isIndeterminate .progressFill {
   left: 0;
   width: 34%;
-  animation: progressPingPong 2.6s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+  animation: progressPingPong 2.6s linear infinite;
 }
 
 header.isError .progressFill {
@@ -978,30 +980,47 @@ main {
   0% {
     left: 0%;
     width: 34%;
+    transform: scaleX(1);
+  }
+  10% {
+    left: 6%;
+    width: 34%;
+    transform: scaleX(1);
   }
   42% {
-    left: 66%;
+    left: 62%;
     width: 34%;
+    transform: scaleX(1);
   }
-  48% {
+  50% {
     left: 68%;
     width: 28%;
+    transform: scaleX(0.96);
   }
-  54% {
-    left: 66%;
+  58% {
+    left: 62%;
     width: 34%;
+    transform: scaleX(1);
+  }
+  64% {
+    left: 58%;
+    width: 34%;
+    transform: scaleX(1);
   }
   92% {
     left: 0%;
     width: 34%;
+    transform: scaleX(1);
   }
   96% {
     left: -2%;
     width: 28%;
+    transform: scaleX(0.96);
   }
   100% {
     left: 0%;
     width: 34%;
+    transform: scaleX(1);
   }
 }
 
