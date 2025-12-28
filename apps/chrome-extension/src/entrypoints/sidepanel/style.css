@@ -572,8 +572,9 @@ button.ghost:hover {
 }
 
 .drawer {
-  position: relative;
-  z-index: 5;
+  position: sticky;
+  top: var(--header-height, 56px);
+  z-index: 9;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   padding: 10px 12px;

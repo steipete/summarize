@@ -72,6 +72,14 @@ const md = new MarkdownIt({
   breaks: false,
 })
 
+function updateHeaderOffset() {
+  const height = headerEl.getBoundingClientRect().height
+  document.documentElement.style.setProperty('--header-height', `${height}px`)
+}
+
+updateHeaderOffset()
+window.addEventListener('resize', updateHeaderOffset)
+
 let markdown = ''
 let renderQueued = 0
 let currentState: UiState | null = null
