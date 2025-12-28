@@ -692,13 +692,14 @@ select {
   border: 1px solid var(--border);
   background: var(--field-bg);
   color: var(--text);
-  padding: 7px 10px;
+  padding: 7px 30px 7px 10px;
   border-radius: 12px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
   font: inherit;
   cursor: pointer;
+  position: relative;
 }
 
 .pickerTrigger[data-state="open"] {
@@ -716,8 +717,11 @@ select {
   height: 6px;
   border-right: 2px solid var(--muted);
   border-bottom: 2px solid var(--muted);
-  transform: rotate(45deg);
-  margin-left: 6px;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  pointer-events: none;
 }
 
 .pickerTrigger .scheme-chips {
