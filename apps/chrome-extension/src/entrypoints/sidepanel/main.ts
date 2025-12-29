@@ -767,7 +767,7 @@ function installStepsHtml({
     ? `
       <div class="setup__toggle" role="tablist" aria-label="Install method">
         <button class="setup__pill" type="button" data-install="npm" role="tab" aria-selected="false">NPM</button>
-        <button class="setup__pill" type="button" data-install="brew" role="tab" aria-selected="false">BRU</button>
+        <button class="setup__pill" type="button" data-install="brew" role="tab" aria-selected="false">Homebrew</button>
       </div>
     `
     : ''
@@ -826,6 +826,7 @@ function installStepsHtml({
             </svg>
           </button>
         </div>
+        <p class="setup__hint">Shows daemon health, version, and token auth status.</p>
         <div class="setup__codeRow">
           <code>summarize daemon restart</code>
           <button class="ghost icon setup__copy" type="button" data-copy="restart" aria-label="Copy restart command">
@@ -834,6 +835,7 @@ function installStepsHtml({
             </svg>
           </button>
         </div>
+        <p class="setup__hint">Restarts the daemon if it’s stuck or not responding.</p>
       </div>
     `
       : ''
@@ -895,7 +897,7 @@ function wireSetupButtons({
   )
 
   const applyInstallMethod = (method: InstallMethod) => {
-    const label = method === 'brew' ? 'BRU' : 'NPM'
+    const label = method === 'brew' ? 'Homebrew' : 'NPM'
     if (installTitleEl) {
       installTitleEl.innerHTML = `<strong>1) Install summarize (${label})</strong>`
     }

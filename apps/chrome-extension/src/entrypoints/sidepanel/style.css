@@ -1166,22 +1166,25 @@ button.setup__pill.isActive {
 }
 
 .setup__codeRow {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
+  position: relative;
 }
 
 .setup__codeRow code {
-  flex: 1;
+  width: 100%;
   min-width: 0;
+  padding-right: 48px;
 }
 
 .setup__copy {
-  width: 36px;
-  height: 36px;
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   display: grid;
   place-items: center;
+  transform: translateY(-50%);
 }
 
 .setup__copy svg {
