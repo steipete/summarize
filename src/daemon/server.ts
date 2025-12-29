@@ -11,7 +11,8 @@ import { type DaemonRequestedMode, resolveAutoDaemonMode } from './auto-mode.js'
 import type { DaemonConfig } from './config.js'
 import { DAEMON_HOST, DAEMON_PORT_DEFAULT } from './constants.js'
 import { buildModelPickerOptions } from './models.js'
-import { streamSummaryForUrl, streamSummaryForVisiblePage } from './summarize.js'
+import { extractContentForUrl, streamSummaryForUrl, streamSummaryForVisiblePage } from './summarize.js'
+import { streamChatResponse } from './chat.js'
 
 type SessionEvent = SseEvent
 
@@ -259,6 +260,7 @@ export async function runDaemonServer({
         const promptRaw = typeof obj.prompt === 'string' ? obj.prompt : ''
         const promptOverride = promptRaw.trim() || null
         const noCache = Boolean(obj.noCache)
+        const extractOnly = Boolean(obj.extractOnly)
         const modeRaw = typeof obj.mode === 'string' ? obj.mode.trim().toLowerCase() : ''
         const mode: DaemonRequestedMode =
           modeRaw === 'url' ? 'url' : modeRaw === 'page' ? 'page' : 'auto'
@@ -282,6 +284,43 @@ export async function runDaemonServer({
         }
         if (mode === 'page' && !hasText) {
           json(res, 400, { ok: false, error: 'missing text' }, cors)
+          return
+        }
+
+        // Handle extractOnly mode - return extracted content without summarizing
+        if (extractOnly) {
+          if (mode === 'page') {
+            json(res, 400, { ok: false, error: 'extractOnly requires mode=url' }, cors)
+            return
+          }
+          try {
+            const requestCache: CacheState = noCache
+              ? { ...cacheState, mode: 'bypass' as const, store: null }
+              : cacheState
+            const extracted = await extractContentForUrl({
+              env,
+              fetchImpl,
+              input: { url: pageUrl, title, maxCharacters },
+              cache: requestCache,
+              overrides,
+            })
+            json(res, 200, {
+              ok: true,
+              extracted: {
+                content: extracted.content,
+                title: extracted.title,
+                url: extracted.url,
+                wordCount: extracted.wordCount,
+                totalCharacters: extracted.totalCharacters,
+                truncated: extracted.truncated,
+                transcriptSource: extracted.transcriptSource ?? null,
+                diagnostics: extracted.diagnostics,
+              },
+            }, cors)
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            json(res, 500, { ok: false, error: message }, cors)
+          }
           return
         }
 
@@ -396,6 +435,67 @@ export async function runDaemonServer({
             pushToSession(session, { event: 'error', data: { message } })
             // Preserve full stack trace in daemon logs for debugging.
             console.error('[summarize-daemon] summarize failed', error)
+          } finally {
+            setTimeout(() => {
+              sessions.delete(session.id)
+              endSession(session)
+            }, 60_000).unref()
+          }
+        })()
+        return
+      }
+
+      // Chat endpoint
+      if (req.method === 'POST' && pathname === '/v1/chat') {
+        await refreshCacheStoreIfMissing({ cacheState, transcriptNamespace: 'yt:auto' })
+        let body: unknown
+        try {
+          body = await readJsonBody(req, 2_000_000)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          json(res, 400, { ok: false, error: message }, cors)
+          return
+        }
+        if (!body || typeof body !== 'object') {
+          json(res, 400, { ok: false, error: 'invalid json' }, cors)
+          return
+        }
+
+        const obj = body as Record<string, unknown>
+        const pageUrl = typeof obj.url === 'string' ? obj.url.trim() : ''
+        const pageTitle = typeof obj.title === 'string' ? obj.title.trim() : null
+        const pageContent = typeof obj.pageContent === 'string' ? obj.pageContent : ''
+        const messages = Array.isArray(obj.messages) ? obj.messages : []
+        const modelOverride = typeof obj.model === 'string' ? obj.model.trim() : null
+
+        if (!pageUrl) {
+          json(res, 400, { ok: false, error: 'missing url' }, cors)
+          return
+        }
+
+        const session = createSession()
+        sessions.set(session.id, session)
+
+        json(res, 200, { ok: true, id: session.id }, cors)
+
+        void (async () => {
+          try {
+            await streamChatResponse({
+              env,
+              fetchImpl,
+              session,
+              pageUrl,
+              pageTitle,
+              pageContent,
+              messages: messages as Array<{ role: 'user' | 'assistant'; content: string }>,
+              modelOverride: modelOverride && modelOverride.toLowerCase() !== 'auto' ? modelOverride : null,
+              pushToSession: (evt) => pushToSession(session, evt),
+              emitMeta: (patch) => emitMeta(session, patch),
+            })
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            pushToSession(session, { event: 'error', data: { message } })
+            console.error('[summarize-daemon] chat failed', error)
           } finally {
             setTimeout(() => {
               sessions.delete(session.id)

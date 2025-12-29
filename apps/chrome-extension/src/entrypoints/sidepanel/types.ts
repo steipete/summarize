@@ -16,6 +16,13 @@ export type RunStart = {
 
 export type PanelPhase = 'idle' | 'setup' | 'connecting' | 'streaming' | 'error'
 
+export type ChatMessage = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: number
+}
+
 export type PanelState = {
   ui: UiState | null
   currentSource: { url: string; title: string | null } | null
@@ -23,4 +30,9 @@ export type PanelState = {
   summaryFromCache: boolean | null
   phase: PanelPhase
   error: string | null
+  // Chat state
+  inChatMode: boolean
+  chatMessages: ChatMessage[]
+  chatStreaming: boolean
+  chatTranscript: string | null
 }

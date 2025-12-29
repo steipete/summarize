@@ -9,11 +9,13 @@ import { mountCheckbox } from '../../ui/zag-checkbox'
 import { createHeaderController } from './header-controller'
 import { mountSidepanelLengthPicker, mountSidepanelPickers } from './pickers'
 import { createStreamController } from './stream-controller'
-import type { PanelPhase, PanelState, RunStart, UiState } from './types'
+import type { ChatMessage, PanelPhase, PanelState, RunStart, UiState } from './types'
 
 type PanelToBg =
   | { type: 'panel:ready' }
   | { type: 'panel:summarize'; refresh?: boolean }
+  | { type: 'panel:startChat' }
+  | { type: 'panel:chat'; messages: Array<{ role: 'user' | 'assistant'; content: string }> }
   | { type: 'panel:ping' }
   | { type: 'panel:closed' }
   | { type: 'panel:rememberUrl'; url: string }
@@ -21,11 +23,24 @@ type PanelToBg =
   | { type: 'panel:setLength'; value: string }
   | { type: 'panel:openOptions' }
 
+type ChatReadyPayload = {
+  url: string
+  title: string | null
+  transcript: string
+}
+
+type ChatStartPayload = {
+  id: string
+  url: string
+}
+
 type BgToPanel =
   | { type: 'ui:state'; state: UiState }
   | { type: 'ui:status'; status: string }
   | { type: 'run:start'; run: RunStart }
   | { type: 'run:error'; message: string }
+  | { type: 'chat:ready'; payload: ChatReadyPayload }
+  | { type: 'chat:start'; payload: ChatStartPayload }
 
 function byId<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id)
@@ -42,8 +57,11 @@ const drawerEl = byId<HTMLElement>('drawer')
 const setupEl = byId<HTMLDivElement>('setup')
 const renderEl = byId<HTMLElement>('render')
 const metricsEl = byId<HTMLDivElement>('metrics')
+const metricsHomeEl = byId<HTMLDivElement>('metricsHome')
+const chatMetricsSlotEl = byId<HTMLDivElement>('chatMetricsSlot')
 
 const summarizeBtn = byId<HTMLButtonElement>('summarize')
+const chatBtn = byId<HTMLButtonElement>('chat')
 const drawerToggleBtn = byId<HTMLButtonElement>('drawerToggle')
 const refreshBtn = byId<HTMLButtonElement>('refresh')
 const advancedBtn = byId<HTMLButtonElement>('advanced')
@@ -52,6 +70,13 @@ const hoverToggleRoot = byId<HTMLDivElement>('hoverToggle')
 const lengthRoot = byId<HTMLDivElement>('lengthRoot')
 const pickersRoot = byId<HTMLDivElement>('pickersRoot')
 const sizeEl = byId<HTMLInputElement>('size')
+
+// Chat elements
+const chatContainerEl = byId<HTMLElement>('chatContainer')
+const chatMessagesEl = byId<HTMLDivElement>('chatMessages')
+const chatInputEl = byId<HTMLTextAreaElement>('chatInput')
+const chatSendBtn = byId<HTMLButtonElement>('chatSend')
+const chatBackBtn = byId<HTMLButtonElement>('chatBack')
 
 const md = new MarkdownIt({
   html: false,
@@ -66,6 +91,11 @@ const panelState: PanelState = {
   summaryFromCache: null,
   phase: 'idle',
   error: null,
+  // Chat state
+  inChatMode: false,
+  chatMessages: [],
+  chatStreaming: false,
+  chatTranscript: null,
 }
 let drawerAnimation: Animation | null = null
 let autoValue = false
@@ -151,13 +181,14 @@ async function syncWithActiveTab() {
 
 function resetSummaryView() {
   renderEl.innerHTML = ''
-  metricsEl.textContent = ''
-  metricsEl.classList.add('hidden')
-  metricsEl.removeAttribute('data-details')
-  metricsEl.removeAttribute('title')
-  metricsRenderState.summary = null
-  metricsRenderState.shortened = false
+  clearMetricsForMode('summary')
   panelState.summaryFromCache = null
+
+  // Also reset chat state if in chat mode
+  if (panelState.inChatMode) {
+    exitChatMode()
+  }
+  resetChatState()
 }
 
 window.addEventListener('error', (event) => {
@@ -216,8 +247,18 @@ function elementWrapsToMultipleLines(el: HTMLElement): boolean {
   return contentHeight > lineHeight * 1.4
 }
 
+type MetricsMode = 'summary' | 'chat'
+
+type MetricsState = {
+  summary: string | null
+  inputSummary: string | null
+  sourceUrl: string | null
+}
+
 type MetricsRenderState = {
   summary: string | null
+  inputSummary: string | null
+  sourceUrl: string | null
   shortened: boolean
   rafId: number | null
   observer: ResizeObserver | null
@@ -225,10 +266,19 @@ type MetricsRenderState = {
 
 const metricsRenderState: MetricsRenderState = {
   summary: null,
+  inputSummary: null,
+  sourceUrl: null,
   shortened: false,
   rafId: null,
   observer: null,
 }
+
+const metricsByMode: Record<MetricsMode, MetricsState> = {
+  summary: { summary: null, inputSummary: null, sourceUrl: null },
+  chat: { summary: null, inputSummary: null, sourceUrl: null },
+}
+
+let activeMetricsMode: MetricsMode = 'summary'
 
 let metricsMeasureEl: HTMLDivElement | null = null
 
@@ -284,7 +334,7 @@ function scheduleMetricsFitCheck() {
     if (!metricsRenderState.summary) return
     const parts = buildMetricsParts({
       summary: metricsRenderState.summary,
-      inputSummary: panelState.lastMeta.inputSummary,
+      inputSummary: metricsRenderState.inputSummary,
     })
     if (parts.length === 0) return
     const fullText = parts.join(' · ')
@@ -296,16 +346,23 @@ function scheduleMetricsFitCheck() {
     const shouldShorten = elementWrapsToMultipleLines(measureEl)
     if (shouldShorten === metricsRenderState.shortened) return
     metricsRenderState.shortened = shouldShorten
-    renderMetricsSummary(metricsRenderState.summary, { shortenOpenRouter: shouldShorten })
+    renderMetricsSummary(metricsRenderState.summary, {
+      shortenOpenRouter: shouldShorten,
+      inputSummary: metricsRenderState.inputSummary,
+      sourceUrl: metricsRenderState.sourceUrl,
+    })
   })
 }
 
-function renderMetricsSummary(summary: string, options?: { shortenOpenRouter?: boolean }) {
+function renderMetricsSummary(
+  summary: string,
+  options?: { shortenOpenRouter?: boolean; inputSummary?: string | null; sourceUrl?: string | null }
+) {
   metricsEl.replaceChildren()
   const tokens = buildMetricsTokens({
     summary,
-    inputSummary: panelState.lastMeta.inputSummary,
-    sourceUrl: panelState.currentSource?.url ?? null,
+    inputSummary: options?.inputSummary ?? panelState.lastMeta.inputSummary,
+    sourceUrl: options?.sourceUrl ?? panelState.currentSource?.url ?? null,
     shortenOpenRouter: options?.shortenOpenRouter ?? false,
   })
 
@@ -333,6 +390,66 @@ function renderMetricsSummary(summary: string, options?: { shortenOpenRouter?: b
     }
     metricsEl.append(document.createTextNode(token.text))
   })
+}
+
+function moveMetricsTo(mode: MetricsMode) {
+  const target = mode === 'chat' ? chatMetricsSlotEl : metricsHomeEl
+  if (metricsEl.parentElement !== target) {
+    target.append(metricsEl)
+  }
+  activeMetricsMode = mode
+}
+
+function renderMetricsMode(mode: MetricsMode) {
+  const state = metricsByMode[mode]
+  metricsRenderState.summary = state.summary
+  metricsRenderState.inputSummary = state.inputSummary
+  metricsRenderState.sourceUrl = state.sourceUrl
+  metricsRenderState.shortened = false
+
+  if (mode === 'chat') {
+    chatMetricsSlotEl.classList.toggle('isVisible', Boolean(state.summary))
+  } else {
+    chatMetricsSlotEl.classList.remove('isVisible')
+  }
+
+  metricsEl.removeAttribute('title')
+  metricsEl.removeAttribute('data-details')
+
+  if (!state.summary) {
+    metricsEl.textContent = ''
+    metricsEl.classList.add('hidden')
+    return
+  }
+
+  renderMetricsSummary(state.summary, {
+    inputSummary: state.inputSummary,
+    sourceUrl: state.sourceUrl,
+  })
+  metricsEl.classList.remove('hidden')
+  ensureMetricsObserver()
+  scheduleMetricsFitCheck()
+}
+
+function setMetricsForMode(
+  mode: MetricsMode,
+  summary: string | null,
+  inputSummary: string | null,
+  sourceUrl: string | null
+) {
+  metricsByMode[mode] = { summary, inputSummary, sourceUrl }
+  if (activeMetricsMode === mode) {
+    renderMetricsMode(mode)
+  }
+}
+
+function clearMetricsForMode(mode: MetricsMode) {
+  setMetricsForMode(mode, null, null, null)
+}
+
+function setActiveMetricsMode(mode: MetricsMode) {
+  moveMetricsTo(mode)
+  renderMetricsMode(mode)
 }
 
 function applyTypography(fontFamily: string, fontSize: number) {
@@ -446,12 +563,7 @@ const streamController = createStreamController({
   getToken: async () => (await loadSettings()).token,
   onReset: () => {
     renderEl.innerHTML = ''
-    metricsEl.textContent = ''
-    metricsEl.classList.add('hidden')
-    metricsEl.removeAttribute('data-details')
-    metricsEl.removeAttribute('title')
-    metricsRenderState.summary = null
-    metricsRenderState.shortened = false
+    clearMetricsForMode('summary')
     panelState.summaryFromCache = null
     panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null }
   },
@@ -489,18 +601,43 @@ const streamController = createStreamController({
     }
   },
   onMetrics: (summary) => {
-    metricsRenderState.summary = summary
-    metricsRenderState.shortened = false
-    renderMetricsSummary(summary)
-    metricsEl.removeAttribute('title')
-    metricsEl.removeAttribute('data-details')
-    metricsEl.classList.remove('hidden')
-    ensureMetricsObserver()
-    scheduleMetricsFitCheck()
+    setMetricsForMode(
+      'summary',
+      summary,
+      panelState.lastMeta.inputSummary,
+      panelState.currentSource?.url ?? null
+    )
   },
   onRender: renderMarkdown,
   onSyncWithActiveTab: syncWithActiveTab,
   onError: (err) => friendlyFetchError(err, 'Stream failed'),
+})
+
+// Chat stream controller - reuses the same SSE infrastructure as summarize
+const chatStreamController = createStreamController({
+  mode: 'chat',
+  getToken: async () => (await loadSettings()).token,
+  onStatus: (text) => headerController.setStatus(text),
+  onPhaseChange: (phase) => {
+    // Chat doesn't use phase in the same way, but we track streaming state
+    if (phase === 'error') {
+      finishStreamingMessage()
+    }
+  },
+  onMeta: () => {},
+  onMetrics: (summary) => {
+    setMetricsForMode('chat', summary, null, panelState.currentSource?.url ?? null)
+  },
+  onChunk: (content) => {
+    updateStreamingMessage(content)
+  },
+  onDone: () => {
+    finishStreamingMessage()
+  },
+  onError: (err) => {
+    const message = err instanceof Error ? err.message : String(err)
+    return message
+  },
 })
 
 async function ensureToken(): Promise<string> {
@@ -766,11 +903,30 @@ function handleBgMessage(msg: BgToPanel) {
     case 'run:error':
       headerController.setStatus(`Error: ${msg.message}`)
       setPhase('error', { error: msg.message })
+      if (panelState.chatStreaming) {
+        finishStreamingMessage()
+      }
       return
     case 'run:start':
+      if (panelState.inChatMode) {
+        exitChatMode()
+      }
       panelState.currentSource = { url: msg.run.url, title: msg.run.title }
       panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null }
       void streamController.start(msg.run)
+      return
+    case 'chat:ready':
+      panelState.currentSource = { url: msg.payload.url, title: msg.payload.title }
+      panelState.chatTranscript = msg.payload.transcript
+      enterChatMode()
+      return
+    case 'chat:start':
+      void chatStreamController.start({
+        id: msg.payload.id,
+        url: msg.payload.url,
+        title: panelState.currentSource?.title || null,
+        reason: 'chat',
+      })
       return
   }
 }
@@ -858,10 +1014,171 @@ function toggleDrawer(force?: boolean, opts?: { animate?: boolean }) {
   }
 }
 
+// Chat functions
+function enterChatMode() {
+  panelState.inChatMode = true
+  panelState.chatMessages = []
+  panelState.chatStreaming = false
+  chatMessagesEl.innerHTML = ''
+  chatInputEl.value = ''
+  chatSendBtn.disabled = false
+
+  // Hide summarize view, show chat view
+  renderEl.classList.add('hidden')
+  setupEl.classList.add('hidden')
+  chatContainerEl.classList.remove('hidden')
+  clearMetricsForMode('chat')
+  setActiveMetricsMode('chat')
+
+  // Update header
+  headerController.setBaseTitle('Chat')
+  headerController.setBaseSubtitle(panelState.currentSource?.title || '')
+  headerController.setStatus('')
+}
+
+function exitChatMode() {
+  panelState.inChatMode = false
+  panelState.chatMessages = []
+  panelState.chatStreaming = false
+  panelState.chatTranscript = null
+
+  // Show summarize view, hide chat view
+  chatContainerEl.classList.add('hidden')
+  renderEl.classList.remove('hidden')
+  setActiveMetricsMode('summary')
+
+  // Restore header
+  headerController.setBaseTitle(panelState.currentSource?.title || 'Summarize')
+  headerController.setBaseSubtitle(
+    buildIdleSubtitle({
+      inputSummary: panelState.lastMeta.inputSummary,
+      modelLabel: panelState.lastMeta.modelLabel,
+      model: panelState.lastMeta.model,
+    })
+  )
+  headerController.setStatus('')
+}
+
+function resetChatState() {
+  panelState.chatMessages = []
+  panelState.chatStreaming = false
+  panelState.chatTranscript = null
+  chatMessagesEl.innerHTML = ''
+  chatInputEl.value = ''
+  chatSendBtn.disabled = false
+}
+
+function addChatMessage(message: ChatMessage) {
+  panelState.chatMessages.push(message)
+  renderChatMessage(message)
+}
+
+function renderChatMessage(message: ChatMessage) {
+  const msgEl = document.createElement('div')
+  msgEl.className = `chatMessage ${message.role}`
+  msgEl.dataset.id = message.id
+
+  if (message.role === 'assistant') {
+    msgEl.innerHTML = md.render(message.content || '...')
+    // Open links in new tabs
+    for (const a of Array.from(msgEl.querySelectorAll('a'))) {
+      a.setAttribute('target', '_blank')
+      a.setAttribute('rel', 'noopener noreferrer')
+    }
+  } else {
+    msgEl.textContent = message.content
+  }
+
+  chatMessagesEl.appendChild(msgEl)
+  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
+}
+
+function updateStreamingMessage(content: string) {
+  const lastMsg = panelState.chatMessages[panelState.chatMessages.length - 1]
+  if (lastMsg?.role === 'assistant') {
+    lastMsg.content = content
+    const msgEl = chatMessagesEl.querySelector(`[data-id="${lastMsg.id}"]`)
+    if (msgEl) {
+      msgEl.innerHTML = md.render(content || '...')
+      msgEl.classList.add('streaming')
+      // Open links in new tabs
+      for (const a of Array.from(msgEl.querySelectorAll('a'))) {
+        a.setAttribute('target', '_blank')
+        a.setAttribute('rel', 'noopener noreferrer')
+      }
+      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
+    }
+  }
+}
+
+function finishStreamingMessage() {
+  panelState.chatStreaming = false
+  chatSendBtn.disabled = false
+  chatInputEl.focus()
+
+  const lastMsg = panelState.chatMessages[panelState.chatMessages.length - 1]
+  if (lastMsg?.role === 'assistant') {
+    const msgEl = chatMessagesEl.querySelector(`[data-id="${lastMsg.id}"]`)
+    if (msgEl) {
+      msgEl.classList.remove('streaming')
+    }
+  }
+}
+
+function sendChatMessage() {
+  const input = chatInputEl.value.trim()
+  if (!input || panelState.chatStreaming) return
+
+  chatInputEl.value = ''
+  chatInputEl.style.height = 'auto'
+
+  // Add user message
+  addChatMessage({
+    id: crypto.randomUUID(),
+    role: 'user',
+    content: input,
+    timestamp: Date.now(),
+  })
+
+  // Add placeholder for assistant
+  addChatMessage({
+    id: crypto.randomUUID(),
+    role: 'assistant',
+    content: '',
+    timestamp: Date.now(),
+  })
+
+  panelState.chatStreaming = true
+  chatSendBtn.disabled = true
+
+  // Send to background
+  send({
+    type: 'panel:chat',
+    messages: panelState.chatMessages
+      .filter((m) => m.content.length > 0)
+      .map((m) => ({ role: m.role, content: m.content })),
+  })
+}
+
 summarizeBtn.addEventListener('click', () => send({ type: 'panel:summarize' }))
+chatBtn.addEventListener('click', () => send({ type: 'panel:startChat' }))
 refreshBtn.addEventListener('click', () => send({ type: 'panel:summarize', refresh: true }))
 drawerToggleBtn.addEventListener('click', () => toggleDrawer())
 advancedBtn.addEventListener('click', () => send({ type: 'panel:openOptions' }))
+
+// Chat event handlers
+chatBackBtn.addEventListener('click', exitChatMode)
+chatSendBtn.addEventListener('click', sendChatMessage)
+chatInputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    sendChatMessage()
+  }
+})
+chatInputEl.addEventListener('input', () => {
+  chatInputEl.style.height = 'auto'
+  chatInputEl.style.height = Math.min(chatInputEl.scrollHeight, 120) + 'px'
+})
 
 sizeEl.addEventListener('input', () => {
   void (async () => {

@@ -9,49 +9,72 @@ export type StreamController = {
   isStreaming: () => boolean
 }
 
-export function createStreamController({
-  getToken,
-  onReset,
-  onStatus,
-  onBaseTitle,
-  onBaseSubtitle,
-  onPhaseChange,
-  onRememberUrl,
-  onMeta,
-  onSummaryFromCache,
-  onMetrics,
-  onRender,
-  onSyncWithActiveTab,
-  onError,
-  fetchImpl,
-}: {
+export type StreamControllerOptions = {
   getToken: () => Promise<string>
-  onReset: () => void
   onStatus: (text: string) => void
-  onBaseTitle: (text: string) => void
-  onBaseSubtitle: (text: string) => void
   onPhaseChange: (phase: PanelPhase) => void
-  onRememberUrl: (url: string) => void
   onMeta: (meta: SseMetaData) => void
-  onSummaryFromCache: (value: boolean | null) => void
-  onMetrics: (summary: string) => void
-  onRender: (markdown: string) => void
-  onSyncWithActiveTab: () => Promise<void>
   onError?: ((error: unknown) => string) | null
   fetchImpl?: typeof fetch
-}): StreamController {
+  // Summarize mode callbacks (optional for chat mode)
+  onReset?: (() => void) | null
+  onBaseTitle?: ((text: string) => void) | null
+  onBaseSubtitle?: ((text: string) => void) | null
+  onRememberUrl?: ((url: string) => void) | null
+  onSummaryFromCache?: ((value: boolean | null) => void) | null
+  onMetrics?: ((summary: string) => void) | null
+  onRender?: ((markdown: string) => void) | null
+  onSyncWithActiveTab?: (() => Promise<void>) | null
+  // Chat mode callbacks (optional for summarize mode)
+  onChunk?: ((accumulatedContent: string) => void) | null
+  onDone?: (() => void) | null
+  // Mode-specific options
+  mode?: 'summarize' | 'chat'
+  streamingStatusText?: string
+}
+
+export function createStreamController(options: StreamControllerOptions): StreamController {
+  const {
+    getToken,
+    onStatus,
+    onPhaseChange,
+    onMeta,
+    onError,
+    fetchImpl,
+    onReset,
+    onBaseTitle,
+    onBaseSubtitle,
+    onRememberUrl,
+    onSummaryFromCache,
+    onMetrics,
+    onRender,
+    onSyncWithActiveTab,
+    onChunk,
+    onDone,
+    mode = 'summarize',
+    streamingStatusText,
+  } = options
   let controller: AbortController | null = null
   let markdown = ''
+  let chatContent = ''
   let renderQueued = 0
   let streamedAnyNonWhitespace = false
   let rememberedUrl = false
   let streaming = false
 
   const queueRender = () => {
-    if (renderQueued) return
+    if (renderQueued || !onRender) return
     renderQueued = window.setTimeout(() => {
       renderQueued = 0
       onRender(markdown)
+    }, 80)
+  }
+
+  const queueChunkUpdate = () => {
+    if (renderQueued || !onChunk) return
+    renderQueued = window.setTimeout(() => {
+      renderQueued = 0
+      onChunk(chatContent)
     }, 80)
   }
 
@@ -79,12 +102,13 @@ export function createStreamController({
     streamedAnyNonWhitespace = false
     rememberedUrl = false
     markdown = ''
+    chatContent = ''
     onPhaseChange('connecting')
-    onSummaryFromCache(null)
-    onReset()
+    onSummaryFromCache?.(null)
+    onReset?.()
 
-    onBaseTitle(run.title || run.url)
-    onBaseSubtitle('')
+    onBaseTitle?.(run.title || run.url)
+    onBaseSubtitle?.('')
     onStatus('Connecting…')
 
     try {
@@ -98,7 +122,7 @@ export function createStreamController({
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
       if (!res.body) throw new Error('Missing stream body')
 
-      onStatus('Summarizing…')
+      onStatus(streamingStatusText ?? (mode === 'chat' ? '' : 'Summarizing…'))
       onPhaseChange('streaming')
 
       for await (const msg of parseSseStream(res.body)) {
@@ -108,15 +132,22 @@ export function createStreamController({
         if (!event) continue
 
         if (event.event === 'chunk') {
-          const merged = mergeStreamingChunk(markdown, event.data.text).next
-          if (merged !== markdown) {
-            markdown = merged
-            queueRender()
+          if (mode === 'chat') {
+            // Chat mode: accumulate raw chunks
+            chatContent += event.data.text
+            queueChunkUpdate()
+          } else {
+            // Summarize mode: merge streaming chunks
+            const merged = mergeStreamingChunk(markdown, event.data.text).next
+            if (merged !== markdown) {
+              markdown = merged
+              queueRender()
+            }
           }
 
           if (!streamedAnyNonWhitespace && event.data.text.trim().length > 0) {
             streamedAnyNonWhitespace = true
-            if (!rememberedUrl) {
+            if (!rememberedUrl && onRememberUrl) {
               rememberedUrl = true
               onRememberUrl(run.url)
             }
@@ -124,12 +155,12 @@ export function createStreamController({
         } else if (event.event === 'meta') {
           onMeta(event.data)
           if (typeof event.data.summaryFromCache === 'boolean') {
-            onSummaryFromCache(event.data.summaryFromCache)
+            onSummaryFromCache?.(event.data.summaryFromCache)
           }
         } else if (event.event === 'status') {
           if (!streamedAnyNonWhitespace) onStatus(event.data.text)
         } else if (event.event === 'metrics') {
-          onMetrics(event.data.summary)
+          onMetrics?.(event.data.summary)
         } else if (event.event === 'error') {
           throw new Error(event.data.message)
         } else if (event.event === 'done') {
@@ -137,23 +168,26 @@ export function createStreamController({
         }
       }
 
-      if (!streamedAnyNonWhitespace) {
+      // In summarize mode, require output; in chat mode, allow empty responses
+      if (mode === 'summarize' && !streamedAnyNonWhitespace) {
         throw new Error('Model returned no output.')
       }
 
       onStatus('')
+      onDone?.()
     } catch (err) {
       if (nextController.signal.aborted) return
       const message = onError ? onError(err) : err instanceof Error ? err.message : String(err)
       onStatus(`Error: ${message}`)
       onPhaseChange('error')
+      onDone?.()
     } finally {
       if (controller === nextController) {
         streaming = false
         if (!nextController.signal.aborted) {
           onPhaseChange('idle')
         }
-        await onSyncWithActiveTab()
+        await onSyncWithActiveTab?.()
       }
     }
   }

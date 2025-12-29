@@ -46,6 +46,7 @@ export type DaemonUrlFlowContextArgs = {
   languageRaw: unknown
   maxExtractCharacters: number | null
   overrides?: RunOverrides | null
+  extractOnly?: boolean
   hooks?: {
     onModelChosen?: ((modelId: string) => void) | null
     onExtracted?: ((extracted: ExtractedLinkContent) => void) | null
@@ -67,6 +68,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     languageRaw,
     maxExtractCharacters,
     overrides,
+    extractOnly,
     hooks,
     runStartedAtMs,
     stdoutSink,
@@ -299,7 +301,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
       languageInstruction,
       maxOutputTokensArg,
       json: false,
-      extractMode: false,
+      extractMode: extractOnly ?? false,
       metricsEnabled: false,
       metricsDetailed: false,
       shouldComputeReport: false,

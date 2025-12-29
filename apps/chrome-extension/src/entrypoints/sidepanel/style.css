@@ -1220,3 +1220,164 @@ main {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Chat styles */
+.chatContainer.hidden {
+  display: none;
+}
+
+.chatContainer {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 80px);
+  min-height: 300px;
+}
+
+.chatMessages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chatMessage {
+  padding: 10px 12px;
+  border-radius: 14px;
+  line-height: 1.45;
+  max-width: 88%;
+  word-wrap: break-word;
+}
+
+.chatMessage.user {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.chatMessage.assistant {
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.chatMessage.assistant.streaming {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.chatMessage p {
+  margin: 6px 0;
+}
+
+.chatMessage p:first-child {
+  margin-top: 0;
+}
+
+.chatMessage p:last-child {
+  margin-bottom: 0;
+}
+
+.chatMessage a {
+  color: var(--ui-link);
+  text-decoration: none;
+}
+
+.chatMessage a:hover {
+  text-decoration: underline;
+}
+
+.chatMessage code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.chatMessage ul {
+  margin: 6px 0 6px 18px;
+  padding: 0;
+}
+
+.chatMessage li {
+  margin: 4px 0;
+}
+
+.chatInputRow {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.chatMetricsSlot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+.chatMetricsSlot.isVisible {
+  margin-top: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.chatMetricsSlot .metrics {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.chatInput {
+  flex: 1;
+  min-height: 38px;
+  max-height: 120px;
+  resize: none;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--field-bg);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.4;
+}
+
+.chatInput:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--ui-focus) 45%, var(--border));
+}
+
+.chatInput::placeholder {
+  color: var(--muted);
+}
+
+.chatSendBtn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.chatSendBtn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.chatSendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chatBackBtn {
+  margin-top: 12px;
+  width: 100%;
+  font-size: 12px;
+}

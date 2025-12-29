@@ -6,6 +6,8 @@ import { loadSettings, patchSettings } from '../lib/settings'
 type PanelToBg =
   | { type: 'panel:ready' }
   | { type: 'panel:summarize'; refresh?: boolean }
+  | { type: 'panel:startChat' }
+  | { type: 'panel:chat'; messages: Array<{ role: 'user' | 'assistant'; content: string }> }
   | { type: 'panel:ping' }
   | { type: 'panel:closed' }
   | { type: 'panel:rememberUrl'; url: string }
@@ -21,11 +23,24 @@ type RunStart = {
   reason: string
 }
 
+type ChatReadyPayload = {
+  url: string
+  title: string | null
+  transcript: string
+}
+
+type ChatStartPayload = {
+  id: string
+  url: string
+}
+
 type BgToPanel =
   | { type: 'ui:state'; state: UiState }
   | { type: 'ui:status'; status: string }
   | { type: 'run:start'; run: RunStart }
   | { type: 'run:error'; message: string }
+  | { type: 'chat:ready'; payload: ChatReadyPayload }
+  | { type: 'chat:start'; payload: ChatStartPayload }
 
 type UiState = {
   panelOpen: boolean
@@ -199,6 +214,9 @@ export default defineBackground(() => {
   let runController: AbortController | null = null
   let lastNavAt = 0
 
+  // Chat state
+  let cachedExtract: { url: string; title: string | null; text: string } | null = null
+
   const isPanelOpen = () => {
     if (!panelOpen) return false
     if (panelLastPingAt === 0) return true
@@ -281,6 +299,13 @@ export default defineBackground(() => {
 
     const resolvedTitle = tab.title?.trim() || extracted.title || null
     const resolvedExtracted = { ...extracted, title: resolvedTitle }
+
+    // Cache for chat reuse
+    cachedExtract = {
+      url: extracted.url,
+      title: resolvedTitle,
+      text: extracted.text,
+    }
 
     sendStatus('Requesting daemon…')
     inflightUrl = extracted.url
@@ -379,6 +404,139 @@ export default defineBackground(() => {
         break
       case 'panel:openOptions':
         void openOptionsWindow()
+        break
+      case 'panel:startChat':
+        void (async () => {
+          const settings = await loadSettings()
+          if (!settings.token.trim()) {
+            void send({ type: 'run:error', message: 'Setup required (missing token)' })
+            return
+          }
+
+          const tab = await getActiveTab()
+          if (!tab?.id || !canSummarizeUrl(tab.url)) {
+            void send({ type: 'run:error', message: 'Cannot chat on this page' })
+            return
+          }
+
+          // Check if we have cached content for this URL
+          if (cachedExtract && cachedExtract.url === tab.url) {
+            void send({
+              type: 'chat:ready',
+              payload: {
+                url: cachedExtract.url,
+                title: cachedExtract.title,
+                transcript: cachedExtract.text,
+              },
+            })
+            sendStatus('')
+            return
+          }
+
+          // Use daemon extraction (same pipeline as summarize)
+          sendStatus('Extracting page content…')
+          try {
+            const res = await fetch('http://127.0.0.1:8787/v1/summarize', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${settings.token.trim()}`,
+                'content-type': 'application/json',
+              },
+              body: JSON.stringify({
+                url: tab.url,
+                mode: 'url',
+                extractOnly: true,
+                maxCharacters: settings.maxChars,
+              }),
+            })
+            const json = (await res.json()) as {
+              ok: boolean
+              extracted?: {
+                content: string
+                title: string | null
+                url: string
+                wordCount: number
+                totalCharacters: number
+                truncated: boolean
+                transcriptSource: string | null
+              }
+              error?: string
+            }
+            if (!res.ok || !json.ok || !json.extracted) {
+              throw new Error(json.error || `${res.status} ${res.statusText}`)
+            }
+
+            // Cache the extracted content
+            cachedExtract = {
+              url: json.extracted.url,
+              title: json.extracted.title,
+              text: json.extracted.content,
+            }
+
+            void send({
+              type: 'chat:ready',
+              payload: {
+                url: json.extracted.url,
+                title: json.extracted.title,
+                transcript: json.extracted.content,
+              },
+            })
+            sendStatus('')
+          } catch (err) {
+            const message = friendlyFetchError(err, 'Extraction failed')
+            void send({ type: 'run:error', message })
+            sendStatus(`Error: ${message}`)
+          }
+        })()
+        break
+      case 'panel:chat':
+        void (async () => {
+          const settings = await loadSettings()
+          if (!settings.token.trim()) {
+            void send({ type: 'run:error', message: 'Setup required (missing token)' })
+            return
+          }
+
+          if (!cachedExtract) {
+            void send({ type: 'run:error', message: 'No page content available' })
+            return
+          }
+
+          const chatMessages = (msg as { messages: Array<{ role: 'user' | 'assistant'; content: string }> }).messages
+
+          sendStatus('Sending to AI…')
+
+          try {
+            const res = await fetch('http://127.0.0.1:8787/v1/chat', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${settings.token.trim()}`,
+                'content-type': 'application/json',
+              },
+              body: JSON.stringify({
+                url: cachedExtract.url,
+                title: cachedExtract.title,
+                pageContent: cachedExtract.text,
+                messages: chatMessages,
+                model: settings.model,
+              }),
+            })
+            const json = (await res.json()) as { ok: boolean; id?: string; error?: string }
+            if (!res.ok || !json.ok || !json.id) {
+              throw new Error(json.error || `${res.status} ${res.statusText}`)
+            }
+
+            void send({
+              type: 'chat:start',
+              payload: { id: json.id, url: cachedExtract.url },
+            })
+            sendStatus('')
+          } catch (err) {
+            const message = friendlyFetchError(err, 'Chat request failed')
+            void send({ type: 'run:error', message })
+            sendStatus(`Error: ${message}`)
+          }
+        })()
         break
     }
 
