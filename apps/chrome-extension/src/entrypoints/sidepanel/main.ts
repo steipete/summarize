@@ -6,6 +6,8 @@ import { defaultSettings, loadSettings, patchSettings } from '../../lib/settings
 import { applyTheme } from '../../lib/theme'
 import { generateToken } from '../../lib/token'
 import { mountCheckbox } from '../../ui/zag-checkbox'
+import { ChatController } from './chat-controller'
+import { compactChatHistory, type ChatHistoryLimits } from './chat-state'
 import { createHeaderController } from './header-controller'
 import { mountSidepanelLengthPicker, mountSidepanelPickers } from './pickers'
 import { createStreamController } from './stream-controller'
@@ -81,7 +83,6 @@ const panelState: PanelState = {
   summaryFromCache: null,
   phase: 'idle',
   error: null,
-  chatMessages: [],
   chatStreaming: false,
 }
 let drawerAnimation: Animation | null = null
@@ -91,10 +92,23 @@ let chatEnabledValue = defaultSettings.chatEnabled
 
 const MAX_CHAT_MESSAGES = 1000
 const MAX_CHAT_CHARACTERS = 160_000
+const chatLimits: ChatHistoryLimits = {
+  maxMessages: MAX_CHAT_MESSAGES,
+  maxChars: MAX_CHAT_CHARACTERS,
+}
 const chatHistoryCache = new Map<number, ChatMessage[]>()
 let chatHistoryLoadId = 0
 let activeTabId: number | null = null
 let activeTabUrl: string | null = null
+
+const chatController = new ChatController({
+  messagesEl: chatMessagesEl,
+  inputEl: chatInputEl,
+  sendBtn: chatSendBtn,
+  contextEl: chatContextStatusEl,
+  markdown: md,
+  limits: chatLimits,
+})
 
 const isStreaming = () => panelState.phase === 'connecting' || panelState.phase === 'streaming'
 
@@ -196,12 +210,6 @@ window.addEventListener('unhandledrejection', (event) => {
 })
 
 function renderMarkdown(markdown: string) {
-  if (chatEnabledValue) {
-    upsertSummaryMessage(markdown)
-    renderEl.innerHTML = ''
-    renderEl.classList.add('hidden')
-    return
-  }
   try {
     renderEl.innerHTML = md.render(markdown)
   } catch (err) {
@@ -538,69 +546,16 @@ function syncHoverToggle() {
 
 function applyChatEnabled() {
   chatContainerEl.toggleAttribute('hidden', !chatEnabledValue)
-  renderEl.classList.toggle('hidden', chatEnabledValue)
   if (!chatEnabledValue) {
     clearMetricsForMode('chat')
     resetChatState()
+  } else {
+    renderEl.classList.remove('hidden')
   }
 }
 
 function getChatHistoryKey(tabId: number) {
   return `chat:tab:${tabId}`
-}
-
-function compactChatHistory(messages: ChatMessage[]): ChatMessage[] {
-  const summary = messages.find((msg) => msg.kind === 'summary') ?? null
-  const filtered = messages.filter((msg) => msg.kind !== 'summary' && msg.content.trim().length > 0)
-  const trimmed: ChatMessage[] = []
-  let totalChars = 0
-  for (let i = filtered.length - 1; i >= 0; i -= 1) {
-    const msg = filtered[i]
-    const len = msg.content.length
-    if (trimmed.length >= MAX_CHAT_MESSAGES) break
-    if (trimmed.length > 0 && totalChars + len > MAX_CHAT_CHARACTERS) break
-    trimmed.push(msg)
-    totalChars += len
-  }
-  const result = trimmed.reverse()
-  return summary ? [summary, ...result] : result
-}
-
-function computeChatContextUsage(messages: ChatMessage[]) {
-  const relevant = messages.filter(
-    (msg) => msg.kind !== 'summary' && msg.content.trim().length > 0
-  )
-  const totalChars = relevant.reduce((sum, msg) => sum + msg.content.length, 0)
-  const percent = Math.min(100, Math.round((totalChars / MAX_CHAT_CHARACTERS) * 100))
-  return { totalChars, percent, totalMessages: relevant.length }
-}
-
-function hasUserChatMessage() {
-  return panelState.chatMessages.some(
-    (msg) => msg.kind !== 'summary' && msg.role === 'user' && msg.content.trim().length > 0
-  )
-}
-
-function updateChatVisibility() {
-  const hasMessages = panelState.chatMessages.length > 0
-  chatMessagesEl.classList.toggle('isHidden', !hasMessages)
-}
-
-function updateChatContextStatus() {
-  const usage = computeChatContextUsage(panelState.chatMessages)
-  if (!chatEnabledValue || !hasUserChatMessage()) {
-    chatContextStatusEl.textContent = ''
-    chatContextStatusEl.removeAttribute('data-state')
-    chatContextStatusEl.classList.add('isHidden')
-    return
-  }
-  chatContextStatusEl.classList.remove('isHidden')
-  chatContextStatusEl.textContent = `Context ${usage.percent}% · ${usage.totalMessages} msgs · ${usage.totalChars.toLocaleString()} chars`
-  if (usage.percent >= 85) {
-    chatContextStatusEl.dataset.state = 'warn'
-  } else {
-    chatContextStatusEl.removeAttribute('data-state')
-  }
 }
 
 async function clearChatHistoryForTab(tabId: number | null) {
@@ -642,17 +597,11 @@ async function persistChatHistory() {
   if (!chatEnabledValue) return
   const tabId = activeTabId
   if (!tabId) return
-  const compacted = compactChatHistory(panelState.chatMessages)
-  if (compacted.length !== panelState.chatMessages.length) {
-    panelState.chatMessages = compacted
-    chatMessagesEl.innerHTML = ''
-    for (const message of compacted) {
-      renderChatMessage(message)
-    }
+  const compacted = compactChatHistory(chatController.getMessages(), chatLimits)
+  if (compacted.length !== chatController.getMessages().length) {
+    chatController.setMessages(compacted, { scroll: false })
   }
   chatHistoryCache.set(tabId, compacted)
-  updateChatVisibility()
-  updateChatContextStatus()
   const store = chrome.storage?.session
   if (!store) return
   try {
@@ -668,14 +617,8 @@ async function restoreChatHistory() {
   const loadId = (chatHistoryLoadId += 1)
   const history = await loadChatHistory(tabId)
   if (loadId !== chatHistoryLoadId || !history?.length) return
-  const compacted = compactChatHistory(history)
-  panelState.chatMessages = compacted
-  chatMessagesEl.innerHTML = ''
-  for (const message of compacted) {
-    renderChatMessage(message)
-  }
-  updateChatVisibility()
-  updateChatContextStatus()
+  const compacted = compactChatHistory(history, chatLimits)
+  chatController.setMessages(compacted, { scroll: false })
 }
 
 type PlatformKind = 'mac' | 'windows' | 'linux' | 'other'
@@ -1090,7 +1033,7 @@ function updateControls(state: UiState) {
   syncHoverToggle()
   chatEnabledValue = state.settings.chatEnabled
   applyChatEnabled()
-  if (chatEnabledValue && activeTabId && panelState.chatMessages.length === 0) {
+  if (chatEnabledValue && activeTabId && chatController.getMessages().length === 0) {
     void restoreChatHistory()
   }
   if (pickerSettings.length !== state.settings.length) {
@@ -1157,7 +1100,6 @@ function handleBgMessage(msg: BgToPanel) {
       return
     case 'chat:start':
       if (!chatEnabledValue) return
-      setActiveMetricsMode('chat')
       void chatStreamController.start({
         id: msg.payload.id,
         url: msg.payload.url,
@@ -1255,110 +1197,19 @@ function resetChatState() {
   if (panelState.chatStreaming) {
     chatStreamController.abort()
   }
-  panelState.chatMessages = []
   panelState.chatStreaming = false
-  chatMessagesEl.innerHTML = ''
-  chatInputEl.value = ''
-  chatSendBtn.disabled = false
-  updateChatVisibility()
-  updateChatContextStatus()
-}
-
-function upsertSummaryMessage(markdown: string) {
-  const existing = panelState.chatMessages.find((msg) => msg.kind === 'summary') ?? null
-  if (existing) {
-    existing.content = markdown
-    const msgEl = chatMessagesEl.querySelector(`[data-id="${existing.id}"]`)
-    if (msgEl) {
-      msgEl.innerHTML = md.render(markdown || '...')
-      for (const a of Array.from(msgEl.querySelectorAll('a'))) {
-        a.setAttribute('target', '_blank')
-        a.setAttribute('rel', 'noopener noreferrer')
-      }
-    }
-    updateChatVisibility()
-    return
-  }
-
-  const message: ChatMessage = {
-    id: crypto.randomUUID(),
-    role: 'assistant',
-    content: markdown,
-    timestamp: Date.now(),
-    kind: 'summary',
-  }
-
-  panelState.chatMessages = [message, ...panelState.chatMessages.filter((msg) => msg.kind !== 'summary')]
-  renderChatMessage(message, { prepend: true, scroll: !hasUserChatMessage() })
-  updateChatVisibility()
-  void persistChatHistory()
-}
-
-function addChatMessage(message: ChatMessage) {
-  panelState.chatMessages.push(message)
-  renderChatMessage(message)
-  updateChatVisibility()
-  updateChatContextStatus()
-  void persistChatHistory()
-}
-
-function renderChatMessage(message: ChatMessage, opts?: { prepend?: boolean; scroll?: boolean }) {
-  const msgEl = document.createElement('div')
-  const kindClass = message.kind === 'summary' ? ' summary' : ''
-  msgEl.className = `chatMessage ${message.role}${kindClass}`
-  msgEl.dataset.id = message.id
-
-  if (message.role === 'assistant') {
-    msgEl.innerHTML = md.render(message.content || '...')
-    for (const a of Array.from(msgEl.querySelectorAll('a'))) {
-      a.setAttribute('target', '_blank')
-      a.setAttribute('rel', 'noopener noreferrer')
-    }
-  } else {
-    msgEl.textContent = message.content
-  }
-
-  if (opts?.prepend) {
-    chatMessagesEl.prepend(msgEl)
-  } else {
-    chatMessagesEl.appendChild(msgEl)
-  }
-  if (opts?.scroll !== false) {
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
-  }
+  chatController.reset()
 }
 
 function updateStreamingMessage(content: string) {
-  const lastMsg = panelState.chatMessages[panelState.chatMessages.length - 1]
-  if (lastMsg?.role === 'assistant' && lastMsg.kind !== 'summary') {
-    lastMsg.content = content
-    const msgEl = chatMessagesEl.querySelector(`[data-id="${lastMsg.id}"]`)
-    if (msgEl) {
-      msgEl.innerHTML = md.render(content || '...')
-      msgEl.classList.add('streaming')
-      for (const a of Array.from(msgEl.querySelectorAll('a'))) {
-        a.setAttribute('target', '_blank')
-        a.setAttribute('rel', 'noopener noreferrer')
-      }
-      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight
-    }
-  }
-  updateChatContextStatus()
+  chatController.updateStreamingMessage(content)
 }
 
 function finishStreamingMessage() {
   panelState.chatStreaming = false
   chatSendBtn.disabled = false
   chatInputEl.focus()
-
-  const lastMsg = panelState.chatMessages[panelState.chatMessages.length - 1]
-  if (lastMsg?.role === 'assistant' && lastMsg.kind !== 'summary') {
-    const msgEl = chatMessagesEl.querySelector(`[data-id="${lastMsg.id}"]`)
-    if (msgEl) {
-      msgEl.classList.remove('streaming')
-    }
-  }
-  updateChatContextStatus()
+  chatController.finishStreamingMessage()
   void persistChatHistory()
 }
 
@@ -1370,14 +1221,14 @@ function sendChatMessage() {
   chatInputEl.value = ''
   chatInputEl.style.height = 'auto'
 
-  addChatMessage({
+  chatController.addMessage({
     id: crypto.randomUUID(),
     role: 'user',
     content: input,
     timestamp: Date.now(),
   })
 
-  addChatMessage({
+  chatController.addMessage({
     id: crypto.randomUUID(),
     role: 'assistant',
     content: '',
@@ -1389,9 +1240,7 @@ function sendChatMessage() {
 
   send({
     type: 'panel:chat',
-    messages: panelState.chatMessages
-      .filter((m) => m.kind !== 'summary' && m.content.length > 0)
-      .map((m) => ({ role: m.role, content: m.content })),
+    messages: chatController.buildRequestMessages(),
   })
 }
 

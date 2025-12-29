@@ -1291,12 +1291,16 @@ button.setup__pill.isActive {
 .chatContainer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   margin-top: auto;
+  align-self: flex-end;
+  width: min(100%, 360px);
 }
 
 .chatMessages {
-  padding: 0 0 4px;
+  max-height: 42vh;
+  overflow-y: auto;
+  padding: 4px 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1316,26 +1320,18 @@ button.setup__pill.isActive {
 
 .chatMessage.user {
   align-self: flex-end;
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
 }
 
 .chatMessage.assistant {
   align-self: flex-start;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
   border: 1px solid var(--border);
 }
 
 .chatMessage.assistant.streaming {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-}
-
-.chatMessage.summary {
-  max-width: 100%;
-  padding: 0;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
 }
 
 .chatMessage p {
@@ -1380,11 +1376,13 @@ button.setup__pill.isActive {
 .chatInputRow {
   display: flex;
   gap: 8px;
-  padding: 10px 0 12px;
-  border-top: 1px solid var(--border);
-  position: sticky;
-  bottom: 0;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 0%, transparent), var(--panel) 40%);
+  padding: 6px 0 8px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--panel) 0%, transparent),
+    color-mix(in srgb, var(--panel) 85%, transparent) 65%
+  );
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -1404,18 +1402,11 @@ button.setup__pill.isActive {
 }
 
 .chatMetricsSlot {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
+  display: none;
 }
 
 .chatMetricsSlot.isVisible {
-  margin-top: 10px;
-  padding: 8px 0;
-  border-top: 1px solid var(--border);
-  background: var(--panel);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  display: none;
 }
 
 .chatMetricsSlot .metrics {
@@ -1426,13 +1417,13 @@ button.setup__pill.isActive {
 
 .chatInput {
   flex: 1;
-  min-height: 38px;
+  min-height: 34px;
   max-height: 120px;
   resize: none;
-  padding: 9px 12px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--field-bg);
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
   color: var(--text);
   font: inherit;
   line-height: 1.4;
@@ -1448,8 +1439,8 @@ button.setup__pill.isActive {
 }
 
 .chatSendBtn {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   display: grid;
   place-items: center;
