@@ -76,9 +76,7 @@ function formatPrettyLine({
   if (meta) parts.push(meta)
   if (args.length > 0) {
     parts.push(
-      args
-        .map((arg) => (typeof arg === 'string' ? arg : safeJsonStringify(arg)))
-        .join(' ')
+      args.map((arg) => (typeof arg === 'string' ? arg : safeJsonStringify(arg))).join(' ')
     )
   }
   const base = parts.join(' ')

@@ -7,9 +7,9 @@ import type { SummaryLength } from '../../../shared/contracts.js'
 import { formatBytes } from '../../../tty/format.js'
 import {
   type AssetAttachment,
-  MAX_DOCUMENT_BYTES_DEFAULT,
   getFileBytesFromAttachment,
   getTextContentFromAttachment,
+  MAX_DOCUMENT_BYTES_DEFAULT,
   shouldMarkitdownConvertMediaType,
   supportsNativeFileAttachment,
 } from '../../attachments.js'

@@ -25,9 +25,7 @@ export function buildMinimalPdf(text: string): Uint8Array {
   const xrefOffset = offset
   const xrefEntries = offsets
     .map((entryOffset, index) =>
-      index === 0
-        ? '0000000000 65535 f \n'
-        : `${String(entryOffset).padStart(10, '0')} 00000 n \n`
+      index === 0 ? '0000000000 65535 f \n' : `${String(entryOffset).padStart(10, '0')} 00000 n \n`
     )
     .join('')
   const xref = `xref\n0 ${objects.length + 1}\n${xrefEntries}`

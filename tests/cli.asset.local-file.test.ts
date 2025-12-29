@@ -48,7 +48,7 @@ const execFileMock: ExecFileFn = ((file, args, _options, callback) => {
 }) as ExecFileFn
 
 describe('cli asset inputs (local file)', () => {
-  it('preprocesses a local PDF to Markdown and inlines it into the prompt', async () => {
+  it('attaches a local PDF when the provider supports file attachments', async () => {
     mocks.streamSimple.mockClear()
 
     const root = mkdtempSync(join(tmpdir(), 'summarize-asset-local-'))
@@ -78,13 +78,29 @@ describe('cli asset inputs (local file)', () => {
     const stdout = collectStream()
     const stderr = collectStream()
 
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      if (url.startsWith('https://api.openai.com/v1/responses')) {
+        const body = JSON.parse(String(init?.body ?? '{}')) as {
+          input?: Array<{ content?: Array<{ type?: string; file_data?: string }> }>
+        }
+        const fileBlock = body.input?.[0]?.content?.[0]
+        expect(fileBlock?.type).toBe('input_file')
+        expect(fileBlock?.file_data).toBeTruthy()
+        return new Response(JSON.stringify({ output_text: 'OK' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    })
+
     await runCli(
       ['--model', 'openai/gpt-5.2', '--timeout', '2s', '--stream', 'on', '--plain', pdfPath],
       {
         env: { HOME: root, OPENAI_API_KEY: 'test', UVX_PATH: 'uvx' },
-        fetch: vi.fn(async () => {
-          throw new Error('unexpected fetch')
-        }) as unknown as typeof fetch,
+        fetch: fetchMock as unknown as typeof fetch,
         execFile: execFileMock,
         stdout: stdout.stream,
         stderr: stderr.stream,
@@ -92,14 +108,7 @@ describe('cli asset inputs (local file)', () => {
     )
 
     expect(stdout.getText()).toContain('OK')
-    expect(mocks.streamSimple).toHaveBeenCalledTimes(1)
-    const context = mocks.streamSimple.mock.calls[0]?.[1] as {
-      messages?: Array<{ role: string; content: unknown }>
-    }
-    const content = String(context.messages?.[0]?.content ?? '')
-    expect(content).toContain('Original media type: application/pdf')
-    expect(content).toContain('Provided as: text/markdown')
-    expect(content).toContain('# converted')
+    expect(mocks.streamSimple).toHaveBeenCalledTimes(0)
 
     globalFetchSpy.mockRestore()
   })

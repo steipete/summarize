@@ -138,7 +138,7 @@ export async function handleUrlAsset(
       }
     })()
 
-    if (!loaded) return true
+    if (!loaded) return false
     assertAssetMediaTypeSupported({ attachment: loaded.attachment, sizeLabel: null })
     if (ctx.progressEnabled) spinner.setText('Summarizing…')
     await ctx.summarizeAsset({

@@ -752,7 +752,8 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       throw new Error(`Invalid config file ${path}: "logging" must be an object.`)
     }
     const enabled = typeof value.enabled === 'boolean' ? value.enabled : undefined
-    const level = typeof value.level === 'undefined' ? undefined : parseLoggingLevel(value.level, path)
+    const level =
+      typeof value.level === 'undefined' ? undefined : parseLoggingLevel(value.level, path)
     const format =
       typeof value.format === 'undefined' ? undefined : parseLoggingFormat(value.format, path)
     const file =

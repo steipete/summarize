@@ -93,9 +93,6 @@ describe('cli google streaming fallback', () => {
       'utf8'
     )
 
-    const pdfPath = join(root, 'test.pdf')
-    writeFileSync(pdfPath, Buffer.from('%PDF-1.7\n%âãÏÓ\n1 0 obj\n<<>>\nendobj\n', 'utf8'))
-
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
         typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
@@ -113,6 +110,12 @@ describe('cli google streaming fallback', () => {
           { status: 200, headers: { 'content-type': 'application/json' } }
         )
       }
+      if (url === 'https://example.com') {
+        return new Response('<html><body><h1>Example</h1></body></html>', {
+          status: 200,
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        })
+      }
       throw new Error(`unexpected fetch: ${url}`)
     })
 
@@ -121,7 +124,15 @@ describe('cli google streaming fallback', () => {
     const stderr = collectStream()
 
     await runCli(
-      ['--model', 'google/gemini-3-flash-preview', '--timeout', '2s', '--stream', 'on', pdfPath],
+      [
+        '--model',
+        'google/gemini-3-flash-preview',
+        '--timeout',
+        '2s',
+        '--stream',
+        'on',
+        'https://example.com',
+      ],
       {
         env: { HOME: root, GOOGLE_GENERATIVE_AI_API_KEY: 'test', UVX_PATH: 'uvx' },
         fetch: fetchMock as unknown as typeof fetch,
@@ -160,9 +171,6 @@ describe('cli google streaming fallback', () => {
       'utf8'
     )
 
-    const pdfPath = join(root, 'test.pdf')
-    writeFileSync(pdfPath, Buffer.from('%PDF-1.7\n%âãÏÓ\n1 0 obj\n<<>>\nendobj\n', 'utf8'))
-
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
         typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
@@ -180,6 +188,12 @@ describe('cli google streaming fallback', () => {
           { status: 200, headers: { 'content-type': 'application/json' } }
         )
       }
+      if (url === 'https://example.com') {
+        return new Response('<html><body><h1>Example</h1></body></html>', {
+          status: 200,
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        })
+      }
       throw new Error(`unexpected fetch: ${url}`)
     })
 
@@ -188,7 +202,15 @@ describe('cli google streaming fallback', () => {
     const stderr = collectStream()
 
     await runCli(
-      ['--model', 'google/gemini-3-flash-preview', '--timeout', '2s', '--stream', 'on', pdfPath],
+      [
+        '--model',
+        'google/gemini-3-flash-preview',
+        '--timeout',
+        '2s',
+        '--stream',
+        'on',
+        'https://example.com',
+      ],
       {
         env: { HOME: root, GOOGLE_GENERATIVE_AI_API_KEY: 'test', UVX_PATH: 'uvx' },
         fetch: fetchMock as unknown as typeof fetch,
@@ -238,9 +260,6 @@ describe('cli google streaming fallback', () => {
       'utf8'
     )
 
-    const pdfPath = join(root, 'test.pdf')
-    writeFileSync(pdfPath, Buffer.from('%PDF-1.7\n%âãÏÓ\n1 0 obj\n<<>>\nendobj\n', 'utf8'))
-
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
         typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
@@ -258,6 +277,12 @@ describe('cli google streaming fallback', () => {
           { status: 200, headers: { 'content-type': 'application/json' } }
         )
       }
+      if (url === 'https://example.com') {
+        return new Response('<html><body><h1>Example</h1></body></html>', {
+          status: 200,
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        })
+      }
       throw new Error(`unexpected fetch: ${url}`)
     })
 
@@ -266,7 +291,15 @@ describe('cli google streaming fallback', () => {
     const stderr = collectStream()
 
     await runCli(
-      ['--model', 'google/gemini-3-flash-preview', '--timeout', '2s', '--stream', 'on', pdfPath],
+      [
+        '--model',
+        'google/gemini-3-flash-preview',
+        '--timeout',
+        '2s',
+        '--stream',
+        'on',
+        'https://example.com',
+      ],
       {
         env: { HOME: root, GOOGLE_GENERATIVE_AI_API_KEY: 'test', UVX_PATH: 'uvx' },
         fetch: fetchMock as unknown as typeof fetch,

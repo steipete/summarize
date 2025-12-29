@@ -340,7 +340,7 @@ export default defineContentScript({
         })) as { ok?: boolean; error?: string }
 
         if (!res?.ok) throw new Error(res?.error || 'Failed to start hover summary')
-      } catch (error) {
+      } catch {
         if (activeAnchor && activeUrl === url) {
           if (!activeHasShown) hideTooltip()
         }

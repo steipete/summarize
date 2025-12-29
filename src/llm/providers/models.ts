@@ -1,11 +1,6 @@
 import type { Api, Context, Model } from '@mariozechner/pi-ai'
+import { createSyntheticModel, resolveBaseUrlOverride, tryGetModel, wantsImages } from './shared.js'
 import type { OpenAiClientConfig } from './types.js'
-import {
-  createSyntheticModel,
-  resolveBaseUrlOverride,
-  tryGetModel,
-  wantsImages,
-} from './shared.js'
 
 export function resolveOpenAiModel({
   modelId,
@@ -47,8 +42,7 @@ export function resolveZaiModel({
   const allowImages = wantsImages(context)
   const base = tryGetModel('zai', modelId)
   const api = 'openai-completions'
-  const baseUrl =
-    openaiBaseUrlOverride ?? base?.baseUrl ?? 'https://api.z.ai/api/paas/v4'
+  const baseUrl = openaiBaseUrlOverride ?? base?.baseUrl ?? 'https://api.z.ai/api/paas/v4'
   return {
     ...(base ?? createSyntheticModel({ provider: 'zai', modelId, api, baseUrl, allowImages })),
     api,

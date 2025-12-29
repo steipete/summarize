@@ -1,12 +1,12 @@
 import type { Context } from '@mariozechner/pi-ai'
 import { completeSimple } from '@mariozechner/pi-ai'
 import type { Attachment } from '../attachments.js'
+import { createUnsupportedFunctionalityError } from '../errors.js'
 import type { LlmTokenUsage } from '../types.js'
 import { normalizeOpenAiUsage, normalizeTokenUsage } from '../usage.js'
-import { createUnsupportedFunctionalityError } from '../errors.js'
-import type { OpenAiClientConfig } from './types.js'
 import { resolveOpenAiModel } from './models.js'
 import { bytesToBase64 } from './shared.js'
+import type { OpenAiClientConfig } from './types.js'
 
 export type OpenAiClientConfigInput = {
   apiKeys: {
@@ -161,7 +161,9 @@ export async function completeOpenAiDocument({
   const baseUrl = openaiConfig.baseURL ?? 'https://api.openai.com/v1'
   const host = new URL(baseUrl).host
   if (host !== 'api.openai.com') {
-    throw createUnsupportedFunctionalityError(`Document attachments require api.openai.com; got ${host}`)
+    throw createUnsupportedFunctionalityError(
+      `Document attachments require api.openai.com; got ${host}`
+    )
   }
 
   const url = resolveOpenAiResponsesUrl(baseUrl)

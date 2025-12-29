@@ -560,7 +560,7 @@ test('hover tooltip proxies daemon calls via background (no page-origin localhos
 
     await harness.context.route('http://127.0.0.1:8787/v1/summarize', async (route) => {
       summarizeCalls += 1
-      recordOrigin(route.request().headers()['origin'])
+      recordOrigin(route.request().headers().origin)
       await route.fulfill({
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -580,7 +580,7 @@ test('hover tooltip proxies daemon calls via background (no page-origin localhos
       /http:\/\/127\.0\.0\.1:8787\/v1\/summarize\/[^/]+\/events/,
       async (route) => {
         eventsCalls += 1
-        recordOrigin(route.request().headers()['origin'])
+        recordOrigin(route.request().headers().origin)
         await route.fulfill({
           status: 200,
           headers: { 'content-type': 'text/event-stream' },

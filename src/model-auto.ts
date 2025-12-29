@@ -1,4 +1,4 @@
-import { getModels } from '@mariozechner/pi-ai'
+import * as piAi from '@mariozechner/pi-ai'
 import type { AutoRule, AutoRuleKind, CliProvider, SummarizeConfig } from './config.js'
 import { normalizeGatewayStyleModelId, parseGatewayStyleModelId } from './llm/model-id.js'
 import type { LiteLlmCatalog } from './pricing/litellm.js'
@@ -89,7 +89,10 @@ function getOpenRouterModelIndex(
   // Lazy, process-wide cache to avoid recomputing the SDK catalog.
   if (cachedOpenRouterIndexReady) return cachedOpenRouterIndex
   cachedOpenRouterIndexReady = true
-  const ids = getModels('openrouter').map((model) => model.id)
+  const ids =
+    typeof piAi.getModels === 'function'
+      ? piAi.getModels('openrouter').map((model) => model.id)
+      : []
   cachedOpenRouterIndex = ids.length > 0 ? buildOpenRouterModelIndex(ids) : null
   return cachedOpenRouterIndex
 }
@@ -409,8 +412,12 @@ export function buildAutoModelAttempts(input: AutoSelectionInput): AutoModelAtte
     config: input.config,
   })
   const candidates = prependCliCandidates({ candidates: baseCandidates, config: input.config })
+  const shouldResolveOpenRouterIndex =
+    !input.requiresVideoUnderstanding && envHasKey(input.env, 'OPENROUTER_API_KEY')
   // Resolve OpenRouter ids once per run (or use injected test list).
-  const openrouterIndex = getOpenRouterModelIndex(input.openrouterModelIds)
+  const openrouterIndex = shouldResolveOpenRouterIndex
+    ? getOpenRouterModelIndex(input.openrouterModelIds)
+    : null
 
   const attempts: AutoModelAttempt[] = []
   for (const modelRawEntry of candidates) {

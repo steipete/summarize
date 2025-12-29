@@ -2,6 +2,7 @@ import type { Context, Message } from '@mariozechner/pi-ai'
 import { completeSimple, streamSimple } from '@mariozechner/pi-ai'
 import { createUnsupportedFunctionalityError } from './errors.js'
 import { parseGatewayStyleModelId } from './model-id.js'
+import { type Prompt, userTextAndImageMessage } from './prompt.js'
 import {
   completeAnthropicDocument,
   completeAnthropicText,
@@ -20,9 +21,8 @@ import {
   completeOpenAiText,
   resolveOpenAiClientConfig,
 } from './providers/openai.js'
-import type { OpenAiClientConfig } from './providers/types.js'
 import { extractText } from './providers/shared.js'
-import { type Prompt, userTextAndImageMessage } from './prompt.js'
+import type { OpenAiClientConfig } from './providers/types.js'
 import type { LlmTokenUsage } from './types.js'
 import { normalizeTokenUsage } from './usage.js'
 
@@ -141,7 +141,8 @@ export async function generateTextWithModelId({
       : undefined
 
   const attachments = prompt.attachments ?? []
-  const documentAttachment = attachments.find((attachment) => attachment.kind === 'document') ?? null
+  const documentAttachment =
+    attachments.find((attachment) => attachment.kind === 'document') ?? null
 
   if (documentAttachment) {
     if (attachments.length !== 1) {

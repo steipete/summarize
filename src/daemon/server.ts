@@ -414,7 +414,7 @@ export async function runDaemonServer({
                     hooks: includeContentLog
                       ? {
                           onExtracted: (content) => {
-                            logExtracted = content as Record<string, unknown>
+                            logExtracted = content as unknown as Record<string, unknown>
                           },
                         }
                       : null,

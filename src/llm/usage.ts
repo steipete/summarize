@@ -69,8 +69,7 @@ export function normalizeGoogleUsage(raw: unknown): LlmTokenUsage | null {
       ? usage.promptTokenCount
       : null
   const completionTokens =
-    typeof usage.candidatesTokenCount === 'number' &&
-    Number.isFinite(usage.candidatesTokenCount)
+    typeof usage.candidatesTokenCount === 'number' && Number.isFinite(usage.candidatesTokenCount)
       ? usage.candidatesTokenCount
       : null
   const totalTokens =
