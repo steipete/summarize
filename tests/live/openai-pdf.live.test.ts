@@ -50,27 +50,27 @@ function buildMinimalPdf(text: string): Uint8Array {
   return new TextEncoder().encode(pdf)
 }
 
-;(LIVE ? describe : describe.skip)('live anthropic PDF', () => {
+;(LIVE ? describe : describe.skip)('live openai PDF', () => {
   const timeoutMs = 120_000
-  const anthropicApiKey = process.env.ANTHROPIC_API_KEY ?? null
+  const openaiApiKey = process.env.OPENAI_API_KEY ?? null
 
   it(
     'summarizes PDF attachments',
     async () => {
-      if (!anthropicApiKey) {
-        it.skip('requires ANTHROPIC_API_KEY', () => {})
+      if (!openaiApiKey) {
+        it.skip('requires OPENAI_API_KEY', () => {})
         return
       }
 
       try {
         const pdfBytes = buildMinimalPdf('Hello PDF')
         const result = await generateTextWithModelId({
-          modelId: 'anthropic/claude-opus-4-5',
+          modelId: 'openai/gpt-5.2',
           apiKeys: {
             xaiApiKey: null,
-            openaiApiKey: null,
+            openaiApiKey,
             googleApiKey: null,
-            anthropicApiKey,
+            anthropicApiKey: null,
             openrouterApiKey: null,
           },
           prompt: buildDocumentPrompt({

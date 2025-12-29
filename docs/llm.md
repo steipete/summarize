@@ -86,3 +86,9 @@ Use `--model zai/<model>` (e.g. `zai/glm-4.7`). Defaults to Z.AI’s base URL an
 
 - Text prompts are checked against the model’s max input tokens (LiteLLM catalog) using a GPT tokenizer.
 - Text files over 10 MB are rejected before tokenization.
+
+## PDF attachments
+
+- For PDF inputs, `--preprocess auto` will send the PDF directly to Anthropic/OpenAI/Gemini when a fixed model supports documents; otherwise we fall back to markitdown.
+- `--preprocess always` forces markitdown (no direct attachments).
+- Streaming is disabled for document attachments.

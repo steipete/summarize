@@ -67,9 +67,15 @@ describe('run/attachments', () => {
     ).toBe(true)
     expect(
       supportsNativeFileAttachment({
+        provider: 'openai',
+        attachment: { kind: 'file', mediaType: 'application/pdf' },
+      })
+    ).toBe(true)
+    expect(
+      supportsNativeFileAttachment({
         provider: 'google',
         attachment: { kind: 'file', mediaType: 'application/pdf' },
       })
-    ).toBe(false)
+    ).toBe(true)
   })
 })

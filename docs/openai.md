@@ -23,3 +23,8 @@ For the full model/provider matrix, see `docs/llm.md`.
 - `--max-output-tokens <count>`
   - Hard cap for output tokens (optional).
 - `--json` (includes prompt + summary in one JSON object)
+
+## PDF inputs
+
+- When a PDF is provided and `--preprocess auto` is used, summarize sends the PDF as a file input via the OpenAI Responses API.
+- Document streaming is disabled for file inputs; non-streaming calls are used instead.

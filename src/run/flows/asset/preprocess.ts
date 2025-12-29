@@ -1,5 +1,5 @@
 import type { OutputLanguage } from '../../../language.js'
-import { buildAnthropicDocumentPrompt, type PromptPayload } from '../../../llm/prompt.js'
+import { buildDocumentPrompt, type PromptPayload } from '../../../llm/prompt.js'
 import { convertToMarkdownWithMarkitdown } from '../../../markitdown.js'
 import type { FixedModelSpec } from '../../../model-spec.js'
 import { buildFileSummaryPrompt, buildFileTextSummaryPrompt } from '../../../prompts/index.js'
@@ -7,7 +7,7 @@ import type { SummaryLength } from '../../../shared/contracts.js'
 import { formatBytes } from '../../../tty/format.js'
 import {
   type AssetAttachment,
-  MAX_ANTHROPIC_DOCUMENT_BYTES,
+  MAX_DOCUMENT_BYTES_DEFAULT,
   buildAssetPromptPayload,
   getFileBytesFromAttachment,
   getTextContentFromAttachment,
@@ -124,10 +124,10 @@ export async function prepareAssetPrompt({
     if (!fileBytes) {
       throw new Error('Internal error: missing file bytes for document attachment')
     }
-    if (fileBytes.byteLength > MAX_ANTHROPIC_DOCUMENT_BYTES) {
+    if (fileBytes.byteLength > MAX_DOCUMENT_BYTES_DEFAULT) {
       if (ctx.preprocessMode === 'off') {
         throw new Error(
-          `PDF is too large to attach (${formatBytes(fileBytes.byteLength)}). Max is ${formatBytes(MAX_ANTHROPIC_DOCUMENT_BYTES)}. Enable preprocessing or use a smaller file.`
+          `PDF is too large to attach (${formatBytes(fileBytes.byteLength)}). Max is ${formatBytes(MAX_DOCUMENT_BYTES_DEFAULT)}. Enable preprocessing or use a smaller file.`
         )
       }
     } else {
@@ -141,7 +141,7 @@ export async function prepareAssetPrompt({
         lengthInstruction: ctx.lengthInstruction ?? null,
         languageInstruction: ctx.languageInstruction ?? null,
       })
-      const promptPayload = buildAnthropicDocumentPrompt({
+      const promptPayload = buildDocumentPrompt({
         text: promptText,
         document: {
           bytes: fileBytes,

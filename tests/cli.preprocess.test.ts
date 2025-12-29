@@ -191,6 +191,58 @@ describe('cli preprocess / markitdown integration', () => {
     expect(body.messages?.[0]?.content?.[0]?.type).toBe('document')
   })
 
+  it('sends PDFs directly to OpenAI without markitdown when supported', async () => {
+    mocks.streamSimple.mockImplementation(() =>
+      makeTextDeltaStream(
+        ['OK\n'],
+        makeAssistantMessage({ text: 'OK\n', usage: { input: 1, output: 1, totalTokens: 2 } })
+      )
+    )
+    mocks.streamSimple.mockClear()
+    process.env.OPENAI_BASE_URL = ''
+
+    const root = mkdtempSync(join(tmpdir(), 'summarize-preprocess-openai-pdf-'))
+    const pdfPath = join(root, 'test.pdf')
+    writeFileSync(pdfPath, Buffer.from('%PDF-1.7\n%PDF minimal\n%%EOF\n', 'utf8'))
+
+    const execFileMock = vi.fn((file, args, _opts, cb) => {
+      void file
+      void args
+      cb(null, '# Converted\n\nShould not run\n', '')
+    })
+
+    const fetchMock = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          output_text: 'OK',
+          usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    })
+
+    const stdout = collectStream()
+
+    await runCli(
+      ['--model', 'openai/gpt-5.2', '--timeout', '2s', '--stream', 'on', '--plain', pdfPath],
+      {
+        env: { OPENAI_API_KEY: 'test', UVX_PATH: 'uvx' },
+        fetch: fetchMock as unknown as typeof fetch,
+        execFile: execFileMock as unknown as ExecFileFn,
+        stdout: stdout.stream,
+        stderr: noopStream(),
+      }
+    )
+
+    expect(stdout.getText()).toContain('OK')
+    expect(execFileMock).toHaveBeenCalledTimes(0)
+    expect(mocks.streamSimple).toHaveBeenCalledTimes(0)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const options = fetchMock.mock.calls[0]?.[1] as RequestInit
+    const body = JSON.parse(String(options.body))
+    expect(body.input?.[0]?.content?.[0]?.type).toBe('input_file')
+  })
+
   it('errors when --preprocess off is used for PDFs (no binary attachments)', async () => {
     mocks.streamSimple.mockImplementation(() =>
       makeTextDeltaStream(
@@ -214,7 +266,7 @@ describe('cli preprocess / markitdown integration', () => {
       runCli(
         [
           '--model',
-          'openai/gpt-4o-mini',
+          'xai/grok-4-fast-non-reasoning',
           '--preprocess',
           'off',
           '--timeout',
@@ -224,7 +276,7 @@ describe('cli preprocess / markitdown integration', () => {
           pdfPath,
         ],
         {
-          env: { OPENAI_API_KEY: 'test', UVX_PATH: 'uvx' },
+          env: { XAI_API_KEY: 'test', UVX_PATH: 'uvx' },
           fetch: vi.fn(async () => {
             throw new Error('unexpected fetch')
           }) as unknown as typeof fetch,

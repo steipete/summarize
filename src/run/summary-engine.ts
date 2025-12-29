@@ -4,7 +4,7 @@ import type { CliProvider } from '../config.js'
 import { isCliDisabled, runCliModel } from '../llm/cli.js'
 import { streamTextWithModelId } from '../llm/generate-text.js'
 import { parseGatewayStyleModelId } from '../llm/model-id.js'
-import { isAnthropicDocumentPrompt, type PromptPayload } from '../llm/prompt.js'
+import { isDocumentPrompt, type PromptPayload } from '../llm/prompt.js'
 import { formatCompactCount } from '../tty/format.js'
 import { createRetryLogger, writeVerbose } from './logging.js'
 import { prepareMarkdownForTerminalStreaming } from './markdown.js'
@@ -216,7 +216,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
       allowStreaming &&
       deps.streamingEnabled &&
       !modelResolution.forceStreamOff &&
-      !isAnthropicDocumentPrompt(prompt)
+      !isDocumentPrompt(prompt)
     const forceChatCompletions =
       Boolean(attempt.forceChatCompletions) ||
       (deps.openaiUseChatCompletions && parsedModelEffective.provider === 'openai')

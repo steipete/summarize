@@ -6,13 +6,13 @@ export type DocumentAttachment = {
   filename: string | null
 }
 
-export type AnthropicDocumentPrompt = {
-  kind: 'anthropic-document'
+export type DocumentPrompt = {
+  kind: 'document'
   text: string
   document: DocumentAttachment
 }
 
-export type PromptPayload = string | Array<Message> | AnthropicDocumentPrompt
+export type PromptPayload = string | Array<Message> | DocumentPrompt
 
 export function userTextMessage(text: string, timestamp = Date.now()): UserMessage {
   return { role: 'user', content: text, timestamp }
@@ -40,23 +40,21 @@ export function userTextAndImageMessage({
   return { role: 'user', content: parts, timestamp }
 }
 
-export function buildAnthropicDocumentPrompt({
+export function buildDocumentPrompt({
   text,
   document,
 }: {
   text: string
   document: DocumentAttachment
-}): AnthropicDocumentPrompt {
-  return { kind: 'anthropic-document', text, document }
+}): DocumentPrompt {
+  return { kind: 'document', text, document }
 }
 
-export function isAnthropicDocumentPrompt(
-  prompt: PromptPayload
-): prompt is AnthropicDocumentPrompt {
+export function isDocumentPrompt(prompt: PromptPayload): prompt is DocumentPrompt {
   return (
     typeof prompt === 'object' &&
     prompt !== null &&
     !Array.isArray(prompt) &&
-    (prompt as { kind?: unknown }).kind === 'anthropic-document'
+    (prompt as { kind?: unknown }).kind === 'document'
   )
 }

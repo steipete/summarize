@@ -8,7 +8,7 @@ import { formatBytes } from '../tty/format.js'
 
 export type AssetAttachment = Awaited<ReturnType<typeof loadLocalAsset>>['attachment']
 
-export const MAX_ANTHROPIC_DOCUMENT_BYTES = 32 * 1024 * 1024
+export const MAX_DOCUMENT_BYTES_DEFAULT = 50 * 1024 * 1024
 
 export function isUnsupportedAttachmentError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
@@ -147,7 +147,7 @@ export function supportsNativeFileAttachment({
   attachment: { kind: 'image' | 'file'; mediaType: string }
 }): boolean {
   if (attachment.kind !== 'file') return false
-  if (provider !== 'anthropic') return false
+  if (provider !== 'anthropic' && provider !== 'openai' && provider !== 'google') return false
   return attachment.mediaType.toLowerCase() === 'application/pdf'
 }
 
