@@ -37,6 +37,14 @@ export type AutoModelAttempt = {
   debug: string
 }
 
+/**
+ * Models that only work via native API and are not available on OpenRouter.
+ * These models should not be added as OpenRouter fallback attempts.
+ */
+const NATIVE_ONLY_MODELS = new Set([
+  'xai/grok-4-fast-non-reasoning',
+])
+
 const DEFAULT_RULES: AutoRule[] = [
   {
     when: ['video'],
@@ -443,10 +451,12 @@ export function buildAutoModelAttempts(input: AutoSelectionInput): AutoModelAtte
       transport: 'native',
     })
 
+    const slug = normalizeGatewayStyleModelId(modelRaw)
     const canAddOpenRouterFallback =
-      !input.requiresVideoUnderstanding && envHasKey(input.env, 'OPENROUTER_API_KEY')
+      !input.requiresVideoUnderstanding &&
+      envHasKey(input.env, 'OPENROUTER_API_KEY') &&
+      !NATIVE_ONLY_MODELS.has(slug)
     if (canAddOpenRouterFallback) {
-      const slug = normalizeGatewayStyleModelId(modelRaw)
       addAttempt(`openrouter/${slug}`, {
         openrouter: true,
         openrouterProviders: input.openrouterProvidersFromEnv,

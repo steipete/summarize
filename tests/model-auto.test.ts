@@ -8,7 +8,7 @@ describe('auto model selection', () => {
     const config: SummarizeConfig = {
       model: {
         mode: 'auto',
-        rules: [{ candidates: ['openai/gpt-5-mini', 'xai/grok-4-fast-non-reasoning'] }],
+        rules: [{ candidates: ['openai/gpt-5-mini', 'anthropic/claude-sonnet-4-5'] }],
       },
     }
     const attempts = buildAutoModelAttempts({
@@ -24,8 +24,34 @@ describe('auto model selection', () => {
 
     expect(attempts[0]?.userModelId).toBe('openai/gpt-5-mini')
     expect(attempts[1]?.userModelId).toBe('openrouter/openai/gpt-5-mini')
-    expect(attempts[2]?.userModelId).toBe('xai/grok-4-fast-non-reasoning')
-    expect(attempts[3]?.userModelId).toBe('openrouter/xai/grok-4-fast-non-reasoning')
+    expect(attempts[2]?.userModelId).toBe('anthropic/claude-sonnet-4-5')
+    expect(attempts[3]?.userModelId).toBe('openrouter/anthropic/claude-sonnet-4-5')
+  })
+
+  it('skips OpenRouter fallback for native-only models', () => {
+    const config: SummarizeConfig = {
+      model: {
+        mode: 'auto',
+        rules: [{ candidates: ['xai/grok-4-fast-non-reasoning', 'openai/gpt-5-mini'] }],
+      },
+    }
+    const attempts = buildAutoModelAttempts({
+      kind: 'text',
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: { OPENROUTER_API_KEY: 'sk-or-test' },
+      config,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+    })
+
+    // xai/grok-4-fast-non-reasoning should have native attempt but NO OpenRouter fallback
+    expect(attempts.some((a) => a.userModelId === 'xai/grok-4-fast-non-reasoning')).toBe(true)
+    expect(attempts.some((a) => a.userModelId === 'openrouter/xai/grok-4-fast-non-reasoning')).toBe(false)
+    // openai/gpt-5-mini should have both native and OpenRouter fallback
+    expect(attempts.some((a) => a.userModelId === 'openai/gpt-5-mini')).toBe(true)
+    expect(attempts.some((a) => a.userModelId === 'openrouter/openai/gpt-5-mini')).toBe(true)
   })
 
   it('adds an OpenRouter fallback attempt when OPENROUTER_API_KEY is set', () => {
