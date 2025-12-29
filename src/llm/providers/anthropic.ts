@@ -2,7 +2,7 @@ import type { Context } from '@mariozechner/pi-ai'
 import { completeSimple } from '@mariozechner/pi-ai'
 import type { Attachment } from '../attachments.js'
 import type { LlmTokenUsage } from '../types.js'
-import { normalizeTokenUsage } from '../usage.js'
+import { normalizeAnthropicUsage, normalizeTokenUsage } from '../usage.js'
 import { resolveAnthropicModel } from './models.js'
 import { bytesToBase64, extractText, resolveBaseUrlOverride } from './shared.js'
 
@@ -49,25 +49,6 @@ export function normalizeAnthropicModelAccessError(error: unknown, modelId: stri
   const modelLabel = hasModelMessage ? combinedMessage.replace(/^model:\s*/i, '').trim() : modelId
   const hint = `Anthropic API rejected model "${modelLabel}". Your ANTHROPIC_API_KEY likely lacks access to this model or it is unavailable for your account. Try another anthropic/... model or request access.`
   return new Error(hint, { cause: error instanceof Error ? error : undefined })
-}
-
-function normalizeAnthropicUsage(raw: unknown): LlmTokenUsage | null {
-  if (!raw || typeof raw !== 'object') return null
-  const usage = raw as { input_tokens?: unknown; output_tokens?: unknown }
-  const promptTokens =
-    typeof usage.input_tokens === 'number' && Number.isFinite(usage.input_tokens)
-      ? usage.input_tokens
-      : null
-  const completionTokens =
-    typeof usage.output_tokens === 'number' && Number.isFinite(usage.output_tokens)
-      ? usage.output_tokens
-      : null
-  const totalTokens =
-    typeof promptTokens === 'number' && typeof completionTokens === 'number'
-      ? promptTokens + completionTokens
-      : null
-  if (promptTokens === null && completionTokens === null && totalTokens === null) return null
-  return { promptTokens, completionTokens, totalTokens }
 }
 
 export async function completeAnthropicText({

@@ -2,35 +2,9 @@ import type { Context } from '@mariozechner/pi-ai'
 import { completeSimple } from '@mariozechner/pi-ai'
 import type { Attachment } from '../attachments.js'
 import type { LlmTokenUsage } from '../types.js'
-import { normalizeTokenUsage } from '../usage.js'
+import { normalizeGoogleUsage, normalizeTokenUsage } from '../usage.js'
 import { resolveGoogleModel } from './models.js'
 import { bytesToBase64, resolveBaseUrlOverride } from './shared.js'
-
-function normalizeGoogleUsage(raw: unknown): LlmTokenUsage | null {
-  if (!raw || typeof raw !== 'object') return null
-  const usage = raw as {
-    promptTokenCount?: unknown
-    candidatesTokenCount?: unknown
-    totalTokenCount?: unknown
-  }
-  const promptTokens =
-    typeof usage.promptTokenCount === 'number' && Number.isFinite(usage.promptTokenCount)
-      ? usage.promptTokenCount
-      : null
-  const completionTokens =
-    typeof usage.candidatesTokenCount === 'number' &&
-    Number.isFinite(usage.candidatesTokenCount)
-      ? usage.candidatesTokenCount
-      : null
-  const totalTokens =
-    typeof usage.totalTokenCount === 'number' && Number.isFinite(usage.totalTokenCount)
-      ? usage.totalTokenCount
-      : typeof promptTokens === 'number' && typeof completionTokens === 'number'
-        ? promptTokens + completionTokens
-        : null
-  if (promptTokens === null && completionTokens === null && totalTokens === null) return null
-  return { promptTokens, completionTokens, totalTokens }
-}
 
 export async function completeGoogleText({
   modelId,

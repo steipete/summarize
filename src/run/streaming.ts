@@ -32,3 +32,25 @@ export function isStreamingTimeoutError(error: unknown): boolean {
           : ''
   return /timed out/i.test(message)
 }
+
+export function canStream({
+  provider,
+  prompt,
+  transport,
+}: {
+  provider: 'xai' | 'openai' | 'google' | 'anthropic' | 'zai'
+  prompt: { attachments?: Array<{ kind: 'text' | 'image' | 'document' }> }
+  transport: 'cli' | 'native' | 'openrouter'
+}): boolean {
+  if (transport === 'cli') return false
+  const attachments = prompt.attachments ?? []
+  if (attachments.some((attachment) => attachment.kind === 'document')) return false
+  const streamableProviders: ReadonlySet<string> = new Set([
+    'xai',
+    'openai',
+    'google',
+    'anthropic',
+    'zai',
+  ])
+  return streamableProviders.has(provider)
+}

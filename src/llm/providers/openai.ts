@@ -2,7 +2,7 @@ import type { Context } from '@mariozechner/pi-ai'
 import { completeSimple } from '@mariozechner/pi-ai'
 import type { Attachment } from '../attachments.js'
 import type { LlmTokenUsage } from '../types.js'
-import { normalizeTokenUsage } from '../usage.js'
+import { normalizeOpenAiUsage, normalizeTokenUsage } from '../usage.js'
 import { createUnsupportedFunctionalityError } from '../errors.js'
 import type { OpenAiClientConfig } from './types.js'
 import { resolveOpenAiModel } from './models.js'
@@ -69,27 +69,6 @@ export function resolveOpenAiClientConfig({
     useChatCompletions,
     isOpenRouter,
   }
-}
-
-function normalizeOpenAiUsage(raw: unknown): LlmTokenUsage | null {
-  if (!raw || typeof raw !== 'object') return null
-  const usage = raw as { input_tokens?: unknown; output_tokens?: unknown; total_tokens?: unknown }
-  const promptTokens =
-    typeof usage.input_tokens === 'number' && Number.isFinite(usage.input_tokens)
-      ? usage.input_tokens
-      : null
-  const completionTokens =
-    typeof usage.output_tokens === 'number' && Number.isFinite(usage.output_tokens)
-      ? usage.output_tokens
-      : null
-  const totalTokens =
-    typeof usage.total_tokens === 'number' && Number.isFinite(usage.total_tokens)
-      ? usage.total_tokens
-      : typeof promptTokens === 'number' && typeof completionTokens === 'number'
-        ? promptTokens + completionTokens
-        : null
-  if (promptTokens === null && completionTokens === null && totalTokens === null) return null
-  return { promptTokens, completionTokens, totalTokens }
 }
 
 function resolveOpenAiResponsesUrl(baseUrl: string): URL {

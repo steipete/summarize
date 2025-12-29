@@ -10,6 +10,7 @@ import { createRetryLogger, writeVerbose } from './logging.js'
 import { prepareMarkdownForTerminalStreaming } from './markdown.js'
 import { createStreamOutputGate, type StreamOutputMode } from './stream-output.js'
 import {
+  canStream,
   isGoogleStreamingUnsupportedError,
   isStreamingTimeoutError,
   mergeStreamingChunk,
@@ -213,14 +214,15 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
       writeVerbose(deps.stderr, deps.verbose, modelResolution.note, deps.verboseColor)
     }
     const parsedModelEffective = parseGatewayStyleModelId(modelResolution.modelId)
-    const hasDocumentAttachment = (prompt.attachments ?? []).some(
-      (attachment) => attachment.kind === 'document'
-    )
     const streamingEnabledForCall =
       allowStreaming &&
       deps.streamingEnabled &&
       !modelResolution.forceStreamOff &&
-      !hasDocumentAttachment
+      canStream({
+        provider: parsedModelEffective.provider,
+        prompt,
+        transport: attempt.transport === 'openrouter' ? 'openrouter' : 'native',
+      })
     const forceChatCompletions =
       Boolean(attempt.forceChatCompletions) ||
       (deps.openaiUseChatCompletions && parsedModelEffective.provider === 'openai')

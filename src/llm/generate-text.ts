@@ -427,13 +427,7 @@ export async function streamTextWithModelId({
   lastError: () => unknown
 }> {
   const parsed = parseGatewayStyleModelId(modelId)
-  const attachments = prompt.attachments ?? []
-  if (attachments.some((attachment) => attachment.kind === 'document')) {
-    void fetchImpl
-    throw createUnsupportedFunctionalityError(
-      'streaming document attachments is not supported yet; disable streaming.'
-    )
-  }
+  void fetchImpl
   const context = promptToContext(prompt)
 
   const controller = new AbortController()
