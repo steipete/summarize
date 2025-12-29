@@ -617,6 +617,9 @@ const streamController = createStreamController({
 const chatStreamController = createStreamController({
   mode: 'chat',
   getToken: async () => (await loadSettings()).token,
+  onReset: () => {
+    clearMetricsForMode('chat')
+  },
   onStatus: (text) => headerController.setStatus(text),
   onPhaseChange: (phase) => {
     // Chat doesn't use phase in the same way, but we track streaming state
