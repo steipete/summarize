@@ -184,6 +184,31 @@ async function resolveCliEntrypointPathForService(): Promise<string> {
     return normalized
   }
 
+  // Check if running through a version manager shim (mise, asdf, etc.)
+  // These put the bin script in a different location than the package's dist folder.
+  // Use import.meta.url to find the actual package location.
+  const isVersionManagerInstall =
+    normalized.includes('/shims/') ||
+    normalized.includes('/.asdf/') ||
+    normalized.includes('/mise/')
+  if (isVersionManagerInstall) {
+    // import.meta.url gives us the current file's location (this daemon/cli.ts)
+    // Navigate up to find dist/cli.js
+    const currentFileUrl = import.meta.url
+    const currentFilePath = currentFileUrl.replace('file://', '')
+    // We're in dist/esm/daemon/cli.js, so go up 3 levels to dist/, then to cli.js
+    const distDir = path.resolve(path.dirname(currentFilePath), '../../..')
+    const shimCandidates = [path.join(distDir, 'dist/cli.cjs'), path.join(distDir, 'dist/cli.js')]
+    for (const candidate of shimCandidates) {
+      try {
+        await fs.access(candidate)
+        return candidate
+      } catch {
+        // keep going
+      }
+    }
+  }
+
   const distCandidates = [
     path.resolve(path.dirname(normalized), '../dist/cli.cjs'),
     path.resolve(path.dirname(normalized), '../dist/cli.js'),
