@@ -118,7 +118,7 @@ const chatController = new ChatController({
   markdown: md,
   limits: chatLimits,
   scrollToBottom: () => scrollToBottom(),
-  onNewContent: () => markJumpIfNeeded(),
+  onNewContent: () => updateAutoScrollLock(),
 })
 
 const isStreaming = () => panelState.phase === 'connecting' || panelState.phase === 'streaming'
@@ -146,7 +146,6 @@ headerController.updateHeaderOffset()
 window.addEventListener('resize', headerController.updateHeaderOffset)
 
 let autoScrollLocked = true
-let pendingJump = false
 
 const isNearBottom = () => {
   const distance = mainEl.scrollHeight - mainEl.scrollTop - mainEl.clientHeight
@@ -155,27 +154,14 @@ const isNearBottom = () => {
 
 const updateAutoScrollLock = () => {
   autoScrollLocked = isNearBottom()
-  if (autoScrollLocked && pendingJump) {
-    pendingJump = false
-    chatJumpBtn.classList.remove('isVisible')
-  }
+  chatJumpBtn.classList.toggle('isVisible', !autoScrollLocked)
 }
 
 const scrollToBottom = (force = false) => {
   if (force) autoScrollLocked = true
   if (!force && !autoScrollLocked) return
   mainEl.scrollTop = mainEl.scrollHeight
-  if (force && pendingJump) {
-    pendingJump = false
-    chatJumpBtn.classList.remove('isVisible')
-  }
-}
-
-const markJumpIfNeeded = () => {
-  if (autoScrollLocked) return
-  if (pendingJump) return
-  pendingJump = true
-  chatJumpBtn.classList.add('isVisible')
+  chatJumpBtn.classList.remove('isVisible')
 }
 
 mainEl.addEventListener('scroll', updateAutoScrollLock, { passive: true })
@@ -611,7 +597,6 @@ function applyChatEnabled() {
   chatContainerEl.toggleAttribute('hidden', !chatEnabledValue)
   chatDockEl.toggleAttribute('hidden', !chatEnabledValue)
   if (!chatEnabledValue) {
-    pendingJump = false
     chatJumpBtn.classList.remove('isVisible')
   }
   if (!chatEnabledValue) {
@@ -1270,7 +1255,6 @@ function resetChatState() {
   }
   panelState.chatStreaming = false
   chatController.reset()
-  pendingJump = false
   chatJumpBtn.classList.remove('isVisible')
 }
 

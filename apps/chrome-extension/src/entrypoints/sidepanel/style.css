@@ -1441,6 +1441,7 @@ button.setup__pill.isActive {
   padding: 8px 12px 12px;
   border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
   background: transparent;
+  position: relative;
 }
 
 .chatDock[hidden] {
@@ -1448,8 +1449,11 @@ button.setup__pill.isActive {
 }
 
 .chatJump {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
   align-self: center;
-  margin-bottom: 8px;
   padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
@@ -1514,9 +1518,9 @@ button.setup__pill.isActive {
   max-height: 120px;
   resize: none;
   padding: 7px 10px;
-  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   border-radius: 12px;
-  background: transparent;
+  background: var(--field-bg);
   color: var(--text);
   font: inherit;
   line-height: 1.4;

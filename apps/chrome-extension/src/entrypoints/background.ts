@@ -231,7 +231,31 @@ export default defineBackground(() => {
   let inflightUrl: string | null = null
   let runController: AbortController | null = null
   let lastNavAt = 0
-  type CachedExtract = { url: string; title: string | null; text: string }
+  type CachedExtract = {
+    url: string
+    title: string | null
+    text: string
+    source: 'page' | 'url'
+    truncated: boolean
+    totalCharacters: number
+    wordCount: number | null
+    transcriptSource: string | null
+    transcriptionProvider: string | null
+    transcriptCharacters: number | null
+    transcriptWordCount: number | null
+    transcriptLines: number | null
+    mediaDurationSeconds: number | null
+    diagnostics?: {
+      strategy: string
+      markdown?: { used?: boolean; provider?: string | null } | null
+      firecrawl?: { used?: boolean } | null
+      transcript?: {
+        provider?: string | null
+        cacheStatus?: string | null
+        attemptedProviders?: string[] | null
+      } | null
+    } | null
+  }
   const cachedExtracts = new Map<number, CachedExtract>()
   const hoverControllersByTabId = new Map<
     number,
@@ -271,10 +295,23 @@ export default defineBackground(() => {
         const extracted = extractedAttempt.data
         const text = extracted.text.trim()
         if (text.length >= MIN_CHAT_CHARS) {
+          const wordCount =
+            text.length > 0 ? text.split(/\s+/).filter(Boolean).length : 0
           const next = {
             url: extracted.url,
             title: extracted.title ?? tab.title?.trim() ?? null,
             text: extracted.text,
+            source: 'page' as const,
+            truncated: extracted.truncated,
+            totalCharacters: extracted.text.length,
+            wordCount,
+            transcriptSource: null,
+            transcriptionProvider: null,
+            transcriptCharacters: null,
+            transcriptWordCount: null,
+            transcriptLines: null,
+            mediaDurationSeconds: null,
+            diagnostics: null,
           }
           cachedExtracts.set(tab.id, next)
           return next
@@ -311,6 +348,21 @@ export default defineBackground(() => {
         totalCharacters: number
         truncated: boolean
         transcriptSource: string | null
+        transcriptCharacters?: number | null
+        transcriptWordCount?: number | null
+        transcriptLines?: number | null
+        transcriptionProvider?: string | null
+        mediaDurationSeconds?: number | null
+        diagnostics?: {
+          strategy: string
+          markdown?: { used?: boolean; provider?: string | null } | null
+          firecrawl?: { used?: boolean } | null
+          transcript?: {
+            provider?: string | null
+            cacheStatus?: string | null
+            attemptedProviders?: string[] | null
+          } | null
+        }
       }
       error?: string
     }
@@ -322,6 +374,17 @@ export default defineBackground(() => {
       url: json.extracted.url,
       title: json.extracted.title,
       text: json.extracted.content,
+      source: 'url' as const,
+      truncated: json.extracted.truncated,
+      totalCharacters: json.extracted.totalCharacters,
+      wordCount: json.extracted.wordCount,
+      transcriptSource: json.extracted.transcriptSource ?? null,
+      transcriptionProvider: json.extracted.transcriptionProvider ?? null,
+      transcriptCharacters: json.extracted.transcriptCharacters ?? null,
+      transcriptWordCount: json.extracted.transcriptWordCount ?? null,
+      transcriptLines: json.extracted.transcriptLines ?? null,
+      mediaDurationSeconds: json.extracted.mediaDurationSeconds ?? null,
+      diagnostics: json.extracted.diagnostics ?? null,
     }
     cachedExtracts.set(tab.id, next)
     return next
@@ -652,6 +715,31 @@ export default defineBackground(() => {
                 transcript: cachedExtract.text,
                 summary: summaryText,
                 summaryCap: settings.maxChars,
+                metadata: {
+                  url: cachedExtract.url,
+                  title: cachedExtract.title,
+                  source: cachedExtract.source,
+                  extractionStrategy:
+                    cachedExtract.source === 'page'
+                      ? 'readability (content script)'
+                      : cachedExtract.diagnostics?.strategy ?? null,
+                  markdownProvider: cachedExtract.diagnostics?.markdown?.used
+                    ? cachedExtract.diagnostics?.markdown?.provider ?? 'unknown'
+                    : null,
+                  firecrawlUsed: cachedExtract.diagnostics?.firecrawl?.used ?? null,
+                  transcriptSource: cachedExtract.transcriptSource,
+                  transcriptionProvider: cachedExtract.transcriptionProvider,
+                  transcriptCache: cachedExtract.diagnostics?.transcript?.cacheStatus ?? null,
+                  attemptedTranscriptProviders:
+                    cachedExtract.diagnostics?.transcript?.attemptedProviders ?? null,
+                  mediaDurationSeconds: cachedExtract.mediaDurationSeconds,
+                  totalCharacters: cachedExtract.totalCharacters,
+                  wordCount: cachedExtract.wordCount,
+                  transcriptCharacters: cachedExtract.transcriptCharacters,
+                  transcriptWordCount: cachedExtract.transcriptWordCount,
+                  transcriptLines: cachedExtract.transcriptLines,
+                  truncated: cachedExtract.truncated,
+                },
               })
 
               sendStatus('Sending to AI…')
