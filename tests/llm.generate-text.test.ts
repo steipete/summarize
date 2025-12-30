@@ -184,14 +184,8 @@ describe('llm generate/stream', () => {
       fetchImpl: globalThis.fetch.bind(globalThis),
     })
 
-    const generateArgs = (mocks.completeSimple.mock.calls[0]?.[2] ?? {}) as Record<
-      string,
-      unknown
-    >
-    const streamArgs = (mocks.streamSimple.mock.calls[0]?.[2] ?? {}) as Record<
-      string,
-      unknown
-    >
+    const generateArgs = (mocks.completeSimple.mock.calls[0]?.[2] ?? {}) as Record<string, unknown>
+    const streamArgs = (mocks.streamSimple.mock.calls[0]?.[2] ?? {}) as Record<string, unknown>
 
     expect(generateArgs).not.toHaveProperty('temperature')
     expect(streamArgs).not.toHaveProperty('temperature')
@@ -231,14 +225,8 @@ describe('llm generate/stream', () => {
       fetchImpl: globalThis.fetch.bind(globalThis),
     })
 
-    const generateArgs = (mocks.completeSimple.mock.calls[0]?.[2] ?? {}) as Record<
-      string,
-      unknown
-    >
-    const streamArgs = (mocks.streamSimple.mock.calls[0]?.[2] ?? {}) as Record<
-      string,
-      unknown
-    >
+    const generateArgs = (mocks.completeSimple.mock.calls[0]?.[2] ?? {}) as Record<string, unknown>
+    const streamArgs = (mocks.streamSimple.mock.calls[0]?.[2] ?? {}) as Record<string, unknown>
 
     expect(generateArgs).toMatchObject({ temperature: 0.2 })
     expect(streamArgs).toMatchObject({ temperature: 0.2 })
