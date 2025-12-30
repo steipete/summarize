@@ -447,7 +447,8 @@ export default defineBackground(() => {
     if (!tab?.id || !canSummarizeUrl(tab.url)) return
 
     runController?.abort()
-    runController = new AbortController()
+    const controller = new AbortController()
+    runController = controller
 
     sendStatus(`Extracting… (${reason})`)
     const extractedAttempt = await extractFromTab(tab.id, settings.maxChars)
@@ -498,7 +499,7 @@ export default defineBackground(() => {
             noCache: Boolean(opts?.refresh),
           })
         ),
-        signal: runController.signal,
+        signal: controller.signal,
       })
       const json = (await res.json()) as { ok: boolean; id?: string; error?: string }
       if (!res.ok || !json.ok || !json.id) {
@@ -506,7 +507,7 @@ export default defineBackground(() => {
       }
       id = json.id
     } catch (err) {
-      if (runController.signal.aborted) return
+      if (controller.signal.aborted) return
       const message = friendlyFetchError(err, 'Daemon request failed')
       void send({ type: 'run:error', message })
       sendStatus(`Error: ${message}`)

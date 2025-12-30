@@ -27,6 +27,7 @@
 
 - Auto model selection: OpenRouter fallback now resolves provider-specific ids (dash/dot slug normalization) and skips fallback when no unique match.
 - Language auto: default to English when detection is uncertain.
+- Chrome Side Panel: avoid startup crash when a run is aborted while a request is in flight.
 - Hover summaries: hide tooltips on error pages, show only after the first streamed chunk, avoid recycled-anchor mismatches, add hover debug logging when extended logging is enabled, and suppress native title tooltips while hover summaries are visible.
 - Chrome extension: avoid Chrome “Local network access” prompts for hover summaries by proxying localhost daemon calls through the background service worker.
 - URL extraction: preserve final redirected URL so shorteners (t.co) summarize the real destination.
