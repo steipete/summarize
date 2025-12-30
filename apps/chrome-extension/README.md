@@ -15,6 +15,12 @@ Docs + setup: `https://summarize.sh`
 - Chrome → `chrome://extensions` → Developer mode → “Load unpacked”
 - Pick: `apps/chrome-extension/.output/chrome-mv3`
 
+## Length Presets
+
+- Presets match CLI: `short|medium|long|xl|xxl` (or custom like `20k`).
+- Tooltips show target + range + paragraph guidance.
+- Source of truth: `packages/core/src/prompts/summary-lengths.ts`.
+
 ## First Run (Pairing)
 
 - Install summarize (choose one):

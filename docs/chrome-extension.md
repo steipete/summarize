@@ -94,7 +94,7 @@ The daemon decides the best pipeline:
 
 - Settings:
   - Model preset (Options → Advanced): `auto` | `free` | custom string (e.g. `openai/gpt-5-mini`, `openrouter/...`).
-  - Length: `short|medium|long|xl|xxl` (or a character target like `20k`).
+  - Length: `short|medium|long|xl|xxl` (or a character target like `20k`). Tooltips show target ranges + paragraph guidance (from `packages/core/src/prompts/summary-lengths.ts`).
   - Language: `auto` (match source) or a tag like `en`, `de`, `pt-BR` (or free-form like “German”).
   - Prompt override (advanced): custom instruction prefix (context + content still appended).
   - Auto summarize: on/off.

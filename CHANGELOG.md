@@ -13,6 +13,7 @@
 - PDF inputs: send PDFs directly to Anthropic/OpenAI/Gemini when supported (skip markitdown preprocessing).
 - Daemon: add `/v1/chat` and `extractOnly` support to reuse URL extraction for chat.
 - Daemon logging: optional JSON log file with rotation; extension toggle can send full input/output for debugging.
+- Chrome Side Panel: length preset tooltips now show target ranges + paragraph guidance (aligned with core prompt constraints).
 - Chrome Side Panel: add refresh summary control and bypass cache for explicit refreshes.
 - Hover summaries: prompt customization and tighter prompts for cleaner tooltips.
 - Daemon: expose version in health, plus a status pill in the Side Panel header.
