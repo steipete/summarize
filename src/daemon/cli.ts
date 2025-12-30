@@ -372,7 +372,13 @@ export async function handleDaemonRequest({
     const loaded = await service.isLoaded({ env: envForRun })
     const healthy = await (async () => {
       try {
-        await waitForHealth({ fetchImpl, port: cfg.port, timeoutMs: 800 })
+        await waitForHealthWithRetries({
+          fetchImpl,
+          port: cfg.port,
+          attempts: 4,
+          timeoutMs: 1500,
+          delayMs: 400,
+        })
         return true
       } catch {
         return false

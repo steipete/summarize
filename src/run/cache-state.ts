@@ -62,9 +62,9 @@ export async function refreshCacheStoreIfMissing({
   const path = cacheState.path
   if (!path) return false
   const fileExists = existsSync(path)
-  if (cacheState.store && fileExists) return false
   if (cacheState.store) {
-    cacheState.store.close()
+    // Keep the existing store to avoid closing statements while requests are in flight.
+    return false
   }
   cacheState.store = await createCacheStore({
     path,
