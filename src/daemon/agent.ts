@@ -338,6 +338,58 @@ function resolveModelWithFallback({
   }
 }
 
+type AgentApiKeys = {
+  openaiApiKey: string | null
+  openrouterApiKey: string | null
+  anthropicApiKey: string | null
+  googleApiKey: string | null
+  xaiApiKey: string | null
+  zaiApiKey: string | null
+}
+
+const REQUIRED_ENV_BY_PROVIDER: Record<string, string> = {
+  openrouter: 'OPENROUTER_API_KEY',
+  openai: 'OPENAI_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
+  google: 'GEMINI_API_KEY',
+  xai: 'XAI_API_KEY',
+  zai: 'Z_AI_API_KEY',
+}
+
+function resolveApiKeyForModel({
+  model,
+  apiKeys,
+}: {
+  model: ReturnType<typeof getModel>
+  apiKeys: AgentApiKeys
+}): string {
+  const resolved = (() => {
+    switch (model.provider) {
+      case 'openrouter':
+        return apiKeys.openrouterApiKey
+      case 'openai':
+        return apiKeys.openaiApiKey
+      case 'anthropic':
+        return apiKeys.anthropicApiKey
+      case 'google':
+        return apiKeys.googleApiKey
+      case 'xai':
+        return apiKeys.xaiApiKey
+      case 'zai':
+        return apiKeys.zaiApiKey
+      default:
+        return null
+    }
+  })()
+
+  if (resolved) return resolved
+  const requiredEnv = REQUIRED_ENV_BY_PROVIDER[model.provider]
+  if (requiredEnv) {
+    throw new Error(`Missing ${requiredEnv} for ${model.provider} model`)
+  }
+  throw new Error(`Missing API key for provider: ${model.provider}`)
+}
+
 async function resolveAgentModel({
   env,
   pageContent,
@@ -351,6 +403,12 @@ async function resolveAgentModel({
     config,
     configPath,
     configForCli,
+    apiKey,
+    openrouterApiKey,
+    anthropicApiKey,
+    googleApiKey,
+    xaiApiKey,
+    zaiApiKey,
     providerBaseUrls,
     zaiBaseUrl,
     envForAuto,
@@ -364,6 +422,15 @@ async function resolveAgentModel({
     cliFlagPresent: false,
     cliProviderArg: null,
   })
+
+  const apiKeys: AgentApiKeys = {
+    openaiApiKey: apiKey,
+    openrouterApiKey,
+    anthropicApiKey,
+    googleApiKey,
+    xaiApiKey,
+    zaiApiKey,
+  }
 
   const overrides = resolveRunOverrides({})
   const maxOutputTokens = overrides.maxOutputTokensArg ?? 2048
@@ -396,11 +463,11 @@ async function resolveAgentModel({
     if (requestedModel.transport === 'openrouter') {
       const provider = 'openrouter'
       const modelId = requestedModel.openrouterModelId
-      return { model: applyBaseUrlOverride(provider, modelId), maxOutputTokens }
+      return { model: applyBaseUrlOverride(provider, modelId), maxOutputTokens, apiKeys }
     }
 
     const { provider, model } = parseProviderModelId(requestedModel.userModelId)
-    return { model: applyBaseUrlOverride(provider, model), maxOutputTokens }
+    return { model: applyBaseUrlOverride(provider, model), maxOutputTokens, apiKeys }
   }
 
   if (!isFallbackModel) {
@@ -424,10 +491,10 @@ async function resolveAgentModel({
     if (attempt.transport === 'cli') continue
     if (attempt.transport === 'openrouter') {
       const modelId = attempt.userModelId.replace(/^openrouter\//i, '')
-      return { model: applyBaseUrlOverride('openrouter', modelId), maxOutputTokens }
+      return { model: applyBaseUrlOverride('openrouter', modelId), maxOutputTokens, apiKeys }
     }
     const { provider, model } = parseProviderModelId(attempt.userModelId)
-    return { model: applyBaseUrlOverride(provider, model), maxOutputTokens }
+    return { model: applyBaseUrlOverride(provider, model), maxOutputTokens, apiKeys }
   }
 
   throw new Error('No model available for agent')
@@ -466,11 +533,12 @@ export async function completeAgentResponse({
     automationEnabled,
   })
 
-  const { model, maxOutputTokens } = await resolveAgentModel({
+  const { model, maxOutputTokens, apiKeys } = await resolveAgentModel({
     env,
     pageContent,
     modelOverride,
   })
+  const apiKey = resolveApiKeyForModel({ model, apiKeys })
 
   const assistant = await completeSimple(
     model,
@@ -481,6 +549,7 @@ export async function completeAgentResponse({
     },
     {
       maxTokens: maxOutputTokens,
+      apiKey,
     }
   )
 
