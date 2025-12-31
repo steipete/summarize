@@ -15,7 +15,7 @@
     "@zag-js/preact": "^1.31.1",
     "@zag-js/select": "^1.31.1",
     "markdown-it": "^14.1.0",
-    "preact": "11.0.0-beta.0"
+    "preact": "11.0.0-experimental.1"
   },
   "devDependencies": {
     "@playwright/test": "1.57.0",

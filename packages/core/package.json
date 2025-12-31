@@ -46,7 +46,7 @@
     "@mozilla/readability": "0.6.0",
     "cheerio": "^1.1.2",
     "es-toolkit": "^1.43.0",
-    "jsdom": "27.3.0",
+    "jsdom": "27.4.0",
     "sanitize-html": "^2.17.0"
   },
   "devDependencies": {
