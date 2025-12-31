@@ -186,6 +186,12 @@ let lastNavigationMessageUrl: string | null = null
 let inputMode: 'page' | 'video' = 'page'
 let inputModeOverride: 'page' | 'video' | null = null
 let mediaAvailable = false
+let preserveChatOnNextReset = false
+
+const AGENT_NAV_TTL_MS = 20_000
+type AgentNavigation = { url: string; tabId: number | null; at: number }
+let lastAgentNavigation: AgentNavigation | null = null
+let pendingPreserveChatForUrl: { url: string; at: number } | null = null
 
 const chatController = new ChatController({
   messagesEl: chatMessagesEl,
@@ -468,6 +474,72 @@ function urlsMatch(a: string, b: string) {
   return boundaryMatch(left, right) || boundaryMatch(right, left)
 }
 
+function markAgentNavigationIntent(url: string | null | undefined) {
+  const trimmed = typeof url === 'string' ? url.trim() : ''
+  if (!trimmed) return
+  lastAgentNavigation = { url: trimmed, tabId: null, at: Date.now() }
+}
+
+function markAgentNavigationResult(details: unknown) {
+  if (!details || typeof details !== 'object') return
+  const obj = details as { finalUrl?: unknown; tabId?: unknown }
+  const finalUrl = typeof obj.finalUrl === 'string' ? obj.finalUrl.trim() : ''
+  const tabId = typeof obj.tabId === 'number' ? obj.tabId : null
+  if (!finalUrl && tabId == null) return
+  lastAgentNavigation = {
+    url: finalUrl || lastAgentNavigation?.url || '',
+    tabId,
+    at: Date.now(),
+  }
+}
+
+function isRecentAgentNavigation(tabId: number | null, url: string | null) {
+  if (!lastAgentNavigation) return false
+  if (Date.now() - lastAgentNavigation.at > AGENT_NAV_TTL_MS) {
+    lastAgentNavigation = null
+    return false
+  }
+  if (tabId != null && lastAgentNavigation.tabId != null && tabId === lastAgentNavigation.tabId) {
+    return true
+  }
+  if (url && lastAgentNavigation.url && urlsMatch(url, lastAgentNavigation.url)) {
+    return true
+  }
+  return false
+}
+
+function notePreserveChatForUrl(url: string | null) {
+  if (!url) return
+  pendingPreserveChatForUrl = { url, at: Date.now() }
+}
+
+function shouldPreserveChatForRun(url: string) {
+  const pending = pendingPreserveChatForUrl
+  if (
+    pending &&
+    Date.now() - pending.at < AGENT_NAV_TTL_MS &&
+    urlsMatch(url, pending.url)
+  ) {
+    pendingPreserveChatForUrl = null
+    return true
+  }
+  return isRecentAgentNavigation(null, url)
+}
+
+async function migrateChatHistory(fromTabId: number | null, toTabId: number | null) {
+  if (!fromTabId || !toTabId || fromTabId === toTabId) return
+  const messages = chatController.getMessages()
+  if (messages.length === 0) return
+  chatHistoryCache.set(toTabId, messages)
+  const store = chrome.storage?.session
+  if (!store) return
+  try {
+    await store.set({ [getChatHistoryKey(toTabId)]: messages })
+  } catch {
+    // ignore
+  }
+}
+
 async function appendNavigationMessage(url: string, title: string | null) {
   if (!url || lastNavigationMessageUrl === url) return
   lastNavigationMessageUrl = url
@@ -511,9 +583,13 @@ async function syncWithActiveTab() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     if (!tab?.url || !canSyncTabUrl(tab.url)) return
     if (!urlsMatch(tab.url, panelState.currentSource.url)) {
+      const preserveChat = isRecentAgentNavigation(tab.id ?? null, tab.url)
+      if (preserveChat) {
+        notePreserveChatForUrl(tab.url)
+      }
       panelState.currentSource = null
       setPhase('idle')
-      resetSummaryView()
+      resetSummaryView({ preserveChat })
       headerController.setBaseTitle(tab.title || tab.url || 'Summarize')
       headerController.setBaseSubtitle('')
       return
@@ -527,12 +603,14 @@ async function syncWithActiveTab() {
   }
 }
 
-function resetSummaryView() {
+function resetSummaryView({ preserveChat = false }: { preserveChat?: boolean } = {}) {
   renderEl.innerHTML = ''
   clearMetricsForMode('summary')
   panelState.summaryMarkdown = null
   panelState.summaryFromCache = null
-  resetChatState()
+  if (!preserveChat) {
+    resetChatState()
+  }
 }
 
 window.addEventListener('error', (event) => {
@@ -1320,13 +1398,11 @@ async function runRefreshFree() {
 const streamController = createStreamController({
   getToken: async () => (await loadSettings()).token,
   onReset: () => {
-    renderEl.innerHTML = ''
-    clearMetricsForMode('summary')
-    panelState.summaryMarkdown = null
-    panelState.summaryFromCache = null
+    const preserveChat = preserveChatOnNextReset
+    preserveChatOnNextReset = false
+    resetSummaryView({ preserveChat })
     panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null }
     lastStreamError = null
-    resetChatState()
   },
   onStatus: (text) => headerController.setStatus(text),
   onBaseTitle: (text) => headerController.setBaseTitle(text),
@@ -1668,16 +1744,36 @@ function updateControls(state: UiState) {
   const nextVideoLabel = state.media?.hasAudio && !state.media.hasVideo ? 'Audio' : 'Video'
 
   if (tabChanged) {
+    const preserveChat = isRecentAgentNavigation(nextTabId, nextTabUrl)
+    if (preserveChat) {
+      notePreserveChatForUrl(nextTabUrl ?? lastAgentNavigation?.url ?? null)
+    }
+    const previousTabId = activeTabId
     activeTabId = nextTabId
     activeTabUrl = nextTabUrl
-    if (panelState.chatStreaming) {
+    if (panelState.chatStreaming && !preserveChat) {
       requestAgentAbort('Tab changed')
     }
-    resetChatState()
+    if (!preserveChat) {
+      void clearChatHistoryForActiveTab()
+      resetChatState()
+    } else {
+      void migrateChatHistory(previousTabId, nextTabId)
+    }
     inputMode = 'page'
     inputModeOverride = null
   } else if (urlChanged) {
     activeTabUrl = nextTabUrl
+    const preserveChat = isRecentAgentNavigation(activeTabId, nextTabUrl)
+    if (preserveChat) {
+      notePreserveChatForUrl(nextTabUrl)
+    } else if (
+      chatEnabledValue &&
+      (panelState.chatStreaming || chatController.getMessages().length > 0)
+    ) {
+      void clearChatHistoryForActiveTab()
+      resetChatState()
+    }
     if (
       chatEnabledValue &&
       nextTabUrl &&
@@ -1725,9 +1821,13 @@ function updateControls(state: UiState) {
   modelRefreshBtn.disabled = !state.settings.tokenPresent || refreshFreeRunning
   if (panelState.currentSource) {
     if (state.tab.url && !urlsMatch(state.tab.url, panelState.currentSource.url)) {
+      const preserveChat = isRecentAgentNavigation(activeTabId, state.tab.url)
+      if (preserveChat) {
+        notePreserveChatForUrl(state.tab.url)
+      }
       panelState.currentSource = null
       streamController.abort()
-      resetSummaryView()
+      resetSummaryView({ preserveChat })
     } else if (state.tab.title && state.tab.title !== panelState.currentSource.title) {
       panelState.currentSource = { ...panelState.currentSource, title: state.tab.title }
       headerController.setBaseTitle(state.tab.title)
@@ -1793,8 +1893,13 @@ function handleBgMessage(msg: BgToPanel) {
       if (panelState.chatStreaming) {
         finishStreamingMessage()
       }
-      void clearChatHistoryForActiveTab()
-      resetChatState()
+      const preserveChat = shouldPreserveChatForRun(msg.run.url)
+      if (!preserveChat) {
+        void clearChatHistoryForActiveTab()
+        resetChatState()
+      } else {
+        preserveChatOnNextReset = true
+      }
       setActiveMetricsMode('summary')
       panelState.currentSource = { url: msg.run.url, title: msg.run.title }
       panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null }
@@ -2002,7 +2107,14 @@ async function runAgentLoop() {
 
     for (const call of toolCalls) {
       if (abortAgentRequested) return
+      if (call.name === 'navigate') {
+        const args = call.arguments as { url?: string }
+        markAgentNavigationIntent(args?.url)
+      }
       const result = (await executeToolCall(call)) as ToolResultMessage
+      if (call.name === 'navigate' && !result.isError) {
+        markAgentNavigationResult(result.details)
+      }
       chatController.addMessage(wrapMessage(result))
       scrollToBottom(true)
     }

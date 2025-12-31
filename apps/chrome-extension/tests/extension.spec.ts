@@ -999,6 +999,64 @@ test('sidepanel chat queue drains messages after stream completes', async () => 
   }
 })
 
+test('sidepanel clears chat on user navigation', async () => {
+  const harness = await launchExtension()
+
+  try {
+    await seedSettings(harness, { token: 'test-token', autoSummarize: false, chatEnabled: true })
+    const contentPage = await harness.context.newPage()
+    await contentPage.goto('https://example.com', { waitUntil: 'domcontentloaded' })
+    await contentPage.evaluate(() => {
+      document.body.innerHTML = `<article><p>Chat nav test.</p></article>`
+    })
+    await contentPage.bringToFront()
+    await activateTabByUrl(harness, 'https://example.com')
+    await waitForActiveTabUrl(harness, 'https://example.com')
+    await injectContentScript(harness, 'content-scripts/extract.js', 'https://example.com')
+
+    await harness.context.route('http://127.0.0.1:8787/v1/agent', async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ok: true, assistant: buildAssistant('Ack') }),
+      })
+    })
+
+    const page = await openExtensionPage(harness, 'sidepanel.html', '#title')
+    await sendBgMessage(harness, {
+      type: 'ui:state',
+      state: buildUiState({
+        tab: { id: 1, url: 'https://example.com', title: 'Example' },
+        settings: { chatEnabled: true, tokenPresent: true },
+      }),
+    })
+
+    await page.evaluate((value) => {
+      const input = document.getElementById('chatInput') as HTMLTextAreaElement | null
+      const send = document.getElementById('chatSend') as HTMLButtonElement | null
+      if (!input || !send) return
+      input.value = value
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      send.click()
+    }, 'Hello')
+
+    await expect(page.locator('#chatMessages')).toContainText('Hello')
+
+    await sendBgMessage(harness, {
+      type: 'ui:state',
+      state: buildUiState({
+        tab: { id: 1, url: 'https://example.com/next', title: 'Next' },
+        settings: { chatEnabled: true, tokenPresent: true },
+      }),
+    })
+
+    await expect(page.locator('.chatMessage')).toHaveCount(0)
+    assertNoErrors(harness)
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir)
+  }
+})
+
 test('auto summarize reruns after panel reopen', async () => {
   const harness = await launchExtension()
 
