@@ -8,7 +8,7 @@ Fast summaries from URLs, files, and media. Works in the terminal and a Chrome S
 - Real extraction pipeline: fetch -> clean -> Markdown (readability + markitdown), Firecrawl fallback when blocked.
 - Transcript-first media flow: published transcripts when available, Whisper fallback when not.
 - Streaming TTY output with Markdown rendering (markdansi) and scrollback-safe formatting.
-- Model flexibility: auto selection, provider/model ids, OpenRouter routing, and a free preset.
+- Local, paid, and free models: OpenAI-compatible local endpoints, paid providers, plus an OpenRouter free preset.
 - Output modes: Markdown/text, JSON diagnostics, extract-only, metrics, timing, and cost estimates.
 
 ## Chrome Extension (Side Panel)
@@ -44,8 +44,8 @@ Notes:
 
 More:
 
-- Step-by-step install: `apps/chrome-extension/README.md`
-- Architecture + troubleshooting: `docs/chrome-extension.md`
+- Step-by-step install: [apps/chrome-extension/README.md](apps/chrome-extension/README.md)
+- Architecture + troubleshooting: [docs/chrome-extension.md](docs/chrome-extension.md)
 
 ## CLI
 
