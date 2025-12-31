@@ -60,6 +60,60 @@ const fontFamilyEl = byId<HTMLInputElement>('fontFamily')
 const fontSizeEl = byId<HTMLInputElement>('fontSize')
 const buildInfoEl = document.getElementById('buildInfo')
 const daemonStatusEl = byId<HTMLDivElement>('daemonStatus')
+const tabsRoot = byId<HTMLDivElement>('tabs')
+const tabButtons = Array.from(tabsRoot.querySelectorAll<HTMLButtonElement>('[data-tab]'))
+const tabPanels = Array.from(document.querySelectorAll<HTMLElement>('[data-tab-panel]'))
+
+const tabStorageKey = 'summarize:options-tab'
+const tabIds = new Set(tabButtons.map((button) => button.dataset.tab).filter(Boolean))
+
+const setActiveTab = (next: string) => {
+  if (!tabIds.has(next)) return
+  for (const button of tabButtons) {
+    const isActive = button.dataset.tab === next
+    button.setAttribute('aria-selected', isActive ? 'true' : 'false')
+    button.tabIndex = isActive ? 0 : -1
+  }
+  for (const panel of tabPanels) {
+    const isActive = panel.dataset.tabPanel === next
+    panel.hidden = !isActive
+  }
+  localStorage.setItem(tabStorageKey, next)
+}
+
+const storedTab = localStorage.getItem(tabStorageKey)
+const initialTab = storedTab && tabIds.has(storedTab) ? storedTab : 'general'
+setActiveTab(initialTab)
+
+tabButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    const tab = button.dataset.tab
+    if (tab) setActiveTab(tab)
+  })
+})
+
+tabsRoot.addEventListener('keydown', (event) => {
+  if (!(event instanceof KeyboardEvent)) return
+  const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End']
+  if (!keys.includes(event.key)) return
+  event.preventDefault()
+  const currentIndex = tabButtons.findIndex(
+    (button) => button.getAttribute('aria-selected') === 'true'
+  )
+  if (currentIndex < 0) return
+  const lastIndex = tabButtons.length - 1
+  let nextIndex = currentIndex
+  if (event.key === 'ArrowLeft') nextIndex = currentIndex === 0 ? lastIndex : currentIndex - 1
+  if (event.key === 'ArrowRight') nextIndex = currentIndex === lastIndex ? 0 : currentIndex + 1
+  if (event.key === 'Home') nextIndex = 0
+  if (event.key === 'End') nextIndex = lastIndex
+  const nextButton = tabButtons[nextIndex]
+  if (!nextButton) return
+  const nextTab = nextButton.dataset.tab
+  if (!nextTab) return
+  setActiveTab(nextTab)
+  nextButton.focus()
+})
 
 let autoValue = defaultSettings.autoSummarize
 let chatEnabledValue = defaultSettings.chatEnabled

@@ -388,6 +388,57 @@ form {
   background: var(--panel);
 }
 
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.tabButton {
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.tabButton[aria-selected="true"] {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.tabButton:focus-visible {
+  outline: none;
+  border-color: var(--ui-focus);
+}
+
+.tabButton:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.tabPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.tabPanel[hidden] {
+  display: none;
+}
+
 .pageFooter {
   margin-top: 10px;
   text-align: center;

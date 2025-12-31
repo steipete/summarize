@@ -13,247 +13,316 @@
         <div id="buildInfo" class="buildInfo"></div>
       </div>
       <form id="form">
-        <section class="section">
-          <div id="daemonStatus" class="daemonStatus" data-state="warn">
-            <span class="daemonStatus__dot" aria-hidden="true"></span>
-            <span class="daemonStatus__text">Checking daemon…</span>
-          </div>
-          <div class="combo">
-            <div id="autoToggle" class="row"></div>
-            <span class="subtitle">Auto-summarize when the panel is open.</span>
-          </div>
-          <div class="combo">
-            <div id="chatToggle"></div>
-            <span class="subtitle">Enable Chat mode in the side panel (default on).</span>
-          </div>
-          <div class="combo">
-            <div id="automationToggle"></div>
-            <span class="subtitle">Enable website automation tools in the side panel.</span>
-          </div>
-          <div class="combo">
-            <button id="automationPermissions" type="button" class="miniButton">
-              Enable automation permissions
-            </button>
-            <span class="subtitle">Grant optional permissions (userScripts).</span>
-          </div>
-          <div id="userScriptsNotice" class="notice" hidden></div>
-        </section>
+        <div id="tabs" class="tabs" role="tablist" aria-label="Settings sections">
+          <button
+            id="tab-general"
+            class="tabButton"
+            type="button"
+            role="tab"
+            data-tab="general"
+            aria-controls="panel-general"
+            aria-selected="true"
+          >
+            General
+          </button>
+          <button
+            id="tab-ui"
+            class="tabButton"
+            type="button"
+            role="tab"
+            data-tab="ui"
+            aria-controls="panel-ui"
+            aria-selected="false"
+          >
+            UI
+          </button>
+          <button
+            id="tab-model"
+            class="tabButton"
+            type="button"
+            role="tab"
+            data-tab="model"
+            aria-controls="panel-model"
+            aria-selected="false"
+          >
+            Model
+          </button>
+          <button
+            id="tab-skills"
+            class="tabButton"
+            type="button"
+            role="tab"
+            data-tab="skills"
+            aria-controls="panel-skills"
+            aria-selected="false"
+          >
+            Skills
+          </button>
+        </div>
 
-        <section class="section">
-          <h2>Automation Skills</h2>
-          <div class="hint">Manage reusable JavaScript libraries for domain-specific automation.</div>
-          <div class="skillsActions">
-            <button id="skillsExport" type="button" class="miniButton">Export skills</button>
-            <button id="skillsImport" type="button" class="miniButton">Import skills</button>
-          </div>
-          <label>
-            <span>Search</span>
-            <input id="skillsSearch" type="text" placeholder="Search by name, domain, or description" />
-          </label>
-          <div id="skillsImportConflicts" class="skillsConflicts" hidden></div>
-          <div id="skillsList" class="skillsList"></div>
-          <div id="skillsEmpty" class="skillsEmpty" hidden>No skills created yet.</div>
-        </section>
-
-        <section class="section">
-          <h2>Token setup</h2>
-          <label>
-            <span>Token</span>
-            <input id="token" type="text" placeholder="(generated in side panel)" />
-          </label>
-        </section>
-
-        <section class="section">
-          <h2>Prompt · Language · Model</h2>
-          <label>
-            <span>Language</span>
+        <div id="panel-general" class="tabPanel" role="tabpanel" data-tab-panel="general" aria-labelledby="tab-general">
+          <section class="section">
+            <div id="daemonStatus" class="daemonStatus" data-state="warn">
+              <span class="daemonStatus__dot" aria-hidden="true"></span>
+              <span class="daemonStatus__text">Checking daemon…</span>
+            </div>
             <div class="combo">
-              <select id="languagePreset">
-                <option value="auto">Auto (detect)</option>
-                <option value="en">English</option>
-                <option value="de">German</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-                <option value="it">Italian</option>
-                <option value="pt">Portuguese</option>
-                <option value="nl">Dutch</option>
-                <option value="sv">Swedish</option>
-                <option value="no">Norwegian</option>
-                <option value="da">Danish</option>
-                <option value="fi">Finnish</option>
-                <option value="pl">Polish</option>
-                <option value="cs">Czech</option>
-                <option value="tr">Turkish</option>
-                <option value="ru">Russian</option>
-                <option value="uk">Ukrainian</option>
-                <option value="ar">Arabic</option>
-                <option value="hi">Hindi</option>
-                <option value="ja">Japanese</option>
-                <option value="ko">Korean</option>
-                <option value="zh-cn">Chinese (Simplified)</option>
-                <option value="zh-tw">Chinese (Traditional)</option>
-                <option value="custom">Custom…</option>
-              </select>
-              <input
-                id="languageCustom"
-                type="text"
-                placeholder="Custom (e.g. en-US / Portuguese (Brazil))"
-                autocapitalize="off"
-                autocomplete="off"
-                spellcheck="false"
-                hidden
-              />
+              <div id="autoToggle" class="row"></div>
+              <span class="subtitle">Auto-summarize when the panel is open.</span>
             </div>
-          </label>
-          <label>
-            <span>Model</span>
             <div class="combo">
-              <select id="modelPreset">
-                <option value="auto">Auto</option>
-                <option value="custom">Custom…</option>
-              </select>
-              <input
-                id="modelCustom"
-                type="text"
-                placeholder="auto"
-                autocapitalize="off"
-                autocomplete="off"
-                spellcheck="false"
-                hidden
-              />
+              <div id="chatToggle"></div>
+              <span class="subtitle">Enable Chat mode in the side panel (default on).</span>
             </div>
-            <div class="hint">
-              Tip: configure “free” models via <code>summarize refresh-free</code> (needs <code>OPENROUTER_API_KEY</code>). Writes
-              <code>~/.summarize/config.json</code> (updates <code>models.free</code>). Add <code>--set-default</code> to also set
-              your default model to <code>free</code>.
+            <div class="combo">
+              <div id="automationToggle"></div>
+              <span class="subtitle">Enable website automation tools in the side panel.</span>
             </div>
-          </label>
-          <label>
-            <span>Prompt override</span>
-            <textarea
-              id="promptOverride"
-              rows="6"
-              placeholder="Custom instructions (prefix). Context + content still appended."
-            ></textarea>
-          </label>
-          <label>
-            <span>Max chars (extracted)</span>
-            <input id="maxChars" type="number" min="20000" step="10000" />
-          </label>
-        </section>
+            <div class="combo">
+              <button id="automationPermissions" type="button" class="miniButton">
+                Enable automation permissions
+              </button>
+              <span class="subtitle">Grant optional permissions (userScripts).</span>
+            </div>
+            <div id="userScriptsNotice" class="notice" hidden></div>
+          </section>
 
-        <section class="section">
-          <h2>UI</h2>
-          <div class="uiGrid">
-            <div id="pickersRoot"></div>
+          <section class="section">
+            <h2>Token setup</h2>
             <label>
-              <span>Font family (CSS)</span>
-              <input id="fontFamily" type="text" />
+              <span>Token</span>
+              <input id="token" type="text" placeholder="(generated in side panel)" />
+            </label>
+          </section>
+        </div>
+
+        <div id="panel-ui" class="tabPanel" role="tabpanel" data-tab-panel="ui" aria-labelledby="tab-ui" hidden>
+          <section class="section">
+            <h2>UI</h2>
+            <div class="uiGrid">
+              <div id="pickersRoot"></div>
+              <label>
+                <span>Font family (CSS)</span>
+                <input id="fontFamily" type="text" />
+              </label>
+              <label>
+                <span>Font size</span>
+                <input id="fontSize" type="number" min="12" max="20" step="1" />
+              </label>
+            </div>
+          </section>
+        </div>
+
+        <div id="panel-model" class="tabPanel" role="tabpanel" data-tab-panel="model" aria-labelledby="tab-model" hidden>
+          <section class="section">
+            <h2>Prompt · Language · Model</h2>
+            <label>
+              <span>Language</span>
+              <div class="combo">
+                <select id="languagePreset">
+                  <option value="auto">Auto (detect)</option>
+                  <option value="en">English</option>
+                  <option value="de">German</option>
+                  <option value="es">Spanish</option>
+                  <option value="fr">French</option>
+                  <option value="it">Italian</option>
+                  <option value="pt">Portuguese</option>
+                  <option value="nl">Dutch</option>
+                  <option value="sv">Swedish</option>
+                  <option value="no">Norwegian</option>
+                  <option value="da">Danish</option>
+                  <option value="fi">Finnish</option>
+                  <option value="pl">Polish</option>
+                  <option value="cs">Czech</option>
+                  <option value="tr">Turkish</option>
+                  <option value="ru">Russian</option>
+                  <option value="uk">Ukrainian</option>
+                  <option value="ar">Arabic</option>
+                  <option value="hi">Hindi</option>
+                  <option value="ja">Japanese</option>
+                  <option value="ko">Korean</option>
+                  <option value="zh-cn">Chinese (Simplified)</option>
+                  <option value="zh-tw">Chinese (Traditional)</option>
+                  <option value="custom">Custom…</option>
+                </select>
+                <input
+                  id="languageCustom"
+                  type="text"
+                  placeholder="Custom (e.g. en-US / Portuguese (Brazil))"
+                  autocapitalize="off"
+                  autocomplete="off"
+                  spellcheck="false"
+                  hidden
+                />
+              </div>
             </label>
             <label>
-              <span>Font size</span>
-              <input id="fontSize" type="number" min="12" max="20" step="1" />
+              <span>Model</span>
+              <div class="combo">
+                <select id="modelPreset">
+                  <option value="auto">Auto</option>
+                  <option value="custom">Custom…</option>
+                </select>
+                <input
+                  id="modelCustom"
+                  type="text"
+                  placeholder="auto"
+                  autocapitalize="off"
+                  autocomplete="off"
+                  spellcheck="false"
+                  hidden
+                />
+              </div>
+              <div class="hint">
+                Tip: configure “free” models via <code>summarize refresh-free</code> (needs <code>OPENROUTER_API_KEY</code>).
+                Writes <code>~/.summarize/config.json</code> (updates <code>models.free</code>). Add <code>--set-default</code> to
+                also set your default model to <code>free</code>.
+              </div>
             </label>
-          </div>
-        </section>
+            <label>
+              <span>Prompt override</span>
+              <textarea
+                id="promptOverride"
+                rows="6"
+                placeholder="Custom instructions (prefix). Context + content still appended."
+              ></textarea>
+            </label>
+            <label>
+              <span>Max chars (extracted)</span>
+              <input id="maxChars" type="number" min="20000" step="10000" />
+            </label>
+          </section>
 
-        <section class="section">
-          <h2 class="sectionTitle">
-            <button id="advancedToggle" type="button" class="sectionToggle" aria-expanded="false">
-              Advanced Overrides
-            </button>
-          </h2>
-          <div class="hint">Values set here override daemon config. Leave blank to use config.</div>
-          <div id="advancedFields" class="advancedFields" hidden>
-            <div class="advancedGrid">
-              <div class="combo span-2">
-                <div id="extendedLoggingToggle"></div>
-                <span class="subtitle">
-                  Include full input + output in daemon logs (large, only when daemon logging is enabled).
-                </span>
-              </div>
-              <div class="combo span-2">
-                <div id="hoverSummariesToggle"></div>
-                <span class="subtitle">Show hover summary tooltips in pages. Experimental, default off.</span>
-              </div>
-              <label class="span-2">
-                <div class="labelRow">
-                  <span>Hover summary prompt</span>
-                  <button id="hoverPromptReset" type="button" class="miniButton">Reset</button>
+          <section class="section">
+            <h2 class="sectionTitle">
+              <button id="advancedToggle" type="button" class="sectionToggle" aria-expanded="false">
+                Advanced Overrides
+              </button>
+            </h2>
+            <div class="hint">Values set here override daemon config. Leave blank to use config.</div>
+            <div id="advancedFields" class="advancedFields" hidden>
+              <div class="advancedGrid">
+                <div class="combo span-2">
+                  <div id="extendedLoggingToggle"></div>
+                  <span class="subtitle">
+                    Include full input + output in daemon logs (large, only when daemon logging is enabled).
+                  </span>
                 </div>
-                <span class="subtitle">Prompt used for hover summaries in pages.</span>
-                <textarea id="hoverPrompt" rows="3"></textarea>
-              </label>
-              <label>
-                <span>Pipeline mode</span>
-                <span class="subtitle">Choose the input pipeline (page text vs URL extraction).</span>
-                <select id="requestMode">
-                  <option value="">Default (auto)</option>
-                  <option value="page">Page (use visible text)</option>
-                  <option value="url">URL (force URL extraction)</option>
-                </select>
-              </label>
-              <label>
-                <span>Firecrawl</span>
-                <span class="subtitle">Firecrawl fetches + cleans pages to Markdown via its API. Off, auto fallback, or always use it.</span>
-                <select id="firecrawlMode">
-                  <option value="">Default (auto)</option>
-                  <option value="off">Off</option>
-                  <option value="auto">Auto</option>
-                  <option value="always">Always</option>
-                </select>
-              </label>
-              <label>
-                <span>Markdown mode</span>
-                <span class="subtitle">How HTML is converted to Markdown before summarizing.</span>
-                <select id="markdownMode">
-                  <option value="">Default (readability)</option>
-                  <option value="readability">Readability</option>
-                  <option value="llm">LLM</option>
-                  <option value="auto">Auto</option>
-                  <option value="off">Off</option>
-                </select>
-              </label>
-              <label>
-                <span>Preprocess</span>
-                <span class="subtitle">For file inputs: convert to text/Markdown first (PDF/Doc/etc) to improve model compatibility.</span>
-                <select id="preprocessMode">
-                  <option value="">Default (off)</option>
-                  <option value="off">Off</option>
-                  <option value="auto">Auto</option>
-                  <option value="always">Always</option>
-                </select>
-              </label>
-              <label>
-                <span>YouTube mode</span>
-                <span class="subtitle">Auto picks best transcript; Web uses YouTube captions; yt-dlp extracts audio for transcription; Apify is fallback; No-auto skips auto captions.</span>
-                <select id="youtubeMode">
-                  <option value="">Default (config)</option>
-                  <option value="auto">Auto (best transcript)</option>
-                  <option value="no-auto">No auto captions</option>
-                  <option value="yt-dlp">yt-dlp</option>
-                  <option value="web">Web</option>
-                  <option value="apify">Apify</option>
-                </select>
-              </label>
-              <label>
-                <span>Timeout</span>
-                <span class="subtitle">Overall timeout for fetch + model (e.g. 90s, 2m).</span>
-                <input id="timeout" type="text" placeholder="2m" />
-              </label>
-              <label>
-                <span>Retries</span>
-                <span class="subtitle">LLM retry attempts on timeout (0–5).</span>
-                <input id="retries" type="number" min="0" max="5" step="1" />
-              </label>
-              <label>
-                <span>Max output tokens</span>
-                <span class="subtitle">Hard cap for model output (e.g. 2k).</span>
-                <input id="maxOutputTokens" type="text" placeholder="2k" />
-              </label>
+                <div class="combo span-2">
+                  <div id="hoverSummariesToggle"></div>
+                  <span class="subtitle">Show hover summary tooltips in pages. Experimental, default off.</span>
+                </div>
+                <label class="span-2">
+                  <div class="labelRow">
+                    <span>Hover summary prompt</span>
+                    <button id="hoverPromptReset" type="button" class="miniButton">Reset</button>
+                  </div>
+                  <span class="subtitle">Prompt used for hover summaries in pages.</span>
+                  <textarea id="hoverPrompt" rows="3"></textarea>
+                </label>
+                <label>
+                  <span>Pipeline mode</span>
+                  <span class="subtitle">Choose the input pipeline (page text vs URL extraction).</span>
+                  <select id="requestMode">
+                    <option value="">Default (auto)</option>
+                    <option value="page">Page (use visible text)</option>
+                    <option value="url">URL (force URL extraction)</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Firecrawl</span>
+                  <span class="subtitle">
+                    Firecrawl fetches + cleans pages to Markdown via its API. Off, auto fallback, or always use it.
+                  </span>
+                  <select id="firecrawlMode">
+                    <option value="">Default (auto)</option>
+                    <option value="off">Off</option>
+                    <option value="auto">Auto</option>
+                    <option value="always">Always</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Markdown mode</span>
+                  <span class="subtitle">How HTML is converted to Markdown before summarizing.</span>
+                  <select id="markdownMode">
+                    <option value="">Default (readability)</option>
+                    <option value="readability">Readability</option>
+                    <option value="llm">LLM</option>
+                    <option value="auto">Auto</option>
+                    <option value="off">Off</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Preprocess</span>
+                  <span class="subtitle">
+                    For file inputs: convert to text/Markdown first (PDF/Doc/etc) to improve model compatibility.
+                  </span>
+                  <select id="preprocessMode">
+                    <option value="">Default (off)</option>
+                    <option value="off">Off</option>
+                    <option value="auto">Auto</option>
+                    <option value="always">Always</option>
+                  </select>
+                </label>
+                <label>
+                  <span>YouTube mode</span>
+                  <span class="subtitle">
+                    Auto picks best transcript; Web uses YouTube captions; yt-dlp extracts audio for transcription; Apify
+                    is fallback; No-auto skips auto captions.
+                  </span>
+                  <select id="youtubeMode">
+                    <option value="">Default (config)</option>
+                    <option value="auto">Auto (best transcript)</option>
+                    <option value="no-auto">No auto captions</option>
+                    <option value="yt-dlp">yt-dlp</option>
+                    <option value="web">Web</option>
+                    <option value="apify">Apify</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Timeout</span>
+                  <span class="subtitle">Overall timeout for fetch + model (e.g. 90s, 2m).</span>
+                  <input id="timeout" type="text" placeholder="2m" />
+                </label>
+                <label>
+                  <span>Retries</span>
+                  <span class="subtitle">LLM retry attempts on timeout (0–5).</span>
+                  <input id="retries" type="number" min="0" max="5" step="1" />
+                </label>
+                <label>
+                  <span>Max output tokens</span>
+                  <span class="subtitle">Hard cap for model output (e.g. 2k).</span>
+                  <input id="maxOutputTokens" type="text" placeholder="2k" />
+                </label>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
+
+        <div
+          id="panel-skills"
+          class="tabPanel"
+          role="tabpanel"
+          data-tab-panel="skills"
+          aria-labelledby="tab-skills"
+          hidden
+        >
+          <section class="section">
+            <h2>Automation Skills</h2>
+            <div class="hint">Manage reusable JavaScript libraries for domain-specific automation.</div>
+            <div class="skillsActions">
+              <button id="skillsExport" type="button" class="miniButton">Export skills</button>
+              <button id="skillsImport" type="button" class="miniButton">Import skills</button>
+            </div>
+            <label>
+              <span>Search</span>
+              <input id="skillsSearch" type="text" placeholder="Search by name, domain, or description" />
+            </label>
+            <div id="skillsImportConflicts" class="skillsConflicts" hidden></div>
+            <div id="skillsList" class="skillsList"></div>
+            <div id="skillsEmpty" class="skillsEmpty" hidden>No skills created yet.</div>
+          </section>
+        </div>
 
         <div class="buttons">
           <button type="submit">Save</button>
