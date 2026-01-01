@@ -1,3 +1,5 @@
+import type { AssistantMessage } from '@mariozechner/pi-ai'
+
 export type SseMetaData = {
   model: string | null
   modelLabel: string | null
@@ -17,6 +19,7 @@ export type SseEvent =
   | { event: 'meta'; data: SseMetaData }
   | { event: 'status'; data: { text: string } }
   | { event: 'chunk'; data: { text: string } }
+  | { event: 'assistant'; data: AssistantMessage }
   | { event: 'metrics'; data: SseMetricsData }
   | { event: 'done'; data: Record<string, never> }
   | { event: 'error'; data: { message: string } }
@@ -35,6 +38,8 @@ export function parseSseEvent(message: RawSseMessage): SseEvent | null {
       return { event: 'status', data: JSON.parse(message.data) as { text: string } }
     case 'chunk':
       return { event: 'chunk', data: JSON.parse(message.data) as { text: string } }
+    case 'assistant':
+      return { event: 'assistant', data: JSON.parse(message.data) as AssistantMessage }
     case 'metrics':
       return { event: 'metrics', data: JSON.parse(message.data) as SseMetricsData }
     case 'done':

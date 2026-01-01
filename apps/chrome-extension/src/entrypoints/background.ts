@@ -46,6 +46,7 @@ type BgToPanel =
   | { type: 'ui:status'; status: string }
   | { type: 'run:start'; run: RunStart }
   | { type: 'run:error'; message: string }
+  | { type: 'agent:chunk'; requestId: string; text: string }
   | {
       type: 'agent:response'
       requestId: string
@@ -131,6 +132,7 @@ type PanelSession = {
   lastSummarizedUrl: string | null
   inflightUrl: string | null
   runController: AbortController | null
+  agentController: AbortController | null
   lastNavAt: number
   daemonRecovery: ReturnType<typeof createDaemonRecovery>
 }
@@ -542,6 +544,7 @@ export default defineBackground(() => {
     const existing = panelSessions.get(windowId)
     if (existing && existing.port !== port) {
       existing.runController?.abort()
+      existing.agentController?.abort()
     }
     const session: PanelSession = existing ?? {
       windowId,
@@ -551,6 +554,7 @@ export default defineBackground(() => {
       lastSummarizedUrl: null,
       inflightUrl: null,
       runController: null,
+      agentController: null,
       lastNavAt: 0,
       daemonRecovery: createDaemonRecovery(),
     }
@@ -1163,6 +1167,8 @@ export default defineBackground(() => {
         session.inflightUrl = null
         session.runController?.abort()
         session.runController = null
+        session.agentController?.abort()
+        session.agentController = null
         session.daemonRecovery.clearPending()
         void emitState(session, '')
         void summarizeActiveTab(session, 'panel-open')
@@ -1172,6 +1178,8 @@ export default defineBackground(() => {
         session.panelLastPingAt = 0
         session.runController?.abort()
         session.runController = null
+        session.agentController?.abort()
+        session.agentController = null
         session.lastSummarizedUrl = null
         session.inflightUrl = null
         session.daemonRecovery.clearPending()
@@ -1214,6 +1222,12 @@ export default defineBackground(() => {
             sendStatus(session, `Error: ${message}`)
             return
           }
+
+          session.agentController?.abort()
+          const agentController = new AbortController()
+          session.agentController = agentController
+          const isStillActive = () =>
+            session.agentController === agentController && !agentController.signal.aborted
 
           const agentPayload = raw as {
             requestId: string
@@ -1258,7 +1272,7 @@ export default defineBackground(() => {
           sendStatus(session, 'Sending to AI…')
 
           try {
-            const res = await fetch('http://127.0.0.1:8787/v1/agent', {
+            const res = await fetch('http://127.0.0.1:8787/v1/agent/stream', {
               method: 'POST',
               headers: {
                 Authorization: `Bearer ${settings.token.trim()}`,
@@ -1273,35 +1287,52 @@ export default defineBackground(() => {
                 tools: agentPayload.tools,
                 automationEnabled: settings.automationEnabled,
               }),
+              signal: agentController.signal,
             })
-            const rawText = await res.text()
-            let json: { ok?: boolean; assistant?: AssistantMessage; error?: string } | null = null
-            if (rawText) {
-              try {
-                json = JSON.parse(rawText) as typeof json
-              } catch {
-                json = null
-              }
-            }
-            if (!res.ok || !json?.ok || !json.assistant) {
+            if (!res.ok || !res.body) {
+              const rawText = await res.text().catch(() => '')
               const isMissingAgent =
                 res.status === 404 || rawText.trim().toLowerCase() === 'not found'
-              const error =
-                json?.error ??
-                (isMissingAgent
-                  ? 'Daemon does not support /v1/agent. Restart the daemon after updating (summarize daemon restart).'
-                  : rawText.trim() || `${res.status} ${res.statusText}`)
+              const error = isMissingAgent
+                ? 'Daemon does not support /v1/agent/stream. Restart the daemon after updating (summarize daemon restart).'
+                : rawText.trim() || `${res.status} ${res.statusText}`
               throw new Error(error)
             }
 
-            void send(session, {
-              type: 'agent:response',
-              requestId: agentPayload.requestId,
-              ok: true,
-              assistant: json.assistant,
-            })
+            let sawAssistant = false
+            for await (const raw of parseSseStream(res.body)) {
+              if (!isStillActive()) return
+              const event = parseSseEvent(raw)
+              if (!event) continue
+
+              if (event.event === 'chunk') {
+                void send(session, {
+                  type: 'agent:chunk',
+                  requestId: agentPayload.requestId,
+                  text: event.data.text,
+                })
+              } else if (event.event === 'assistant') {
+                sawAssistant = true
+                void send(session, {
+                  type: 'agent:response',
+                  requestId: agentPayload.requestId,
+                  ok: true,
+                  assistant: event.data,
+                })
+              } else if (event.event === 'error') {
+                throw new Error(event.data.message)
+              } else if (event.event === 'done') {
+                break
+              }
+            }
+
+            if (!sawAssistant) {
+              throw new Error('Agent stream ended without a response.')
+            }
+
             sendStatus(session, '')
           } catch (err) {
+            if (agentController.signal.aborted) return
             const message = friendlyFetchError(err, 'Chat request failed')
             void send(session, {
               type: 'agent:response',
@@ -1310,6 +1341,10 @@ export default defineBackground(() => {
               error: message,
             })
             sendStatus(session, `Error: ${message}`)
+          } finally {
+            if (session.agentController === agentController) {
+              session.agentController = null
+            }
           }
         })()
         break

@@ -10,7 +10,7 @@ import { formatModelLabelForDisplay } from '../run/finish-line.js'
 import { resolveRunOverrides } from '../run/run-settings.js'
 import { encodeSseEvent, type SseEvent } from '../shared/sse-events.js'
 import { resolvePackageVersion } from '../version.js'
-import { completeAgentResponse } from './agent.js'
+import { completeAgentResponse, streamAgentResponse } from './agent.js'
 import { type DaemonRequestedMode, resolveAutoDaemonMode } from './auto-mode.js'
 import type { DaemonConfig } from './config.js'
 import { DAEMON_HOST, DAEMON_PORT_DEFAULT } from './constants.js'
@@ -694,6 +694,85 @@ export async function runDaemonServer({
           const message = error instanceof Error ? error.message : String(error)
           console.error('[summarize-daemon] agent failed', error)
           json(res, 500, { ok: false, error: message }, cors)
+        }
+        return
+      }
+
+      if (req.method === 'POST' && pathname === '/v1/agent/stream') {
+        let body: unknown
+        try {
+          body = await readJsonBody(req, 4_000_000)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          json(res, 400, { ok: false, error: message }, cors)
+          return
+        }
+        if (!body || typeof body !== 'object') {
+          json(res, 400, { ok: false, error: 'invalid json' }, cors)
+          return
+        }
+
+        const obj = body as Record<string, unknown>
+        const pageUrl = typeof obj.url === 'string' ? obj.url.trim() : ''
+        const pageTitle = typeof obj.title === 'string' ? obj.title.trim() : null
+        const pageContent = typeof obj.pageContent === 'string' ? obj.pageContent : ''
+        const messages = obj.messages
+        const modelOverride = typeof obj.model === 'string' ? obj.model.trim() : null
+        const tools = Array.isArray(obj.tools)
+          ? obj.tools.filter((tool): tool is string => typeof tool === 'string')
+          : []
+        const automationEnabled = Boolean(obj.automationEnabled)
+
+        if (!pageUrl) {
+          json(res, 400, { ok: false, error: 'missing url' }, cors)
+          return
+        }
+
+        res.writeHead(200, {
+          ...cors,
+          'content-type': 'text/event-stream; charset=utf-8',
+          'cache-control': 'no-cache, no-transform',
+          connection: 'keep-alive',
+        })
+
+        const controller = new AbortController()
+        let closed = false
+        const close = () => {
+          if (closed) return
+          closed = true
+          controller.abort()
+        }
+        req.on('close', close)
+        req.on('aborted', close)
+
+        const writeEvent = (event: SseEvent) => {
+          if (closed) return
+          res.write(encodeSseEvent(event))
+        }
+
+        try {
+          await streamAgentResponse({
+            env,
+            pageUrl,
+            pageTitle,
+            pageContent,
+            messages,
+            modelOverride: modelOverride && modelOverride.toLowerCase() !== 'auto' ? modelOverride : null,
+            tools,
+            automationEnabled,
+            onChunk: (text) => writeEvent({ event: 'chunk', data: { text } }),
+            onAssistant: (assistant) => writeEvent({ event: 'assistant', data: assistant }),
+            signal: controller.signal,
+          })
+          writeEvent({ event: 'done', data: {} })
+        } catch (error) {
+          if (!controller.signal.aborted) {
+            const message = error instanceof Error ? error.message : String(error)
+            writeEvent({ event: 'error', data: { message } })
+            console.error('[summarize-daemon] agent stream failed', error)
+          }
+        } finally {
+          if (!closed) res.end()
         }
         return
       }

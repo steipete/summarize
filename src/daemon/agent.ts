@@ -1,5 +1,5 @@
 import type { Api, AssistantMessage, Message, Model, Tool } from '@mariozechner/pi-ai'
-import { completeSimple, getModel } from '@mariozechner/pi-ai'
+import { completeSimple, getModel, streamSimple } from '@mariozechner/pi-ai'
 import { createSyntheticModel } from '../llm/providers/shared.js'
 import { buildAutoModelAttempts } from '../model-auto.js'
 import { resolveRunContextState } from '../run/run-context.js'
@@ -592,4 +592,88 @@ export async function completeAgentResponse({
   )
 
   return assistant
+}
+
+export async function streamAgentResponse({
+  env,
+  pageUrl,
+  pageTitle,
+  pageContent,
+  messages,
+  modelOverride,
+  tools,
+  automationEnabled,
+  onChunk,
+  onAssistant,
+  signal,
+}: {
+  env: Record<string, string | undefined>
+  pageUrl: string
+  pageTitle: string | null
+  pageContent: string
+  messages: unknown
+  modelOverride: string | null
+  tools: string[]
+  automationEnabled: boolean
+  onChunk: (text: string) => void
+  onAssistant: (assistant: AssistantMessage) => void
+  signal?: AbortSignal
+}): Promise<void> {
+  const normalizedMessages = normalizeMessages(messages)
+  const toolList = automationEnabled
+    ? tools
+        .map((toolName) => TOOL_DEFINITIONS[toolName])
+        .filter((tool): tool is Tool => Boolean(tool))
+    : []
+
+  const systemPrompt = buildSystemPrompt({
+    pageUrl,
+    pageTitle,
+    pageContent,
+    automationEnabled,
+  })
+
+  const { model, maxOutputTokens, apiKeys } = await resolveAgentModel({
+    env,
+    pageContent,
+    modelOverride,
+  })
+  const apiKey = resolveApiKeyForModel({ model, apiKeys })
+
+  const stream = streamSimple(
+    model,
+    {
+      systemPrompt,
+      messages: normalizedMessages,
+      tools: toolList,
+    },
+    {
+      maxTokens: maxOutputTokens,
+      apiKey,
+      signal,
+    }
+  )
+
+  let assistant: AssistantMessage | null = null
+  for await (const event of stream) {
+    if (event.type === 'text_delta') {
+      onChunk(event.delta)
+    } else if (event.type === 'done') {
+      assistant = event.message
+      break
+    } else if (event.type === 'error') {
+      const message = event.error?.errorMessage || 'Agent stream failed.'
+      throw new Error(message)
+    }
+  }
+
+  if (!assistant) {
+    assistant = await stream.result().catch(() => null)
+  }
+
+  if (!assistant) {
+    throw new Error('Agent stream ended without a result.')
+  }
+
+  onAssistant(assistant)
 }

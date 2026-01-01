@@ -89,6 +89,28 @@ export class ChatController {
     this.updateContextStatus()
   }
 
+  replaceMessage(message: ChatMessage, opts?: RenderOptions) {
+    const index = this.messages.findIndex((item) => item.id === message.id)
+    if (index === -1) {
+      this.addMessage(message, opts)
+      return
+    }
+    this.messages[index] = message
+    const existing = this.messagesEl.querySelector(`[data-id="${message.id}"]`)
+    if (existing) {
+      const nextEl = this.createMessageElement(message)
+      existing.replaceWith(nextEl)
+    } else {
+      this.renderMessage(message, opts)
+    }
+    if (opts?.scroll !== false) {
+      this.onNewContent?.()
+      this.scrollToBottom?.()
+    }
+    this.updateVisibility()
+    this.updateContextStatus()
+  }
+
   updateStreamingMessage(content: string) {
     const lastMsg = this.messages[this.messages.length - 1]
     if (lastMsg?.role === 'assistant') {
@@ -124,6 +146,50 @@ export class ChatController {
   }
 
   private renderMessage(message: ChatMessage, opts?: RenderOptions) {
+    const msgEl = this.createMessageElement(message)
+    if (opts?.prepend) {
+      this.messagesEl.prepend(msgEl)
+    } else {
+      this.messagesEl.appendChild(msgEl)
+    }
+
+    if (opts?.scroll !== false) {
+      this.onNewContent?.()
+      this.scrollToBottom?.()
+    }
+  }
+
+  private updateVisibility() {
+    const hasMessages = this.messages.length > 0
+    this.messagesEl.classList.toggle('isHidden', !hasMessages)
+  }
+
+  private updateContextStatus() {
+    if (!this.hasUserMessages()) {
+      this.contextEl.textContent = ''
+      this.contextEl.removeAttribute('data-state')
+      this.contextEl.classList.add('isHidden')
+      return
+    }
+    const usage = computeChatContextUsage(this.messages, this.limits)
+    this.contextEl.classList.remove('isHidden')
+    this.contextEl.textContent = `Context ${usage.percent}% · ${usage.totalMessages} msgs · ${usage.totalChars.toLocaleString()} chars`
+    if (usage.percent >= 85) {
+      this.contextEl.dataset.state = 'warn'
+    } else {
+      this.contextEl.removeAttribute('data-state')
+    }
+  }
+
+  private linkifyTimestamps(content: string): string {
+    return content.replace(this.timestampPattern, (match, time) => {
+      const seconds = parseTimestampSeconds(time)
+      if (seconds == null) return match
+      return `[${time}](timestamp:${seconds})`
+    })
+  }
+
+  private createMessageElement(message: ChatMessage): HTMLDivElement {
     const msgEl = document.createElement('div')
     msgEl.className = `chatMessage ${message.role}`
     msgEl.dataset.id = message.id
@@ -172,46 +238,7 @@ export class ChatController {
       msgEl.textContent = extractText(message)
     }
 
-    if (opts?.prepend) {
-      this.messagesEl.prepend(msgEl)
-    } else {
-      this.messagesEl.appendChild(msgEl)
-    }
-
-    if (opts?.scroll !== false) {
-      this.onNewContent?.()
-      this.scrollToBottom?.()
-    }
-  }
-
-  private updateVisibility() {
-    const hasMessages = this.messages.length > 0
-    this.messagesEl.classList.toggle('isHidden', !hasMessages)
-  }
-
-  private updateContextStatus() {
-    if (!this.hasUserMessages()) {
-      this.contextEl.textContent = ''
-      this.contextEl.removeAttribute('data-state')
-      this.contextEl.classList.add('isHidden')
-      return
-    }
-    const usage = computeChatContextUsage(this.messages, this.limits)
-    this.contextEl.classList.remove('isHidden')
-    this.contextEl.textContent = `Context ${usage.percent}% · ${usage.totalMessages} msgs · ${usage.totalChars.toLocaleString()} chars`
-    if (usage.percent >= 85) {
-      this.contextEl.dataset.state = 'warn'
-    } else {
-      this.contextEl.removeAttribute('data-state')
-    }
-  }
-
-  private linkifyTimestamps(content: string): string {
-    return content.replace(this.timestampPattern, (match, time) => {
-      const seconds = parseTimestampSeconds(time)
-      if (seconds == null) return match
-      return `[${time}](timestamp:${seconds})`
-    })
+    return msgEl
   }
 
   private decorateAnchors(root: HTMLElement) {

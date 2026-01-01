@@ -42,6 +42,7 @@ type BgToPanel =
   | { type: 'ui:status'; status: string }
   | { type: 'run:start'; run: RunStart }
   | { type: 'run:error'; message: string }
+  | { type: 'agent:chunk'; requestId: string; text: string }
   | {
       type: 'agent:response'
       requestId: string
@@ -257,7 +258,11 @@ window.addEventListener('summarize:automation-permissions', (event) => {
 type AgentResponse = { ok: boolean; assistant?: AssistantMessage; error?: string }
 const pendingAgentRequests = new Map<
   string,
-  { resolve: (response: AgentResponse) => void; reject: (error: Error) => void }
+  {
+    resolve: (response: AgentResponse) => void
+    reject: (error: Error) => void
+    onChunk?: (text: string) => void
+  }
 >()
 
 function abortPendingAgentRequests(reason: string) {
@@ -291,6 +296,20 @@ function wrapMessage(message: Message): ChatMessage {
   return { ...message, id: crypto.randomUUID() }
 }
 
+function buildStreamingAssistantMessage(): ChatMessage {
+  return {
+    id: crypto.randomUUID(),
+    role: 'assistant',
+    content: [],
+    api: 'openai-completions',
+    provider: 'openai',
+    model: 'streaming',
+    usage: buildEmptyUsage(),
+    stopReason: 'stop',
+    timestamp: Date.now(),
+  }
+}
+
 function handleAgentResponse(msg: Extract<BgToPanel, { type: 'agent:response' }>) {
   const pending = pendingAgentRequests.get(msg.requestId)
   if (!pending) return
@@ -298,7 +317,18 @@ function handleAgentResponse(msg: Extract<BgToPanel, { type: 'agent:response' }>
   pending.resolve({ ok: msg.ok, assistant: msg.assistant, error: msg.error })
 }
 
-async function requestAgent(messages: Message[], tools: string[], summary?: string | null) {
+function handleAgentChunk(msg: Extract<BgToPanel, { type: 'agent:chunk' }>) {
+  const pending = pendingAgentRequests.get(msg.requestId)
+  if (!pending?.onChunk) return
+  pending.onChunk(msg.text)
+}
+
+async function requestAgent(
+  messages: Message[],
+  tools: string[],
+  summary?: string | null,
+  opts?: { onChunk?: (text: string) => void }
+) {
   const requestId = crypto.randomUUID()
   const response = new Promise<AgentResponse>((resolve, reject) => {
     const timeout = window.setTimeout(() => {
@@ -314,6 +344,7 @@ async function requestAgent(messages: Message[], tools: string[], summary?: stri
         window.clearTimeout(timeout)
         reject(error)
       },
+      onChunk: opts?.onChunk,
     })
     void send({ type: 'panel:agent', requestId, messages, tools, summary })
   })
@@ -1956,6 +1987,9 @@ function handleBgMessage(msg: BgToPanel) {
       panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null }
       void streamController.start(msg.run)
       return
+    case 'agent:chunk':
+      handleAgentChunk(msg)
+      return
     case 'agent:response':
       handleAgentResponse(msg)
       return
@@ -2137,9 +2171,18 @@ async function runAgentLoop() {
   while (true) {
     if (abortAgentRequested) return
     const messages = chatController.buildRequestMessages() as Message[]
+    const streamingMessage = buildStreamingAssistantMessage()
+    let streamedContent = ''
+    chatController.addMessage(streamingMessage)
+    scrollToBottom(true)
     let response: AgentResponse
     try {
-      response = await requestAgent(messages, tools, panelState.summaryMarkdown)
+      response = await requestAgent(messages, tools, panelState.summaryMarkdown, {
+        onChunk: (text) => {
+          streamedContent += text
+          chatController.updateStreamingMessage(streamedContent)
+        },
+      })
     } catch (error) {
       if (abortAgentRequested) return
       throw error
@@ -2148,9 +2191,10 @@ async function runAgentLoop() {
       throw new Error(response.error || 'Agent failed')
     }
 
-    const assistant = response.assistant
+    const assistant = { ...response.assistant, id: streamingMessage.id }
     if (abortAgentRequested) return
-    chatController.addMessage(wrapMessage(assistant))
+    chatController.replaceMessage(assistant)
+    chatController.finishStreamingMessage()
     scrollToBottom(true)
 
     const toolCalls = assistant.content.filter((part) => part.type === 'toolCall') as ToolCall[]
