@@ -25,6 +25,11 @@ type PanelToBg =
       tools: string[]
       summary?: string | null
     }
+  | {
+      type: 'panel:chat-history'
+      requestId: string
+      summary?: string | null
+    }
   | { type: 'panel:seek'; seconds: number }
   | { type: 'panel:ping' }
   | { type: 'panel:closed' }
@@ -46,6 +51,8 @@ type BgToPanel =
   | { type: 'ui:status'; status: string }
   | { type: 'run:start'; run: RunStart }
   | { type: 'run:error'; message: string }
+  | { type: 'agent:chunk'; requestId: string; text: string }
+  | { type: 'chat:history'; requestId: string; ok: boolean; messages?: Message[]; error?: string }
   | {
       type: 'agent:response'
       requestId: string
@@ -131,6 +138,7 @@ type PanelSession = {
   lastSummarizedUrl: string | null
   inflightUrl: string | null
   runController: AbortController | null
+  agentController: AbortController | null
   lastNavAt: number
   daemonRecovery: ReturnType<typeof createDaemonRecovery>
 }
@@ -542,6 +550,7 @@ export default defineBackground(() => {
     const existing = panelSessions.get(windowId)
     if (existing && existing.port !== port) {
       existing.runController?.abort()
+      existing.agentController?.abort()
     }
     const session: PanelSession = existing ?? {
       windowId,
@@ -551,6 +560,7 @@ export default defineBackground(() => {
       lastSummarizedUrl: null,
       inflightUrl: null,
       runController: null,
+      agentController: null,
       lastNavAt: 0,
       daemonRecovery: createDaemonRecovery(),
     }
@@ -1163,6 +1173,8 @@ export default defineBackground(() => {
         session.inflightUrl = null
         session.runController?.abort()
         session.runController = null
+        session.agentController?.abort()
+        session.agentController = null
         session.daemonRecovery.clearPending()
         void emitState(session, '')
         void summarizeActiveTab(session, 'panel-open')
@@ -1172,6 +1184,8 @@ export default defineBackground(() => {
         session.panelLastPingAt = 0
         session.runController?.abort()
         session.runController = null
+        session.agentController?.abort()
+        session.agentController = null
         session.lastSummarizedUrl = null
         session.inflightUrl = null
         session.daemonRecovery.clearPending()
@@ -1215,6 +1229,12 @@ export default defineBackground(() => {
             return
           }
 
+          session.agentController?.abort()
+          const agentController = new AbortController()
+          session.agentController = agentController
+          const isStillActive = () =>
+            session.agentController === agentController && !agentController.signal.aborted
+
           const agentPayload = raw as {
             requestId: string
             messages: Message[]
@@ -1254,11 +1274,12 @@ export default defineBackground(() => {
               truncated: cachedExtract.truncated,
             },
           })
+          const cacheContent = cachedExtract.transcriptTimedText ?? cachedExtract.text
 
           sendStatus(session, 'Sending to AI…')
 
           try {
-            const res = await fetch('http://127.0.0.1:8787/v1/agent', {
+            const res = await fetch('http://127.0.0.1:8787/v1/agent/stream', {
               method: 'POST',
               headers: {
                 Authorization: `Bearer ${settings.token.trim()}`,
@@ -1268,40 +1289,60 @@ export default defineBackground(() => {
                 url: cachedExtract.url,
                 title: cachedExtract.title,
                 pageContent,
+                cacheContent,
                 messages: agentPayload.messages,
                 model: settings.model,
+                length: settings.length,
+                language: settings.language,
                 tools: agentPayload.tools,
                 automationEnabled: settings.automationEnabled,
               }),
+              signal: agentController.signal,
             })
-            const rawText = await res.text()
-            let json: { ok?: boolean; assistant?: AssistantMessage; error?: string } | null = null
-            if (rawText) {
-              try {
-                json = JSON.parse(rawText) as typeof json
-              } catch {
-                json = null
-              }
-            }
-            if (!res.ok || !json?.ok || !json.assistant) {
+            if (!res.ok || !res.body) {
+              const rawText = await res.text().catch(() => '')
               const isMissingAgent =
                 res.status === 404 || rawText.trim().toLowerCase() === 'not found'
-              const error =
-                json?.error ??
-                (isMissingAgent
-                  ? 'Daemon does not support /v1/agent. Restart the daemon after updating (summarize daemon restart).'
-                  : rawText.trim() || `${res.status} ${res.statusText}`)
+              const error = isMissingAgent
+                ? 'Daemon does not support /v1/agent/stream. Restart the daemon after updating (summarize daemon restart).'
+                : rawText.trim() || `${res.status} ${res.statusText}`
               throw new Error(error)
             }
 
-            void send(session, {
-              type: 'agent:response',
-              requestId: agentPayload.requestId,
-              ok: true,
-              assistant: json.assistant,
-            })
+            let sawAssistant = false
+            for await (const raw of parseSseStream(res.body)) {
+              if (!isStillActive()) return
+              const event = parseSseEvent(raw)
+              if (!event) continue
+
+              if (event.event === 'chunk') {
+                void send(session, {
+                  type: 'agent:chunk',
+                  requestId: agentPayload.requestId,
+                  text: event.data.text,
+                })
+              } else if (event.event === 'assistant') {
+                sawAssistant = true
+                void send(session, {
+                  type: 'agent:response',
+                  requestId: agentPayload.requestId,
+                  ok: true,
+                  assistant: event.data,
+                })
+              } else if (event.event === 'error') {
+                throw new Error(event.data.message)
+              } else if (event.event === 'done') {
+                break
+              }
+            }
+
+            if (!sawAssistant) {
+              throw new Error('Agent stream ended without a response.')
+            }
+
             sendStatus(session, '')
           } catch (err) {
+            if (agentController.signal.aborted) return
             const message = friendlyFetchError(err, 'Chat request failed')
             void send(session, {
               type: 'agent:response',
@@ -1310,6 +1351,141 @@ export default defineBackground(() => {
               error: message,
             })
             sendStatus(session, `Error: ${message}`)
+          } finally {
+            if (session.agentController === agentController) {
+              session.agentController = null
+            }
+          }
+        })()
+        break
+      case 'panel:chat-history':
+        void (async () => {
+          const payload = raw as { requestId: string; summary?: string | null }
+          const settings = await loadSettings()
+          if (!settings.chatEnabled) {
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: false,
+              error: 'Chat is disabled in settings',
+            })
+            return
+          }
+          if (!settings.token.trim()) {
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: false,
+              error: 'Setup required (missing token)',
+            })
+            return
+          }
+
+          const tab = await getActiveTab(session.windowId)
+          if (!tab?.id || !canSummarizeUrl(tab.url)) {
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: false,
+              error: 'Cannot chat on this page',
+            })
+            return
+          }
+
+          let cachedExtract: CachedExtract
+          try {
+            cachedExtract = await ensureChatExtract(session, tab, settings)
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: false,
+              error: message,
+            })
+            return
+          }
+
+          const summaryText =
+            typeof payload.summary === 'string' ? payload.summary.trim() : ''
+          const pageContent = buildChatPageContent({
+            transcript: cachedExtract.transcriptTimedText ?? cachedExtract.text,
+            summary: summaryText,
+            summaryCap: settings.maxChars,
+            metadata: {
+              url: cachedExtract.url,
+              title: cachedExtract.title,
+              source: cachedExtract.source,
+              extractionStrategy:
+                cachedExtract.source === 'page'
+                  ? 'readability (content script)'
+                  : (cachedExtract.diagnostics?.strategy ?? null),
+              markdownProvider: cachedExtract.diagnostics?.markdown?.used
+                ? (cachedExtract.diagnostics?.markdown?.provider ?? 'unknown')
+                : null,
+              firecrawlUsed: cachedExtract.diagnostics?.firecrawl?.used ?? null,
+              transcriptSource: cachedExtract.transcriptSource,
+              transcriptionProvider: cachedExtract.transcriptionProvider,
+              transcriptCache: cachedExtract.diagnostics?.transcript?.cacheStatus ?? null,
+              attemptedTranscriptProviders:
+                cachedExtract.diagnostics?.transcript?.attemptedProviders ?? null,
+              mediaDurationSeconds: cachedExtract.mediaDurationSeconds,
+              totalCharacters: cachedExtract.totalCharacters,
+              wordCount: cachedExtract.wordCount,
+              transcriptCharacters: cachedExtract.transcriptCharacters,
+              transcriptWordCount: cachedExtract.transcriptWordCount,
+              transcriptLines: cachedExtract.transcriptLines,
+              transcriptHasTimestamps: Boolean(cachedExtract.transcriptTimedText),
+              truncated: cachedExtract.truncated,
+            },
+          })
+          const cacheContent = cachedExtract.transcriptTimedText ?? cachedExtract.text
+
+          try {
+            const res = await fetch('http://127.0.0.1:8787/v1/agent/history', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${settings.token.trim()}`,
+                'content-type': 'application/json',
+              },
+              body: JSON.stringify({
+                url: cachedExtract.url,
+                title: cachedExtract.title,
+                pageContent,
+                cacheContent,
+                model: settings.model,
+                length: settings.length,
+                language: settings.language,
+                automationEnabled: settings.automationEnabled,
+              }),
+            })
+            const rawText = await res.text()
+            let json: { ok?: boolean; messages?: Message[]; error?: string } | null = null
+            if (rawText) {
+              try {
+                json = JSON.parse(rawText) as typeof json
+              } catch {
+                json = null
+              }
+            }
+            if (!res.ok || !json?.ok) {
+              const error = json?.error ?? (rawText.trim() || `${res.status} ${res.statusText}`)
+              throw new Error(error)
+            }
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: true,
+              messages: Array.isArray(json?.messages) ? json?.messages : undefined,
+            })
+          } catch (err) {
+            const message = friendlyFetchError(err, 'Chat history request failed')
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: false,
+              error: message,
+            })
           }
         })()
         break

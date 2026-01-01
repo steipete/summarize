@@ -6,7 +6,7 @@ import type { TranscriptCache, TranscriptSource } from './content/index.js'
 import type { LengthArg } from './flags.js'
 import type { OutputLanguage } from './language.js'
 
-export type CacheKind = 'extract' | 'summary' | 'transcript'
+export type CacheKind = 'extract' | 'summary' | 'transcript' | 'chat'
 
 export type CacheConfig = {
   enabled?: boolean
@@ -454,6 +454,7 @@ export async function readCacheStats(path: string): Promise<CacheStats | null> {
     extract: 0,
     summary: 0,
     transcript: 0,
+    chat: 0,
   }
   const rows = db.prepare('SELECT kind, COUNT(*) AS count FROM cache_entries GROUP BY kind').all()
   for (const row of rows as Array<{ kind?: string; count?: number }>) {
