@@ -1,6 +1,6 @@
 # Summarize 👉 Point at any URL or file. Get the gist.
 
-Fast summaries from URLs, files, and media. Works in the terminal and a Chrome Side Panel.
+Fast summaries from URLs, files, and media. Works in the terminal, a Chrome Side Panel and Firefox Side Panel
 
 ## Big features
 
