@@ -174,6 +174,7 @@ function canSummarizeUrl(url: string | undefined): url is string {
   if (!url) return false
   if (url.startsWith('chrome://')) return false
   if (url.startsWith('chrome-extension://')) return false
+  if (url.startsWith('moz-extension://')) return false // Firefox extension pages
   if (url.startsWith('edge://')) return false
   if (url.startsWith('about:')) return false
   return true
@@ -1580,5 +1581,7 @@ export default defineBackground(() => {
     }
   })
 
+  // Chrome-only: Auto-open side panel on toolbar icon click
+  // Firefox sidebar opens manually via View menu or sidebar button
   void chrome.sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true })
 })
