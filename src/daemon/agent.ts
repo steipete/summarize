@@ -1,5 +1,6 @@
 import type { Api, AssistantMessage, Message, Model, Tool } from '@mariozechner/pi-ai'
 import { completeSimple, getModel, streamSimple } from '@mariozechner/pi-ai'
+import { buildPromptHash } from '../cache.js'
 import { createSyntheticModel } from '../llm/providers/shared.js'
 import { buildAutoModelAttempts } from '../model-auto.js'
 import { resolveRunContextState } from '../run/run-context.js'
@@ -42,6 +43,10 @@ Professional, concise, pragmatic. Use "I" for your actions. Match the user's ton
 - Do not claim you clicked, browsed, or executed tools.
 - If the user wants automation, ask them to enable Automation in Settings.
 `
+
+export function buildAgentPromptHash(automationEnabled: boolean): string {
+  return buildPromptHash(automationEnabled ? AGENT_PROMPT_AUTOMATION : AGENT_PROMPT_CHAT_ONLY)
+}
 
 const TOOL_DEFINITIONS: Record<string, Tool> = {
   navigate: {

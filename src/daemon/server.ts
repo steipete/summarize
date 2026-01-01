@@ -1,16 +1,28 @@
 import { randomUUID } from 'node:crypto'
 import http from 'node:http'
 import { Writable } from 'node:stream'
-import type { CacheState } from '../cache.js'
+import type { Message } from '@mariozechner/pi-ai'
+import {
+  buildLanguageKey,
+  buildLengthKey,
+  buildSummaryCacheKey,
+  hashString,
+  normalizeContentForHash,
+  type CacheState,
+} from '../cache.js'
 import { loadSummarizeConfig } from '../config.js'
 import { createDaemonLogger } from '../logging/daemon.js'
 import { refreshFree } from '../refresh-free.js'
 import { createCacheStateFromConfig, refreshCacheStoreIfMissing } from '../run/cache-state.js'
 import { formatModelLabelForDisplay } from '../run/finish-line.js'
-import { resolveRunOverrides } from '../run/run-settings.js'
+import {
+  resolveOutputLanguageSetting,
+  resolveRunOverrides,
+  resolveSummaryLength,
+} from '../run/run-settings.js'
 import { encodeSseEvent, type SseEvent } from '../shared/sse-events.js'
 import { resolvePackageVersion } from '../version.js'
-import { completeAgentResponse, streamAgentResponse } from './agent.js'
+import { buildAgentPromptHash, completeAgentResponse, streamAgentResponse } from './agent.js'
 import { type DaemonRequestedMode, resolveAutoDaemonMode } from './auto-mode.js'
 import type { DaemonConfig } from './config.js'
 import { DAEMON_HOST, DAEMON_PORT_DEFAULT } from './constants.js'
@@ -155,6 +167,53 @@ function createSession(): Session {
 
 const MAX_SESSION_BUFFER_EVENTS = 2000
 const MAX_SESSION_BUFFER_BYTES = 512 * 1024
+
+type ChatCacheInput = {
+  cacheContent: string
+  model: string | null
+  length: unknown
+  language: unknown
+  automationEnabled: boolean
+}
+
+function buildChatCacheKey({
+  cacheContent,
+  model,
+  length,
+  language,
+  automationEnabled,
+}: ChatCacheInput): string {
+  const contentHash = hashString(normalizeContentForHash(cacheContent))
+  const promptHash = buildAgentPromptHash(automationEnabled)
+  const { lengthArg } = resolveSummaryLength(length, 'xl')
+  const outputLanguage = resolveOutputLanguageSetting({ raw: language, fallback: { kind: 'auto' } })
+  const lengthKey = buildLengthKey(lengthArg)
+  const languageKey = buildLanguageKey(outputLanguage)
+  const modelKey = typeof model === 'string' && model.trim() ? model.trim() : 'auto'
+  return buildSummaryCacheKey({
+    contentHash,
+    promptHash,
+    model: modelKey,
+    lengthKey,
+    languageKey,
+  })
+}
+
+function filterChatHistoryMessages(raw: unknown): Message[] {
+  if (!Array.isArray(raw)) return []
+  const now = Date.now()
+  return raw
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => {
+      const msg = item as Message
+      if (msg.role !== 'user' && msg.role !== 'assistant') return null
+      if (typeof msg.timestamp !== 'number') {
+        ;(msg as Message).timestamp = now
+      }
+      return msg
+    })
+    .filter((msg): msg is Message => Boolean(msg))
+}
 
 function pushToSession(
   session: Session,
@@ -665,12 +724,28 @@ export async function runDaemonServer({
         const pageUrl = typeof obj.url === 'string' ? obj.url.trim() : ''
         const pageTitle = typeof obj.title === 'string' ? obj.title.trim() : null
         const pageContent = typeof obj.pageContent === 'string' ? obj.pageContent : ''
+        const cacheContent =
+          typeof obj.cacheContent === 'string' && obj.cacheContent.trim().length > 0
+            ? obj.cacheContent
+            : pageContent
         const messages = obj.messages
         const modelOverride = typeof obj.model === 'string' ? obj.model.trim() : null
+        const lengthRaw = obj.length
+        const languageRaw = obj.language
         const tools = Array.isArray(obj.tools)
           ? obj.tools.filter((tool): tool is string => typeof tool === 'string')
           : []
         const automationEnabled = Boolean(obj.automationEnabled)
+        const cacheStore = cacheState.mode === 'default' ? cacheState.store : null
+        const cacheKey = cacheStore
+          ? buildChatCacheKey({
+              cacheContent,
+              model: modelOverride,
+              length: lengthRaw,
+              language: languageRaw,
+              automationEnabled,
+            })
+          : null
 
         if (!pageUrl) {
           json(res, 400, { ok: false, error: 'missing url' }, cors)
@@ -689,12 +764,78 @@ export async function runDaemonServer({
             tools,
             automationEnabled,
           })
+          if (cacheStore && cacheKey) {
+            const history = filterChatHistoryMessages(messages)
+            history.push(assistant)
+            cacheStore.setJson('chat', cacheKey, { messages: history }, cacheState.ttlMs)
+          }
           json(res, 200, { ok: true, assistant }, cors)
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
           console.error('[summarize-daemon] agent failed', error)
           json(res, 500, { ok: false, error: message }, cors)
         }
+        return
+      }
+
+      if (req.method === 'POST' && pathname === '/v1/agent/history') {
+        let body: unknown
+        try {
+          body = await readJsonBody(req, 4_000_000)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          json(res, 400, { ok: false, error: message }, cors)
+          return
+        }
+        if (!body || typeof body !== 'object') {
+          json(res, 400, { ok: false, error: 'invalid json' }, cors)
+          return
+        }
+
+        const obj = body as Record<string, unknown>
+        const pageUrl = typeof obj.url === 'string' ? obj.url.trim() : ''
+        const pageContent = typeof obj.pageContent === 'string' ? obj.pageContent : ''
+        const cacheContent =
+          typeof obj.cacheContent === 'string' && obj.cacheContent.trim().length > 0
+            ? obj.cacheContent
+            : pageContent
+        const modelOverride = typeof obj.model === 'string' ? obj.model.trim() : null
+        const lengthRaw = obj.length
+        const languageRaw = obj.language
+        const automationEnabled = Boolean(obj.automationEnabled)
+
+        if (!pageUrl) {
+          json(res, 400, { ok: false, error: 'missing url' }, cors)
+          return
+        }
+
+        const cacheStore = cacheState.mode === 'default' ? cacheState.store : null
+        if (!cacheStore) {
+          json(res, 200, { ok: true, messages: null }, cors)
+          return
+        }
+
+        const cacheKey = buildChatCacheKey({
+          cacheContent,
+          model: modelOverride,
+          length: lengthRaw,
+          language: languageRaw,
+          automationEnabled,
+        })
+        const cached = cacheStore.getJson<unknown>('chat', cacheKey)
+        if (!cached) {
+          json(res, 200, { ok: true, messages: null }, cors)
+          return
+        }
+        const messages =
+          Array.isArray(cached)
+            ? cached
+            : typeof cached === 'object' &&
+                cached &&
+                Array.isArray((cached as { messages?: unknown }).messages)
+              ? (cached as { messages: unknown[] }).messages
+              : null
+        json(res, 200, { ok: true, messages }, cors)
         return
       }
 
@@ -716,12 +857,28 @@ export async function runDaemonServer({
         const pageUrl = typeof obj.url === 'string' ? obj.url.trim() : ''
         const pageTitle = typeof obj.title === 'string' ? obj.title.trim() : null
         const pageContent = typeof obj.pageContent === 'string' ? obj.pageContent : ''
+        const cacheContent =
+          typeof obj.cacheContent === 'string' && obj.cacheContent.trim().length > 0
+            ? obj.cacheContent
+            : pageContent
         const messages = obj.messages
         const modelOverride = typeof obj.model === 'string' ? obj.model.trim() : null
+        const lengthRaw = obj.length
+        const languageRaw = obj.language
         const tools = Array.isArray(obj.tools)
           ? obj.tools.filter((tool): tool is string => typeof tool === 'string')
           : []
         const automationEnabled = Boolean(obj.automationEnabled)
+        const cacheStore = cacheState.mode === 'default' ? cacheState.store : null
+        const cacheKey = cacheStore
+          ? buildChatCacheKey({
+              cacheContent,
+              model: modelOverride,
+              length: lengthRaw,
+              language: languageRaw,
+              automationEnabled,
+            })
+          : null
 
         if (!pageUrl) {
           json(res, 400, { ok: false, error: 'missing url' }, cors)
@@ -750,6 +907,7 @@ export async function runDaemonServer({
           res.write(encodeSseEvent(event))
         }
 
+        let finalAssistant: Message | null = null
         try {
           await streamAgentResponse({
             env,
@@ -761,9 +919,17 @@ export async function runDaemonServer({
             tools,
             automationEnabled,
             onChunk: (text) => writeEvent({ event: 'chunk', data: { text } }),
-            onAssistant: (assistant) => writeEvent({ event: 'assistant', data: assistant }),
+            onAssistant: (assistant) => {
+              finalAssistant = assistant
+              writeEvent({ event: 'assistant', data: assistant })
+            },
             signal: controller.signal,
           })
+          if (cacheStore && cacheKey && finalAssistant) {
+            const history = filterChatHistoryMessages(messages)
+            if (finalAssistant.role === 'assistant') history.push(finalAssistant)
+            cacheStore.setJson('chat', cacheKey, { messages: history }, cacheState.ttlMs)
+          }
           writeEvent({ event: 'done', data: {} })
         } catch (error) {
           if (!controller.signal.aborted) {

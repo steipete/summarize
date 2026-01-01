@@ -25,6 +25,11 @@ type PanelToBg =
       tools: string[]
       summary?: string | null
     }
+  | {
+      type: 'panel:chat-history'
+      requestId: string
+      summary?: string | null
+    }
   | { type: 'panel:seek'; seconds: number }
   | { type: 'panel:ping' }
   | { type: 'panel:closed' }
@@ -47,6 +52,7 @@ type BgToPanel =
   | { type: 'run:start'; run: RunStart }
   | { type: 'run:error'; message: string }
   | { type: 'agent:chunk'; requestId: string; text: string }
+  | { type: 'chat:history'; requestId: string; ok: boolean; messages?: Message[]; error?: string }
   | {
       type: 'agent:response'
       requestId: string
@@ -1268,6 +1274,7 @@ export default defineBackground(() => {
               truncated: cachedExtract.truncated,
             },
           })
+          const cacheContent = cachedExtract.transcriptTimedText ?? cachedExtract.text
 
           sendStatus(session, 'Sending to AI…')
 
@@ -1282,8 +1289,11 @@ export default defineBackground(() => {
                 url: cachedExtract.url,
                 title: cachedExtract.title,
                 pageContent,
+                cacheContent,
                 messages: agentPayload.messages,
                 model: settings.model,
+                length: settings.length,
+                language: settings.language,
                 tools: agentPayload.tools,
                 automationEnabled: settings.automationEnabled,
               }),
@@ -1345,6 +1355,137 @@ export default defineBackground(() => {
             if (session.agentController === agentController) {
               session.agentController = null
             }
+          }
+        })()
+        break
+      case 'panel:chat-history':
+        void (async () => {
+          const payload = raw as { requestId: string; summary?: string | null }
+          const settings = await loadSettings()
+          if (!settings.chatEnabled) {
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: false,
+              error: 'Chat is disabled in settings',
+            })
+            return
+          }
+          if (!settings.token.trim()) {
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: false,
+              error: 'Setup required (missing token)',
+            })
+            return
+          }
+
+          const tab = await getActiveTab(session.windowId)
+          if (!tab?.id || !canSummarizeUrl(tab.url)) {
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: false,
+              error: 'Cannot chat on this page',
+            })
+            return
+          }
+
+          let cachedExtract: CachedExtract
+          try {
+            cachedExtract = await ensureChatExtract(session, tab, settings)
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: false,
+              error: message,
+            })
+            return
+          }
+
+          const summaryText =
+            typeof payload.summary === 'string' ? payload.summary.trim() : ''
+          const pageContent = buildChatPageContent({
+            transcript: cachedExtract.transcriptTimedText ?? cachedExtract.text,
+            summary: summaryText,
+            summaryCap: settings.maxChars,
+            metadata: {
+              url: cachedExtract.url,
+              title: cachedExtract.title,
+              source: cachedExtract.source,
+              extractionStrategy:
+                cachedExtract.source === 'page'
+                  ? 'readability (content script)'
+                  : (cachedExtract.diagnostics?.strategy ?? null),
+              markdownProvider: cachedExtract.diagnostics?.markdown?.used
+                ? (cachedExtract.diagnostics?.markdown?.provider ?? 'unknown')
+                : null,
+              firecrawlUsed: cachedExtract.diagnostics?.firecrawl?.used ?? null,
+              transcriptSource: cachedExtract.transcriptSource,
+              transcriptionProvider: cachedExtract.transcriptionProvider,
+              transcriptCache: cachedExtract.diagnostics?.transcript?.cacheStatus ?? null,
+              attemptedTranscriptProviders:
+                cachedExtract.diagnostics?.transcript?.attemptedProviders ?? null,
+              mediaDurationSeconds: cachedExtract.mediaDurationSeconds,
+              totalCharacters: cachedExtract.totalCharacters,
+              wordCount: cachedExtract.wordCount,
+              transcriptCharacters: cachedExtract.transcriptCharacters,
+              transcriptWordCount: cachedExtract.transcriptWordCount,
+              transcriptLines: cachedExtract.transcriptLines,
+              transcriptHasTimestamps: Boolean(cachedExtract.transcriptTimedText),
+              truncated: cachedExtract.truncated,
+            },
+          })
+          const cacheContent = cachedExtract.transcriptTimedText ?? cachedExtract.text
+
+          try {
+            const res = await fetch('http://127.0.0.1:8787/v1/agent/history', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${settings.token.trim()}`,
+                'content-type': 'application/json',
+              },
+              body: JSON.stringify({
+                url: cachedExtract.url,
+                title: cachedExtract.title,
+                pageContent,
+                cacheContent,
+                model: settings.model,
+                length: settings.length,
+                language: settings.language,
+                automationEnabled: settings.automationEnabled,
+              }),
+            })
+            const rawText = await res.text()
+            let json: { ok?: boolean; messages?: Message[]; error?: string } | null = null
+            if (rawText) {
+              try {
+                json = JSON.parse(rawText) as typeof json
+              } catch {
+                json = null
+              }
+            }
+            if (!res.ok || !json?.ok) {
+              const error = json?.error ?? (rawText.trim() || `${res.status} ${res.statusText}`)
+              throw new Error(error)
+            }
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: true,
+              messages: Array.isArray(json?.messages) ? json?.messages : undefined,
+            })
+          } catch (err) {
+            const message = friendlyFetchError(err, 'Chat history request failed')
+            void send(session, {
+              type: 'chat:history',
+              requestId: payload.requestId,
+              ok: false,
+              error: message,
+            })
           }
         })()
         break

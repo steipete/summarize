@@ -144,6 +144,13 @@ async function launchExtension(): Promise<ExtensionHarness> {
   await context.route('**/favicon.ico', async (route) => {
     await route.fulfill({ status: 204, body: '' })
   })
+  await context.route('http://127.0.0.1:8787/v1/agent/history', async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ok: true, messages: null }),
+    })
+  })
 
   const background =
     context.serviceWorkers()[0] ??
