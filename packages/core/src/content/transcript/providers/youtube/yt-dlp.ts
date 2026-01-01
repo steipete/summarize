@@ -9,6 +9,7 @@ import {
   type TranscriptionProvider,
   transcribeMediaFileWithWhisper,
 } from '../../../../transcription/whisper.js'
+import { resolveOnnxCommand } from '../../../../transcription/onnx-cli.js'
 import type { LinkPreviewProgressEvent } from '../../../link-preview/deps.js'
 import { ProgressKind } from '../../../link-preview/deps.js'
 
@@ -69,15 +70,20 @@ export const fetchTranscriptWithYtDlp = async ({
   }
 
   const progress = typeof onProgress === 'function' ? onProgress : null
-  const providerHint: 'cpp' | 'openai' | 'fal' | 'openai->fal' | 'unknown' = hasLocalWhisper
-    ? 'cpp'
-    : openaiApiKey && falApiKey
-      ? 'openai->fal'
-      : openaiApiKey
-        ? 'openai'
-        : falApiKey
-          ? 'fal'
-          : 'unknown'
+  const preferredTranscriber = process.env.SUMMARIZE_TRANSCRIBER?.trim().toLowerCase()
+  const wantsOnnx = preferredTranscriber === 'parakeet' || preferredTranscriber === 'canary'
+  const onnxReady = wantsOnnx && resolveOnnxCommand(preferredTranscriber as 'parakeet' | 'canary')
+  const providerHint: 'cpp' | 'onnx' | 'openai' | 'fal' | 'openai->fal' | 'unknown' = onnxReady
+    ? 'onnx'
+    : hasLocalWhisper
+      ? 'cpp'
+      : openaiApiKey && falApiKey
+        ? 'openai->fal'
+        : openaiApiKey
+          ? 'openai'
+          : falApiKey
+            ? 'fal'
+            : 'unknown'
   const modelId = hasLocalWhisper
     ? 'whisper.cpp'
     : openaiApiKey && falApiKey

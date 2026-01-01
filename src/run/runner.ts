@@ -220,6 +220,20 @@ export async function runCli(
   const plain = Boolean(program.opts().plain)
   const debug = Boolean(program.opts().debug)
   const verbose = Boolean(program.opts().verbose) || debug
+  const envTranscriber =
+    (envForRun as Record<string, string | undefined>)?.SUMMARIZE_TRANSCRIBER ??
+    process.env.SUMMARIZE_TRANSCRIBER ??
+    null
+  const transcriberFlag =
+    typeof program.opts().transcriber === 'string'
+      ? program.opts().transcriber
+      : envTranscriber ?? 'whisper'
+  if (typeof envForRun === 'object') {
+    ;(envForRun as Record<string, string | undefined>).SUMMARIZE_TRANSCRIBER = transcriberFlag
+  }
+  if (normalizedArgv.some((arg) => arg === '--transcriber' || arg.startsWith('--transcriber='))) {
+    process.env.SUMMARIZE_TRANSCRIBER = transcriberFlag
+  }
 
   const isYoutubeUrl = typeof url === 'string' ? /youtube\.com|youtu\.be/i.test(url) : false
   const formatExplicitlySet = normalizedArgv.some(

@@ -27,6 +27,7 @@ export function buildDaemonRequestBody({
   if (settings.markdownMode) overrides.markdownMode = settings.markdownMode
   if (settings.preprocessMode) overrides.preprocess = settings.preprocessMode
   if (settings.youtubeMode) overrides.youtube = settings.youtubeMode
+  if (settings.transcriber) overrides.transcriber = settings.transcriber
   if (timeout) overrides.timeout = timeout
   if (typeof settings.retries === 'number' && Number.isFinite(settings.retries)) {
     overrides.retries = settings.retries

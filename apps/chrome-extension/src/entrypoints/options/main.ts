@@ -55,6 +55,7 @@ const firecrawlModeEl = byId<HTMLSelectElement>('firecrawlMode')
 const markdownModeEl = byId<HTMLSelectElement>('markdownMode')
 const preprocessModeEl = byId<HTMLSelectElement>('preprocessMode')
 const youtubeModeEl = byId<HTMLSelectElement>('youtubeMode')
+const transcriberEl = byId<HTMLSelectElement>('transcriber')
 const timeoutEl = byId<HTMLInputElement>('timeout')
 const retriesEl = byId<HTMLInputElement>('retries')
 const maxOutputTokensEl = byId<HTMLInputElement>('maxOutputTokens')
@@ -1019,6 +1020,7 @@ async function load() {
   markdownModeEl.value = s.markdownMode
   preprocessModeEl.value = s.preprocessMode
   youtubeModeEl.value = s.youtubeMode
+  transcriberEl.value = s.transcriber
   timeoutEl.value = s.timeout
   retriesEl.value = typeof s.retries === 'number' ? String(s.retries) : ''
   maxOutputTokensEl.value = s.maxOutputTokens
@@ -1126,6 +1128,7 @@ formEl.addEventListener('submit', (e) => {
       markdownMode: markdownModeEl.value || defaultSettings.markdownMode,
       preprocessMode: preprocessModeEl.value || defaultSettings.preprocessMode,
       youtubeMode: youtubeModeEl.value || defaultSettings.youtubeMode,
+      transcriber: transcriberEl.value || defaultSettings.transcriber,
       timeout: timeoutEl.value || defaultSettings.timeout,
       retries: (() => {
         const raw = retriesEl.value.trim()

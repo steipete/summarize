@@ -88,7 +88,13 @@ describe('daemon config', () => {
       config: {
         token: '  1234567890abcdef  ',
         port: 2222.2,
-        env: buildEnvSnapshotFromEnv({ OPENAI_API_KEY: ' k ', PATH: '' }),
+        env: buildEnvSnapshotFromEnv({
+          OPENAI_API_KEY: ' k ',
+          PATH: '',
+          SUMMARIZE_TRANSCRIBER: ' parakeet ',
+          SUMMARIZE_ONNX_PARAKEET_CMD: ' run-parakeet {input} ',
+          SUMMARIZE_ONNX_CANARY_CMD: ' run-canary {input}  ',
+        }),
         installedAt: '2025-12-27T00:00:00.000Z',
       },
     })
@@ -100,6 +106,11 @@ describe('daemon config', () => {
     expect(parsed.token).toBe('1234567890abcdef')
     expect(parsed.port).toBe(2222)
     expect(parsed.installedAt).toBe('2025-12-27T00:00:00.000Z')
-    expect(parsed.env).toEqual({ OPENAI_API_KEY: 'k' })
+    expect(parsed.env).toEqual({
+      OPENAI_API_KEY: 'k',
+      SUMMARIZE_TRANSCRIBER: 'parakeet',
+      SUMMARIZE_ONNX_PARAKEET_CMD: 'run-parakeet {input}',
+      SUMMARIZE_ONNX_CANARY_CMD: 'run-canary {input}',
+    })
   })
 })

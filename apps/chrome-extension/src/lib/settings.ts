@@ -16,6 +16,7 @@ export type Settings = {
   summaryTimestamps: boolean
   extendedLogging: boolean
   hoverPrompt: string
+  transcriber: string
   model: string
   length: string
   language: string
@@ -89,6 +90,14 @@ function normalizeHoverPrompt(value: unknown): string {
   const trimmed = value.trim()
   if (!trimmed) return defaultSettings.hoverPrompt
   return value
+}
+
+function normalizeTranscriber(value: unknown): string {
+  if (typeof value !== 'string') return defaultSettings.transcriber
+  const trimmed = value.trim().toLowerCase()
+  if (!trimmed) return defaultSettings.transcriber
+  if (trimmed === 'whisper' || trimmed === 'parakeet' || trimmed === 'canary') return trimmed
+  return defaultSettings.transcriber
 }
 
 function normalizeRequestMode(value: unknown): string {
@@ -183,6 +192,7 @@ export const defaultSettings: Settings = {
   extendedLogging: false,
   hoverPrompt:
     'Plain text only (no Markdown). Summarize the linked page concisely in 1-2 sentences; aim for 100-200 characters.',
+  transcriber: '',
   model: 'auto',
   length: 'xl',
   language: 'auto',
@@ -247,6 +257,7 @@ export async function loadSettings(): Promise<Settings> {
         ? raw.extendedLogging
         : defaultSettings.extendedLogging,
     hoverPrompt: normalizeHoverPrompt(raw.hoverPrompt),
+    transcriber: normalizeTranscriber(raw.transcriber),
     maxChars: typeof raw.maxChars === 'number' ? raw.maxChars : defaultSettings.maxChars,
     requestMode: normalizeRequestMode(raw.requestMode),
     firecrawlMode: normalizeFirecrawlMode(raw.firecrawlMode),
@@ -281,6 +292,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
       timeout: normalizeTimeout(settings.timeout),
       retries: normalizeRetries(settings.retries),
       maxOutputTokens: normalizeMaxOutputTokens(settings.maxOutputTokens),
+      transcriber: normalizeTranscriber(settings.transcriber),
       fontFamily: normalizeFontFamily(settings.fontFamily),
       lineHeight: normalizeLineHeight(settings.lineHeight),
       colorScheme: normalizeColorScheme(settings.colorScheme),

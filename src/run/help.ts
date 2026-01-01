@@ -14,6 +14,14 @@ export function buildProgram() {
     )
     .addOption(
       new Option(
+        '--transcriber <name>',
+        'Audio transcription backend: whisper (default), parakeet, canary'
+      )
+        .choices(['whisper', 'parakeet', 'canary'])
+        .default('whisper')
+    )
+    .addOption(
+      new Option(
         '--video-mode <mode>',
         'Video handling: auto (prefer video understanding if supported), transcript, understand.'
       )
@@ -156,6 +164,9 @@ ${heading('Env Vars')}
   SUMMARIZE_MODEL       optional (overrides default model selection)
   FIRECRAWL_API_KEY     optional website extraction fallback (Markdown)
   APIFY_API_TOKEN       optional YouTube transcript fallback
+  SUMMARIZE_TRANSCRIBER optional (whisper, parakeet, canary)
+  SUMMARIZE_ONNX_PARAKEET_CMD optional (command to run Parakeet ONNX transcription; use {input} placeholder)
+  SUMMARIZE_ONNX_CANARY_CMD optional (command to run Canary ONNX transcription; use {input} placeholder)
   YT_DLP_PATH           optional path to yt-dlp binary for audio extraction
   FAL_KEY               optional FAL AI API key for audio transcription
 

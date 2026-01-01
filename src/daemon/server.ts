@@ -372,6 +372,7 @@ export async function runDaemonServer({
           timeout: obj.timeout,
           retries: obj.retries,
           maxOutputTokens: obj.maxOutputTokens,
+          transcriber: obj.transcriber,
         })
         const diagnostics = parseDiagnostics(obj.diagnostics)
         const includeContentLog = daemonLogger.enabled && diagnostics.includeContent

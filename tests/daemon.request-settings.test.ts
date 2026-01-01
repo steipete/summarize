@@ -56,4 +56,12 @@ describe('run/run-settings overrides', () => {
     const overridesOff = resolveRunOverrides({ timestamps: 'off' })
     expect(overridesOff.transcriptTimestamps).toBe(false)
   })
+
+  it('parses transcriber override', () => {
+    const overrides = resolveRunOverrides({ transcriber: 'Parakeet ' })
+    expect(overrides.transcriber).toBe('parakeet')
+
+    const invalid = resolveRunOverrides({ transcriber: 'gpt-4o' })
+    expect(invalid.transcriber).toBeNull()
+  })
 })

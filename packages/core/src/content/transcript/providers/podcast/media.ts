@@ -11,6 +11,7 @@ import {
   transcribeMediaFileWithWhisper,
   transcribeMediaWithWhisper,
 } from '../../../../transcription/whisper.js'
+import { resolveOnnxCommand } from '../../../../transcription/onnx-cli.js'
 import type { ProviderFetchOptions } from '../../types.js'
 import { MAX_REMOTE_MEDIA_BYTES, TRANSCRIPTION_TIMEOUT_MS } from './constants.js'
 
@@ -50,8 +51,12 @@ export async function transcribeMediaUrl({
   } | null
 }): Promise<TranscriptionResult> {
   const canChunk = await isFfmpegAvailable()
-  const providerHint: 'cpp' | 'openai' | 'fal' | 'openai->fal' | 'unknown' =
-    (await isWhisperCppReady())
+  const preferredTranscriber = process.env.SUMMARIZE_TRANSCRIBER?.trim().toLowerCase()
+  const wantsOnnx = preferredTranscriber === 'parakeet' || preferredTranscriber === 'canary'
+  const onnxReady = wantsOnnx && resolveOnnxCommand(preferredTranscriber as 'parakeet' | 'canary')
+  const providerHint: 'cpp' | 'onnx' | 'openai' | 'fal' | 'openai->fal' | 'unknown' = onnxReady
+    ? 'onnx'
+    : (await isWhisperCppReady())
       ? 'cpp'
       : openaiApiKey && falApiKey
         ? 'openai->fal'

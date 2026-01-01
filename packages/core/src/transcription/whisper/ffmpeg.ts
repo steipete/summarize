@@ -126,6 +126,35 @@ export async function runFfmpegTranscodeToMp3({
   })
 }
 
+export async function runFfmpegTranscodeToWav({
+  inputPath,
+  outputPath,
+}: {
+  inputPath: string
+  outputPath: string
+}): Promise<void> {
+  await runFfmpegTranscode({
+    inputPath,
+    outputPath,
+    mode: 'strict',
+    args: [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-i',
+      inputPath,
+      '-vn',
+      '-ac',
+      '1',
+      '-ar',
+      '16000',
+      '-sample_fmt',
+      's16',
+      outputPath,
+    ],
+  })
+}
+
 export async function runFfmpegTranscodeToMp3Lenient({
   inputPath,
   outputPath,
@@ -215,4 +244,17 @@ async function runFfmpegTranscode({
       )
     })
   })
+}
+
+export async function transcodeBytesToWav(bytes: Uint8Array): Promise<Uint8Array> {
+  const inputPath = join(tmpdir(), `summarize-whisper-input-${randomUUID()}.bin`)
+  const outputPath = join(tmpdir(), `summarize-whisper-output-${randomUUID()}.wav`)
+  try {
+    await fs.writeFile(inputPath, bytes)
+    await runFfmpegTranscodeToWav({ inputPath, outputPath })
+    return new Uint8Array(await fs.readFile(outputPath))
+  } finally {
+    await fs.unlink(inputPath).catch(() => {})
+    await fs.unlink(outputPath).catch(() => {})
+  }
 }

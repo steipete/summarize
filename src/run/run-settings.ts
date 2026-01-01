@@ -42,6 +42,7 @@ export type RunOverrides = {
   timeoutMs: number | null
   retries: number | null
   maxOutputTokensArg: number | null
+  transcriber: 'whisper' | 'parakeet' | 'canary' | null
 }
 
 export type RunOverridesInput = {
@@ -54,6 +55,7 @@ export type RunOverridesInput = {
   timeout?: unknown
   retries?: unknown
   maxOutputTokens?: unknown
+  transcriber?: unknown
 }
 
 export function resolveSummaryLength(
@@ -179,6 +181,7 @@ export function resolveRunOverrides(
     timeout,
     retries,
     maxOutputTokens,
+    transcriber,
   }: RunOverridesInput,
   options: { strict?: boolean } = {}
 ): RunOverrides {
@@ -250,6 +253,18 @@ export function resolveRunOverrides(
     }
   })()
 
+  const transcriberOverride = (() => {
+    if (typeof transcriber !== 'string') return null
+    const normalized = transcriber.trim().toLowerCase()
+    if (normalized === 'whisper' || normalized === 'parakeet' || normalized === 'canary') {
+      return normalized
+    }
+    if (strict) {
+      throw new Error(`Unsupported transcriber: ${transcriber}`)
+    }
+    return null
+  })()
+
   return {
     firecrawlMode: parseOptionalSetting(firecrawl, parseFirecrawlMode, strict),
     markdownMode: parseOptionalSetting(markdownMode, parseMarkdownMode, strict),
@@ -260,5 +275,6 @@ export function resolveRunOverrides(
     timeoutMs,
     retries: retriesResolved,
     maxOutputTokensArg,
+    transcriber: transcriberOverride,
   }
 }

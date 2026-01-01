@@ -76,7 +76,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     stdoutSink,
   } = args
 
-  const envForRun = env
+  const envForRun: Record<string, string | undefined> = { ...env }
 
   const languageExplicitlySet = typeof languageRaw === 'string' && Boolean(languageRaw.trim())
 
@@ -91,6 +91,10 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     timeoutMs: null,
     retries: null,
     maxOutputTokensArg: null,
+    transcriber: null,
+  }
+  if (resolvedOverrides.transcriber) {
+    envForRun.SUMMARIZE_TRANSCRIBER = resolvedOverrides.transcriber
   }
   const videoModeOverride = resolvedOverrides.videoMode
   const resolvedFormat = format === 'markdown' ? 'markdown' : 'text'

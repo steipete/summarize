@@ -291,6 +291,16 @@
                   </select>
                 </label>
                 <label>
+                  <span>Transcriber</span>
+                  <span class="subtitle">Override the daemon's default (whisper, parakeet, canary).</span>
+                  <select id="transcriber">
+                    <option value="">Default (daemon config)</option>
+                    <option value="whisper">Whisper (default)</option>
+                    <option value="parakeet">NVIDIA Parakeet</option>
+                    <option value="canary">NVIDIA Canary</option>
+                  </select>
+                </label>
+                <label>
                   <span>Timeout</span>
                   <span class="subtitle">Overall timeout for fetch + model (e.g. 90s, 2m).</span>
                   <input id="timeout" type="text" placeholder="2m" />
