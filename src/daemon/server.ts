@@ -77,6 +77,9 @@ function resolveOriginHeader(req: http.IncomingMessage): string | null {
 
 function corsHeaders(origin: string | null): Record<string, string> {
   if (!origin) return {}
+  // Echo back any origin (chrome-extension://, moz-extension://, etc.)
+  // Security is enforced via Bearer token auth, not origin checking.
+  // This permissive CORS setup supports both Chrome and Firefox extensions.
   return {
     'access-control-allow-origin': origin,
     'access-control-allow-credentials': 'true',
