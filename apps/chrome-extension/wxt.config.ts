@@ -24,6 +24,10 @@ const gitHash = (() => {
 
 export default defineConfig({
   srcDir: 'src',
+  // Support multi-browser builds via BROWSER env var
+  // Both Chrome and Firefox use MV3 (Firefox 109+)
+  browser: process.env.BROWSER === 'firefox' ? 'firefox' : 'chrome',
+  manifestVersion: 3,
   vite: () => ({
     define: {
       __SUMMARIZE_VERSION__: JSON.stringify(extensionVersion),
@@ -38,48 +42,66 @@ export default defineConfig({
       },
     },
   }),
-  manifest: {
-    name: 'Summarize',
-    description: 'Summarize what you see. Articles, threads, YouTube, podcasts — anything.',
-    homepage_url: 'https://summarize.sh',
-    version: extensionVersion,
-    icons: {
-      16: 'assets/icon-16.png',
-      32: 'assets/icon-32.png',
-      48: 'assets/icon-48.png',
-      128: 'assets/icon-128.png',
-    },
-    permissions: [
-      'tabs',
-      'activeTab',
-      'storage',
-      'sidePanel',
-      'webNavigation',
-      'scripting',
-      'windows',
-      'debugger',
-    ],
-    optional_permissions: ['userScripts'],
-    host_permissions: ['<all_urls>', 'http://127.0.0.1:8787/*'],
-    background: {
-      type: 'module',
-      service_worker: 'background.js',
-    },
-    action: {
-      default_title: 'Summarize',
-      default_icon: {
+  manifest: ({browser, manifestVersion}) => {
+    const baseManifest = {
+      name: 'Summarize',
+      description: 'Summarize what you see. Articles, threads, YouTube, podcasts — anything.',
+      homepage_url: 'https://summarize.sh',
+      version: extensionVersion,
+      icons: {
         16: 'assets/icon-16.png',
         32: 'assets/icon-32.png',
         48: 'assets/icon-48.png',
         128: 'assets/icon-128.png',
       },
-    },
-    side_panel: {
-      default_path: 'sidepanel/index.html',
-    },
-    options_ui: {
-      page: 'options/index.html',
-      open_in_tab: true,
-    },
+      permissions: [
+        'tabs',
+        'activeTab',
+        'storage',
+        ...(browser === 'firefox' ? [] : ['sidePanel' as const]),
+        'webNavigation',
+        'scripting',
+        'windows',
+        'debugger',
+      ],
+      optional_permissions: ['userScripts'],
+      host_permissions: ['<all_urls>', 'http://127.0.0.1:8787/*'],
+      background: {
+        type: 'module',
+        service_worker: 'background.js',
+      },
+      action: {
+        default_title: 'Summarize',
+        default_icon: {
+          16: 'assets/icon-16.png',
+          32: 'assets/icon-32.png',
+          48: 'assets/icon-48.png',
+          128: 'assets/icon-128.png',
+        },
+      },
+      ...(browser === 'firefox' ? {
+        // Firefox uses sidebar_action API (Firefox 131+)
+        sidebar_action: {
+          default_panel: 'sidepanel/index.html',
+          default_title: 'Summarize',
+          default_icon: {
+            16: 'assets/icon-16.png',
+            32: 'assets/icon-32.png',
+            48: 'assets/icon-48.png',
+            128: 'assets/icon-128.png',
+          },
+        },
+      } : {
+        // Chrome uses side_panel API
+        side_panel: {
+          default_path: 'sidepanel/index.html',
+        },
+      }),
+      options_ui: {
+        page: 'options/index.html',
+        open_in_tab: true,
+      },
+    }
+    return baseManifest
   },
 })

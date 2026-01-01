@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 
 const headless = process.env.HEADLESS !== '0'
 
@@ -13,4 +13,15 @@ export default defineConfig({
     headless,
     viewport: { width: 1280, height: 800 },
   },
+  // Multi-browser testing support
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+  ],
 })

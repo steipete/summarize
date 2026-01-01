@@ -5,9 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "wxt dev",
+    "dev:firefox": "BROWSER=firefox wxt dev",
     "build": "wxt build",
+    "build:firefox": "BROWSER=firefox wxt build",
+    "build:all": "pnpm build && pnpm build:firefox",
     "lint": "wxt lint",
-    "test:e2e": "env -u NO_COLOR pnpm build && env -u NO_COLOR playwright test -c playwright.config.ts"
+    "test": "pnpm test:e2e",
+    "test:e2e": "env -u NO_COLOR pnpm build && env -u NO_COLOR playwright test -c playwright.config.ts",
+    "test:chrome": "env -u NO_COLOR pnpm build && env -u NO_COLOR playwright test -c playwright.config.ts --grep '@chrome|@cross-browser'",
+    "test:firefox": "env -u NO_COLOR pnpm build:firefox && env -u NO_COLOR playwright test -c playwright.config.ts --project=firefox --grep '@firefox|@cross-browser'"
   },
   "dependencies": {
     "@mozilla/readability": "0.6.0",
