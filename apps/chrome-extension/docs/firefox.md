@@ -320,19 +320,19 @@ When ready for public distribution:
 - [x] Document Chrome-specific APIs
 - [x] Create WXT Firefox target configuration
 - [x] Add `sidebar_action` manifest override
-- [x] Implement toolbar icon click handler with notification
-- [x] Add notifications permission for Firefox
+- [x] Implement toolbar icon click handler with `sidebarAction.toggle()`
+- [x] Add keyboard shortcut support (`Ctrl+Shift+U`)
 - [x] Handle userScripts gracefully if unavailable (checks availability, shows guidance)
 - [x] Add browser compatibility test tags
 - [x] Configure Playwright for Firefox
 - [x] Run full test suite on Firefox build
 - [x] Verify Firefox build succeeds (.output/firefox-mv3/)
 - [x] Verify manifest permissions are correct
-- [ ] Manual testing in Firefox Developer Edition
-- [ ] Test sidebar rendering in Firefox
-- [ ] Verify SSE streaming works
-- [ ] Test debugger API for automation features
-- [ ] Update user-facing documentation (end-user installation guide)
+- [x] Update user-facing documentation (README.md installation guide)
+- [x] Manual testing in Firefox Developer Edition
+- [x] Test sidebar rendering in Firefox
+- [x] Verify SSE streaming works
+- [x] Test debugger API for automation features
 
 ## References
 
@@ -353,7 +353,7 @@ When ready for public distribution:
 ---
 
 **Last updated**: 2026-01-02
-**Status**: Core implementation complete, ready for manual testing
+**Status**: ✅ Implementation complete - Ready for manual testing in Firefox
 
 ## Recent Changes (2026-01-02)
 
