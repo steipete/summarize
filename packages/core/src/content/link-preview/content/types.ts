@@ -25,6 +25,7 @@ export interface FetchLinkContentOptions {
   firecrawl?: FirecrawlMode
   format?: ContentFormat
   markdownMode?: MarkdownMode
+  fileMtime?: number | null
 }
 
 export interface TranscriptResolution {

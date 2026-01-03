@@ -301,9 +301,13 @@ export async function createCacheStore({
     })
 
   const transcriptCache: TranscriptCache = {
-    get: async ({ url }) => {
+    get: async ({ url, fileMtime }) => {
       const now = Date.now()
-      const key = getTranscriptKey(url)
+      const key = buildTranscriptCacheKey({
+        url,
+        namespace: normalizedTranscriptNamespace,
+        fileMtime,
+      })
       const row = readEntry('transcript', key, now)
       if (!row) return null
       const expired = typeof row.expires_at === 'number' && row.expires_at <= now
@@ -430,14 +434,17 @@ export function buildTranscriptCacheKey({
   url,
   namespace,
   formatVersion,
+  fileMtime,
 }: {
   url: string
   namespace: string | null
   formatVersion?: number
+  fileMtime?: number | null
 }): string {
   return hashJson({
     url,
     namespace,
+    fileMtime: fileMtime ?? null,
     formatVersion: formatVersion ?? CACHE_FORMAT_VERSION,
   })
 }

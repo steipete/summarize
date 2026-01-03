@@ -98,6 +98,7 @@ URLs or local paths:
 ```bash
 summarize "/path/to/file.pdf" --model google/gemini-3-flash-preview
 summarize "https://example.com/report.pdf" --model google/gemini-3-flash-preview
+summarize "/path/to/audio.mp3"
 ```
 
 YouTube (supports `youtube.com` and `youtu.be`):
@@ -155,7 +156,7 @@ Best effort and provider-dependent. These usually work well:
   - Text-like files are inlined into the prompt for better provider compatibility.
 - PDFs: `application/pdf` (provider support varies; Google is the most reliable here)
 - Images: `image/jpeg`, `image/png`, `image/webp`, `image/gif`
-- Audio/Video: `audio/*`, `video/*` (when supported by the model)
+- Audio/Video: `audio/*`, `video/*` (local audio files MP3/WAV/M4A/OGG/FLAC automatically transcribed, when supported by the model)
 
 Notes:
 

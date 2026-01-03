@@ -20,6 +20,7 @@ import {
 } from './cli-preflight.js'
 import { parseCliProviderArg } from './env.js'
 import { handleFileInput, handleUrlAsset } from './flows/asset/input.js'
+import { summarizeMediaFile as summarizeMediaFileImpl } from './flows/asset/media.js'
 import { summarizeAsset as summarizeAssetFlow } from './flows/asset/summary.js'
 import { runUrlFlow } from './flows/url/flow.js'
 import { attachRichHelp, buildProgram } from './help.js'
@@ -532,6 +533,9 @@ export async function runCli(
     const summarizeAsset = (args: Parameters<typeof summarizeAssetFlow>[1]) =>
       summarizeAssetFlow(assetSummaryContext, args)
 
+    const summarizeMediaFile = (args: Parameters<typeof summarizeMediaFileImpl>[1]) =>
+      summarizeMediaFileImpl(assetSummaryContext, args)
+
     const assetInputContext = {
       env,
       stderr,
@@ -539,6 +543,7 @@ export async function runCli(
       timeoutMs,
       trackedFetch,
       summarizeAsset,
+      summarizeMediaFile,
       setClearProgressBeforeStdout,
       clearProgressIfCurrent,
     }

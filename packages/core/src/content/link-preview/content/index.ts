@@ -59,6 +59,7 @@ export async function fetchLinkContent(
   const firecrawlMode = resolveFirecrawlMode(options)
   const markdownRequested = (options?.format ?? 'text') === 'markdown'
   const markdownMode: MarkdownMode = options?.markdownMode ?? 'auto'
+  const fileMtime = options?.fileMtime ?? null
 
   const canUseFirecrawl =
     firecrawlMode !== 'off' && deps.scrapeWithFirecrawl !== null && !isYouTubeUrl(url)
@@ -76,6 +77,7 @@ export async function fetchLinkContent(
       mediaTranscriptMode,
       transcriptTimestamps,
       cacheMode,
+      fileMtime,
     })
     if (!transcriptResolution.text) {
       const notes = transcriptResolution.diagnostics?.notes
@@ -135,6 +137,7 @@ export async function fetchLinkContent(
       mediaTranscriptMode,
       transcriptTimestamps,
       cacheMode,
+      fileMtime,
     })
     if (!transcriptResolution.text) {
       const notes = transcriptResolution.diagnostics?.notes
@@ -187,6 +190,7 @@ export async function fetchLinkContent(
       mediaTranscriptMode,
       transcriptTimestamps,
       cacheMode,
+      fileMtime,
     })
     if (!transcriptResolution.text) {
       const notes = transcriptResolution.diagnostics?.notes
@@ -323,6 +327,7 @@ export async function fetchLinkContent(
             mediaTranscriptMode,
             transcriptTimestamps,
             cacheMode,
+            fileMtime,
           })
       const transcriptDiagnostics = ensureTranscriptDiagnostics(
         transcriptResolution,

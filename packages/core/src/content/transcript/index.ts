@@ -34,6 +34,7 @@ interface ResolveTranscriptOptions {
   mediaTranscriptMode?: ProviderFetchOptions['mediaTranscriptMode']
   transcriptTimestamps?: ProviderFetchOptions['transcriptTimestamps']
   cacheMode?: CacheMode
+  fileMtime?: number | null
 }
 
 const PROVIDERS: ProviderModule[] = [
@@ -52,6 +53,7 @@ export const resolveTranscriptForLink = async (
     mediaTranscriptMode,
     transcriptTimestamps,
     cacheMode: providedCacheMode,
+    fileMtime,
   }: ResolveTranscriptOptions = {}
 ): Promise<TranscriptResolution> => {
   const normalizedUrl = url.trim()
@@ -70,6 +72,7 @@ export const resolveTranscriptForLink = async (
     cacheMode,
     transcriptCache: deps.transcriptCache,
     transcriptTimestamps: Boolean(transcriptTimestamps),
+    fileMtime: fileMtime ?? null,
   })
 
   const diagnostics: TranscriptDiagnostics = {
@@ -155,6 +158,7 @@ export const resolveTranscriptForLink = async (
       resourceKey,
       result: providerResult,
       transcriptCache: deps.transcriptCache,
+      fileMtime,
     })
   }
 

@@ -11,6 +11,13 @@ import { startSpinner } from '../../../tty/spinner.js'
 import { assertAssetMediaTypeSupported } from '../../attachments.js'
 import type { SummarizeAssetArgs } from './summary.js'
 
+/**
+ * Check if a media type is audio
+ */
+function isAudioMediaType(mediaType: string): boolean {
+  return mediaType.toLowerCase().startsWith('audio/')
+}
+
 export type AssetInputContext = {
   env: Record<string, string | undefined>
   stderr: NodeJS.WritableStream
@@ -18,6 +25,7 @@ export type AssetInputContext = {
   timeoutMs: number
   trackedFetch: typeof fetch
   summarizeAsset: (args: SummarizeAssetArgs) => Promise<void>
+  summarizeMediaFile?: (args: SummarizeAssetArgs) => Promise<void>
   setClearProgressBeforeStdout: (fn: (() => void) | null) => void
   clearProgressIfCurrent: (fn: () => void) => void
 }
@@ -64,13 +72,20 @@ export async function handleFileInput(
   try {
     const loaded = await loadLocalAsset({ filePath: inputTarget.filePath })
     assertAssetMediaTypeSupported({ attachment: loaded.attachment, sizeLabel })
+
+    // Check if this is an audio file
+    const isAudio = isAudioMediaType(loaded.attachment.mediaType)
+    const handler = isAudio && ctx.summarizeMediaFile ? ctx.summarizeMediaFile : ctx.summarizeAsset
+
     if (ctx.progressEnabled) {
       const mt = loaded.attachment.mediaType
       const name = loaded.attachment.filename
       const details = sizeLabel ? `${mt}, ${sizeLabel}` : mt
-      spinner.setText(name ? `Summarizing ${name} (${details})…` : `Summarizing ${details}…`)
+      const action = isAudio ? 'Transcribing' : 'Summarizing'
+      spinner.setText(name ? `${action} ${name} (${details})…` : `${action} ${details}…`)
     }
-    await ctx.summarizeAsset({
+
+    await handler({
       sourceKind: 'file',
       sourceLabel: loaded.sourceLabel,
       attachment: loaded.attachment,
