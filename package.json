@@ -63,7 +63,7 @@
     }
   },
   "dependencies": {
-    "@mariozechner/pi-ai": "^0.30.2",
+    "@mariozechner/pi-ai": "^0.37.8",
     "@steipete/summarize-core": "workspace:*",
     "commander": "^14.0.2",
     "file-type": "^21.2.0",
