@@ -7,6 +7,7 @@ Fast summaries from URLs, files, and media. Works in the terminal, a Chrome Side
 - URLs, files, and media: web pages, PDFs, images, audio/video, YouTube, podcasts, RSS.
 - Real extraction pipeline: fetch -> clean -> Markdown (readability + markitdown), Firecrawl fallback when blocked.
 - Transcript-first media flow: published transcripts when available, Whisper fallback when not.
+- YouTube slide screenshots from the browser (Side Panel).
 - Streaming TTY output with Markdown rendering (markdansi) and scrollback-safe formatting.
 - Local, paid, and free models: OpenAI-compatible local endpoints, paid providers, plus an OpenRouter free preset.
 - Output modes: Markdown/text, JSON diagnostics, extract-only, metrics, timing, and cost estimates.
@@ -16,6 +17,10 @@ Fast summaries from URLs, files, and media. Works in the terminal, a Chrome Side
 ![Summarize extension screenshot](docs/assets/summarize-extension.png)
 
 One-click summarizer for the current tab. Chrome Side Panel + Firefox Sidebar + local daemon for streaming Markdown.
+
+YouTube slide screenshots (from the browser):
+
+![Summarize YouTube slide screenshots](docs/assets/youtube-slides.png)
 
 Quickstart:
 
