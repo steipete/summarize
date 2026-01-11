@@ -15,6 +15,7 @@ The cross-browser infrastructure does not affect Chrome test results.
 
 **Status:** Infrastructure complete, but Playwright's Firefox driver has limitations.
 CI only runs Chromium E2E; Firefox tests are skipped unless explicitly enabled.
+CI only runs Chromium E2E; Firefox tests are skipped unless explicitly enabled.
 
 **What Works:**
 - ✅ Browser detection (`getBrowserFromProject`)
@@ -106,9 +107,12 @@ But this requires separate test infrastructure.
 
 ### Option 3: Skip Firefox Tests Until Playwright Improves
 ```typescript
-if (browser === 'firefox') {
-  test.skip(true, 'Firefox blocked by Playwright limitations')
-}
+const allowFirefoxExtensionTests = process.env.ALLOW_FIREFOX_EXTENSION_TESTS === '1'
+
+test.skip(
+  ({ browserName }) => browserName === 'firefox' && !allowFirefoxExtensionTests,
+  'Firefox extension tests are blocked by Playwright limitations. Set ALLOW_FIREFOX_EXTENSION_TESTS=1 to run.'
+)
 ```
 
 ## Test Results Summary

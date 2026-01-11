@@ -95,32 +95,3 @@ jobs:
         run: |
           xvfb-run --auto-servernum --server-args='-screen 0 1280x720x24' \
             pnpm -C apps/chrome-extension exec playwright test -c playwright.config.ts --project=chromium
-
-  extension-e2e-firefox:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - name: Enable Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10.25.0 --activate
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Build Firefox Extension
-        run: pnpm -C apps/chrome-extension build:firefox
-
-      - name: Install Playwright (Firefox)
-        run: pnpm -C apps/chrome-extension exec playwright install --with-deps firefox
-
-      - name: Extension E2E (Firefox)
-        run: |
-          xvfb-run --auto-servernum --server-args='-screen 0 1280x720x24' \
-            pnpm -C apps/chrome-extension exec playwright test -c playwright.config.ts --project=firefox
