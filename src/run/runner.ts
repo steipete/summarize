@@ -19,7 +19,9 @@ import {
   handleRefreshFreeRequest,
 } from './cli-preflight.js'
 import { parseCliProviderArg } from './env.js'
-import { handleFileInput, handleUrlAsset } from './flows/asset/input.js'
+import { extractAssetContent } from './flows/asset/extract.js'
+import { handleFileInput, withUrlAsset } from './flows/asset/input.js'
+import { outputExtractedAsset } from './flows/asset/output.js'
 import { summarizeAsset as summarizeAssetFlow } from './flows/asset/summary.js'
 import { runUrlFlow } from './flows/url/flow.js'
 import { attachRichHelp, buildProgram } from './help.js'
@@ -554,34 +556,10 @@ export async function runCli(
 
     const assetInputContext = {
       env,
-      envForRun,
-      stdout,
       stderr,
       progressEnabled,
       timeoutMs,
       trackedFetch,
-      execFileImpl,
-      preprocessMode,
-      format,
-      extractMode,
-      plain,
-      json,
-      metricsEnabled,
-      metricsDetailed,
-      shouldComputeReport,
-      runStartedAtMs,
-      verboseColor,
-      buildReport,
-      estimateCostUsd,
-      apiStatus: {
-        xaiApiKey,
-        apiKey,
-        openrouterApiKey,
-        apifyToken,
-        firecrawlConfigured,
-        googleConfigured,
-        anthropicConfigured,
-      },
       summarizeAsset,
       setClearProgressBeforeStdout,
       clearProgressIfCurrent,
@@ -590,7 +568,65 @@ export async function runCli(
     if (await handleFileInput(assetInputContext, inputTarget)) {
       return
     }
-    if (url && (await handleUrlAsset(assetInputContext, url, isYoutubeUrl))) {
+    if (
+      url &&
+      (await withUrlAsset(assetInputContext, url, isYoutubeUrl, async ({ loaded, spinner }) => {
+        if (extractMode) {
+          if (progressEnabled) spinner.setText('Extracting text…')
+          const extracted = await extractAssetContent({
+            ctx: {
+              env,
+              envForRun,
+              execFileImpl,
+              timeoutMs,
+              preprocessMode,
+            },
+            attachment: loaded.attachment,
+          })
+          await outputExtractedAsset({
+            io: { env, envForRun, stdout, stderr },
+            flags: {
+              timeoutMs,
+              preprocessMode,
+              format,
+              plain,
+              json,
+              metricsEnabled,
+              metricsDetailed,
+              shouldComputeReport,
+              runStartedAtMs,
+              verboseColor,
+            },
+            hooks: { clearProgressForStdout, buildReport, estimateCostUsd },
+            url,
+            sourceLabel: loaded.sourceLabel,
+            attachment: loaded.attachment,
+            extracted,
+            apiStatus: {
+              xaiApiKey,
+              apiKey,
+              openrouterApiKey,
+              apifyToken,
+              firecrawlConfigured,
+              googleConfigured,
+              anthropicConfigured,
+            },
+          })
+          return
+        }
+
+        if (progressEnabled) spinner.setText('Summarizing…')
+        await summarizeAsset({
+          sourceKind: 'asset-url',
+          sourceLabel: loaded.sourceLabel,
+          attachment: loaded.attachment,
+          onModelChosen: (modelId) => {
+            if (!progressEnabled) return
+            spinner.setText(`Summarizing (model: ${modelId})…`)
+          },
+        })
+      }))
+    ) {
       return
     }
 

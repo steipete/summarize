@@ -8,8 +8,8 @@ import {
   shouldMarkitdownConvertMediaType,
 } from '../../attachments.js'
 import { MAX_TEXT_BYTES_DEFAULT } from '../../constants.js'
-import type { ExtractDiagnosticsForFinishLine } from '../../finish-line.js'
 import { hasUvxCli } from '../../env.js'
+import type { ExtractDiagnosticsForFinishLine } from '../../finish-line.js'
 import { withUvxTip } from '../../tips.js'
 
 export type AssetExtractContext = {
@@ -18,14 +18,11 @@ export type AssetExtractContext = {
   execFileImpl: ExecFileFn
   timeoutMs: number
   preprocessMode: 'off' | 'auto' | 'always'
-  format: 'text' | 'markdown'
 }
 
 export type AssetExtractResult = {
   content: string
-  format: 'text' | 'markdown'
   diagnostics: ExtractDiagnosticsForFinishLine
-  footerParts: string[]
 }
 
 const baseDiagnostics: ExtractDiagnosticsForFinishLine = {
@@ -51,9 +48,7 @@ export async function extractAssetContent({
     }
     return {
       content: textContent.content,
-      format: ctx.format,
       diagnostics: baseDiagnostics,
-      footerParts: [],
     }
   }
 
@@ -110,11 +105,9 @@ export async function extractAssetContent({
 
   return {
     content: markdown,
-    format: ctx.format,
     diagnostics: {
       ...baseDiagnostics,
       markdown: { used: true, provider: null, notes: 'markitdown' },
     },
-    footerParts: [`markitdown(${attachment.mediaType})`],
   }
 }

@@ -1,57 +1,32 @@
 import fs from 'node:fs/promises'
-import { render as renderMarkdownAnsi } from 'markdansi'
 import {
   classifyUrl,
   type InputTarget,
   loadLocalAsset,
   loadRemoteAsset,
 } from '../../../content/asset.js'
-import type { RunMetricsReport } from '../../../costs.js'
-import type { ExecFileFn } from '../../../markitdown.js'
 import { formatBytes } from '../../../tty/format.js'
 import { startOscProgress } from '../../../tty/osc-progress.js'
 import { startSpinner } from '../../../tty/spinner.js'
 import { assertAssetMediaTypeSupported } from '../../attachments.js'
-import { buildExtractFinishLabel, writeFinishLine } from '../../finish-line.js'
-import { prepareMarkdownForTerminal } from '../../markdown.js'
-import { isRichTty, markdownRenderWidth, supportsColor } from '../../terminal.js'
-import { extractAssetContent } from './extract.js'
 import type { SummarizeAssetArgs } from './summary.js'
 
 export type AssetInputContext = {
   env: Record<string, string | undefined>
-  envForRun: Record<string, string | undefined>
-  stdout: NodeJS.WritableStream
   stderr: NodeJS.WritableStream
   progressEnabled: boolean
   timeoutMs: number
   trackedFetch: typeof fetch
-  execFileImpl: ExecFileFn
-  preprocessMode: 'off' | 'auto' | 'always'
-  format: 'text' | 'markdown'
-  extractMode: boolean
-  plain: boolean
-  json: boolean
-  metricsEnabled: boolean
-  metricsDetailed: boolean
-  shouldComputeReport: boolean
-  runStartedAtMs: number
-  verboseColor: boolean
-  buildReport: () => Promise<RunMetricsReport>
-  estimateCostUsd: () => Promise<number | null>
-  apiStatus: {
-    xaiApiKey: string | null
-    apiKey: string | null
-    openrouterApiKey: string | null
-    apifyToken: string | null
-    firecrawlConfigured: boolean
-    googleConfigured: boolean
-    anthropicConfigured: boolean
-  }
   summarizeAsset: (args: SummarizeAssetArgs) => Promise<void>
   setClearProgressBeforeStdout: (fn: (() => void) | null) => void
   clearProgressIfCurrent: (fn: () => void) => void
 }
+
+type UrlAssetHandler = (args: {
+  loaded: Awaited<ReturnType<typeof loadRemoteAsset>>
+  spinner: ReturnType<typeof startSpinner>
+  clearProgressLine: () => void
+}) => Promise<void>
 
 export async function handleFileInput(
   ctx: AssetInputContext,
@@ -124,10 +99,11 @@ export async function handleFileInput(
   }
 }
 
-export async function handleUrlAsset(
+export async function withUrlAsset(
   ctx: AssetInputContext,
   url: string,
-  isYoutubeUrl: boolean
+  isYoutubeUrl: boolean,
+  handler: UrlAssetHandler
 ): Promise<boolean> {
   if (!url || isYoutubeUrl) return false
 
@@ -171,115 +147,20 @@ export async function handleUrlAsset(
 
     if (!loaded) return false
     assertAssetMediaTypeSupported({ attachment: loaded.attachment, sizeLabel: null })
-    if (ctx.extractMode) {
-      if (ctx.progressEnabled) spinner.setText('Extracting text…')
-      const extracted = await extractAssetContent({
-        ctx: {
-          env: ctx.env,
-          envForRun: ctx.envForRun,
-          execFileImpl: ctx.execFileImpl,
-          timeoutMs: ctx.timeoutMs,
-          preprocessMode: ctx.preprocessMode,
-          format: ctx.format,
-        },
-        attachment: loaded.attachment,
-      })
+    await handler({ loaded, spinner, clearProgressLine })
+    return true
+  } finally {
+    ctx.clearProgressIfCurrent(clearProgressLine)
+    stopProgress()
+  }
+}
 
-      clearProgressLine()
-
-      if (ctx.json) {
-        const finishReport = ctx.shouldComputeReport ? await ctx.buildReport() : null
-        const payload = {
-          input: {
-            kind: 'asset-url' as const,
-            url,
-            timeoutMs: ctx.timeoutMs,
-            format: ctx.format,
-            preprocess: ctx.preprocessMode,
-          },
-          env: {
-            hasXaiKey: Boolean(ctx.apiStatus.xaiApiKey),
-            hasOpenAIKey: Boolean(ctx.apiStatus.apiKey),
-            hasOpenRouterKey: Boolean(ctx.apiStatus.openrouterApiKey),
-            hasApifyToken: Boolean(ctx.apiStatus.apifyToken),
-            hasFirecrawlKey: ctx.apiStatus.firecrawlConfigured,
-            hasGoogleKey: ctx.apiStatus.googleConfigured,
-            hasAnthropicKey: ctx.apiStatus.anthropicConfigured,
-          },
-          extracted: {
-            kind: 'asset' as const,
-            source: loaded.sourceLabel,
-            mediaType: loaded.attachment.mediaType,
-            filename: loaded.attachment.filename,
-            content: extracted.content,
-          },
-          prompt: null,
-          llm: null,
-          metrics: ctx.metricsEnabled ? finishReport : null,
-          summary: null,
-        }
-        ctx.stdout.write(`${JSON.stringify(payload, null, 2)}\n`)
-        if (ctx.metricsEnabled && finishReport) {
-          const costUsd = await ctx.estimateCostUsd()
-          const finishLabel = buildExtractFinishLabel({
-            extracted: { diagnostics: extracted.diagnostics },
-            format: extracted.format,
-            markdownMode: 'off',
-            hasMarkdownLlmCall: false,
-          })
-          writeFinishLine({
-            stderr: ctx.stderr,
-            elapsedMs: Date.now() - ctx.runStartedAtMs,
-            label: finishLabel,
-            model: null,
-            report: finishReport,
-            costUsd,
-            detailed: ctx.metricsDetailed,
-            extraParts: null,
-            color: ctx.verboseColor,
-          })
-        }
-      } else {
-        const rendered =
-          extracted.format === 'markdown' && !ctx.plain && isRichTty(ctx.stdout)
-            ? renderMarkdownAnsi(prepareMarkdownForTerminal(extracted.content), {
-                width: markdownRenderWidth(ctx.stdout, ctx.env),
-                wrap: true,
-                color: supportsColor(ctx.stdout, ctx.envForRun),
-                hyperlinks: true,
-              })
-            : extracted.content
-        ctx.stdout.write(rendered)
-        if (!rendered.endsWith('\n')) {
-          ctx.stdout.write('\n')
-        }
-        if (ctx.metricsEnabled) {
-          const finishReport = ctx.shouldComputeReport ? await ctx.buildReport() : null
-          if (finishReport) {
-            const costUsd = await ctx.estimateCostUsd()
-            const finishLabel = buildExtractFinishLabel({
-              extracted: { diagnostics: extracted.diagnostics },
-              format: extracted.format,
-              markdownMode: 'off',
-              hasMarkdownLlmCall: false,
-            })
-            writeFinishLine({
-              stderr: ctx.stderr,
-              elapsedMs: Date.now() - ctx.runStartedAtMs,
-              label: finishLabel,
-              model: null,
-              report: finishReport,
-              costUsd,
-              detailed: ctx.metricsDetailed,
-              extraParts: null,
-              color: ctx.verboseColor,
-            })
-          }
-        }
-      }
-      return true
-    }
-
+export async function handleUrlAsset(
+  ctx: AssetInputContext,
+  url: string,
+  isYoutubeUrl: boolean
+): Promise<boolean> {
+  return withUrlAsset(ctx, url, isYoutubeUrl, async ({ loaded, spinner }) => {
     if (ctx.progressEnabled) spinner.setText('Summarizing…')
     await ctx.summarizeAsset({
       sourceKind: 'asset-url',
@@ -290,9 +171,5 @@ export async function handleUrlAsset(
         spinner.setText(`Summarizing (model: ${modelId})…`)
       },
     })
-    return true
-  } finally {
-    ctx.clearProgressIfCurrent(clearProgressLine)
-    stopProgress()
-  }
+  })
 }
