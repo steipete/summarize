@@ -262,6 +262,7 @@ export async function runUrlFlow({
           writeVerbose(io.stderr, flags.verbose, 'cache hit slides', flags.verboseColor)
           slidesResult = cached
           ctx.hooks.onSlidesExtracted?.(slidesResult)
+          ctx.hooks.onSlidesProgress?.('Slides: cached')
           return
         }
         writeVerbose(io.stderr, flags.verbose, 'cache miss slides', flags.verboseColor)
@@ -270,6 +271,7 @@ export async function runUrlFlow({
         spinner.setText('Extracting slides…')
         oscProgress.setIndeterminate('Extracting slides')
       }
+      ctx.hooks.onSlidesProgress?.('Slides: extracting…')
       slidesResult = await extractSlidesForSource({
         source,
         settings: flags.slides,
@@ -278,9 +280,15 @@ export async function runUrlFlow({
         ytDlpPath: model.apiStatus.ytDlpPath,
         ffmpegPath: null,
         tesseractPath: null,
+        hooks: {
+          onSlideChunk: (chunk) => ctx.hooks.onSlideChunk?.(chunk),
+        },
       })
       if (slidesResult) {
         ctx.hooks.onSlidesExtracted?.(slidesResult)
+        ctx.hooks.onSlidesProgress?.(
+          `Slides: done (${slidesResult.slides.length.toString()} slides)`
+        )
         if (slidesCacheKey && cacheStore) {
           cacheStore.setJson('slides', slidesCacheKey, slidesResult, cacheState.ttlMs)
           writeVerbose(io.stderr, flags.verbose, 'cache write slides', flags.verboseColor)

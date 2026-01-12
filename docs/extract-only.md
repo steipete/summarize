@@ -13,6 +13,7 @@ Deprecated alias: `--extract-only`.
 ## Notes
 
 - No summarization LLM call happens in this mode.
+- No extraction cap is applied. Use `--max-extract-characters <count>` to cap output if needed.
 - `--format md` may still convert HTML to Markdown (depending on `--markdown-mode` and available tools).
 - `--length` is intended for summarization guidance; extraction prints full content.
 - `--timestamps` keeps the plain transcript text but also exposes `transcriptSegments` and `transcriptTimedText` (JSON) and prints a timed transcript block when available.

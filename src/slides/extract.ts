@@ -8,7 +8,13 @@ import type { ExtractedLinkContent } from '../content/index.js'
 import { extractYouTubeVideoId, isDirectMediaUrl, isYouTubeUrl } from '../content/index.js'
 import { resolveExecutableInPath } from '../run/env.js'
 import type { SlideSettings } from './settings.js'
-import type { SlideAutoTune, SlideExtractionResult, SlideImage, SlideSource } from './types.js'
+import type {
+  SlideAutoTune,
+  SlideExtractionResult,
+  SlideImage,
+  SlideSource,
+  SlideSourceKind,
+} from './types.js'
 
 const FFMPEG_TIMEOUT_FALLBACK_MS = 300_000
 const slidesLocks = new Map<string, Promise<void>>()
@@ -91,6 +97,18 @@ type ExtractSlidesArgs = {
   ytDlpPath: string | null
   ffmpegPath: string | null
   tesseractPath: string | null
+  hooks?: {
+    onSlideChunk?: (chunk: {
+      slide: SlideImage
+      meta: {
+        slidesDir: string
+        sourceUrl: string
+        sourceId: string
+        sourceKind: SlideSourceKind
+        ocrAvailable: boolean
+      }
+    }) => void
+  } | null
 }
 
 export function resolveSlideSource({
@@ -144,6 +162,7 @@ export async function extractSlidesForSource({
   ytDlpPath,
   ffmpegPath,
   tesseractPath,
+  hooks,
 }: ExtractSlidesArgs): Promise<SlideExtractionResult> {
   const slidesDir = path.join(settings.outputDir, source.sourceId)
   return withSlidesLock(slidesDir, async () => {
@@ -429,6 +448,21 @@ export async function extractSlidesForSource({
         const elapsedMs = logSlidesTiming('ocr done', ocrStartedAt)
         if (renamedSlides.length > 0) {
           logSlides(`ocr avgMsPerSlide=${Math.round(elapsedMs / renamedSlides.length)}`)
+        }
+      }
+
+      if (hooks?.onSlideChunk) {
+        for (const slide of slidesWithOcr) {
+          hooks.onSlideChunk({
+            slide,
+            meta: {
+              slidesDir,
+              sourceUrl: source.url,
+              sourceId: source.sourceId,
+              sourceKind: source.kind,
+              ocrAvailable,
+            },
+          })
         }
       }
 

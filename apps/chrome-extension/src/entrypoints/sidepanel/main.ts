@@ -1,4 +1,5 @@
 import type { AssistantMessage, Message, ToolCall, ToolResultMessage } from '@mariozechner/pi-ai'
+import { shouldPreferUrlMode } from '@steipete/summarize-core/content/url'
 import MarkdownIt from 'markdown-it'
 
 import { parseSseEvent } from '../../../../../src/shared/sse-events.js'
@@ -151,6 +152,9 @@ const automationNoticeMessageEl = byId<HTMLDivElement>('automationNoticeMessage'
 const automationNoticeActionBtn = byId<HTMLButtonElement>('automationNoticeAction')
 const chatJumpBtn = byId<HTMLButtonElement>('chatJump')
 const chatQueueEl = byId<HTMLDivElement>('chatQueue')
+const inlineErrorEl = byId<HTMLDivElement>('inlineError')
+const inlineErrorMessageEl = byId<HTMLDivElement>('inlineErrorMessage')
+const inlineErrorCloseBtn = byId<HTMLButtonElement>('inlineErrorClose')
 
 const md = new MarkdownIt({
   html: false,
@@ -545,15 +549,17 @@ renderEl.addEventListener('click', (event) => {
 })
 
 const summarizeControl = mountSummarizeControl(summarizeControlRoot, {
-  value: inputMode,
-  mediaAvailable: false,
+  mode: inputMode,
   slidesEnabled: slidesEnabledValue,
+  mediaAvailable: false,
   videoLabel: 'Video',
-  onValueChange: (value) => {
-    inputMode = value
+  busy: false,
+  onChange: (value) => {
+    inputMode = value.mode
+    inputModeOverride = value.mode
+    slidesEnabledValue = value.slides
   },
   onSummarize: () => sendSummarize(),
-  onToggleSlides: () => {},
 })
 
 function normalizeQueueText(input: string) {
@@ -626,13 +632,42 @@ const clearError = () => {
   errorEl.classList.add('hidden')
 }
 
+let inlineErrorToken = 0
+const showInlineError = (message: string) => {
+  inlineErrorToken += 1
+  inlineErrorEl.dataset.token = String(inlineErrorToken)
+  if (!message || message.trim().length === 0) {
+    clearInlineError()
+    return
+  }
+  inlineErrorMessageEl.textContent = message
+  inlineErrorEl.classList.remove('hidden')
+  inlineErrorEl.style.display = ''
+}
+
+const clearInlineError = () => {
+  inlineErrorMessageEl.textContent = ''
+  inlineErrorEl.classList.add('hidden')
+  inlineErrorEl.style.display = 'none'
+}
+
 const setPhase = (phase: PanelPhase, opts?: { error?: string | null }) => {
   panelState.phase = phase
   panelState.error = phase === 'error' ? (opts?.error ?? panelState.error) : null
   if (phase === 'error') {
-    showError(panelState.error ?? 'Something went wrong.')
+    const message =
+      panelState.error && panelState.error.trim().length > 0
+        ? panelState.error
+        : 'Something went wrong.'
+    showError(message)
+    showInlineError(message)
+    setSlidesBusy(false)
   } else {
     clearError()
+    clearInlineError()
+    if (phase !== 'streaming' && phase !== 'connecting') {
+      setSlidesBusy(false)
+    }
   }
   if (phase !== 'connecting' && phase !== 'streaming') {
     headerController.stopProgress()
@@ -895,6 +930,16 @@ function renderMarkdown(markdown: string) {
     a.setAttribute('rel', 'noopener noreferrer')
   }
   renderInlineSlides(renderEl)
+}
+
+let slidesBusy = false
+function setSlidesBusy(next: boolean) {
+  if (slidesBusy === next) return
+  slidesBusy = next
+  const toggle = document.querySelector<HTMLButtonElement>('.summarizeSlideToggle')
+  if (toggle) {
+    toggle.dataset.busy = next ? 'true' : 'false'
+  }
 }
 
 const slideModal = (() => {
@@ -1735,7 +1780,12 @@ const streamController = createStreamController({
     panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null }
     lastStreamError = null
   },
-  onStatus: (text) => headerController.setStatus(text),
+  onStatus: (text) => {
+    headerController.setStatus(text)
+    const trimmed = text.trim()
+    const isSlideStatus = /^slides?/i.test(trimmed)
+    setSlidesBusy(isSlideStatus)
+  },
   onBaseTitle: (text) => headerController.setBaseTitle(text),
   onBaseSubtitle: (text) => headerController.setBaseSubtitle(text),
   onPhaseChange: (phase) => {
@@ -1766,6 +1816,7 @@ const streamController = createStreamController({
   },
   onSlides: (data) => {
     panelState.slides = data
+    setSlidesBusy(false)
     if (panelState.summaryMarkdown) {
       renderInlineSlides(renderEl)
     }
@@ -2075,10 +2126,12 @@ function maybeShowSetup(state: UiState): boolean {
 function updateControls(state: UiState) {
   const nextTabId = state.tab.id ?? null
   const nextTabUrl = state.tab.url ?? null
+  const preferUrlMode = nextTabUrl ? shouldPreferUrlMode(nextTabUrl) : false
   const tabChanged = nextTabId !== activeTabId
   const urlChanged =
     !tabChanged && nextTabUrl && activeTabUrl && !urlsMatch(nextTabUrl, activeTabUrl)
-  const nextMediaAvailable = Boolean(state.media && (state.media.hasVideo || state.media.hasAudio))
+  const nextMediaAvailable =
+    Boolean(state.media && (state.media.hasVideo || state.media.hasAudio)) || preferUrlMode
   const nextVideoLabel = state.media?.hasAudio && !state.media.hasVideo ? 'Audio' : 'Video'
 
   if (tabChanged) {
@@ -2098,7 +2151,7 @@ function updateControls(state: UiState) {
     } else {
       void migrateChatHistory(previousTabId, nextTabId)
     }
-    inputMode = 'page'
+    inputMode = preferUrlMode ? 'video' : 'page'
     inputModeOverride = null
   } else if (urlChanged) {
     activeTabUrl = nextTabUrl
@@ -2111,6 +2164,10 @@ function updateControls(state: UiState) {
     ) {
       void clearChatHistoryForActiveTab()
       resetChatState()
+    }
+    if (!inputModeOverride) {
+      inputMode = preferUrlMode ? 'video' : 'page'
+      inputModeOverride = null
     }
     if (
       chatEnabledValue &&
@@ -2182,6 +2239,9 @@ function updateControls(state: UiState) {
   if (!isStreaming() || state.status.trim().length > 0) {
     headerController.setStatus(state.status)
   }
+  if (state.status.trim().length === 0 && panelState.phase !== 'error') {
+    clearInlineError()
+  }
   if (!nextMediaAvailable) {
     inputMode = 'page'
     inputModeOverride = null
@@ -2189,41 +2249,43 @@ function updateControls(state: UiState) {
   mediaAvailable = nextMediaAvailable
   const updateSummarizeControl = () => {
     summarizeControl.update({
-      value: inputMode,
-      mediaAvailable,
+      mode: inputMode,
       slidesEnabled: slidesEnabledValue,
+      mediaAvailable,
+      busy: slidesBusy,
       videoLabel: nextVideoLabel,
       pageWords: state.stats.pageWords,
       videoDurationSeconds: state.stats.videoDurationSeconds,
-      onValueChange: (value) => {
-        inputMode = value
-        inputModeOverride = value
-        if (autoValue) {
-          sendSummarize({ refresh: true })
-        }
-      },
-      onSummarize: () => sendSummarize(),
-      onToggleSlides: () => {
+      onChange: (value) => {
         void (async () => {
-          const nextValue = !slidesEnabledValue
-          if (nextValue) {
+          const prevSlides = slidesEnabledValue
+          const prevMode = inputMode
+          if (value.slides && !slidesEnabledValue) {
             const tools = await fetchSlideTools()
             if (!tools.ok) {
               const missing = tools.missing.join(', ')
               showSlideNotice(
                 `Slide extraction requires ${missing}. Install and restart the daemon.`
               )
+              updateSummarizeControl()
               return
             }
             hideSlideNotice()
-          } else {
+          } else if (!value.slides) {
             hideSlideNotice()
+            setSlidesBusy(false)
           }
-          slidesEnabledValue = nextValue
+          inputMode = value.mode
+          inputModeOverride = value.mode
+          slidesEnabledValue = value.slides
           await patchSettings({ slidesEnabled: slidesEnabledValue })
+          if (autoValue && (value.mode !== prevMode || value.slides !== prevSlides)) {
+            sendSummarize({ refresh: true })
+          }
           updateSummarizeControl()
         })()
       },
+      onSummarize: () => sendSummarize(),
     })
   }
   updateSummarizeControl()
@@ -2247,15 +2309,23 @@ function handleBgMessage(msg: BgToPanel) {
       }
       return
     case 'run:error':
-      headerController.setStatus(`Error: ${msg.message}`)
-      setPhase('error', { error: msg.message })
+      headerController.setStatus(
+        `Error: ${msg.message && msg.message.trim().length > 0 ? msg.message : 'Something went wrong.'}`
+      )
+      setPhase('error', {
+        error: msg.message && msg.message.trim().length > 0 ? msg.message : 'Something went wrong.',
+      })
       if (panelState.chatStreaming) {
         finishStreamingMessage()
       }
       return
     case 'run:start': {
+      setPhase('connecting')
       lastAction = 'summarize'
       window.clearTimeout(autoKickTimer)
+      if (slidesEnabledValue && mediaAvailable) {
+        setSlidesBusy(true)
+      }
       if (panelState.chatStreaming) {
         finishStreamingMessage()
       }
@@ -2607,6 +2677,7 @@ function sendChatMessage() {
 
 refreshBtn.addEventListener('click', () => sendSummarize({ refresh: true }))
 errorRetryBtn.addEventListener('click', () => retryLastAction())
+inlineErrorCloseBtn.addEventListener('click', () => clearInlineError())
 drawerToggleBtn.addEventListener('click', () => toggleDrawer())
 advancedBtn.addEventListener('click', () => {
   void send({ type: 'panel:openOptions' })

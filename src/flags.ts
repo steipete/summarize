@@ -133,6 +133,30 @@ export function parseLengthArg(raw: string): LengthArg {
   return { kind: 'chars', maxCharacters }
 }
 
+export function parseMaxExtractCharactersArg(raw: string | undefined): number | null {
+  if (raw === undefined || raw === null) return null
+  const normalized = raw.trim().toLowerCase()
+  if (!normalized) return null
+  const match = COUNT_PATTERN.exec(normalized)
+  if (!match?.groups) {
+    throw new Error(`Unsupported --max-extract-characters: ${raw}`)
+  }
+  const numeric = Number(match.groups.value)
+  if (!Number.isFinite(numeric)) {
+    throw new Error(`Unsupported --max-extract-characters: ${raw}`)
+  }
+  if (numeric <= 0) return null
+  const unit = match.groups.unit?.toLowerCase() ?? null
+  const multiplier = unit === 'k' ? 1000 : unit === 'm' ? 1_000_000 : 1
+  const maxCharacters = Math.floor(numeric * multiplier)
+  if (maxCharacters < MIN_LENGTH_CHARS) {
+    throw new Error(
+      `Unsupported --max-extract-characters: ${raw} (minimum ${MIN_LENGTH_CHARS} chars)`
+    )
+  }
+  return maxCharacters
+}
+
 export function parseMaxOutputTokensArg(raw: string | undefined): number | null {
   if (raw === undefined || raw === null) return null
   const normalized = raw.trim().toLowerCase()

@@ -6,6 +6,7 @@ import {
   parseFirecrawlMode,
   parseLengthArg,
   parseMarkdownMode,
+  parseMaxExtractCharactersArg,
   parseMaxOutputTokensArg,
   parseMetricsMode,
   parsePreprocessMode,
@@ -94,5 +95,14 @@ describe('cli flag parsing', () => {
     expect(() => parseMaxOutputTokensArg('1')).toThrow(/Unsupported --max-output-tokens/)
     expect(() => parseMaxOutputTokensArg('15')).toThrow(/Unsupported --max-output-tokens/)
     expect(() => parseMaxOutputTokensArg('nope')).toThrow(/Unsupported --max-output-tokens/)
+  })
+
+  it('parses --max-extract-characters', () => {
+    expect(parseMaxExtractCharactersArg(undefined)).toBeNull()
+    expect(parseMaxExtractCharactersArg('0')).toBeNull()
+    expect(parseMaxExtractCharactersArg('8k')).toBe(8000)
+    expect(parseMaxExtractCharactersArg('15000')).toBe(15000)
+    expect(() => parseMaxExtractCharactersArg('5')).toThrow(/max-extract-characters/)
+    expect(() => parseMaxExtractCharactersArg('nope')).toThrow(/max-extract-characters/)
   })
 })

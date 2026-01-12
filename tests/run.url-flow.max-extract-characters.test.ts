@@ -61,4 +61,56 @@ describe('runUrlFlow', () => {
     expect(extracted?.content.length).toBeLessThanOrEqual(9_000)
     expect(extracted?.truncated).toBe(true)
   }, 20_000)
+
+  it('leaves extract-only uncapped when no max is provided', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'summarize-url-flow-maxchars-'))
+    const url = 'https://example.com/long'
+    const content = `<!doctype html><html><head><title>Long</title></head><body><article>${'lorem ipsum '.repeat(3000)}</article></body></html>`
+
+    const fetchImpl: typeof fetch = async (input) => {
+      const requestUrl =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      if (requestUrl !== url) {
+        throw new Error(`unexpected fetch: ${requestUrl}`)
+      }
+      return new Response(content, {
+        status: 200,
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      })
+    }
+
+    const cache: CacheState = {
+      mode: 'bypass',
+      store: null,
+      ttlMs: 0,
+      maxBytes: 0,
+      path: null,
+    }
+
+    let extracted: ExtractedLinkContent | null = null
+    const ctx = createDaemonUrlFlowContext({
+      env: { HOME: root, OPENAI_API_KEY: 'test' },
+      fetchImpl,
+      cache,
+      modelOverride: 'openai/gpt-5.2',
+      promptOverride: null,
+      lengthRaw: 'xl',
+      languageRaw: 'auto',
+      maxExtractCharacters: null,
+      extractOnly: true,
+      hooks: {
+        onExtracted: (value) => {
+          extracted = value
+        },
+      },
+      runStartedAtMs: Date.now(),
+      stdoutSink: { writeChunk: () => {} },
+    })
+
+    await runUrlFlow({ ctx, url, isYoutubeUrl: false })
+
+    expect(extracted).not.toBeNull()
+    expect(extracted?.truncated).toBe(false)
+    expect(extracted?.content.length).toBeGreaterThan(20_000)
+  }, 20_000)
 })

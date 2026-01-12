@@ -93,6 +93,12 @@ When the page contains embedded audio/video, the Summarize button gains a dropdo
 
 See `docs/media.md` for detection and transcript rules.
 
+## Slides (Side Panel)
+
+- The slides toggle lights up on media-friendly URLs (YouTube/watch|shorts, youtu.be, direct media) or when the page reports video/audio. Defaults to Video on those pages.
+- Turning slides **on** now refreshes the current summary and requests slide extraction + OCR (`yt-dlp`, `ffmpeg`, `tesseract` for OCR). Missing tools surface a footer notice with install instructions; restart the daemon after installing.
+- Slides stay off elsewhere and the toggle is disabled on non-media pages.
+
 ## SPA Navigation
 
 - Background listens to `chrome.webNavigation.onHistoryStateUpdated` (SPA route changes) and `tabs.onUpdated` (page loads).
@@ -164,7 +170,7 @@ Problem: daemon must be secured; extension must discover and pair with it.
     - `language?: string` (e.g. `auto`, `en`, `de`, `pt-BR`)
     - `prompt?: string` (custom instruction prefix)
     - `mode?: "auto" | "page" | "url"` (default: `"auto"`)
-    - `maxCharacters?: number | null` (caps URL-mode extraction before summarization)
+    - `maxCharacters?: number | null` (caps URL-mode extraction before summarization; ignored for extract-only unless explicitly provided)
     - `format?: "text" | "markdown"` (default: `"text"`)
     - `markdownMode?: "readability" | "auto" | "llm" | "off"` (only when `format: "markdown"`)
     - `preprocess?: "off" | "auto" | "always"` (markitdown/HTML preprocess)

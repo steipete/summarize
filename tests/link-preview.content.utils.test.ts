@@ -58,7 +58,7 @@ describe('link-preview content utils', () => {
 
     expect(resolveMaxCharacters()).toBeNull()
     expect(resolveMaxCharacters({ maxCharacters: -1 })).toBeNull()
-    expect(resolveMaxCharacters({ maxCharacters: 1 })).toBe(DEFAULT_MAX_CONTENT_CHARACTERS)
+    expect(resolveMaxCharacters({ maxCharacters: 1 })).toBe(1)
     expect(resolveMaxCharacters({ maxCharacters: DEFAULT_MAX_CONTENT_CHARACTERS })).toBe(
       DEFAULT_MAX_CONTENT_CHARACTERS
     )

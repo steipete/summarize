@@ -454,10 +454,14 @@ export async function runDaemonServer({
         const modeRaw = typeof obj.mode === 'string' ? obj.mode.trim().toLowerCase() : ''
         const mode: DaemonRequestedMode =
           modeRaw === 'url' ? 'url' : modeRaw === 'page' ? 'page' : 'auto'
+        const maxCharactersCandidate =
+          typeof obj.maxExtractCharacters === 'number' && Number.isFinite(obj.maxExtractCharacters)
+            ? obj.maxExtractCharacters
+            : typeof obj.maxCharacters === 'number' && Number.isFinite(obj.maxCharacters)
+              ? obj.maxCharacters
+              : null
         const maxCharacters =
-          typeof obj.maxCharacters === 'number' && Number.isFinite(obj.maxCharacters)
-            ? obj.maxCharacters
-            : null
+          maxCharactersCandidate && maxCharactersCandidate > 0 ? maxCharactersCandidate : null
         const formatRaw = typeof obj.format === 'string' ? obj.format.trim().toLowerCase() : ''
         const format: 'text' | 'markdown' =
           formatRaw === 'markdown' || formatRaw === 'md' ? 'markdown' : 'text'
@@ -647,6 +651,7 @@ export async function runDaemonServer({
             const requestCache: CacheState = noCache
               ? { ...cacheState, mode: 'bypass' as const, store: null }
               : cacheState
+            let liveSlides: SlideExtractionResult | null = null
 
             const runWithMode = async (resolved: 'url' | 'page') => {
               if (resolved === 'url' && slideLogState.requested) {
@@ -689,6 +694,46 @@ export async function runDaemonServer({
                           session,
                           buildSlidesPayload({
                             slides,
+                            port,
+                            sessionId: session.id,
+                          }),
+                          onSessionEvent
+                        )
+                      },
+                      onSlideChunk: (chunk) => {
+                        const { slide, meta } = chunk
+                        if (
+                          slide == null ||
+                          !meta?.slidesDir ||
+                          !meta.sourceUrl ||
+                          !meta.sourceId ||
+                          !meta.sourceKind
+                        ) {
+                          return
+                        }
+                        if (!liveSlides) {
+                          liveSlides = {
+                            sourceUrl: meta.sourceUrl,
+                            sourceKind: meta.sourceKind,
+                            sourceId: meta.sourceId,
+                            slidesDir: meta.slidesDir,
+                            sceneThreshold: 0,
+                            autoTuneThreshold: 0,
+                            autoTune: false,
+                            maxSlides: 0,
+                            minSlideDuration: 0,
+                            ocrRequested: meta.ocrAvailable,
+                            ocrAvailable: meta.ocrAvailable,
+                            slides: [],
+                            warnings: [],
+                          }
+                        }
+                        liveSlides.slides.push(slide)
+                        session.slides = liveSlides
+                        emitSlides(
+                          session,
+                          buildSlidesPayload({
+                            slides: liveSlides,
                             port,
                             sessionId: session.id,
                           }),

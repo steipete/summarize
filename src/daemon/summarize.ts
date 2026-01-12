@@ -6,7 +6,12 @@ import { deriveExtractionUi } from '../run/flows/url/extract.js'
 import { runUrlFlow } from '../run/flows/url/flow.js'
 import { buildUrlPrompt, summarizeExtractedUrl } from '../run/flows/url/summary.js'
 import type { RunOverrides } from '../run/run-settings.js'
-import type { SlideExtractionResult, SlideSettings } from '../slides/index.js'
+import type {
+  SlideExtractionResult,
+  SlideImage,
+  SlideSettings,
+  SlideSourceKind,
+} from '../slides/index.js'
 
 import { createDaemonUrlFlowContext } from './flow-context.js'
 import { countWords, estimateDurationSecondsFromWords, formatInputSummary } from './meta.js'
@@ -315,6 +320,16 @@ export async function streamSummaryForUrl({
   hooks?: {
     onExtracted?: ((extracted: ExtractedLinkContent) => void) | null
     onSlidesExtracted?: ((slides: SlideExtractionResult) => void) | null
+    onSlideChunk?: (chunk: {
+      slide: SlideImage
+      meta: {
+        slidesDir: string
+        sourceUrl: string
+        sourceId: string
+        sourceKind: SlideSourceKind
+        ocrAvailable: boolean
+      }
+    }) => void
   } | null
 }): Promise<{ usedModel: string; metrics: VisiblePageMetrics }> {
   const startedAt = Date.now()
@@ -350,6 +365,11 @@ export async function streamSummaryForUrl({
       },
       onSlidesExtracted: (result) => {
         hooks?.onSlidesExtracted?.(result)
+      },
+      onSlideChunk: hooks?.onSlideChunk ?? null,
+      onSlidesProgress: (text) => {
+        const trimmed = typeof text === 'string' ? text.trim() : ''
+        if (trimmed) writeStatus?.(trimmed)
       },
       onLinkPreviewProgress: (event) => {
         const msg = formatProgress(event)

@@ -73,6 +73,11 @@ export function buildProgram() {
       'xl'
     )
     .option(
+      '--max-extract-characters <count>',
+      'Maximum characters to print in --extract (default: unlimited).',
+      undefined
+    )
+    .option(
       '--language, --lang <language>',
       'Output language: auto (match source), en, de, english, german, ... (default: auto; configurable in ~/.summarize/config.json via output.language)',
       undefined

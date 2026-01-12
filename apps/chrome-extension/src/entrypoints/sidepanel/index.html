@@ -138,6 +138,12 @@
         Jump to latest
       </button>
       <div id="chatQueue" class="chatQueue isHidden" aria-live="polite"></div>
+      <div id="inlineError" class="inlineError hidden" role="alert">
+        <div class="inlineError__text" id="inlineErrorMessage"></div>
+        <button id="inlineErrorClose" type="button" class="ghost inlineError__close" aria-label="Dismiss error">
+          ✕
+        </button>
+      </div>
       <div class="chatInputRow">
         <textarea id="chatInput" class="chatInput" placeholder="Ask about this page..." rows="1"></textarea>
         <button id="chatSend" type="button" class="ghost chatSendBtn" aria-label="Send">

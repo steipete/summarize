@@ -31,15 +31,15 @@ type SidepanelLengthPickerProps = {
 }
 
 type SummarizeControlProps = {
-  value: 'page' | 'video'
-  mediaAvailable: boolean
+  mode: 'page' | 'video'
   slidesEnabled: boolean
+  mediaAvailable: boolean
+  busy?: boolean
   videoLabel?: string
   pageWords?: number | null
   videoDurationSeconds?: number | null
-  onValueChange: (value: 'page' | 'video') => void
+  onChange: (value: { mode: 'page' | 'video'; slides: boolean }) => void
   onSummarize: () => void
-  onToggleSlides: () => void
 }
 
 const lengthPresets = ['short', 'medium', 'long', 'xl', 'xxl', '20k']
@@ -494,54 +494,34 @@ function SidepanelLengthPicker(props: SidepanelLengthPickerProps) {
 }
 
 function SummarizeControl(props: SummarizeControlProps) {
-  const slideToggle = (
-    <button
-      type="button"
-      className="ghost summarizeSlideToggle"
-      aria-pressed={props.slidesEnabled}
-      data-active={props.slidesEnabled ? 'true' : 'false'}
-      disabled={!props.mediaAvailable}
-      title={props.mediaAvailable ? 'Extract slides' : 'Slides available on videos only'}
-      onClick={(event) => {
-        event.preventDefault()
-        props.onToggleSlides()
-      }}
-    >
-      <svg viewBox="0 0 20 20" aria-hidden="true">
-        <rect x="3" y="4" width="14" height="10" rx="2" />
-        <path d="M6 7h8M6 10h8" />
-      </svg>
-    </button>
-  )
-
-  if (!props.mediaAvailable) {
-    return (
-      <div className="summarizeControlGroup">
-        <button type="button" className="ghost summarizeButton" onClick={props.onSummarize}>
-          Summarize
-        </button>
-        {slideToggle}
-      </div>
-    )
-  }
-
   const pageMeta = formatWordCount(props.pageWords)
   const videoMeta = formatDuration(props.videoDurationSeconds)
 
   const pageLabel = pageMeta ? `Page · ${pageMeta}` : 'Page'
   const videoLabel = `${props.videoLabel ?? 'Video'}${videoMeta ? ` · ${videoMeta}` : ''}`
+  const videoSlidesLabel = `${props.videoLabel ?? 'Video'} + Slides`
 
-  const sourceItems: SelectItem[] = [
-    { value: 'page', label: pageLabel },
-    { value: 'video', label: videoLabel },
-  ]
+  const sourceItems: SelectItem[] = props.mediaAvailable
+    ? [
+        { value: 'page', label: pageLabel },
+        { value: 'video', label: videoLabel },
+        { value: 'video-slides', label: videoSlidesLabel },
+      ]
+    : [{ value: 'page', label: pageLabel }]
   const portalRoot = getOverlayRoot()
   const api = useZagSelect({
     id: 'source',
     items: sourceItems,
-    value: props.value,
+    value: props.slidesEnabled ? ['video-slides'] : [props.mode],
     onValueChange: (next) => {
-      props.onValueChange(next === 'video' ? 'video' : 'page')
+      const raw = Array.isArray(next) ? next[0] : next
+      if (raw === 'video-slides') {
+        props.onChange({ mode: 'video', slides: true })
+      } else if (raw === 'video') {
+        props.onChange({ mode: 'video', slides: false })
+      } else {
+        props.onChange({ mode: 'page', slides: false })
+      }
     },
   })
 
@@ -621,6 +601,8 @@ function SummarizeControl(props: SummarizeControlProps) {
           type="button"
           className="ghost summarizeButton isDropdown"
           aria-label={`Summarize (${selectedLabel})`}
+          data-busy={props.busy ? 'true' : 'false'}
+          disabled={!props.mediaAvailable && props.mode === 'video'}
           {...rest}
           onClick={onClick}
           onPointerDown={onPointerDown}
@@ -631,7 +613,6 @@ function SummarizeControl(props: SummarizeControlProps) {
         {portalRoot ? createPortal(content, portalRoot) : content}
         <select className="pickerHidden" {...api.getHiddenSelectProps()} />
       </div>
-      {slideToggle}
     </div>
   )
 }

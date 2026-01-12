@@ -118,4 +118,21 @@ describe('chrome/daemon-payload', () => {
 
     expect(body.timestamps).toBe(true)
   })
+
+  it('requests slides when enabled', () => {
+    const body = buildSummarizeRequestBody({
+      extracted: {
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        title: 'Video',
+        text: '',
+        truncated: false,
+      },
+      settings: { ...defaultSettings, slidesEnabled: true },
+      slidesEnabled: true,
+    })
+
+    expect(body.slides).toBe(true)
+    expect(body.slidesOcr).toBe(true)
+    expect(body.mode).not.toBe('page')
+  })
 })

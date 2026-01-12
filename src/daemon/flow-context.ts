@@ -377,6 +377,8 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
       onModelChosen: hooks?.onModelChosen ?? null,
       onExtracted: hooks?.onExtracted ?? null,
       onSlidesExtracted: hooks?.onSlidesExtracted ?? null,
+      onSlidesProgress: hooks?.onSlidesProgress ?? null,
+      onSlideChunk: hooks?.onSlideChunk ?? null,
       onLinkPreviewProgress: hooks?.onLinkPreviewProgress ?? null,
       onSummaryCached: hooks?.onSummaryCached ?? null,
       setTranscriptionCost: metrics.setTranscriptionCost,

@@ -8,7 +8,12 @@ import {
   resolveCachePath,
 } from '../cache.js'
 import { loadSummarizeConfig } from '../config.js'
-import { parseExtractFormat, parseMetricsMode, parseStreamMode } from '../flags.js'
+import {
+  parseExtractFormat,
+  parseMaxExtractCharactersArg,
+  parseMetricsMode,
+  parseStreamMode,
+} from '../flags.js'
 import type { ExecFileFn } from '../markitdown.js'
 import type { FixedModelSpec } from '../model-spec.js'
 import { resolveSlideSettings } from '../slides/index.js'
@@ -260,6 +265,14 @@ export async function runCli(
     normalizeTranscriber(transcriberExplicitlySet ? program.opts().transcriber : envTranscriber) ??
     'whisper'
   ;(envForRun as Record<string, string | undefined>).SUMMARIZE_TRANSCRIBER = transcriber
+
+  const maxExtractCharacters = parseMaxExtractCharactersArg(
+    typeof program.opts().maxExtractCharacters === 'string'
+      ? (program.opts().maxExtractCharacters as string)
+      : program.opts().maxExtractCharacters != null
+        ? String(program.opts().maxExtractCharacters)
+        : undefined
+  )
 
   const isYoutubeUrl = typeof url === 'string' ? /youtube\.com|youtu\.be/i.test(url) : false
   const formatExplicitlySet = normalizedArgv.some(
@@ -667,7 +680,7 @@ export async function runCli(
       },
       flags: {
         timeoutMs,
-        maxExtractCharacters: null,
+        maxExtractCharacters: extractMode ? maxExtractCharacters : null,
         retries,
         format,
         markdownMode,
@@ -738,6 +751,8 @@ export async function runCli(
       hooks: {
         onModelChosen: null,
         onExtracted: null,
+        onSlidesExtracted: null,
+        onSlidesProgress: null,
         onLinkPreviewProgress: null,
         onSummaryCached: null,
         setTranscriptionCost,

@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url'
 
 declare const __dirname: string | undefined
 
-export const FALLBACK_VERSION = '0.9.1'
+
+export const FALLBACK_VERSION = '0.10.1'
 
 export function resolvePackageVersion(importMetaUrl?: string): string {
   const injected =
