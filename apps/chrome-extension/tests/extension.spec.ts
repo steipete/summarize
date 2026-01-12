@@ -113,6 +113,15 @@ function getOpenPickerList(page: Page) {
   return page.locator('#summarize-overlay-root .pickerContent:not([hidden]) .pickerList')
 }
 
+const showUi = process.env.SHOW_UI === '1'
+
+async function maybeBringToFront(page: Page) {
+  // On macOS, `page.bringToFront()` will un-minimize/focus the window even when we launch "hidden".
+  // Keep UI quiet by default; set SHOW_UI=1 when debugging.
+  if (!showUi) return
+  await page.bringToFront()
+}
+
 function getExtensionPath(browser: BrowserType): string {
   const outputDir = browser === 'firefox' ? 'firefox-mv3' : 'chrome-mv3'
   return path.resolve(__dirname, '..', '.output', outputDir)
@@ -825,7 +834,7 @@ test('sidepanel video selection forces transcript mode', async ({
     await contentPage.evaluate(() => {
       document.body.innerHTML = `<article><p>${'Hello '.repeat(40)}</p></article>`
     })
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await injectContentScript(harness, 'content-scripts/extract.js', 'https://example.com')
@@ -860,7 +869,7 @@ test('sidepanel video selection forces transcript mode', async ({
       })
     })
 
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
 
@@ -888,7 +897,7 @@ test('sidepanel shows an error when agent request fails', async ({
     await contentPage.evaluate(() => {
       document.body.innerHTML = `<article><p>Agent error test.</p></article>`
     })
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await injectContentScript(harness, 'content-scripts/extract.js', 'https://example.com')
@@ -905,7 +914,7 @@ test('sidepanel shows an error when agent request fails', async ({
 
     const page = await openExtensionPage(harness, 'sidepanel.html', '#title')
     await waitForPanelPort(page)
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await sendBgMessage(harness, {
@@ -941,7 +950,7 @@ test('sidepanel shows daemon upgrade hint when /v1/agent is missing', async ({
     await contentPage.evaluate(() => {
       document.body.innerHTML = `<article><p>Agent 404 test.</p></article>`
     })
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await injectContentScript(harness, 'content-scripts/extract.js', 'https://example.com')
@@ -958,7 +967,7 @@ test('sidepanel shows daemon upgrade hint when /v1/agent is missing', async ({
 
     const page = await openExtensionPage(harness, 'sidepanel.html', '#title')
     await waitForPanelPort(page)
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await sendBgMessage(harness, {
@@ -1022,7 +1031,7 @@ test('sidepanel chat queue sends next message after stream completes', async ({
     await contentPage.evaluate(() => {
       document.body.innerHTML = `<article><p>${'Hello '.repeat(40)}</p><p>More text for chat.</p></article>`
     })
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await injectContentScript(harness, 'content-scripts/extract.js', 'https://example.com')
@@ -1056,7 +1065,7 @@ test('sidepanel chat queue sends next message after stream completes', async ({
       }, text)
     }
 
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await sendChat('First question')
@@ -1087,7 +1096,7 @@ test('sidepanel chat queue drains messages after stream completes', async ({
     await contentPage.evaluate(() => {
       document.body.innerHTML = `<article><p>${'Hello '.repeat(40)}</p><p>More text for chat.</p></article>`
     })
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await injectContentScript(harness, 'content-scripts/extract.js', 'https://example.com')
@@ -1121,7 +1130,7 @@ test('sidepanel chat queue drains messages after stream completes', async ({
       }, text)
     }
 
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await sendChat('First question')
@@ -1171,7 +1180,7 @@ test('sidepanel clears chat on user navigation', async ({
     await contentPage.evaluate(() => {
       document.body.innerHTML = `<article><p>Chat nav test.</p></article>`
     })
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await injectContentScript(harness, 'content-scripts/extract.js', 'https://example.com')
@@ -1251,12 +1260,12 @@ test('auto summarize reruns after panel reopen', async ({
     const contentPage = await harness.context.newPage()
     await contentPage.goto('https://example.com', { waitUntil: 'domcontentloaded' })
     const activeUrl = contentPage.url()
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
 
     const panel = await openExtensionPage(harness, 'sidepanel.html', '#title')
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await mockDaemonSummarize(harness)
@@ -1266,7 +1275,7 @@ test('auto summarize reruns after panel reopen', async ({
 
     const callsBeforeClose = await getSummarizeCalls(harness)
     await sendPanelMessage(panel, { type: 'panel:closed' })
-    await contentPage.bringToFront()
+    await maybeBringToFront(contentPage)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
     await mockDaemonSummarize(harness)
@@ -1379,7 +1388,7 @@ test('hover tooltip proxies daemon calls via background (no page-origin localhos
     const page = await harness.context.newPage()
     trackErrors(page, harness.pageErrors, harness.consoleErrors)
     await page.goto('https://example.com', { waitUntil: 'domcontentloaded' })
-    await page.bringToFront()
+    await maybeBringToFront(page)
     await activateTabByUrl(harness, 'https://example.com')
     await waitForActiveTabUrl(harness, 'https://example.com')
 
