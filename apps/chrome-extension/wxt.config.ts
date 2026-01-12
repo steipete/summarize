@@ -64,7 +64,7 @@ export default defineConfig({
         'webNavigation',
         'scripting',
         'windows',
-        'debugger',
+        ...(browser === 'firefox' ? [] : ['debugger' as const]),
       ],
       optional_permissions: ['userScripts'],
       host_permissions: ['<all_urls>', 'http://127.0.0.1:8787/*'],
@@ -112,6 +112,9 @@ export default defineConfig({
               gecko: {
                 id: 'summarize-test@steipete.com',
                 strict_min_version: '131.0',
+                data_collection_permissions: {
+                  required: ['none'],
+                },
               },
             },
           }

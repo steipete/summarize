@@ -1,6 +1,6 @@
 {
   "name": "@steipete/summarize",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Link → clean text → summary.",
   "type": "module",
   "bin": {

@@ -4,6 +4,7 @@ Ship is **not done** until:
 - npm is published
 - GitHub Release has the Bun tarball asset
 - GitHub Release has the Chrome extension zip
+- GitHub Release has the Firefox extension zip
 - Homebrew tap is bumped + `brew install` verifies
 
 ## Version sources (keep in sync)
@@ -39,7 +40,13 @@ Ship is **not done** until:
    - `mkdir -p dist-chrome`
    - `zip -r dist-chrome/summarize-chrome-extension-v<ver>.zip apps/chrome-extension/.output/chrome-mv3`
 
-5) Tag
+5) Build Firefox extension artifact
+   - `pnpm -C apps/chrome-extension build:firefox`
+   - `mkdir -p dist-firefox`
+   - `cd apps/chrome-extension/.output/firefox-mv3 && zip -r -FS ../../../../dist-firefox/summarize-firefox-extension-v<ver>.zip . && cd -`
+   - Verify: `unzip -l dist-firefox/summarize-firefox-extension-v<ver>.zip | head -20`
+
+6) Tag
    ```bash
    ver="$(node -p 'require(\"./package.json\").version')"
    git tag -a "v${ver}" -m "v${ver}"
@@ -65,6 +72,7 @@ Ship is **not done** until:
    gh release create "v${ver}" \
      "dist-bun/summarize-macos-arm64-v${ver}.tar.gz" \
      "dist-chrome/summarize-chrome-extension-v${ver}.zip" \
+     "dist-firefox/summarize-firefox-extension-v${ver}.zip" \
      --title "v${ver}" \
      --notes-file "/tmp/summarize-v${ver}-notes.md"
    ```
@@ -151,3 +159,72 @@ Goal:
    brew install steipete/tap/summarize
    summarize --version
    ```
+
+## Firefox Extension (Self-Hosted via AMO)
+
+**Context**: This extension uses UUID-based extension ID `{284b5e44-952a-4aa3-8bd3-7ae89d741cde}` for team collaboration. The artifact is signed via Mozilla Add-ons (AMO) for self-distribution (not listed in AMO catalog).
+
+**Building the artifact**:
+```bash
+# Via release script (recommended)
+./scripts/release.sh firefox
+
+# Or manually
+pnpm -C apps/chrome-extension build:firefox
+mkdir -p dist-firefox
+cd apps/chrome-extension/.output/firefox-mv3 && \
+  zip -r -FS ../../../../dist-firefox/summarize-firefox-extension-v<ver>.zip . && \
+  cd -
+```
+
+**Verify artifact structure**:
+```bash
+# manifest.json must be at root level
+unzip -l dist-firefox/summarize-firefox-extension-v<ver>.zip | head -20
+
+# Verify UUID in manifest
+unzip -p dist-firefox/summarize-firefox-extension-v<ver>.zip manifest.json | \
+  python3 -m json.tool | grep -A 3 '"gecko"'
+
+# Test integrity
+unzip -t dist-firefox/summarize-firefox-extension-v<ver>.zip
+```
+
+**Sign via AMO (Self Distribution)**:
+1. Login: https://addons.mozilla.org/developers/
+2. Submit Add-on → **"On your own"** (self-distribution, not "On this site")
+3. Upload: `dist-firefox/summarize-firefox-extension-v<ver>.zip`
+4. Wait for automatic validation (~1-10 minutes, no manual review needed)
+5. Download signed XPI: `summarize-<ver>.xpi`
+
+**Install signed XPI**:
+```bash
+# Method 1: Drag & drop XPI into Firefox
+# Method 2: File → Open File (Cmd+O) → select XPI
+# Method 3: Open in Firefox: file:///path/to/summarize-<ver>.xpi
+```
+
+**Verify installation**:
+- Extension appears in `about:addons`
+- Sidebar: View → Sidebar → Summarize
+- Keyboard shortcut: `Cmd+Shift+U` (macOS) / `Ctrl+Shift+U` (Linux/Windows)
+
+**Managing co-authors** (after first upload):
+1. AMO Developer Hub → [Your Add-on] → Settings → Manage Authors
+2. Click "Add Author" → enter co-author's email
+3. Co-author accepts invitation via email
+4. Co-author can now upload updates (Developer or Owner role)
+
+**Updating**:
+1. Increment version in `package.json`
+2. Rebuild: `pnpm -C apps/chrome-extension build:firefox`
+3. Create new zip (same process as above)
+4. Upload to AMO for signing (self-distribution, same URL)
+5. Download new signed XPI
+6. Install in Firefox (replaces old version automatically)
+
+**Notes**:
+- Self-hosted extensions do NOT auto-update through AMO
+- For auto-updates: configure `update_url` in manifest (requires hosting update manifest)
+- For personal/team use: manual updates are simpler
+- Extension is NOT listed in AMO catalog (no reviews, no public stats)

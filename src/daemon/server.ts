@@ -14,8 +14,9 @@ import { encodeSseEvent, type SseEvent, type SseSlidesData } from '../shared/sse
 import type { SlideExtractionResult, SlideSettings } from '../slides/index.js'
 import { resolveSlideSettings } from '../slides/index.js'
 import { resolvePackageVersion } from '../version.js'
-import { completeAgentResponse } from './agent.js'
+import { streamAgentResponse } from './agent.js'
 import { type DaemonRequestedMode, resolveAutoDaemonMode } from './auto-mode.js'
+import type { AssistantMessage } from '@mariozechner/pi-ai'
 import type { DaemonConfig } from './config.js'
 import { DAEMON_HOST, DAEMON_PORT_DEFAULT } from './constants.js'
 import { buildModelPickerOptions } from './models.js'
@@ -828,8 +829,16 @@ export async function runDaemonServer({
           return
         }
 
+        // Set up SSE streaming
+        res.writeHead(200, {
+          ...cors,
+          'content-type': 'text/event-stream; charset=utf-8',
+          'cache-control': 'no-cache, no-transform',
+          connection: 'keep-alive',
+        })
+
         try {
-          const assistant = await completeAgentResponse({
+          await streamAgentResponse({
             env,
             pageUrl,
             pageTitle,
@@ -839,12 +848,20 @@ export async function runDaemonServer({
               modelOverride && modelOverride.toLowerCase() !== 'auto' ? modelOverride : null,
             tools,
             automationEnabled,
+            onChunk: (text: string) => {
+              res.write(encodeSseEvent({ event: 'chunk', data: { text } }))
+            },
+            onAssistant: (assistant: AssistantMessage) => {
+              res.write(encodeSseEvent({ event: 'assistant', data: assistant }))
+            },
           })
-          json(res, 200, { ok: true, assistant }, cors)
+          res.write(encodeSseEvent({ event: 'done', data: {} }))
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
           console.error('[summarize-daemon] agent failed', error)
-          json(res, 500, { ok: false, error: message }, cors)
+          res.write(encodeSseEvent({ event: 'error', data: { message } }))
+        } finally {
+          res.end()
         }
         return
       }

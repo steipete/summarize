@@ -47,6 +47,7 @@ phase_build() {
   require_lockstep_versions
   run pnpm build
   phase_chrome
+  phase_firefox
 }
 
 phase_verify_pack() {
@@ -91,6 +92,25 @@ phase_chrome() {
   # chrome://extensions → Developer mode → "Load unpacked" (manifest.json at the folder root).
   run bash -c "cd \"${output_dir}/chrome-mv3\" && zip -r -FS \"${zip_path}\" ."
   echo "Chrome extension: ${zip_path}"
+}
+
+phase_firefox() {
+  banner "Firefox extension"
+  local version root_dir output_dir zip_path
+  version="$(node -p 'require("./package.json").version')"
+  root_dir="$(pwd)"
+  output_dir="${root_dir}/apps/chrome-extension/.output"
+  zip_path="${root_dir}/dist-firefox/summarize-firefox-extension-v${version}.zip"
+  run pnpm -C apps/chrome-extension build:firefox
+  run mkdir -p "${root_dir}/dist-firefox"
+  if [ ! -d "${output_dir}/firefox-mv3" ]; then
+    echo "Missing ${output_dir}/firefox-mv3 (wxt build failed?)"
+    exit 1
+  fi
+  # Zip the *contents* of `firefox-mv3/` (no top-level folder) so users can unzip into any folder and load it.
+  # AMO requires manifest.json at the root of the zip.
+  run bash -c "cd \"${output_dir}/firefox-mv3\" && zip -r -FS \"${zip_path}\" ."
+  echo "Firefox extension: ${zip_path}"
 }
 
 phase_publish() {

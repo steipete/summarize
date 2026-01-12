@@ -1,6 +1,6 @@
 {
   "name": "@steipete/summarize-core",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Summarize core library (content extraction + prompts).",
   "type": "module",
   "main": "./dist/esm/index.js",
