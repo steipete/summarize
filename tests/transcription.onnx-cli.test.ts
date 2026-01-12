@@ -3,7 +3,10 @@ import { promises as fs } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { transcribeWithOnnxCliFile } from '../packages/core/src/transcription/onnx-cli.js'
+import {
+  resolvePreferredOnnxModel,
+  transcribeWithOnnxCliFile,
+} from '../packages/core/src/transcription/onnx-cli.js'
 
 const originalEnv = { ...process.env }
 
@@ -103,6 +106,75 @@ describe('onnx cli transcriber', () => {
 
     expect(result.text).toBe(filePath)
     expect(result.error).toBeNull()
+  })
+
+  it('escapes placeholders for shell templates (spaces in paths)', async () => {
+    const filePath = join(tmpdir(), `onnx shell ${randomUUID()}.wav`)
+    await fs.writeFile(filePath, 'dummy')
+
+    const cacheDir = join(tmpdir(), `onnx-cache-${randomUUID()}`)
+    process.env.SUMMARIZE_ONNX_CACHE_DIR = cacheDir
+    process.env.SUMMARIZE_ONNX_MODEL_BASE_URL = 'https://example.invalid/model'
+
+    vi.spyOn(global, 'fetch').mockImplementation(async () => new Response('noop'))
+
+    process.env.SUMMARIZE_ONNX_PARAKEET_CMD =
+      'node -e "process.stdout.write(process.argv[process.argv.length - 1] ?? \'\')" -- {input}'
+
+    const result = await transcribeWithOnnxCliFile({
+      model: 'parakeet',
+      filePath,
+      mediaType: 'audio/wav',
+      totalDurationSeconds: null,
+      onProgress: null,
+    })
+
+    await fs.rm(cacheDir, { recursive: true, force: true })
+    await fs.unlink(filePath)
+
+    expect(result.text).toBe(filePath)
+    expect(result.error).toBeNull()
+  })
+
+  it('uses provided env instead of process.env (daemon-style override)', async () => {
+    const filePath = join(tmpdir(), `onnx-${randomUUID()}.wav`)
+    await fs.writeFile(filePath, 'dummy')
+
+    delete process.env.SUMMARIZE_ONNX_PARAKEET_CMD
+
+    const env = {
+      ...process.env,
+      SUMMARIZE_ONNX_CACHE_DIR: join(tmpdir(), `onnx-cache-${randomUUID()}`),
+      SUMMARIZE_ONNX_MODEL_BASE_URL: 'https://example.invalid/model',
+      SUMMARIZE_ONNX_PARAKEET_CMD: "cat {input} >/dev/null; printf 'ok'",
+    }
+
+    vi.spyOn(global, 'fetch').mockImplementation(async () => new Response('noop'))
+
+    const result = await transcribeWithOnnxCliFile({
+      model: 'parakeet',
+      filePath,
+      mediaType: 'audio/wav',
+      totalDurationSeconds: null,
+      onProgress: null,
+      env,
+    })
+
+    const cacheDir = env.SUMMARIZE_ONNX_CACHE_DIR
+    if (!cacheDir) throw new Error('missing SUMMARIZE_ONNX_CACHE_DIR')
+
+    await fs.rm(cacheDir, { recursive: true, force: true })
+    await fs.unlink(filePath)
+
+    expect(result.text).toBe('ok')
+    expect(result.error).toBeNull()
+  })
+
+  it('resolves preferred ONNX model from env', () => {
+    expect(resolvePreferredOnnxModel({ SUMMARIZE_TRANSCRIBER: 'parakeet' })).toBe('parakeet')
+    expect(resolvePreferredOnnxModel({ SUMMARIZE_TRANSCRIBER: '  CANARY ' })).toBe('canary')
+    expect(resolvePreferredOnnxModel({ SUMMARIZE_TRANSCRIBER: 'whisper' })).toBeNull()
+    expect(resolvePreferredOnnxModel({})).toBeNull()
   })
 
   it('reports missing command', async () => {
