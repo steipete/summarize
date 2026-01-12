@@ -633,6 +633,10 @@ let inlineErrorToken = 0
 const showInlineError = (message: string) => {
   inlineErrorToken += 1
   inlineErrorEl.dataset.token = String(inlineErrorToken)
+  if (!message || message.trim().length === 0) {
+    clearInlineError()
+    return
+  }
   inlineErrorMessageEl.textContent = message
   inlineErrorEl.classList.remove('hidden')
 }
@@ -646,7 +650,10 @@ const setPhase = (phase: PanelPhase, opts?: { error?: string | null }) => {
   panelState.phase = phase
   panelState.error = phase === 'error' ? (opts?.error ?? panelState.error) : null
   if (phase === 'error') {
-    const message = panelState.error ?? 'Something went wrong.'
+    const message =
+      panelState.error && panelState.error.trim().length > 0
+        ? panelState.error
+        : 'Something went wrong.'
     showError(message)
     showInlineError(message)
   } else {
@@ -2266,8 +2273,12 @@ function handleBgMessage(msg: BgToPanel) {
       }
       return
     case 'run:error':
-      headerController.setStatus(`Error: ${msg.message}`)
-      setPhase('error', { error: msg.message })
+      headerController.setStatus(
+        `Error: ${msg.message && msg.message.trim().length > 0 ? msg.message : 'Something went wrong.'}`
+      )
+      setPhase('error', {
+        error: msg.message && msg.message.trim().length > 0 ? msg.message : 'Something went wrong.',
+      })
       if (panelState.chatStreaming) {
         finishStreamingMessage()
       }
