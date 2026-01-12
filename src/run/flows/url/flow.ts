@@ -207,17 +207,71 @@ export async function runUrlFlow({
         }
         writeVerbose(io.stderr, flags.verbose, 'cache miss extract', flags.verboseColor)
       }
-      const extracted = await fetchLinkContentWithBirdTip({
-        client,
-        url: targetUrl,
-        options,
-        env: io.env,
-      })
-      if (cacheKey && cacheStore) {
-        cacheStore.setJson('extract', cacheKey, extracted, cacheState.ttlMs)
-        writeVerbose(io.stderr, flags.verbose, 'cache write extract', flags.verboseColor)
+      try {
+        const extracted = await fetchLinkContentWithBirdTip({
+          client,
+          url: targetUrl,
+          options,
+          env: io.env,
+        })
+        if (cacheKey && cacheStore) {
+          cacheStore.setJson('extract', cacheKey, extracted, cacheState.ttlMs)
+          writeVerbose(io.stderr, flags.verbose, 'cache write extract', flags.verboseColor)
+        }
+        return extracted
+      } catch (err) {
+        if (!shouldPreferUrlMode(targetUrl)) throw err
+        // Fallback: skip HTML fetch and proceed with URL-only extraction (YouTube/direct media).
+        writeVerbose(
+          io.stderr,
+          flags.verbose,
+          `extract fallback url-only (${(err as Error).message ?? String(err)})`,
+          flags.verboseColor
+        )
+        return {
+          content: '',
+          title: null,
+          url: targetUrl,
+          siteName: null,
+          language: null,
+          wordCount: 0,
+          totalCharacters: 0,
+          truncated: false,
+          media: null,
+          mediaDurationSeconds: null,
+          video: null,
+          isVideoOnly: true,
+          transcriptSource: null,
+          transcriptCharacters: null,
+          transcriptWordCount: null,
+          transcriptLines: null,
+          transcriptSegments: null,
+          transcriptTimedText: null,
+          transcriptionProvider: null,
+          diagnostics: {
+            strategy: 'url-only-fallback',
+            firecrawl: {
+              attempted: false,
+              used: false,
+              cacheMode: cacheState.mode,
+              cacheStatus: 'bypass',
+            },
+            markdown: {
+              requested: false,
+              used: false,
+              provider: null,
+              notes: 'skipped (url fallback)',
+            },
+            transcript: {
+              cacheMode: cacheState.mode,
+              cacheStatus: 'unknown',
+              textProvided: false,
+              provider: null,
+              attemptedProviders: [],
+            },
+          },
+        }
       }
-      return extracted
     }
 
     let extracted = await fetchWithCache(url)
