@@ -13,6 +13,15 @@ export type OnnxModelId = 'parakeet' | 'canary'
 
 type Env = Record<string, string | undefined>
 
+export function resolvePreferredOnnxModel(env: Env = process.env): OnnxModelId | null {
+  const raw = env.SUMMARIZE_TRANSCRIBER?.trim().toLowerCase() ?? ''
+  return raw === 'parakeet' || raw === 'canary' ? raw : null
+}
+
+export function isOnnxCliConfigured(model: OnnxModelId, env: Env = process.env): boolean {
+  return resolveOnnxCommand(model, env) !== null
+}
+
 const COMMAND_ENV_VAR: Record<OnnxModelId, string> = {
   parakeet: 'SUMMARIZE_ONNX_PARAKEET_CMD',
   canary: 'SUMMARIZE_ONNX_CANARY_CMD',

@@ -3,7 +3,10 @@ import { randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { resolveOnnxCommand } from '../../../../transcription/onnx-cli.js'
+import {
+  isOnnxCliConfigured,
+  resolvePreferredOnnxModel,
+} from '../../../../transcription/onnx-cli.js'
 import {
   isWhisperCppReady,
   probeMediaDurationSecondsWithFfprobe,
@@ -73,10 +76,10 @@ export const fetchTranscriptWithYtDlp = async ({
 
   const progress = typeof onProgress === 'function' ? onProgress : null
   const effectiveEnv = env ?? process.env
-  const preferredTranscriber = effectiveEnv.SUMMARIZE_TRANSCRIBER?.trim().toLowerCase()
-  const wantsOnnx = preferredTranscriber === 'parakeet' || preferredTranscriber === 'canary'
-  const onnxReady =
-    wantsOnnx && resolveOnnxCommand(preferredTranscriber as 'parakeet' | 'canary', effectiveEnv)
+  const preferredOnnxModel = resolvePreferredOnnxModel(effectiveEnv)
+  const onnxReady = preferredOnnxModel
+    ? isOnnxCliConfigured(preferredOnnxModel, effectiveEnv)
+    : false
   const providerHint: 'cpp' | 'onnx' | 'openai' | 'fal' | 'openai->fal' | 'unknown' = onnxReady
     ? 'onnx'
     : hasLocalWhisper
