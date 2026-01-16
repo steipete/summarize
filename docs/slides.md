@@ -48,6 +48,11 @@ read_when:
 - OCR toggle appears near summarize control only when OCR is significant
   (enough slides + total OCR chars); otherwise hide it.
 
+## CLI (slides-only)
+- `summarize slides <url>` extracts slides without summarizing.
+- Defaults to writing images under `./slides/<sourceId>/` (override via `--slides-dir` / `--output`).
+- Inline terminal rendering is opt-in: `--render auto|kitty|iterm`.
+
 ## Implementation notes
 - Build `slideDescriptions` map in panel:
   - Use `summary.timedText` when available.

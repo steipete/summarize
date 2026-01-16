@@ -1,7 +1,13 @@
 import type { Command } from 'commander'
 import { handleDaemonRequest } from '../daemon/cli.js'
 import { refreshFree } from '../refresh-free.js'
-import { attachRichHelp, buildDaemonHelp, buildProgram, buildRefreshFreeHelp } from './help.js'
+import {
+  attachRichHelp,
+  buildDaemonHelp,
+  buildProgram,
+  buildRefreshFreeHelp,
+  buildSlidesProgram,
+} from './help.js'
 
 type HelpContext = {
   normalizedArgv: string[]
@@ -24,6 +30,19 @@ export function handleHelpRequest({
   }
   if (topic === 'daemon') {
     stdout.write(`${buildDaemonHelp()}\n`)
+    return true
+  }
+  if (topic === 'slides') {
+    const slidesProgram: Command = buildSlidesProgram()
+    slidesProgram.configureOutput({
+      writeOut(str) {
+        stdout.write(str)
+      },
+      writeErr(str) {
+        stderr.write(str)
+      },
+    })
+    slidesProgram.outputHelp()
     return true
   }
 

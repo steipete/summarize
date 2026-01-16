@@ -134,6 +134,35 @@ export function buildProgram() {
     .allowExcessArguments(false)
 }
 
+export function buildSlidesProgram() {
+  return new Command()
+    .name('summarize slides')
+    .description('Extract slide screenshots from a YouTube or direct video URL.')
+    .argument('<url>', 'YouTube or direct video URL')
+    .option('--slides-ocr', 'Run OCR on extracted slides (requires tesseract).', false)
+    .option('--slides-dir <dir>', 'Base output dir for slides (default: ./slides).', 'slides')
+    .option('-o, --output <dir>', 'Alias for --slides-dir.', undefined)
+    .option(
+      '--slides-scene-threshold <value>',
+      'Scene detection threshold for slide changes (0.1-1.0).',
+      '0.3'
+    )
+    .option('--slides-max <count>', 'Maximum slides to extract (default: 100).', '100')
+    .option('--slides-min-duration <seconds>', 'Minimum seconds between slides (default: 2).', '2')
+    .addOption(
+      new Option('--render <mode>', 'Inline render mode: auto, kitty, iterm, none.')
+        .choices(['auto', 'kitty', 'iterm', 'none'])
+        .default('none')
+    )
+    .option('--timeout <duration>', 'Timeout for video download/extraction (default: 2m).', '2m')
+    .option('--no-cache', 'Bypass slide cache (force re-extract).')
+    .option('--json', 'Output JSON payload (no inline rendering).', false)
+    .option('--verbose', 'Print detailed progress info to stderr', false)
+    .option('--debug', 'Alias for --verbose.', false)
+    .option('-V, --version', 'Print version and exit', false)
+    .allowExcessArguments(false)
+}
+
 export function attachRichHelp(
   program: Command,
   env: Record<string, string | undefined>,
@@ -156,6 +185,7 @@ ${heading('Examples')}
   ${cmd('summarize "https://www.youtube.com/watch?v=I845O57ZSy4&t=11s" --extract --youtube web')}
   ${cmd('summarize "https://www.youtube.com/watch?v=..." --slides')} ${dim('# extract slide screenshots')}
   ${cmd('summarize "https://www.youtube.com/watch?v=..." --slides --slides-ocr')} ${dim('# slides + OCR text')}
+  ${cmd('summarize slides "https://www.youtube.com/watch?v=..." --render auto')} ${dim('# slides-only mode with inline thumbnails')}
   ${cmd('summarize "https://example.com" --length 20k --max-output-tokens 2k --timeout 2m --model openai/gpt-5-mini')}
   ${cmd('summarize "https://example.com" --model mymodel')} ${dim('# config preset')}
   ${cmd('summarize "https://example.com" --json --verbose')}

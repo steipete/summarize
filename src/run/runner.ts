@@ -40,6 +40,7 @@ import { resolveModelSelection } from './run-models.js'
 import { resolveDesiredOutputTokens } from './run-output.js'
 import { resolveCliRunSettings } from './run-settings.js'
 import { resolveStreamSettings } from './run-stream.js'
+import { handleSlidesCliRequest } from './slides-cli.js'
 import { createSummaryEngine } from './summary-engine.js'
 import { ansi, isRichTty, supportsColor } from './terminal.js'
 
@@ -77,6 +78,17 @@ export async function runCli(
   }
   if (
     await handleDaemonCliRequest({
+      normalizedArgv,
+      envForRun,
+      fetchImpl: fetch,
+      stdout,
+      stderr,
+    })
+  ) {
+    return
+  }
+  if (
+    await handleSlidesCliRequest({
       normalizedArgv,
       envForRun,
       fetchImpl: fetch,

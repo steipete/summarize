@@ -3,6 +3,7 @@ export {
   parseShowinfoTimestamp,
   resolveExtractedTimestamp,
   resolveSlideSource,
+  resolveSlideSourceFromUrl,
 } from './extract.js'
 export type { SlideSettings, SlideSettingsInput } from './settings.js'
 export { resolveSlideSettings } from './settings.js'
