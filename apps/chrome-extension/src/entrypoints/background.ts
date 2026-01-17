@@ -1,7 +1,7 @@
 import type { AssistantMessage, Message } from '@mariozechner/pi-ai'
 import { shouldPreferUrlMode } from '@steipete/summarize-core/content/url'
 import { defineBackground } from 'wxt/utils/define-background'
-import { parseSseEvent } from '../../../../src/shared/sse-events.js'
+import { parseSseEvent, type SseSlidesData } from '../../../../src/shared/sse-events.js'
 import {
   deleteArtifact,
   getArtifactRecord,
@@ -38,6 +38,8 @@ type PanelToBg =
   | { type: 'panel:setAuto'; value: boolean }
   | { type: 'panel:setLength'; value: string }
   | { type: 'panel:slides-context'; requestId: string }
+  | { type: 'panel:cache'; cache: PanelCachePayload }
+  | { type: 'panel:get-cache'; requestId: string; tabId: number; url: string }
   | { type: 'panel:openOptions' }
 
 type RunStart = {
@@ -69,6 +71,7 @@ type BgToPanel =
       transcriptTimedText?: string | null
       error?: string
     }
+  | { type: 'ui:cache'; requestId: string; ok: boolean; cache?: PanelCachePayload }
 
 type HoverToBg =
   | {
@@ -152,6 +155,17 @@ type SlidesPayload = {
     ocrText?: string | null
     ocrConfidence?: number | null
   }>
+}
+
+type PanelCachePayload = {
+  tabId: number
+  url: string
+  title: string | null
+  summaryMarkdown: string | null
+  summaryFromCache: boolean | null
+  lastMeta: { inputSummary: string | null; model: string | null; modelLabel: string | null }
+  slides: SseSlidesData | null
+  transcriptTimedText: string | null
 }
 
 type PanelSession = {
@@ -649,6 +663,7 @@ export default defineBackground(() => {
     } | null
   }
   const cachedExtracts = new Map<number, CachedExtract>()
+  const panelCacheByTabId = new Map<number, PanelCachePayload>()
   const hoverControllersByTabId = new Map<
     number,
     { requestId: string; controller: AbortController }
@@ -716,6 +731,17 @@ export default defineBackground(() => {
       cachedExtracts.delete(tabId)
       return null
     }
+    return cached
+  }
+
+  const storePanelCache = (payload: PanelCachePayload) => {
+    panelCacheByTabId.set(payload.tabId, payload)
+  }
+
+  const getPanelCache = (tabId: number, url?: string | null) => {
+    const cached = panelCacheByTabId.get(tabId) ?? null
+    if (!cached) return null
+    if (url && cached.url !== url) return null
     return cached
   }
 
@@ -1524,6 +1550,26 @@ export default defineBackground(() => {
           }
         )
         break
+      case 'panel:cache': {
+        const payload = (raw as { cache?: PanelCachePayload }).cache
+        if (!payload || typeof payload.tabId !== 'number' || !payload.url) return
+        storePanelCache(payload)
+        break
+      }
+      case 'panel:get-cache': {
+        const payload = raw as { requestId: string; tabId: number; url: string }
+        if (!payload.requestId || !payload.tabId || !payload.url) {
+          return
+        }
+        const cached = getPanelCache(payload.tabId, payload.url)
+        void send(session, {
+          type: 'ui:cache',
+          requestId: payload.requestId,
+          ok: Boolean(cached),
+          cache: cached ?? undefined,
+        })
+        break
+      }
       case 'panel:agent':
         void (async () => {
           const settings = await loadSettings()
@@ -2174,6 +2220,13 @@ export default defineBackground(() => {
       void emitState(session, '')
       void summarizeActiveTab(session, 'tab-updated')
     }
+  })
+
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    cachedExtracts.delete(tabId)
+    lastMediaProbeByTab.delete(tabId)
+    hoverControllersByTabId.delete(tabId)
+    panelCacheByTabId.delete(tabId)
   })
 
   // Chrome: Auto-open side panel on toolbar icon click

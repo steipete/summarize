@@ -17,6 +17,7 @@ import { mountCheckbox } from '../../ui/zag-checkbox'
 import { ChatController } from './chat-controller'
 import { type ChatHistoryLimits, compactChatHistory } from './chat-state'
 import { createHeaderController } from './header-controller'
+import { createPanelCacheController, type PanelCachePayload } from './panel-cache'
 import { mountSidepanelLengthPicker, mountSidepanelPickers, mountSummarizeControl } from './pickers'
 import { createSlideImageLoader, normalizeSlideImageUrl } from './slide-images'
 import { createSlidesHydrator } from './slides-hydrator'
@@ -45,6 +46,8 @@ type PanelToBg =
   | { type: 'panel:setAuto'; value: boolean }
   | { type: 'panel:setLength'; value: string }
   | { type: 'panel:slides-context'; requestId: string }
+  | { type: 'panel:cache'; cache: PanelCachePayload }
+  | { type: 'panel:get-cache'; requestId: string; tabId: number; url: string }
   | { type: 'panel:openOptions' }
 
 type BgToPanel =
@@ -68,10 +71,12 @@ type BgToPanel =
       transcriptTimedText?: string | null
       error?: string
     }
+  | { type: 'ui:cache'; requestId: string; ok: boolean; cache?: PanelCachePayload }
 
 let panelPort: chrome.runtime.Port | null = null
 let panelPortConnecting: Promise<chrome.runtime.Port | null> | null = null
 let panelWindowId: number | null = null
+let currentRunTabId: number | null = null
 
 function getCurrentWindowId(): Promise<number | null> {
   return new Promise((resolve) => {
@@ -255,6 +260,7 @@ let slidesExpanded = true
 let slidesTextMode: SlideTextMode = 'transcript'
 let slidesTextToggleVisible = false
 let slidesTranscriptSegments: TranscriptSegment[] = []
+let slidesTranscriptTimedText: string | null = null
 let slidesTranscriptAvailable = false
 let slidesOcrAvailable = false
 let slidesLayoutValue: SlidesLayout = defaultSettings.slidesLayout
@@ -933,6 +939,7 @@ async function syncWithActiveTab() {
         notePreserveChatForUrl(tab.url)
       }
       panelState.currentSource = null
+      currentRunTabId = null
       setPhase('idle')
       resetSummaryView({ preserveChat })
       headerController.setBaseTitle(tab.title || tab.url || 'Summarize')
@@ -949,6 +956,7 @@ async function syncWithActiveTab() {
 }
 
 function resetSummaryView({ preserveChat = false }: { preserveChat?: boolean } = {}) {
+  currentRunTabId = null
   renderEl.replaceChildren(renderSlidesHostEl, renderMarkdownHostEl)
   renderMarkdownHostEl.innerHTML = ''
   clearSlideStrip(renderSlidesHostEl)
@@ -961,6 +969,7 @@ function resetSummaryView({ preserveChat = false }: { preserveChat?: boolean } =
   slidesContextPending = false
   slidesContextUrl = null
   slidesTranscriptSegments = []
+  slidesTranscriptTimedText = null
   slidesTranscriptAvailable = false
   slidesOcrAvailable = false
   slidesTextToggleVisible = false
@@ -974,6 +983,83 @@ function resetSummaryView({ preserveChat = false }: { preserveChat?: boolean } =
     resetChatState()
   }
 }
+
+function buildPanelCachePayload(): PanelCachePayload | null {
+  const tabId = currentRunTabId ?? activeTabId
+  const url = panelState.currentSource?.url ?? activeTabUrl
+  if (!tabId || !url) return null
+  return {
+    tabId,
+    url,
+    title: panelState.currentSource?.title ?? null,
+    summaryMarkdown: panelState.summaryMarkdown ?? null,
+    summaryFromCache: panelState.summaryFromCache ?? null,
+    lastMeta: panelState.lastMeta,
+    slides: panelState.slides ?? null,
+    transcriptTimedText: slidesTranscriptTimedText ?? null,
+  }
+}
+
+function applyPanelCache(payload: PanelCachePayload, opts?: { preserveChat?: boolean }) {
+  const preserveChat = opts?.preserveChat ?? false
+  resetSummaryView({ preserveChat })
+  currentRunTabId = payload.tabId
+  panelState.currentSource = { url: payload.url, title: payload.title ?? null }
+  panelState.lastMeta = payload.lastMeta ?? { inputSummary: null, model: null, modelLabel: null }
+  panelState.summaryFromCache = payload.summaryFromCache ?? null
+  headerController.setBaseTitle(payload.title || payload.url || 'Summarize')
+  headerController.setBaseSubtitle(
+    buildIdleSubtitle({
+      inputSummary: panelState.lastMeta.inputSummary,
+      modelLabel: panelState.lastMeta.modelLabel,
+      model: panelState.lastMeta.model,
+    })
+  )
+  slidesTranscriptTimedText = payload.transcriptTimedText ?? null
+  slidesTranscriptSegments = parseTranscriptTimedText(slidesTranscriptTimedText)
+  slidesTranscriptAvailable = slidesTranscriptSegments.length > 0
+  if (payload.slides) {
+    panelState.slides = {
+      ...payload.slides,
+      slides: payload.slides.slides.map((slide) => ({
+        ...slide,
+        imageUrl: normalizeSlideImageUrl(
+          slide.imageUrl,
+          payload.slides?.sourceId ?? '',
+          slide.index
+        ),
+      })),
+    }
+    slidesContextPending = false
+    slidesContextUrl = payload.url
+    updateSlidesTextState()
+    if (!slidesTranscriptAvailable) {
+      void requestSlidesContext()
+    }
+  } else {
+    panelState.slides = null
+    slidesContextPending = false
+    slidesContextUrl = null
+    updateSlidesTextState()
+  }
+  if (payload.summaryMarkdown) {
+    renderMarkdown(payload.summaryMarkdown)
+  } else {
+    renderMarkdownDisplay()
+  }
+  queueSlidesRender()
+  setPhase('idle')
+}
+
+const panelCacheController = createPanelCacheController({
+  getSnapshot: buildPanelCachePayload,
+  sendCache: (payload) => {
+    void send({ type: 'panel:cache', cache: payload })
+  },
+  sendRequest: (request) => {
+    void send({ type: 'panel:get-cache', ...request })
+  },
+})
 
 window.addEventListener('error', (event) => {
   const message =
@@ -1035,6 +1121,7 @@ function renderMarkdown(markdown: string) {
   panelState.summaryMarkdown = markdown
   updateSlideSummaryFromMarkdown(markdown)
   renderMarkdownDisplay()
+  panelCacheController.scheduleSync()
 }
 
 function updateSlideSummaryFromMarkdown(markdown: string) {
@@ -1413,6 +1500,7 @@ function applySlidesPayload(data: SseSlidesData) {
   if (!isSameSource) {
     slidesContextPending = false
     slidesContextUrl = null
+    slidesTranscriptTimedText = null
     slidesTranscriptSegments = []
     slidesTranscriptAvailable = false
     void requestSlidesContext()
@@ -1423,6 +1511,7 @@ function applySlidesPayload(data: SseSlidesData) {
   }
   renderInlineSlides(chatMessagesEl)
   queueSlidesRender()
+  panelCacheController.scheduleSync()
 }
 
 const slidesTestHooks = (
@@ -2675,6 +2764,7 @@ const streamController = createStreamController({
         model: panelState.lastMeta.model,
       })
     )
+    panelCacheController.scheduleSync()
   },
   onSlides: (data) => {
     slidesHydrator.handlePayload(data)
@@ -2682,6 +2772,7 @@ const streamController = createStreamController({
   onSummaryFromCache: (value) => {
     panelState.summaryFromCache = value
     slidesHydrator.handleSummaryFromCache(value)
+    panelCacheController.scheduleSync()
     if (value === true) {
       headerController.stopProgress()
     } else if (value === false && isStreaming()) {
@@ -3011,6 +3102,21 @@ function updateControls(state: UiState) {
     }
     inputMode = preferUrlMode ? 'video' : 'page'
     inputModeOverride = null
+    if (nextTabId && nextTabUrl) {
+      const cached = panelCacheController.resolve(nextTabId, nextTabUrl)
+      if (cached) {
+        applyPanelCache(cached, { preserveChat })
+      } else {
+        panelState.currentSource = null
+        currentRunTabId = null
+        resetSummaryView({ preserveChat })
+        panelCacheController.request(nextTabId, nextTabUrl, preserveChat)
+      }
+    } else {
+      panelState.currentSource = null
+      currentRunTabId = null
+      resetSummaryView({ preserveChat })
+    }
   } else if (urlChanged) {
     activeTabUrl = nextTabUrl
     const preserveChat = isRecentAgentNavigation(activeTabId, nextTabUrl)
@@ -3022,6 +3128,21 @@ function updateControls(state: UiState) {
     ) {
       void clearChatHistoryForActiveTab()
       resetChatState()
+    }
+    if (activeTabId && nextTabUrl) {
+      const cached = panelCacheController.resolve(activeTabId, nextTabUrl)
+      if (cached) {
+        applyPanelCache(cached, { preserveChat })
+      } else {
+        panelState.currentSource = null
+        currentRunTabId = null
+        resetSummaryView({ preserveChat })
+        panelCacheController.request(activeTabId, nextTabUrl, preserveChat)
+      }
+    } else {
+      panelState.currentSource = null
+      currentRunTabId = null
+      resetSummaryView({ preserveChat })
     }
     if (!inputModeOverride) {
       inputMode = preferUrlMode ? 'video' : 'page'
@@ -3089,6 +3210,7 @@ function updateControls(state: UiState) {
         notePreserveChatForUrl(state.tab.url)
       }
       panelState.currentSource = null
+      currentRunTabId = null
       streamController.abort()
       resetSummaryView({ preserveChat })
     } else if (state.tab.title && state.tab.title !== panelState.currentSource.title) {
@@ -3150,6 +3272,7 @@ function handleBgMessage(msg: BgToPanel) {
       if (msg.requestId !== expectedId) return
       slidesContextPending = false
       if (!msg.ok) {
+        slidesTranscriptTimedText = null
         slidesTranscriptSegments = []
         slidesTranscriptAvailable = false
         updateSlidesTextState()
@@ -3158,12 +3281,22 @@ function handleBgMessage(msg: BgToPanel) {
         }
         return
       }
-      slidesTranscriptSegments = parseTranscriptTimedText(msg.transcriptTimedText ?? null)
+      slidesTranscriptTimedText = msg.transcriptTimedText ?? null
+      slidesTranscriptSegments = parseTranscriptTimedText(slidesTranscriptTimedText)
       slidesTranscriptAvailable = slidesTranscriptSegments.length > 0
       updateSlidesTextState()
       if (panelState.summaryMarkdown) {
         renderInlineSlides(renderMarkdownHostEl, { fallback: true })
       }
+      panelCacheController.scheduleSync()
+      return
+    }
+    case 'ui:cache': {
+      const result = panelCacheController.consumeResponse(msg)
+      if (!result) return
+      if (activeTabId !== result.tabId || activeTabUrl !== result.url) return
+      if (!result.cache) return
+      applyPanelCache(result.cache, { preserveChat: result.preserveChat })
       return
     }
     case 'run:start': {
@@ -3183,6 +3316,7 @@ function handleBgMessage(msg: BgToPanel) {
       }
       setActiveMetricsMode('summary')
       panelState.currentSource = { url: msg.run.url, title: msg.run.title }
+      currentRunTabId = activeTabId
       panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null }
       pendingRunForPlannedSlides = msg.run
       startSlidesStream(msg.run)
