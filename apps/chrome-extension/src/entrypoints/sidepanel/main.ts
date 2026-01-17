@@ -1512,6 +1512,37 @@ function slidesPayloadChanged(
   return false
 }
 
+function updateSlideThumb(
+  img: HTMLImageElement,
+  thumb: HTMLElement,
+  imageUrl: string | null | undefined
+) {
+  if (imageUrl) {
+    thumb.classList.remove('isPlaceholder')
+    slideImageLoader.observe(img, imageUrl)
+    return
+  }
+  thumb.classList.add('isPlaceholder')
+  img.removeAttribute('src')
+  img.dataset.loaded = 'false'
+  img.dataset.slideImageUrl = ''
+}
+
+function updateSlideMeta(
+  el: HTMLElement,
+  index: number,
+  timestamp: number | null | undefined
+) {
+  const formatted = formatSlideTimestamp(timestamp)
+  el.textContent = formatted ? `Slide ${index} · ${formatted}` : `Slide ${index}`
+}
+
+function bindSlideSeek(el: HTMLElement, timestamp: number | null | undefined) {
+  el.onclick = () => {
+    seekToSlideTimestamp(timestamp)
+  }
+}
+
 function applySlidesPayload(data: SseSlidesData) {
   const isSameSource = Boolean(panelState.slides && panelState.slides.sourceId === data.sourceId)
   const normalized: SseSlidesData = {
@@ -1728,15 +1759,8 @@ function renderSlideStrip(container: HTMLElement) {
     const meta = button.querySelector<HTMLDivElement>('.slideStrip__meta')
     if (!thumb || !img || !meta) continue
 
-    if (slide.imageUrl) {
-      thumb.classList.remove('isPlaceholder')
-      slideImageLoader.observe(img, slide.imageUrl)
-    } else {
-      thumb.classList.add('isPlaceholder')
-    }
-
-    const timestamp = formatSlideTimestamp(slide.timestamp)
-    meta.textContent = timestamp ? `Slide ${idx} · ${timestamp}` : `Slide ${idx}`
+    updateSlideThumb(img, thumb, slide.imageUrl)
+    updateSlideMeta(meta, idx, slide.timestamp)
 
     const existingText = button.querySelector<HTMLDivElement>('.slideStrip__text')
     if (slidesExpanded) {
@@ -1751,9 +1775,7 @@ function renderSlideStrip(container: HTMLElement) {
       existingText.remove()
     }
 
-    button.onclick = () => {
-      seekToSlideTimestamp(slide.timestamp)
-    }
+    bindSlideSeek(button, slide.timestamp)
   }
 }
 
@@ -1854,20 +1876,11 @@ function renderSlideGallery(container: HTMLElement) {
     const text = item.querySelector<HTMLDivElement>('.slideGallery__text')
     if (!media || !img || !thumb || !meta || !text) continue
 
-    if (slide.imageUrl) {
-      thumb.classList.remove('isPlaceholder')
-      slideImageLoader.observe(img, slide.imageUrl)
-    } else {
-      thumb.classList.add('isPlaceholder')
-    }
-
-    const timestamp = formatSlideTimestamp(slide.timestamp)
-    meta.textContent = timestamp ? `Slide ${idx} · ${timestamp}` : `Slide ${idx}`
+    updateSlideThumb(img, thumb, slide.imageUrl)
+    updateSlideMeta(meta, idx, slide.timestamp)
     text.textContent = slideDescriptions.get(idx) ?? ''
 
-    item.onclick = () => {
-      seekToSlideTimestamp(slide.timestamp)
-    }
+    bindSlideSeek(item, slide.timestamp)
     list.appendChild(item)
   }
 }
@@ -1908,17 +1921,14 @@ function renderInlineSlides(container: HTMLElement, opts?: { fallback?: boolean 
     const img = document.createElement('img')
     img.alt = `Slide ${index}`
     img.className = 'slideInline__thumbImage'
-    slideImageLoader.observe(img, slide.imageUrl)
+    updateSlideThumb(img, thumb, slide.imageUrl)
     const caption = document.createElement('div')
     caption.className = 'slideCaption'
-    const timestamp = formatSlideTimestamp(slide.timestamp)
-    caption.textContent = timestamp ? `Slide ${index} · ${timestamp}` : `Slide ${index}`
+    updateSlideMeta(caption, index, slide.timestamp)
     thumb.appendChild(img)
     button.appendChild(thumb)
     button.appendChild(caption)
-    button.addEventListener('click', () => {
-      seekToSlideTimestamp(slide.timestamp)
-    })
+    bindSlideSeek(button, slide.timestamp)
     wrapper.appendChild(button)
     placeholder.replaceWith(wrapper)
     replacedCount += 1
