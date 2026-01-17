@@ -250,7 +250,7 @@ Use `summarize --help` or `summarize help` for the full help text.
   - Install `uvx`: `brew install uv` (or https://astral.sh/uv/)
 - `--extract`: print extracted content and exit (URLs only)
   - Deprecated alias: `--extract-only`
-- `--slides`: extract slide screenshots for YouTube/direct video URLs
+- `--slides`: extract slide screenshots for YouTube/direct video URLs (auto-renders inline in supported terminals)
 - `--slides-ocr`: run OCR on extracted slides (requires `tesseract`)
 - `--slides-dir <dir>`: base output dir for slide images (default `./slides`)
 - `--slides-scene-threshold <value>`: scene detection threshold (0.1-1.0)
@@ -330,9 +330,11 @@ summarize "https://www.youtube.com/watch?v=..." --slides
 summarize "https://www.youtube.com/watch?v=..." --slides --slides-ocr
 ```
 
-Outputs are written under `./slides/<videoId>/` (or `--slides-dir`). OCR results are included in JSON output
+Outputs are written under `./slides/<sourceId>/` (or `--slides-dir`). OCR results are included in JSON output
 (`--json`) and stored in `slides.json` inside the slide directory. When scene detection is too sparse, the
 extractor also samples at a fixed interval to improve coverage.
+When using `--slides`, supported terminals (kitty/iTerm/Konsole) render inline thumbnails automatically.
+If inline images are unsupported, Summarize prints a note with the on-disk slide directory.
 
 Format the extracted transcript as Markdown (headings + paragraphs) via an LLM:
 

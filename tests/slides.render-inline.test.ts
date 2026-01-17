@@ -67,6 +67,20 @@ describe('renderSlidesInline', () => {
     expect(output.getText()).toContain('\u001b_G')
   })
 
+  it('renders kitty images when Konsole is detected', async () => {
+    const imagePath = await createTempSlide()
+    const output = createTtyStream()
+    const result = await renderSlidesInline({
+      slides: [{ index: 1, timestamp: 1.2, imagePath }],
+      mode: 'auto',
+      env: { TERM_PROGRAM: 'konsole' },
+      stdout: output.stream,
+    })
+    expect(result.protocol).toBe('kitty')
+    expect(result.rendered).toBe(1)
+    expect(output.getText()).toContain('\u001b_G')
+  })
+
   it('renders iTerm images when auto-detected', async () => {
     const imagePath = await createTempSlide()
     const output = createTtyStream()
@@ -79,5 +93,18 @@ describe('renderSlidesInline', () => {
     expect(result.protocol).toBe('iterm')
     expect(result.rendered).toBe(1)
     expect(output.getText()).toContain('\u001b]1337;File=')
+  })
+
+  it('prints a missing image notice when slides are absent', async () => {
+    const output = createTtyStream()
+    const result = await renderSlidesInline({
+      slides: [{ index: 1, timestamp: 0, imagePath: '/tmp/missing-slide.png' }],
+      mode: 'auto',
+      env: { KITTY_WINDOW_ID: '1', TERM: 'xterm-kitty' },
+      stdout: output.stream,
+    })
+    expect(result.protocol).toBe('kitty')
+    expect(result.rendered).toBe(0)
+    expect(output.getText()).toContain('(missing slide image)')
   })
 })

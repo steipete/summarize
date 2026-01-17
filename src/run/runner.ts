@@ -41,6 +41,7 @@ import { resolveDesiredOutputTokens } from './run-output.js'
 import { resolveCliRunSettings } from './run-settings.js'
 import { resolveStreamSettings } from './run-stream.js'
 import { handleSlidesCliRequest } from './slides-cli.js'
+import { createSlidesInlineRenderer } from './slides-render.js'
 import { createSummaryEngine } from './summary-engine.js'
 import { ansi, isRichTty, supportsColor } from './terminal.js'
 
@@ -50,6 +51,18 @@ type RunEnv = {
   execFile?: ExecFileFn
   stdout: NodeJS.WritableStream
   stderr: NodeJS.WritableStream
+}
+
+const formatTimestamp = (seconds: number): string => {
+  const clamped = Math.max(0, Math.floor(seconds))
+  const hours = Math.floor(clamped / 3600)
+  const minutes = Math.floor((clamped % 3600) / 60)
+  const secs = clamped % 60
+  const mm = String(minutes).padStart(2, '0')
+  const ss = String(secs).padStart(2, '0')
+  if (hours <= 0) return `${minutes}:${ss}`
+  const hh = String(hours).padStart(2, '0')
+  return `${hh}:${mm}:${ss}`
 }
 
 export async function runCli(
@@ -484,6 +497,49 @@ export async function runCli(
     const { clearProgressForStdout, setClearProgressBeforeStdout, clearProgressIfCurrent } =
       progressGate
 
+    const slidesInlineRenderer =
+      slidesSettings && !json && !plain
+        ? createSlidesInlineRenderer({ mode: 'auto', env: envForRun, stdout })
+        : null
+    const slidesInlineProtocol = slidesInlineRenderer?.protocol ?? 'none'
+    const slidesInlineEnabled = slidesInlineProtocol !== 'none'
+    const slidesInlineNoticeEnabled = Boolean(
+      slidesSettings && !json && !plain && !slidesInlineEnabled
+    )
+    const renderedSlideIndexes = new Set<number>()
+    let slidesNoticeShown = false
+    let slideRenderQueue: Promise<void> = Promise.resolve()
+
+    const renderSlideInline = (slide: { index: number; timestamp: number; imagePath: string }) => {
+      if (!slidesInlineRenderer || !slidesInlineEnabled) return
+      if (!slide.imagePath) return
+      if (renderedSlideIndexes.has(slide.index)) return
+      renderedSlideIndexes.add(slide.index)
+      slideRenderQueue = slideRenderQueue
+        .then(async () => {
+          clearProgressForStdout()
+          if (isRichTty(stdout)) stdout.write('\n')
+          const label = `Slide ${slide.index} · ${formatTimestamp(slide.timestamp)}`
+          await slidesInlineRenderer.renderSlide(
+            { index: slide.index, timestamp: slide.timestamp, imagePath: slide.imagePath },
+            label
+          )
+        })
+        .catch(() => {})
+    }
+
+    const noteSlidesInlineUnsupported = (slides: { slidesDir: string; sourceUrl: string }) => {
+      if (!slidesInlineNoticeEnabled || slidesNoticeShown) return
+      if (!slides.slidesDir) return
+      slidesNoticeShown = true
+      clearProgressForStdout()
+      const reason = isRichTty(stdout)
+        ? 'terminal does not support inline images'
+        : 'stdout is not a TTY'
+      stderr.write(`Slides saved to ${slides.slidesDir}. Inline images unavailable (${reason}).\n`)
+      stderr.write(`Use "summarize slides ${slides.sourceUrl}" to export only.\n`)
+    }
+
     const fixedModelSpec: FixedModelSpec | null =
       requestedModel.kind === 'fixed' ? requestedModel : null
 
@@ -763,7 +819,7 @@ export async function runCli(
       hooks: {
         onModelChosen: null,
         onExtracted: null,
-        onSlidesExtracted: null,
+        onSlidesExtracted: slidesInlineNoticeEnabled ? noteSlidesInlineUnsupported : null,
         onSlidesProgress: null,
         onLinkPreviewProgress: null,
         onSummaryCached: null,
@@ -775,6 +831,15 @@ export async function runCli(
         clearProgressIfCurrent,
         buildReport,
         estimateCostUsd,
+        onSlideChunk: slidesInlineEnabled
+          ? (chunk) => {
+              renderSlideInline({
+                index: chunk.slide.index,
+                timestamp: chunk.slide.timestamp,
+                imagePath: chunk.slide.imagePath,
+              })
+            }
+          : null,
       },
     }
 

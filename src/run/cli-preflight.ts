@@ -2,6 +2,7 @@ import type { Command } from 'commander'
 import { handleDaemonRequest } from '../daemon/cli.js'
 import { refreshFree } from '../refresh-free.js'
 import {
+  applyHelpStyle,
   attachRichHelp,
   buildDaemonHelp,
   buildProgram,
@@ -42,6 +43,7 @@ export function handleHelpRequest({
         stderr.write(str)
       },
     })
+    applyHelpStyle(slidesProgram, envForRun, stdout)
     slidesProgram.outputHelp()
     return true
   }

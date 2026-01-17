@@ -387,6 +387,9 @@ export async function runUrlFlow({
         }
         // Prefer indeterminate progress until we get real percentage updates from the slide pipeline.
         ctx.hooks.onSlidesProgress?.('Slides: extracting')
+        const onSlidesLog = (message: string) => {
+          writeVerbose(io.stderr, flags.verbose, `slides ${message}`, flags.verboseColor)
+        }
         slidesExtracted = await extractSlidesForSource({
           source,
           settings: flags.slides,
@@ -399,6 +402,7 @@ export async function runUrlFlow({
           hooks: {
             onSlideChunk: (chunk) => ctx.hooks.onSlideChunk?.(chunk),
             onSlidesProgress: ctx.hooks.onSlidesProgress ?? undefined,
+            onSlidesLog,
           },
         })
         if (slidesExtracted) {

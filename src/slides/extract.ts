@@ -33,14 +33,19 @@ const DEFAULT_SLIDES_SAMPLE_COUNT = 8
 const DEFAULT_YT_DLP_FORMAT_EXTRACT =
   'bestvideo[height<=720][vcodec^=avc1][ext=mp4]/best[height<=720][vcodec^=avc1][ext=mp4]/bestvideo[height<=720][ext=mp4]/best[height<=720]'
 
-function logSlides(message: string): void {
-  console.log(`[summarize-slides] ${message}`)
-}
+type SlidesLogger = ((message: string) => void) | null
 
-function logSlidesTiming(label: string, startedAt: number): number {
-  const elapsedMs = Date.now() - startedAt
-  logSlides(`${label} elapsedMs=${elapsedMs}`)
-  return elapsedMs
+function createSlidesLogger(logger: SlidesLogger) {
+  const logSlides = (message: string) => {
+    if (!logger) return
+    logger(message)
+  }
+  const logSlidesTiming = (label: string, startedAt: number) => {
+    const elapsedMs = Date.now() - startedAt
+    logSlides(`${label} elapsedMs=${elapsedMs}`)
+    return elapsedMs
+  }
+  return { logSlides, logSlidesTiming }
 }
 
 function resolveSlidesWorkers(env: Record<string, string | undefined>): number {
@@ -117,6 +122,7 @@ type ExtractSlidesArgs = {
       }
     }) => void
     onSlidesProgress?: ((text: string) => void) | null
+    onSlidesLog?: ((message: string) => void) | null
   } | null
 }
 
@@ -136,7 +142,7 @@ export function resolveSlideSource({
     return {
       url: `https://www.youtube.com/watch?v=${youtubeCandidate}`,
       kind: 'youtube',
-      sourceId: youtubeCandidate,
+      sourceId: buildYoutubeSourceId(youtubeCandidate),
     }
   }
 
@@ -155,7 +161,7 @@ export function resolveSlideSource({
       return {
         url: `https://www.youtube.com/watch?v=${fallbackId}`,
         kind: 'youtube',
-        sourceId: fallbackId,
+        sourceId: buildYoutubeSourceId(fallbackId),
       }
     }
   }
@@ -169,7 +175,7 @@ export function resolveSlideSourceFromUrl(url: string): SlideSource | null {
     return {
       url: `https://www.youtube.com/watch?v=${youtubeCandidate}`,
       kind: 'youtube',
-      sourceId: youtubeCandidate,
+      sourceId: buildYoutubeSourceId(youtubeCandidate),
     }
   }
 
@@ -187,7 +193,7 @@ export function resolveSlideSourceFromUrl(url: string): SlideSource | null {
       return {
         url: `https://www.youtube.com/watch?v=${fallbackId}`,
         kind: 'youtube',
-        sourceId: fallbackId,
+        sourceId: buildYoutubeSourceId(fallbackId),
       }
     }
   }
@@ -210,6 +216,7 @@ export async function extractSlidesForSource({
   return withSlidesLock(
     slidesDir,
     async () => {
+      const { logSlides, logSlidesTiming } = createSlidesLogger(hooks?.onSlidesLog ?? null)
       if (!noCache) {
         const cached = await readSlidesCacheIfValid({ source, settings })
         if (cached) {
@@ -365,6 +372,8 @@ export async function extractSlidesForSource({
               total > 0 ? `(${completed}/${total})` : undefined
             )
           },
+          logSlides,
+          logSlidesTiming,
         })
         reportSlidesProgress?.('detecting scenes', P_DETECT_SCENES)
         logSlidesTiming('ffmpeg scene-detect', ffmpegStartedAt)
@@ -455,15 +464,19 @@ export async function extractSlidesForSource({
                     },
                   })
               : null,
+            logSlides,
+            logSlidesTiming,
           })
         const extractFramesStartedAt = Date.now()
         const extractedSlides: SlideImage[] = await extractFrames()
-        const extractElapsedMs = logSlidesTiming(
+        const extractElapsedMs = logSlidesTiming?.(
           `extract frames (count=${trimmed.length}, parallel=${workers})`,
           extractFramesStartedAt
         )
-        if (trimmed.length > 0) {
-          logSlides(`extract frames avgMsPerFrame=${Math.round(extractElapsedMs / trimmed.length)}`)
+        if (trimmed.length > 0 && typeof extractElapsedMs === 'number') {
+          logSlides?.(
+            `extract frames avgMsPerFrame=${Math.round(extractElapsedMs / trimmed.length)}`
+          )
         }
 
         const rawSlides = applyMinDurationFilter(
@@ -474,7 +487,7 @@ export async function extractSlidesForSource({
 
         const renameStartedAt = Date.now()
         const renamedSlides = await renameSlidesWithTimestamps(rawSlides, slidesDir)
-        logSlidesTiming('rename slides', renameStartedAt)
+        logSlidesTiming?.('rename slides', renameStartedAt)
         if (renamedSlides.length === 0) {
           throw new Error('No slides extracted; try lowering --slides-scene-threshold.')
         }
@@ -482,7 +495,7 @@ export async function extractSlidesForSource({
         let slidesWithOcr = renamedSlides
         if (ocrEnabled && tesseractPath) {
           const ocrStartedAt = Date.now()
-          logSlides(`ocr start count=${renamedSlides.length} mode=parallel workers=${workers}`)
+          logSlides?.(`ocr start count=${renamedSlides.length} mode=parallel workers=${workers}`)
           const ocrStartPercent = P_OCR - 3
           const reportOcrProgress = (completed: number, total: number) => {
             const ratio = total > 0 ? completed / total : 0
@@ -499,9 +512,9 @@ export async function extractSlidesForSource({
             workers,
             reportOcrProgress
           )
-          const elapsedMs = logSlidesTiming('ocr done', ocrStartedAt)
-          if (renamedSlides.length > 0) {
-            logSlides(`ocr avgMsPerSlide=${Math.round(elapsedMs / renamedSlides.length)}`)
+          const elapsedMs = logSlidesTiming?.('ocr done', ocrStartedAt)
+          if (renamedSlides.length > 0 && typeof elapsedMs === 'number') {
+            logSlides?.(`ocr avgMsPerSlide=${Math.round(elapsedMs / renamedSlides.length)}`)
           }
         }
 
@@ -797,6 +810,8 @@ async function detectSlideTimestamps({
   workers,
   sampleCount,
   onSegmentProgress,
+  logSlides,
+  logSlidesTiming,
 }: {
   ffmpegPath: string
   ffprobePath: string | null
@@ -809,6 +824,8 @@ async function detectSlideTimestamps({
   workers: number
   sampleCount: number
   onSegmentProgress?: ((completed: number, total: number) => void) | null
+  logSlides?: ((message: string) => void) | null
+  logSlidesTiming?: ((label: string, startedAt: number) => number) | null
 }): Promise<{ timestamps: number[]; autoTune: SlideAutoTune; durationSeconds: number | null }> {
   const probeStartedAt = Date.now()
   const videoInfo = await probeVideoInfo({
@@ -817,7 +834,7 @@ async function detectSlideTimestamps({
     inputPath,
     timeoutMs,
   })
-  logSlidesTiming('ffprobe video info', probeStartedAt)
+  logSlidesTiming?.('ffprobe video info', probeStartedAt)
 
   const calibration = await calibrateSceneThreshold({
     ffmpegPath,
@@ -825,6 +842,7 @@ async function detectSlideTimestamps({
     durationSeconds: videoInfo.durationSeconds,
     sampleCount,
     timeoutMs,
+    logSlides,
   })
 
   const baseThreshold = sceneThreshold
@@ -846,7 +864,7 @@ async function detectSlideTimestamps({
     workers,
     onSegmentProgress,
   })
-  logSlidesTiming(
+  logSlidesTiming?.(
     `scene detection base (threshold=${effectiveThreshold}, segments=${segments.length})`,
     detectStartedAt
   )
@@ -864,7 +882,7 @@ async function detectSlideTimestamps({
         workers,
         onSegmentProgress,
       })
-      logSlidesTiming(
+      logSlidesTiming?.(
         `scene detection retry (threshold=${fallbackThreshold}, segments=${segments.length})`,
         retryStartedAt
       )
@@ -906,6 +924,8 @@ async function extractFramesAtTimestamps({
   onProgress,
   onStatus,
   onSlide,
+  logSlides,
+  logSlidesTiming,
 }: {
   ffmpegPath: string
   inputPath: string
@@ -918,6 +938,8 @@ async function extractFramesAtTimestamps({
   onProgress?: ((completed: number, total: number) => void) | null
   onStatus?: ((text: string) => void) | null
   onSlide?: ((slide: SlideImage) => void) | null
+  logSlides?: ((message: string) => void) | null
+  logSlidesTiming?: ((label: string, startedAt: number) => number) | null
 }): Promise<SlideImage[]> {
   type FrameStats = { ymin: number | null; ymax: number | null; yavg: number | null }
   type FrameQuality = { brightness: number; contrast: number }
@@ -1063,7 +1085,7 @@ async function extractFramesAtTimestamps({
         extracted.actualTimestamp != null && Number.isFinite(extracted.actualTimestamp)
           ? extracted.actualTimestamp.toFixed(2)
           : 'n/a'
-      logSlides(
+      logSlides?.(
         `frame pts slide=${index + 1} req=${safeTimestamp.toFixed(2)}s actual=${actualLabel}s base=${extracted.seekBase.toFixed(2)}s -> ${resolvedTimestamp.toFixed(2)}s delta=${delta.toFixed(2)}s`
       )
     }
@@ -1193,7 +1215,7 @@ async function extractFramesAtTimestamps({
         const baseContrast = quality.contrast.toFixed(2)
         const bestBrightness = best.quality?.brightness?.toFixed(2) ?? baseBrightness
         const bestContrast = best.quality?.contrast?.toFixed(2) ?? baseContrast
-        logSlides(
+        logSlides?.(
           `thumbnail adjust slide=${frame.index} ts=${frame.timestamp.toFixed(2)}s -> ${selectedTimestamp.toFixed(2)}s offset=${offsetSeconds}s base=${baseBrightness}/${baseContrast} best=${bestBrightness}/${bestContrast}`
         )
       }
@@ -1211,7 +1233,7 @@ async function extractFramesAtTimestamps({
     const THUMB_END = 96
     // Avoid UI "stuck" at a static percent while we do expensive refinement passes.
     onStatus?.(`Slides: improving thumbnails ${THUMB_START}%`)
-    logSlides(
+    logSlides?.(
       `thumbnail adjust start count=${fixTasks.length} range=±${FRAME_ADJUST_RANGE_SECONDS}s step=${FRAME_ADJUST_STEP_SECONDS}s`
     )
     await runWithConcurrency(fixTasks, Math.min(4, workers), (completed, total) => {
@@ -1220,9 +1242,12 @@ async function extractFramesAtTimestamps({
       onStatus?.(`Slides: improving thumbnails ${percent}%`)
     })
     onStatus?.(`Slides: improving thumbnails ${THUMB_END}%`)
-    logSlidesTiming('thumbnail adjust done', fixStartedAt)
+    logSlidesTiming?.('thumbnail adjust done', fixStartedAt)
   }
-  logSlidesTiming(`extract frame loop (count=${timestamps.length}, workers=${workers})`, startedAt)
+  logSlidesTiming?.(
+    `extract frame loop (count=${timestamps.length}, workers=${workers})`,
+    startedAt
+  )
   return slides
 }
 
@@ -1280,12 +1305,14 @@ async function calibrateSceneThreshold({
   durationSeconds,
   sampleCount,
   timeoutMs,
+  logSlides,
 }: {
   ffmpegPath: string
   inputPath: string
   durationSeconds: number | null
   sampleCount: number
   timeoutMs: number
+  logSlides?: ((message: string) => void) | null
 }): Promise<{ threshold: number; confidence: number }> {
   const timestamps = buildCalibrationSampleTimestamps(durationSeconds, sampleCount)
   if (timestamps.length < 2) {
@@ -1322,7 +1349,7 @@ async function calibrateSceneThreshold({
   threshold = clamp(threshold, 0.05, 0.3)
   const confidence =
     diffs.length >= 2 ? clamp(stats.p75 / 0.25, 0, 1) : clamp(stats.max / 0.25, 0, 1)
-  logSlides(
+  logSlides?.(
     `calibration samples=${timestamps.length} diffs=${diffs.length} median=${stats.median.toFixed(
       3
     )} p75=${stats.p75.toFixed(3)} threshold=${threshold}`
@@ -2087,12 +2114,36 @@ function buildDirectSourceId(url: string): string {
       return null
     }
   })()
+  const hostSlug = resolveHostSlug(parsed)
   const rawName = parsed ? path.basename(parsed.pathname) : 'video'
   const base = rawName.replace(/\.[a-z0-9]+$/i, '').trim() || 'video'
-  const slug = base
+  const slug = toSlug(base)
+  const combined = [hostSlug, slug].filter(Boolean).join('-')
+  const hash = createHash('sha1').update(url).digest('hex').slice(0, 8)
+  return combined ? `${combined}-${hash}` : `video-${hash}`
+}
+
+function buildYoutubeSourceId(videoId: string): string {
+  return `youtube-${videoId}`
+}
+
+function resolveHostSlug(parsed: URL | null): string | null {
+  if (!parsed?.hostname) return null
+  const host = parsed.hostname.toLowerCase()
+  if (host.includes('youtube.com') || host === 'youtu.be' || host.includes('youtu.be')) {
+    return 'youtube'
+  }
+  const slug = toSlug(host)
+  return slug || null
+}
+
+function toSlug(value: string): string {
+  const normalized = value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  const hash = createHash('sha1').update(url).digest('hex').slice(0, 8)
-  return slug ? `${slug}-${hash}` : `video-${hash}`
+  if (!normalized) return ''
+  const max = 64
+  if (normalized.length <= max) return normalized
+  return normalized.slice(0, max).replace(/-+$/g, '')
 }

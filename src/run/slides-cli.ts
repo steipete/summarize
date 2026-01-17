@@ -10,10 +10,11 @@ import {
 } from '../slides/index.js'
 import { startSpinner } from '../tty/spinner.js'
 import { formatVersionLine } from '../version.js'
-import { buildSlidesProgram } from './help.js'
+import { applyHelpStyle, buildSlidesProgram } from './help.js'
+import { writeVerbose } from './logging.js'
 import { resolveEnvState } from './run-env.js'
 import { renderSlidesInline, type SlidesRenderMode } from './slides-render.js'
-import { isRichTty } from './terminal.js'
+import { isRichTty, supportsColor } from './terminal.js'
 
 type SlidesCliContext = {
   normalizedArgv: string[]
@@ -59,6 +60,7 @@ export async function handleSlidesCliRequest({
       stderr.write(str)
     },
   })
+  applyHelpStyle(program, envForRun, stdout)
   program.exitOverride()
 
   try {
@@ -126,18 +128,23 @@ export async function handleSlidesCliRequest({
     throw new Error('Slides are only supported for YouTube or direct video URLs.')
   }
 
-  const progressEnabled = isRichTty(stderr) && !opts.json
+  const verboseEnabled = Boolean(opts.verbose || opts.debug)
+  const progressEnabled = isRichTty(stderr) && !opts.json && !verboseEnabled
   const spinner = startSpinner({
     text: 'Extracting slides…',
     enabled: progressEnabled,
     stream: stderr,
   })
+  const verboseColor = supportsColor(stderr, envForRun)
+  const logSlides = (message: string) => {
+    writeVerbose(stderr, verboseEnabled, `slides ${message}`, verboseColor)
+  }
   const onSlidesProgress = (text: string) => {
     if (progressEnabled) {
       spinner.setText(text)
       return
     }
-    if (opts.verbose || opts.debug) {
+    if (verboseEnabled) {
       stderr.write(`${text}\n`)
     }
   }
@@ -155,6 +162,7 @@ export async function handleSlidesCliRequest({
       tesseractPath: null,
       hooks: {
         onSlidesProgress,
+        onSlidesLog: logSlides,
       },
     })
   } finally {

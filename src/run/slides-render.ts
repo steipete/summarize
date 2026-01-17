@@ -44,7 +44,13 @@ function resolveInlineProtocol({
 
   const termProgram = (env.TERM_PROGRAM ?? '').toLowerCase()
   const term = (env.TERM ?? '').toLowerCase()
-  if (env.KITTY_WINDOW_ID || term.includes('xterm-kitty') || termProgram.includes('ghostty')) {
+  if (
+    env.KITTY_WINDOW_ID ||
+    term.includes('xterm-kitty') ||
+    termProgram.includes('ghostty') ||
+    termProgram.includes('konsole') ||
+    env.KONSOLE_VERSION
+  ) {
     return 'kitty'
   }
   if (termProgram.includes('iterm') || env.ITERM_SESSION_ID) {
@@ -157,15 +163,31 @@ export async function renderSlidesInline({
   stdout: NodeJS.WritableStream
   labelForSlide?: ((slide: RenderSlide) => string) | null
 }): Promise<{ rendered: number; protocol: InlineProtocol }> {
+  const renderer = createSlidesInlineRenderer({ mode, env, stdout })
+  return renderer.renderSlides({ slides, labelForSlide })
+}
+
+export function createSlidesInlineRenderer({
+  mode,
+  env,
+  stdout,
+}: {
+  mode: SlidesRenderMode
+  env: Record<string, string | undefined>
+  stdout: NodeJS.WritableStream
+}): {
+  protocol: InlineProtocol
+  renderSlide: (slide: RenderSlide, label?: string | null) => Promise<boolean>
+  renderSlides: (args: {
+    slides: RenderSlide[]
+    labelForSlide?: ((slide: RenderSlide) => string) | null
+  }) => Promise<{ rendered: number; protocol: InlineProtocol }>
+} {
   const protocol = resolveInlineProtocol({ mode, env, stdout })
-  if (protocol === 'none') return { rendered: 0, protocol }
+  let nextId = 1
 
-  const termCols = terminalWidth(stdout, env)
-  let rendered = 0
-  let id = 1
-
-  for (const slide of slides) {
-    const label = labelForSlide?.(slide)
+  const renderSlide = async (slide: RenderSlide, label?: string | null) => {
+    if (protocol === 'none') return false
     if (label) stdout.write(`${label}\n`)
 
     let data: Buffer
@@ -173,12 +195,13 @@ export async function renderSlidesInline({
       data = await fs.readFile(slide.imagePath)
     } catch {
       stdout.write('(missing slide image)\n')
-      continue
+      return false
     }
     if (data.length === 0) {
       stdout.write('(empty slide image)\n')
-      continue
+      return false
     }
+    const termCols = terminalWidth(stdout, env)
     const size = parsePngSize(data)
     const { cols, rows } = resolveSlideCellSize({
       width: size?.width ?? null,
@@ -187,8 +210,8 @@ export async function renderSlidesInline({
     })
 
     if (protocol === 'kitty') {
-      writeKittyImage({ stdout, data, cols, rows, id })
-      id += 1
+      writeKittyImage({ stdout, data, cols, rows, id: nextId })
+      nextId += 1
     } else if (protocol === 'iterm') {
       writeItermImage({
         stdout,
@@ -200,8 +223,24 @@ export async function renderSlidesInline({
     }
     stdout.write('\n'.repeat(Math.max(1, rows)))
     stdout.write('\n')
-    rendered += 1
+    return true
   }
 
-  return { rendered, protocol }
+  const renderSlides = async ({
+    slides,
+    labelForSlide,
+  }: {
+    slides: RenderSlide[]
+    labelForSlide?: ((slide: RenderSlide) => string) | null
+  }) => {
+    if (protocol === 'none') return { rendered: 0, protocol }
+    let rendered = 0
+    for (const slide of slides) {
+      const label = labelForSlide?.(slide) ?? null
+      if (await renderSlide(slide, label)) rendered += 1
+    }
+    return { rendered, protocol }
+  }
+
+  return { protocol, renderSlide, renderSlides }
 }

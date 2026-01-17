@@ -50,8 +50,9 @@ read_when:
 
 ## CLI (slides-only)
 - `summarize slides <url>` extracts slides without summarizing.
+- `summarize <url> --slides` renders inline thumbnails automatically when supported.
 - Defaults to writing images under `./slides/<sourceId>/` (override via `--slides-dir` / `--output`).
-- Inline terminal rendering is opt-in: `--render auto|kitty|iterm`.
+- Inline terminal rendering is opt-in: `--render auto|kitty|iterm` (Konsole uses the kitty protocol).
 
 ## Implementation notes
 - Build `slideDescriptions` map in panel:

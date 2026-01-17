@@ -26,7 +26,11 @@ export function buildProgram() {
         .choices(['auto', 'transcript', 'understand'])
         .default('auto')
     )
-    .option('--slides', 'Extract slide screenshots for YouTube/direct video URLs.', false)
+    .option(
+      '--slides',
+      'Extract slide screenshots for YouTube/direct video URLs (auto-renders inline when supported).',
+      false
+    )
     .option('--slides-ocr', 'Run OCR on extracted slides (requires tesseract).', false)
     .option('--slides-dir <dir>', 'Base output dir for slides (default: ./slides).', 'slides')
     .option(
@@ -134,6 +138,22 @@ export function buildProgram() {
     .allowExcessArguments(false)
 }
 
+export function applyHelpStyle(
+  program: Command,
+  env: Record<string, string | undefined>,
+  stdout: NodeJS.WritableStream
+) {
+  const color = supportsColor(stdout, env)
+  program.configureHelp({
+    styleTitle: (text) => ansi('1;36', text, color),
+    styleCommandText: (text) => ansi('1', text, color),
+    styleSubcommandText: (text) => ansi('1', text, color),
+    styleOptionText: (text) => ansi('1', text, color),
+    styleArgumentText: (text) => ansi('33', text, color),
+    styleDescriptionText: (text) => ansi('2', text, color),
+  })
+}
+
 export function buildSlidesProgram() {
   return new Command()
     .name('summarize slides')
@@ -168,6 +188,7 @@ export function attachRichHelp(
   env: Record<string, string | undefined>,
   stdout: NodeJS.WritableStream
 ) {
+  applyHelpStyle(program, env, stdout)
   const color = supportsColor(stdout, env)
   const heading = (text: string) => ansi('1;36', text, color)
   const cmd = (text: string) => ansi('1', text, color)
