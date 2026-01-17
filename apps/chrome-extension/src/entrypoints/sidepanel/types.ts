@@ -37,6 +37,7 @@ export type ChatMessage = Message & { id: string }
 
 export type PanelState = {
   ui: UiState | null
+  runId: string | null
   currentSource: { url: string; title: string | null } | null
   lastMeta: { inputSummary: string | null; model: string | null; modelLabel: string | null }
   summaryMarkdown: string | null

@@ -161,6 +161,7 @@ type PanelCachePayload = {
   tabId: number
   url: string
   title: string | null
+  runId: string | null
   summaryMarkdown: string | null
   summaryFromCache: boolean | null
   lastMeta: { inputSummary: string | null; model: string | null; modelLabel: string | null }

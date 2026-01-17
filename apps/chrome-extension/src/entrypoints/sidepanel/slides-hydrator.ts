@@ -10,6 +10,11 @@ export type SlidesHydrator = {
   isStreaming: () => boolean
   handlePayload: (payload: SseSlidesData) => void
   handleSummaryFromCache: (value: boolean | null | undefined) => void
+  syncFromCache: (args: {
+    runId: string | null
+    summaryFromCache: boolean | null | undefined
+    hasSlides: boolean
+  }) => void
   hydrateSnapshot: (reason?: string) => Promise<void>
 }
 
@@ -42,6 +47,13 @@ export function createSlidesHydrator(options: SlidesHydratorOptions): SlidesHydr
   let hasSlidesPayload = false
   let snapshotRequestId = 0
   let snapshotInFlight = false
+
+  const setActiveRunId = (runId: string | null) => {
+    activeRunId = runId
+    hasSlidesPayload = false
+    snapshotInFlight = false
+    snapshotRequestId += 1
+  }
 
   const handlePayload = (payload: SseSlidesData) => {
     if (!activeRunId) return
@@ -93,18 +105,12 @@ export function createSlidesHydrator(options: SlidesHydratorOptions): SlidesHydr
   })
 
   const start = async (runId: string) => {
-    activeRunId = runId
-    hasSlidesPayload = false
-    snapshotInFlight = false
-    snapshotRequestId += 1
+    setActiveRunId(runId)
     await stream.start(runId)
   }
 
   const stop = () => {
-    activeRunId = null
-    hasSlidesPayload = false
-    snapshotInFlight = false
-    snapshotRequestId += 1
+    setActiveRunId(null)
     stream.abort()
   }
 
@@ -115,12 +121,35 @@ export function createSlidesHydrator(options: SlidesHydratorOptions): SlidesHydr
     }
   }
 
+  const syncFromCache = ({
+    runId,
+    summaryFromCache,
+    hasSlides,
+  }: {
+    runId: string | null
+    summaryFromCache: boolean | null | undefined
+    hasSlides: boolean
+  }) => {
+    if (!runId) return
+    if (activeRunId !== runId) {
+      setActiveRunId(runId)
+    }
+    if (hasSlides) {
+      hasSlidesPayload = true
+      return
+    }
+    if (summaryFromCache) {
+      void hydrateSnapshot('summary-cache')
+    }
+  }
+
   return {
     start,
     stop,
     isStreaming: () => stream.isStreaming(),
     handlePayload,
     handleSummaryFromCache,
+    syncFromCache,
     hydrateSnapshot,
   }
 }

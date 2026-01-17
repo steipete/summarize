@@ -208,6 +208,7 @@ md.use(slideTagPlugin)
 
 const panelState: PanelState = {
   ui: null,
+  runId: null,
   currentSource: null,
   lastMeta: { inputSummary: null, model: null, modelLabel: null },
   summaryMarkdown: null,
@@ -961,7 +962,10 @@ async function syncWithActiveTab() {
   }
 }
 
-function resetSummaryView({ preserveChat = false }: { preserveChat?: boolean } = {}) {
+function resetSummaryView({
+  preserveChat = false,
+  clearRunId = true,
+}: { preserveChat?: boolean; clearRunId?: boolean } = {}) {
   currentRunTabId = null
   renderEl.replaceChildren(renderSlidesHostEl, renderMarkdownHostEl)
   renderMarkdownHostEl.innerHTML = ''
@@ -971,6 +975,9 @@ function resetSummaryView({ preserveChat = false }: { preserveChat?: boolean } =
   panelState.summaryMarkdown = null
   panelState.summaryFromCache = null
   panelState.slides = null
+  if (clearRunId) {
+    panelState.runId = null
+  }
   slidesExpanded = true
   slidesContextPending = false
   slidesContextUrl = null
@@ -996,6 +1003,7 @@ function buildPanelCachePayload(): PanelCachePayload | null {
     tabId,
     url,
     title: panelState.currentSource?.title ?? null,
+    runId: panelState.runId ?? null,
     summaryMarkdown: panelState.summaryMarkdown ?? null,
     summaryFromCache: panelState.summaryFromCache ?? null,
     lastMeta: panelState.lastMeta,
@@ -1007,6 +1015,7 @@ function buildPanelCachePayload(): PanelCachePayload | null {
 function applyPanelCache(payload: PanelCachePayload, opts?: { preserveChat?: boolean }) {
   const preserveChat = opts?.preserveChat ?? false
   resetSummaryView({ preserveChat })
+  panelState.runId = payload.runId ?? null
   currentRunTabId = payload.tabId
   panelState.currentSource = { url: payload.url, title: payload.title ?? null }
   panelState.lastMeta = payload.lastMeta ?? { inputSummary: null, model: null, modelLabel: null }
@@ -1044,6 +1053,11 @@ function applyPanelCache(payload: PanelCachePayload, opts?: { preserveChat?: boo
     slidesContextUrl = null
     updateSlidesTextState()
   }
+  slidesHydrator.syncFromCache({
+    runId: payload.runId ?? null,
+    summaryFromCache: payload.summaryFromCache,
+    hasSlides: Boolean(payload.slides && payload.slides.slides.length > 0),
+  })
   if (payload.summaryMarkdown) {
     renderMarkdown(payload.summaryMarkdown)
   } else {
@@ -2728,7 +2742,7 @@ const streamController = createStreamController({
   onReset: () => {
     const preserveChat = preserveChatOnNextReset
     preserveChatOnNextReset = false
-    resetSummaryView({ preserveChat })
+    resetSummaryView({ preserveChat, clearRunId: false })
     panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null }
     lastStreamError = null
     if (pendingRunForPlannedSlides) {
@@ -3320,6 +3334,7 @@ function handleBgMessage(msg: BgToPanel) {
         preserveChatOnNextReset = true
       }
       setActiveMetricsMode('summary')
+      panelState.runId = msg.run.id
       panelState.currentSource = { url: msg.run.url, title: msg.run.title }
       currentRunTabId = activeTabId
       panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null }
