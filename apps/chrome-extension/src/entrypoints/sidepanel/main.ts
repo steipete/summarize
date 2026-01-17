@@ -377,6 +377,20 @@ function clearSlideImageCache() {
   slideImagePending.clear()
 }
 
+function normalizeSlideImageUrl(
+  imageUrl: string | null | undefined,
+  sourceId: string,
+  index: number
+): string {
+  if (!imageUrl) return ''
+  const stablePrefix = `http://127.0.0.1:8787/v1/slides/${sourceId}`
+  if (imageUrl.startsWith(stablePrefix)) return imageUrl
+  if (!imageUrl.includes('/v1/summarize/')) return imageUrl
+  const queryIndex = imageUrl.indexOf('?')
+  const query = queryIndex >= 0 ? imageUrl.slice(queryIndex) : ''
+  return `${stablePrefix}/${index}${query}`
+}
+
 async function resolveSlideImageUrl(imageUrl: string): Promise<string | null> {
   if (!imageUrl) return null
   const cached = slideImageCache.get(imageUrl)
@@ -1551,7 +1565,14 @@ function slidesPayloadChanged(
 
 function applySlidesPayload(data: SseSlidesData) {
   const isSameSource = Boolean(panelState.slides && panelState.slides.sourceId === data.sourceId)
-  const merged = panelState.slides ? mergeSlidesPayload(panelState.slides, data) : data
+  const normalized: SseSlidesData = {
+    ...data,
+    slides: data.slides.map((slide) => ({
+      ...slide,
+      imageUrl: normalizeSlideImageUrl(slide.imageUrl, data.sourceId, slide.index),
+    })),
+  }
+  const merged = panelState.slides ? mergeSlidesPayload(panelState.slides, normalized) : normalized
   if (!slidesPayloadChanged(panelState.slides, merged)) return
   panelState.slides = merged
   if (!isSameSource) {
