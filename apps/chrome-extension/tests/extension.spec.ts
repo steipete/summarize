@@ -426,10 +426,14 @@ async function activateTabByUrl(harness: ExtensionHarness, expectedPrefix: strin
 async function openExtensionPage(
   harness: ExtensionHarness,
   pathname: string,
-  readySelector: string
+  readySelector: string,
+  initScript?: () => void
 ) {
   const page = await harness.context.newPage()
   trackErrors(page, harness.pageErrors, harness.consoleErrors)
+  if (initScript) {
+    await page.addInitScript(initScript)
+  }
   await page.goto(getExtensionUrl(harness, pathname), {
     waitUntil: 'domcontentloaded',
   })
@@ -886,6 +890,7 @@ test('sidepanel video selection forces transcript mode', async ({
     )
 
     const page = await openExtensionPage(harness, 'sidepanel.html', '#title')
+    await waitForPanelPort(page)
     const mediaState = buildUiState({
       tab: { id: 1, url: 'https://www.youtube.com/watch?v=abc123', title: 'Example' },
       media: { hasVideo: true, hasAudio: false, hasCaptions: false },
@@ -920,16 +925,7 @@ test('sidepanel video selection forces transcript mode', async ({
     await activateTabByUrl(harness, 'https://www.youtube.com/watch?v=abc123')
     await waitForActiveTabUrl(harness, 'https://www.youtube.com/watch?v=abc123')
 
-    await sendBgMessage(harness, {
-      type: 'run:start',
-      run: {
-        id: 'run-1',
-        url: 'https://www.youtube.com/watch?v=abc123',
-        title: 'Example',
-        model: 'auto',
-        reason: 'manual',
-      },
-    })
+    await sendPanelMessage(page, { type: 'panel:summarize', inputMode: 'video', refresh: false })
     await expect.poll(() => getSummarizeCalls(harness)).toBe(1)
 
     const body = (await getSummarizeLastBody(harness)) as Record<string, unknown> | null
@@ -1005,16 +1001,7 @@ test('sidepanel video selection requests slides when enabled', async ({
     await activateTabByUrl(harness, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
     await waitForActiveTabUrl(harness, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
-    await sendBgMessage(harness, {
-      type: 'run:start',
-      run: {
-        id: 'run-1',
-        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-        title: 'Example',
-        model: 'auto',
-        reason: 'manual',
-      },
-    })
+    await sendPanelMessage(page, { type: 'panel:summarize', inputMode: 'video', refresh: false })
     await expect.poll(() => getSummarizeCalls(harness)).toBe(1)
 
     const body = (await getSummarizeLastBody(harness)) as Record<string, unknown> | null
@@ -1046,7 +1033,10 @@ test('sidepanel video selection does not request slides when disabled', async ({
     await waitForActiveTabUrl(harness, 'https://example.com')
     await injectContentScript(harness, 'content-scripts/extract.js', 'https://example.com')
 
-    const page = await openExtensionPage(harness, 'sidepanel.html', '#title')
+    const page = await openExtensionPage(harness, 'sidepanel.html', '#title', () => {
+      ;(window as typeof globalThis & { IntersectionObserver?: unknown }).IntersectionObserver =
+        undefined
+    })
     const mediaState = buildUiState({
       tab: { id: 1, url: 'https://example.com', title: 'Example' },
       media: { hasVideo: true, hasAudio: false, hasCaptions: false },
