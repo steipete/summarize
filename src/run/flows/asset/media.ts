@@ -55,8 +55,24 @@ export async function summarizeMediaFile(
   // Check if basic transcription setup is available
   const openaiKey = ctx.env.OPENAI_API_KEY
   const falKey = ctx.env.FAL_KEY
-  const ytDlpPath = ctx.env.YT_DLP_PATH
+
+  // Helper to check if a binary is available on PATH
+  const isBinaryAvailable = async (binary: string): Promise<boolean> => {
+    const { spawn } = await import('node:child_process')
+    return new Promise<boolean>((resolve) => {
+      const proc = spawn(binary, ['--help'], { stdio: ['ignore', 'ignore', 'ignore'] })
+      proc.on('error', () => resolve(false))
+      proc.on('close', (code) => resolve(code === 0))
+    })
+  }
+
+  // Check for yt-dlp: either via env var or on PATH
+  const ytDlpPath = ctx.env.YT_DLP_PATH || (await isBinaryAvailable('yt-dlp') ? 'yt-dlp' : null)
+
+  // Check for whisper.cpp: either via env var or by checking if whisper-cli is on PATH
   const hasLocalWhisper = ctx.env.SUMMARIZE_WHISPER_CPP_BINARY
+    ? true
+    : await isBinaryAvailable('whisper-cli')
 
   const hasAnyTranscriptionProvider = openaiKey || falKey || hasLocalWhisper
 
@@ -71,43 +87,54 @@ export async function summarizeMediaFile(
 
 3. Local whisper.cpp (recommended, free):
    brew install ggerganov/ggerganov/whisper-cpp
-   Set SUMMARIZE_WHISPER_CPP_BINARY=/path/to/whisper-cli
+   Ensure whisper-cli is on your PATH (or set SUMMARIZE_WHISPER_CPP_BINARY)
 
 See: https://github.com/openai/whisper for setup details`)
   }
 
-  const absolutePath = resolvePath(args.sourceLabel)
+  // For URLs, skip local file validation - yt-dlp will handle the download
+  const isUrl = args.sourceKind === 'asset-url' || args.sourceLabel.startsWith('http')
 
-  // Get file modification time for cache invalidation (after path resolution)
-  const fileMtime = getFileModificationTime(absolutePath)
+  let absolutePath: string
+  let fileMtime: number | null = null
 
-  // Validate file size before attempting transcription
-  try {
-    const stats = statSync(absolutePath)
-    const fileSizeBytes = stats.size
-    const maxSizeBytes = 500 * 1024 * 1024 // 500 MB
+  if (isUrl) {
+    // For URLs, use the URL directly - no local path resolution needed
+    absolutePath = args.sourceLabel
+  } else {
+    absolutePath = resolvePath(args.sourceLabel)
 
-    if (fileSizeBytes === 0) {
-      throw new Error('Media file is empty (0 bytes). Please provide a valid audio/video file.')
-    }
+    // Get file modification time for cache invalidation (after path resolution)
+    fileMtime = getFileModificationTime(absolutePath)
 
-    if (fileSizeBytes > maxSizeBytes) {
-      const fileSizeMB = Math.round(fileSizeBytes / (1024 * 1024))
+    // Validate file size before attempting transcription
+    try {
+      const stats = statSync(absolutePath)
+      const fileSizeBytes = stats.size
+      const maxSizeBytes = 500 * 1024 * 1024 // 500 MB
+
+      if (fileSizeBytes === 0) {
+        throw new Error('Media file is empty (0 bytes). Please provide a valid audio/video file.')
+      }
+
+      if (fileSizeBytes > maxSizeBytes) {
+        const fileSizeMB = Math.round(fileSizeBytes / (1024 * 1024))
+        throw new Error(
+          `Media file is too large (${fileSizeMB} MB). Maximum supported size is 500 MB.`
+        )
+      }
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('empty') || error.message.includes('large'))
+      ) {
+        throw error // Re-throw our validation errors
+      }
+      // For other statSync errors (e.g., file not found), let them bubble up
       throw new Error(
-        `Media file is too large (${fileSizeMB} MB). Maximum supported size is 500 MB.`
+        `Unable to access media file: ${error instanceof Error ? error.message : 'Unknown error'}`
       )
     }
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.includes('empty') || error.message.includes('large'))
-    ) {
-      throw error // Re-throw our validation errors
-    }
-    // For other statSync errors (e.g., file not found), let them bubble up
-    throw new Error(
-      `Unable to access media file: ${error instanceof Error ? error.message : 'Unknown error'}`
-    )
   }
 
   const cacheMode = ctx.cache.mode
@@ -156,10 +183,9 @@ See: https://github.com/openai/whisper for setup details`)
   })
 
   try {
-    // Convert local file path to file:// URL for transcript resolution
-    // This is required because the generic transcript provider passes the URL to yt-dlp,
-    // which needs a proper file:// URL to handle local files
-    const fileUrl = pathToFileURL(absolutePath).href
+    // For URLs, use directly. For local files, convert to file:// URL.
+    // yt-dlp can handle both http(s) URLs and file:// URLs.
+    const fileUrl = isUrl ? absolutePath : pathToFileURL(absolutePath).href
 
     // Fetch the link content (will trigger transcription for media)
     // Using file:// URL ensures the provider chain can handle local files properly
@@ -196,6 +222,15 @@ See: https://github.com/openai/whisper for setup details`)
       `transcription done media file: ${extracted.diagnostics?.transcript?.provider ?? 'unknown'}`,
       false
     )
+
+    // If extract mode, output the transcript directly without LLM summarization
+    if (ctx.extractMode) {
+      ctx.stdout.write(extracted.content)
+      if (!extracted.content.endsWith('\n')) {
+        ctx.stdout.write('\n')
+      }
+      return
+    }
 
     // Call the standard asset summarization with the transcript
     const { summarizeAsset } = await import('./summary.js')

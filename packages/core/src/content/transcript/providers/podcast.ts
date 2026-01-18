@@ -1,3 +1,4 @@
+import { isDirectMediaUrl } from '../../url.js'
 import type { ProviderContext, ProviderFetchOptions, ProviderResult } from '../types.js'
 import {
   fetchAppleTranscriptFromEmbeddedHtml,
@@ -32,6 +33,9 @@ import { fetchSpotifyTranscript } from './podcast/spotify-flow.js'
 import { resolveTranscriptionAvailability } from './transcription-start.js'
 
 export const canHandle = ({ url, html }: ProviderContext): boolean => {
+  // Direct media URLs (e.g., .mp3, .wav) should be handled by the generic provider
+  // even if the URL contains "podcast" in the path (like "rt_podcast996.mp3")
+  if (isDirectMediaUrl(url)) return false
   if (typeof html === 'string' && looksLikeRssOrAtomFeed(html)) return true
   if (PODCAST_PLATFORM_HOST_PATTERN.test(url)) return true
   return FEED_HINT_URL_PATTERN.test(url)

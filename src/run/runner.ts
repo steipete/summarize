@@ -552,6 +552,7 @@ export async function runCli(
       timeoutMs,
       preprocessMode,
       format,
+      extractMode,
       lengthArg,
       outputLanguage,
       videoMode,

@@ -58,6 +58,7 @@ export type AssetSummaryContext = {
   timeoutMs: number
   preprocessMode: 'off' | 'auto' | 'always'
   format: 'text' | 'markdown'
+  extractMode: boolean
   lengthArg: { kind: 'preset'; preset: SummaryLength } | { kind: 'chars'; maxCharacters: number }
   outputLanguage: OutputLanguage
   videoMode: 'auto' | 'transcript' | 'understand'

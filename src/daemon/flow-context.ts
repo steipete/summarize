@@ -256,6 +256,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     timeoutMs,
     preprocessMode,
     format: 'text',
+    extractMode: extractOnly ?? false,
     lengthArg,
     outputLanguage,
     videoMode,
