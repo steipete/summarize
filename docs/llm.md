@@ -84,7 +84,7 @@ installed, auto mode can use local CLI models when `cli.enabled` is set (see `do
 
 - Video and podcast summaries ignore sponsor/ads/promotional segments; do not include them in the summary.
 - Do not mention sponsor/ads or that they were skipped.
-- Include 1-2 short direct quotes (quotation marks + Markdown italics) only when a standout line is present; otherwise omit quotes. Wrap each quoted passage in underscores so the quotation marks are italicized. Do not use quotation marks unless italicized; avoid quotation marks for single words or emphasis. Never mention ads/sponsors/boilerplate or that you skipped/ignored them.
+- Include 1-2 short direct quotes (quotation marks + Markdown italics) only when a standout line is present; otherwise omit quotes. Use underscores for italics and place them immediately outside the quotation marks. Do not use quotation marks unless italicized; avoid quotation marks for single words or emphasis. Never mention ads/sponsors/boilerplate or that you skipped/ignored them.
 - Final check: remove sponsor/ad references and remove any non-italic quotes.
 
 ## Z.AI
