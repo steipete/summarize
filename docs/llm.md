@@ -69,6 +69,8 @@ installed, auto mode can use local CLI models when `cli.enabled` is set (see `do
   - Minimum numeric value: 50 chars.
   - Default: `long`.
   - Output format is Markdown; use short paragraphs and only add bullets when they improve scanability.
+- `--force-summary`
+  - Always run the LLM even when extracted content is shorter than the requested length.
 - `--max-output-tokens <count>`
   - Hard cap for output tokens (optional).
   - If omitted, no max token parameter is sent (provider default).

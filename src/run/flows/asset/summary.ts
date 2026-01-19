@@ -20,7 +20,7 @@ import type { Prompt } from '../../../llm/prompt.js'
 import type { ExecFileFn } from '../../../markitdown.js'
 import { buildAutoModelAttempts } from '../../../model-auto.js'
 import type { FixedModelSpec, RequestedModel } from '../../../model-spec.js'
-import { buildPathSummaryPrompt } from '../../../prompts/index.js'
+import { buildPathSummaryPrompt, SUMMARY_LENGTH_TARGET_CHARACTERS } from '../../../prompts/index.js'
 import type { SummaryLength } from '../../../shared/contracts.js'
 import {
   type AssetAttachment,
@@ -29,6 +29,7 @@ import {
 } from '../../attachments.js'
 import { parseCliUserModelId } from '../../env.js'
 import { writeFinishLine } from '../../finish-line.js'
+import { resolveTargetCharacters } from '../../format.js'
 import { writeVerbose } from '../../logging.js'
 import { prepareMarkdownForTerminal } from '../../markdown.js'
 import { runModelAttempts } from '../../model-attempts.js'
@@ -49,6 +50,151 @@ const buildModelMetaFromAttempt = (attempt: ModelAttempt) => {
   return { provider: parsed.provider, canonical }
 }
 
+function shouldBypassShortContentSummary({
+  ctx,
+  textContent,
+}: {
+  ctx: Pick<AssetSummaryContext, 'forceSummary' | 'lengthArg'>
+  textContent: { content: string } | null
+}): boolean {
+  if (ctx.forceSummary) return false
+  if (!textContent?.content) return false
+  const targetCharacters = resolveTargetCharacters(
+    ctx.lengthArg,
+    SUMMARY_LENGTH_TARGET_CHARACTERS
+  )
+  if (!Number.isFinite(targetCharacters) || targetCharacters <= 0) return false
+  return textContent.content.length <= targetCharacters
+}
+
+async function outputBypassedAssetSummary({
+  ctx,
+  args,
+  promptText,
+  summaryText,
+  assetFooterParts,
+  footerLabel,
+}: {
+  ctx: AssetSummaryContext
+  args: SummarizeAssetArgs
+  promptText: string
+  summaryText: string
+  assetFooterParts: string[]
+  footerLabel: string
+}) {
+  const summary = summaryText.trimEnd()
+  const extracted = {
+    kind: 'asset' as const,
+    source: args.sourceLabel,
+    mediaType: args.attachment.mediaType,
+    filename: args.attachment.filename,
+  }
+
+  if (ctx.json) {
+    ctx.clearProgressForStdout()
+    const finishReport = ctx.shouldComputeReport ? await ctx.buildReport() : null
+    const input =
+      args.sourceKind === 'file'
+        ? {
+            kind: 'file',
+            filePath: args.sourceLabel,
+            timeoutMs: ctx.timeoutMs,
+            length:
+              ctx.lengthArg.kind === 'preset'
+                ? { kind: 'preset', preset: ctx.lengthArg.preset }
+                : { kind: 'chars', maxCharacters: ctx.lengthArg.maxCharacters },
+            maxOutputTokens: ctx.maxOutputTokensArg,
+            model: ctx.requestedModelLabel,
+            language: formatOutputLanguageForJson(ctx.outputLanguage),
+          }
+        : {
+            kind: 'asset-url',
+            url: args.sourceLabel,
+            timeoutMs: ctx.timeoutMs,
+            length:
+              ctx.lengthArg.kind === 'preset'
+                ? { kind: 'preset', preset: ctx.lengthArg.preset }
+                : { kind: 'chars', maxCharacters: ctx.lengthArg.maxCharacters },
+            maxOutputTokens: ctx.maxOutputTokensArg,
+            model: ctx.requestedModelLabel,
+            language: formatOutputLanguageForJson(ctx.outputLanguage),
+          }
+    const payload = {
+      input,
+      env: {
+        hasXaiKey: Boolean(ctx.apiStatus.xaiApiKey),
+        hasOpenAIKey: Boolean(ctx.apiStatus.apiKey),
+        hasOpenRouterKey: Boolean(ctx.apiStatus.openrouterApiKey),
+        hasApifyToken: Boolean(ctx.apiStatus.apifyToken),
+        hasFirecrawlKey: ctx.apiStatus.firecrawlConfigured,
+        hasGoogleKey: ctx.apiStatus.googleConfigured,
+        hasAnthropicKey: ctx.apiStatus.anthropicConfigured,
+      },
+      extracted,
+      prompt: promptText,
+      llm: null,
+      metrics: ctx.metricsEnabled ? finishReport : null,
+      summary,
+    }
+    ctx.stdout.write(`${JSON.stringify(payload, null, 2)}\n`)
+    ctx.restoreProgressAfterStdout?.()
+    if (ctx.metricsEnabled && finishReport) {
+      const costUsd = await ctx.estimateCostUsd()
+      writeFinishLine({
+        stderr: ctx.stderr,
+        elapsedMs: Date.now() - ctx.runStartedAtMs,
+        elapsedLabel: null,
+        model: null,
+        report: finishReport,
+        costUsd,
+        detailed: ctx.metricsDetailed,
+        extraParts: null,
+        color: ctx.verboseColor,
+      })
+    }
+    return
+  }
+
+  ctx.clearProgressForStdout()
+  const rendered =
+    !ctx.plain && isRichTty(ctx.stdout)
+      ? renderMarkdownAnsi(prepareMarkdownForTerminal(summary), {
+          width: markdownRenderWidth(ctx.stdout, ctx.env),
+          wrap: true,
+          color: supportsColor(ctx.stdout, ctx.envForRun),
+          hyperlinks: true,
+        })
+      : summary
+
+  if (!ctx.plain && isRichTty(ctx.stdout)) {
+    ctx.stdout.write(`\n${rendered.replace(/^\n+/, '')}`)
+  } else {
+    if (isRichTty(ctx.stdout)) ctx.stdout.write('\n')
+    ctx.stdout.write(rendered.replace(/^\n+/, ''))
+  }
+  if (!rendered.endsWith('\n')) {
+    ctx.stdout.write('\n')
+  }
+  ctx.restoreProgressAfterStdout?.()
+  ctx.writeViaFooter([...assetFooterParts, footerLabel])
+
+  const report = ctx.shouldComputeReport ? await ctx.buildReport() : null
+  if (ctx.metricsEnabled && report) {
+    const costUsd = await ctx.estimateCostUsd()
+    writeFinishLine({
+      stderr: ctx.stderr,
+      elapsedMs: Date.now() - ctx.runStartedAtMs,
+      elapsedLabel: null,
+      model: null,
+      report,
+      costUsd,
+      detailed: ctx.metricsDetailed,
+      extraParts: null,
+      color: ctx.verboseColor,
+    })
+  }
+}
+
 export type AssetSummaryContext = {
   env: Record<string, string | undefined>
   envForRun: Record<string, string | undefined>
@@ -60,6 +206,7 @@ export type AssetSummaryContext = {
   format: 'text' | 'markdown'
   extractMode: boolean
   lengthArg: { kind: 'preset'; preset: SummaryLength } | { kind: 'chars'; maxCharacters: number }
+  forceSummary: boolean
   outputLanguage: OutputLanguage
   videoMode: 'auto' | 'transcript' | 'understand'
   fixedModelSpec: FixedModelSpec | null
@@ -163,9 +310,22 @@ export async function summarizeAsset(ctx: AssetSummaryContext, args: SummarizeAs
         : ('file' as const)
   const requiresVideoUnderstanding = kind === 'video' && ctx.videoMode !== 'transcript'
 
+  if (shouldBypassShortContentSummary({ ctx, textContent })) {
+    await outputBypassedAssetSummary({
+      ctx,
+      args,
+      promptText,
+      summaryText: textContent?.content ?? '',
+      assetFooterParts,
+      footerLabel: 'short content',
+    })
+    return
+  }
+
   if (
     ctx.requestedModel.kind === 'auto' &&
     !ctx.isNamedModelSelection &&
+    !ctx.forceSummary &&
     !ctx.json &&
     typeof ctx.maxOutputTokensArg === 'number' &&
     textContent &&

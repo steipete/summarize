@@ -37,6 +37,7 @@ export type UrlFlowFlags = {
   transcriptTimestamps: boolean
   outputLanguage: OutputLanguage
   lengthArg: { kind: 'preset'; preset: SummaryLength } | { kind: 'chars'; maxCharacters: number }
+  forceSummary: boolean
   promptOverride?: string | null
   lengthInstruction?: string | null
   languageInstruction?: string | null

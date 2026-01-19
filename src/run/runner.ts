@@ -252,6 +252,7 @@ export async function runCli(
   const noCacheFlag = program.opts().cache === false
   const extractMode = Boolean(program.opts().extract) || Boolean(program.opts().extractOnly)
   const json = Boolean(program.opts().json)
+  const forceSummary = Boolean(program.opts().forceSummary)
   const transcriptTimestamps =
     Boolean(program.opts().timestamps) || Boolean(program.opts().slides || program.opts().slidesOcr)
   const slidesDebug = Boolean(program.opts().slidesDebug)
@@ -554,6 +555,7 @@ export async function runCli(
       format,
       extractMode,
       lengthArg,
+      forceSummary,
       outputLanguage,
       videoMode,
       fixedModelSpec,
@@ -718,6 +720,7 @@ export async function runCli(
         transcriptTimestamps,
         outputLanguage,
         lengthArg,
+        forceSummary,
         promptOverride,
         lengthInstruction,
         languageInstruction,

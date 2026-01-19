@@ -689,6 +689,7 @@ export async function runDaemonServer({
           youtube: obj.youtube,
           videoMode: obj.videoMode,
           timestamps: obj.timestamps,
+          forceSummary: obj.forceSummary,
           timeout: obj.timeout,
           retries: obj.retries,
           maxOutputTokens: obj.maxOutputTokens,

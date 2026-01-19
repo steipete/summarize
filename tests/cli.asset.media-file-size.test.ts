@@ -41,6 +41,7 @@ function makeContext(): AssetSummaryContext {
     format: 'text',
     extractMode: false,
     lengthArg: { kind: 'preset', preset: 'short' },
+    forceSummary: false,
     outputLanguage: { kind: 'auto' },
     videoMode: 'auto',
     fixedModelSpec: null,

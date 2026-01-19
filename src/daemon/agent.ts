@@ -268,6 +268,10 @@ const TOOL_DEFINITIONS: Record<string, Tool> = {
           description: 'Video mode',
         },
         timestamps: { type: 'boolean', description: 'Include transcript timestamps' },
+        forceSummary: {
+          type: 'boolean',
+          description: 'Force LLM summary even when content is shorter than requested length',
+        },
         maxCharacters: { type: 'number', description: 'Max characters for extraction' },
       },
     } as unknown as Tool['parameters'],

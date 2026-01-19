@@ -13,7 +13,6 @@ import { formatOutputLanguageForJson } from '../../../language.js'
 import { parseGatewayStyleModelId } from '../../../llm/model-id.js'
 import type { Prompt } from '../../../llm/prompt.js'
 import { buildAutoModelAttempts } from '../../../model-auto.js'
-import { isTwitterStatusUrl } from '@steipete/summarize-core/content/url'
 import { buildLinkSummaryPrompt, SUMMARY_LENGTH_TARGET_CHARACTERS } from '../../../prompts/index.js'
 import { parseCliUserModelId } from '../../env.js'
 import {
@@ -210,16 +209,17 @@ export function buildUrlPrompt({
   })
 }
 
-function shouldBypassShortTweetSummary({
+function shouldBypassShortContentSummary({
   extracted,
   lengthArg,
+  forceSummary,
 }: {
   extracted: ExtractedLinkContent
   lengthArg: UrlFlowContext['flags']['lengthArg']
+  forceSummary: boolean
 }): boolean {
-  if (!isTwitterStatusUrl(extracted.url)) return false
-  if (extracted.truncated) return false
-  if (extracted.transcriptSource && extracted.transcriptSource !== 'unavailable') return false
+  if (forceSummary) return false
+  if (!extracted.content || extracted.content.length === 0) return false
   const targetCharacters = resolveTargetCharacters(lengthArg, SUMMARY_LENGTH_TARGET_CHARACTERS)
   if (!Number.isFinite(targetCharacters) || targetCharacters <= 0) return false
   return extracted.content.length <= targetCharacters
@@ -671,7 +671,13 @@ export async function summarizeExtractedUrl({
   let summaryFromCache = false
   let cacheChecked = false
 
-  if (shouldBypassShortTweetSummary({ extracted, lengthArg: flags.lengthArg })) {
+  if (
+    shouldBypassShortContentSummary({
+      extracted,
+      lengthArg: flags.lengthArg,
+      forceSummary: flags.forceSummary,
+    })
+  ) {
     await outputSummaryFromExtractedContent({
       ctx,
       url,
@@ -681,8 +687,8 @@ export async function summarizeExtractedUrl({
       effectiveMarkdownMode,
       transcriptionCostLabel,
       slides,
-      footerLabel: 'short tweet',
-      verboseMessage: 'short tweet: skipping summary',
+      footerLabel: 'short content',
+      verboseMessage: 'short content: skipping summary',
     })
     return
   }

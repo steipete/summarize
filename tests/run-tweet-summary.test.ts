@@ -115,6 +115,6 @@ describe('tweet summary behavior', () => {
     expect(mocks.generateTextWithModelId).not.toHaveBeenCalled()
     expect(mocks.streamTextWithModelId).not.toHaveBeenCalled()
     expect(stdout.read()).toContain(baseExtracted.content)
-    expect(stderr.read()).toContain('short tweet')
+    expect(stderr.read()).toContain('short content')
   })
 })

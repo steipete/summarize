@@ -93,6 +93,11 @@ export function buildProgram() {
       undefined
     )
     .option(
+      '--force-summary',
+      'Force LLM summary even when extracted content is shorter than the requested length.',
+      false
+    )
+    .option(
       '--timeout <duration>',
       'Timeout for content fetching and LLM request: 30 (seconds), 30s, 2m, 5000ms',
       '2m'

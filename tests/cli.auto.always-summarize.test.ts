@@ -57,7 +57,7 @@ const silentStderr = new Writable({
 })
 
 describe('--model auto', () => {
-  it('uses an LLM even when extracted content is short', async () => {
+  it('skips the LLM for short content by default', async () => {
     mocks.completeSimple.mockClear()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.url
@@ -77,12 +77,11 @@ describe('--model auto', () => {
       stderr: silentStderr,
     })
 
-    expect(out.getText()).toMatch(/summary/i)
-    expect(out.getText()).not.toMatch(/hello world/i)
-    expect(mocks.completeSimple).toHaveBeenCalled()
+    expect(out.getText()).toMatch(/hello world/i)
+    expect(mocks.completeSimple).not.toHaveBeenCalled()
   })
 
-  it('uses an LLM in --json mode (llm != null)', async () => {
+  it('uses an LLM when forced for short content', async () => {
     mocks.completeSimple.mockClear()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.url
@@ -96,7 +95,51 @@ describe('--model auto', () => {
 
     const out = collectStdout()
     await runCli(
-      ['--model', 'auto', '--json', '--metrics', 'off', '--timeout', '2s', 'https://example.com'],
+      [
+        '--model',
+        'auto',
+        '--force-summary',
+        '--timeout',
+        '2s',
+        'https://example.com',
+      ],
+      {
+        env: { OPENAI_API_KEY: 'test' },
+        fetch: fetchMock as unknown as typeof fetch,
+        stdout: out.stdout,
+        stderr: silentStderr,
+      }
+    )
+
+    expect(out.getText()).toMatch(/summary/i)
+    expect(mocks.completeSimple).toHaveBeenCalled()
+  })
+
+  it('uses an LLM in --json mode when forced (llm != null)', async () => {
+    mocks.completeSimple.mockClear()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.url
+      if (url === 'https://example.com') {
+        return htmlResponse(
+          '<!doctype html><html><body><article><p>Hello world</p></article></body></html>'
+        )
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    })
+
+    const out = collectStdout()
+    await runCli(
+      [
+        '--model',
+        'auto',
+        '--force-summary',
+        '--json',
+        '--metrics',
+        'off',
+        '--timeout',
+        '2s',
+        'https://example.com',
+      ],
       {
         env: { OPENAI_API_KEY: 'test' },
         fetch: fetchMock as unknown as typeof fetch,
@@ -110,14 +153,14 @@ describe('--model auto', () => {
     expect(payload.summary).toMatch(/summary/i)
   })
 
-  it('uses an LLM for local text files (does not echo file)', async () => {
+  it('uses an LLM for local text files when forced (does not echo file)', async () => {
     mocks.completeSimple.mockClear()
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'summarize-test-'))
     const filePath = path.join(tmpDir, 'input.txt')
     await fs.writeFile(filePath, 'Hello world\n', 'utf8')
 
     const out = collectStdout()
-    await runCli(['--model', 'auto', '--timeout', '2s', filePath], {
+    await runCli(['--model', 'auto', '--force-summary', '--timeout', '2s', filePath], {
       env: { OPENAI_API_KEY: 'test' },
       fetch: globalThis.fetch.bind(globalThis),
       stdout: out.stdout,

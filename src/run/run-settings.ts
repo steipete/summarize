@@ -39,6 +39,7 @@ export type RunOverrides = {
   youtubeMode: YoutubeMode | null
   videoMode: VideoMode | null
   transcriptTimestamps: boolean | null
+  forceSummary: boolean | null
   timeoutMs: number | null
   retries: number | null
   maxOutputTokensArg: number | null
@@ -52,6 +53,7 @@ export type RunOverridesInput = {
   youtube?: unknown
   videoMode?: unknown
   timestamps?: unknown
+  forceSummary?: unknown
   timeout?: unknown
   retries?: unknown
   maxOutputTokens?: unknown
@@ -178,6 +180,7 @@ export function resolveRunOverrides(
     youtube,
     videoMode,
     timestamps,
+    forceSummary,
     timeout,
     retries,
     maxOutputTokens,
@@ -265,6 +268,8 @@ export function resolveRunOverrides(
     return null
   })()
 
+  const forceSummaryResolved = parseOptionalBoolean(forceSummary, strict)
+
   return {
     firecrawlMode: parseOptionalSetting(firecrawl, parseFirecrawlMode, strict),
     markdownMode: parseOptionalSetting(markdownMode, parseMarkdownMode, strict),
@@ -272,6 +277,7 @@ export function resolveRunOverrides(
     youtubeMode: parseOptionalSetting(youtube, parseYoutubeMode, strict),
     videoMode: parseOptionalSetting(videoMode, parseVideoMode, strict),
     transcriptTimestamps: parseOptionalBoolean(timestamps, strict),
+    forceSummary: forceSummaryResolved,
     timeoutMs,
     retries: retriesResolved,
     maxOutputTokensArg,
