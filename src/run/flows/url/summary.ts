@@ -13,7 +13,8 @@ import { formatOutputLanguageForJson } from '../../../language.js'
 import { parseGatewayStyleModelId } from '../../../llm/model-id.js'
 import type { Prompt } from '../../../llm/prompt.js'
 import { buildAutoModelAttempts } from '../../../model-auto.js'
-import { buildLinkSummaryPrompt } from '../../../prompts/index.js'
+import { isTwitterStatusUrl } from '@steipete/summarize-core/content/url'
+import { buildLinkSummaryPrompt, SUMMARY_LENGTH_TARGET_CHARACTERS } from '../../../prompts/index.js'
 import { parseCliUserModelId } from '../../env.js'
 import {
   buildExtractFinishLabel,
@@ -25,6 +26,7 @@ import { prepareMarkdownForTerminal } from '../../markdown.js'
 import { runModelAttempts } from '../../model-attempts.js'
 import { buildOpenRouterNoAllowedProvidersMessage } from '../../openrouter.js'
 import { isRichTty, markdownRenderWidth, supportsColor } from '../../terminal.js'
+import { resolveTargetCharacters } from '../../format.js'
 import type { ModelAttempt } from '../../types.js'
 import type { UrlExtractionUi } from './extract.js'
 import type { SlidesTerminalOutput } from './slides-output.js'
@@ -206,6 +208,120 @@ export function buildUrlPrompt({
     lengthInstruction: lengthInstruction ?? null,
     languageInstruction: languageInstruction ?? null,
   })
+}
+
+function shouldBypassShortTweetSummary({
+  extracted,
+  lengthArg,
+}: {
+  extracted: ExtractedLinkContent
+  lengthArg: UrlFlowContext['flags']['lengthArg']
+}): boolean {
+  if (!isTwitterStatusUrl(extracted.url)) return false
+  if (extracted.truncated) return false
+  if (extracted.transcriptSource && extracted.transcriptSource !== 'unavailable') return false
+  const targetCharacters = resolveTargetCharacters(lengthArg, SUMMARY_LENGTH_TARGET_CHARACTERS)
+  if (!Number.isFinite(targetCharacters) || targetCharacters <= 0) return false
+  return extracted.content.length <= targetCharacters
+}
+
+async function outputSummaryFromExtractedContent({
+  ctx,
+  url,
+  extracted,
+  extractionUi,
+  prompt,
+  effectiveMarkdownMode,
+  transcriptionCostLabel,
+  slides,
+  footerLabel,
+  verboseMessage,
+}: {
+  ctx: UrlFlowContext
+  url: string
+  extracted: ExtractedLinkContent
+  extractionUi: UrlExtractionUi
+  prompt: string
+  effectiveMarkdownMode: 'off' | 'auto' | 'llm' | 'readability'
+  transcriptionCostLabel: string | null
+  slides?: Awaited<
+    ReturnType<typeof import('../../../slides/index.js').extractSlidesForSource>
+  > | null
+  footerLabel?: string | null
+  verboseMessage?: string | null
+}) {
+  const { io, flags, model, hooks } = ctx
+
+  hooks.clearProgressForStdout()
+  const finishModel = pickModelForFinishLine(model.llmCalls, null)
+
+  if (flags.json) {
+    const finishReport = flags.shouldComputeReport ? await hooks.buildReport() : null
+    const payload = {
+      input: {
+        kind: 'url' as const,
+        url,
+        timeoutMs: flags.timeoutMs,
+        youtube: flags.youtubeMode,
+        firecrawl: flags.firecrawlMode,
+        format: flags.format,
+        markdown: effectiveMarkdownMode,
+        timestamps: flags.transcriptTimestamps,
+        length:
+          flags.lengthArg.kind === 'preset'
+            ? { kind: 'preset' as const, preset: flags.lengthArg.preset }
+            : { kind: 'chars' as const, maxCharacters: flags.lengthArg.maxCharacters },
+        maxOutputTokens: flags.maxOutputTokensArg,
+        model: model.requestedModelLabel,
+        language: formatOutputLanguageForJson(flags.outputLanguage),
+      },
+      env: {
+        hasXaiKey: Boolean(model.apiStatus.xaiApiKey),
+        hasOpenAIKey: Boolean(model.apiStatus.apiKey),
+        hasOpenRouterKey: Boolean(model.apiStatus.openrouterApiKey),
+        hasApifyToken: Boolean(model.apiStatus.apifyToken),
+        hasFirecrawlKey: model.apiStatus.firecrawlConfigured,
+        hasGoogleKey: model.apiStatus.googleConfigured,
+        hasAnthropicKey: model.apiStatus.anthropicConfigured,
+      },
+      extracted,
+      slides,
+      prompt,
+      llm: null,
+      metrics: flags.metricsEnabled ? finishReport : null,
+      summary: extracted.content,
+    }
+    io.stdout.write(`${JSON.stringify(payload, null, 2)}\n`)
+    if (flags.metricsEnabled && finishReport) {
+      const costUsd = await hooks.estimateCostUsd()
+      writeFinishLine({
+        stderr: io.stderr,
+        elapsedMs: Date.now() - flags.runStartedAtMs,
+        label: extractionUi.finishSourceLabel,
+        model: finishModel,
+        report: finishReport,
+        costUsd,
+        detailed: flags.metricsDetailed,
+        extraParts: buildFinishExtras({
+          extracted,
+          metricsDetailed: flags.metricsDetailed,
+          transcriptionCostLabel,
+        }),
+        color: flags.verboseColor,
+      })
+    }
+    return
+  }
+
+  io.stdout.write(`${extracted.content}\n`)
+  hooks.restoreProgressAfterStdout?.()
+  if (extractionUi.footerParts.length > 0) {
+    const footer = footerLabel ? [...extractionUi.footerParts, footerLabel] : extractionUi.footerParts
+    hooks.writeViaFooter(footer)
+  }
+  if (verboseMessage && flags.verbose) {
+    writeVerbose(io.stderr, flags.verbose, verboseMessage, flags.verboseColor)
+  }
 }
 
 const buildFinishExtras = ({
@@ -555,6 +671,22 @@ export async function summarizeExtractedUrl({
   let summaryFromCache = false
   let cacheChecked = false
 
+  if (shouldBypassShortTweetSummary({ extracted, lengthArg: flags.lengthArg })) {
+    await outputSummaryFromExtractedContent({
+      ctx,
+      url,
+      extracted,
+      extractionUi,
+      prompt,
+      effectiveMarkdownMode,
+      transcriptionCostLabel,
+      slides,
+      footerLabel: 'short tweet',
+      verboseMessage: 'short tweet: skipping summary',
+    })
+    return
+  }
+
   if (cacheStore && contentHash && promptHash) {
     cacheChecked = true
     for (const attempt of attempts) {
@@ -665,78 +797,19 @@ export async function summarizeExtractedUrl({
       }
       throw new Error(withFreeTip(`No model available for --model ${model.requestedModelInput}`))
     }
-    hooks.clearProgressForStdout()
-    if (flags.json) {
-      const finishReport = flags.shouldComputeReport ? await hooks.buildReport() : null
-      const finishModel = pickModelForFinishLine(model.llmCalls, null)
-      const payload = {
-        input: {
-          kind: 'url' as const,
-          url,
-          timeoutMs: flags.timeoutMs,
-          youtube: flags.youtubeMode,
-          firecrawl: flags.firecrawlMode,
-          format: flags.format,
-          markdown: effectiveMarkdownMode,
-          timestamps: flags.transcriptTimestamps,
-          length:
-            flags.lengthArg.kind === 'preset'
-              ? { kind: 'preset' as const, preset: flags.lengthArg.preset }
-              : { kind: 'chars' as const, maxCharacters: flags.lengthArg.maxCharacters },
-          maxOutputTokens: flags.maxOutputTokensArg,
-          model: model.requestedModelLabel,
-          language: formatOutputLanguageForJson(flags.outputLanguage),
-        },
-        env: {
-          hasXaiKey: Boolean(model.apiStatus.xaiApiKey),
-          hasOpenAIKey: Boolean(model.apiStatus.apiKey),
-          hasOpenRouterKey: Boolean(model.apiStatus.openrouterApiKey),
-          hasApifyToken: Boolean(model.apiStatus.apifyToken),
-          hasFirecrawlKey: model.apiStatus.firecrawlConfigured,
-          hasGoogleKey: model.apiStatus.googleConfigured,
-          hasAnthropicKey: model.apiStatus.anthropicConfigured,
-        },
-        extracted,
-        slides,
-        prompt,
-        llm: null,
-        metrics: flags.metricsEnabled ? finishReport : null,
-        summary: extracted.content,
-      }
-      io.stdout.write(`${JSON.stringify(payload, null, 2)}\n`)
-      if (flags.metricsEnabled && finishReport) {
-        const costUsd = await hooks.estimateCostUsd()
-        writeFinishLine({
-          stderr: io.stderr,
-          elapsedMs: Date.now() - flags.runStartedAtMs,
-          label: extractionUi.finishSourceLabel,
-          model: finishModel,
-          report: finishReport,
-          costUsd,
-          detailed: flags.metricsDetailed,
-          extraParts: buildFinishExtras({
-            extracted,
-            metricsDetailed: flags.metricsDetailed,
-            transcriptionCostLabel,
-          }),
-          color: flags.verboseColor,
-        })
-      }
-      return
-    }
-    io.stdout.write(`${extracted.content}\n`)
-    hooks.restoreProgressAfterStdout?.()
-    if (extractionUi.footerParts.length > 0) {
-      hooks.writeViaFooter([...extractionUi.footerParts, 'no model'])
-    }
-    if (lastError instanceof Error && flags.verbose) {
-      writeVerbose(
-        io.stderr,
-        flags.verbose,
-        `auto failed all models: ${lastError.message}`,
-        flags.verboseColor
-      )
-    }
+    await outputSummaryFromExtractedContent({
+      ctx,
+      url,
+      extracted,
+      extractionUi,
+      prompt,
+      effectiveMarkdownMode,
+      transcriptionCostLabel,
+      slides,
+      footerLabel: 'no model',
+      verboseMessage:
+        lastError instanceof Error ? `auto failed all models: ${lastError.message}` : null,
+    })
     return
   }
 

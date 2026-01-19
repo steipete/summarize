@@ -57,12 +57,26 @@ describe('twitter long-form transcript skip', () => {
     expect(result.diagnostics.transcript.notes ?? '').toContain('Skipped yt-dlp transcript')
   })
 
-  it('still attempts transcript for short tweet text', async () => {
+  it('skips transcript for short tweet text when media transcript mode is auto', async () => {
     mocks.resolveTranscriptForLink.mockClear()
 
     const result = await fetchLinkContent(
       'https://x.com/user/status/123',
       { format: 'text' },
+      createDeps('short tweet')
+    )
+
+    expect(mocks.resolveTranscriptForLink).not.toHaveBeenCalled()
+    expect(result.transcriptSource).toBeNull()
+    expect(result.diagnostics.transcript.notes ?? '').toContain('media transcript mode is auto')
+  })
+
+  it('still attempts transcript for short tweet text when media transcript mode is prefer', async () => {
+    mocks.resolveTranscriptForLink.mockClear()
+
+    const result = await fetchLinkContent(
+      'https://x.com/user/status/123',
+      { format: 'text', mediaTranscript: 'prefer' },
       createDeps('short tweet')
     )
 

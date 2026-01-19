@@ -31,7 +31,7 @@ const MAX_TWITTER_TEXT_FOR_TRANSCRIPT = 500
 
 const buildSkippedTwitterTranscript = (
   cacheMode: CacheMode,
-  textLength: number
+  notes: string
 ): TranscriptResolution => ({
   text: null,
   source: null,
@@ -41,7 +41,7 @@ const buildSkippedTwitterTranscript = (
     textProvided: false,
     provider: null,
     attemptedProviders: [],
-    notes: `Skipped yt-dlp transcript for long-form tweet text (${textLength} chars)`,
+    notes,
   },
 })
 
@@ -319,9 +319,17 @@ export async function fetchLinkContent(
       const title = tweet?.author?.username ? `@${tweet.author.username}` : null
       const description = null
       const siteName = 'X'
-      const skipTranscript = text.length >= MAX_TWITTER_TEXT_FOR_TRANSCRIPT
-      const transcriptResolution = skipTranscript
-        ? buildSkippedTwitterTranscript(cacheMode, text.length)
+      const shouldAttemptTranscript = mediaTranscriptMode === 'prefer'
+      const autoModeNote = !shouldAttemptTranscript
+        ? 'Skipped tweet transcript (media transcript mode is auto; enable --video-mode transcript to force audio).'
+        : null
+      const longFormNote =
+        text.length >= MAX_TWITTER_TEXT_FOR_TRANSCRIPT
+          ? `Skipped yt-dlp transcript for long-form tweet text (${text.length} chars)`
+          : null
+      const skipTranscriptReason = [autoModeNote, longFormNote].filter(Boolean).join(' ') || null
+      const transcriptResolution = skipTranscriptReason
+        ? buildSkippedTwitterTranscript(cacheMode, skipTranscriptReason)
         : await resolveTranscriptForLink(url, null, deps, {
             youtubeTranscriptMode,
             mediaTranscriptMode,

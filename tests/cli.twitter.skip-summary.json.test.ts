@@ -1,7 +1,14 @@
 import { Writable } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 
+import { makeAssistantMessage } from './helpers/pi-ai-mock.js'
+
 const mocks = vi.hoisted(() => {
+  const completeSimple = vi.fn()
+  const streamSimple = vi.fn()
+  const getModel = vi.fn(() => {
+    throw new Error('no model')
+  })
   const createLinkPreviewClient = vi.fn(() => {
     return {
       fetchLinkContent: vi.fn(async (url: string) => {
@@ -45,8 +52,23 @@ const mocks = vi.hoisted(() => {
     }
   })
 
-  return { createLinkPreviewClient }
+  return { completeSimple, streamSimple, getModel, createLinkPreviewClient }
 })
+
+mocks.completeSimple.mockImplementation(async () =>
+  makeAssistantMessage({
+    text: 'SUMMARY',
+    provider: 'openai',
+    model: 'gpt-5.2',
+    api: 'openai-responses',
+  })
+)
+
+vi.mock('@mariozechner/pi-ai', () => ({
+  completeSimple: mocks.completeSimple,
+  streamSimple: mocks.streamSimple,
+  getModel: mocks.getModel,
+}))
 
 vi.mock('../src/content/index.js', () => ({
   createLinkPreviewClient: mocks.createLinkPreviewClient,
@@ -67,13 +89,14 @@ function collectStream() {
 
 describe('cli twitter skip-summary branches', () => {
   it('skips summarization for short tweet content in --json mode', async () => {
+    mocks.completeSimple.mockClear()
     const stdout = collectStream()
     const stderr = collectStream()
 
     await runCli(
       ['--json', '--metrics', 'off', '--timeout', '2s', 'https://twitter.com/x/status/123'],
       {
-        env: {},
+        env: { OPENAI_API_KEY: 'test' },
         fetch: vi.fn() as unknown as typeof fetch,
         stdout: stdout.stream,
         stderr: stderr.stream,
@@ -85,6 +108,7 @@ describe('cli twitter skip-summary branches', () => {
     expect(payload.llm).toBeNull()
     expect(payload.summary).toBe('Short tweet text')
     expect(payload.input.url).toBe('https://twitter.com/x/status/123')
+    expect(mocks.completeSimple).not.toHaveBeenCalled()
   })
 
   it('prints a finish line when metrics are enabled (json)', async () => {

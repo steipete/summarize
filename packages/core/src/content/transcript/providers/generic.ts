@@ -67,6 +67,17 @@ export const fetchTranscript = async (
     if (result) return result
   }
 
+  if (isTwitterStatusUrl(context.url) && options.mediaTranscriptMode !== 'prefer') {
+    return {
+      text: null,
+      source: null,
+      attemptedProviders,
+      metadata: { provider: 'generic', kind: 'twitter', reason: 'media_mode_auto' },
+      notes:
+        'Twitter transcript skipped (media transcript mode is auto; enable --video-mode transcript to force audio).',
+    }
+  }
+
   if (!isTwitterStatusUrl(context.url)) {
     return {
       text: null,

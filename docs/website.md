@@ -24,6 +24,11 @@ Use this for non-YouTube URLs.
 Daemon note:
 - `/v1/summarize` accepts `format: "markdown"` plus `markdownMode`/`preprocess` to return extracted Markdown (especially when `extractOnly: true`).
 
+## Twitter/X
+
+- Short tweets skip the LLM when the requested summary length would exceed the tweet length; the tweet text is returned as-is.
+- Tweet audio transcription runs only with `--video-mode transcript` (auto mode skips yt-dlp for tweets).
+
 ## Flags
 
 - `--firecrawl off|auto|always`

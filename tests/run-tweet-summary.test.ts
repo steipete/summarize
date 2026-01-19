@@ -87,7 +87,7 @@ beforeEach(() => {
 })
 
 describe('tweet summary behavior', () => {
-  it('uses LLM and claim source in finish line for tweets', async () => {
+  it('skips LLM for short tweets by default', async () => {
     const home = mkdtempSync(join(tmpdir(), 'summarize-tests-run-tweet-summary-'))
     mocks.fetchLinkContent.mockResolvedValue(baseExtracted)
     mocks.generateTextWithModelId.mockResolvedValue({
@@ -112,10 +112,9 @@ describe('tweet summary behavior', () => {
       }
     )
 
-    expect(mocks.generateTextWithModelId).toHaveBeenCalledTimes(1)
+    expect(mocks.generateTextWithModelId).not.toHaveBeenCalled()
     expect(mocks.streamTextWithModelId).not.toHaveBeenCalled()
-    expect(stdout.read()).toContain('LLM summary output.')
-    expect(stdout.read()).not.toContain(baseExtracted.content)
-    expect(stderr.read()).toContain('3 words via bird')
+    expect(stdout.read()).toContain(baseExtracted.content)
+    expect(stderr.read()).toContain('short tweet')
   })
 })
