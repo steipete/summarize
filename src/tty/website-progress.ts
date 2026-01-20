@@ -4,15 +4,18 @@ import { formatBytes } from './format.js'
 import type { OscProgressController } from './osc-progress.js'
 import { createFetchHtmlProgressRenderer } from './progress/fetch-html.js'
 import { createTranscriptProgressRenderer } from './progress/transcript.js'
+import type { ThemeRenderer } from './theme.js'
 
 export function createWebsiteProgress({
   enabled,
   spinner,
   oscProgress,
+  theme,
 }: {
   enabled: boolean
   spinner: { setText: (text: string) => void }
   oscProgress?: OscProgressController | null
+  theme?: ThemeRenderer | null
 }): {
   stop: () => void
   onProgress: (event: LinkPreviewProgressEvent) => void
@@ -20,7 +23,7 @@ export function createWebsiteProgress({
   if (!enabled) return null
 
   const fetchRenderer = createFetchHtmlProgressRenderer({ spinner, oscProgress })
-  const transcriptRenderer = createTranscriptProgressRenderer({ spinner, oscProgress })
+  const transcriptRenderer = createTranscriptProgressRenderer({ spinner, oscProgress, theme })
 
   const stopAll = () => {
     fetchRenderer.stop()

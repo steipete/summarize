@@ -7,13 +7,16 @@ import {
   formatElapsedMs,
 } from '../format.js'
 import type { OscProgressController } from '../osc-progress.js'
+import type { ThemeRenderer } from '../theme.js'
 
 export function createTranscriptProgressRenderer({
   spinner,
   oscProgress,
+  theme,
 }: {
   spinner: { setText: (text: string) => void }
   oscProgress?: OscProgressController | null
+  theme?: ThemeRenderer | null
 }): {
   stop: () => void
   onProgress: (event: LinkPreviewProgressEvent) => void
@@ -57,6 +60,21 @@ export function createTranscriptProgressRenderer({
     spinner.setText(text)
   }
 
+  const styleLabel = (text: string) => (theme ? theme.label(text) : text)
+  const styleValue = (text: string) => (theme ? theme.value(text) : text)
+  const styleDim = (text: string) => (theme ? theme.dim(text) : text)
+
+  const renderLine = (label: string, detail: string, percentLabel?: string) => {
+    if (!theme) {
+      return `${label}${percentLabel ? ` ${percentLabel}` : ''}${detail}`
+    }
+    const percent = percentLabel ? ` ${styleValue(percentLabel)}` : ''
+    return `${styleLabel(label)}${percent}${styleDim(detail)}`
+  }
+
+  const renderSimple = (label: string) =>
+    theme ? `${styleLabel(label)}${styleDim('…')}` : `${label}…`
+
   const updateOscIndeterminate = (label: string) => {
     if (!oscProgress) return
     oscProgress.setIndeterminate(label)
@@ -98,7 +116,10 @@ export function createTranscriptProgressRenderer({
     const kindLabel = state.mediaKind === 'video' ? 'media' : 'audio'
     const kindDetail = state.mediaKind === 'video' ? 'video' : null
     const svcLabel = kindDetail ? `${svc}, ${kindDetail}` : svc
-    return `Downloading ${kindLabel} (${svcLabel}, ${downloaded}${total}, ${elapsed}${rate})…`
+    return renderLine(
+      `Downloading ${kindLabel}`,
+      ` (${svcLabel}, ${downloaded}${total}, ${elapsed}${rate})…`
+    )
   }
 
   const downloadTitle = () =>
@@ -152,9 +173,13 @@ export function createTranscriptProgressRenderer({
         ? `, ${state.whisperPartIndex}/${state.whisperParts}`
         : ''
 
-    const percentLabel = typeof percent === 'number' ? ` ${percent}%` : ''
+    const percentLabel = typeof percent === 'number' ? `${percent}%` : null
 
-    return `Transcribing${percentLabel} (${svc}, ${providerLabel}${duration}${parts}, ${elapsed})…`
+    return renderLine(
+      'Transcribing',
+      ` (${svc}, ${providerLabel}${duration}${parts}, ${elapsed})…`,
+      percentLabel ?? undefined
+    )
   }
 
   return {
@@ -169,7 +194,7 @@ export function createTranscriptProgressRenderer({
         state.startedAtMs = Date.now()
         stopTicker()
         startTicker(renderDownloadLine)
-        updateSpinner(`${downloadTitle()}…`, { force: true })
+        updateSpinner(renderSimple(downloadTitle()), { force: true })
         updateOscIndeterminate(downloadTitle())
         return
       }
@@ -215,6 +240,13 @@ export function createTranscriptProgressRenderer({
         updateSpinner(renderWhisperLine(), { force: true })
         if (typeof state.whisperTotalSeconds === 'number' && state.whisperTotalSeconds > 0) {
           updateOscPercent('Transcribing', 0)
+        } else if (
+          typeof state.whisperPartIndex === 'number' &&
+          typeof state.whisperParts === 'number' &&
+          state.whisperPartIndex > 0 &&
+          state.whisperParts > 0
+        ) {
+          updateOscPercent('Transcribing', (state.whisperPartIndex / state.whisperParts) * 100)
         } else {
           updateOscIndeterminate('Transcribing')
         }
@@ -238,6 +270,13 @@ export function createTranscriptProgressRenderer({
             'Transcribing',
             (state.whisperProcessedSeconds / state.whisperTotalSeconds) * 100
           )
+        } else if (
+          typeof state.whisperPartIndex === 'number' &&
+          typeof state.whisperParts === 'number' &&
+          state.whisperPartIndex > 0 &&
+          state.whisperParts > 0
+        ) {
+          updateOscPercent('Transcribing', (state.whisperPartIndex / state.whisperParts) * 100)
         } else {
           updateOscIndeterminate('Transcribing')
         }
