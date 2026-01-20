@@ -33,6 +33,19 @@ const clampNumber = (value: number, min: number, max: number) => Math.min(max, M
 
 const collapseLineWhitespace = (value: string): string => value.replace(/\s+/g, ' ').trim()
 
+const looksLikeTitleLine = (line: string): boolean => {
+  const trimmed = collapseLineWhitespace(line)
+  if (!trimmed) return false
+  if (trimmed.length > 80) return false
+  if (/^[\[\-\u2022*]/.test(trimmed)) return false
+  if (/^slide\s+\d+/i.test(trimmed)) return false
+  if (/^title\s*:/i.test(trimmed)) return false
+  if (/[.!?]\s*$/.test(trimmed)) return false
+  const words = trimmed.split(/\s+/).filter(Boolean)
+  if (words.length > 12) return false
+  return true
+}
+
 const hasSlideLabel = (line: string, index: number, count: number): boolean => {
   const normalized = collapseLineWhitespace(line).toLowerCase()
   if (!normalized) return false
@@ -82,10 +95,15 @@ export const splitSlideTitleFromText = ({
   if (lines.length === 0) return { title: null, body: '' }
   const firstLine = lines[0] ?? ''
   const titleMatch = firstLine.match(/^title\s*:\s*(.+)$/i)
-  if (!titleMatch) {
+  if (titleMatch) {
+    const title = collapseLineWhitespace(titleMatch[1] ?? '').trim()
+    const body = lines.slice(1).join('\n').trim()
+    return { title: title || null, body }
+  }
+  if (!looksLikeTitleLine(firstLine)) {
     return { title: null, body: trimmed }
   }
-  const title = collapseLineWhitespace(titleMatch[1] ?? '').trim()
+  const title = collapseLineWhitespace(firstLine).trim()
   const body = lines.slice(1).join('\n').trim()
   return { title: title || null, body }
 }

@@ -15,6 +15,7 @@ import {
   resolveSlideTextBudget,
   resolveSlideWindowSeconds,
   splitSummaryFromSlides,
+  splitSlideTitleFromText,
 } from '../src/run/flows/url/slides-text.js'
 
 describe('slides text helpers', () => {
@@ -123,6 +124,23 @@ describe('slides text helpers', () => {
     })
     expect(coerced).not.toContain('Title:')
     expect(coerced).toContain('This segment explains the setup.')
+  })
+
+  it('detects short headline lines as slide titles', () => {
+    const parsed = splitSlideTitleFromText({
+      text: 'Graphene breakthroughs\nGraphene is strong and conductive.',
+      slideIndex: 1,
+      total: 3,
+    })
+    expect(parsed.title).toBe('Graphene breakthroughs')
+    expect(parsed.body).toContain('Graphene is strong and conductive.')
+
+    const sentence = splitSlideTitleFromText({
+      text: 'Graphene is strong and conductive.\nMore details.',
+      slideIndex: 1,
+      total: 3,
+    })
+    expect(sentence.title).toBeNull()
   })
 
   it('coerces summaries with markers and missing slides', () => {

@@ -177,7 +177,7 @@ export function buildLinkSummaryPrompt({
           'Intro paragraph.',
           ...Array.from(
             { length: slides.count },
-            (_, index) => `[slide:${index + 1}]\nTitle: Headline\nText for this segment.`
+            (_, index) => `[slide:${index + 1}]\nText for this segment.`
           ),
         ].join('\n')
       : ''
@@ -187,16 +187,6 @@ export function buildLinkSummaryPrompt({
           'Start with a short intro paragraph (1-3 sentences) before the first slide tag.',
           'Write a continuous narrative that covers the whole video; do not switch to a bullet list.',
           'Slides are provided as transcript excerpts tied to time spans between adjacent slides.',
-          'For each slide tag, start the segment with a title line using this exact format: Title: <headline>.',
-          'The title is a real headline for the segment (one word is OK). It must be distinct from the first sentence.',
-          'Do not reuse or lightly edit the opening words from the body.',
-          'Avoid generic titles like "The video", "This slide", "This segment", "It", or "Here".',
-          'If unsure, still invent a concise headline that captures the idea.',
-          'The title line must be on its own line; the body starts on the next line.',
-          'Every slide block must follow: [slide:N] then Title: line then body. Do not skip the Title line.',
-          'Copy the template literally and replace only the placeholder text; never delete the "Title:" token.',
-          'The very next line after each [slide:N] must start with "Title:". If it does not, the response is invalid.',
-          'Do not include slide numbers, timestamps, or trailing punctuation in the title line.',
           'Formatting is strict: insert each slide marker on its own line where that slide should appear.',
           `Required markers (use each exactly once, in order): ${slideMarkers}`,
           'Use the exact lowercase tag format [slide:N]. Do not add a "### Slides" heading.',
@@ -215,9 +205,6 @@ export function buildLinkSummaryPrompt({
 
   const baseInstructions = [
     'Hard rules: never mention sponsor/ads; use straight quotation marks only (no curly quotes).',
-    slides && slides.count > 0
-      ? 'Slide format hard rule: every [slide:N] block must include a Title: line immediately after the tag. Responses missing Title: lines are invalid.'
-      : '',
     'Apostrophes in contractions are OK.',
     audienceLine,
     sponsorInstruction,
