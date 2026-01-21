@@ -5,7 +5,12 @@ import {
   supportsOscProgress as supportsOscProgressImpl,
 } from 'osc-progress'
 
-export type { OscProgressController, OscProgressOptions, OscProgressSupportOptions, OscProgressTerminator } from 'osc-progress'
+export type {
+  OscProgressController,
+  OscProgressOptions,
+  OscProgressSupportOptions,
+  OscProgressTerminator,
+} from 'osc-progress'
 
 export function createOscProgressController(
   options: import('osc-progress').OscProgressOptions

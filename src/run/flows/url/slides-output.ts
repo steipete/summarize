@@ -18,8 +18,8 @@ import {
   buildTimestampUrl,
   formatOsc8Link,
   formatTimestamp,
-  splitSlideTitleFromText,
   type SlideTimelineEntry,
+  splitSlideTitleFromText,
 } from './slides-text.js'
 
 type SlideState = SlideTimelineEntry & { imagePath: string | null }
@@ -237,7 +237,9 @@ export function createSlidesTerminalOutput({
     const cleanTitle = title?.replace(/\s+/g, ' ').trim() ?? ''
     const titleMax = 90
     const shortTitle =
-      cleanTitle.length > titleMax ? `${cleanTitle.slice(0, titleMax - 3).trimEnd()}...` : cleanTitle
+      cleanTitle.length > titleMax
+        ? `${cleanTitle.slice(0, titleMax - 3).trimEnd()}...`
+        : cleanTitle
     const titleLine = shortTitle ? labelTheme.heading(shortTitle) : ''
     const headerLine = shortTitle
       ? `${titleLine}${timeLink ? ` ${labelTheme.dim(`· ${timeLink}`)}` : ''}`
@@ -485,7 +487,7 @@ export function createSlidesSummaryStreamHandler({
 
       if (!nextMatch) {
         if (final) {
-          appendVisible(buffered)
+          await appendVisible(buffered)
           buffered = ''
           return
         }
@@ -500,12 +502,12 @@ export function createSlidesSummaryStreamHandler({
           }
         }
         if (start === -1) {
-          appendVisible(buffered)
+          await appendVisible(buffered)
           buffered = ''
           return
         }
         const head = buffered.slice(0, start)
-        appendVisible(head)
+        await appendVisible(head)
         buffered = buffered.slice(start)
         return
       }

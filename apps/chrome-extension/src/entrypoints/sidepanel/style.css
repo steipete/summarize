@@ -1676,10 +1676,6 @@ button.setup__pill.isActive {
   margin-top: 8px;
 }
 
-.hidden {
-  display: none !important;
-}
-
 .render {
   line-height: var(--line-height, 1.45);
   padding: 0 6px;
@@ -2500,4 +2496,8 @@ button.setup__pill.isActive {
 .chatSendBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.hidden {
+  display: none;
 }

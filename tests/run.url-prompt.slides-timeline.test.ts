@@ -82,7 +82,9 @@ describe('buildUrlPrompt with slides transcript timeline', () => {
     expect(prompt).toContain('intro hello second segment third segment')
     expect(prompt).toContain('[slide:2] [0:20–1:30]')
     expect(prompt).toContain('second segment third segment fourth segment')
-    expect(prompt).toContain('Slide format example (follow this pattern; markers on their own lines):')
+    expect(prompt).toContain(
+      'Slide format example (follow this pattern; markers on their own lines):'
+    )
     expect(prompt).toContain('Repeat the 3-line slide block for every marker below, in order.')
     expect(prompt).toContain('Required markers (use each exactly once, in order)')
     expect(prompt).toContain('Do not create a dedicated Slides section or list')

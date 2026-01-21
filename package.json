@@ -63,7 +63,7 @@
     }
   },
   "dependencies": {
-    "@mariozechner/pi-ai": "^0.45.7",
+    "@mariozechner/pi-ai": "^0.49.2",
     "@steipete/summarize-core": "workspace:*",
     "commander": "^14.0.2",
     "file-type": "^21.3.0",
@@ -72,7 +72,7 @@
     "markdansi": "^0.2.1",
     "mime": "^4.1.0",
     "ora": "^9.0.0",
-    "osc-progress": "^0.2.0",
+    "osc-progress": "^0.3.0",
     "tokentally": "^0.1.1",
     "tslog": "^4.10.2"
   },
@@ -80,15 +80,15 @@
     "@biomejs/biome": "^2.3.11",
     "@fal-ai/client": "^1.8.3",
     "@types/jsdom": "^27.0.0",
-    "@types/node": "^25.0.6",
+    "@types/node": "^25.0.9",
     "@types/sanitize-html": "^2.16.0",
-    "@vitest/coverage-v8": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.17",
     "esbuild": "^0.27.2",
-    "oxlint": "^1.38.0",
-    "oxlint-tsgolint": "^0.11.0",
+    "oxlint": "^1.41.0",
+    "oxlint-tsgolint": "^0.11.1",
     "rimraf": "^6.1.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.17"
   }
 }

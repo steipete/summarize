@@ -1125,9 +1125,7 @@ function findSlidesSectionStart(markdown: string): number | null {
   if (!markdown) return null
   const heading = markdown.match(/^#{1,3}\s+Slides\b.*$/im)
   const tag = markdown.match(/^\[slide:\d+\]/im)
-  const label = markdown.match(
-    /^\s*slide\s+\d+(?:\s*(?:\/|of)\s*\d+)?(?:\s*[\u00b7:-].*)?$/im
-  )
+  const label = markdown.match(/^\s*slide\s+\d+(?:\s*(?:\/|of)\s*\d+)?(?:\s*[\u00b7:-].*)?$/im)
   const indexes = [heading?.index, tag?.index, label?.index].filter(
     (idx): idx is number => idx != null
   )
@@ -1143,7 +1141,7 @@ function deriveHeadlineFromBody(body: string): string | null {
   const words = clause.trim().split(/\s+/).filter(Boolean)
   if (words.length < 2) return null
   const title = words.slice(0, Math.min(6, words.length)).join(' ')
-  return title.replace(/[,:;\-]+$/g, '').trim() || null
+  return title.replace(/[,:;-]+$/g, '').trim() || null
 }
 
 function splitSlidesMarkdown(markdown: string): { summary: string; slides: string | null } {
@@ -1239,9 +1237,7 @@ function parseSlideSummariesFromMarkdown(markdown: string): {
       }
       let title: string | null = null
       let titleIndex: number | null = null
-      const titleLineIndex = lines.findIndex((line) =>
-        /^(?:title|headline)\s*:\s*/i.test(line)
-      )
+      const titleLineIndex = lines.findIndex((line) => /^(?:title|headline)\s*:\s*/i.test(line))
       if (titleLineIndex >= 0) {
         const labelMatch = lines[titleLineIndex]?.match(/^(?:title|headline)\s*:\s*(.*)$/i)
         title = (labelMatch?.[1] ?? '').trim() || null

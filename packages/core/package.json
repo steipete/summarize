@@ -45,13 +45,13 @@
     "@fal-ai/client": "^1.8.3",
     "@mozilla/readability": "0.6.0",
     "cheerio": "^1.1.2",
-    "es-toolkit": "^1.43.0",
+    "es-toolkit": "^1.44.0",
     "jsdom": "27.4.0",
     "sanitize-html": "^2.17.0"
   },
   "devDependencies": {
     "@types/jsdom": "^27.0.0",
-    "@types/node": "^25.0.6",
+    "@types/node": "^25.0.9",
     "@types/sanitize-html": "^2.16.0",
     "rimraf": "^6.1.2",
     "typescript": "^5.9.3"

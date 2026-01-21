@@ -14,8 +14,8 @@ import {
   parseTranscriptTimedText,
   resolveSlideTextBudget,
   resolveSlideWindowSeconds,
-  splitSummaryFromSlides,
   splitSlideTitleFromText,
+  splitSummaryFromSlides,
 } from '../src/run/flows/url/slides-text.js'
 
 describe('slides text helpers', () => {
