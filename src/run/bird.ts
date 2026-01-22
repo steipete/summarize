@@ -151,6 +151,9 @@ export async function readTweetWithBird(args: {
   env: Record<string, string | undefined>
 }): Promise<BirdTweetPayload> {
   return await new Promise((resolve, reject) => {
+    const toText = (value: string | Buffer | null | undefined) =>
+      typeof value === 'string' ? value : value ? value.toString('utf8') : ''
+
     execFileTracked(
       'bird',
       ['read', args.url, '--json-full'],
@@ -161,12 +164,12 @@ export async function readTweetWithBird(args: {
       },
       (error, stdout, stderr) => {
         if (error) {
-          const detail = stderr?.trim()
+          const detail = toText(stderr).trim()
           const suffix = detail ? `: ${detail}` : ''
           reject(new Error(`bird read failed${suffix}`))
           return
         }
-        const trimmed = stdout.trim()
+        const trimmed = toText(stdout).trim()
         if (!trimmed) {
           reject(new Error('bird read returned empty output'))
           return
