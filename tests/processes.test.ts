@@ -125,7 +125,10 @@ describe('process tracking', () => {
     }
     setProcessObserver(createObserver(capture))
 
-    const { proc } = spawnTracked(process.execPath, ['-e', 'process.stdout.write("line-1\\n\\nline-2")'])
+    const { proc } = spawnTracked(process.execPath, [
+      '-e',
+      'process.stdout.write("line-1\\n\\nline-2")',
+    ])
     await once(proc, 'close')
 
     const lines = capture.outputs.map((entry) => entry.line)
