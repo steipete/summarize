@@ -193,6 +193,7 @@ const optionsWindowMargin = 20
 const MIN_CHAT_CHARS = 100
 const CHAT_FULL_TRANSCRIPT_MAX_CHARS = Number.MAX_SAFE_INTEGER
 const MAX_SLIDE_OCR_CHARS = 8000
+const DAEMON_STATUS_TIMEOUT_MS = 1200
 
 const formatSlideTimestamp = (seconds: number): string => {
   const safe = Math.max(0, Math.floor(seconds))
@@ -278,10 +279,16 @@ async function getActiveTab(windowId?: number): Promise<chrome.tabs.Tab | null> 
 
 async function daemonHealth(): Promise<{ ok: boolean; error?: string }> {
   try {
-    const res = await fetch('http://127.0.0.1:8787/health')
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), DAEMON_STATUS_TIMEOUT_MS)
+    const res = await fetch('http://127.0.0.1:8787/health', { signal: controller.signal })
+    clearTimeout(timeout)
     if (!res.ok) return { ok: false, error: `${res.status} ${res.statusText}` }
     return { ok: true }
   } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return { ok: false, error: 'Timed out' }
+    }
     const message = err instanceof Error ? err.message : 'health failed'
     if (message.toLowerCase() === 'failed to fetch') {
       return {
@@ -296,12 +303,19 @@ async function daemonHealth(): Promise<{ ok: boolean; error?: string }> {
 
 async function daemonPing(token: string): Promise<{ ok: boolean; error?: string }> {
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), DAEMON_STATUS_TIMEOUT_MS)
     const res = await fetch('http://127.0.0.1:8787/v1/ping', {
       headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
     })
+    clearTimeout(timeout)
     if (!res.ok) return { ok: false, error: `${res.status} ${res.statusText}` }
     return { ok: true }
   } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return { ok: false, error: 'Timed out' }
+    }
     const message = err instanceof Error ? err.message : 'ping failed'
     if (message.toLowerCase() === 'failed to fetch') {
       return {
@@ -944,8 +958,11 @@ export default defineBackground(() => {
   ) => {
     const settings = await loadSettings()
     const tab = await getActiveTab(session.windowId)
-    const health = await daemonHealth()
-    const authed = settings.token.trim() ? await daemonPing(settings.token.trim()) : { ok: false }
+    const token = settings.token.trim()
+    const [health, authed] = await Promise.all([
+      daemonHealth(),
+      token ? daemonPing(token) : Promise.resolve({ ok: false }),
+    ])
     const daemonReady = health.ok && authed.ok
     const pendingUrl = session.daemonRecovery.getPendingUrl()
     const currentUrlMatches = Boolean(pendingUrl && tab?.url && urlsMatch(tab.url, pendingUrl))
