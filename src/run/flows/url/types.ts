@@ -1,5 +1,5 @@
 import type { CacheState } from '../../../cache.js'
-import type { SummarizeConfig } from '../../../config.js'
+import type { CliProvider, SummarizeConfig } from '../../../config.js'
 import type {
   ExtractedLinkContent,
   LinkPreviewProgressEvent,
@@ -78,7 +78,7 @@ export type UrlFlowModel = {
   desiredOutputTokens: number | null
   configForModelSelection: SummarizeConfig | null
   envForAuto: Record<string, string | undefined>
-  cliAvailability: Partial<Record<'claude' | 'codex' | 'gemini', boolean>>
+  cliAvailability: Partial<Record<CliProvider, boolean>>
   openaiUseChatCompletions: boolean
   openaiWhisperUsdPerMinute: number
   apiStatus: {

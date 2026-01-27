@@ -243,7 +243,7 @@ Use `summarize --help` or `summarize help` for the full help text.
 - `--length short|medium|long|xl|xxl|s|m|l|<chars>`
 - `--language, --lang <language>`: output language (`auto` = match source)
 - `--max-output-tokens <count>`: hard cap for LLM output tokens
-- `--cli [provider]`: use a CLI provider (`--model cli/<provider>`). If omitted, uses auto selection with CLI enabled.
+- `--cli [provider]`: use a CLI provider (`--model cli/<provider>`). Supports `claude`, `gemini`, `codex`, `agent`. If omitted, uses auto selection with CLI enabled.
 - `--stream auto|on|off`: stream LLM output (`auto` = TTY only; disabled in `--json` mode)
 - `--plain`: keep raw output (no ANSI/OSC Markdown rendering)
 - `--no-color`: disable ANSI colors
@@ -272,7 +272,7 @@ Why: CLI adds ~4s latency per attempt and higher variance.
 Shortcut: `--cli` (with no provider) uses auto selection with CLI enabled.
 
 When enabled, auto prepends CLI attempts in the order listed in `cli.enabled`
-(recommended: `["gemini"]`), then tries the native provider candidates
+(recommended: `["gemini"]` or `["agent"]`), then tries the native provider candidates
 (with OpenRouter fallbacks when configured).
 
 Enable CLI attempts:

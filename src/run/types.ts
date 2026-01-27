@@ -10,6 +10,7 @@ export type ModelAttemptRequiredEnv =
   | 'CLI_CLAUDE'
   | 'CLI_CODEX'
   | 'CLI_GEMINI'
+  | 'CLI_AGENT'
 
 export type ModelAttempt = {
   transport: 'native' | 'openrouter' | 'cli'

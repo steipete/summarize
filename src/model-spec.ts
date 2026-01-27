@@ -5,6 +5,7 @@ const DEFAULT_CLI_MODELS: Record<CliProvider, string> = {
   claude: 'sonnet',
   codex: 'gpt-5.2',
   gemini: 'gemini-3-flash-preview',
+  agent: 'gpt-5.2',
 }
 
 export type FixedModelSpec =
@@ -39,7 +40,7 @@ export type FixedModelSpec =
       llmModelId: null
       openrouterProviders: null
       forceOpenRouter: false
-      requiredEnv: 'CLI_CLAUDE' | 'CLI_CODEX' | 'CLI_GEMINI'
+      requiredEnv: 'CLI_CLAUDE' | 'CLI_CODEX' | 'CLI_GEMINI' | 'CLI_AGENT'
       cliProvider: CliProvider
       cliModel: string | null
     }
@@ -100,14 +101,25 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       .map((part) => part.trim())
       .filter((part) => part.length > 0)
     const providerRaw = parts[1]?.toLowerCase() ?? ''
-    if (providerRaw !== 'claude' && providerRaw !== 'codex' && providerRaw !== 'gemini') {
+    if (
+      providerRaw !== 'claude' &&
+      providerRaw !== 'codex' &&
+      providerRaw !== 'gemini' &&
+      providerRaw !== 'agent'
+    ) {
       throw new Error(`Invalid CLI model id "${trimmed}". Expected cli/<provider>/<model>.`)
     }
     const cliProvider = providerRaw as CliProvider
     const requestedModel = parts.slice(2).join('/').trim()
     const cliModel = requestedModel.length > 0 ? requestedModel : DEFAULT_CLI_MODELS[cliProvider]
     const requiredEnv =
-      cliProvider === 'claude' ? 'CLI_CLAUDE' : cliProvider === 'codex' ? 'CLI_CODEX' : 'CLI_GEMINI'
+      cliProvider === 'claude'
+        ? 'CLI_CLAUDE'
+        : cliProvider === 'codex'
+          ? 'CLI_CODEX'
+          : cliProvider === 'gemini'
+            ? 'CLI_GEMINI'
+            : 'CLI_AGENT'
     const userModelId = `cli/${cliProvider}/${cliModel}`
     return {
       kind: 'fixed',
