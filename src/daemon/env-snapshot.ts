@@ -28,6 +28,7 @@ const ENV_KEYS = [
   'CLAUDE_PATH',
   'CODEX_PATH',
   'GEMINI_PATH',
+  'AGENT_PATH',
   'UVX_PATH',
 ] as const
 

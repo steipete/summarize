@@ -272,9 +272,10 @@ Examples:
 ```json
 {
   "cli": {
-    "enabled": ["gemini"],
+    "enabled": ["gemini", "agent"],
     "codex": { "model": "gpt-5.2" },
-    "claude": { "binary": "/usr/local/bin/claude", "extraArgs": ["--verbose"] }
+    "claude": { "binary": "/usr/local/bin/claude", "extraArgs": ["--verbose"] },
+    "agent": { "binary": "/usr/local/bin/agent", "model": "gpt-5.2" }
   }
 }
 ```
@@ -282,7 +283,7 @@ Examples:
 Notes:
 
 - `cli.enabled` is an allowlist (auto uses CLIs only when set; explicit `--cli` / `--model cli/...` must be included).
-- Recommendation: keep `cli.enabled` to `["gemini"]` unless you have a reason to add others (extra latency/variance).
+- Recommendation: keep `cli.enabled` to `["gemini"]` or `["agent"]` unless you have a reason to add others (extra latency/variance).
 - `cli.<provider>.binary` overrides CLI binary discovery.
 - `cli.<provider>.extraArgs` appends extra CLI args.
 

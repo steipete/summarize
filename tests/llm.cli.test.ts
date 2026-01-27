@@ -146,6 +146,33 @@ describe('runCliModel', () => {
     expect(seen[0]).toContain('--bar')
   })
 
+  it('handles Agent CLI JSON output in ask mode', async () => {
+    const seen: string[][] = []
+    const execFileImpl = makeStub((args) => {
+      seen.push(args)
+      return { stdout: JSON.stringify({ result: 'ok' }) }
+    })
+    const result = await runCliModel({
+      provider: 'agent',
+      prompt: 'Test',
+      model: 'gpt-5.2',
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    })
+    expect(result.text).toBe('ok')
+    expect(seen[0]).toContain('--print')
+    expect(seen[0]).toContain('--output-format')
+    expect(seen[0]).toContain('json')
+    expect(seen[0]).toContain('--mode')
+    expect(seen[0]).toContain('ask')
+    expect(seen[0]).toContain('--model')
+    expect(seen[0]).toContain('gpt-5.2')
+    expect(seen[0]?.[seen[0].length - 1]).toBe('Test')
+  })
+
   it('reads the Codex output file', async () => {
     const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
       const outputIndex = args.indexOf('--output-last-message')

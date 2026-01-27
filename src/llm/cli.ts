@@ -11,6 +11,14 @@ const DEFAULT_BINARIES: Record<CliProvider, string> = {
   claude: 'claude',
   codex: 'codex',
   gemini: 'gemini',
+  agent: 'agent',
+}
+
+const PROVIDER_PATH_ENV: Record<CliProvider, string> = {
+  claude: 'CLAUDE_PATH',
+  codex: 'CODEX_PATH',
+  gemini: 'GEMINI_PATH',
+  agent: 'AGENT_PATH',
 }
 
 type RunCliModelOptions = {
@@ -50,8 +58,16 @@ export function resolveCliBinary(
   env: Record<string, string | undefined>
 ): string {
   const providerConfig =
-    provider === 'claude' ? config?.claude : provider === 'codex' ? config?.codex : config?.gemini
+    provider === 'claude'
+      ? config?.claude
+      : provider === 'codex'
+        ? config?.codex
+        : provider === 'gemini'
+          ? config?.gemini
+          : config?.agent
   if (isNonEmptyString(providerConfig?.binary)) return providerConfig.binary.trim()
+  const pathKey = PROVIDER_PATH_ENV[provider]
+  if (isNonEmptyString(env[pathKey])) return env[pathKey].trim()
   const envKey = `SUMMARIZE_CLI_${provider.toUpperCase()}`
   if (isNonEmptyString(env[envKey])) return env[envKey].trim()
   return DEFAULT_BINARIES[provider]
@@ -317,6 +333,45 @@ export async function runCliModel({
       return { text: stdoutText, usage, costUsd }
     }
     throw new Error('CLI returned empty output')
+  }
+
+  if (provider === 'agent') {
+    args.push('--print', '--output-format', 'json')
+    if (!allowTools) {
+      args.push('--mode', 'ask')
+    }
+    if (model && model.trim().length > 0) {
+      args.push('--model', model.trim())
+    }
+    args.push(prompt)
+    const { stdout } = await execCliWithInput({
+      execFileImpl: execFileFn,
+      cmd: binary,
+      args,
+      input: '',
+      timeoutMs,
+      env: effectiveEnv,
+      cwd,
+    })
+    const trimmed = stdout.trim()
+    if (!trimmed) {
+      throw new Error('CLI returned empty output')
+    }
+    const parsed = parseJsonFromOutput(trimmed)
+    if (parsed && typeof parsed === 'object') {
+      const payload = parsed as Record<string, unknown>
+      const resultText =
+        payload.result ??
+        payload.response ??
+        payload.output ??
+        payload.message ??
+        payload.text ??
+        null
+      if (typeof resultText === 'string' && resultText.trim().length > 0) {
+        return { text: resultText.trim(), usage: null, costUsd: null }
+      }
+    }
+    return { text: trimmed, usage: null, costUsd: null }
   }
 
   if (model && model.trim().length > 0) {

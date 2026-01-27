@@ -50,7 +50,7 @@ export function resolveCliAvailability({
   config: ConfigForCli
 }): Partial<Record<CliProvider, boolean>> {
   const cliConfig = config?.cli ?? null
-  const providers: CliProvider[] = ['claude', 'codex', 'gemini']
+  const providers: CliProvider[] = ['claude', 'codex', 'gemini', 'agent']
   const availability: Partial<Record<CliProvider, boolean>> = {}
   for (const provider of providers) {
     if (isCliDisabled(provider, cliConfig)) {
@@ -72,7 +72,7 @@ export function parseCliUserModelId(modelId: string): {
     .split('/')
     .map((part) => part.trim())
   const provider = parts[1]?.toLowerCase()
-  if (provider !== 'claude' && provider !== 'codex' && provider !== 'gemini') {
+  if (provider !== 'claude' && provider !== 'codex' && provider !== 'gemini' && provider !== 'agent') {
     throw new Error(`Invalid CLI model id "${modelId}". Expected cli/<provider>/<model>.`)
   }
   const model = parts.slice(2).join('/').trim()
@@ -81,7 +81,7 @@ export function parseCliUserModelId(modelId: string): {
 
 export function parseCliProviderArg(raw: string): CliProvider {
   const normalized = raw.trim().toLowerCase()
-  if (normalized === 'claude' || normalized === 'codex' || normalized === 'gemini') {
+  if (normalized === 'claude' || normalized === 'codex' || normalized === 'gemini' || normalized === 'agent') {
     return normalized as CliProvider
   }
   throw new Error(`Unsupported --cli: ${raw}`)

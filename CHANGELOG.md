@@ -21,6 +21,7 @@
 - Transcripts: `--timestamps` adds segment-level timings (`transcriptSegments` + `transcriptTimedText`) for YouTube, podcasts, and embedded captions.
 - Media-aware summarization in the Side Panel: Page vs Video/Audio dropdown, automatic media preference on video sites, plus visible word count/duration.
 - CLI: transcribe local audio/video files with mtime-aware transcript cache invalidation (thanks @mvance!).
+- CLI: add Cursor Agent CLI provider (`cli/agent`, `--cli agent`).
 - Browser extension: add Firefox sidebar build + multi-browser config (#31, thanks @vlnd0).
 - Chrome automation: add artifacts tool + REPL helpers for persistent session files (notes/JSON/CSV) and downloads.
 - Chrome automation: expand navigate tool with list/switch tab support and return matching skills after navigation.
