@@ -24,7 +24,7 @@
     "preact": "11.0.0-experimental.1"
   },
   "devDependencies": {
-    "@playwright/test": "1.57.0",
+    "@playwright/test": "1.58.0",
     "@types/chrome": "^0.1.35",
     "typescript": "^5.9.3",
     "wxt": "0.20.13"
