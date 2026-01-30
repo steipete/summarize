@@ -239,7 +239,9 @@ async function resolveCliEntrypointPathForService(): Promise<string> {
   const argv1 = process.argv[1]
   if (!argv1) throw new Error('Unable to resolve CLI entrypoint path')
 
-  const normalized = path.resolve(argv1)
+  // Resolve symlinks so that globally-installed bins (npm, bun, nvm, etc.)
+  // point back to the real package directory instead of the symlink location.
+  const normalized = await fs.realpath(path.resolve(argv1))
   const looksLikeDist = /[/\\]dist[/\\].+\.(cjs|js)$/.test(normalized)
   if (looksLikeDist) {
     await fs.access(normalized)
