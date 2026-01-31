@@ -1,3 +1,5 @@
+import type { OutputLanguage } from '../language.js'
+import { formatOutputLanguageInstruction } from '../language.js'
 import type { LlmTokenUsage } from './generate-text.js'
 import { generateTextWithModelId } from './generate-text.js'
 
@@ -7,11 +9,15 @@ function buildTranscriptToMarkdownPrompt({
   title,
   source,
   transcript,
+  outputLanguage,
 }: {
   title: string | null
   source: string | null
   transcript: string
+  outputLanguage?: OutputLanguage | null
 }): { system: string; prompt: string } {
+  const languageInstruction = formatOutputLanguageInstruction(outputLanguage ?? { kind: 'auto' })
+
   const system = `You convert raw transcripts into clean GitHub-Flavored Markdown.
 
 Rules:
@@ -21,6 +27,7 @@ Rules:
 - Light cleanup: remove filler words (um, uh, you know) and false starts
 - Do not invent content or change meaning
 - Preserve technical terms, names, and quotes accurately
+- ${languageInstruction}
 - Output ONLY Markdown (no JSON, no explanations, no code fences wrapping the output)`
 
   const prompt = `Title: ${title ?? 'unknown'}
@@ -39,6 +46,7 @@ export type ConvertTranscriptToMarkdown = (args: {
   source: string | null
   transcript: string
   timeoutMs: number
+  outputLanguage?: OutputLanguage | null
 }) => Promise<string>
 
 export function createTranscriptToMarkdownConverter({
@@ -85,7 +93,7 @@ export function createTranscriptToMarkdownConverter({
     usage: LlmTokenUsage | null
   }) => void
 }): ConvertTranscriptToMarkdown {
-  return async ({ title, source, transcript, timeoutMs }) => {
+  return async ({ title, source, transcript, timeoutMs, outputLanguage }) => {
     const trimmedTranscript =
       transcript.length > MAX_TRANSCRIPT_INPUT_CHARACTERS
         ? transcript.slice(0, MAX_TRANSCRIPT_INPUT_CHARACTERS)
@@ -94,6 +102,7 @@ export function createTranscriptToMarkdownConverter({
       title,
       source,
       transcript: trimmedTranscript,
+      outputLanguage,
     })
 
     const result = await generateTextWithModelId({

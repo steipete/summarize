@@ -727,6 +727,7 @@ export async function runUrlFlow({
           source: extracted.siteName,
           transcript: extracted.content,
           timeoutMs: flags.timeoutMs,
+          outputLanguage: flags.outputLanguage,
         })
         extractedForOutput = {
           ...extracted,
