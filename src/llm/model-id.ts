@@ -14,6 +14,20 @@ export type ParsedModelId = {
 
 const PROVIDERS: LlmProvider[] = ['xai', 'openai', 'google', 'anthropic', 'zai']
 
+/**
+ * Anthropic short model aliases that are NOT valid API model identifiers.
+ *
+ * The Anthropic Messages API accepts dated ids (e.g. `claude-sonnet-4-20250514`)
+ * and versioned aliases (e.g. `claude-sonnet-4-0`) but does NOT accept bare
+ * generation names like `claude-sonnet-4`.  Users naturally try the shortest
+ * form, so we map them to the `-0` versioned alias which always points to the
+ * latest point-release for that generation.
+ */
+const ANTHROPIC_MODEL_ALIASES: Record<string, string> = {
+  'claude-sonnet-4': 'claude-sonnet-4-0',
+  'claude-opus-4': 'claude-opus-4-0',
+}
+
 export function normalizeGatewayStyleModelId(raw: string): string {
   const trimmed = raw.trim()
   if (trimmed.length === 0) {
@@ -27,6 +41,14 @@ export function normalizeGatewayStyleModelId(raw: string): string {
   if (normalized === 'grok-4.1-fast-non-reasoning') return 'xai/grok-4-fast-non-reasoning'
   if (normalized === 'xai/grok-4-1-fast-non-reasoning') return 'xai/grok-4-fast-non-reasoning'
   if (normalized === 'xai/grok-4.1-fast-non-reasoning') return 'xai/grok-4-fast-non-reasoning'
+
+  // Anthropic short aliases → versioned alias (e.g. claude-sonnet-4 → claude-sonnet-4-0)
+  const anthropicAlias = ANTHROPIC_MODEL_ALIASES[normalized]
+  if (anthropicAlias) return `anthropic/${anthropicAlias}`
+  const anthropicPrefixed = normalized.startsWith('anthropic/')
+    ? ANTHROPIC_MODEL_ALIASES[normalized.slice('anthropic/'.length)]
+    : null
+  if (anthropicPrefixed) return `anthropic/${anthropicPrefixed}`
 
   const slash = normalized.indexOf('/')
   if (slash === -1) {

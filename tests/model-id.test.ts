@@ -14,6 +14,34 @@ describe('model id parsing', () => {
     )
   })
 
+  it('resolves short Anthropic model aliases to versioned form', () => {
+    // Bare alias without provider prefix
+    expect(normalizeGatewayStyleModelId('claude-sonnet-4')).toBe('anthropic/claude-sonnet-4-0')
+    // With provider prefix
+    expect(normalizeGatewayStyleModelId('anthropic/claude-sonnet-4')).toBe(
+      'anthropic/claude-sonnet-4-0'
+    )
+    // Case-insensitive
+    expect(normalizeGatewayStyleModelId('Anthropic/Claude-Sonnet-4')).toBe(
+      'anthropic/claude-sonnet-4-0'
+    )
+    // claude-opus-4 alias
+    expect(normalizeGatewayStyleModelId('claude-opus-4')).toBe('anthropic/claude-opus-4-0')
+    expect(normalizeGatewayStyleModelId('anthropic/claude-opus-4')).toBe(
+      'anthropic/claude-opus-4-0'
+    )
+    // Full model ids must NOT be rewritten
+    expect(normalizeGatewayStyleModelId('anthropic/claude-sonnet-4-20250514')).toBe(
+      'anthropic/claude-sonnet-4-20250514'
+    )
+    expect(normalizeGatewayStyleModelId('anthropic/claude-sonnet-4-0')).toBe(
+      'anthropic/claude-sonnet-4-0'
+    )
+    expect(normalizeGatewayStyleModelId('anthropic/claude-sonnet-4-5')).toBe(
+      'anthropic/claude-sonnet-4-5'
+    )
+  })
+
   it('accepts historical grok aliases', () => {
     expect(normalizeGatewayStyleModelId('grok-4-1-fast-non-reasoning')).toBe(
       'xai/grok-4-fast-non-reasoning'
