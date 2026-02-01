@@ -25,6 +25,7 @@ describe('llm/cli more branches', () => {
     )
 
     expect(resolveCliBinary('claude', null, {})).toBe('claude')
+    expect(resolveCliBinary('agent', null, {})).toBe('agent')
   })
 
   it('includes stderr in exec error messages', async () => {

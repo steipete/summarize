@@ -36,6 +36,7 @@ export type AutoModelAttempt = {
     | 'CLI_CLAUDE'
     | 'CLI_CODEX'
     | 'CLI_GEMINI'
+    | 'CLI_AGENT'
   debug: string
 }
 
@@ -197,6 +198,7 @@ const DEFAULT_CLI_MODELS: Record<CliProvider, string> = {
   claude: 'sonnet',
   codex: 'gpt-5.2',
   gemini: 'gemini-3-flash-preview',
+  agent: 'gpt-5.2',
 }
 
 function isCliProviderEnabled(provider: CliProvider, config: SummarizeConfig | null): boolean {
@@ -223,7 +225,8 @@ function parseCliCandidate(
     .map((entry) => entry.trim())
   if (parts.length < 2) return null
   const provider = parts[1]?.toLowerCase()
-  if (provider !== 'claude' && provider !== 'codex' && provider !== 'gemini') return null
+  if (provider !== 'claude' && provider !== 'codex' && provider !== 'gemini' && provider !== 'agent')
+    return null
   const model = parts.slice(2).join('/').trim()
   return { provider, model: model.length > 0 ? model : null }
 }
@@ -243,7 +246,9 @@ function requiredEnvForCandidate(modelId: string): AutoModelAttempt['requiredEnv
       ? 'CLI_CODEX'
       : parsed.provider === 'gemini'
         ? 'CLI_GEMINI'
-        : 'CLI_CLAUDE'
+        : parsed.provider === 'agent'
+          ? 'CLI_AGENT'
+          : 'CLI_CLAUDE'
   }
   if (isCandidateOpenRouter(modelId)) return 'OPENROUTER_API_KEY'
   const parsed = parseGatewayStyleModelId(normalizeGatewayStyleModelId(modelId))
@@ -365,7 +370,9 @@ function prependCliCandidates({
         ? cli?.gemini?.model
         : provider === 'codex'
           ? cli?.codex?.model
-          : cli?.claude?.model
+          : provider === 'agent'
+            ? cli?.agent?.model
+            : cli?.claude?.model
     add(provider, modelOverride)
   }
   if (cliCandidates.length === 0) return candidates
