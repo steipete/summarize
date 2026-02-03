@@ -62,6 +62,18 @@ export type GoogleConfig = {
   baseUrl?: string
 }
 
+export type ApiKeysConfig = {
+  openai?: string
+  anthropic?: string
+  google?: string
+  xai?: string
+  openrouter?: string
+  zai?: string
+  apify?: string
+  firecrawl?: string
+  fal?: string
+}
+
 export type LoggingLevel = 'debug' | 'info' | 'warn' | 'error'
 export type LoggingFormat = 'json' | 'pretty'
 export type LoggingConfig = {
@@ -179,6 +191,12 @@ export type SummarizeConfig = {
   google?: GoogleConfig
   xai?: XaiConfig
   logging?: LoggingConfig
+  /**
+   * API keys for LLM providers and services.
+   *
+   * Precedence: environment variables > config file apiKeys.
+   */
+  apiKeys?: ApiKeysConfig
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -1000,6 +1018,37 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
   const google = parseProviderBaseUrlConfig(parsed.google, path, 'google')
   const xai = parseProviderBaseUrlConfig(parsed.xai, path, 'xai')
 
+  const apiKeys = (() => {
+    const value = (parsed as Record<string, unknown>).apiKeys
+    if (typeof value === 'undefined') return undefined
+    if (!isRecord(value)) {
+      throw new Error(`Invalid config file ${path}: "apiKeys" must be an object.`)
+    }
+    const keys: Record<string, string> = {}
+    const allowed = [
+      'openai',
+      'anthropic',
+      'google',
+      'xai',
+      'openrouter',
+      'zai',
+      'apify',
+      'firecrawl',
+      'fal',
+    ]
+    for (const [key, val] of Object.entries(value)) {
+      const k = key.trim().toLowerCase()
+      if (!allowed.includes(k)) {
+        throw new Error(`Invalid config file ${path}: unknown apiKeys provider "${key}".`)
+      }
+      if (typeof val !== 'string' || val.trim().length === 0) {
+        throw new Error(`Invalid config file ${path}: "apiKeys.${key}" must be a non-empty string.`)
+      }
+      keys[k] = val.trim()
+    }
+    return Object.keys(keys).length > 0 ? (keys as import('./config.js').ApiKeysConfig) : undefined
+  })()
+
   return {
     config: {
       ...(model ? { model } : {}),
@@ -1017,6 +1066,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       ...(google ? { google } : {}),
       ...(xai ? { xai } : {}),
       ...(logging ? { logging } : {}),
+      ...(apiKeys ? { apiKeys } : {}),
     },
     path,
   }
