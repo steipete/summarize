@@ -67,6 +67,68 @@ describe('YouTube transcript provider module', () => {
     ).toEqual({ text: null, source: null, attemptedProviders: [] })
   })
 
+  it('uses apify mode even when HTML is null (fixes #51)', async () => {
+    apify.fetchTranscriptWithApify.mockResolvedValue('Hello from apify')
+
+    const result = await fetchTranscript(
+      {
+        url: 'https://www.youtube.com/watch?v=abcdefghijk',
+        html: null,
+        resourceKey: null,
+      },
+      {
+        ...baseOptions,
+        apifyApiToken: 'TOKEN',
+        youtubeTranscriptMode: 'apify',
+      }
+    )
+
+    expect(result.text).toBe('Hello from apify')
+    expect(result.source).toBe('apify')
+    expect(result.attemptedProviders).toEqual(['apify'])
+    expect(api.extractYoutubeiTranscriptConfig).not.toHaveBeenCalled()
+    expect(captions.fetchTranscriptFromCaptionTracks).not.toHaveBeenCalled()
+    expect(ytdlp.fetchTranscriptWithYtDlp).not.toHaveBeenCalled()
+  })
+
+  it('returns unavailable when apify mode fails with null HTML', async () => {
+    apify.fetchTranscriptWithApify.mockResolvedValue(null)
+
+    const result = await fetchTranscript(
+      {
+        url: 'https://www.youtube.com/watch?v=abcdefghijk',
+        html: null,
+        resourceKey: null,
+      },
+      {
+        ...baseOptions,
+        apifyApiToken: 'TOKEN',
+        youtubeTranscriptMode: 'apify',
+      }
+    )
+
+    expect(result.text).toBeNull()
+    expect(result.source).toBe('unavailable')
+    expect(result.attemptedProviders).toEqual(['apify', 'unavailable'])
+  })
+
+  it('throws when apify mode used without token and HTML is null', async () => {
+    await expect(
+      fetchTranscript(
+        {
+          url: 'https://www.youtube.com/watch?v=abcdefghijk',
+          html: null,
+          resourceKey: null,
+        },
+        {
+          ...baseOptions,
+          apifyApiToken: null,
+          youtubeTranscriptMode: 'apify',
+        }
+      )
+    ).rejects.toThrow(/Missing APIFY_API_TOKEN/i)
+  })
+
   it('uses apify-only mode and skips web + yt-dlp', async () => {
     apify.fetchTranscriptWithApify.mockResolvedValue('Hello from apify')
 
