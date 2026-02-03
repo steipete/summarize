@@ -5,7 +5,8 @@ export async function transcribeWithOpenAi(
   bytes: Uint8Array,
   mediaType: string,
   filename: string | null,
-  apiKey: string
+  apiKey: string,
+  baseUrl?: string | null
 ): Promise<string | null> {
   const form = new FormData()
   const providedName = filename?.trim() ? filename.trim() : 'media'
@@ -14,7 +15,14 @@ export async function transcribeWithOpenAi(
   form.append('file', new Blob([toArrayBuffer(bytes)], { type: mediaType }), safeName)
   form.append('model', 'whisper-1')
 
-  const response = await globalThis.fetch('https://api.openai.com/v1/audio/transcriptions', {
+  // Support custom OpenAI-compatible whisper endpoints via OPENAI_WHISPER_BASE_URL or OPENAI_BASE_URL
+  const effectiveBaseUrl = baseUrl
+    ?? process.env.OPENAI_WHISPER_BASE_URL
+    ?? process.env.OPENAI_BASE_URL
+    ?? 'https://api.openai.com/v1'
+  const transcriptionUrl = `${effectiveBaseUrl.replace(/\/+$/, '')}/audio/transcriptions`
+
+  const response = await globalThis.fetch(transcriptionUrl, {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}` },
     body: form,
