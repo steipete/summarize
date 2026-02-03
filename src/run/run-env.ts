@@ -43,7 +43,9 @@ export function resolveEnvState({
   envForRun: Record<string, string | undefined>
   configForCli: SummarizeConfig | null
 }): EnvState {
-  const xaiKeyRaw = typeof envForRun.XAI_API_KEY === 'string' ? envForRun.XAI_API_KEY : null
+  const cfgKeys = configForCli?.apiKeys
+  const xaiKeyRaw =
+    typeof envForRun.XAI_API_KEY === 'string' ? envForRun.XAI_API_KEY : (cfgKeys?.xai ?? null)
   const openaiBaseUrl = (() => {
     const envValue = normalizeBaseUrl(envForRun.OPENAI_BASE_URL)
     if (envValue) return envValue
@@ -69,7 +71,7 @@ export function resolveEnvState({
       ? envForRun.Z_AI_API_KEY
       : typeof envForRun.ZAI_API_KEY === 'string'
         ? envForRun.ZAI_API_KEY
-        : null
+        : (cfgKeys?.zai ?? null)
   const zaiBaseUrlRaw =
     typeof envForRun.Z_AI_BASE_URL === 'string'
       ? envForRun.Z_AI_BASE_URL
@@ -77,15 +79,21 @@ export function resolveEnvState({
         ? envForRun.ZAI_BASE_URL
         : null
   const openRouterKeyRaw =
-    typeof envForRun.OPENROUTER_API_KEY === 'string' ? envForRun.OPENROUTER_API_KEY : null
+    typeof envForRun.OPENROUTER_API_KEY === 'string'
+      ? envForRun.OPENROUTER_API_KEY
+      : (cfgKeys?.openrouter ?? null)
   const openaiKeyRaw =
-    typeof envForRun.OPENAI_API_KEY === 'string' ? envForRun.OPENAI_API_KEY : null
+    typeof envForRun.OPENAI_API_KEY === 'string'
+      ? envForRun.OPENAI_API_KEY
+      : (cfgKeys?.openai ?? null)
   const apiKey =
     typeof openaiBaseUrl === 'string' && /openrouter\.ai/i.test(openaiBaseUrl)
       ? (openRouterKeyRaw ?? openaiKeyRaw)
       : openaiKeyRaw
   const apifyToken =
-    typeof envForRun.APIFY_API_TOKEN === 'string' ? envForRun.APIFY_API_TOKEN : null
+    typeof envForRun.APIFY_API_TOKEN === 'string'
+      ? envForRun.APIFY_API_TOKEN
+      : (cfgKeys?.apify ?? null)
   const ytDlpPath = (() => {
     const explicit = typeof envForRun.YT_DLP_PATH === 'string' ? envForRun.YT_DLP_PATH.trim() : ''
     if (explicit.length > 0) return explicit
@@ -101,11 +109,16 @@ export function resolveEnvState({
     const value = raw.trim()
     return value.length > 0 ? value : null
   })()
-  const falApiKey = typeof envForRun.FAL_KEY === 'string' ? envForRun.FAL_KEY : null
+  const falApiKey =
+    typeof envForRun.FAL_KEY === 'string' ? envForRun.FAL_KEY : (cfgKeys?.fal ?? null)
   const firecrawlKey =
-    typeof envForRun.FIRECRAWL_API_KEY === 'string' ? envForRun.FIRECRAWL_API_KEY : null
+    typeof envForRun.FIRECRAWL_API_KEY === 'string'
+      ? envForRun.FIRECRAWL_API_KEY
+      : (cfgKeys?.firecrawl ?? null)
   const anthropicKeyRaw =
-    typeof envForRun.ANTHROPIC_API_KEY === 'string' ? envForRun.ANTHROPIC_API_KEY : null
+    typeof envForRun.ANTHROPIC_API_KEY === 'string'
+      ? envForRun.ANTHROPIC_API_KEY
+      : (cfgKeys?.anthropic ?? null)
   const googleKeyRaw =
     typeof envForRun.GEMINI_API_KEY === 'string'
       ? envForRun.GEMINI_API_KEY
@@ -113,7 +126,7 @@ export function resolveEnvState({
         ? envForRun.GOOGLE_GENERATIVE_AI_API_KEY
         : typeof envForRun.GOOGLE_API_KEY === 'string'
           ? envForRun.GOOGLE_API_KEY
-          : null
+          : (cfgKeys?.google ?? null)
 
   const firecrawlApiKey = firecrawlKey && firecrawlKey.trim().length > 0 ? firecrawlKey : null
   const firecrawlConfigured = firecrawlApiKey !== null
