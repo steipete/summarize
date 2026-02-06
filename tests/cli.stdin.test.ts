@@ -61,7 +61,7 @@ describe('cli stdin support', () => {
         stdout: noopStream(),
         stderr: noopStream(),
       })
-    ).rejects.toThrow('--extract is only supported for website/YouTube URLs')
+    ).rejects.toThrow('--extract is not supported for piped stdin input')
   })
 
   it('processes stdin correctly for non-extract mode', async () => {

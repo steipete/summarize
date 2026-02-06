@@ -54,7 +54,7 @@ async function streamToString(stream: NodeJS.ReadableStream, maxBytes: number): 
   const chunks: Buffer[] = []
   let totalSize = 0
   for await (const chunk of stream) {
-    const buffer = Buffer.from(chunk)
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
     totalSize += buffer.length
     if (totalSize > maxBytes) {
       throw new Error(
@@ -571,6 +571,9 @@ export async function runCli(
     })
 
     if (extractMode && inputTarget.kind !== 'url') {
+      if (inputTarget.kind === 'stdin') {
+        throw new Error('--extract is not supported for piped stdin input')
+      }
       throw new Error('--extract is only supported for website/YouTube URLs')
     }
 
