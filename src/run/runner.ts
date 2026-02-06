@@ -1,5 +1,7 @@
 import { execFile } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import fs, { readFile } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
 import { CommanderError } from 'commander'
 import {
   type CacheState,
@@ -8,6 +10,7 @@ import {
   resolveCachePath,
 } from '../cache.js'
 import { loadSummarizeConfig } from '../config.js'
+import type { InputTarget } from '../content/asset.js'
 import {
   parseExtractFormat,
   parseMaxExtractCharactersArg,
@@ -46,6 +49,14 @@ import { handleSlidesCliRequest } from './slides-cli.js'
 import { createSummaryEngine } from './summary-engine.js'
 import { isRichTty, supportsColor } from './terminal.js'
 import { handleTranscriberCliRequest } from './transcriber-cli.js'
+
+async function streamToString(stream: NodeJS.ReadableStream): Promise<string> {
+  const chunks: Uint8Array[] = []
+  for await (const chunk of stream) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : new Uint8Array(chunk))
+  }
+  return Buffer.concat(chunks).toString('utf8')
+}
 
 type RunEnv = {
   env: Record<string, string | undefined>
@@ -699,6 +710,23 @@ export async function runCli(
       summarizeMediaFile,
       setClearProgressBeforeStdout,
       clearProgressIfCurrent,
+    }
+
+    if (inputTarget.kind === 'stdin') {
+      const tempPath = path.join(os.tmpdir(), `summarize-stdin-${Date.now()}.txt`)
+      try {
+        const stdinContent = await streamToString(process.stdin)
+        if (!stdinContent.trim()) {
+          throw new Error('Stdin is empty')
+        }
+        await fs.writeFile(tempPath, stdinContent, 'utf8')
+        const stdinInputTarget: InputTarget = { kind: 'file', filePath: tempPath }
+        if (await handleFileInput(assetInputContext, stdinInputTarget)) {
+          return
+        }
+      } finally {
+        await fs.rm(tempPath, { force: true }).catch(() => {})
+      }
     }
 
     if (await handleFileInput(assetInputContext, inputTarget)) {

@@ -7,7 +7,10 @@ import mime from 'mime'
 
 import { userTextAndImageMessage } from '../llm/prompt.js'
 
-export type InputTarget = { kind: 'url'; url: string } | { kind: 'file'; filePath: string }
+export type InputTarget =
+  | { kind: 'url'; url: string }
+  | { kind: 'file'; filePath: string }
+  | { kind: 'stdin' }
 
 export type UrlKind = { kind: 'website' } | { kind: 'asset' }
 
@@ -112,6 +115,10 @@ export function resolveInputTarget(raw: string): InputTarget {
   const normalized = raw.trim()
   if (!normalized) {
     throw new Error('Missing input')
+  }
+
+  if (normalized === '-') {
+    return { kind: 'stdin' }
   }
 
   const asPath = path.resolve(normalized)
