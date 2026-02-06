@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import fs, { readFile } from 'node:fs/promises'
+import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { CommanderError } from 'commander'
@@ -50,10 +50,18 @@ import { createSummaryEngine } from './summary-engine.js'
 import { isRichTty, supportsColor } from './terminal.js'
 import { handleTranscriberCliRequest } from './transcriber-cli.js'
 
-async function streamToString(stream: NodeJS.ReadableStream): Promise<string> {
-  const chunks: Uint8Array[] = []
+async function streamToString(stream: NodeJS.ReadableStream, maxBytes: number): Promise<string> {
+  const chunks: Buffer[] = []
+  let totalSize = 0
   for await (const chunk of stream) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : new Uint8Array(chunk))
+    const buffer = Buffer.from(chunk)
+    totalSize += buffer.length
+    if (totalSize > maxBytes) {
+      throw new Error(
+        `Stdin content exceeds maximum size of ${(maxBytes / 1024 / 1024).toFixed(1)}MB`
+      )
+    }
+    chunks.push(buffer)
   }
   return Buffer.concat(chunks).toString('utf8')
 }
@@ -159,7 +167,7 @@ export async function runCli(
   if (promptFileArg) {
     let text: string
     try {
-      text = await readFile(promptFileArg, 'utf8')
+      text = await fs.readFile(promptFileArg, 'utf8')
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       throw new Error(`Failed to read --prompt-file ${promptFileArg}: ${message}`)
@@ -714,8 +722,9 @@ export async function runCli(
 
     if (inputTarget.kind === 'stdin') {
       const tempPath = path.join(os.tmpdir(), `summarize-stdin-${Date.now()}.txt`)
+      const MAX_STDIN_BYTES = 50 * 1024 * 1024 // 50MB limit
       try {
-        const stdinContent = await streamToString(process.stdin)
+        const stdinContent = await streamToString(process.stdin, MAX_STDIN_BYTES)
         if (!stdinContent.trim()) {
           throw new Error('Stdin is empty')
         }

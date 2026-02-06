@@ -244,6 +244,9 @@ ${heading('Examples')}
   ${cmd('summarize "https://example.com" --length 20k --max-output-tokens 2k --timeout 2m --model openai/gpt-5-mini')}
   ${cmd('summarize "https://example.com" --model mymodel')} ${dim('# config preset')}
   ${cmd('summarize "https://example.com" --json --verbose')}
+  ${cmd('pbpaste | summarize -')} ${dim('# summarize clipboard content')}
+  ${cmd('cat file.txt | summarize - --length bullet')} ${dim('# summarize piped file content')}
+  ${cmd('curl -s "https://example.com" | summarize -')} ${dim('# summarize command output')}
 
 ${heading('Env Vars')}
   XAI_API_KEY           optional (required for xai/... models)
@@ -287,11 +290,13 @@ export function buildConciseHelp(): string {
   return [
     'summarize - Summarize web pages, files, and YouTube links.',
     '',
-    'Usage: summarize <url-or-file> [flags]',
+    'Usage: summarize <url-or-file-or--> [flags]',
     '',
     'Examples:',
     '  summarize "https://example.com"',
     '  summarize "/path/to/file.pdf" --model google/gemini-3-flash-preview',
+    '  pbpaste | summarize -',
+    '  cat file.txt | summarize -',
     '',
     'Run summarize --help for full options.',
     `Support: ${SUPPORT_URL}`,

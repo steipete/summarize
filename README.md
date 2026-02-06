@@ -146,6 +146,20 @@ summarize "/path/to/audio.mp3"
 summarize "/path/to/video.mp4"
 ```
 
+Stdin (pipe content using `-`):
+
+```bash
+cat file.txt | summarize -
+echo "content" | summarize -
+pbpaste | summarize - --length bullet
+curl -s "https://example.com" | summarize -
+```
+
+**Notes:**
+- Stdin has a 50MB size limit
+- The `-` argument tells summarize to read from standard input
+- Useful for piping clipboard content, file contents, or command output
+
 YouTube (supports `youtube.com` and `youtu.be`):
 
 ```bash

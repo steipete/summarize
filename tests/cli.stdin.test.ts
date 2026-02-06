@@ -1,8 +1,8 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable, Writable } from 'node:stream'
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 
 import { runCli } from '../src/run.js'
 
@@ -21,6 +21,10 @@ const createStdinStream = (content: string): Readable => {
 
 describe('cli stdin support', () => {
   const home = mkdtempSync(join(tmpdir(), 'summarize-tests-stdin-'))
+
+  afterAll(() => {
+    rmSync(home, { recursive: true, force: true })
+  })
 
   it('errors on empty stdin', async () => {
     await expect(

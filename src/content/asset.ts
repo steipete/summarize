@@ -117,13 +117,13 @@ export function resolveInputTarget(raw: string): InputTarget {
     throw new Error('Missing input')
   }
 
-  if (normalized === '-') {
-    return { kind: 'stdin' }
-  }
-
   const asPath = path.resolve(normalized)
   if (existsSync(asPath)) {
     return { kind: 'file', filePath: asPath }
+  }
+
+  if (normalized === '-') {
+    return { kind: 'stdin' }
   }
 
   const extractedUrls = extractHttpUrlsFromText(normalized)
