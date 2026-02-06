@@ -70,13 +70,14 @@ type RunEnv = {
   env: Record<string, string | undefined>
   fetch: typeof fetch
   execFile?: ExecFileFn
+  stdin?: NodeJS.ReadableStream
   stdout: NodeJS.WritableStream
   stderr: NodeJS.WritableStream
 }
 
 export async function runCli(
   argv: string[],
-  { env, fetch, execFile: execFileOverride, stdout, stderr }: RunEnv
+  { env, fetch, execFile: execFileOverride, stdin, stdout, stderr }: RunEnv
 ): Promise<void> {
   ;(globalThis as unknown as { AI_SDK_LOG_WARNINGS?: boolean }).AI_SDK_LOG_WARNINGS = false
 
@@ -721,10 +722,13 @@ export async function runCli(
     }
 
     if (inputTarget.kind === 'stdin') {
-      const tempPath = path.join(os.tmpdir(), `summarize-stdin-${Date.now()}.txt`)
+      const tempPath = path.join(
+        os.tmpdir(),
+        `summarize-stdin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`
+      )
       const MAX_STDIN_BYTES = 50 * 1024 * 1024 // 50MB limit
       try {
-        const stdinContent = await streamToString(process.stdin, MAX_STDIN_BYTES)
+        const stdinContent = await streamToString(stdin ?? process.stdin, MAX_STDIN_BYTES)
         if (!stdinContent.trim()) {
           throw new Error('Stdin is empty')
         }
@@ -733,6 +737,7 @@ export async function runCli(
         if (await handleFileInput(assetInputContext, stdinInputTarget)) {
           return
         }
+        throw new Error('Failed to process stdin input')
       } finally {
         await fs.rm(tempPath, { force: true }).catch(() => {})
       }

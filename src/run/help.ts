@@ -245,7 +245,7 @@ ${heading('Examples')}
   ${cmd('summarize "https://example.com" --model mymodel')} ${dim('# config preset')}
   ${cmd('summarize "https://example.com" --json --verbose')}
   ${cmd('pbpaste | summarize -')} ${dim('# summarize clipboard content')}
-  ${cmd('cat file.txt | summarize - --length bullet')} ${dim('# summarize piped file content')}
+  ${cmd('cat file.txt | summarize - --length short')} ${dim('# summarize piped file content')}
   ${cmd('curl -s "https://example.com" | summarize -')} ${dim('# summarize command output')}
 
 ${heading('Env Vars')}

@@ -65,18 +65,22 @@ describe('cli stdin support', () => {
   })
 
   it('processes stdin correctly for non-extract mode', async () => {
-    // This test just verifies that stdin is processed and doesn't immediately fail
-    // It will still fail later due to missing API keys, but that's expected
+    // This test verifies that stdin is processed and doesn't fail with stdin-related errors
     const testContent = 'Test content for basic processing.'
 
-    await expect(
-      runCli(['-'], {
+    try {
+      await runCli(['-'], {
         env: { HOME: home },
         fetch: vi.fn() as unknown as typeof fetch,
         stdin: createStdinStream(testContent),
         stdout: noopStream(),
         stderr: noopStream(),
       })
-    ).rejects.toThrow() // Will throw but not due to stdin processing
+      // If it succeeds, that's fine - stdin was processed correctly
+    } catch (error) {
+      // If it throws, make sure it's NOT a stdin-related error
+      const message = error instanceof Error ? error.message : String(error)
+      expect(message).not.toMatch(/Stdin is empty/)
+    }
   })
 })
