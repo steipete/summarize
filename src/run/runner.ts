@@ -533,9 +533,6 @@ export async function runCli(
         '--markdown-mode is only supported for URL inputs (--markdown-mode llm coming soon for files/stdin)'
       )
     }
-    if (markdownModeExplicitlySet && inputTarget.kind !== 'url' && inputTarget.kind !== 'stdin') {
-      throw new Error('--markdown-mode is only supported for URL inputs')
-    }
     const metrics = createRunMetrics({
       env,
       fetchImpl: fetch,
