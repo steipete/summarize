@@ -1980,7 +1980,8 @@ test('sidepanel switches between page, video, and slides modes', async ({
     await expect
       .poll(async () => await getSummarizeMode())
       .toEqual({ mode: 'page', slides: false, mediaAvailable: true })
-    await expect(summarizeButton).toHaveAttribute('aria-label', /Page/)
+    // Use polling for aria-label to handle race condition between state update and re-render
+    await expect.poll(async () => await summarizeButton.getAttribute('aria-label')).toMatch(/Page/)
     await sendBgMessage(harness, {
       type: 'run:start',
       run: {
@@ -2004,7 +2005,8 @@ test('sidepanel switches between page, video, and slides modes', async ({
     await expect
       .poll(async () => await getSummarizeMode())
       .toEqual({ mode: 'video', slides: false, mediaAvailable: true })
-    await expect(summarizeButton).toHaveAttribute('aria-label', /Video/)
+    // Use polling for aria-label to handle race condition between state update and re-render
+    await expect.poll(async () => await summarizeButton.getAttribute('aria-label')).toMatch(/Video/)
     await sendBgMessage(harness, {
       type: 'run:start',
       run: {
@@ -2251,9 +2253,12 @@ test('sidepanel scrolls YouTube slides and shows text for each slide', async ({
     await expect(slideItems).toHaveCount(12)
 
     for (let index = 0; index < 12; index += 1) {
-      const item = slideItems.nth(index)
-      await item.scrollIntoViewIfNeeded()
-      await expect(item).toBeVisible()
+      // Re-query the item each iteration to avoid DOM detachment issues
+      const item = page.locator('.slideGallery__item').nth(index)
+      await expect(async () => {
+        await item.scrollIntoViewIfNeeded()
+        await expect(item).toBeVisible()
+      }).toPass({ timeout: 10_000 })
 
       const img = item.locator('img.slideInline__thumbImage')
       await expect(img).toBeVisible()
