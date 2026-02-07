@@ -530,7 +530,7 @@ export async function runCli(
       markdownMode !== 'llm'
     ) {
       throw new Error(
-        '--markdown-mode is only supported for URL inputs (--markdown-mode llm coming soon for files/stdin)'
+        'Only --markdown-mode llm is supported for file/stdin inputs; other modes require a URL'
       )
     }
     const metrics = createRunMetrics({

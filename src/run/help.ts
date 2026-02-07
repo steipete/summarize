@@ -288,7 +288,7 @@ export function buildConciseHelp(): string {
   return [
     'summarize - Summarize web pages, files, and YouTube links.',
     '',
-    'Usage: summarize <url-or-file-or--> [flags]',
+    'Usage: summarize <input> [flags]',
     '',
     'Examples:',
     '  summarize "https://example.com"',

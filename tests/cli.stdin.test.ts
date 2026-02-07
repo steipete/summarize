@@ -97,7 +97,7 @@ describe('cli stdin support', () => {
         stdout: noopStream(),
         stderr: noopStream(),
       })
-    ).rejects.toThrow('--markdown-mode is only supported for URL inputs')
+    ).rejects.toThrow('Only --markdown-mode llm is supported for file/stdin inputs')
   })
 
   it('processes stdin correctly for non-extract mode', async () => {

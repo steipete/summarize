@@ -156,7 +156,7 @@ pbpaste | summarize -
 **Notes:**
 - Stdin has a 50MB size limit
 - The `-` argument tells summarize to read from standard input
-- Useful for piping clipboard content, file contents, or command output
+- Useful for piping clipboard content or other command output
 
 YouTube (supports `youtube.com` and `youtu.be`):
 
