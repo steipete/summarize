@@ -149,10 +149,8 @@ summarize "/path/to/video.mp4"
 Stdin (pipe content using `-`):
 
 ```bash
-cat file.txt | summarize -
 echo "content" | summarize -
-pbpaste | summarize - --length bullet
-curl -s "https://example.com" | summarize -
+pbpaste | summarize -
 ```
 
 **Notes:**
