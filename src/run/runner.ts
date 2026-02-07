@@ -516,7 +516,24 @@ export async function runCli(
     if (markdownModeExplicitlySet && format !== 'markdown') {
       throw new Error('--markdown-mode is only supported with --format md')
     }
-    if (markdownModeExplicitlySet && inputTarget.kind !== 'url') {
+    if (
+      markdownModeExplicitlySet &&
+      inputTarget.kind !== 'url' &&
+      inputTarget.kind !== 'file' &&
+      inputTarget.kind !== 'stdin'
+    ) {
+      throw new Error('--markdown-mode is only supported for URL or file inputs')
+    }
+    if (
+      markdownModeExplicitlySet &&
+      (inputTarget.kind === 'file' || inputTarget.kind === 'stdin') &&
+      markdownMode !== 'llm'
+    ) {
+      throw new Error(
+        '--markdown-mode is only supported for URL inputs (--markdown-mode llm coming soon for files/stdin)'
+      )
+    }
+    if (markdownModeExplicitlySet && inputTarget.kind !== 'url' && inputTarget.kind !== 'stdin') {
       throw new Error('--markdown-mode is only supported for URL inputs')
     }
     const metrics = createRunMetrics({
@@ -735,7 +752,7 @@ export async function runCli(
         if (!stdinContent.trim()) {
           throw new Error('Stdin is empty')
         }
-        await fs.writeFile(tempPath, stdinContent, 'utf8')
+        await fs.writeFile(tempPath, stdinContent, { mode: 0o600 })
         const stdinInputTarget: InputTarget = { kind: 'file', filePath: tempPath }
         if (await handleFileInput(assetInputContext, stdinInputTarget)) {
           return
