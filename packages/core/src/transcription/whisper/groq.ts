@@ -13,15 +13,12 @@ export async function transcribeWithGroq(
   form.append('file', new Blob([toArrayBuffer(bytes)], { type: mediaType }), safeName)
   form.append('model', 'whisper-large-v3-turbo')
 
-  const response = await globalThis.fetch(
-    'https://api.groq.com/openai/v1/audio/transcriptions',
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: form,
-      signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
-    }
-  )
+  const response = await globalThis.fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: form,
+    signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
+  })
 
   if (!response.ok) {
     const detail = await readErrorDetail(response)

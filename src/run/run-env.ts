@@ -102,7 +102,8 @@ export function resolveEnvState({
     const value = raw.trim()
     return value.length > 0 ? value : null
   })()
-  const groqApiKey = typeof envForRun.GROQ_API_KEY === 'string' ? envForRun.GROQ_API_KEY.trim() || null : null
+  const groqApiKey =
+    typeof envForRun.GROQ_API_KEY === 'string' ? envForRun.GROQ_API_KEY.trim() || null : null
   const falApiKey = typeof envForRun.FAL_KEY === 'string' ? envForRun.FAL_KEY : null
   const firecrawlKey =
     typeof envForRun.FIRECRAWL_API_KEY === 'string' ? envForRun.FIRECRAWL_API_KEY : null

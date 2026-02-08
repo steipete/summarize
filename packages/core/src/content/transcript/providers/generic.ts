@@ -367,7 +367,9 @@ async function fetchDirectMediaTranscript({
     falApiKey: options.falApiKey,
   })
   if (!transcriptionAvailability.hasAnyProvider) {
-    notes.push('Missing transcription provider (install whisper-cpp or set GROQ_API_KEY/OPENAI_API_KEY/FAL_KEY)')
+    notes.push(
+      'Missing transcription provider (install whisper-cpp or set GROQ_API_KEY/OPENAI_API_KEY/FAL_KEY)'
+    )
     return null
   }
 
