@@ -54,6 +54,7 @@ export async function summarizeMediaFile(
   args: SummarizeAssetArgs
 ): Promise<void> {
   // Check if basic transcription setup is available
+  const groqKey = ctx.env.GROQ_API_KEY
   const openaiKey = ctx.env.OPENAI_API_KEY
   const falKey = ctx.env.FAL_KEY
 
@@ -78,7 +79,7 @@ export async function summarizeMediaFile(
     ? true
     : await isBinaryAvailable('whisper-cli')
 
-  const hasAnyTranscriptionProvider = openaiKey || falKey || hasLocalWhisper
+  const hasAnyTranscriptionProvider = groqKey || openaiKey || falKey || hasLocalWhisper
 
   if (!hasAnyTranscriptionProvider) {
     throw new Error(`Media file transcription requires one of the following:
@@ -175,6 +176,7 @@ See: https://github.com/openai/whisper for setup details`)
     apifyApiToken: ctx.apiStatus.apifyToken,
     ytDlpPath: ytDlpPath,
     falApiKey: falKey,
+    groqApiKey: groqKey,
     openaiApiKey: openaiKey,
     scrapeWithFirecrawl: firecrawlScraper,
     convertHtmlToMarkdown: null, // Not needed for media

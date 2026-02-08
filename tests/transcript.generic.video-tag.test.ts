@@ -20,6 +20,7 @@ const buildOptions = (overrides?: Partial<Parameters<typeof fetchTranscript>[1]>
   youtubeTranscriptMode: 'auto',
   mediaTranscriptMode: 'auto',
   ytDlpPath: '/usr/bin/yt-dlp',
+  groqApiKey: null,
   falApiKey: null,
   openaiApiKey: 'test',
   resolveTwitterCookies: null,

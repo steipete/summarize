@@ -28,6 +28,7 @@ type YtDlpTranscriptResult = {
 type YtDlpRequest = {
   ytDlpPath: string | null
   env?: Record<string, string | undefined>
+  groqApiKey: string | null
   openaiApiKey: string | null
   falApiKey: string | null
   url: string
@@ -46,6 +47,7 @@ type YtDlpDurationRequest = {
 export const fetchTranscriptWithYtDlp = async ({
   ytDlpPath,
   env,
+  groqApiKey,
   openaiApiKey,
   falApiKey,
   url,
@@ -68,6 +70,7 @@ export const fetchTranscriptWithYtDlp = async ({
   const effectiveEnv = env ?? process.env
   const startInfo = await resolveTranscriptionStartInfo({
     env: effectiveEnv,
+    groqApiKey,
     openaiApiKey,
     falApiKey,
   })
@@ -77,7 +80,7 @@ export const fetchTranscriptWithYtDlp = async ({
       text: null,
       provider: null,
       error: new Error(
-        'No transcription providers available (install whisper-cpp or set OPENAI_API_KEY or FAL_KEY)'
+        'No transcription providers available (install whisper-cpp or set GROQ_API_KEY, OPENAI_API_KEY, or FAL_KEY)'
       ),
       notes,
     }
@@ -176,6 +179,7 @@ export const fetchTranscriptWithYtDlp = async ({
       filePath,
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey,
       openaiApiKey,
       falApiKey,
       totalDurationSeconds: probedDurationSeconds,

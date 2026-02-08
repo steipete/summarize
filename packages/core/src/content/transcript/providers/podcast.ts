@@ -54,6 +54,7 @@ export const fetchTranscript = async (
 
   const transcriptionAvailability = await resolveTranscriptionAvailability({
     env: options.env,
+    groqApiKey: options.groqApiKey,
     openaiApiKey: options.openaiApiKey,
     falApiKey: options.falApiKey,
   })
@@ -80,6 +81,7 @@ export const fetchTranscript = async (
     transcribeMediaUrl({
       fetchImpl: options.fetch,
       env: options.env,
+      groqApiKey: options.groqApiKey,
       openaiApiKey: options.openaiApiKey,
       falApiKey: options.falApiKey,
       notes,
@@ -205,6 +207,7 @@ export const fetchTranscript = async (
       const result = await mod.fetchTranscriptWithYtDlp({
         ytDlpPath: options.ytDlpPath,
         env: options.env,
+        groqApiKey: options.groqApiKey,
         openaiApiKey: options.openaiApiKey,
         falApiKey: options.falApiKey,
         mediaCache: options.mediaCache ?? null,

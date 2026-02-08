@@ -20,6 +20,7 @@ const baseOptions = {
   apifyApiToken: null,
   youtubeTranscriptMode: 'auto' as const,
   ytDlpPath: '/usr/local/bin/yt-dlp',
+  groqApiKey: null,
   falApiKey: null,
   openaiApiKey: 'OPENAI',
   onProgress: null,

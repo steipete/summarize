@@ -128,6 +128,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/ogg',
         filename: 'audio',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -166,6 +167,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: row.mediaType,
         filename: row.filename,
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -185,13 +187,14 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
     })
 
     expect(result.text).toBeNull()
     expect(result.provider).toBeNull()
-    expect(result.error?.message).toContain('OPENAI_API_KEY or FAL_KEY')
+    expect(result.error?.message).toContain('GROQ_API_KEY, OPENAI_API_KEY, or FAL_KEY')
   })
 
   it('calls OpenAI Whisper and preserves/ensures a filename extension', async () => {
@@ -223,6 +226,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'video/mp4',
         filename: 'clip',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -260,6 +264,7 @@ describe('transcription/whisper', () => {
         filePath: audioPath,
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
         totalDurationSeconds: 10,
@@ -292,6 +297,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -326,6 +332,7 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: 'FAL',
     })
@@ -359,6 +366,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: 'FAL',
       })
@@ -396,6 +404,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: 'FAL',
       })
@@ -424,6 +433,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -461,6 +471,7 @@ describe('transcription/whisper', () => {
         filePath: path,
         mediaType: 'audio/mpeg',
         filename: 'input.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
         segmentSeconds: 1,
@@ -508,6 +519,7 @@ describe('transcription/whisper', () => {
         filePath: path,
         mediaType: 'audio/mpeg',
         filename: 'input.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
         segmentSeconds: 1,
@@ -533,11 +545,12 @@ describe('transcription/whisper', () => {
         filePath: path,
         mediaType: 'audio/mpeg',
         filename: 'input.mp3',
+        groqApiKey: null,
         openaiApiKey: null,
         falApiKey: null,
       })
       expect(result.text).toBeNull()
-      expect(result.error?.message).toContain('OPENAI_API_KEY or FAL_KEY')
+      expect(result.error?.message).toContain('GROQ_API_KEY, OPENAI_API_KEY, or FAL_KEY')
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -563,6 +576,7 @@ describe('transcription/whisper', () => {
         filePath: path,
         mediaType: 'audio/mpeg',
         filename: 'input.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -599,6 +613,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'video/mp4',
         filename: 'bad.mp4',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -619,6 +634,7 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'video/mp4',
       filename: 'video.mp4',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: 'FAL',
     })
@@ -680,6 +696,7 @@ describe('transcription/whisper', () => {
           filePath: audioPath,
           mediaType: 'audio/mpeg',
           filename: 'audio.mp3',
+          groqApiKey: null,
           openaiApiKey: 'OPENAI',
           falApiKey: null,
           segmentSeconds: 1,
@@ -744,6 +761,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'video/mp4',
         filename: 'clip.mp4',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -776,6 +794,7 @@ describe('transcription/whisper', () => {
         bytes: big,
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -807,6 +826,7 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: 'FAL',
     })
@@ -829,6 +849,7 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: 'FAL',
     })
@@ -852,6 +873,7 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: 'FAL',
     })
@@ -899,6 +921,7 @@ describe('transcription/whisper', () => {
           bytes: new Uint8Array([1, 2, 3]),
           mediaType: c.mediaType,
           filename: 'clip',
+          groqApiKey: null,
           openaiApiKey: 'OPENAI',
           falApiKey: null,
         })

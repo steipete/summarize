@@ -26,6 +26,7 @@ export interface ProviderFetchOptions {
   transcriptTimestamps?: boolean
   ytDlpPath: string | null
   falApiKey: string | null
+  groqApiKey: string | null
   openaiApiKey: string | null
   mediaCache?: MediaCache | null
   resolveTwitterCookies?: ResolveTwitterCookies | null

@@ -5,6 +5,7 @@ export type EnvState = {
   apiKey: string | null
   openrouterApiKey: string | null
   openrouterConfigured: boolean
+  groqApiKey: string | null
   openaiTranscriptionKey: string | null
   xaiApiKey: string | null
   googleApiKey: string | null
@@ -101,6 +102,7 @@ export function resolveEnvState({
     const value = raw.trim()
     return value.length > 0 ? value : null
   })()
+  const groqApiKey = typeof envForRun.GROQ_API_KEY === 'string' ? envForRun.GROQ_API_KEY.trim() || null : null
   const falApiKey = typeof envForRun.FAL_KEY === 'string' ? envForRun.FAL_KEY : null
   const firecrawlKey =
     typeof envForRun.FIRECRAWL_API_KEY === 'string' ? envForRun.FIRECRAWL_API_KEY : null
@@ -149,6 +151,7 @@ export function resolveEnvState({
     apiKey: apiKey?.trim() ?? null,
     openrouterApiKey,
     openrouterConfigured,
+    groqApiKey,
     openaiTranscriptionKey,
     xaiApiKey,
     googleApiKey,

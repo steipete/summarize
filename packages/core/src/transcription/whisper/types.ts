@@ -1,4 +1,5 @@
 export type TranscriptionProvider =
+  | 'groq'
   | 'openai'
   | 'fal'
   | 'whisper.cpp'

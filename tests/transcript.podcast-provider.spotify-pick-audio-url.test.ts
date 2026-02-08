@@ -75,6 +75,7 @@ describe('podcast transcript provider - spotify audio url selection branches', (
           apifyApiToken: null,
           youtubeTranscriptMode: 'auto',
           ytDlpPath: null,
+          groqApiKey: null,
           falApiKey: null,
           openaiApiKey: 'OPENAI',
           onProgress: null,

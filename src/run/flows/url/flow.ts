@@ -189,6 +189,7 @@ export async function runUrlFlow({
     apifyApiToken: model.apiStatus.apifyToken,
     ytDlpPath: model.apiStatus.ytDlpPath,
     falApiKey: model.apiStatus.falApiKey,
+    groqApiKey: model.apiStatus.groqApiKey,
     openaiApiKey: model.apiStatus.openaiTranscriptionKey,
     scrapeWithFirecrawl,
     convertHtmlToMarkdown: markdown.convertHtmlToMarkdown,

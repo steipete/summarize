@@ -113,6 +113,7 @@ export const resolveTranscriptForLink = async (
     apifyApiToken: deps.apifyApiToken,
     ytDlpPath: deps.ytDlpPath,
     falApiKey: deps.falApiKey,
+    groqApiKey: deps.groqApiKey,
     openaiApiKey: deps.openaiApiKey,
     mediaCache: deps.mediaCache ?? null,
     resolveTwitterCookies: deps.resolveTwitterCookies ?? null,
