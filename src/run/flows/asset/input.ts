@@ -88,7 +88,7 @@ function normalizePathForExtension(value: string): string {
  * Used to route large audio/video files directly to the media handler
  * which has a higher size limit (2GB vs 50MB).
  */
-function isTranscribableExtension(filePath: string): boolean {
+export function isTranscribableExtension(filePath: string): boolean {
   if (isDirectMediaUrl(filePath)) return true
   const ext = path.extname(normalizePathForExtension(filePath)).toLowerCase()
   return TRANSCRIBABLE_EXTENSIONS.has(ext)

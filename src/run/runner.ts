@@ -27,7 +27,7 @@ import {
 } from './cli-preflight.js'
 import { parseCliProviderArg } from './env.js'
 import { extractAssetContent } from './flows/asset/extract.js'
-import { handleFileInput, withUrlAsset } from './flows/asset/input.js'
+import { handleFileInput, isTranscribableExtension, withUrlAsset } from './flows/asset/input.js'
 import { summarizeMediaFile as summarizeMediaFileImpl } from './flows/asset/media.js'
 import { outputExtractedAsset } from './flows/asset/output.js'
 import { summarizeAsset as summarizeAssetFlow } from './flows/asset/summary.js'
@@ -550,8 +550,8 @@ export async function runCli(
       extractMode,
     })
 
-    if (extractMode && inputTarget.kind !== 'url') {
-      throw new Error('--extract is only supported for website/YouTube URLs')
+    if (extractMode && inputTarget.kind === 'file' && !isTranscribableExtension(inputTarget.filePath)) {
+      throw new Error('--extract for local files is only supported for media files (MP3, MP4, WAV, etc.)')
     }
 
     // Progress UI (spinner + OSC progress) is shown on stderr. Before writing to stdout (including
