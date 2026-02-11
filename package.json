@@ -63,7 +63,7 @@
     }
   },
   "dependencies": {
-    "@mariozechner/pi-ai": "^0.51.1",
+    "@mariozechner/pi-ai": "^0.52.9",
     "@steipete/summarize-core": "workspace:*",
     "commander": "^14.0.3",
     "file-type": "^21.3.0",
@@ -85,7 +85,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "esbuild": "^0.27.2",
     "oxlint": "^1.43.0",
-    "oxlint-tsgolint": "^0.11.4",
+    "oxlint-tsgolint": "^0.12.0",
     "rimraf": "^6.1.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
