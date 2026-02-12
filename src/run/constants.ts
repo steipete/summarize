@@ -1,7 +1,6 @@
 import type { ModelConfig } from '../config.js'
 
-export const BIRD_TIP =
-  'Tip: Install bird🐦 for better Twitter support: https://github.com/steipete/bird'
+export const BIRD_TIP = ''
 export const UVX_TIP =
   'Tip: Install uv (uvx) for local Markdown conversion: brew install uv (or set UVX_PATH to your uvx binary).'
 export const SUPPORT_URL = 'https://github.com/steipete/summarize'

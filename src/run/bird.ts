@@ -200,7 +200,7 @@ export function withBirdTip(
   url: string | null,
   env: Record<string, string | undefined>
 ): Error {
-  if (!url || !isTwitterStatusUrl(url) || hasBirdCli(env)) {
+  if (!url || !isTwitterStatusUrl(url) || hasBirdCli(env) || !BIRD_TIP) {
     return error instanceof Error ? error : new Error(String(error))
   }
   const message = error instanceof Error ? error.message : String(error)
