@@ -77,37 +77,8 @@ export const fetchTranscript = async (
     )
   }
 
-  // Handle explicit apify mode before HTML check — Apify doesn't need HTML.
-  // Fixes: when HTML fetch fails, explicit --youtube apify was skipped entirely.
-  if (mode === 'apify') {
-    if (!options.apifyApiToken) {
-      throw new Error('Missing APIFY_API_TOKEN for --youtube apify')
-    }
-    pushHint('YouTube: fetching transcript (Apify)')
-    attemptedProviders.push('apify')
-    const apifyTranscript = await fetchTranscriptWithApify(
-      options.fetch,
-      options.apifyApiToken,
-      url
-    )
-    if (apifyTranscript) {
-      return {
-        text: normalizeTranscriptText(apifyTranscript),
-        source: 'apify',
-        metadata: { provider: 'apify' },
-        attemptedProviders,
-      }
-    }
-    attemptedProviders.push('unavailable')
-    return {
-      text: null,
-      source: 'unavailable',
-      metadata: { provider: 'youtube', reason: 'no_transcript_available' },
-      attemptedProviders,
-    }
-  }
-
-  if (!html) {
+  // In explicit apify mode we can continue without HTML.
+  if (!html && mode !== 'apify') {
     return { text: null, source: null, attemptedProviders }
   }
 
@@ -135,12 +106,13 @@ export const fetchTranscript = async (
     typeof effectiveVideoIdCandidate === 'string' && effectiveVideoIdCandidate.trim().length > 0
       ? effectiveVideoIdCandidate.trim()
       : null
-  if (!effectiveVideoId) {
+  // In explicit apify mode we can continue without a parsed video id.
+  if (!effectiveVideoId && mode !== 'apify') {
     return { text: null, source: null, attemptedProviders }
   }
 
   let durationSeconds = extractYoutubeDurationSeconds(html)
-  if (!durationSeconds) {
+  if (!durationSeconds && effectiveVideoId) {
     durationSeconds = await fetchYoutubeDurationSecondsViaPlayer(options.fetch, {
       html,
       videoId: effectiveVideoId,
@@ -279,7 +251,14 @@ export const fetchTranscript = async (
     }
   }
 
-  // Note: explicit apify mode is handled before the HTML check (above).
+  // Explicit apify mode: allow forcing it, but require a token.
+  if (mode === 'apify') {
+    if (!options.apifyApiToken) {
+      throw new Error('Missing APIFY_API_TOKEN for --youtube apify')
+    }
+    const apifyResult = await tryApify('YouTube: fetching transcript (Apify)')
+    if (apifyResult) return apifyResult
+  }
 
   // Auto mode: if yt-dlp cannot run (no binary/credentials), fall back to Apify last-last.
   if (mode === 'auto' && !canRunYtDlp) {

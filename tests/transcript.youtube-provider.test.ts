@@ -131,6 +131,7 @@ describe('YouTube transcript provider module', () => {
 
   it('uses apify-only mode and skips web + yt-dlp', async () => {
     apify.fetchTranscriptWithApify.mockResolvedValue('Hello from apify')
+    captions.extractYoutubeDurationSeconds.mockReturnValue(1872)
 
     const result = await fetchTranscript(
       {
@@ -148,6 +149,7 @@ describe('YouTube transcript provider module', () => {
     expect(result.text).toBe('Hello from apify')
     expect(result.source).toBe('apify')
     expect(result.attemptedProviders).toEqual(['apify'])
+    expect(result.metadata).toEqual({ provider: 'apify', durationSeconds: 1872 })
     expect(api.extractYoutubeiTranscriptConfig).not.toHaveBeenCalled()
     expect(captions.fetchTranscriptFromCaptionTracks).not.toHaveBeenCalled()
     expect(ytdlp.fetchTranscriptWithYtDlp).not.toHaveBeenCalled()
