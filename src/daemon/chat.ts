@@ -1,7 +1,7 @@
 import type { Context, Message } from '@mariozechner/pi-ai'
 import type { LlmApiKeys } from '../llm/generate-text.js'
 import { streamTextWithContext } from '../llm/generate-text.js'
-import { buildAutoModelAttempts, type AutoModelAttempt } from '../model-auto.js'
+import { buildAutoModelAttempts, envHasKey } from '../model-auto.js'
 import { parseRequestedModelId } from '../model-spec.js'
 import { resolveEnvState } from '../run/run-env.js'
 
@@ -53,26 +53,6 @@ function resolveApiKeys(env: Record<string, string | undefined>): LlmApiKeys {
     anthropicApiKey: envState.anthropicApiKey,
     openrouterApiKey: envState.openrouterApiKey,
   }
-}
-
-function envHasKey(
-  env: Record<string, string | undefined>,
-  requiredEnv: AutoModelAttempt['requiredEnv']
-): boolean {
-  if (requiredEnv === 'GEMINI_API_KEY') {
-    return Boolean(
-      env.GEMINI_API_KEY?.trim() ||
-        env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
-        env.GOOGLE_API_KEY?.trim()
-    )
-  }
-  if (requiredEnv === 'Z_AI_API_KEY') {
-    return Boolean(env.Z_AI_API_KEY?.trim() || env.ZAI_API_KEY?.trim())
-  }
-  if (requiredEnv.startsWith('CLI_')) {
-    return false // CLI models are not supported in daemon
-  }
-  return Boolean(env[requiredEnv]?.trim())
 }
 
 export async function streamChatResponse({
@@ -152,7 +132,9 @@ export async function streamChatResponse({
 
   const attempt = attempts.find(
     (entry) =>
-      entry.transport !== 'cli' && entry.llmModelId && envHasKey(env, entry.requiredEnv)
+      entry.transport !== 'cli' &&
+      entry.llmModelId &&
+      envHasKey(envState.envForAuto, entry.requiredEnv)
   )
   if (!attempt || !attempt.llmModelId) {
     throw new Error('No model available for chat')

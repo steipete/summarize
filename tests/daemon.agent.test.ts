@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import type { AssistantMessage, Tool } from '@mariozechner/pi-ai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { completeAgentResponse } from '../src/daemon/agent.js'
+import * as modelAuto from '../src/model-auto.js'
 
 const { mockCompleteSimple, mockGetModel } = vi.hoisted(() => ({
   mockCompleteSimple: vi.fn(),
@@ -165,5 +166,42 @@ describe('daemon/agent', () => {
       ?.properties
     expect(properties && 'listTabs' in properties).toBe(true)
     expect(properties && 'switchToTab' in properties).toBe(true)
+  })
+
+  it('accepts legacy OpenRouter env mapping for auto fallback attempts', async () => {
+    const home = makeTempHome()
+    const autoSpy = vi.spyOn(modelAuto, 'buildAutoModelAttempts').mockReturnValue([
+      {
+        transport: 'openrouter',
+        userModelId: 'openrouter/openai/gpt-5-mini',
+        llmModelId: 'openai/openai/gpt-5-mini',
+        openrouterProviders: null,
+        forceOpenRouter: true,
+        requiredEnv: 'OPENROUTER_API_KEY',
+        debug: 'test',
+      },
+    ])
+
+    try {
+      await completeAgentResponse({
+        env: {
+          HOME: home,
+          OPENAI_BASE_URL: 'https://openrouter.ai/api/v1',
+          OPENAI_API_KEY: 'sk-openrouter-via-openai',
+        },
+        pageUrl: 'https://example.com',
+        pageTitle: null,
+        pageContent: 'Hello world',
+        messages: [{ role: 'user', content: 'Hi' }],
+        modelOverride: null,
+        tools: [],
+        automationEnabled: false,
+      })
+
+      const options = mockCompleteSimple.mock.calls[0]?.[2] as { apiKey?: string }
+      expect(options.apiKey).toBe('sk-openrouter-via-openai')
+    } finally {
+      autoSpy.mockRestore()
+    }
   })
 })

@@ -2,7 +2,7 @@ import type { Api, AssistantMessage, Message, Model, Tool } from '@mariozechner/
 import { completeSimple, getModel, streamSimple } from '@mariozechner/pi-ai'
 import { buildPromptHash } from '../cache.js'
 import { createSyntheticModel } from '../llm/providers/shared.js'
-import { buildAutoModelAttempts, type AutoModelAttempt } from '../model-auto.js'
+import { buildAutoModelAttempts, envHasKey } from '../model-auto.js'
 import { resolveRunContextState } from '../run/run-context.js'
 import { resolveModelSelection } from '../run/run-models.js'
 import { resolveRunOverrides } from '../run/run-settings.js'
@@ -46,26 +46,6 @@ Professional, concise, pragmatic. Use "I" for your actions. Match the user's ton
 
 export function buildAgentPromptHash(automationEnabled: boolean): string {
   return buildPromptHash(automationEnabled ? AGENT_PROMPT_AUTOMATION : AGENT_PROMPT_CHAT_ONLY)
-}
-
-function envHasKey(
-  env: Record<string, string | undefined>,
-  requiredEnv: AutoModelAttempt['requiredEnv']
-): boolean {
-  if (requiredEnv === 'GEMINI_API_KEY') {
-    return Boolean(
-      env.GEMINI_API_KEY?.trim() ||
-        env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
-        env.GOOGLE_API_KEY?.trim()
-    )
-  }
-  if (requiredEnv === 'Z_AI_API_KEY') {
-    return Boolean(env.Z_AI_API_KEY?.trim() || env.ZAI_API_KEY?.trim())
-  }
-  if (requiredEnv.startsWith('CLI_')) {
-    return false // CLI models are not supported in daemon
-  }
-  return Boolean(env[requiredEnv]?.trim())
 }
 
 const TOOL_DEFINITIONS: Record<string, Tool> = {
@@ -559,7 +539,7 @@ async function resolveAgentModel({
 
   for (const attempt of attempts) {
     if (attempt.transport === 'cli') continue
-    if (!envHasKey(env, attempt.requiredEnv)) continue
+    if (!envHasKey(envForAuto, attempt.requiredEnv)) continue
     if (attempt.transport === 'openrouter') {
       const modelId = attempt.userModelId.replace(/^openrouter\//i, '')
       return { model: applyBaseUrlOverride('openrouter', modelId), maxOutputTokens, apiKeys }

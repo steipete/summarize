@@ -21,8 +21,10 @@ vi.mock('../src/llm/generate-text.js', () => {
   }
 })
 
-vi.mock('../src/model-auto.js', () => {
+vi.mock('../src/model-auto.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/model-auto.js')>()
   return {
+    ...actual,
     buildAutoModelAttempts: vi.fn(),
   }
 })
@@ -34,7 +36,7 @@ describe('daemon/chat', () => {
     const meta: Array<{ model?: string | null }> = []
 
     await streamChatResponse({
-      env: { HOME: home },
+      env: { HOME: home, OPENAI_API_KEY: 'sk-openai' },
       fetchImpl: fetch,
       session: {
         id: 's1',
@@ -104,7 +106,7 @@ describe('daemon/chat', () => {
     vi.mocked(buildAutoModelAttempts).mockReturnValue(attempts)
 
     await streamChatResponse({
-      env: { HOME: home },
+      env: { HOME: home, OPENAI_API_KEY: 'sk-openai' },
       fetchImpl: fetch,
       session: {
         id: 's3',
@@ -124,5 +126,50 @@ describe('daemon/chat', () => {
     expect(args.modelId).toBe('openai/gpt-5-mini')
     expect(args.forceOpenRouter).toBe(false)
     expect(meta[0]?.model).toBe('openai/gpt-5-mini')
+  })
+
+  it('accepts legacy OpenRouter env mapping for auto attempts', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'summarize-daemon-chat-auto-openrouter-'))
+    const meta: Array<{ model?: string | null }> = []
+
+    const attempts = [
+      {
+        transport: 'openrouter' as const,
+        userModelId: 'openrouter/openai/gpt-5-mini',
+        llmModelId: 'openai/openai/gpt-5-mini',
+        openrouterProviders: null,
+        forceOpenRouter: true,
+        requiredEnv: 'OPENROUTER_API_KEY' as const,
+        debug: 'test',
+      },
+    ]
+
+    vi.mocked(buildAutoModelAttempts).mockReturnValue(attempts)
+
+    await streamChatResponse({
+      env: {
+        HOME: home,
+        OPENAI_BASE_URL: 'https://openrouter.ai/api/v1',
+        OPENAI_API_KEY: 'sk-openrouter-via-openai',
+      },
+      fetchImpl: fetch,
+      session: {
+        id: 's4',
+        lastMeta: { model: null, modelLabel: null, inputSummary: null, summaryFromCache: null },
+      },
+      pageUrl: 'https://example.com',
+      pageTitle: null,
+      pageContent: 'Hello world',
+      messages: [{ role: 'user', content: 'Hi' }],
+      modelOverride: null,
+      pushToSession: () => {},
+      emitMeta: (patch) => meta.push(patch),
+    })
+
+    const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls
+    const args = calls[calls.length - 1]?.[0] as { modelId: string; forceOpenRouter?: boolean }
+    expect(args.modelId).toBe('openai/openai/gpt-5-mini')
+    expect(args.forceOpenRouter).toBe(true)
+    expect(meta[0]?.model).toBe('openrouter/openai/gpt-5-mini')
   })
 })
