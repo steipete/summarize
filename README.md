@@ -430,6 +430,7 @@ Supported keys today:
 ```json
 {
   "model": { "id": "openai/gpt-5-mini" },
+  "env": { "OPENAI_API_KEY": "sk-..." },
   "ui": { "theme": "ember" }
 }
 ```
@@ -447,6 +448,8 @@ Also supported:
 - `model: { "mode": "auto" }` (automatic model selection + fallback; see [docs/model-auto.md](docs/model-auto.md))
 - `model.rules` (customize candidates / ordering)
 - `models` (define presets selectable via `--model <preset>`)
+- `env` (generic env var defaults; process env still wins)
+- `apiKeys` (legacy shortcut, mapped to env names; prefer `env` for new configs)
 - `cache.media` (media download cache: TTL 7 days, 2048 MB cap by default; `--no-media-cache` disables)
 - `media.videoMode: "auto"|"transcript"|"understand"`
 - `slides.enabled` / `slides.max` / `slides.ocr` / `slides.dir` (defaults for `--slides`)
@@ -481,9 +484,20 @@ Theme precedence:
 3) `~/.summarize/config.json` (`ui.theme`)
 4) default (`aurora`)
 
+Environment variable precedence:
+
+1) process env
+2) `~/.summarize/config.json` (`env`)
+3) `~/.summarize/config.json` (`apiKeys`, legacy)
+
 ### Environment variables
 
 Set the key matching your chosen `--model`:
+
+- Optional fallback defaults can be stored in config:
+  - `~/.summarize/config.json` -> `"env": { "OPENAI_API_KEY": "sk-..." }`
+  - process env always takes precedence
+  - legacy `"apiKeys"` still works (mapped to env names)
 
 - `OPENAI_API_KEY` (for `openai/...`)
 - `ANTHROPIC_API_KEY` (for `anthropic/...`)
