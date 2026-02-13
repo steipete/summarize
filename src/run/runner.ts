@@ -7,7 +7,7 @@ import {
   DEFAULT_CACHE_MAX_MB,
   resolveCachePath,
 } from '../cache.js'
-import { loadSummarizeConfig } from '../config.js'
+import { loadSummarizeConfig, mergeConfigEnv } from '../config.js'
 import {
   parseExtractFormat,
   parseMaxExtractCharactersArg,
@@ -59,13 +59,18 @@ type RunEnv = {
 
 export async function runCli(
   argv: string[],
-  { env, fetch, execFile: execFileOverride, stdin, stdout, stderr }: RunEnv
+  { env: inputEnv, fetch, execFile: execFileOverride, stdin, stdout, stderr }: RunEnv
 ): Promise<void> {
   ;(globalThis as unknown as { AI_SDK_LOG_WARNINGS?: boolean }).AI_SDK_LOG_WARNINGS = false
 
   const normalizedArgv = argv.filter((arg) => arg !== '--')
   const noColorFlag = normalizedArgv.includes('--no-color')
-  const envForRun = noColorFlag ? { ...env, NO_COLOR: '1', FORCE_COLOR: '0' } : env
+  let envForRun: Record<string, string | undefined> = noColorFlag
+    ? { ...inputEnv, NO_COLOR: '1', FORCE_COLOR: '0' }
+    : { ...inputEnv }
+  const { config: bootstrapConfig } = loadSummarizeConfig({ env: envForRun })
+  envForRun = mergeConfigEnv({ env: envForRun, config: bootstrapConfig })
+  const env = envForRun
 
   if (handleHelpRequest({ normalizedArgv, envForRun, stdout, stderr })) {
     return
