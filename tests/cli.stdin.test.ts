@@ -19,6 +19,20 @@ const createStdinStream = (content: string): Readable => {
   return Readable.from([content])
 }
 
+const collectStream = () => {
+  let text = ''
+  return {
+    stream: new Writable({
+      write(chunk, encoding, callback) {
+        void encoding
+        text += chunk.toString()
+        callback()
+      },
+    }),
+    getText: () => text,
+  }
+}
+
 describe('cli stdin support', () => {
   const home = mkdtempSync(join(tmpdir(), 'summarize-tests-stdin-'))
 
@@ -64,25 +78,18 @@ describe('cli stdin support', () => {
     ).rejects.toThrow('--extract is not supported for piped stdin input')
   })
 
-  it('allows --markdown-mode llm for stdin (transcript formatting coming soon)', async () => {
-    // This test verifies that --markdown-mode llm is allowed for stdin
-    // (actual transcript formatting will be implemented in a future update)
+  it('allows --markdown-mode llm for stdin', async () => {
     const testContent = 'Test content for markdown mode.'
 
-    try {
-      await runCli(['--format', 'md', '--markdown-mode', 'llm', '-'], {
+    await expect(
+      runCli(['--extract', '--format', 'md', '--markdown-mode', 'llm', '-'], {
         env: { HOME: home },
         fetch: vi.fn() as unknown as typeof fetch,
         stdin: createStdinStream(testContent),
         stdout: noopStream(),
         stderr: noopStream(),
       })
-      // If it succeeds, that's fine - --markdown-mode llm is allowed
-    } catch (error) {
-      // If it throws, make sure it's NOT a restriction error
-      const message = error instanceof Error ? error.message : String(error)
-      expect(message).not.toMatch(/--markdown-mode is only supported/)
-    }
+    ).rejects.toThrow('--extract is not supported for piped stdin input')
   })
 
   it('rejects --markdown-mode readability for stdin', async () => {
@@ -100,23 +107,18 @@ describe('cli stdin support', () => {
     ).rejects.toThrow('Only --markdown-mode llm is supported for file/stdin inputs')
   })
 
-  it('processes stdin correctly for non-extract mode', async () => {
-    // This test verifies that stdin is processed and doesn't fail with stdin-related errors
+  it('prints short text from stdin without requiring model setup', async () => {
     const testContent = 'Test content for basic processing.'
+    const stdout = collectStream()
 
-    try {
-      await runCli(['-'], {
-        env: { HOME: home },
-        fetch: vi.fn() as unknown as typeof fetch,
-        stdin: createStdinStream(testContent),
-        stdout: noopStream(),
-        stderr: noopStream(),
-      })
-      // If it succeeds, that's fine - stdin was processed correctly
-    } catch (error) {
-      // If it throws, make sure it's NOT a stdin-related error
-      const message = error instanceof Error ? error.message : String(error)
-      expect(message).not.toMatch(/Stdin is empty/)
-    }
+    await runCli(['-'], {
+      env: { HOME: home },
+      fetch: vi.fn() as unknown as typeof fetch,
+      stdin: createStdinStream(testContent),
+      stdout: stdout.stream,
+      stderr: noopStream(),
+    })
+
+    expect(stdout.getText()).toContain(testContent)
   })
 })

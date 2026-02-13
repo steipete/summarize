@@ -151,12 +151,16 @@ Stdin (pipe content using `-`):
 ```bash
 echo "content" | summarize -
 pbpaste | summarize -
+# binary stdin also works (PDF/image/audio/video bytes)
+cat /path/to/file.pdf | summarize -
 ```
 
 **Notes:**
 - Stdin has a 50MB size limit
 - The `-` argument tells summarize to read from standard input
-- Useful for piping clipboard content or other command output
+- Text stdin is treated as UTF-8 text (whitespace-only input is rejected as empty)
+- Binary stdin is preserved as raw bytes and file type is auto-detected when possible
+- Useful for piping clipboard content or command output
 
 YouTube (supports `youtube.com` and `youtu.be`):
 
@@ -267,7 +271,7 @@ Use `summarize --help` or `summarize help` for the full help text.
 - `--markdown-mode off|auto|llm|readability`: HTML -> Markdown mode (default `readability`)
 - `--preprocess off|auto|always`: controls `uvx markitdown` usage (default `auto`)
   - Install `uvx`: `brew install uv` (or https://astral.sh/uv/)
-- `--extract`: print extracted content and exit (URLs only)
+- `--extract`: print extracted content and exit (URLs only; stdin `-` is not supported)
   - Deprecated alias: `--extract-only`
 - `--slides`: extract slides for YouTube/direct video URLs and render them inline in the summary narrative (auto-renders inline in supported terminals)
 - `--slides-ocr`: run OCR on extracted slides (requires `tesseract`)

@@ -12,7 +12,7 @@ export function buildProgram() {
   return new Command()
     .name('summarize')
     .description('Summarize web pages and YouTube links (uses direct provider API keys).')
-    .argument('[input]', 'URL, local file path, or - for stdin to summarize')
+    .argument('[input]', 'URL, local file path, or - for stdin (text or binary) to summarize')
     .option(
       '--youtube <mode>',
       'YouTube transcript source: auto, web, no-auto (skip auto-generated captions), yt-dlp, apify',

@@ -1,7 +1,5 @@
 import { execFile } from 'node:child_process'
 import fs from 'node:fs/promises'
-import os from 'node:os'
-import path from 'node:path'
 import { CommanderError } from 'commander'
 import {
   type CacheState,
@@ -10,7 +8,6 @@ import {
   resolveCachePath,
 } from '../cache.js'
 import { loadSummarizeConfig } from '../config.js'
-import type { InputTarget } from '../content/asset.js'
 import {
   parseExtractFormat,
   parseMaxExtractCharactersArg,
@@ -46,25 +43,10 @@ import { resolveDesiredOutputTokens } from './run-output.js'
 import { resolveCliRunSettings } from './run-settings.js'
 import { resolveStreamSettings } from './run-stream.js'
 import { handleSlidesCliRequest } from './slides-cli.js'
+import { createTempFileFromStdin } from './stdin-temp-file.js'
 import { createSummaryEngine } from './summary-engine.js'
 import { isRichTty, supportsColor } from './terminal.js'
 import { handleTranscriberCliRequest } from './transcriber-cli.js'
-
-async function streamToString(stream: NodeJS.ReadableStream, maxBytes: number): Promise<string> {
-  const chunks: Buffer[] = []
-  let totalSize = 0
-  for await (const chunk of stream) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-    totalSize += buffer.length
-    if (totalSize > maxBytes) {
-      throw new Error(
-        `Stdin content exceeds maximum size of ${(maxBytes / 1024 / 1024).toFixed(1)}MB`
-      )
-    }
-    chunks.push(buffer)
-  }
-  return Buffer.concat(chunks).toString('utf8')
-}
 
 type RunEnv = {
   env: Record<string, string | undefined>
@@ -739,24 +721,17 @@ export async function runCli(
     }
 
     if (inputTarget.kind === 'stdin') {
-      const tempPath = path.join(
-        os.tmpdir(),
-        `summarize-stdin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`
-      )
-      const MAX_STDIN_BYTES = 50 * 1024 * 1024 // 50MB limit
+      const stdinTempFile = await createTempFileFromStdin({
+        stream: stdin ?? process.stdin,
+      })
       try {
-        const stdinContent = await streamToString(stdin ?? process.stdin, MAX_STDIN_BYTES)
-        if (!stdinContent.trim()) {
-          throw new Error('Stdin is empty')
-        }
-        await fs.writeFile(tempPath, stdinContent, { mode: 0o600 })
-        const stdinInputTarget: InputTarget = { kind: 'file', filePath: tempPath }
+        const stdinInputTarget = { kind: 'file' as const, filePath: stdinTempFile.filePath }
         if (await handleFileInput(assetInputContext, stdinInputTarget)) {
           return
         }
         throw new Error('Failed to process stdin input')
       } finally {
-        await fs.rm(tempPath, { force: true }).catch(() => {})
+        await stdinTempFile.cleanup()
       }
     }
 
