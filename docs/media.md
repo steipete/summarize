@@ -14,7 +14,7 @@ read_when:
 ## Transcript resolution order
 
 1) Embedded captions (VTT/JSON) when available.
-2) yt-dlp download + Whisper transcription (prefers local whisper.cpp; OpenAI/FAL fallback).
+2) yt-dlp download + Whisper transcription (Groq first; then ONNX/local/OpenAI/FAL fallback).
 
 ## CLI behavior
 

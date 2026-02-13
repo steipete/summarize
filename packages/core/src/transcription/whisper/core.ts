@@ -40,6 +40,7 @@ export async function transcribeMediaWithWhisper({
   mediaType,
   filename,
   groqApiKey,
+  skipGroq = false,
   openaiApiKey,
   falApiKey,
   totalDurationSeconds = null,
@@ -50,6 +51,7 @@ export async function transcribeMediaWithWhisper({
   mediaType: string
   filename: string | null
   groqApiKey: string | null
+  skipGroq?: boolean
   openaiApiKey: string | null
   falApiKey: string | null
   totalDurationSeconds?: number | null
@@ -60,7 +62,7 @@ export async function transcribeMediaWithWhisper({
 
   // 1. Groq (cloud, free, fastest)
   let groqError: Error | null = null
-  if (groqApiKey) {
+  if (groqApiKey && !skipGroq) {
     try {
       const text = await transcribeWithGroq(bytes, mediaType, filename, groqApiKey)
       if (text) {
@@ -72,7 +74,7 @@ export async function transcribeMediaWithWhisper({
     }
   }
 
-  if (groqApiKey && groqError && shouldRetryGroqViaFfmpeg(groqError)) {
+  if (!skipGroq && groqApiKey && groqError && shouldRetryGroqViaFfmpeg(groqError)) {
     const canTranscode = await isFfmpegAvailable()
     if (canTranscode) {
       try {
@@ -282,12 +284,16 @@ export async function transcribeMediaWithWhisper({
     }
   }
 
-  return {
-    text: null,
-    provider: openaiApiKey ? 'openai' : null,
-    error: openaiError ?? new Error('No transcription providers available'),
-    notes,
-  }
+  const terminalError =
+    openaiError ?? groqError ?? new Error('No transcription providers available')
+  const terminalProvider: TranscriptionProvider | null = openaiError
+    ? 'openai'
+    : groqError
+      ? 'groq'
+      : openaiApiKey
+        ? 'openai'
+        : null
+  return { text: null, provider: terminalProvider, error: terminalError, notes }
 }
 
 export async function transcribeMediaFileWithWhisper({
@@ -314,10 +320,13 @@ export async function transcribeMediaFileWithWhisper({
   env?: Env
 }): Promise<WhisperTranscriptionResult> {
   const notes: string[] = []
+  const stat = await fs.stat(filePath)
+  let skipGroqInNestedCalls = false
+  let groqError: Error | null = null
 
   // 1. Groq (cloud, free, fastest) — try first even for file-based transcription
   if (groqApiKey) {
-    const stat = await fs.stat(filePath)
+    skipGroqInNestedCalls = true
     if (stat.size <= MAX_OPENAI_UPLOAD_BYTES) {
       const fileBytes = new Uint8Array(await fs.readFile(filePath))
       try {
@@ -325,8 +334,10 @@ export async function transcribeMediaFileWithWhisper({
         if (text) {
           return { text, provider: 'groq', error: null, notes }
         }
+        groqError = new Error('Groq transcription returned empty text')
         notes.push('Groq transcription returned empty text; falling back to local/OpenAI')
       } catch (error) {
+        groqError = wrapError('Groq transcription failed', error)
         notes.push(
           `Groq transcription failed; falling back to local/OpenAI: ${
             error instanceof Error ? error.message : String(error)
@@ -334,7 +345,10 @@ export async function transcribeMediaFileWithWhisper({
         )
       }
     } else {
-      notes.push('File too large for Groq upload; trying local providers')
+      groqError = new Error(
+        `File too large for Groq upload (${formatBytes(stat.size)}); trying local providers`
+      )
+      notes.push(groqError.message)
     }
   }
 
@@ -403,7 +417,15 @@ export async function transcribeMediaFileWithWhisper({
   }
 
   // 4. OpenAI / FAL (cloud fallbacks)
-  if (!groqApiKey && !openaiApiKey && !falApiKey) {
+  if (!openaiApiKey && !falApiKey) {
+    if (groqError) {
+      return {
+        text: null,
+        provider: 'groq',
+        error: groqError,
+        notes,
+      }
+    }
     return {
       text: null,
       provider: null,
@@ -414,7 +436,6 @@ export async function transcribeMediaFileWithWhisper({
     }
   }
 
-  const stat = await fs.stat(filePath)
   if (openaiApiKey && stat.size > MAX_OPENAI_UPLOAD_BYTES) {
     const canChunk = await isFfmpegAvailable()
     if (!canChunk) {
@@ -427,6 +448,7 @@ export async function transcribeMediaFileWithWhisper({
         mediaType,
         filename,
         groqApiKey,
+        skipGroq: skipGroqInNestedCalls,
         openaiApiKey,
         falApiKey,
         env,
@@ -473,6 +495,7 @@ export async function transcribeMediaFileWithWhisper({
           mediaType: 'audio/mpeg',
           filename: name,
           groqApiKey,
+          skipGroq: skipGroqInNestedCalls,
           openaiApiKey,
           falApiKey,
           onProgress: null,
@@ -516,6 +539,7 @@ export async function transcribeMediaFileWithWhisper({
     mediaType,
     filename,
     groqApiKey,
+    skipGroq: skipGroqInNestedCalls,
     openaiApiKey,
     falApiKey,
     env,

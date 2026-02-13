@@ -984,10 +984,40 @@ describe('transcription/whisper', () => {
       })
 
       expect(result.text).toBeNull()
-      // When Groq returns empty text, core.ts notes it and falls through;
-      // with no other cloud provider the final provider is null.
-      expect(result.provider).toBeNull()
+      expect(result.provider).toBe('groq')
+      expect(result.error?.message).toContain('Groq transcription returned empty text')
       expect(result.notes.join(' ')).toContain('Groq transcription returned empty text')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('surfaces Groq as terminal provider when Groq-only transcription fails', async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response('rate limit exceeded', {
+        status: 429,
+        headers: { 'content-type': 'text/plain' },
+      })
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const { transcribeMediaWithWhisper } = await import(
+        '../packages/core/src/transcription/whisper.js'
+      )
+      const result = await transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: 'audio/mpeg',
+        filename: 'audio.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: null,
+        falApiKey: null,
+      })
+
+      expect(result.text).toBeNull()
+      expect(result.provider).toBe('groq')
+      expect(result.error?.message).toContain('Groq transcription failed')
+      expect(result.error?.message).toContain('429')
     } finally {
       vi.unstubAllGlobals()
     }
@@ -1173,6 +1203,88 @@ describe('transcription/whisper', () => {
       expect(result.provider).toBe('groq')
     } finally {
       vi.unstubAllGlobals()
+    }
+  })
+
+  it('does not retry Groq in file flow after initial Groq failure', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'summarize-whisper-groq-file-'))
+    const inputPath = join(dir, 'input.mp3')
+    await writeFile(inputPath, new Uint8Array([1, 2, 3]))
+
+    let groqCalls = 0
+    let openaiCalls = 0
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url.includes('groq.com')) {
+        groqCalls += 1
+        return new Response('rate limit exceeded', {
+          status: 429,
+          headers: { 'content-type': 'text/plain' },
+        })
+      }
+      if (url.includes('openai.com')) {
+        openaiCalls += 1
+        return new Response(JSON.stringify({ text: 'openai fallback' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`)
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const whisper = await importWhisperWithNoFfmpeg()
+      const result = await whisper.transcribeMediaFileWithWhisper({
+        filePath: inputPath,
+        mediaType: 'audio/mpeg',
+        filename: 'input.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: 'OPENAI',
+        falApiKey: null,
+      })
+
+      expect(result.text).toBe('openai fallback')
+      expect(result.provider).toBe('openai')
+      expect(groqCalls).toBe(1)
+      expect(openaiCalls).toBe(1)
+    } finally {
+      vi.unstubAllGlobals()
+      vi.doUnmock('node:child_process')
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('returns a Groq-specific error for oversized files with only Groq configured', async () => {
+    const whisper = await importWhisperWithNoFfmpeg()
+    const dir = await mkdtemp(join(tmpdir(), 'summarize-whisper-groq-large-'))
+    const path = join(dir, 'input.bin')
+    await writeFile(path, new Uint8Array([1, 2, 3]))
+    await truncate(path, whisper.MAX_OPENAI_UPLOAD_BYTES + 1)
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error('Groq should not be called for oversized file in file flow')
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const result = await whisper.transcribeMediaFileWithWhisper({
+        filePath: path,
+        mediaType: 'audio/mpeg',
+        filename: 'input.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: null,
+        falApiKey: null,
+      })
+
+      expect(result.text).toBeNull()
+      expect(result.provider).toBe('groq')
+      expect(result.error?.message).toContain('File too large for Groq upload')
+      expect(fetchMock).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+      vi.doUnmock('node:child_process')
+      await rm(dir, { recursive: true, force: true })
     }
   })
 
