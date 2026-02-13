@@ -54,6 +54,7 @@ export async function summarizeMediaFile(
   args: SummarizeAssetArgs
 ): Promise<void> {
   // Check if basic transcription setup is available
+  const groqKey = ctx.env.GROQ_API_KEY
   const openaiKey = ctx.env.OPENAI_API_KEY
   const falKey = ctx.env.FAL_KEY
 
@@ -78,18 +79,21 @@ export async function summarizeMediaFile(
     ? true
     : await isBinaryAvailable('whisper-cli')
 
-  const hasAnyTranscriptionProvider = openaiKey || falKey || hasLocalWhisper
+  const hasAnyTranscriptionProvider = groqKey || openaiKey || falKey || hasLocalWhisper
 
   if (!hasAnyTranscriptionProvider) {
     throw new Error(`Media file transcription requires one of the following:
 
-1. OpenAI Whisper:
+1. Groq Whisper (fast, free tier):
+   Set GROQ_API_KEY=gsk_...
+
+2. OpenAI Whisper:
    Set OPENAI_API_KEY=sk-...
 
-2. FAL Whisper:
+3. FAL Whisper:
    Set FAL_KEY=...
 
-3. Local whisper.cpp (recommended, free):
+4. Local whisper.cpp (recommended, free):
    brew install ggerganov/ggerganov/whisper-cpp
    Ensure whisper-cli is on your PATH (or set SUMMARIZE_WHISPER_CPP_BINARY)
 
@@ -172,10 +176,15 @@ See: https://github.com/openai/whisper for setup details`)
     cacheMode === 'default' ? (ctx.cache.store?.transcriptCache ?? null) : null
 
   const client = createLinkPreviewClient({
+    env: ctx.envForRun,
     apifyApiToken: ctx.apiStatus.apifyToken,
     ytDlpPath: ytDlpPath,
-    falApiKey: falKey,
-    openaiApiKey: openaiKey,
+    transcription: {
+      env: ctx.envForRun,
+      falApiKey: falKey,
+      groqApiKey: groqKey,
+      openaiApiKey: openaiKey,
+    },
     scrapeWithFirecrawl: firecrawlScraper,
     convertHtmlToMarkdown: null, // Not needed for media
     readTweetWithBird: readTweetWithBirdClient,

@@ -1,3 +1,4 @@
+import { isOpenRouterBaseUrl, resolveConfiguredBaseUrl } from '@steipete/summarize-core'
 import type { CliProvider, SummarizeConfig } from '../config.js'
 import { resolveCliAvailability, resolveExecutableInPath } from './env.js'
 
@@ -5,6 +6,7 @@ export type EnvState = {
   apiKey: string | null
   openrouterApiKey: string | null
   openrouterConfigured: boolean
+  groqApiKey: string | null
   openaiTranscriptionKey: string | null
   xaiApiKey: string | null
   googleApiKey: string | null
@@ -29,11 +31,6 @@ export type EnvState = {
   }
 }
 
-function normalizeBaseUrl(raw: string | null | undefined): string | null {
-  const trimmed = typeof raw === 'string' ? raw.trim() : ''
-  return trimmed.length > 0 ? trimmed : null
-}
-
 export function resolveEnvState({
   env,
   envForRun,
@@ -44,26 +41,22 @@ export function resolveEnvState({
   configForCli: SummarizeConfig | null
 }): EnvState {
   const xaiKeyRaw = typeof envForRun.XAI_API_KEY === 'string' ? envForRun.XAI_API_KEY : null
-  const openaiBaseUrl = (() => {
-    const envValue = normalizeBaseUrl(envForRun.OPENAI_BASE_URL)
-    if (envValue) return envValue
-    return normalizeBaseUrl(configForCli?.openai?.baseUrl)
-  })()
-  const anthropicBaseUrl = (() => {
-    const envValue = normalizeBaseUrl(envForRun.ANTHROPIC_BASE_URL)
-    if (envValue) return envValue
-    return normalizeBaseUrl(configForCli?.anthropic?.baseUrl)
-  })()
-  const googleBaseUrl = (() => {
-    const envValue = normalizeBaseUrl(envForRun.GOOGLE_BASE_URL ?? envForRun.GEMINI_BASE_URL)
-    if (envValue) return envValue
-    return normalizeBaseUrl(configForCli?.google?.baseUrl)
-  })()
-  const xaiBaseUrl = (() => {
-    const envValue = normalizeBaseUrl(envForRun.XAI_BASE_URL)
-    if (envValue) return envValue
-    return normalizeBaseUrl(configForCli?.xai?.baseUrl)
-  })()
+  const openaiBaseUrl = resolveConfiguredBaseUrl({
+    envValue: envForRun.OPENAI_BASE_URL,
+    configValue: configForCli?.openai?.baseUrl,
+  })
+  const anthropicBaseUrl = resolveConfiguredBaseUrl({
+    envValue: envForRun.ANTHROPIC_BASE_URL,
+    configValue: configForCli?.anthropic?.baseUrl,
+  })
+  const googleBaseUrl = resolveConfiguredBaseUrl({
+    envValue: envForRun.GOOGLE_BASE_URL ?? envForRun.GEMINI_BASE_URL,
+    configValue: configForCli?.google?.baseUrl,
+  })
+  const xaiBaseUrl = resolveConfiguredBaseUrl({
+    envValue: envForRun.XAI_BASE_URL,
+    configValue: configForCli?.xai?.baseUrl,
+  })
   const zaiKeyRaw =
     typeof envForRun.Z_AI_API_KEY === 'string'
       ? envForRun.Z_AI_API_KEY
@@ -81,7 +74,7 @@ export function resolveEnvState({
   const openaiKeyRaw =
     typeof envForRun.OPENAI_API_KEY === 'string' ? envForRun.OPENAI_API_KEY : null
   const apiKey =
-    typeof openaiBaseUrl === 'string' && /openrouter\.ai/i.test(openaiBaseUrl)
+    typeof openaiBaseUrl === 'string' && isOpenRouterBaseUrl(openaiBaseUrl)
       ? (openRouterKeyRaw ?? openaiKeyRaw)
       : openaiKeyRaw
   const apifyToken =
@@ -101,6 +94,8 @@ export function resolveEnvState({
     const value = raw.trim()
     return value.length > 0 ? value : null
   })()
+  const groqApiKey =
+    typeof envForRun.GROQ_API_KEY === 'string' ? envForRun.GROQ_API_KEY.trim() || null : null
   const falApiKey = typeof envForRun.FAL_KEY === 'string' ? envForRun.FAL_KEY : null
   const firecrawlKey =
     typeof envForRun.FIRECRAWL_API_KEY === 'string' ? envForRun.FIRECRAWL_API_KEY : null
@@ -127,7 +122,7 @@ export function resolveEnvState({
     if (explicit.length > 0) return explicit
     const baseUrl = openaiBaseUrl ?? ''
     const openaiKey = openaiKeyRaw?.trim() ?? ''
-    if (baseUrl.length > 0 && /openrouter\.ai/i.test(baseUrl) && openaiKey.length > 0) {
+    if (baseUrl.length > 0 && isOpenRouterBaseUrl(baseUrl) && openaiKey.length > 0) {
       return openaiKey
     }
     return null
@@ -149,6 +144,7 @@ export function resolveEnvState({
     apiKey: apiKey?.trim() ?? null,
     openrouterApiKey,
     openrouterConfigured,
+    groqApiKey,
     openaiTranscriptionKey,
     xaiApiKey,
     googleApiKey,

@@ -54,6 +54,7 @@ const baseOptions = {
   apifyApiToken: null,
   youtubeTranscriptMode: 'auto' as const,
   ytDlpPath: null as string | null,
+  groqApiKey: null as string | null,
   falApiKey: null as string | null,
   openaiApiKey: 'OPENAI' as string | null,
 }

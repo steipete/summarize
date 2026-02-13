@@ -168,6 +168,7 @@ describe('transcript cache integration', () => {
         fetch: fetchMock as unknown as typeof fetch,
         apifyApiToken: null,
         ytDlpPath: null,
+        groqApiKey: null,
         falApiKey: null,
         openaiApiKey: null,
         scrapeWithFirecrawl: null,

@@ -27,7 +27,17 @@ export function createTranscriptProgressRenderer({
     downloadedBytes: number
     totalBytes: number | null
     startedAtMs: number | null
-    whisperProviderHint: 'cpp' | 'onnx' | 'openai' | 'fal' | 'openai->fal' | 'unknown'
+    whisperProviderHint:
+      | 'cpp'
+      | 'onnx'
+      | 'groq'
+      | 'groq->openai'
+      | 'groq->fal'
+      | 'groq->openai->fal'
+      | 'openai'
+      | 'fal'
+      | 'openai->fal'
+      | 'unknown'
     mediaKind: 'video' | 'audio' | 'unknown'
     whisperModelId: string | null
     whisperProcessedSeconds: number | null
@@ -166,6 +176,10 @@ export function createTranscriptProgressRenderer({
   const formatProvider = (hint: typeof state.whisperProviderHint) => {
     if (hint === 'cpp') return 'Whisper.cpp'
     if (hint === 'onnx') return 'ONNX (Parakeet/Canary)'
+    if (hint === 'groq') return 'Whisper/Groq'
+    if (hint === 'groq->openai') return 'Whisper/Groq→OpenAI'
+    if (hint === 'groq->fal') return 'Whisper/Groq→FAL'
+    if (hint === 'groq->openai->fal') return 'Whisper/Groq→OpenAI→FAL'
     if (hint === 'openai') return 'Whisper/OpenAI'
     if (hint === 'fal') return 'Whisper/FAL'
     if (hint === 'openai->fal') return 'Whisper/OpenAI→FAL'

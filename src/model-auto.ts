@@ -258,7 +258,7 @@ function requiredEnvForCandidate(modelId: string): AutoModelAttempt['requiredEnv
           : 'OPENAI_API_KEY'
 }
 
-function envHasKey(
+export function envHasKey(
   env: Record<string, string | undefined>,
   requiredEnv: AutoModelAttempt['requiredEnv']
 ): boolean {

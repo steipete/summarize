@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   extractYouTubeVideoId,
+  isDirectMediaExtension,
   isDirectMediaUrl,
   isPodcastHost,
   isTwitterBroadcastUrl,
@@ -47,7 +48,17 @@ describe('content/url', () => {
   it('detects direct media URLs', () => {
     expect(isDirectMediaUrl('https://example.com/video.mp4')).toBe(true)
     expect(isDirectMediaUrl('https://example.com/audio.mp3?x=1')).toBe(true)
+    expect(isDirectMediaUrl('https://example.com/voice.ogg')).toBe(true)
+    expect(isDirectMediaUrl('https://example.com/voice.opus')).toBe(true)
+    expect(isDirectMediaUrl('https://example.com/clip.avi')).toBe(true)
+    expect(isDirectMediaUrl('https://example.com/track.wma#t=10')).toBe(true)
     expect(isDirectMediaUrl('https://example.com/article')).toBe(false)
+  })
+
+  it('detects direct media extensions', () => {
+    expect(isDirectMediaExtension('.ogg')).toBe(true)
+    expect(isDirectMediaExtension('MP4')).toBe(true)
+    expect(isDirectMediaExtension('.txt')).toBe(false)
   })
 
   it('detects podcast hosts', () => {

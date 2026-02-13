@@ -72,6 +72,7 @@ describe('transcription/whisper local whisper.cpp', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
     })
@@ -140,6 +141,7 @@ describe('transcription/whisper local whisper.cpp', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType,
       filename: 'audio',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
     })
@@ -205,6 +207,7 @@ describe('transcription/whisper local whisper.cpp', () => {
       filePath: audioPath,
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
       totalDurationSeconds: 123,
@@ -282,6 +285,7 @@ describe('transcription/whisper local whisper.cpp', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -325,13 +329,14 @@ describe('transcription/whisper local whisper.cpp', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
     })
 
     expect(result.text).toBeNull()
     expect(result.provider).toBeNull()
-    expect(result.error?.message).toContain('OPENAI_API_KEY or FAL_KEY')
+    expect(result.error?.message).toContain('GROQ_API_KEY, OPENAI_API_KEY, or FAL_KEY')
     expect(spawn).toHaveBeenCalled()
   })
 
@@ -364,13 +369,14 @@ describe('transcription/whisper local whisper.cpp', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
     })
 
     expect(result.text).toBeNull()
     expect(result.provider).toBeNull()
-    expect(result.error?.message).toContain('OPENAI_API_KEY or FAL_KEY')
+    expect(result.error?.message).toContain('GROQ_API_KEY, OPENAI_API_KEY, or FAL_KEY')
     expect(spawn).toHaveBeenCalled()
   })
 
@@ -431,6 +437,7 @@ describe('transcription/whisper local whisper.cpp', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'video/mp4',
         filename: 'clip.mp4',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -506,6 +513,7 @@ describe('transcription/whisper local whisper.cpp', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -616,6 +624,7 @@ describe('transcription/whisper local whisper.cpp', () => {
       filePath: inputPath,
       mediaType: 'video/mp4',
       filename: 'video.mp4',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
       totalDurationSeconds: 60,
@@ -669,13 +678,14 @@ describe('transcription/whisper local whisper.cpp', () => {
       filePath: inputPath,
       mediaType: 'video/mp4',
       filename: 'video.mp4',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
     })
 
     expect(result.text).toBeNull()
     expect(result.provider).toBeNull()
-    expect(result.error?.message).toContain('OPENAI_API_KEY or FAL_KEY')
+    expect(result.error?.message).toContain('GROQ_API_KEY, OPENAI_API_KEY, or FAL_KEY')
     expect(result.notes.join(' ')).toContain('supports only flac/mp3/ogg/wav')
   })
 
@@ -713,13 +723,14 @@ describe('transcription/whisper local whisper.cpp', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
     })
 
     expect(result.text).toBeNull()
     expect(result.provider).toBeNull()
-    expect(result.error?.message).toContain('OPENAI_API_KEY or FAL_KEY')
+    expect(result.error?.message).toContain('GROQ_API_KEY, OPENAI_API_KEY, or FAL_KEY')
     expect(spawn).toHaveBeenCalled()
   })
 })

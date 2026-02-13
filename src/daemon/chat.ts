@@ -1,7 +1,7 @@
 import type { Context, Message } from '@mariozechner/pi-ai'
 import type { LlmApiKeys } from '../llm/generate-text.js'
 import { streamTextWithContext } from '../llm/generate-text.js'
-import { buildAutoModelAttempts } from '../model-auto.js'
+import { buildAutoModelAttempts, envHasKey } from '../model-auto.js'
 import { parseRequestedModelId } from '../model-spec.js'
 import { resolveEnvState } from '../run/run-env.js'
 
@@ -130,7 +130,12 @@ export async function streamChatResponse({
     cliAvailability: envState.cliAvailability,
   })
 
-  const attempt = attempts.find((entry) => entry.transport !== 'cli' && entry.llmModelId)
+  const attempt = attempts.find(
+    (entry) =>
+      entry.transport !== 'cli' &&
+      entry.llmModelId &&
+      envHasKey(envState.envForAuto, entry.requiredEnv)
+  )
   if (!attempt || !attempt.llmModelId) {
     throw new Error('No model available for chat')
   }

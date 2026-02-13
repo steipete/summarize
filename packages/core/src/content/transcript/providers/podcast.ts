@@ -1,4 +1,5 @@
 import { isDirectMediaUrl } from '../../url.js'
+import { resolveTranscriptionConfig } from '../transcription-config.js'
 import type { ProviderContext, ProviderFetchOptions, ProviderResult } from '../types.js'
 import {
   fetchAppleTranscriptFromEmbeddedHtml,
@@ -47,15 +48,14 @@ export const fetchTranscript = async (
 ): Promise<ProviderResult> => {
   const attemptedProviders: ProviderResult['attemptedProviders'] = []
   const notes: string[] = []
+  const transcription = resolveTranscriptionConfig(options)
 
   const pushOnce = (provider: ProviderResult['attemptedProviders'][number]) => {
     if (!attemptedProviders.includes(provider)) attemptedProviders.push(provider)
   }
 
   const transcriptionAvailability = await resolveTranscriptionAvailability({
-    env: options.env,
-    openaiApiKey: options.openaiApiKey,
-    falApiKey: options.falApiKey,
+    transcription,
   })
 
   const missingTranscriptionProviderResult = (): ProviderResult => ({
@@ -79,9 +79,7 @@ export const fetchTranscript = async (
   const transcribe = (request: TranscribeRequest): Promise<TranscriptionResult> =>
     transcribeMediaUrl({
       fetchImpl: options.fetch,
-      env: options.env,
-      openaiApiKey: options.openaiApiKey,
-      falApiKey: options.falApiKey,
+      transcription,
       notes,
       progress,
       ...request,
@@ -204,9 +202,7 @@ export const fetchTranscript = async (
       const mod = await import('./youtube/yt-dlp.js')
       const result = await mod.fetchTranscriptWithYtDlp({
         ytDlpPath: options.ytDlpPath,
-        env: options.env,
-        openaiApiKey: options.openaiApiKey,
-        falApiKey: options.falApiKey,
+        transcription,
         mediaCache: options.mediaCache ?? null,
         url: context.url,
         service: 'podcast',

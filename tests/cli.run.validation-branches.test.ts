@@ -49,7 +49,7 @@ describe('cli run.ts validation branches', () => {
         stdout: stdout.stream,
         stderr: stderr.stream,
       })
-    ).rejects.toThrow(/--extract is only supported/)
+    ).rejects.toThrow(/--extract .*only supported/)
   })
 
   it('rejects unsupported --cli values', async () => {

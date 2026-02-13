@@ -62,6 +62,20 @@ export type GoogleConfig = {
   baseUrl?: string
 }
 
+export type ApiKeysConfig = {
+  openai?: string
+  anthropic?: string
+  google?: string
+  xai?: string
+  openrouter?: string
+  zai?: string
+  apify?: string
+  firecrawl?: string
+  fal?: string
+}
+
+export type EnvConfig = Record<string, string>
+
 export type LoggingLevel = 'debug' | 'info' | 'warn' | 'error'
 export type LoggingFormat = 'json' | 'pretty'
 export type LoggingConfig = {
@@ -179,6 +193,18 @@ export type SummarizeConfig = {
   google?: GoogleConfig
   xai?: XaiConfig
   logging?: LoggingConfig
+  /**
+   * Generic environment variable defaults.
+   *
+   * Precedence: process env > config file env.
+   */
+  env?: EnvConfig
+  /**
+   * Legacy API key shortcuts. Prefer `env` for new configs.
+   *
+   * Precedence: environment variables > config file apiKeys.
+   */
+  apiKeys?: ApiKeysConfig
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -187,6 +213,49 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function parseOptionalBaseUrl(raw: unknown): string | undefined {
   return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : undefined
+}
+
+function resolveLegacyApiKeysEnv(apiKeys: ApiKeysConfig | undefined): EnvConfig {
+  if (!apiKeys) return {}
+  const mapped: EnvConfig = {}
+  if (typeof apiKeys.openai === 'string') mapped.OPENAI_API_KEY = apiKeys.openai
+  if (typeof apiKeys.anthropic === 'string') mapped.ANTHROPIC_API_KEY = apiKeys.anthropic
+  if (typeof apiKeys.google === 'string') mapped.GEMINI_API_KEY = apiKeys.google
+  if (typeof apiKeys.xai === 'string') mapped.XAI_API_KEY = apiKeys.xai
+  if (typeof apiKeys.openrouter === 'string') mapped.OPENROUTER_API_KEY = apiKeys.openrouter
+  if (typeof apiKeys.zai === 'string') mapped.Z_AI_API_KEY = apiKeys.zai
+  if (typeof apiKeys.apify === 'string') mapped.APIFY_API_TOKEN = apiKeys.apify
+  if (typeof apiKeys.firecrawl === 'string') mapped.FIRECRAWL_API_KEY = apiKeys.firecrawl
+  if (typeof apiKeys.fal === 'string') mapped.FAL_KEY = apiKeys.fal
+  return mapped
+}
+
+export function resolveConfigEnv(config: SummarizeConfig | null | undefined): EnvConfig {
+  if (!config) return {}
+  return {
+    ...resolveLegacyApiKeysEnv(config.apiKeys),
+    ...(config.env ?? {}),
+  }
+}
+
+export function mergeConfigEnv({
+  env,
+  config,
+}: {
+  env: Record<string, string | undefined>
+  config: SummarizeConfig | null | undefined
+}): Record<string, string | undefined> {
+  const configEnv = resolveConfigEnv(config)
+  if (Object.keys(configEnv).length === 0) return env
+  let changed = false
+  const merged: Record<string, string | undefined> = { ...env }
+  for (const [key, value] of Object.entries(configEnv)) {
+    const current = merged[key]
+    if (typeof current === 'string' && current.trim().length > 0) continue
+    merged[key] = value
+    changed = true
+  }
+  return changed ? merged : env
 }
 
 function parseProviderBaseUrlConfig(
@@ -1000,6 +1069,57 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
   const google = parseProviderBaseUrlConfig(parsed.google, path, 'google')
   const xai = parseProviderBaseUrlConfig(parsed.xai, path, 'xai')
 
+  const configEnv = (() => {
+    const value = (parsed as Record<string, unknown>).env
+    if (typeof value === 'undefined') return undefined
+    if (!isRecord(value)) {
+      throw new Error(`Invalid config file ${path}: "env" must be an object.`)
+    }
+    const env: EnvConfig = {}
+    for (const [rawKey, rawValue] of Object.entries(value)) {
+      const key = rawKey.trim()
+      if (key.length === 0) {
+        throw new Error(`Invalid config file ${path}: "env" contains an empty key.`)
+      }
+      if (typeof rawValue !== 'string') {
+        throw new Error(`Invalid config file ${path}: "env.${rawKey}" must be a string.`)
+      }
+      env[key] = rawValue
+    }
+    return Object.keys(env).length > 0 ? env : undefined
+  })()
+
+  const apiKeys = (() => {
+    const value = (parsed as Record<string, unknown>).apiKeys
+    if (typeof value === 'undefined') return undefined
+    if (!isRecord(value)) {
+      throw new Error(`Invalid config file ${path}: "apiKeys" must be an object.`)
+    }
+    const keys: Record<string, string> = {}
+    const allowed = [
+      'openai',
+      'anthropic',
+      'google',
+      'xai',
+      'openrouter',
+      'zai',
+      'apify',
+      'firecrawl',
+      'fal',
+    ]
+    for (const [key, val] of Object.entries(value)) {
+      const k = key.trim().toLowerCase()
+      if (!allowed.includes(k)) {
+        throw new Error(`Invalid config file ${path}: unknown apiKeys provider "${key}".`)
+      }
+      if (typeof val !== 'string' || val.trim().length === 0) {
+        throw new Error(`Invalid config file ${path}: "apiKeys.${key}" must be a non-empty string.`)
+      }
+      keys[k] = val.trim()
+    }
+    return Object.keys(keys).length > 0 ? (keys as ApiKeysConfig) : undefined
+  })()
+
   return {
     config: {
       ...(model ? { model } : {}),
@@ -1017,6 +1137,8 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       ...(google ? { google } : {}),
       ...(xai ? { xai } : {}),
       ...(logging ? { logging } : {}),
+      ...(configEnv ? { env: configEnv } : {}),
+      ...(apiKeys ? { apiKeys } : {}),
     },
     path,
   }

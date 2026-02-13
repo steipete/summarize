@@ -31,6 +31,7 @@ describe('live Whisper transcription (media)', () => {
         bytes,
         mediaType: 'audio/mpeg',
         filename: 'episode.mp3',
+        groqApiKey: null,
         openaiApiKey: OPENAI_API_KEY,
         falApiKey: null,
       })

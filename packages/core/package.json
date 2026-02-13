@@ -46,7 +46,7 @@
     "typecheck": "tsc -p tsconfig.build.json --noEmit"
   },
   "dependencies": {
-    "@fal-ai/client": "^1.8.4",
+    "@fal-ai/client": "^1.9.1",
     "@mozilla/readability": "0.6.0",
     "cheerio": "^1.2.0",
     "es-toolkit": "^1.44.0",
@@ -55,7 +55,7 @@
   },
   "devDependencies": {
     "@types/jsdom": "^27.0.0",
-    "@types/node": "^25.2.0",
+    "@types/node": "^25.2.3",
     "@types/sanitize-html": "^2.16.0",
     "rimraf": "^6.1.2",
     "typescript": "^5.9.3"

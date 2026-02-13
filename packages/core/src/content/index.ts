@@ -33,7 +33,9 @@ export {
   type TranscriptSource,
 } from './link-preview/types.js'
 export {
+  DIRECT_MEDIA_EXTENSIONS,
   extractYouTubeVideoId,
+  isDirectMediaExtension,
   isDirectMediaUrl,
   isPodcastHost,
   isTwitterBroadcastUrl,

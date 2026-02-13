@@ -17,6 +17,7 @@ installed, auto mode can use local CLI models when `cli.enabled` is set (see `do
 ## Env
 
 - `.env` (optional): when running the CLI, `summarize` also reads `.env` in the current working directory and merges it into the environment (real env vars win).
+- `~/.summarize/config.json` `env` (optional): fallback env defaults when process env is missing/blank.
 - `XAI_API_KEY` (required for `xai/...` models)
 - `XAI_BASE_URL` (optional; override xAI API endpoint)
 - `OPENAI_API_KEY` (required for `openai/...` models)

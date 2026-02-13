@@ -7,7 +7,10 @@ import mime from 'mime'
 
 import { userTextAndImageMessage } from '../llm/prompt.js'
 
-export type InputTarget = { kind: 'url'; url: string } | { kind: 'file'; filePath: string }
+export type InputTarget =
+  | { kind: 'url'; url: string }
+  | { kind: 'file'; filePath: string }
+  | { kind: 'stdin' }
 
 export type UrlKind = { kind: 'website' } | { kind: 'asset' }
 
@@ -117,6 +120,10 @@ export function resolveInputTarget(raw: string): InputTarget {
   const asPath = path.resolve(normalized)
   if (existsSync(asPath)) {
     return { kind: 'file', filePath: asPath }
+  }
+
+  if (normalized === '-') {
+    return { kind: 'stdin' }
   }
 
   const extractedUrls = extractHttpUrlsFromText(normalized)

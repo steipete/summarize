@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import fs from 'node:fs/promises'
 import { CommanderError } from 'commander'
 import {
   type CacheState,
@@ -7,7 +7,7 @@ import {
   DEFAULT_CACHE_MAX_MB,
   resolveCachePath,
 } from '../cache.js'
-import { loadSummarizeConfig } from '../config.js'
+import { loadSummarizeConfig, mergeConfigEnv } from '../config.js'
 import {
   parseExtractFormat,
   parseMaxExtractCharactersArg,
@@ -27,7 +27,7 @@ import {
 } from './cli-preflight.js'
 import { parseCliProviderArg } from './env.js'
 import { extractAssetContent } from './flows/asset/extract.js'
-import { handleFileInput, withUrlAsset } from './flows/asset/input.js'
+import { handleFileInput, isTranscribableExtension, withUrlAsset } from './flows/asset/input.js'
 import { summarizeMediaFile as summarizeMediaFileImpl } from './flows/asset/media.js'
 import { outputExtractedAsset } from './flows/asset/output.js'
 import { summarizeAsset as summarizeAssetFlow } from './flows/asset/summary.js'
@@ -43,6 +43,7 @@ import { resolveDesiredOutputTokens } from './run-output.js'
 import { resolveCliRunSettings } from './run-settings.js'
 import { resolveStreamSettings } from './run-stream.js'
 import { handleSlidesCliRequest } from './slides-cli.js'
+import { createTempFileFromStdin } from './stdin-temp-file.js'
 import { createSummaryEngine } from './summary-engine.js'
 import { isRichTty, supportsColor } from './terminal.js'
 import { handleTranscriberCliRequest } from './transcriber-cli.js'
@@ -51,19 +52,25 @@ type RunEnv = {
   env: Record<string, string | undefined>
   fetch: typeof fetch
   execFile?: ExecFileFn
+  stdin?: NodeJS.ReadableStream
   stdout: NodeJS.WritableStream
   stderr: NodeJS.WritableStream
 }
 
 export async function runCli(
   argv: string[],
-  { env, fetch, execFile: execFileOverride, stdout, stderr }: RunEnv
+  { env: inputEnv, fetch, execFile: execFileOverride, stdin, stdout, stderr }: RunEnv
 ): Promise<void> {
   ;(globalThis as unknown as { AI_SDK_LOG_WARNINGS?: boolean }).AI_SDK_LOG_WARNINGS = false
 
   const normalizedArgv = argv.filter((arg) => arg !== '--')
   const noColorFlag = normalizedArgv.includes('--no-color')
-  const envForRun = noColorFlag ? { ...env, NO_COLOR: '1', FORCE_COLOR: '0' } : env
+  let envForRun: Record<string, string | undefined> = noColorFlag
+    ? { ...inputEnv, NO_COLOR: '1', FORCE_COLOR: '0' }
+    : { ...inputEnv }
+  const { config: bootstrapConfig } = loadSummarizeConfig({ env: envForRun })
+  envForRun = mergeConfigEnv({ env: envForRun, config: bootstrapConfig })
+  const env = envForRun
 
   if (handleHelpRequest({ normalizedArgv, envForRun, stdout, stderr })) {
     return
@@ -148,7 +155,7 @@ export async function runCli(
   if (promptFileArg) {
     let text: string
     try {
-      text = await readFile(promptFileArg, 'utf8')
+      text = await fs.readFile(promptFileArg, 'utf8')
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       throw new Error(`Failed to read --prompt-file ${promptFileArg}: ${message}`)
@@ -387,6 +394,7 @@ export async function runCli(
     apiKey,
     openrouterApiKey,
     openrouterConfigured,
+    groqApiKey,
     openaiTranscriptionKey,
     xaiApiKey,
     googleApiKey,
@@ -496,8 +504,22 @@ export async function runCli(
     if (markdownModeExplicitlySet && format !== 'markdown') {
       throw new Error('--markdown-mode is only supported with --format md')
     }
-    if (markdownModeExplicitlySet && inputTarget.kind !== 'url') {
-      throw new Error('--markdown-mode is only supported for URL inputs')
+    if (
+      markdownModeExplicitlySet &&
+      inputTarget.kind !== 'url' &&
+      inputTarget.kind !== 'file' &&
+      inputTarget.kind !== 'stdin'
+    ) {
+      throw new Error('--markdown-mode is only supported for URL, file, or stdin inputs')
+    }
+    if (
+      markdownModeExplicitlySet &&
+      (inputTarget.kind === 'file' || inputTarget.kind === 'stdin') &&
+      markdownMode !== 'llm'
+    ) {
+      throw new Error(
+        'Only --markdown-mode llm is supported for file/stdin inputs; other modes require a URL'
+      )
     }
     const metrics = createRunMetrics({
       env,
@@ -550,8 +572,17 @@ export async function runCli(
       extractMode,
     })
 
-    if (extractMode && inputTarget.kind !== 'url') {
-      throw new Error('--extract is only supported for website/YouTube URLs')
+    if (
+      extractMode &&
+      inputTarget.kind === 'file' &&
+      !isTranscribableExtension(inputTarget.filePath)
+    ) {
+      throw new Error(
+        '--extract for local files is only supported for media files (MP3, MP4, WAV, etc.)'
+      )
+    }
+    if (extractMode && inputTarget.kind === 'stdin') {
+      throw new Error('--extract is not supported for piped stdin input')
     }
 
     // Progress UI (spinner + OSC progress) is shown on stderr. Before writing to stdout (including
@@ -699,6 +730,21 @@ export async function runCli(
       summarizeMediaFile,
       setClearProgressBeforeStdout,
       clearProgressIfCurrent,
+    }
+
+    if (inputTarget.kind === 'stdin') {
+      const stdinTempFile = await createTempFileFromStdin({
+        stream: stdin ?? process.stdin,
+      })
+      try {
+        const stdinInputTarget = { kind: 'file' as const, filePath: stdinTempFile.filePath }
+        if (await handleFileInput(assetInputContext, stdinInputTarget)) {
+          return
+        }
+        throw new Error('Failed to process stdin input')
+      } finally {
+        await stdinTempFile.cleanup()
+      }
     }
 
     if (await handleFileInput(assetInputContext, inputTarget)) {
@@ -853,6 +899,7 @@ export async function runCli(
           ytDlpPath,
           ytDlpCookiesFromBrowser,
           falApiKey,
+          groqApiKey,
           openaiTranscriptionKey,
         },
         summaryEngine,

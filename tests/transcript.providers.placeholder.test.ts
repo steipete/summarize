@@ -49,6 +49,7 @@ describe('placeholder transcript providers', () => {
       youtubeTranscriptMode: 'auto',
       mediaTranscriptMode: 'auto',
       ytDlpPath: null,
+      groqApiKey: null,
       falApiKey: null,
       openaiApiKey: null,
     }
@@ -76,6 +77,7 @@ describe('placeholder transcript providers', () => {
       youtubeTranscriptMode: 'auto',
       mediaTranscriptMode: 'prefer',
       ytDlpPath: null,
+      groqApiKey: null,
       falApiKey: null,
       openaiApiKey: null,
     }
@@ -110,6 +112,7 @@ describe('placeholder transcript providers', () => {
       youtubeTranscriptMode: 'auto',
       mediaTranscriptMode: 'prefer',
       ytDlpPath: '/usr/local/bin/yt-dlp',
+      groqApiKey: null,
       falApiKey: null,
       openaiApiKey: 'sk-test',
       resolveTwitterCookies: async () => ({

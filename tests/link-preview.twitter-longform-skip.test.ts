@@ -29,6 +29,7 @@ const createDeps = (text: string, media?: { kind?: 'video' | 'audio'; url?: stri
   scrapeWithFirecrawl: null,
   apifyApiToken: null,
   ytDlpPath: '/usr/local/bin/yt-dlp',
+  groqApiKey: null,
   falApiKey: null,
   openaiApiKey: null,
   convertHtmlToMarkdown: null,

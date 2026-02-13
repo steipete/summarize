@@ -11,6 +11,7 @@ import {
 import type { MediaCache } from '../../../cache/types.js'
 import type { LinkPreviewProgressEvent } from '../../../link-preview/deps.js'
 import { ProgressKind } from '../../../link-preview/deps.js'
+import { resolveTranscriptionConfig, type TranscriptionConfig } from '../../transcription-config.js'
 import { resolveTranscriptionStartInfo } from '../transcription-start.js'
 
 const YT_DLP_TIMEOUT_MS = 300_000
@@ -27,9 +28,11 @@ type YtDlpTranscriptResult = {
 
 type YtDlpRequest = {
   ytDlpPath: string | null
+  transcription?: Partial<TranscriptionConfig> | null
   env?: Record<string, string | undefined>
-  openaiApiKey: string | null
-  falApiKey: string | null
+  groqApiKey?: string | null
+  openaiApiKey?: string | null
+  falApiKey?: string | null
   url: string
   onProgress?: ((event: LinkPreviewProgressEvent) => void) | null
   service?: 'youtube' | 'podcast' | 'generic'
@@ -45,7 +48,9 @@ type YtDlpDurationRequest = {
 
 export const fetchTranscriptWithYtDlp = async ({
   ytDlpPath,
+  transcription,
   env,
+  groqApiKey,
   openaiApiKey,
   falApiKey,
   url,
@@ -56,6 +61,13 @@ export const fetchTranscriptWithYtDlp = async ({
   extraArgs,
 }: YtDlpRequest): Promise<YtDlpTranscriptResult> => {
   const notes: string[] = []
+  const effectiveTranscription = resolveTranscriptionConfig({
+    env,
+    transcription,
+    groqApiKey,
+    openaiApiKey,
+    falApiKey,
+  })
 
   if (!ytDlpPath) {
     return {
@@ -65,11 +77,9 @@ export const fetchTranscriptWithYtDlp = async ({
       notes,
     }
   }
-  const effectiveEnv = env ?? process.env
+  const effectiveEnv = effectiveTranscription.env ?? process.env
   const startInfo = await resolveTranscriptionStartInfo({
-    env: effectiveEnv,
-    openaiApiKey,
-    falApiKey,
+    transcription: effectiveTranscription,
   })
 
   if (!startInfo.availability.hasAnyProvider) {
@@ -77,7 +87,7 @@ export const fetchTranscriptWithYtDlp = async ({
       text: null,
       provider: null,
       error: new Error(
-        'No transcription providers available (install whisper-cpp or set OPENAI_API_KEY or FAL_KEY)'
+        'No transcription providers available (install whisper-cpp or set GROQ_API_KEY, OPENAI_API_KEY, or FAL_KEY)'
       ),
       notes,
     }
@@ -176,8 +186,9 @@ export const fetchTranscriptWithYtDlp = async ({
       filePath,
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
-      openaiApiKey,
-      falApiKey,
+      groqApiKey: effectiveTranscription.groqApiKey,
+      openaiApiKey: effectiveTranscription.openaiApiKey,
+      falApiKey: effectiveTranscription.falApiKey,
       totalDurationSeconds: probedDurationSeconds,
       env: effectiveEnv,
       onProgress: (event) => {

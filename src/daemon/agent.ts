@@ -2,7 +2,7 @@ import type { Api, AssistantMessage, Message, Model, Tool } from '@mariozechner/
 import { completeSimple, getModel, streamSimple } from '@mariozechner/pi-ai'
 import { buildPromptHash } from '../cache.js'
 import { createSyntheticModel } from '../llm/providers/shared.js'
-import { buildAutoModelAttempts } from '../model-auto.js'
+import { buildAutoModelAttempts, envHasKey } from '../model-auto.js'
 import { resolveRunContextState } from '../run/run-context.js'
 import { resolveModelSelection } from '../run/run-models.js'
 import { resolveRunOverrides } from '../run/run-settings.js'
@@ -539,6 +539,7 @@ async function resolveAgentModel({
 
   for (const attempt of attempts) {
     if (attempt.transport === 'cli') continue
+    if (!envHasKey(envForAuto, attempt.requiredEnv)) continue
     if (attempt.transport === 'openrouter') {
       const modelId = attempt.userModelId.replace(/^openrouter\//i, '')
       return { model: applyBaseUrlOverride('openrouter', modelId), maxOutputTokens, apiKeys }

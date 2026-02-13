@@ -12,7 +12,7 @@ export function buildProgram() {
   return new Command()
     .name('summarize')
     .description('Summarize web pages and YouTube links (uses direct provider API keys).')
-    .argument('[input]', 'URL or local file path to summarize')
+    .argument('[input]', 'URL, local file path, or - for stdin (text or binary) to summarize')
     .option(
       '--youtube <mode>',
       'YouTube transcript source: auto, web, no-auto (skip auto-generated captions), yt-dlp, apify',
@@ -244,11 +244,13 @@ ${heading('Examples')}
   ${cmd('summarize "https://example.com" --length 20k --max-output-tokens 2k --timeout 2m --model openai/gpt-5-mini')}
   ${cmd('summarize "https://example.com" --model mymodel')} ${dim('# config preset')}
   ${cmd('summarize "https://example.com" --json --verbose')}
+  ${cmd('pbpaste | summarize -')} ${dim('# summarize clipboard content')}
 
 ${heading('Env Vars')}
   XAI_API_KEY           optional (required for xai/... models)
   XAI_BASE_URL          optional (override xAI API endpoint)
   OPENAI_API_KEY        optional (required for openai/... models)
+  OPENAI_WHISPER_BASE_URL optional (OpenAI-compatible Whisper endpoint override)
   OPENAI_BASE_URL       optional (OpenAI-compatible API endpoint; e.g. OpenRouter)
   OPENAI_USE_CHAT_COMPLETIONS optional (force OpenAI chat completions)
   OPENROUTER_API_KEY    optional (routes openai/... models through OpenRouter)
@@ -272,6 +274,7 @@ ${heading('Env Vars')}
   SUMMARIZE_ONNX_CANARY_CMD optional (command to run Canary ONNX transcription; use {input} placeholder)
   YT_DLP_PATH           optional path to yt-dlp binary for audio extraction
   SUMMARIZE_YT_DLP_COOKIES_FROM_BROWSER optional yt-dlp cookies source (e.g. chrome, chrome:Profile 1)
+  GROQ_API_KEY          optional Groq API key for audio transcription (whisper-large-v3-turbo)
   FAL_KEY               optional FAL AI API key for audio transcription
 
 ${heading('Hint')}
@@ -287,11 +290,12 @@ export function buildConciseHelp(): string {
   return [
     'summarize - Summarize web pages, files, and YouTube links.',
     '',
-    'Usage: summarize <url-or-file> [flags]',
+    'Usage: summarize <input> [flags]',
     '',
     'Examples:',
     '  summarize "https://example.com"',
     '  summarize "/path/to/file.pdf" --model google/gemini-3-flash-preview',
+    '  pbpaste | summarize -',
     '',
     'Run summarize --help for full options.',
     `Support: ${SUPPORT_URL}`,

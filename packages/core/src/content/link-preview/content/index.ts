@@ -1,4 +1,5 @@
 import { resolveTranscriptForLink } from '../../transcript/index.js'
+import { resolveTranscriptionConfig } from '../../transcript/transcription-config.js'
 import { isDirectMediaUrl, isYouTubeUrl } from '../../url.js'
 import type { FirecrawlScrapeResult, LinkPreviewDeps } from '../deps.js'
 import type { CacheMode, FirecrawlDiagnostics, TranscriptResolution } from '../types.js'
@@ -51,6 +52,13 @@ export async function fetchLinkContent(
   options: FetchLinkContentOptions | undefined,
   deps: LinkPreviewDeps
 ): Promise<ExtractedLinkContent> {
+  const transcription = resolveTranscriptionConfig({
+    env: deps.env,
+    transcription: deps.transcription ?? null,
+    falApiKey: deps.falApiKey,
+    groqApiKey: deps.groqApiKey,
+    openaiApiKey: deps.openaiApiKey,
+  })
   const timeoutMs = resolveTimeoutMs(options)
   const cacheMode = resolveCacheMode(options)
   const maxCharacters = resolveMaxCharacters(options)
@@ -67,7 +75,7 @@ export async function fetchLinkContent(
 
   const spotifyEpisodeId = extractSpotifyEpisodeId(url)
   if (spotifyEpisodeId) {
-    if (!deps.openaiApiKey && !deps.falApiKey) {
+    if (!transcription.openaiApiKey && !transcription.falApiKey) {
       throw new Error(
         'Spotify episode transcription requires OPENAI_API_KEY or FAL_KEY (Whisper); otherwise you may only get a captcha/recaptcha HTML page.'
       )
@@ -127,7 +135,7 @@ export async function fetchLinkContent(
 
   const appleIds = extractApplePodcastIds(url)
   if (appleIds) {
-    if (!deps.openaiApiKey && !deps.falApiKey) {
+    if (!transcription.openaiApiKey && !transcription.falApiKey) {
       throw new Error(
         'Apple Podcasts transcription requires OPENAI_API_KEY or FAL_KEY (Whisper); otherwise you may only get a slow/blocked HTML page.'
       )

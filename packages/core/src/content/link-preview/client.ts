@@ -1,4 +1,8 @@
 import type { MediaCache, TranscriptCache } from '../cache/types.js'
+import {
+  resolveTranscriptionConfig,
+  type TranscriptionConfig,
+} from '../transcript/transcription-config.js'
 import { fetchLinkContent } from './content/index.js'
 import type { ExtractedLinkContent, FetchLinkContentOptions } from './content/types.js'
 import type {
@@ -21,7 +25,9 @@ export interface LinkPreviewClientOptions {
   scrapeWithFirecrawl?: ScrapeWithFirecrawl | null
   apifyApiToken?: string | null
   ytDlpPath?: string | null
+  transcription?: Partial<TranscriptionConfig> | null
   falApiKey?: string | null
+  groqApiKey?: string | null
   openaiApiKey?: string | null
   convertHtmlToMarkdown?: ConvertHtmlToMarkdown | null
   transcriptCache?: TranscriptCache | null
@@ -40,7 +46,15 @@ export function createLinkPreviewClient(options: LinkPreviewClientOptions = {}):
   const apifyApiToken = typeof options.apifyApiToken === 'string' ? options.apifyApiToken : null
   const ytDlpPath = typeof options.ytDlpPath === 'string' ? options.ytDlpPath : null
   const falApiKey = typeof options.falApiKey === 'string' ? options.falApiKey : null
+  const groqApiKey = typeof options.groqApiKey === 'string' ? options.groqApiKey : null
   const openaiApiKey = typeof options.openaiApiKey === 'string' ? options.openaiApiKey : null
+  const transcription = resolveTranscriptionConfig({
+    env,
+    transcription: options.transcription ?? null,
+    falApiKey,
+    groqApiKey,
+    openaiApiKey,
+  })
   const convertHtmlToMarkdown: ConvertHtmlToMarkdown | null = options.convertHtmlToMarkdown ?? null
   const transcriptCache: TranscriptCache | null = options.transcriptCache ?? null
   const mediaCache: MediaCache | null = options.mediaCache ?? null
@@ -58,7 +72,9 @@ export function createLinkPreviewClient(options: LinkPreviewClientOptions = {}):
         scrapeWithFirecrawl: scrape,
         apifyApiToken,
         ytDlpPath,
+        transcription,
         falApiKey,
+        groqApiKey,
         openaiApiKey,
         convertHtmlToMarkdown,
         transcriptCache,

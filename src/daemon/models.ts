@@ -1,4 +1,5 @@
 import { getModels } from '@mariozechner/pi-ai'
+import { isOpenRouterBaseUrl } from '@steipete/summarize-core'
 import type { SummarizeConfig } from '../config.js'
 import { resolveEnvState } from '../run/run-env.js'
 
@@ -21,7 +22,7 @@ function uniqById(options: ModelPickerOption[]): ModelPickerOption[] {
 }
 
 function isProbablyOpenRouterBaseUrl(baseUrl: string): boolean {
-  return /openrouter\.ai/i.test(baseUrl)
+  return isOpenRouterBaseUrl(baseUrl)
 }
 
 function isProbablyZaiBaseUrl(baseUrl: string): boolean {

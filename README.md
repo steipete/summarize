@@ -146,6 +146,22 @@ summarize "/path/to/audio.mp3"
 summarize "/path/to/video.mp4"
 ```
 
+Stdin (pipe content using `-`):
+
+```bash
+echo "content" | summarize -
+pbpaste | summarize -
+# binary stdin also works (PDF/image/audio/video bytes)
+cat /path/to/file.pdf | summarize -
+```
+
+**Notes:**
+- Stdin has a 50MB size limit
+- The `-` argument tells summarize to read from standard input
+- Text stdin is treated as UTF-8 text (whitespace-only input is rejected as empty)
+- Binary stdin is preserved as raw bytes and file type is auto-detected when possible
+- Useful for piping clipboard content or command output
+
 YouTube (supports `youtube.com` and `youtu.be`):
 
 ```bash
@@ -255,7 +271,7 @@ Use `summarize --help` or `summarize help` for the full help text.
 - `--markdown-mode off|auto|llm|readability`: HTML -> Markdown mode (default `readability`)
 - `--preprocess off|auto|always`: controls `uvx markitdown` usage (default `auto`)
   - Install `uvx`: `brew install uv` (or https://astral.sh/uv/)
-- `--extract`: print extracted content and exit (URLs only)
+- `--extract`: print extracted content and exit (URLs only; stdin `-` is not supported)
   - Deprecated alias: `--extract-only`
 - `--slides`: extract slides for YouTube/direct video URLs and render them inline in the summary narrative (auto-renders inline in supported terminals)
 - `--slides-ocr`: run OCR on extracted slides (requires `tesseract`)
@@ -324,6 +340,7 @@ Environment variables for yt-dlp mode:
 - `SUMMARIZE_WHISPER_CPP_BINARY` - optional override for the local binary (default: `whisper-cli`)
 - `SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP=1` - disable local whisper.cpp (force remote)
 - `OPENAI_API_KEY` - OpenAI Whisper transcription
+- `OPENAI_WHISPER_BASE_URL` - optional OpenAI-compatible Whisper endpoint override
 - `FAL_KEY` - FAL AI Whisper fallback
 
 Apify costs money but tends to be more reliable when captions exist.
@@ -414,6 +431,7 @@ Supported keys today:
 ```json
 {
   "model": { "id": "openai/gpt-5-mini" },
+  "env": { "OPENAI_API_KEY": "sk-..." },
   "ui": { "theme": "ember" }
 }
 ```
@@ -431,6 +449,8 @@ Also supported:
 - `model: { "mode": "auto" }` (automatic model selection + fallback; see [docs/model-auto.md](docs/model-auto.md))
 - `model.rules` (customize candidates / ordering)
 - `models` (define presets selectable via `--model <preset>`)
+- `env` (generic env var defaults; process env still wins)
+- `apiKeys` (legacy shortcut, mapped to env names; prefer `env` for new configs)
 - `cache.media` (media download cache: TTL 7 days, 2048 MB cap by default; `--no-media-cache` disables)
 - `media.videoMode: "auto"|"transcript"|"understand"`
 - `slides.enabled` / `slides.max` / `slides.ocr` / `slides.dir` (defaults for `--slides`)
@@ -465,9 +485,20 @@ Theme precedence:
 3) `~/.summarize/config.json` (`ui.theme`)
 4) default (`aurora`)
 
+Environment variable precedence:
+
+1) process env
+2) `~/.summarize/config.json` (`env`)
+3) `~/.summarize/config.json` (`apiKeys`, legacy)
+
 ### Environment variables
 
 Set the key matching your chosen `--model`:
+
+- Optional fallback defaults can be stored in config:
+  - `~/.summarize/config.json` -> `"env": { "OPENAI_API_KEY": "sk-..." }`
+  - process env always takes precedence
+  - legacy `"apiKeys"` still works (mapped to env names)
 
 - `OPENAI_API_KEY` (for `openai/...`)
 - `ANTHROPIC_API_KEY` (for `anthropic/...`)

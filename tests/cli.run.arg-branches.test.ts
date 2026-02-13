@@ -100,7 +100,7 @@ describe('cli run.ts arg parsing branches', () => {
         stdout: stdout.stream,
         stderr: stderr.stream,
       })
-    ).rejects.toThrow(/Usage: summarize <url-or-file>/)
+    ).rejects.toThrow(/Usage: summarize <input>/)
   })
 
   it('--debug defaults --metrics to detailed', async () => {

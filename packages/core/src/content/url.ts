@@ -12,6 +12,32 @@ export const isYouTubeUrl = (rawUrl: string): boolean => {
 }
 
 const YOUTUBE_VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/
+export const DIRECT_MEDIA_EXTENSIONS = [
+  'mp4',
+  'mov',
+  'm4v',
+  'mkv',
+  'webm',
+  'mpeg',
+  'mpg',
+  'avi',
+  'wmv',
+  'flv',
+  'mp3',
+  'm4a',
+  'wav',
+  'flac',
+  'aac',
+  'ogg',
+  'opus',
+  'aiff',
+  'wma',
+] as const
+const DIRECT_MEDIA_EXTENSION_SET = new Set<string>(DIRECT_MEDIA_EXTENSIONS)
+const DIRECT_MEDIA_URL_PATTERN = new RegExp(
+  `\\.(${DIRECT_MEDIA_EXTENSIONS.join('|')})(\\?|#|$)`,
+  'i'
+)
 
 export function isYouTubeVideoUrl(rawUrl: string): boolean {
   try {
@@ -73,7 +99,12 @@ export function extractYouTubeVideoId(rawUrl: string): string | null {
 }
 
 export function isDirectMediaUrl(url: string): boolean {
-  return /\.(mp4|mov|m4v|mkv|webm|mp3|m4a|wav|flac|aac)(\?|#|$)/i.test(url)
+  return DIRECT_MEDIA_URL_PATTERN.test(url)
+}
+
+export function isDirectMediaExtension(ext: string): boolean {
+  const normalized = ext.trim().replace(/^\./, '').toLowerCase()
+  return DIRECT_MEDIA_EXTENSION_SET.has(normalized)
 }
 
 export function shouldPreferUrlMode(url: string): boolean {

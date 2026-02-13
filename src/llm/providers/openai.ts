@@ -1,5 +1,6 @@
 import type { Context } from '@mariozechner/pi-ai'
 import { completeSimple } from '@mariozechner/pi-ai'
+import { isOpenRouterBaseUrl, normalizeBaseUrl } from '@steipete/summarize-core'
 import type { Attachment } from '../attachments.js'
 import { createUnsupportedFunctionalityError } from '../errors.js'
 import type { LlmTokenUsage } from '../types.js'
@@ -27,9 +28,8 @@ export function resolveOpenAiClientConfig({
   const baseUrlRaw =
     openaiBaseUrlOverride ??
     (typeof process !== 'undefined' ? process.env.OPENAI_BASE_URL : undefined)
-  const baseUrl =
-    typeof baseUrlRaw === 'string' && baseUrlRaw.trim().length > 0 ? baseUrlRaw.trim() : null
-  const isOpenRouterViaBaseUrl = baseUrl ? /openrouter\.ai/i.test(baseUrl) : false
+  const baseUrl = normalizeBaseUrl(baseUrlRaw)
+  const isOpenRouterViaBaseUrl = baseUrl ? isOpenRouterBaseUrl(baseUrl) : false
   const hasOpenRouterKey = apiKeys.openrouterApiKey != null
   const hasOpenAiKey = apiKeys.openaiApiKey != null
   const isOpenRouter =

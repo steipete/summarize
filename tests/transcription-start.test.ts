@@ -16,6 +16,7 @@ describe('transcription start helper', () => {
 
     const startInfo = await resolveTranscriptionStartInfo({
       env: {},
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
     })
@@ -34,6 +35,7 @@ describe('transcription start helper', () => {
         SUMMARIZE_TRANSCRIBER: 'parakeet',
         SUMMARIZE_ONNX_PARAKEET_CMD: "printf 'ok'",
       },
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
     })
@@ -49,6 +51,7 @@ describe('transcription start helper', () => {
 
     const startInfo = await resolveTranscriptionStartInfo({
       env: {},
+      groqApiKey: null,
       openaiApiKey: 'OPENAI',
       falApiKey: 'FAL',
     })
@@ -64,6 +67,7 @@ describe('transcription start helper', () => {
 
     const startInfo = await resolveTranscriptionStartInfo({
       env: {},
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
     })

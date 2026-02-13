@@ -9,6 +9,7 @@ const buildOptions = (overrides?: Partial<Parameters<typeof fetchTranscript>[1]>
   youtubeTranscriptMode: 'auto',
   mediaTranscriptMode: 'auto',
   ytDlpPath: null,
+  groqApiKey: null,
   falApiKey: null,
   openaiApiKey: null,
   resolveTwitterCookies: null,

@@ -81,6 +81,19 @@ describe('resolveInputTarget', () => {
       url: 'https://en.wikipedia.org/wiki/Set_(mathematics)',
     })
   })
+
+  it('resolves - to stdin input', () => {
+    expect(resolveInputTarget('-')).toEqual({
+      kind: 'stdin',
+    })
+  })
+
+  it('resolves - with whitespace to stdin input', () => {
+    expect(resolveInputTarget('  -  ')).toEqual({
+      kind: 'stdin',
+    })
+  })
+
   it('throws when neither file nor URL can be resolved', () => {
     expect(() => resolveInputTarget('not a url')).toThrow(/Invalid URL or file path/i)
   })

@@ -37,6 +37,12 @@ For prompt:
 2. Config file `prompt`
 3. Built-in default prompt
 
+For environment variables:
+
+1. Process environment variables
+2. Config file `env`
+3. Legacy config file `apiKeys` (mapped to env names)
+
 For UI theme:
 
 1. CLI flag `--theme`
@@ -50,6 +56,7 @@ For UI theme:
 ```json
 {
   "model": { "id": "google/gemini-3-flash-preview" },
+  "env": { "OPENAI_API_KEY": "sk-..." },
   "output": { "language": "auto" },
   "prompt": "Explain like I am five.",
   "ui": { "theme": "ember" }
@@ -89,6 +96,39 @@ Example:
 ```json
 {
   "prompt": "Explain for a kid. Short sentences. Simple words."
+}
+```
+
+## Environment defaults
+
+Set any env var in config (process env still wins):
+
+```json
+{
+  "env": {
+    "OPENAI_API_KEY": "sk-...",
+    "OPENROUTER_API_KEY": "sk-or-...",
+    "FIRECRAWL_API_KEY": "...",
+    "CUSTOM_FLAG": "1"
+  }
+}
+```
+
+Legacy shortcut (still supported):
+
+```json
+{
+  "apiKeys": {
+    "openai": "sk-...",
+    "anthropic": "sk-ant-...",
+    "google": "...",
+    "openrouter": "sk-or-...",
+    "xai": "...",
+    "zai": "...",
+    "apify": "...",
+    "firecrawl": "...",
+    "fal": "..."
+  }
 }
 ```
 
