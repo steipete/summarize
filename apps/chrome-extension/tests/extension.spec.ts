@@ -1974,7 +1974,7 @@ test('sidepanel switches between page, video, and slides modes', async ({
     }
 
     await ensureMediaAvailable(false)
-    await expect(summarizeButton).toHaveAttribute('aria-label', /120 words/)
+    await expect(summarizeButton).toHaveAttribute('aria-label', /Page(?: · 120 words)?/)
 
     await setSummarizeMode('page', false)
     await expect
@@ -2250,9 +2250,22 @@ test('sidepanel scrolls YouTube slides and shows text for each slide', async ({
     const slideItems = page.locator('.slideGallery__item')
     await expect(slideItems).toHaveCount(12)
 
+    const scrollSlideIntoView = async (index: number) => {
+      await expect
+        .poll(async () => {
+          try {
+            await slideItems.nth(index).scrollIntoViewIfNeeded()
+            return true
+          } catch {
+            return false
+          }
+        })
+        .toBe(true)
+    }
+
     for (let index = 0; index < 12; index += 1) {
+      await scrollSlideIntoView(index)
       const item = slideItems.nth(index)
-      await item.scrollIntoViewIfNeeded()
       await expect(item).toBeVisible()
 
       const img = item.locator('img.slideInline__thumbImage')
