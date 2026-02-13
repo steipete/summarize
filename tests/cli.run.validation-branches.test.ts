@@ -52,25 +52,23 @@ describe('cli run.ts validation branches', () => {
     ).rejects.toThrow(/--extract for local files is only supported for media files/)
   })
 
-  it('allows --extract for local media files (does not throw guard error)', async () => {
+  it('allows --extract for local media files and reaches media transcription path', async () => {
     const root = mkdtempSync(join(tmpdir(), 'summarize-extract-media-'))
     const filePath = join(root, 'episode.mp3')
     writeFileSync(filePath, 'not-real-audio', 'utf8')
 
     const stdout = collectStream()
     const stderr = collectStream()
-    const result = runCli(['--extract', '--timeout', '2s', filePath], {
-      env: {},
-      fetch: (() => {
-        throw new Error('unexpected fetch')
-      }) as unknown as typeof fetch,
-      stdout: stdout.stream,
-      stderr: stderr.stream,
-    })
-    // Should fail deeper in the pipeline, NOT at the extract guard
-    await expect(result).rejects.not.toThrow(
-      /--extract for local files is only supported for media files/
-    )
+    await expect(
+      runCli(['--extract', '--timeout', '2s', filePath], {
+        env: {},
+        fetch: (() => {
+          throw new Error('unexpected fetch')
+        }) as unknown as typeof fetch,
+        stdout: stdout.stream,
+        stderr: stderr.stream,
+      })
+    ).rejects.toThrow(/Media file transcription requires one of the following/)
   })
 
   it('rejects unsupported --cli values', async () => {
