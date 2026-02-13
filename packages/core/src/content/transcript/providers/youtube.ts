@@ -1,4 +1,5 @@
 import { normalizeTranscriptText } from '../normalize.js'
+import { resolveTranscriptionConfig } from '../transcription-config.js'
 import type {
   ProviderContext,
   ProviderFetchOptions,
@@ -30,6 +31,7 @@ export const fetchTranscript = async (
   // Diagnostics: used for logging/UX and for tests asserting provider order.
   const attemptedProviders: TranscriptSource[] = []
   const notes: string[] = []
+  const transcription = resolveTranscriptionConfig(options)
   const { html: initialHtml, url } = context
   let html = initialHtml
   const hasYoutubeConfig =
@@ -55,10 +57,7 @@ export const fetchTranscript = async (
   const mode = options.youtubeTranscriptMode
   const progress = typeof options.onProgress === 'function' ? options.onProgress : null
   const transcriptionAvailability = await resolveTranscriptionAvailability({
-    env: options.env,
-    groqApiKey: options.groqApiKey,
-    openaiApiKey: options.openaiApiKey,
-    falApiKey: options.falApiKey,
+    transcription,
   })
   const hasYtDlpCredentials = transcriptionAvailability.hasAnyProvider
   // yt-dlp fallback only makes sense if we have the binary *and* some transcription path.
@@ -215,10 +214,7 @@ export const fetchTranscript = async (
     attemptedProviders.push('yt-dlp')
     const ytdlpResult = await fetchTranscriptWithYtDlp({
       ytDlpPath: options.ytDlpPath,
-      env: options.env,
-      groqApiKey: options.groqApiKey,
-      openaiApiKey: options.openaiApiKey,
-      falApiKey: options.falApiKey,
+      transcription,
       mediaCache: options.mediaCache ?? null,
       url,
       onProgress: progress,

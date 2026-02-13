@@ -1,4 +1,5 @@
 import type { MediaCache, TranscriptCache } from '../cache/types.js'
+import type { TranscriptionConfig } from '../transcript/transcription-config.js'
 import type { CacheMode, TranscriptSource } from './types.js'
 
 // Enum-like constants for progress kinds (keeps call sites typo-resistant without TS `enum` runtime quirks).
@@ -177,9 +178,10 @@ export interface LinkPreviewDeps {
   scrapeWithFirecrawl: ScrapeWithFirecrawl | null
   apifyApiToken: string | null
   ytDlpPath: string | null
-  falApiKey: string | null
-  groqApiKey: string | null
-  openaiApiKey: string | null
+  transcription?: TranscriptionConfig | null
+  falApiKey?: string | null
+  groqApiKey?: string | null
+  openaiApiKey?: string | null
   convertHtmlToMarkdown: ConvertHtmlToMarkdown | null
   transcriptCache: TranscriptCache | null
   mediaCache?: MediaCache | null

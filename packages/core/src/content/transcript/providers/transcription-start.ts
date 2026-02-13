@@ -4,6 +4,7 @@ import {
   resolveWhisperCppModelNameForDisplay,
 } from '../../../transcription/whisper.js'
 import type { TranscriptionProviderHint } from '../../link-preview/deps.js'
+import { resolveTranscriptionConfig, type TranscriptionConfig } from '../transcription-config.js'
 
 type Env = Record<string, string | undefined>
 
@@ -19,25 +20,34 @@ export type TranscriptionAvailability = {
 
 export async function resolveTranscriptionAvailability({
   env,
+  transcription,
   groqApiKey,
   openaiApiKey,
   falApiKey,
 }: {
   env?: Env
-  groqApiKey: string | null
-  openaiApiKey: string | null
-  falApiKey: string | null
+  transcription?: Partial<TranscriptionConfig> | null
+  groqApiKey?: string | null
+  openaiApiKey?: string | null
+  falApiKey?: string | null
 }): Promise<TranscriptionAvailability> {
-  const effectiveEnv = env ?? process.env
+  const effective = resolveTranscriptionConfig({
+    env,
+    transcription,
+    groqApiKey,
+    openaiApiKey,
+    falApiKey,
+  })
+  const effectiveEnv = effective.env ?? process.env
   const preferredOnnxModel = resolvePreferredOnnxModel(effectiveEnv)
   const onnxReady = preferredOnnxModel
     ? isOnnxCliConfigured(preferredOnnxModel, effectiveEnv)
     : false
 
   const hasLocalWhisper = await isWhisperCppReady()
-  const hasGroq = Boolean(groqApiKey)
-  const hasOpenai = Boolean(openaiApiKey)
-  const hasFal = Boolean(falApiKey)
+  const hasGroq = Boolean(effective.groqApiKey)
+  const hasOpenai = Boolean(effective.openaiApiKey)
+  const hasFal = Boolean(effective.falApiKey)
   const hasAnyProvider = onnxReady || hasLocalWhisper || hasGroq || hasOpenai || hasFal
 
   return {
@@ -53,14 +63,16 @@ export async function resolveTranscriptionAvailability({
 
 export async function resolveTranscriptionStartInfo({
   env,
+  transcription,
   groqApiKey,
   openaiApiKey,
   falApiKey,
 }: {
   env?: Env
-  groqApiKey: string | null
-  openaiApiKey: string | null
-  falApiKey: string | null
+  transcription?: Partial<TranscriptionConfig> | null
+  groqApiKey?: string | null
+  openaiApiKey?: string | null
+  falApiKey?: string | null
 }): Promise<{
   availability: TranscriptionAvailability
   providerHint: TranscriptionProviderHint
@@ -68,6 +80,7 @@ export async function resolveTranscriptionStartInfo({
 }> {
   const availability = await resolveTranscriptionAvailability({
     env,
+    transcription,
     groqApiKey,
     openaiApiKey,
     falApiKey,

@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { isDirectMediaUrl } from '@steipete/summarize-core/content/url'
+import { isDirectMediaExtension, isDirectMediaUrl } from '@steipete/summarize-core/content/url'
 import {
   classifyUrl,
   type InputTarget,
@@ -25,30 +25,6 @@ function isTranscribableMediaType(mediaType: string): boolean {
   const normalized = mediaType.toLowerCase()
   return normalized.startsWith('audio/') || normalized.startsWith('video/')
 }
-
-const TRANSCRIBABLE_EXTENSIONS = new Set([
-  // Audio
-  '.mp3',
-  '.wav',
-  '.m4a',
-  '.aac',
-  '.ogg',
-  '.flac',
-  '.wma',
-  '.aiff',
-  '.opus',
-  // Video
-  '.mp4',
-  '.mkv',
-  '.avi',
-  '.mov',
-  '.wmv',
-  '.flv',
-  '.webm',
-  '.m4v',
-  '.mpeg',
-  '.mpg',
-])
 
 const createProgressTheme = (
   envForRun: Record<string, string | undefined> | undefined,
@@ -90,8 +66,8 @@ function normalizePathForExtension(value: string): string {
  */
 export function isTranscribableExtension(filePath: string): boolean {
   if (isDirectMediaUrl(filePath)) return true
-  const ext = path.extname(normalizePathForExtension(filePath)).toLowerCase()
-  return TRANSCRIBABLE_EXTENSIONS.has(ext)
+  const ext = path.extname(normalizePathForExtension(filePath))
+  return isDirectMediaExtension(ext)
 }
 
 function formatTranscriptionMeta({

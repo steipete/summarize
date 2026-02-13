@@ -9,6 +9,7 @@ import {
   transcribeMediaFileWithWhisper,
   transcribeMediaWithWhisper,
 } from '../../../../transcription/whisper.js'
+import { resolveTranscriptionConfig, type TranscriptionConfig } from '../../transcription-config.js'
 import type { ProviderFetchOptions } from '../../types.js'
 import { resolveTranscriptionStartInfo } from '../transcription-start.js'
 import { MAX_REMOTE_MEDIA_BYTES, TRANSCRIPTION_TIMEOUT_MS } from './constants.js'
@@ -27,6 +28,7 @@ export type TranscriptionResult = {
 
 export async function transcribeMediaUrl({
   fetchImpl,
+  transcription,
   env,
   url,
   filenameHint,
@@ -38,13 +40,14 @@ export async function transcribeMediaUrl({
   progress,
 }: {
   fetchImpl: typeof fetch
+  transcription?: Partial<TranscriptionConfig> | null
   env?: Record<string, string | undefined>
   url: string
   filenameHint: string
   durationSecondsHint: number | null
-  groqApiKey: string | null
-  openaiApiKey: string | null
-  falApiKey: string | null
+  groqApiKey?: string | null
+  openaiApiKey?: string | null
+  falApiKey?: string | null
   notes: string[]
   progress: {
     url: string
@@ -53,12 +56,16 @@ export async function transcribeMediaUrl({
   } | null
 }): Promise<TranscriptionResult> {
   const canChunk = await isFfmpegAvailable()
-  const effectiveEnv = env ?? process.env
-  const startInfo = await resolveTranscriptionStartInfo({
-    env: effectiveEnv,
+  const effectiveTranscription = resolveTranscriptionConfig({
+    env,
+    transcription,
     groqApiKey,
     openaiApiKey,
     falApiKey,
+  })
+  const effectiveEnv = effectiveTranscription.env ?? process.env
+  const startInfo = await resolveTranscriptionStartInfo({
+    transcription: effectiveTranscription,
   })
   const providerHint = startInfo.providerHint
   const modelId = startInfo.modelId
@@ -117,9 +124,9 @@ export async function transcribeMediaUrl({
       bytes,
       mediaType,
       filename,
-      groqApiKey,
-      openaiApiKey,
-      falApiKey,
+      groqApiKey: effectiveTranscription.groqApiKey,
+      openaiApiKey: effectiveTranscription.openaiApiKey,
+      falApiKey: effectiveTranscription.falApiKey,
       totalDurationSeconds: durationSecondsHint,
       env: effectiveEnv,
       onProgress: (event) => {
@@ -172,9 +179,9 @@ export async function transcribeMediaUrl({
       bytes,
       mediaType,
       filename,
-      groqApiKey,
-      openaiApiKey,
-      falApiKey,
+      groqApiKey: effectiveTranscription.groqApiKey,
+      openaiApiKey: effectiveTranscription.openaiApiKey,
+      falApiKey: effectiveTranscription.falApiKey,
       totalDurationSeconds: durationSecondsHint,
       env: effectiveEnv,
       onProgress: (event) => {
@@ -231,9 +238,9 @@ export async function transcribeMediaUrl({
       filePath: tmpFile,
       mediaType,
       filename,
-      groqApiKey,
-      openaiApiKey,
-      falApiKey,
+      groqApiKey: effectiveTranscription.groqApiKey,
+      openaiApiKey: effectiveTranscription.openaiApiKey,
+      falApiKey: effectiveTranscription.falApiKey,
       totalDurationSeconds: probedDurationSeconds,
       env: effectiveEnv,
       onProgress: (event) => {

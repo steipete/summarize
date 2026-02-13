@@ -12,6 +12,7 @@ import {
   vttToPlainText,
   vttToSegments,
 } from '../parse.js'
+import { resolveTranscriptionConfig, type TranscriptionConfig } from '../transcription-config.js'
 import type { ProviderContext, ProviderFetchOptions, ProviderResult } from '../types.js'
 import { resolveTranscriptionAvailability } from './transcription-start.js'
 
@@ -23,6 +24,7 @@ export const fetchTranscript = async (
 ): Promise<ProviderResult> => {
   const attemptedProviders: ProviderResult['attemptedProviders'] = []
   const notes: string[] = []
+  const transcription = resolveTranscriptionConfig(options)
 
   const embedded = context.html ? detectEmbeddedMedia(context.html, context.url) : null
   const twitterStatus = isTwitterStatusUrl(context.url)
@@ -68,6 +70,7 @@ export const fetchTranscript = async (
     const result = await fetchDirectMediaTranscript({
       url: mediaUrl ?? context.url,
       options,
+      transcription,
       notes,
       attemptedProviders,
       kind: embedded?.kind ?? null,
@@ -107,10 +110,7 @@ export const fetchTranscript = async (
   }
 
   const transcriptionAvailability = await resolveTranscriptionAvailability({
-    env: options.env,
-    groqApiKey: options.groqApiKey,
-    openaiApiKey: options.openaiApiKey,
-    falApiKey: options.falApiKey,
+    transcription,
   })
   if (!transcriptionAvailability.hasAnyProvider) {
     return {
@@ -138,10 +138,7 @@ export const fetchTranscript = async (
   const mod = await import('./youtube/yt-dlp.js')
   const ytdlpResult = await mod.fetchTranscriptWithYtDlp({
     ytDlpPath: options.ytDlpPath,
-    env: options.env,
-    groqApiKey: options.groqApiKey,
-    openaiApiKey: options.openaiApiKey,
-    falApiKey: options.falApiKey,
+    transcription,
     mediaCache: options.mediaCache ?? null,
     url: context.url,
     onProgress: options.onProgress ?? null,
@@ -345,12 +342,14 @@ async function fetchCaptionTrack(
 async function fetchDirectMediaTranscript({
   url,
   options,
+  transcription,
   notes,
   attemptedProviders,
   kind,
 }: {
   url: string
   options: ProviderFetchOptions
+  transcription: TranscriptionConfig
   notes: string[]
   attemptedProviders: ProviderResult['attemptedProviders']
   kind: EmbeddedMedia['kind'] | null
@@ -361,10 +360,7 @@ async function fetchDirectMediaTranscript({
   }
 
   const transcriptionAvailability = await resolveTranscriptionAvailability({
-    env: options.env,
-    groqApiKey: options.groqApiKey,
-    openaiApiKey: options.openaiApiKey,
-    falApiKey: options.falApiKey,
+    transcription,
   })
   if (!transcriptionAvailability.hasAnyProvider) {
     notes.push(
@@ -378,10 +374,7 @@ async function fetchDirectMediaTranscript({
   const mod = await import('./youtube/yt-dlp.js')
   const ytdlpResult = await mod.fetchTranscriptWithYtDlp({
     ytDlpPath: options.ytDlpPath,
-    env: options.env,
-    groqApiKey: options.groqApiKey,
-    openaiApiKey: options.openaiApiKey,
-    falApiKey: options.falApiKey,
+    transcription,
     mediaCache: options.mediaCache ?? null,
     url,
     onProgress: options.onProgress ?? null,

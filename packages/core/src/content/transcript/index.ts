@@ -17,6 +17,7 @@ import {
   canHandle as canHandleYoutube,
   fetchTranscript as fetchYoutube,
 } from './providers/youtube.js'
+import { resolveTranscriptionConfig } from './transcription-config.js'
 import type {
   ProviderContext,
   ProviderFetchOptions,
@@ -106,15 +107,24 @@ export const resolveTranscriptForLink = async (
     })
   }
 
+  const transcription = resolveTranscriptionConfig({
+    env: deps.env,
+    transcription: deps.transcription ?? null,
+    falApiKey: deps.falApiKey,
+    groqApiKey: deps.groqApiKey,
+    openaiApiKey: deps.openaiApiKey,
+  })
+
   const providerResult = await executeProvider(provider, baseContext, {
     fetch: deps.fetch,
     env: deps.env,
     scrapeWithFirecrawl: deps.scrapeWithFirecrawl,
     apifyApiToken: deps.apifyApiToken,
     ytDlpPath: deps.ytDlpPath,
-    falApiKey: deps.falApiKey,
-    groqApiKey: deps.groqApiKey,
-    openaiApiKey: deps.openaiApiKey,
+    transcription,
+    falApiKey: transcription.falApiKey,
+    groqApiKey: transcription.groqApiKey,
+    openaiApiKey: transcription.openaiApiKey,
     mediaCache: deps.mediaCache ?? null,
     resolveTwitterCookies: deps.resolveTwitterCookies ?? null,
     onProgress: deps.onProgress ?? null,

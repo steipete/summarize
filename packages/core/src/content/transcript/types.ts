@@ -6,6 +6,7 @@ import type {
   ScrapeWithFirecrawl,
 } from '../link-preview/deps.js'
 import type { TranscriptResolution, TranscriptSource } from '../link-preview/types.js'
+import type { TranscriptionConfig } from './transcription-config.js'
 
 export type TranscriptService = 'youtube' | 'podcast' | 'generic'
 
@@ -25,9 +26,10 @@ export interface ProviderFetchOptions {
   mediaKindHint?: 'video' | 'audio' | null
   transcriptTimestamps?: boolean
   ytDlpPath: string | null
-  falApiKey: string | null
-  groqApiKey: string | null
-  openaiApiKey: string | null
+  transcription?: TranscriptionConfig
+  falApiKey?: string | null
+  groqApiKey?: string | null
+  openaiApiKey?: string | null
   mediaCache?: MediaCache | null
   resolveTwitterCookies?: ResolveTwitterCookies | null
   onProgress?: ((event: LinkPreviewProgressEvent) => void) | null

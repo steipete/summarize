@@ -176,11 +176,15 @@ See: https://github.com/openai/whisper for setup details`)
     cacheMode === 'default' ? (ctx.cache.store?.transcriptCache ?? null) : null
 
   const client = createLinkPreviewClient({
+    env: ctx.envForRun,
     apifyApiToken: ctx.apiStatus.apifyToken,
     ytDlpPath: ytDlpPath,
-    falApiKey: falKey,
-    groqApiKey: groqKey,
-    openaiApiKey: openaiKey,
+    transcription: {
+      env: ctx.envForRun,
+      falApiKey: falKey,
+      groqApiKey: groqKey,
+      openaiApiKey: openaiKey,
+    },
     scrapeWithFirecrawl: firecrawlScraper,
     convertHtmlToMarkdown: null, // Not needed for media
     readTweetWithBird: readTweetWithBirdClient,
