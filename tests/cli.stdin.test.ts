@@ -45,7 +45,7 @@ describe('cli stdin support', () => {
       runCli(['-'], {
         env: { HOME: home },
         fetch: vi.fn() as unknown as typeof fetch,
-        stdin: createStdinStream('   '), // Whitespace only
+        stdin: createStdinStream('   '),
         stdout: noopStream(),
         stderr: noopStream(),
       })
@@ -57,7 +57,7 @@ describe('cli stdin support', () => {
       runCli(['-'], {
         env: { HOME: home },
         fetch: vi.fn() as unknown as typeof fetch,
-        stdin: createStdinStream(''), // Completely empty
+        stdin: createStdinStream(''),
         stdout: noopStream(),
         stderr: noopStream(),
       })
@@ -93,7 +93,6 @@ describe('cli stdin support', () => {
   })
 
   it('rejects --markdown-mode readability for stdin', async () => {
-    // Only --markdown-mode llm is allowed for stdin (other modes need URL context)
     const testContent = 'Test content.'
 
     await expect(
