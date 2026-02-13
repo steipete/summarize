@@ -31,6 +31,7 @@ const TWEET_URL =
 
 const createClient = () =>
   createLinkPreviewClient({
+    groqApiKey: null,
     openaiApiKey: OPENAI_API_KEY,
     falApiKey: FAL_KEY,
     ytDlpPath: YT_DLP_PATH,

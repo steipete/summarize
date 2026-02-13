@@ -108,6 +108,7 @@ export const fetchTranscript = async (
 
   const transcriptionAvailability = await resolveTranscriptionAvailability({
     env: options.env,
+    groqApiKey: options.groqApiKey,
     openaiApiKey: options.openaiApiKey,
     falApiKey: options.falApiKey,
   })
@@ -138,6 +139,7 @@ export const fetchTranscript = async (
   const ytdlpResult = await mod.fetchTranscriptWithYtDlp({
     ytDlpPath: options.ytDlpPath,
     env: options.env,
+    groqApiKey: options.groqApiKey,
     openaiApiKey: options.openaiApiKey,
     falApiKey: options.falApiKey,
     mediaCache: options.mediaCache ?? null,
@@ -360,11 +362,14 @@ async function fetchDirectMediaTranscript({
 
   const transcriptionAvailability = await resolveTranscriptionAvailability({
     env: options.env,
+    groqApiKey: options.groqApiKey,
     openaiApiKey: options.openaiApiKey,
     falApiKey: options.falApiKey,
   })
   if (!transcriptionAvailability.hasAnyProvider) {
-    notes.push('Missing transcription provider (install whisper-cpp or set OPENAI_API_KEY/FAL_KEY)')
+    notes.push(
+      'Missing transcription provider (install whisper-cpp or set GROQ_API_KEY/OPENAI_API_KEY/FAL_KEY)'
+    )
     return null
   }
 
@@ -374,6 +379,7 @@ async function fetchDirectMediaTranscript({
   const ytdlpResult = await mod.fetchTranscriptWithYtDlp({
     ytDlpPath: options.ytDlpPath,
     env: options.env,
+    groqApiKey: options.groqApiKey,
     openaiApiKey: options.openaiApiKey,
     falApiKey: options.falApiKey,
     mediaCache: options.mediaCache ?? null,

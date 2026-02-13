@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Transcription: stabilize Groq-first fallback flow (no duplicate Groq retries in file mode), improve terminal error reporting, and surface Groq setup in media guidance (#71, thanks @n0an).
 - Daemon: resolve symlinked/global bin paths and Windows shims when locating the CLI for install (#62, thanks @entropyy0).
 - CLI: honor --lang for YouTube transcript→Markdown conversion in --markdown-mode llm (#56, thanks @entropyy0).
 - LLM: map Anthropic bare model ids to versioned aliases (claude-sonnet-4 → claude-sonnet-4-0) (#55, thanks @entropyy0).

@@ -128,6 +128,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/ogg',
         filename: 'audio',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -166,6 +167,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: row.mediaType,
         filename: row.filename,
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -185,13 +187,14 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
     })
 
     expect(result.text).toBeNull()
     expect(result.provider).toBeNull()
-    expect(result.error?.message).toContain('OPENAI_API_KEY or FAL_KEY')
+    expect(result.error?.message).toContain('GROQ_API_KEY, OPENAI_API_KEY, or FAL_KEY')
   })
 
   it('calls OpenAI Whisper and preserves/ensures a filename extension', async () => {
@@ -223,6 +226,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'video/mp4',
         filename: 'clip',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -260,6 +264,7 @@ describe('transcription/whisper', () => {
         filePath: audioPath,
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
         totalDurationSeconds: 10,
@@ -292,6 +297,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -326,6 +332,7 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: 'FAL',
     })
@@ -359,6 +366,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: 'FAL',
       })
@@ -396,6 +404,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: 'FAL',
       })
@@ -424,6 +433,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -461,6 +471,7 @@ describe('transcription/whisper', () => {
         filePath: path,
         mediaType: 'audio/mpeg',
         filename: 'input.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
         segmentSeconds: 1,
@@ -508,6 +519,7 @@ describe('transcription/whisper', () => {
         filePath: path,
         mediaType: 'audio/mpeg',
         filename: 'input.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
         segmentSeconds: 1,
@@ -533,11 +545,12 @@ describe('transcription/whisper', () => {
         filePath: path,
         mediaType: 'audio/mpeg',
         filename: 'input.mp3',
+        groqApiKey: null,
         openaiApiKey: null,
         falApiKey: null,
       })
       expect(result.text).toBeNull()
-      expect(result.error?.message).toContain('OPENAI_API_KEY or FAL_KEY')
+      expect(result.error?.message).toContain('GROQ_API_KEY, OPENAI_API_KEY, or FAL_KEY')
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -563,6 +576,7 @@ describe('transcription/whisper', () => {
         filePath: path,
         mediaType: 'audio/mpeg',
         filename: 'input.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -599,6 +613,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'video/mp4',
         filename: 'bad.mp4',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -619,6 +634,7 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'video/mp4',
       filename: 'video.mp4',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: 'FAL',
     })
@@ -680,6 +696,7 @@ describe('transcription/whisper', () => {
           filePath: audioPath,
           mediaType: 'audio/mpeg',
           filename: 'audio.mp3',
+          groqApiKey: null,
           openaiApiKey: 'OPENAI',
           falApiKey: null,
           segmentSeconds: 1,
@@ -744,6 +761,7 @@ describe('transcription/whisper', () => {
         bytes: new Uint8Array([1, 2, 3]),
         mediaType: 'video/mp4',
         filename: 'clip.mp4',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -776,6 +794,7 @@ describe('transcription/whisper', () => {
         bytes: big,
         mediaType: 'audio/mpeg',
         filename: 'audio.mp3',
+        groqApiKey: null,
         openaiApiKey: 'OPENAI',
         falApiKey: null,
       })
@@ -807,6 +826,7 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: 'FAL',
     })
@@ -829,6 +849,7 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: 'FAL',
     })
@@ -852,6 +873,7 @@ describe('transcription/whisper', () => {
       bytes: new Uint8Array([1, 2, 3]),
       mediaType: 'audio/mpeg',
       filename: 'audio.mp3',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: 'FAL',
     })
@@ -863,6 +885,407 @@ describe('transcription/whisper', () => {
     expect(result.provider).toBe('fal')
     expect(result.error?.message.toLowerCase()).toContain('timeout')
     vi.useRealTimers()
+  })
+
+  it('prefers Groq over OpenAI when groqApiKey is provided', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      expect(url).toContain('groq.com')
+      const form = init?.body as FormData
+      expect(form.get('model')).toBe('whisper-large-v3-turbo')
+      return new Response(JSON.stringify({ text: 'groq result' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const { transcribeMediaWithWhisper } = await import(
+        '../packages/core/src/transcription/whisper.js'
+      )
+      const result = await transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: 'audio/mpeg',
+        filename: 'audio.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: 'OPENAI',
+        falApiKey: null,
+      })
+
+      expect(result.text).toBe('groq result')
+      expect(result.provider).toBe('groq')
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('falls back to OpenAI when Groq fails', async () => {
+    let callCount = 0
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      callCount++
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url.includes('groq.com')) {
+        return new Response('rate limit exceeded', {
+          status: 429,
+          headers: { 'content-type': 'text/plain' },
+        })
+      }
+      return new Response(JSON.stringify({ text: 'openai fallback' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const { transcribeMediaWithWhisper } = await import(
+        '../packages/core/src/transcription/whisper.js'
+      )
+      const result = await transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: 'audio/mpeg',
+        filename: 'audio.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: 'OPENAI',
+        falApiKey: null,
+      })
+
+      expect(result.text).toBe('openai fallback')
+      expect(result.provider).toBe('openai')
+      expect(callCount).toBeGreaterThanOrEqual(2)
+      expect(result.notes.join(' ')).toContain('Groq')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('returns null from Groq when payload has no text field', async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ foo: 'bar' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const { transcribeMediaWithWhisper } = await import(
+        '../packages/core/src/transcription/whisper.js'
+      )
+      const result = await transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: 'audio/mpeg',
+        filename: 'audio.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: null,
+        falApiKey: null,
+      })
+
+      expect(result.text).toBeNull()
+      expect(result.provider).toBe('groq')
+      expect(result.error?.message).toContain('Groq transcription returned empty text')
+      expect(result.notes.join(' ')).toContain('Groq transcription returned empty text')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('surfaces Groq as terminal provider when Groq-only transcription fails', async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response('rate limit exceeded', {
+        status: 429,
+        headers: { 'content-type': 'text/plain' },
+      })
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const { transcribeMediaWithWhisper } = await import(
+        '../packages/core/src/transcription/whisper.js'
+      )
+      const result = await transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: 'audio/mpeg',
+        filename: 'audio.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: null,
+        falApiKey: null,
+      })
+
+      expect(result.text).toBeNull()
+      expect(result.provider).toBe('groq')
+      expect(result.error?.message).toContain('Groq transcription failed')
+      expect(result.error?.message).toContain('429')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('retries Groq via ffmpeg on format errors', async () => {
+    let call = 0
+    const fetchMock = vi.fn(async () => {
+      call += 1
+      if (call === 1) {
+        return new Response('could not be decoded', {
+          status: 400,
+          headers: { 'content-type': 'text/plain' },
+        })
+      }
+      return new Response(JSON.stringify({ text: 'after transcode' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const whisper = await importWhisperWithMockFfmpeg()
+      const result = await whisper.transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: 'video/mp4',
+        filename: 'bad.mp4',
+        groqApiKey: 'GROQ',
+        openaiApiKey: null,
+        falApiKey: null,
+      })
+
+      expect(result.text).toBe('after transcode')
+      expect(result.provider).toBe('groq')
+      expect(result.notes.join(' ')).toContain('transcoding via ffmpeg and retrying')
+    } finally {
+      vi.unstubAllGlobals()
+      vi.doUnmock('node:child_process')
+    }
+  })
+
+  it('Groq returns null for empty trimmed text', async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response(JSON.stringify({ text: '   ' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const { transcribeMediaWithWhisper } = await import(
+        '../packages/core/src/transcription/whisper.js'
+      )
+      const result = await transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: 'audio/mpeg',
+        filename: 'audio.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: null,
+        falApiKey: null,
+      })
+
+      expect(result.text).toBeNull()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('Groq error includes truncated detail for long error bodies', async () => {
+    const longBody = 'x'.repeat(300)
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url.includes('groq.com')) {
+        return new Response(longBody, {
+          status: 500,
+          headers: { 'content-type': 'text/plain' },
+        })
+      }
+      return new Response(JSON.stringify({ text: 'openai ok' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const { transcribeMediaWithWhisper } = await import(
+        '../packages/core/src/transcription/whisper.js'
+      )
+      const result = await transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: 'audio/mpeg',
+        filename: 'audio.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: 'OPENAI',
+        falApiKey: null,
+      })
+
+      expect(result.text).toBe('openai ok')
+      expect(result.provider).toBe('openai')
+      expect(result.notes.join(' ')).toContain('…')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('Groq error with empty response body', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url.includes('groq.com')) {
+        return new Response('', {
+          status: 500,
+          headers: { 'content-type': 'text/plain' },
+        })
+      }
+      return new Response(JSON.stringify({ text: 'openai ok' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const { transcribeMediaWithWhisper } = await import(
+        '../packages/core/src/transcription/whisper.js'
+      )
+      const result = await transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: 'audio/mpeg',
+        filename: 'audio.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: 'OPENAI',
+        falApiKey: null,
+      })
+
+      expect(result.text).toBe('openai ok')
+      expect(result.provider).toBe('openai')
+      expect(result.notes.join(' ')).toContain('Groq transcription failed')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('shouldRetryGroqViaFfmpeg detects retryable errors', async () => {
+    const { shouldRetryGroqViaFfmpeg } = await import(
+      '../packages/core/src/transcription/whisper/groq.js'
+    )
+    expect(shouldRetryGroqViaFfmpeg(new Error('Unrecognized file format'))).toBe(true)
+    expect(shouldRetryGroqViaFfmpeg(new Error('could not be decoded'))).toBe(true)
+    expect(shouldRetryGroqViaFfmpeg(new Error('format is not supported'))).toBe(true)
+    expect(shouldRetryGroqViaFfmpeg(new Error('rate limit exceeded'))).toBe(false)
+  })
+
+  it('uses Groq with default filename when none provided', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const form = init?.body as FormData
+      const file = form.get('file') as unknown as { name?: unknown }
+      expect(typeof file?.name).toBe('string')
+      expect((file?.name as string).startsWith('media')).toBe(true)
+      return new Response(JSON.stringify({ text: 'ok' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const { transcribeMediaWithWhisper } = await import(
+        '../packages/core/src/transcription/whisper.js'
+      )
+      const result = await transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: 'audio/mpeg',
+        filename: null,
+        groqApiKey: 'GROQ',
+        openaiApiKey: null,
+        falApiKey: null,
+      })
+
+      expect(result.text).toBe('ok')
+      expect(result.provider).toBe('groq')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('does not retry Groq in file flow after initial Groq failure', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'summarize-whisper-groq-file-'))
+    const inputPath = join(dir, 'input.mp3')
+    await writeFile(inputPath, new Uint8Array([1, 2, 3]))
+
+    let groqCalls = 0
+    let openaiCalls = 0
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url.includes('groq.com')) {
+        groqCalls += 1
+        return new Response('rate limit exceeded', {
+          status: 429,
+          headers: { 'content-type': 'text/plain' },
+        })
+      }
+      if (url.includes('openai.com')) {
+        openaiCalls += 1
+        return new Response(JSON.stringify({ text: 'openai fallback' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`)
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const whisper = await importWhisperWithNoFfmpeg()
+      const result = await whisper.transcribeMediaFileWithWhisper({
+        filePath: inputPath,
+        mediaType: 'audio/mpeg',
+        filename: 'input.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: 'OPENAI',
+        falApiKey: null,
+      })
+
+      expect(result.text).toBe('openai fallback')
+      expect(result.provider).toBe('openai')
+      expect(groqCalls).toBe(1)
+      expect(openaiCalls).toBe(1)
+    } finally {
+      vi.unstubAllGlobals()
+      vi.doUnmock('node:child_process')
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('returns a Groq-specific error for oversized files with only Groq configured', async () => {
+    const whisper = await importWhisperWithNoFfmpeg()
+    const dir = await mkdtemp(join(tmpdir(), 'summarize-whisper-groq-large-'))
+    const path = join(dir, 'input.bin')
+    await writeFile(path, new Uint8Array([1, 2, 3]))
+    await truncate(path, whisper.MAX_OPENAI_UPLOAD_BYTES + 1)
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error('Groq should not be called for oversized file in file flow')
+    })
+
+    try {
+      vi.stubGlobal('fetch', fetchMock)
+      const result = await whisper.transcribeMediaFileWithWhisper({
+        filePath: path,
+        mediaType: 'audio/mpeg',
+        filename: 'input.mp3',
+        groqApiKey: 'GROQ',
+        openaiApiKey: null,
+        falApiKey: null,
+      })
+
+      expect(result.text).toBeNull()
+      expect(result.provider).toBe('groq')
+      expect(result.error?.message).toContain('File too large for Groq upload')
+      expect(fetchMock).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+      vi.doUnmock('node:child_process')
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 
   it('maps additional media types to stable Whisper filename extensions', async () => {
@@ -899,6 +1322,7 @@ describe('transcription/whisper', () => {
           bytes: new Uint8Array([1, 2, 3]),
           mediaType: c.mediaType,
           filename: 'clip',
+          groqApiKey: null,
           openaiApiKey: 'OPENAI',
           falApiKey: null,
         })

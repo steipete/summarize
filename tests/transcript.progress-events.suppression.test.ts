@@ -28,6 +28,7 @@ describe('transcript progress events', () => {
         scrapeWithFirecrawl: null,
         apifyApiToken: null,
         ytDlpPath: null,
+        groqApiKey: null,
         falApiKey: null,
         openaiApiKey: null,
         convertHtmlToMarkdown: null,

@@ -27,6 +27,7 @@ const buildDeps = (fetchImpl: typeof fetch) => ({
   scrapeWithFirecrawl: null,
   apifyApiToken: null,
   ytDlpPath: null,
+  groqApiKey: null,
   falApiKey: null,
   openaiApiKey: null,
   convertHtmlToMarkdown: null,

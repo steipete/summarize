@@ -55,6 +55,7 @@ describe('yt-dlp transcript helper', () => {
   it('returns a helpful error when yt-dlp path is missing', async () => {
     const result = await fetchTranscriptWithYtDlp({
       ytDlpPath: null,
+      groqApiKey: null,
       openaiApiKey: 'OPENAI',
       falApiKey: null,
       url: 'https://youtu.be/dQw4w9WgXcQ',
@@ -67,13 +68,14 @@ describe('yt-dlp transcript helper', () => {
   it('returns a helpful error when transcription keys are missing', async () => {
     const result = await fetchTranscriptWithYtDlp({
       ytDlpPath: '/usr/bin/yt-dlp',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: null,
       url: 'https://youtu.be/dQw4w9WgXcQ',
     })
 
     expect(result.text).toBeNull()
-    expect(result.error?.message).toMatch(/OPENAI_API_KEY or FAL_KEY/)
+    expect(result.error?.message).toMatch(/GROQ_API_KEY, OPENAI_API_KEY, or FAL_KEY/)
   })
 
   it('returns a helpful error when yt-dlp fails to download', async () => {
@@ -94,6 +96,7 @@ describe('yt-dlp transcript helper', () => {
 
     const result = await fetchTranscriptWithYtDlp({
       ytDlpPath: '/usr/bin/yt-dlp',
+      groqApiKey: null,
       openaiApiKey: 'OPENAI',
       falApiKey: null,
       url: 'https://youtu.be/dQw4w9WgXcQ',
@@ -111,6 +114,7 @@ describe('yt-dlp transcript helper', () => {
 
     await fetchTranscriptWithYtDlp({
       ytDlpPath: '/usr/bin/yt-dlp',
+      groqApiKey: null,
       openaiApiKey: 'OPENAI',
       falApiKey: null,
       url: 'https://youtu.be/dQw4w9WgXcQ',
@@ -152,6 +156,7 @@ describe('yt-dlp transcript helper', () => {
     }> = []
     await fetchTranscriptWithYtDlp({
       ytDlpPath: '/usr/bin/yt-dlp',
+      groqApiKey: null,
       openaiApiKey: 'OPENAI',
       falApiKey: null,
       url: 'https://youtu.be/dQw4w9WgXcQ',
@@ -178,6 +183,7 @@ describe('yt-dlp transcript helper', () => {
 
     const result = await fetchTranscriptWithYtDlp({
       ytDlpPath: '/usr/bin/yt-dlp',
+      groqApiKey: null,
       openaiApiKey: 'OPENAI',
       falApiKey: 'FAL',
       url: 'https://youtu.be/dQw4w9WgXcQ',
@@ -203,6 +209,7 @@ describe('yt-dlp transcript helper', () => {
 
     const result = await fetchTranscriptWithYtDlp({
       ytDlpPath: '/usr/bin/yt-dlp',
+      groqApiKey: null,
       openaiApiKey: 'OPENAI',
       falApiKey: 'FAL',
       url: 'https://youtu.be/dQw4w9WgXcQ',
@@ -221,6 +228,7 @@ describe('yt-dlp transcript helper', () => {
 
     const result = await fetchTranscriptWithYtDlp({
       ytDlpPath: '/usr/bin/yt-dlp',
+      groqApiKey: null,
       openaiApiKey: 'OPENAI',
       falApiKey: null,
       url: 'https://youtu.be/dQw4w9WgXcQ',
@@ -240,6 +248,7 @@ describe('yt-dlp transcript helper', () => {
 
     const result = await fetchTranscriptWithYtDlp({
       ytDlpPath: '/usr/bin/yt-dlp',
+      groqApiKey: null,
       openaiApiKey: null,
       falApiKey: 'FAL',
       url: 'https://youtu.be/dQw4w9WgXcQ',

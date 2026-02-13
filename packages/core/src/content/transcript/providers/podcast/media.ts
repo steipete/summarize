@@ -31,6 +31,7 @@ export async function transcribeMediaUrl({
   url,
   filenameHint,
   durationSecondsHint,
+  groqApiKey,
   openaiApiKey,
   falApiKey,
   notes,
@@ -41,6 +42,7 @@ export async function transcribeMediaUrl({
   url: string
   filenameHint: string
   durationSecondsHint: number | null
+  groqApiKey: string | null
   openaiApiKey: string | null
   falApiKey: string | null
   notes: string[]
@@ -54,6 +56,7 @@ export async function transcribeMediaUrl({
   const effectiveEnv = env ?? process.env
   const startInfo = await resolveTranscriptionStartInfo({
     env: effectiveEnv,
+    groqApiKey,
     openaiApiKey,
     falApiKey,
   })
@@ -114,6 +117,7 @@ export async function transcribeMediaUrl({
       bytes,
       mediaType,
       filename,
+      groqApiKey,
       openaiApiKey,
       falApiKey,
       totalDurationSeconds: durationSecondsHint,
@@ -168,6 +172,7 @@ export async function transcribeMediaUrl({
       bytes,
       mediaType,
       filename,
+      groqApiKey,
       openaiApiKey,
       falApiKey,
       totalDurationSeconds: durationSecondsHint,
@@ -226,6 +231,7 @@ export async function transcribeMediaUrl({
       filePath: tmpFile,
       mediaType,
       filename,
+      groqApiKey,
       openaiApiKey,
       falApiKey,
       totalDurationSeconds: probedDurationSeconds,

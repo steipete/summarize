@@ -30,6 +30,10 @@ export const ProgressKind = {
 export type TranscriptionProviderHint =
   | 'cpp'
   | 'onnx'
+  | 'groq'
+  | 'groq->openai'
+  | 'groq->fal'
+  | 'groq->openai->fal'
   | 'openai'
   | 'fal'
   | 'openai->fal'
@@ -174,6 +178,7 @@ export interface LinkPreviewDeps {
   apifyApiToken: string | null
   ytDlpPath: string | null
   falApiKey: string | null
+  groqApiKey: string | null
   openaiApiKey: string | null
   convertHtmlToMarkdown: ConvertHtmlToMarkdown | null
   transcriptCache: TranscriptCache | null

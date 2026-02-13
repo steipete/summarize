@@ -12,6 +12,7 @@ describe('podcast transcript provider - invalid URL branches', () => {
         apifyApiToken: null,
         youtubeTranscriptMode: 'auto',
         ytDlpPath: null,
+        groqApiKey: null,
         falApiKey: null,
         openaiApiKey: 'OPENAI',
         onProgress: null,

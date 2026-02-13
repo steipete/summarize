@@ -58,6 +58,7 @@ describe('podcast transcript provider: local whisper.cpp', () => {
           apifyApiToken: null,
           youtubeTranscriptMode: 'auto',
           ytDlpPath: null,
+          groqApiKey: null,
           falApiKey: null,
           openaiApiKey: null,
         }

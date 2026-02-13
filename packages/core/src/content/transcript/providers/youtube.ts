@@ -56,6 +56,7 @@ export const fetchTranscript = async (
   const progress = typeof options.onProgress === 'function' ? options.onProgress : null
   const transcriptionAvailability = await resolveTranscriptionAvailability({
     env: options.env,
+    groqApiKey: options.groqApiKey,
     openaiApiKey: options.openaiApiKey,
     falApiKey: options.falApiKey,
   })
@@ -215,6 +216,7 @@ export const fetchTranscript = async (
     const ytdlpResult = await fetchTranscriptWithYtDlp({
       ytDlpPath: options.ytDlpPath,
       env: options.env,
+      groqApiKey: options.groqApiKey,
       openaiApiKey: options.openaiApiKey,
       falApiKey: options.falApiKey,
       mediaCache: options.mediaCache ?? null,
