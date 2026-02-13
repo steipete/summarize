@@ -5,6 +5,7 @@
 ### Fixes
 
 - Transcription: stabilize Groq-first fallback flow (no duplicate Groq retries in file mode), improve terminal error reporting, and surface Groq setup in media guidance (#71, thanks @n0an).
+- Transcription: support `OPENAI_WHISPER_BASE_URL` for Whisper endpoint overrides (with safe `OPENAI_BASE_URL` fallback), and detect more direct media URL extensions including `.ogg`/`.opus` (#65, thanks @toanbot).
 - Daemon: resolve symlinked/global bin paths and Windows shims when locating the CLI for install (#62, thanks @entropyy0).
 - Config: support generic `env` defaults in `~/.summarize/config.json` (fallback for any env var), while keeping legacy `apiKeys` mapping for compatibility (#63, thanks @entropyy0).
 - CLI: honor --lang for YouTube transcript→Markdown conversion in --markdown-mode llm (#56, thanks @entropyy0).

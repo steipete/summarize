@@ -340,6 +340,7 @@ Environment variables for yt-dlp mode:
 - `SUMMARIZE_WHISPER_CPP_BINARY` - optional override for the local binary (default: `whisper-cli`)
 - `SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP=1` - disable local whisper.cpp (force remote)
 - `OPENAI_API_KEY` - OpenAI Whisper transcription
+- `OPENAI_WHISPER_BASE_URL` - optional OpenAI-compatible Whisper endpoint override
 - `FAL_KEY` - FAL AI Whisper fallback
 
 Apify costs money but tends to be more reliable when captions exist.

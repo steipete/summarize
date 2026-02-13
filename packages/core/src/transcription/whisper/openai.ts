@@ -1,12 +1,17 @@
 import { MAX_ERROR_DETAIL_CHARS, TRANSCRIPTION_TIMEOUT_MS } from './constants.js'
 import { ensureWhisperFilenameExtension, toArrayBuffer } from './utils.js'
 
+type Env = Record<string, string | undefined>
+
 export async function transcribeWithOpenAi(
   bytes: Uint8Array,
   mediaType: string,
   filename: string | null,
   apiKey: string,
-  baseUrl?: string | null
+  options?: {
+    baseUrl?: string | null
+    env?: Env
+  }
 ): Promise<string | null> {
   const form = new FormData()
   const providedName = filename?.trim() ? filename.trim() : 'media'
@@ -15,11 +20,7 @@ export async function transcribeWithOpenAi(
   form.append('file', new Blob([toArrayBuffer(bytes)], { type: mediaType }), safeName)
   form.append('model', 'whisper-1')
 
-  // Support custom OpenAI-compatible whisper endpoints via OPENAI_WHISPER_BASE_URL or OPENAI_BASE_URL
-  const effectiveBaseUrl = baseUrl
-    ?? process.env.OPENAI_WHISPER_BASE_URL
-    ?? process.env.OPENAI_BASE_URL
-    ?? 'https://api.openai.com/v1'
+  const effectiveBaseUrl = resolveWhisperBaseUrl(options)
   const transcriptionUrl = `${effectiveBaseUrl.replace(/\/+$/, '')}/audio/transcriptions`
 
   const response = await globalThis.fetch(transcriptionUrl, {
@@ -39,6 +40,33 @@ export async function transcribeWithOpenAi(
   if (typeof payload?.text !== 'string') return null
   const trimmed = payload.text.trim()
   return trimmed.length > 0 ? trimmed : null
+}
+
+function normalizeBaseUrl(raw: string | null | undefined): string | null {
+  const trimmed = typeof raw === 'string' ? raw.trim() : ''
+  return trimmed.length > 0 ? trimmed : null
+}
+
+function isOpenRouterBaseUrl(baseUrl: string): boolean {
+  try {
+    return new URL(baseUrl).host.toLowerCase().includes('openrouter.ai')
+  } catch {
+    return /openrouter\.ai/i.test(baseUrl)
+  }
+}
+
+function resolveWhisperBaseUrl(options: { baseUrl?: string | null; env?: Env } = {}): string {
+  const explicit = normalizeBaseUrl(options.baseUrl)
+  if (explicit) return explicit
+
+  const env = options.env ?? process.env
+  const whisperBaseUrl = normalizeBaseUrl(env.OPENAI_WHISPER_BASE_URL)
+  if (whisperBaseUrl) return whisperBaseUrl
+
+  const openaiBaseUrl = normalizeBaseUrl(env.OPENAI_BASE_URL)
+  if (openaiBaseUrl && !isOpenRouterBaseUrl(openaiBaseUrl)) return openaiBaseUrl
+
+  return 'https://api.openai.com/v1'
 }
 
 export function shouldRetryOpenAiViaFfmpeg(error: Error): boolean {

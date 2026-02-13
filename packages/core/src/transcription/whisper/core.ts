@@ -211,7 +211,7 @@ export async function transcribeMediaWithWhisper({
   let openaiError: Error | null = null
   if (openaiApiKey) {
     try {
-      const text = await transcribeWithOpenAi(bytes, mediaType, filename, openaiApiKey)
+      const text = await transcribeWithOpenAi(bytes, mediaType, filename, openaiApiKey, { env })
       if (text) {
         return { text, provider: 'openai', error: null, notes }
       }
@@ -233,7 +233,8 @@ export async function transcribeMediaWithWhisper({
           mp3Bytes,
           'audio/mpeg',
           'audio.mp3',
-          openaiApiKey
+          openaiApiKey,
+          { env }
         )
         if (retried) {
           return { text: retried, provider: 'openai', error: null, notes }

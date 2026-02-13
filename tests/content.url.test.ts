@@ -47,6 +47,10 @@ describe('content/url', () => {
   it('detects direct media URLs', () => {
     expect(isDirectMediaUrl('https://example.com/video.mp4')).toBe(true)
     expect(isDirectMediaUrl('https://example.com/audio.mp3?x=1')).toBe(true)
+    expect(isDirectMediaUrl('https://example.com/voice.ogg')).toBe(true)
+    expect(isDirectMediaUrl('https://example.com/voice.opus')).toBe(true)
+    expect(isDirectMediaUrl('https://example.com/clip.avi')).toBe(true)
+    expect(isDirectMediaUrl('https://example.com/track.wma#t=10')).toBe(true)
     expect(isDirectMediaUrl('https://example.com/article')).toBe(false)
   })
 

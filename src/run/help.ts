@@ -250,6 +250,7 @@ ${heading('Env Vars')}
   XAI_API_KEY           optional (required for xai/... models)
   XAI_BASE_URL          optional (override xAI API endpoint)
   OPENAI_API_KEY        optional (required for openai/... models)
+  OPENAI_WHISPER_BASE_URL optional (OpenAI-compatible Whisper endpoint override)
   OPENAI_BASE_URL       optional (OpenAI-compatible API endpoint; e.g. OpenRouter)
   OPENAI_USE_CHAT_COMPLETIONS optional (force OpenAI chat completions)
   OPENROUTER_API_KEY    optional (routes openai/... models through OpenRouter)

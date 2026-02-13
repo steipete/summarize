@@ -73,7 +73,9 @@ export function extractYouTubeVideoId(rawUrl: string): string | null {
 }
 
 export function isDirectMediaUrl(url: string): boolean {
-  return /\.(mp4|mov|m4v|mkv|webm|mpeg|mpg|avi|wmv|flv|mp3|m4a|wav|flac|aac|ogg|opus|aiff|wma)(\?|#|$)/i.test(url)
+  return /\.(mp4|mov|m4v|mkv|webm|mpeg|mpg|avi|wmv|flv|mp3|m4a|wav|flac|aac|ogg|opus|aiff|wma)(\?|#|$)/i.test(
+    url
+  )
 }
 
 export function shouldPreferUrlMode(url: string): boolean {
