@@ -577,37 +577,6 @@ async function resolveAgentModel({
       };
     }
 
-    if (requestedModel.requiredEnv === "MINIMAX_API_KEY") {
-      const parsed = parseProviderModelId(requestedModel.llmModelId);
-      return {
-        model: resolveModelWithFallback({
-          provider: "openai",
-          modelId: parsed.model,
-          baseUrl: minimaxBaseUrl,
-        }),
-        maxOutputTokens,
-        apiKeys: {
-          ...apiKeys,
-          openaiApiKey: minimaxApiKey,
-        },
-      };
-    }
-    if (requestedModel.requiredEnv === "KIMI_API_KEY") {
-      const parsed = parseProviderModelId(requestedModel.llmModelId);
-      return {
-        model: resolveModelWithFallback({
-          provider: "openai",
-          modelId: parsed.model,
-          baseUrl: kimiBaseUrl,
-        }),
-        maxOutputTokens,
-        apiKeys: {
-          ...apiKeys,
-          openaiApiKey: kimiApiKey,
-        },
-      };
-    }
-
     const { provider, model } = parseProviderModelId(requestedModel.userModelId);
     const resolved = applyBaseUrlOverride(provider, model);
     return { ...resolved, maxOutputTokens, apiKeys };
