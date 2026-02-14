@@ -394,6 +394,32 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("[slide:2]\nComplete second slide sentence.");
   });
 
+  it("does not inject very long transcript fallback blobs into truncated slide summaries", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "The creator closes with a warning about hardware demand and claims this window is your last chance to secure local AI before it",
+      "",
+      "[slide:2]",
+      "Second slide stays concise.",
+    ].join("\n");
+    const longFallback = Array.from({ length: 180 }, (_, i) => `word${i + 1}`).join(" ");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: `[00:10] ${longFallback}\n[00:20] Short fallback second.`,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain(
+      "The creator closes with a warning about hardware demand and claims this window is your last chance",
+    );
+    expect(coerced).not.toContain("word120 word121 word122");
+    expect(coerced).toContain("[slide:2]\nSecond slide stays concise.");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },

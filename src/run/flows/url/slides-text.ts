@@ -572,7 +572,13 @@ export function coerceSummaryWithSlides({
         if (looksTruncatedSlideBody(body, fallbackText)) {
           const hasExplicitTitle =
             Boolean(parsed.title) && Boolean(parsed.body) && parsed.body.trim() !== text.trim();
-          text = hasExplicitTitle && parsed.title ? `${parsed.title}\n${fallbackText}` : fallbackText;
+          const repairedBody = trimTruncatedSlideBody(body);
+          const fallbackWordCount = normalizeSlideText(fallbackText)
+            .split(/\s+/)
+            .filter(Boolean).length;
+          const useFallback = repairedBody === body && fallbackWordCount <= 120;
+          const chosenBody = useFallback ? fallbackText : repairedBody;
+          text = hasExplicitTitle && parsed.title ? `${parsed.title}\n${chosenBody}` : chosenBody;
         }
       }
       const withTitle = text ? ensureSlideTitleLine({ text, slide, total: ordered.length }) : "";
@@ -892,6 +898,32 @@ function looksTruncatedSlideBody(value: string, fallbackText?: string | null): b
     return true;
   }
   return false;
+}
+
+function trimTruncatedSlideBody(value: string): string {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return normalized;
+  if (/[.!?]["')\]]?$/.test(normalized)) return normalized;
+
+  const sentences = normalized.match(/[^.!?]+[.!?]["')\]]?(?=\s|$)/g) ?? [];
+  if (sentences.length > 0) {
+    const candidate = sentences.join(" ").trim();
+    if (candidate.length >= Math.max(80, Math.floor(normalized.length * 0.55))) {
+      return candidate;
+    }
+  }
+
+  const lastBoundary = Math.max(
+    normalized.lastIndexOf("."),
+    normalized.lastIndexOf("?"),
+    normalized.lastIndexOf("!"),
+    normalized.lastIndexOf(";"),
+  );
+  if (lastBoundary >= Math.max(80, Math.floor(normalized.length * 0.55))) {
+    return normalized.slice(0, lastBoundary + 1).trim();
+  }
+
+  return normalized;
 }
 
 function truncateSlideText(value: string, limit: number): string {
