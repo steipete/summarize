@@ -486,6 +486,24 @@ describe("slides text helpers", () => {
     expect(coerced).not.toContain("I'm going to");
   });
 
+  it("rewrites conversational tails like 'right?' and 'in a way of like'", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Even like the stoics talked about this Marcus Aurelius, right? So he meant it more in a way of like if you think positively you'll have a positive life.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).not.toContain("Even like");
+    expect(coerced).not.toContain("right?");
+    expect(coerced).not.toContain("in a way of like");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },

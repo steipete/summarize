@@ -522,12 +522,19 @@ function isTranscriptLikeSlideText(value: string): boolean {
     .length;
   const secondPersonCount = (normalized.match(/\b(?:you|your|yours)\b/gi) ?? []).length;
   const disfluencyCount = (normalized.match(/\b(?:uh|um|you know)\b/gi) ?? []).length;
+  const conversationalMarkerCount = (
+    normalized.match(/\b(?:you know|i mean|kind of|sort of|in a way of like|even like)\b/gi) ?? []
+  ).length;
+  const hasRhetoricalTail = /,\s*right\?/i.test(normalized);
   const repeatedPronoun = /\bI\s+I\b/i.test(normalized) || /\bI\b(?:\W+\bI\b){2,}/i.test(normalized);
   const quoteCount = (normalized.match(/["“”]/g) ?? []).length;
   if (repeatedPronoun) return true;
   if (disfluencyCount >= 3) return true;
+  if (conversationalMarkerCount >= 2) return true;
+  if (hasRhetoricalTail && secondPersonCount >= 2) return true;
   if (firstPersonCount >= 5 && firstPersonCount >= secondPersonCount) return true;
-  if (secondPersonCount >= 5 && firstPersonCount >= 2) return true;
+  if (secondPersonCount >= 4 && firstPersonCount >= 1) return true;
+  if (secondPersonCount >= 6) return true;
   if (quoteCount >= 2 && firstPersonCount >= 2) return true;
   return false;
 }
@@ -537,7 +544,13 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   if (!text) return "";
   text = text.replace(/^\s*>>\s*/g, "");
   text = text.replace(/^(?:so|well|and|but)\s+/i, "");
+  text = text.replace(/^(?:even\s+)?like\s+/i, "");
+  text = text.replace(/\bin a way of like\b/gi, "as");
+  text = text.replace(/,\s*right\?\s*$/i, "");
   text = text.replace(/\byou know\b/gi, "");
+  text = text.replace(/\bi mean\b/gi, "");
+  text = text.replace(/\bkind of\b/gi, "");
+  text = text.replace(/\bsort of\b/gi, "");
   text = text.replace(/\bI'm\b/gi, "they are");
   text = text.replace(/\bI've\b/gi, "they have");
   text = text.replace(/\bI'll\b/gi, "they will");
@@ -551,6 +564,9 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bwe\b/gi, "they");
   text = text.replace(/\bour\b/gi, "their");
   text = text.replace(/\bus\b/gi, "them");
+  text = text.replace(/\byou'll\b/gi, "they will");
+  text = text.replace(/\byou\b/gi, "people");
+  text = text.replace(/\byour\b/gi, "their");
   text = text.replace(/\bthey\s+they\b/gi, "they");
   text = text.replace(/\b(\w+)(?:\s+\1\b){1,}/gi, "$1");
   text = text.replace(/\b(and|or|but|so)\s+\1\b/gi, "$1");
