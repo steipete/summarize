@@ -980,33 +980,30 @@ button.ghost.small {
   transform: rotate(225deg);
 }
 
-details.drawerAdvanced:not([open]) > .drawerAdvancedBody {
-  display: grid;
-}
-
 .drawerAdvancedBody {
   display: grid;
   gap: 8px;
-  margin-top: 0;
-  max-height: 0;
+  margin-top: 10px;
   opacity: 0;
-  overflow: hidden;
   pointer-events: none;
   transform: translateY(-4px);
   transition:
-    max-height 220ms ease,
     opacity 180ms ease,
-    transform 220ms ease,
-    margin-top 220ms ease;
-  will-change: max-height, opacity, transform;
+    transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, transform;
 }
 
 .drawerAdvanced[open] .drawerAdvancedBody {
-  margin-top: 10px;
-  max-height: 600px;
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawerAdvanced summary::after,
+  .drawerAdvancedBody {
+    transition: none;
+  }
 }
 
 .drawerAdvancedRow {
