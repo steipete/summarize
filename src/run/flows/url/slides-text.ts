@@ -511,6 +511,7 @@ function isTranscriptLikeSlideText(value: string): boolean {
   const normalized = normalizeSlideText(value);
   if (!normalized) return false;
   if (/(^|\s)>>\s*/.test(normalized)) return true;
+  if (/^(?:[-*]\s+)?(?:um|uh|well|so|like|even like)\b/i.test(normalized)) return true;
   if (
     /\b(?:would you like to|leave a like|turn on notifications|subscribe|thanks? for watching)\b/i.test(
       normalized,
@@ -537,6 +538,15 @@ function isTranscriptLikeSlideText(value: string): boolean {
   if (secondPersonCount >= 6) return true;
   if (quoteCount >= 2 && firstPersonCount >= 2) return true;
   return false;
+}
+
+function stripSingleLeadingBullet(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) return normalized;
+  if (!/^\s*[-*]\s+/.test(normalized)) return normalized;
+  // Keep real multi-bullet lists intact.
+  if (/\n\s*[-*]\s+/.test(normalized)) return normalized;
+  return normalized.replace(/^\s*[-*]\s+/, "");
 }
 
 function rewriteTranscriptSentenceToNeutral(sentence: string): string {
@@ -612,7 +622,7 @@ function summarizeTranscriptLikeSlideText(value: string, maxChars: number): stri
 }
 
 function normalizeSlideBodyStyle(value: string, maxChars: number): string {
-  const compact = compactSlideSummaryText(value, maxChars);
+  const compact = stripSingleLeadingBullet(compactSlideSummaryText(value, maxChars));
   if (!compact) return compact;
   if (!isTranscriptLikeSlideText(compact)) return compact;
   return summarizeTranscriptLikeSlideText(compact, maxChars);
