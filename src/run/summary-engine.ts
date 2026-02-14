@@ -65,12 +65,14 @@ export type SummaryEngineDeps = {
     baseUrl: string;
   };
   nvidia: {
+    apiKey: string | null;
+    baseUrl: string;
+  };
   minimax: {
     apiKey: string | null;
     baseUrl: string;
   };
   kimi: {
-  nvidia: {
     apiKey: string | null;
     baseUrl: string;
   };

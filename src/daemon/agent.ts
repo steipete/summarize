@@ -547,6 +547,7 @@ async function resolveAgentModel({
     if (requestedModel.requiredEnv === "MINIMAX_API_KEY") {
       const parsed = parseProviderModelId(requestedModel.llmModelId);
       return {
+        provider: "openai",
         model: resolveModelWithFallback({
           provider: "openai",
           modelId: parsed.model,
@@ -562,6 +563,7 @@ async function resolveAgentModel({
     if (requestedModel.requiredEnv === "KIMI_API_KEY") {
       const parsed = parseProviderModelId(requestedModel.llmModelId);
       return {
+        provider: "openai",
         model: resolveModelWithFallback({
           provider: "openai",
           modelId: parsed.model,
@@ -603,6 +605,7 @@ async function resolveAgentModel({
     if (attempt.requiredEnv === "MINIMAX_API_KEY") {
       const parsed = parseProviderModelId(attempt.llmModelId ?? attempt.userModelId);
       return {
+        provider: "openai",
         model: resolveModelWithFallback({
           provider: "openai",
           modelId: parsed.model,
@@ -618,6 +621,7 @@ async function resolveAgentModel({
     if (attempt.requiredEnv === "KIMI_API_KEY") {
       const parsed = parseProviderModelId(attempt.llmModelId ?? attempt.userModelId);
       return {
+        provider: "openai",
         model: resolveModelWithFallback({
           provider: "openai",
           modelId: parsed.model,

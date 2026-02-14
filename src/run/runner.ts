@@ -652,6 +652,7 @@ export async function runCli(
       nvidia: {
         apiKey: nvidiaApiKey,
         baseUrl: nvidiaBaseUrl,
+      },
       minimax: {
         apiKey: minimaxApiKey,
         baseUrl: minimaxBaseUrl,
