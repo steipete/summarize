@@ -201,10 +201,18 @@ export function buildLinkSummaryPrompt({
     slides && slides.count > 0
       ? "For slide blocks, do not include direct quotes or transcript excerpts."
       : "Include 1-2 short exact excerpts (max 25 words each) formatted as Markdown italics using single asterisks when there is a strong, non-sponsor line. Use straight quotation marks (no curly) as needed. If no suitable line exists, omit excerpts. Never include ad/sponsor/boilerplate excerpts and do not mention them.";
+  const slideSentenceGuidance = (() => {
+    if (!(slides && slides.count > 0)) return "";
+    if (preset === "short") return "For each slide block, write a concise neutral summary (2-3 sentences).";
+    if (preset === "medium") return "For each slide block, write a concise neutral summary (2-4 sentences).";
+    if (preset === "long") return "For each slide block, write a concise neutral summary (3-5 sentences).";
+    if (preset === "xl") return "For each slide block, write a concise neutral summary (3-6 sentences).";
+    return "For each slide block, write a concise neutral summary (4-7 sentences).";
+  })();
   const slideToneInstruction =
     slides && slides.count > 0
       ? [
-          "For each slide block, write a concise neutral summary of that segment (1-3 sentences).",
+          slideSentenceGuidance,
           "Use third-person prose; avoid first-person/second-person voice and direct address.",
           "Paraphrase transcript content; do not copy long conversational passages.",
           "Exclude banter, filler phrases, and rhetorical asides.",
