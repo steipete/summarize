@@ -1,6 +1,6 @@
 {
   "name": "@steipete/summarize",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "Link → clean text → summary.",
   "bin": {
     "summarize": "./dist/cli.js",

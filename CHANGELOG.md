@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.11.0 - Unreleased
+## 0.11.1 - 2026-02-14
+
+### Fixes
+
+- npm packaging: publish CLI with `pnpm publish` so `@steipete/summarize-core` is version-pinned in published metadata (no `workspace:*` in registry package).
+
+## 0.11.0 - 2026-02-14
 
 ### Highlights
 
