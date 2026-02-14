@@ -16,6 +16,7 @@
             <span class="daemonStatus__text">Checking daemon…</span>
           </div>
           <div id="buildInfo" class="buildInfo"></div>
+          <span id="status" class="status" aria-live="polite"></span>
         </div>
       </div>
       <form id="form">
@@ -123,7 +124,9 @@
               <button id="automationPermissions" type="button" class="miniButton">
                 Enable automation permissions
               </button>
-              <span class="subtitle">Grant optional permissions (userScripts).</span>
+              <span class="subtitle permissionHint">
+                Opens Chrome permission prompt for optional <code>userScripts</code>.
+              </span>
             </div>
             <div id="userScriptsNotice" class="notice" hidden></div>
           </section>
@@ -134,7 +137,22 @@
               <span>Token</span>
               <div class="inputRow">
                 <input id="token" type="text" placeholder="(generated in side panel)" />
-                <button id="tokenCopy" type="button" class="miniButton copyButton">Copy</button>
+                <button
+                  id="tokenCopy"
+                  type="button"
+                  class="iconButton inputCopyButton"
+                  aria-label="Copy token"
+                  title="Copy token"
+                >
+                  <svg class="copyIcon" viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                      d="M5.5 3.5A2.5 2.5 0 0 1 8 1h4a2.5 2.5 0 0 1 2.5 2.5v6A2.5 2.5 0 0 1 12 12h-4A2.5 2.5 0 0 1 5.5 9.5v-6Z"
+                    />
+                    <path
+                      d="M1.5 6A2.5 2.5 0 0 1 4 3.5h1a.75.75 0 0 1 0 1.5H4A1 1 0 0 0 3 6v6a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1a.75.75 0 0 1 1.5 0v1A2.5 2.5 0 0 1 8 14H4a2.5 2.5 0 0 1-2.5-2.5V6Z"
+                    />
+                  </svg>
+                </button>
               </div>
             </label>
           </section>
@@ -514,11 +532,11 @@
                 <button
                   id="processesLogsCopy"
                   type="button"
-                  class="miniButton processLogsCopy"
+                  class="iconButton processLogsCopy"
                   aria-label="Copy logs"
                   title="Copy logs"
                 >
-                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <svg class="copyIcon" viewBox="0 0 16 16" aria-hidden="true">
                     <path
                       d="M5.5 3.5A2.5 2.5 0 0 1 8 1h4a2.5 2.5 0 0 1 2.5 2.5v6A2.5 2.5 0 0 1 12 12h-4A2.5 2.5 0 0 1 5.5 9.5v-6Z"
                     />
