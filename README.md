@@ -611,6 +611,7 @@ Example:
 
 ```bash
 OPENROUTER_API_KEY=sk-or-... summarize "https://example.com" --model openrouter/meta-llama/llama-3.1-8b-instruct:free
+OPENROUTER_API_KEY=sk-or-... summarize "https://example.com" --model openrouter/minimax/minimax-m2.5
 ```
 
 If your OpenRouter account enforces an allowed-provider list, make sure at least one provider
