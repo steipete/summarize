@@ -1008,17 +1008,30 @@ details.drawerAdvanced:not([open]) > .drawerAdvancedBody {
 .drawerAdvancedRow {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
+  min-width: 0;
 }
 
 .drawerAdvancedRow .toggleRow {
-  flex: 1;
-  min-width: 160px;
+  flex: 1 1 160px;
+  min-width: 0;
 }
 
 .drawerAdvancedActions {
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
   width: 100%;
+  min-width: 0;
+}
+
+.drawerAdvancedButtons {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .drawerAdvanced .modelRow {
