@@ -2,16 +2,40 @@
 
 ## 0.11 - Unreleased
 
+### Highlights
+
+- Auto CLI fallback: new controls and persisted last-success provider state (`~/.summarize/cli-state.json`) for no-key/local-CLI workflows.
+- Transcription reliability: Groq Whisper is now the preferred cloud transcriber, with custom OpenAI-compatible Whisper endpoint overrides.
+- Input reliability: binary-safe stdin handling, local media support in `--extract`, and fixes for local-file hangs/PDF preprocessing on custom OpenAI base URLs.
+
+### Features
+
+- CLI: add Cursor Agent provider (`--cli agent`) for CLI-model execution.
+- CLI auto mode: add implicit auto CLI fallback controls (`cli.autoFallback`, `--auto-cli-fallback`) and provider priority controls (`cli.providers`, `--cli-priority`), with persisted provider success ordering.
+- Transcription: add Groq Whisper as preferred cloud provider (#71, thanks @n0an).
+- Transcription: support custom OpenAI-compatible Whisper endpoints via `OPENAI_WHISPER_BASE_URL` (with safe `OPENAI_BASE_URL` fallback) (#65, thanks @toanbot).
+- Config: support generic `env` defaults in `~/.summarize/config.json` (fallback for any env var), while keeping legacy `apiKeys` mapping for compatibility (#63, thanks @entropyy0).
+
 ### Fixes
 
+- CLI local files: avoid hangs when stream usage never resolves and preprocess PDFs automatically for custom OpenAI-compatible `OPENAI_BASE_URL` endpoints (e.g. non-`api.openai.com`).
+- CLI stdin: support binary-safe piping/input temp files to prevent corruption on non-text stdin (#76).
+- Extract mode: allow `--extract` for local media files (#72).
+- Auto model/daemon fallback: skip model attempts when required API keys are missing and normalize env-key checks in daemon fallback (#67, #78).
+- Media: treat X broadcasts (`/i/broadcasts/...`) as transcript-first media and prefer URL mode.
 - YouTube: keep explicit `--youtube apify` working when HTML fetch fails, while preserving duration metadata parity (#64, thanks @entropyy0).
 - Transcription: stabilize Groq-first fallback flow (no duplicate Groq retries in file mode), improve terminal error reporting, and surface Groq setup in media guidance (#71, thanks @n0an).
-- Transcription: support `OPENAI_WHISPER_BASE_URL` for Whisper endpoint overrides (with safe `OPENAI_BASE_URL` fallback), and detect more direct media URL extensions including `.ogg`/`.opus` (#65, thanks @toanbot).
-- Daemon: resolve symlinked/global bin paths and Windows shims when locating the CLI for install (#62, thanks @entropyy0).
-- Config: support generic `env` defaults in `~/.summarize/config.json` (fallback for any env var), while keeping legacy `apiKeys` mapping for compatibility (#63, thanks @entropyy0).
-- CLI: honor --lang for YouTube transcript→Markdown conversion in --markdown-mode llm (#56, thanks @entropyy0).
-- LLM: map Anthropic bare model ids to versioned aliases (claude-sonnet-4 → claude-sonnet-4-0) (#55, thanks @entropyy0).
+- Media detection: detect more direct media URL extensions including `.ogg`/`.opus` (#65, thanks @toanbot).
+- Slides: allow yt-dlp cookies-from-browser via `SUMMARIZE_YT_DLP_COOKIES_FROM_BROWSER` to avoid YouTube 403s.
+- Daemon install: resolve symlinked/global bin paths and Windows shims when locating the CLI for install (#57, #62, thanks @entropyy0).
 - Extraction: strip hidden HTML + invisible Unicode before summarization or extract output (#61).
+- CLI: honor `--lang` for YouTube transcript→Markdown conversion in `--markdown-mode llm` (#56, thanks @entropyy0).
+- LLM: map Anthropic bare model ids to versioned aliases (`claude-sonnet-4` → `claude-sonnet-4-0`) (#55, thanks @entropyy0).
+
+### Improvements
+
+- Tooling: remove Biome and standardize on `oxfmt` + type-aware `oxlint`; `pnpm check` now enforces `format:check` before lint/tests.
+- Dependencies: update workspace dependencies to latest (including `@mariozechner/pi-ai` and `oxlint-tsgolint`).
 
 ## 0.10.0 - 2026-01-22
 
