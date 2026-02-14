@@ -407,6 +407,10 @@ export async function runCli(
     zaiBaseUrl,
     nvidiaApiKey,
     nvidiaBaseUrl,
+    minimaxApiKey,
+    minimaxBaseUrl,
+    kimiApiKey,
+    kimiBaseUrl,
     providerBaseUrls,
     firecrawlApiKey,
     firecrawlConfigured,
@@ -648,6 +652,13 @@ export async function runCli(
       nvidia: {
         apiKey: nvidiaApiKey,
         baseUrl: nvidiaBaseUrl,
+      minimax: {
+        apiKey: minimaxApiKey,
+        baseUrl: minimaxBaseUrl,
+      },
+      kimi: {
+        apiKey: kimiApiKey,
+        baseUrl: kimiBaseUrl,
       },
       providerBaseUrls,
     });
@@ -725,6 +736,10 @@ export async function runCli(
         zaiBaseUrl,
         nvidiaApiKey,
         nvidiaBaseUrl,
+        minimaxApiKey,
+        minimaxBaseUrl,
+        kimiApiKey,
+        kimiBaseUrl,
       },
     };
 
@@ -912,6 +927,10 @@ export async function runCli(
           zaiApiKey,
           zaiBaseUrl,
           nvidiaBaseUrl,
+          minimaxApiKey,
+          minimaxBaseUrl,
+          kimiApiKey,
+          kimiBaseUrl,
           firecrawlConfigured,
           firecrawlApiKey,
           apifyToken,

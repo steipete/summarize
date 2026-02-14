@@ -7,6 +7,10 @@ const DEFAULT_CLI_MODELS: Record<CliProvider, string> = {
   gemini: "gemini-3-flash-preview",
   agent: "gpt-5.2",
 };
+const DEFAULT_MINIMAX_MODEL = "minimax-m2.5";
+const DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1";
+const DEFAULT_KIMI_MODEL = "kimi-k2.5";
+const DEFAULT_KIMI_BASE_URL = "https://api.moonshot.ai/v1";
 
 export type FixedModelSpec =
   | {
@@ -19,6 +23,8 @@ export type FixedModelSpec =
       requiredEnv:
         | "XAI_API_KEY"
         | "OPENAI_API_KEY"
+        | "MINIMAX_API_KEY"
+        | "KIMI_API_KEY"
         | "GEMINI_API_KEY"
         | "ANTHROPIC_API_KEY"
         | "Z_AI_API_KEY"
@@ -54,6 +60,50 @@ export function parseRequestedModelId(raw: string): RequestedModel {
 
   const lower = trimmed.toLowerCase();
   if (lower === "auto") return { kind: "auto" };
+
+  if (lower === "minimax" || lower.startsWith("minimax/")) {
+    const requestedModel =
+      lower === "minimax" ? DEFAULT_MINIMAX_MODEL : trimmed.slice("minimax/".length).trim();
+    if (requestedModel.length === 0) {
+      throw new Error("Invalid model id: minimax/… is missing the model id");
+    }
+    const llmModelId = normalizeGatewayStyleModelId(`openai/${requestedModel}`);
+    const parsed = parseGatewayStyleModelId(llmModelId);
+    return {
+      kind: "fixed",
+      transport: "native",
+      userModelId: parsed.canonical,
+      llmModelId: parsed.canonical,
+      provider: "openai",
+      openrouterProviders: null,
+      forceOpenRouter: false,
+      requiredEnv: "MINIMAX_API_KEY",
+      openaiBaseUrlOverride: DEFAULT_MINIMAX_BASE_URL,
+      forceChatCompletions: true,
+    };
+  }
+
+  if (lower === "kimi" || lower.startsWith("kimi/")) {
+    const requestedModel =
+      lower === "kimi" ? DEFAULT_KIMI_MODEL : trimmed.slice("kimi/".length).trim();
+    if (requestedModel.length === 0) {
+      throw new Error("Invalid model id: kimi/… is missing the model id");
+    }
+    const llmModelId = normalizeGatewayStyleModelId(`openai/${requestedModel}`);
+    const parsed = parseGatewayStyleModelId(llmModelId);
+    return {
+      kind: "fixed",
+      transport: "native",
+      userModelId: parsed.canonical,
+      llmModelId: parsed.canonical,
+      provider: "openai",
+      openrouterProviders: null,
+      forceOpenRouter: false,
+      requiredEnv: "KIMI_API_KEY",
+      openaiBaseUrlOverride: DEFAULT_KIMI_BASE_URL,
+      forceChatCompletions: true,
+    };
+  }
 
   if (lower.startsWith("openrouter/")) {
     const openrouterModelId = trimmed.slice("openrouter/".length).trim();
@@ -157,7 +207,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
 
   if (!trimmed.includes("/")) {
     throw new Error(
-      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., anthropic/..., xai/..., zai/..., openrouter/... or cli/....`,
+      `Unknown model "${trimmed}". Expected "auto", "minimax", "kimi", or a provider-prefixed id like minimax/..., kimi/..., openai/..., google/..., anthropic/..., xai/..., zai/..., openrouter/... or cli/....`,
     );
   }
 

@@ -174,6 +174,10 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     zaiBaseUrl,
     nvidiaApiKey,
     nvidiaBaseUrl,
+    minimaxApiKey,
+    minimaxBaseUrl,
+    kimiApiKey,
+    kimiBaseUrl,
     providerBaseUrls,
     firecrawlApiKey,
     firecrawlConfigured,
@@ -267,6 +271,8 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     },
     zai: { apiKey: zaiApiKey, baseUrl: zaiBaseUrl },
     nvidia: { apiKey: nvidiaApiKey, baseUrl: nvidiaBaseUrl },
+    minimax: { apiKey: minimaxApiKey, baseUrl: minimaxBaseUrl },
+    kimi: { apiKey: kimiApiKey, baseUrl: kimiBaseUrl },
     providerBaseUrls,
   });
 
@@ -352,6 +358,10 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
       zaiApiKey,
       zaiBaseUrl,
       nvidiaBaseUrl,
+      minimaxApiKey,
+      minimaxBaseUrl,
+      kimiApiKey,
+      kimiBaseUrl,
     },
   };
 
@@ -431,6 +441,10 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
         zaiApiKey,
         zaiBaseUrl,
         nvidiaBaseUrl,
+        minimaxApiKey,
+        minimaxBaseUrl,
+        kimiApiKey,
+        kimiBaseUrl,
         firecrawlConfigured,
         firecrawlApiKey,
         apifyToken,

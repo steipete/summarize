@@ -125,6 +125,17 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("This segment explains the setup.");
   });
 
+  it("preserves explicit trailing delimiter ellipses from slide output", () => {
+    const slides = [{ index: 1, timestamp: 4 }];
+    const coerced = coerceSummaryWithSlides({
+      markdown: "[slide:1]\nLife comes from you, not at you... ",
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nLife comes from you, not at you...");
+  });
+
   it("detects markdown heading lines as slide titles", () => {
     const parsed = splitSlideTitleFromText({
       text: "## Graphene breakthroughs\nGraphene is strong and conductive.",
@@ -287,6 +298,170 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("[slide:2]\nSecond body paragraph.");
   });
 
+  it("fills title-only slide blocks with transcript fallback when available", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 60 },
+    ];
+    const markdown = [
+      "Intro paragraph.",
+      "",
+      "[slide:1]",
+      "Opening Title",
+      "",
+      "[slide:2]",
+      "Second slide has full text.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[00:10] First fallback sentence.\n[01:00] Second fallback sentence.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nOpening Title\nFirst fallback sentence.");
+    expect(coerced).toContain("[slide:2]\nSecond slide has full text.");
+  });
+
+  it("uses transcript fallback per slide instead of redistributing when markers are missing", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 60 },
+    ];
+    const markdown = [
+      "Intro paragraph.",
+      "",
+      "First freeform paragraph.",
+      "",
+      "Second freeform paragraph.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[00:10] First fallback sentence.\n[01:00] Second fallback sentence.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).toContain("First fallback sentence.");
+    expect(coerced).toContain("[slide:2]\nSecond fallback sentence.");
+    expect(coerced).not.toContain("[slide:1]\nFirst freeform paragraph.");
+  });
+
+  it("replaces obviously truncated slide bodies with transcript fallback", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "This thought starts clearly but then keeps going...",
+      "",
+      "[slide:2]",
+      "Complete second slide sentence.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[00:10] First fallback sentence.\n[00:20] Second fallback sentence.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).toContain("First fallback sentence.");
+    expect(coerced).toContain("[slide:2]\nComplete second slide sentence.");
+  });
+
+  it("does not replace long bodies solely for ending mid-sentence", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+    ];
+    const longBody =
+      "Identity ultimately drives behavior and this section intentionally runs long with many details from the speaker about school discipline grades confidence and repeated effort over time so that it exceeds the truncation-heuristic word window and should not be replaced by transcript fallback even if it does not end with punctuation";
+    const markdown = [`[slide:1]`, longBody, "", "[slide:2]", "Second slide body."].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[00:10] First fallback sentence.\n[00:20] Second fallback sentence.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("Identity ultimately drives behavior");
+    expect(coerced).not.toContain("[slide:1]\nFirst fallback sentence.");
+  });
+
+  it("redistributes collapsed trailing body across all slide markers", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+      { index: 3, timestamp: 30 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "Title One",
+      "",
+      "[slide:2]",
+      "Title Two",
+      "",
+      "[slide:3]",
+      "Title Three",
+      "",
+      "Sentence one. Sentence two. Sentence three.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nSentence one.");
+    expect(coerced).toContain("[slide:2]\nSentence two.");
+    expect(coerced).toContain("[slide:3]\nSentence three.");
+  });
+
+  it("redistributes tail body when the last marker absorbs all narrative text", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+      { index: 3, timestamp: 30 },
+    ];
+    const markdown = [
+      "[slide:1] Title One",
+      "[slide:2] Title Two",
+      "[slide:3] Title Three",
+      "Sentence one. Sentence two. Sentence three.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nTitle One\nSentence one.");
+    expect(coerced).toContain("[slide:2]\nTitle Two\nSentence two.");
+    expect(coerced).toContain("[slide:3]\nTitle Three\nSentence three.");
+  });
+
+  it("fills collapsed tail blobs from transcript fallback when coverage exists", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+      { index: 3, timestamp: 30 },
+    ];
+    const markdown = [
+      "[slide:1] Title One",
+      "[slide:2] Title Two",
+      "[slide:3] Title Three",
+      "one two three four five six seven eight nine ten eleven twelve",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[00:10] Fallback one.\n[00:20] Fallback two.\n[00:30] Fallback three.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nTitle One\nFallback one.");
+    expect(coerced).toContain("[slide:2]\nTitle Two\nFallback two.");
+    expect(coerced).toContain("[slide:3]\nTitle Three\nFallback three.");
+  });
+
   it("parses transcript timed text and sorts by timestamp", () => {
     const input = [
       "[00:10] Second",
@@ -344,7 +519,7 @@ describe("slides text helpers", () => {
       budget: 200,
       windowSeconds: 30,
     });
-    expect(text).toBe("hello world");
+    expect(text).toBe("world");
     expect(
       getTranscriptTextForSlide({
         slide: { index: 1, timestamp: Number.NaN },
@@ -377,14 +552,44 @@ describe("slides text helpers", () => {
       { startSeconds: 1, text: "lorem ipsum dolor sit amet" },
       { startSeconds: 2, text: "consectetur adipiscing elit" },
     ];
-    const truncated = getTranscriptTextForSlide({
+    const boundedNotTruncated = getTranscriptTextForSlide({
+      slide: { index: 1, timestamp: 1 },
+      nextSlide: { index: 2, timestamp: 30 },
+      segments: longSegments,
+      budget: 20,
+      windowSeconds: 10,
+    });
+    expect(boundedNotTruncated.endsWith("...")).toBe(false);
+    expect(boundedNotTruncated).toContain("consectetur adipiscing elit");
+
+    const finalSlideText = getTranscriptTextForSlide({
       slide: { index: 1, timestamp: 1 },
       nextSlide: null,
       segments: longSegments,
       budget: 20,
       windowSeconds: 10,
     });
-    expect(truncated.endsWith("...")).toBe(true);
+    expect(finalSlideText.endsWith("...")).toBe(false);
+    expect(finalSlideText).toContain("consectetur adipiscing elit");
+  });
+
+  it("backfills prior transcript context when a slide starts mid-sentence", () => {
+    const segments = [
+      { startSeconds: 362, text: "Belief drives behavior." },
+      { startSeconds: 366, text: "about this Marcus Aurelius, right? He" },
+      { startSeconds: 369, text: "wrote about how your thoughts pretty" },
+      { startSeconds: 370, text: "much determine your experience of life." },
+    ];
+    const text = getTranscriptTextForSlide({
+      slide: { index: 6, timestamp: 399 },
+      nextSlide: null,
+      segments,
+      budget: 500,
+      windowSeconds: 120,
+    });
+    expect(text.startsWith("wrote about how your thoughts")).toBe(false);
+    expect(text.startsWith("He wrote about how your thoughts pretty")).toBe(true);
+    expect(text).toContain("wrote about how your thoughts pretty much determine your experience of life.");
   });
 
   it("formats OSC-8 links when enabled", () => {

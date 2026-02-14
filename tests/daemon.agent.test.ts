@@ -97,6 +97,23 @@ describe("daemon/agent", () => {
     expect(options.apiKey).toBe("sk-openai");
   });
 
+  it("passes kimi api key to pi-ai for kimi alias models", async () => {
+    const home = makeTempHome();
+    await completeAgentResponse({
+      env: { HOME: home, KIMI_API_KEY: "sk-kimi" },
+      pageUrl: "https://example.com",
+      pageTitle: null,
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "kimi",
+      tools: [],
+      automationEnabled: false,
+    });
+
+    const options = mockCompleteSimple.mock.calls[0]?.[2] as { apiKey?: string };
+    expect(options.apiKey).toBe("sk-kimi");
+  });
+
   it("throws a helpful error when openrouter key is missing", async () => {
     const home = makeTempHome();
     await expect(

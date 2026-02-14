@@ -39,6 +39,9 @@ export type AutoModelAttempt = {
     | "XAI_API_KEY"
     | "OPENAI_API_KEY"
     | "NVIDIA_API_KEY"
+    | "MINIMAX_API_KEY"
+    | "KIMI_API_KEY"
+    | "NVIDIA_API_KEY"
     | "GEMINI_API_KEY"
     | "ANTHROPIC_API_KEY"
     | "OPENROUTER_API_KEY"
@@ -210,6 +213,8 @@ const DEFAULT_CLI_MODELS: Record<CliProvider, string> = {
   gemini: "gemini-3-flash-preview",
   agent: "gpt-5.2",
 };
+const DEFAULT_MINIMAX_MODEL = "minimax-m2.5";
+const DEFAULT_KIMI_MODEL = "kimi-k2.5";
 
 const DEFAULT_AUTO_CLI_ORDER: CliProvider[] = ["claude", "gemini", "codex", "agent"];
 
@@ -246,6 +251,9 @@ function hasAnyApiKeysConfigured(env: Record<string, string | undefined>): boole
   const has = (value: string | undefined) => typeof value === "string" && value.trim().length > 0;
   return Boolean(
     has(env.OPENAI_API_KEY) ||
+    has(env.MINIMAX_API_KEY) ||
+    has(env.KIMI_API_KEY) ||
+    has(env.MOONSHOT_API_KEY) ||
     has(env.GEMINI_API_KEY) ||
     has(env.GOOGLE_GENERATIVE_AI_API_KEY) ||
     has(env.GOOGLE_API_KEY) ||
@@ -281,6 +289,42 @@ function isCandidateCli(modelId: string): boolean {
   return modelId.trim().toLowerCase().startsWith("cli/");
 }
 
+function normalizeMinimaxCandidate(
+  modelId: string,
+): { userModelId: string; llmModelId: string } | null {
+  const trimmed = modelId.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === "minimax") {
+    const llmModelId = normalizeGatewayStyleModelId(`openai/${DEFAULT_MINIMAX_MODEL}`);
+    const parsed = parseGatewayStyleModelId(llmModelId);
+    return { userModelId: parsed.canonical, llmModelId: parsed.canonical };
+  }
+  if (!lower.startsWith("minimax/")) return null;
+  const requestedModelId = trimmed.slice("minimax/".length).trim();
+  if (!requestedModelId) return null;
+  const llmModelId = normalizeGatewayStyleModelId(`openai/${requestedModelId}`);
+  const parsed = parseGatewayStyleModelId(llmModelId);
+  return { userModelId: parsed.canonical, llmModelId: parsed.canonical };
+}
+
+function normalizeKimiCandidate(
+  modelId: string,
+): { userModelId: string; llmModelId: string } | null {
+  const trimmed = modelId.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === "kimi") {
+    const llmModelId = normalizeGatewayStyleModelId(`openai/${DEFAULT_KIMI_MODEL}`);
+    const parsed = parseGatewayStyleModelId(llmModelId);
+    return { userModelId: parsed.canonical, llmModelId: parsed.canonical };
+  }
+  if (!lower.startsWith("kimi/")) return null;
+  const requestedModelId = trimmed.slice("kimi/".length).trim();
+  if (!requestedModelId) return null;
+  const llmModelId = normalizeGatewayStyleModelId(`openai/${requestedModelId}`);
+  const parsed = parseGatewayStyleModelId(llmModelId);
+  return { userModelId: parsed.canonical, llmModelId: parsed.canonical };
+}
+
 function parseCliCandidate(
   modelId: string,
 ): { provider: CliProvider; model: string | null } | null {
@@ -310,6 +354,8 @@ function normalizeOpenRouterModelId(raw: string): string | null {
 }
 
 function requiredEnvForCandidate(modelId: string): AutoModelAttempt["requiredEnv"] {
+  if (normalizeMinimaxCandidate(modelId)) return "MINIMAX_API_KEY";
+  if (normalizeKimiCandidate(modelId)) return "KIMI_API_KEY";
   if (isCandidateCli(modelId)) {
     const parsed = parseCliCandidate(modelId);
     if (!parsed) return "CLI_CLAUDE";
@@ -340,6 +386,12 @@ export function envHasKey(
   env: Record<string, string | undefined>,
   requiredEnv: AutoModelAttempt["requiredEnv"],
 ): boolean {
+  if (requiredEnv === "MINIMAX_API_KEY") {
+    return Boolean(env.MINIMAX_API_KEY?.trim());
+  }
+  if (requiredEnv === "KIMI_API_KEY") {
+    return Boolean(env.KIMI_API_KEY?.trim() || env.MOONSHOT_API_KEY?.trim());
+  }
   if (requiredEnv === "GEMINI_API_KEY") {
     return Boolean(
       env.GEMINI_API_KEY?.trim() ||
@@ -531,12 +583,18 @@ export function buildAutoModelAttempts(input: AutoSelectionInput): AutoModelAtte
     const modelRaw = modelRawEntry.trim();
     if (modelRaw.length === 0) continue;
 
+    const minimaxCandidate = normalizeMinimaxCandidate(modelRaw);
+    const kimiCandidate = normalizeKimiCandidate(modelRaw);
     const explicitCli = isCandidateCli(modelRaw);
     const explicitOpenRouter = isCandidateOpenRouter(modelRaw);
 
     const shouldSkipForVideo =
       input.requiresVideoUnderstanding &&
-      (explicitOpenRouter || explicitCli || !isVideoUnderstandingCapable(modelRaw));
+      (explicitOpenRouter ||
+        explicitCli ||
+        !isVideoUnderstandingCapable(
+          kimiCandidate?.llmModelId ?? minimaxCandidate?.llmModelId ?? modelRaw,
+        ));
     if (shouldSkipForVideo) {
       continue;
     }
@@ -547,9 +605,12 @@ export function buildAutoModelAttempts(input: AutoSelectionInput): AutoModelAtte
         openrouter: boolean;
         openrouterProviders: string[] | null;
         transport: AutoModelAttempt["transport"];
+        userModelIdOverride?: string;
+        llmModelIdOverride?: string;
+        requiredEnvOverride?: AutoModelAttempt["requiredEnv"];
       },
     ) => {
-      const required = requiredEnvForCandidate(modelId);
+      const required = options.requiredEnvOverride ?? requiredEnvForCandidate(modelId);
       const hasKey =
         options.transport === "cli"
           ? Boolean(
@@ -561,9 +622,14 @@ export function buildAutoModelAttempts(input: AutoSelectionInput): AutoModelAtte
       }
 
       const catalog = options.transport === "cli" ? null : input.catalog;
-      const catalogModelId = options.openrouter ? modelId.slice("openrouter/".length) : modelId;
+      const catalogModelId =
+        options.transport === "cli"
+          ? null
+          : options.openrouter
+            ? modelId.slice("openrouter/".length)
+            : (options.llmModelIdOverride ?? normalizeGatewayStyleModelId(modelId));
       const maxIn = catalog
-        ? resolveLiteLlmMaxInputTokensForModelId(catalog, catalogModelId)
+        ? resolveLiteLlmMaxInputTokensForModelId(catalog, catalogModelId ?? modelId)
         : null;
       const promptTokens = input.promptTokens;
       if (
@@ -578,7 +644,9 @@ export function buildAutoModelAttempts(input: AutoSelectionInput): AutoModelAtte
         return;
       }
 
-      const pricing = catalog ? resolveLiteLlmPricingForModelId(catalog, catalogModelId) : null;
+      const pricing = catalog
+        ? resolveLiteLlmPricingForModelId(catalog, catalogModelId ?? modelId)
+        : null;
       const estimated = estimateCostUsd({
         pricing,
         promptTokens: input.promptTokens,
@@ -590,7 +658,7 @@ export function buildAutoModelAttempts(input: AutoSelectionInput): AutoModelAtte
           ? modelId
           : options.openrouter
             ? modelId
-            : normalizeGatewayStyleModelId(modelId);
+            : (options.userModelIdOverride ?? normalizeGatewayStyleModelId(modelId));
       const openrouterModelId = options.openrouter
         ? normalizeOpenRouterModelId(modelId.slice("openrouter/".length))
         : null;
@@ -602,7 +670,7 @@ export function buildAutoModelAttempts(input: AutoSelectionInput): AutoModelAtte
           ? null
           : options.openrouter
             ? `openai/${openrouterModelId}`
-            : normalizeGatewayStyleModelId(modelId);
+            : (options.llmModelIdOverride ?? normalizeGatewayStyleModelId(modelId));
       const debugParts = [
         `model=${
           options.transport === "cli"
@@ -644,6 +712,30 @@ export function buildAutoModelAttempts(input: AutoSelectionInput): AutoModelAtte
         openrouter: true,
         openrouterProviders: input.openrouterProvidersFromEnv,
         transport: "openrouter",
+      });
+      continue;
+    }
+
+    if (minimaxCandidate) {
+      addAttempt(minimaxCandidate.llmModelId, {
+        openrouter: false,
+        openrouterProviders: input.openrouterProvidersFromEnv,
+        transport: "native",
+        userModelIdOverride: minimaxCandidate.userModelId,
+        llmModelIdOverride: minimaxCandidate.llmModelId,
+        requiredEnvOverride: "MINIMAX_API_KEY",
+      });
+      continue;
+    }
+
+    if (kimiCandidate) {
+      addAttempt(kimiCandidate.llmModelId, {
+        openrouter: false,
+        openrouterProviders: input.openrouterProvidersFromEnv,
+        transport: "native",
+        userModelIdOverride: kimiCandidate.userModelId,
+        llmModelIdOverride: kimiCandidate.llmModelId,
+        requiredEnvOverride: "KIMI_API_KEY",
       });
       continue;
     }

@@ -15,6 +15,10 @@ export type EnvState = {
   zaiBaseUrl: string;
   nvidiaApiKey: string | null;
   nvidiaBaseUrl: string;
+  minimaxApiKey: string | null;
+  minimaxBaseUrl: string;
+  kimiApiKey: string | null;
+  kimiBaseUrl: string;
   firecrawlApiKey: string | null;
   firecrawlConfigured: boolean;
   googleConfigured: boolean;
@@ -76,6 +80,22 @@ export function resolveEnvState({
       : typeof envForRun.ZAI_BASE_URL === "string"
         ? envForRun.ZAI_BASE_URL
         : null;
+  const minimaxKeyRaw =
+    typeof envForRun.MINIMAX_API_KEY === "string" ? envForRun.MINIMAX_API_KEY : null;
+  const minimaxBaseUrlRaw =
+    typeof envForRun.MINIMAX_BASE_URL === "string" ? envForRun.MINIMAX_BASE_URL : null;
+  const kimiKeyRaw =
+    typeof envForRun.KIMI_API_KEY === "string"
+      ? envForRun.KIMI_API_KEY
+      : typeof envForRun.MOONSHOT_API_KEY === "string"
+        ? envForRun.MOONSHOT_API_KEY
+        : null;
+  const kimiBaseUrlRaw =
+    typeof envForRun.KIMI_BASE_URL === "string"
+      ? envForRun.KIMI_BASE_URL
+      : typeof envForRun.MOONSHOT_BASE_URL === "string"
+        ? envForRun.MOONSHOT_BASE_URL
+        : null;
   const openRouterKeyRaw =
     typeof envForRun.OPENROUTER_API_KEY === "string" ? envForRun.OPENROUTER_API_KEY : null;
   const openaiKeyRaw =
@@ -131,6 +151,10 @@ export function resolveEnvState({
   const nvidiaApiKey = nvidiaKeyRaw?.trim() ?? null;
   const nvidiaBaseUrlEffective =
     (nvidiaBaseUrl?.trim() ?? "") || "https://integrate.api.nvidia.com/v1";
+  const minimaxApiKey = minimaxKeyRaw?.trim() ?? null;
+  const minimaxBaseUrl = (minimaxBaseUrlRaw?.trim() ?? "") || "https://api.minimax.io/v1";
+  const kimiApiKey = kimiKeyRaw?.trim() ?? null;
+  const kimiBaseUrl = (kimiBaseUrlRaw?.trim() ?? "") || "https://api.moonshot.ai/v1";
   const googleApiKey = googleKeyRaw?.trim() ?? null;
   const anthropicApiKey = anthropicKeyRaw?.trim() ?? null;
   const openrouterApiKey = (() => {
@@ -170,6 +194,10 @@ export function resolveEnvState({
     zaiBaseUrl,
     nvidiaApiKey,
     nvidiaBaseUrl: nvidiaBaseUrlEffective,
+    minimaxApiKey,
+    minimaxBaseUrl,
+    kimiApiKey,
+    kimiBaseUrl,
     firecrawlApiKey,
     firecrawlConfigured,
     googleConfigured,

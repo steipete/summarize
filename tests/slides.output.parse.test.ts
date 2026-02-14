@@ -64,4 +64,22 @@ Intro paragraph.
     expect(map.get(1)).toBe("");
     expect(map.get(2)).toBe("Second summary.");
   });
+
+  it("parses slide blocks when content starts with headings", () => {
+    const markdown = `
+Intro paragraph.
+
+### Slides
+[slide:1]
+## Opening
+First block line.
+
+[slide:2]
+## Details
+Second block line.
+`;
+    const map = parseSlideSummariesFromMarkdown(markdown);
+    expect(map.get(1)).toBe("## Opening\nFirst block line.");
+    expect(map.get(2)).toBe("## Details\nSecond block line.");
+  });
 });

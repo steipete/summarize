@@ -251,6 +251,17 @@ export function parseSlideSummariesFromMarkdown(markdown: string): Map<number, s
     const trimmed = line.trim();
     const heading = trimmed.match(/^#{1,3}\s+\S/);
     if (heading && !trimmed.toLowerCase().startsWith("### slides")) {
+      if (currentIndex == null) {
+        flush();
+        break;
+      }
+      // Allow heading lines directly after a slide marker (common model format):
+      // [slide:1]
+      // ## Title
+      if (buffer.length === 0) {
+        buffer.push(trimmed);
+        continue;
+      }
       flush();
       break;
     }
@@ -381,6 +392,38 @@ function pickIntroParagraph(markdown: string): string {
   return sentences.slice(0, 3).join(" ").trim();
 }
 
+function distributeTextAcrossSlides({
+  text,
+  slideCount,
+}: {
+  text: string;
+  slideCount: number;
+}): string[] {
+  if (slideCount <= 0) return [];
+  const empty = Array.from({ length: slideCount }, () => "");
+  const normalized = collapseLineWhitespace(text);
+  if (!normalized) return empty;
+
+  const sentenceUnits = (normalized.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [])
+    .map((unit) => collapseLineWhitespace(unit))
+    .filter(Boolean);
+  if (sentenceUnits.length >= slideCount) {
+    return Array.from({ length: slideCount }, (_, i) => {
+      const start = Math.round((i * sentenceUnits.length) / slideCount);
+      const end = Math.round(((i + 1) * sentenceUnits.length) / slideCount);
+      return sentenceUnits.slice(start, end).join(" ").trim();
+    });
+  }
+
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return empty;
+  return Array.from({ length: slideCount }, (_, i) => {
+    const start = Math.round((i * words.length) / slideCount);
+    const end = Math.round(((i + 1) * words.length) / slideCount);
+    return words.slice(start, end).join(" ").trim();
+  });
+}
+
 export function buildSlideTextFallback({
   slides,
   transcriptTimedText,
@@ -439,12 +482,121 @@ export function coerceSummaryWithSlides({
     transcriptTimedText,
     lengthArg,
   });
+  const fallbackCoverageThreshold = Math.max(1, Math.ceil(ordered.length / 2));
+  const fallbackHasCoverage = fallbackSummaries.size >= fallbackCoverageThreshold;
+  const collapsedTailRedistribution = (() => {
+    if (slideSummaries.size === 0 || titleOnlySlideSummaries) return null;
+    const lastSlideIndex = ordered[ordered.length - 1]?.index ?? null;
+    if (lastSlideIndex == null) return null;
+    const rawBySlide = ordered.map((slide) => {
+      const raw = (slideSummaries.get(slide.index) ?? "").trim();
+      const isTitleOnly = raw.length > 0 && isTitleOnlySlideText(raw);
+      const hasSummary = slideSummaries.has(slide.index);
+      return { index: slide.index, raw, isTitleOnly, hasSummary };
+    });
+    const bodyEntries = rawBySlide.filter((entry) => entry.raw && !entry.isTitleOnly);
+    if (bodyEntries.length !== 1) return null;
+    const bodyEntry = bodyEntries[0];
+    if (!bodyEntry) return null;
+    if (bodyEntry.index !== lastSlideIndex) return null;
+    const explicitEmptyCount = rawBySlide.filter((entry) => entry.hasSummary && !entry.raw).length;
+    const titleOnlyCount = rawBySlide.filter((entry) => entry.isTitleOnly).length;
+    if (explicitEmptyCount + titleOnlyCount < 2) return null;
+    const parsedBodyEntry = splitSlideTitleFromText({
+      text: bodyEntry.raw,
+      slideIndex: bodyEntry.index,
+      total: ordered.length,
+    });
+    const narrative = (parsedBodyEntry.body || bodyEntry.raw).trim();
+    if (!narrative) return null;
+    const sentenceCount = (narrative.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [])
+      .map((part: string) => part.trim())
+      .filter(Boolean).length;
+    const preferNarrativeRedistribution = sentenceCount >= ordered.length;
+    const redistributedNarrative = distributeTextAcrossSlides({
+      text: narrative,
+      slideCount: ordered.length,
+    });
+    const textByIndex = new Map<number, string>();
+    const titleByIndex = new Map<number, string>();
+    for (let i = 0; i < ordered.length; i += 1) {
+      const slide = ordered[i];
+      if (!slide) continue;
+      const entry = rawBySlide[i];
+      const title =
+        entry?.isTitleOnly && entry.raw
+          ? entry.raw
+          : entry?.index === bodyEntry.index
+            ? (parsedBodyEntry.title ?? "")
+            : "";
+      if (title) titleByIndex.set(slide.index, title);
+      const narrativeChunk = redistributedNarrative[i] ?? "";
+      const fallbackChunk = fallbackSummaries.get(slide.index) ?? "";
+      const chunk =
+        preferNarrativeRedistribution || !fallbackHasCoverage
+          ? narrativeChunk
+          : fallbackChunk || narrativeChunk;
+      textByIndex.set(
+        slide.index,
+        chunk || (!fallbackHasCoverage && i === ordered.length - 1 ? narrative : ""),
+      );
+    }
+    return { textByIndex, titleByIndex };
+  })();
 
   if (slideSummaries.size > 0 && !titleOnlySlideSummaries) {
     const parts: string[] = [];
     if (intro) parts.push(intro);
     for (const slide of ordered) {
-      const text = slideSummaries.get(slide.index) ?? fallbackSummaries.get(slide.index) ?? "";
+      const hasSlideSummary = slideSummaries.has(slide.index);
+      const parsedText = slideSummaries.get(slide.index) ?? "";
+      const fallbackText = fallbackSummaries.get(slide.index) ?? "";
+      const redistributedText = collapsedTailRedistribution?.textByIndex.get(slide.index) ?? "";
+      const redistributedTitle = collapsedTailRedistribution?.titleByIndex.get(slide.index) ?? "";
+      let text = collapsedTailRedistribution
+        ? [redistributedTitle, redistributedText].filter(Boolean).join("\n").trim()
+        : hasSlideSummary
+          ? !parsedText.trim()
+            ? ""
+            : isTitleOnlySlideText(parsedText) && fallbackText
+              ? `${parsedText}\n${fallbackText}`
+              : parsedText
+          : fallbackText;
+      if (!collapsedTailRedistribution && text && fallbackText) {
+        const parsed = splitSlideTitleFromText({
+          text,
+          slideIndex: slide.index,
+          total: ordered.length,
+        });
+        const body = parsed.body || text;
+        if (looksTruncatedSlideBody(body)) {
+          const hasExplicitTitle =
+            Boolean(parsed.title) && Boolean(parsed.body) && parsed.body.trim() !== text.trim();
+          text = hasExplicitTitle && parsed.title ? `${parsed.title}\n${fallbackText}` : fallbackText;
+        }
+      }
+      const withTitle = text ? ensureSlideTitleLine({ text, slide, total: ordered.length }) : "";
+      parts.push(withTitle ? `[slide:${slide.index}]\n${withTitle}` : `[slide:${slide.index}]`);
+    }
+    return parts.join("\n\n");
+  }
+
+  if ((slideSummaries.size === 0 || titleOnlySlideSummaries) && fallbackHasCoverage) {
+    const parts: string[] = [];
+    const overviewSource = titleOnlySlideSummaries ? distributionMarkdown : summary || markdown;
+    const overview = pickIntroParagraph(overviewSource);
+    if (overview) parts.push(overview);
+    for (const slide of ordered) {
+      const hasSlideSummary = slideSummaries.has(slide.index);
+      const parsedText = slideSummaries.get(slide.index) ?? "";
+      const fallbackText = fallbackSummaries.get(slide.index) ?? "";
+      const text = hasSlideSummary
+        ? !parsedText.trim()
+          ? ""
+          : fallbackText
+            ? `${parsedText}\n${fallbackText}`
+            : parsedText
+        : fallbackText;
       const withTitle = text ? ensureSlideTitleLine({ text, slide, total: ordered.length }) : "";
       parts.push(withTitle ? `[slide:${slide.index}]\n${withTitle}` : `[slide:${slide.index}]`);
     }
@@ -453,10 +605,11 @@ export function coerceSummaryWithSlides({
 
   const paragraphs = splitMarkdownParagraphs(distributionMarkdown);
   if (paragraphs.length === 0) return markdown;
-  const introParagraph = intro || paragraphs[0] || "";
-  const introIndex = paragraphs.indexOf(introParagraph);
+  const autoIntroEnabled = !(titleOnlySlideSummaries && !intro);
+  const introParagraph = autoIntroEnabled ? intro || paragraphs[0] || "" : intro || "";
+  const introIndex = introParagraph ? paragraphs.indexOf(introParagraph) : -1;
   const remaining =
-    introIndex >= 0 ? paragraphs.filter((_, index) => index !== introIndex) : paragraphs.slice(1);
+    introIndex >= 0 ? paragraphs.filter((_, index) => index !== introIndex) : paragraphs.slice();
   const parts: string[] = [];
   if (introParagraph) parts.push(introParagraph.trim());
   if (remaining.length === 0) {
@@ -466,10 +619,16 @@ export function coerceSummaryWithSlides({
     return parts.join("\n\n");
   }
   const total = ordered.length;
+  const redistributedRemaining =
+    remaining.length > 0 && remaining.length < total
+      ? distributeTextAcrossSlides({ text: remaining.join("\n\n"), slideCount: total })
+      : null;
   for (let i = 0; i < total; i += 1) {
     const start = Math.round((i * remaining.length) / total);
     const end = Math.round(((i + 1) * remaining.length) / total);
-    const segment = remaining.slice(start, end).join("\n\n").trim();
+    const segment = redistributedRemaining
+      ? redistributedRemaining[i] ?? ""
+      : remaining.slice(start, end).join("\n\n").trim();
     const slideIndex = ordered[i]?.index ?? i + 1;
     const fallback = fallbackSummaries.get(slideIndex) ?? "";
     const text = segment || fallback;
@@ -566,6 +725,158 @@ function normalizeSlideText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+const LEADING_CONTINUATION_WORDS = new Set([
+  "and",
+  "or",
+  "but",
+  "because",
+  "so",
+  "then",
+  "that",
+  "which",
+  "of",
+  "to",
+  "in",
+  "for",
+  "with",
+  "from",
+  "on",
+  "at",
+  "by",
+  "if",
+  "when",
+  "while",
+  "than",
+  "as",
+  "about",
+  "also",
+]);
+
+const TRAILING_SENTENCE_PUNCTUATION = /[.!?]["')\]]?$/;
+const MAX_START_BACKFILL_SEGMENTS = 8;
+const BOUNDED_START_BACKFILL_SECONDS = 20;
+const OPEN_START_BACKFILL_SECONDS = 45;
+
+function startsLikeContinuation(
+  value: string,
+  { allowLowercase }: { allowLowercase: boolean },
+): boolean {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return false;
+  if (/^[,.;:)\]}]/.test(normalized)) return true;
+  const firstWord = (normalized.split(/\s+/)[0] ?? "").toLowerCase().replace(/[^a-z]+/g, "");
+  if (firstWord && LEADING_CONTINUATION_WORDS.has(firstWord)) return true;
+  if (!allowLowercase) return false;
+  const firstLetter = normalized.match(/[A-Za-z]/)?.[0] ?? "";
+  return Boolean(firstLetter && firstLetter === firstLetter.toLowerCase());
+}
+
+function endsSentence(value: string): boolean {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return false;
+  return TRAILING_SENTENCE_PUNCTUATION.test(normalized);
+}
+
+function trimLeadingContinuation(value: string): string {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return normalized;
+  if (!startsLikeContinuation(normalized, { allowLowercase: true })) return normalized;
+  const boundary = /[.!?]["')\]]?\s+([A-Z])/g.exec(normalized);
+  if (!boundary || boundary.index == null) return normalized;
+  if (boundary.index > 260) return normalized;
+  const boundaryToken = boundary[0] ?? "";
+  const capitalOffset = boundaryToken.search(/[A-Z]/);
+  if (capitalOffset < 0) return normalized;
+  const cutAt = boundary.index + capitalOffset;
+  const trimmed = normalized.slice(cutAt).trim();
+  return trimmed || normalized;
+}
+
+function backfillTranscriptStartIndex({
+  segments,
+  startIndex,
+  slideStartSeconds,
+  boundedByNextSlide,
+}: {
+  segments: TranscriptSegment[];
+  startIndex: number;
+  slideStartSeconds: number;
+  boundedByNextSlide: boolean;
+}): number {
+  if (startIndex <= 0) return startIndex;
+  const maxLookbackSeconds = boundedByNextSlide
+    ? BOUNDED_START_BACKFILL_SECONDS
+    : OPEN_START_BACKFILL_SECONDS;
+  const minStartSeconds = Math.max(0, slideStartSeconds - maxLookbackSeconds);
+  let current = startIndex;
+  let used = 0;
+  while (current > 0 && used < MAX_START_BACKFILL_SEGMENTS) {
+    const first = segments[current];
+    const previous = segments[current - 1];
+    if (!first || !previous) break;
+    if (previous.startSeconds < minStartSeconds) break;
+    const allowLowercase = !boundedByNextSlide;
+    const gapSeconds = Math.max(0, first.startSeconds - previous.startSeconds);
+    const danglingPrevious = !endsSentence(previous.text) && gapSeconds <= 6;
+    const needsContext =
+      startsLikeContinuation(first.text, { allowLowercase }) || danglingPrevious;
+    if (!needsContext) break;
+    current -= 1;
+    used += 1;
+    const nextFirst = segments[current];
+    const beforeNext = current > 0 ? segments[current - 1] : null;
+    if (used > 0 && beforeNext && endsSentence(beforeNext.text)) {
+      break;
+    }
+    if (
+      nextFirst &&
+      !startsLikeContinuation(nextFirst.text, { allowLowercase }) &&
+      (!beforeNext || endsSentence(beforeNext.text))
+    ) {
+      break;
+    }
+  }
+  return current;
+}
+
+const TRUNCATED_TAIL_CONNECTORS = new Set([
+  "and",
+  "or",
+  "but",
+  "because",
+  "so",
+  "then",
+  "that",
+  "which",
+  "of",
+  "to",
+  "in",
+  "for",
+  "with",
+  "from",
+  "on",
+  "at",
+  "by",
+  "if",
+  "when",
+  "while",
+  "than",
+  "as",
+]);
+
+function looksTruncatedSlideBody(value: string): boolean {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return false;
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return false;
+  if (/(?:\.{3,}|…)\s*$/u.test(normalized)) return words.length >= 6;
+  if (/[.!?]["')\]]?$/.test(normalized)) return false;
+  // Avoid replacing long narrative sections with raw transcript fallback.
+  if (words.length < 8 || words.length > 60) return false;
+  const tail = (words[words.length - 1] ?? "").toLowerCase().replace(/[^a-z]+/g, "");
+  return TRUNCATED_TAIL_CONNECTORS.has(tail);
+}
+
 function truncateSlideText(value: string, limit: number): string {
   if (value.length <= limit) return value;
   const truncated = value.slice(0, limit).trimEnd();
@@ -616,25 +927,45 @@ export function getTranscriptTextForSlide({
 }): string {
   if (!Number.isFinite(slide.timestamp)) return "";
   if (segments.length === 0) return "";
+  if (!Number.isFinite(windowSeconds) || windowSeconds <= 0) return "";
   const start = Math.max(0, Math.floor(slide.timestamp));
-  const leadIn = Math.min(6, Math.floor(windowSeconds * 0.2));
+  const boundedByNextSlide =
+    Boolean(nextSlide) &&
+    Number.isFinite(nextSlide?.timestamp) &&
+    Math.floor(nextSlide!.timestamp) > start;
+  const leadIn = boundedByNextSlide ? 0 : Math.min(30, Math.floor(windowSeconds * 0.25));
   const lower = Math.max(0, start - leadIn);
   let upper = start + windowSeconds;
-  if (nextSlide && Number.isFinite(nextSlide.timestamp)) {
-    const next = Math.max(start, Math.floor(nextSlide.timestamp));
-    if (next > start) {
-      upper = Math.min(upper, next);
-    }
+  if (boundedByNextSlide && nextSlide && Number.isFinite(nextSlide.timestamp)) {
+    upper = Math.floor(nextSlide.timestamp);
   }
   if (upper < lower) return "";
+  const exclusiveUpper = boundedByNextSlide;
+  const firstInRange = segments.findIndex((segment) => segment.startSeconds >= lower);
+  if (firstInRange < 0) return "";
+  const firstSegment = segments[firstInRange];
+  if (!firstSegment) return "";
+  if (exclusiveUpper ? firstSegment.startSeconds >= upper : firstSegment.startSeconds > upper) {
+    return "";
+  }
+  const adjustedStart = backfillTranscriptStartIndex({
+    segments,
+    startIndex: firstInRange,
+    slideStartSeconds: start,
+    boundedByNextSlide,
+  });
   const parts: string[] = [];
-  for (const segment of segments) {
-    if (segment.startSeconds < lower) continue;
-    if (segment.startSeconds > upper) break;
+  for (let i = adjustedStart; i < segments.length; i += 1) {
+    const segment = segments[i];
+    if (!segment) continue;
+    if (segment.startSeconds < lower && i >= firstInRange) continue;
+    if (exclusiveUpper ? segment.startSeconds >= upper : segment.startSeconds > upper) break;
     parts.push(segment.text);
   }
-  const text = normalizeSlideText(parts.join(" "));
-  return text ? truncateSlideText(text, budget) : "";
+  const text = trimLeadingContinuation(parts.join(" "));
+  if (!text) return "";
+  if (boundedByNextSlide || !nextSlide) return text;
+  return truncateSlideText(text, budget);
 }
 
 export function formatOsc8Link(label: string, url: string | null, enabled: boolean): string {
