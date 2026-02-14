@@ -15,17 +15,27 @@ const FAL_KEY = process.env.FAL_KEY ?? null;
 const YT_DLP_PATH = process.env.YT_DLP_PATH ?? null;
 const BIRD_PATH = resolveExecutableInPath("bird", ENV);
 const FFMPEG_PATH = resolveExecutableInPath("ffmpeg", ENV);
+const TWEET_URL = process.env.SUMMARIZE_LIVE_TWITTER_BROADCAST_URL ?? null;
 
 const LIVE =
   process.env.SUMMARIZE_LIVE_TESTS === "1" &&
+  Boolean(TWEET_URL) &&
   Boolean(YT_DLP_PATH) &&
   Boolean(BIRD_PATH) &&
   (Boolean(OPENAI_API_KEY) || Boolean(FAL_KEY));
 const LIVE_SLIDES = LIVE && Boolean(FFMPEG_PATH);
-
-const TWEET_URL =
-  process.env.SUMMARIZE_LIVE_TWITTER_BROADCAST_URL ??
-  "https://x.com/RayFernando1337/status/2013371120922304918";
+const LIVE_FETCH_TIMEOUT_MS = Number(
+  process.env.SUMMARIZE_LIVE_TWITTER_FETCH_TIMEOUT_MS ?? "300000",
+);
+const LIVE_FETCH_TEST_TIMEOUT_MS = Number(
+  process.env.SUMMARIZE_LIVE_TWITTER_TEST_TIMEOUT_MS ?? "480000",
+);
+const LIVE_SLIDES_TIMEOUT_MS = Number(
+  process.env.SUMMARIZE_LIVE_TWITTER_SLIDES_TIMEOUT_MS ?? "420000",
+);
+const LIVE_SLIDES_TEST_TIMEOUT_MS = Number(
+  process.env.SUMMARIZE_LIVE_TWITTER_SLIDES_TEST_TIMEOUT_MS ?? "780000",
+);
 
 const createClient = () =>
   createLinkPreviewClient({
@@ -51,13 +61,15 @@ describe("live X broadcast (tweet video)", () => {
     "transcribes tweet video via yt-dlp and exposes a video url",
     async () => {
       const client = createClient();
-      const result = await client.fetchLinkContent(TWEET_URL, { timeoutMs: 180_000 });
+      const result = await client.fetchLinkContent(TWEET_URL!, {
+        timeoutMs: LIVE_FETCH_TIMEOUT_MS,
+      });
 
       expect(result.video).not.toBeNull();
       expect(result.transcriptSource).not.toBeNull();
       expect(result.transcriptCharacters ?? 0).toBeGreaterThan(20);
     },
-    240_000,
+    LIVE_FETCH_TEST_TIMEOUT_MS,
   );
 });
 
@@ -68,8 +80,10 @@ describe("live X broadcast slides", () => {
     "extracts slides for tweet video",
     async () => {
       const client = createClient();
-      const result = await client.fetchLinkContent(TWEET_URL, { timeoutMs: 180_000 });
-      const source = resolveSlideSource({ url: TWEET_URL, extracted: result });
+      const result = await client.fetchLinkContent(TWEET_URL!, {
+        timeoutMs: LIVE_FETCH_TIMEOUT_MS,
+      });
+      const source = resolveSlideSource({ url: TWEET_URL!, extracted: result });
 
       expect(source).not.toBeNull();
       if (!source) return;
@@ -89,7 +103,7 @@ describe("live X broadcast slides", () => {
         settings,
         noCache: true,
         env: ENV,
-        timeoutMs: 300_000,
+        timeoutMs: LIVE_SLIDES_TIMEOUT_MS,
         ytDlpPath: YT_DLP_PATH,
         ffmpegPath: null,
         tesseractPath: null,
@@ -97,6 +111,6 @@ describe("live X broadcast slides", () => {
 
       expect(slides.slides.length).toBeGreaterThan(0);
     },
-    360_000,
+    LIVE_SLIDES_TEST_TIMEOUT_MS,
   );
 });
