@@ -507,6 +507,93 @@ function removeLeadingTitleEcho(body: string, title: string): string {
   return trimmed.length > 0 ? trimmed : body;
 }
 
+function isTranscriptLikeSlideText(value: string): boolean {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return false;
+  if (/(^|\s)>>\s*/.test(normalized)) return true;
+  if (
+    /\b(?:would you like to|leave a like|turn on notifications|subscribe|thanks? for watching)\b/i.test(
+      normalized,
+    )
+  ) {
+    return true;
+  }
+  const firstPersonCount = (normalized.match(/\b(?:i|i'm|i'd|i'll|me|my|mine|we|we're|our|us)\b/gi) ?? [])
+    .length;
+  const secondPersonCount = (normalized.match(/\b(?:you|your|yours)\b/gi) ?? []).length;
+  const disfluencyCount = (normalized.match(/\b(?:uh|um|you know)\b/gi) ?? []).length;
+  const repeatedPronoun = /\bI\s+I\b/i.test(normalized) || /\bI\b(?:\W+\bI\b){2,}/i.test(normalized);
+  const quoteCount = (normalized.match(/["“”]/g) ?? []).length;
+  if (repeatedPronoun) return true;
+  if (disfluencyCount >= 3) return true;
+  if (firstPersonCount >= 5 && firstPersonCount >= secondPersonCount) return true;
+  if (secondPersonCount >= 5 && firstPersonCount >= 2) return true;
+  if (quoteCount >= 2 && firstPersonCount >= 2) return true;
+  return false;
+}
+
+function rewriteTranscriptSentenceToNeutral(sentence: string): string {
+  let text = collapseLineWhitespace(sentence).trim();
+  if (!text) return "";
+  text = text.replace(/^\s*>>\s*/g, "");
+  text = text.replace(/^(?:so|well|and|but)\s+/i, "");
+  text = text.replace(/\bI'm\b/gi, "the speaker is");
+  text = text.replace(/\bI've\b/gi, "the speaker has");
+  text = text.replace(/\bI'll\b/gi, "the speaker will");
+  text = text.replace(/\bI'd\b/gi, "the speaker would");
+  text = text.replace(/\bI\b/g, "the speaker");
+  text = text.replace(/\bwe\b/gi, "the speakers");
+  text = text.replace(/\bour\b/gi, "their");
+  text = text.replace(/\bus\b/gi, "them");
+  text = text.replace(/\byou\b/gi, "viewers");
+  text = text.replace(/\byour\b/gi, "their");
+  text = text.replace(/\s{2,}/g, " ").trim();
+  if (!text) return "";
+  const first = text[0] ?? "";
+  if (first) text = `${first.toUpperCase()}${text.slice(1)}`;
+  if (!/[.!?]["')\]]?$/.test(text)) text = `${text}.`;
+  return text;
+}
+
+function summarizeTranscriptLikeSlideText(value: string, maxChars: number): string {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return normalized;
+  const sentences = normalized.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [normalized];
+  const kept: string[] = [];
+  const seen = new Set<string>();
+  for (const sentence of sentences) {
+    const raw = collapseLineWhitespace(sentence).trim();
+    if (!raw) continue;
+    if (
+      /\b(?:would you like to|leave a like|turn on notifications|subscribe|thanks? for watching)\b/i.test(
+        raw,
+      )
+    ) {
+      continue;
+    }
+    const rewritten = rewriteTranscriptSentenceToNeutral(raw);
+    if (!rewritten) continue;
+    if (rewritten.length < 24) continue;
+    const key = rewritten.toLowerCase();
+    if (seen.has(key)) continue;
+    const next = kept.length > 0 ? `${kept.join(" ")} ${rewritten}` : rewritten;
+    if (next.length > maxChars && kept.length > 0) break;
+    seen.add(key);
+    kept.push(rewritten);
+    if (kept.length >= 4) break;
+  }
+  if (kept.length === 0) return compactSlideSummaryText(normalized, maxChars);
+  const merged = kept.join(" ");
+  return merged.length <= maxChars ? merged : compactSlideSummaryText(merged, maxChars);
+}
+
+function normalizeSlideBodyStyle(value: string, maxChars: number): string {
+  const compact = compactSlideSummaryText(value, maxChars);
+  if (!compact) return compact;
+  if (!isTranscriptLikeSlideText(compact)) return compact;
+  return summarizeTranscriptLikeSlideText(compact, maxChars);
+}
+
 export function buildSlideTextFallback({
   slides,
   transcriptTimedText,
@@ -666,7 +753,10 @@ export function coerceSummaryWithSlides({
           const fallbackWordCount = normalizeSlideText(fallbackText)
             .split(/\s+/)
             .filter(Boolean).length;
-          const useFallback = repairedBody === body && fallbackWordCount <= 120;
+          const useFallback =
+            repairedBody === body &&
+            fallbackWordCount <= 120 &&
+            !isTranscriptLikeSlideText(fallbackText);
           const chosenBody = useFallback ? fallbackText : repairedBody;
           text = hasExplicitTitle && parsed.title ? `${parsed.title}\n${chosenBody}` : chosenBody;
         }
@@ -675,9 +765,9 @@ export function coerceSummaryWithSlides({
         const explicit = splitExplicitSlideTitleFromText(text);
         if (explicit) {
           const deEchoed = removeLeadingTitleEcho(explicit.body, explicit.title);
-          text = `${explicit.title}\n${compactSlideSummaryText(deEchoed, slideSummaryCap)}`;
+          text = `${explicit.title}\n${normalizeSlideBodyStyle(deEchoed, slideSummaryCap)}`;
         } else {
-          text = compactSlideSummaryText(text, slideSummaryCap);
+          text = normalizeSlideBodyStyle(text, slideSummaryCap);
         }
       }
       const withTitle = text ? ensureSlideTitleLine({ text, slide, total: ordered.length }) : "";
@@ -702,9 +792,9 @@ export function coerceSummaryWithSlides({
             ? `${parsedText}\n${fallbackText}`
             : parsedText
         : fallbackText;
-      const compact = text ? compactSlideSummaryText(text, slideSummaryCap) : "";
-      const withTitle = compact
-        ? ensureSlideTitleLine({ text: compact, slide, total: ordered.length })
+      const normalized = text ? normalizeSlideBodyStyle(text, slideSummaryCap) : "";
+      const withTitle = normalized
+        ? ensureSlideTitleLine({ text: normalized, slide, total: ordered.length })
         : "";
       parts.push(withTitle ? `[slide:${slide.index}]\n${withTitle}` : `[slide:${slide.index}]`);
     }
@@ -741,8 +831,8 @@ export function coerceSummaryWithSlides({
     const fallback = fallbackSummaries.get(slideIndex) ?? "";
     const text = segment || fallback;
     const slide = ordered[i] ?? { index: slideIndex, timestamp: Number.NaN };
-    const compact = text ? compactSlideSummaryText(text, slideSummaryCap) : "";
-    const withTitle = compact ? ensureSlideTitleLine({ text: compact, slide, total }) : "";
+    const normalized = text ? normalizeSlideBodyStyle(text, slideSummaryCap) : "";
+    const withTitle = normalized ? ensureSlideTitleLine({ text: normalized, slide, total }) : "";
     parts.push(withTitle ? `[slide:${slideIndex}]\n${withTitle}` : `[slide:${slideIndex}]`);
   }
   return parts.join("\n\n");

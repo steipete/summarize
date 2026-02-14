@@ -441,6 +441,50 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("[slide:2]\nSecond concise slide.");
   });
 
+  it("does not replace truncated summaries with transcript-like fallback dialog", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "This section starts as a concise recap but then trails off before it",
+      "",
+      "[slide:2]",
+      "Second slide remains concise.",
+    ].join("\n");
+    const transcriptLikeFallback =
+      "And I started at the A's and read through all the way through the Z's. >> Thank you, Tom. >> Would you like to see a better world?";
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: `[00:10] ${transcriptLikeFallback}\n[00:20] Another fallback line.`,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).not.toContain(">> Thank you, Tom");
+    expect(coerced).not.toContain("Would you like to see a better world");
+    expect(coerced).toContain("[slide:2]\nSecond slide remains concise.");
+  });
+
+  it("rewrites transcript-like direct speech into neutral slide prose", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "I'm going to show you everything I built and then we test a new model. >> Thank you, Tom. Would you like to subscribe?",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).toContain("The speaker");
+    expect(coerced).not.toContain(">>");
+    expect(coerced).not.toContain("Would you like to subscribe");
+    expect(coerced).not.toContain("I'm going to");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },
