@@ -480,6 +480,7 @@ describe("slides text helpers", () => {
     });
     expect(coerced).toContain("[slide:1]");
     expect(coerced).toContain("The speaker");
+    expect(coerced).not.toContain("The speaker The speaker");
     expect(coerced).not.toContain(">>");
     expect(coerced).not.toContain("Would you like to subscribe");
     expect(coerced).not.toContain("I'm going to");
