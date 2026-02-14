@@ -493,6 +493,20 @@ function splitExplicitSlideTitleFromText(
   return null;
 }
 
+function removeLeadingTitleEcho(body: string, title: string): string {
+  const normalizedBody = normalizeSlideText(body);
+  const normalizedTitle = normalizeSlideText(title);
+  if (!normalizedBody || !normalizedTitle) return body;
+  const bodyLower = normalizedBody.toLowerCase();
+  const titleLower = normalizedTitle.toLowerCase();
+  if (!bodyLower.startsWith(titleLower)) return body;
+
+  const boundary = normalizedBody.slice(normalizedTitle.length).match(/^\s*[:\-–—]?\s*/);
+  const start = normalizedTitle.length + (boundary?.[0]?.length ?? 0);
+  const trimmed = normalizedBody.slice(start).trim();
+  return trimmed.length > 0 ? trimmed : body;
+}
+
 export function buildSlideTextFallback({
   slides,
   transcriptTimedText,
@@ -660,7 +674,8 @@ export function coerceSummaryWithSlides({
       if (text) {
         const explicit = splitExplicitSlideTitleFromText(text);
         if (explicit) {
-          text = `${explicit.title}\n${compactSlideSummaryText(explicit.body, slideSummaryCap)}`;
+          const deEchoed = removeLeadingTitleEcho(explicit.body, explicit.title);
+          text = `${explicit.title}\n${compactSlideSummaryText(deEchoed, slideSummaryCap)}`;
         } else {
           text = compactSlideSummaryText(text, slideSummaryCap);
         }
