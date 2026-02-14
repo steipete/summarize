@@ -569,7 +569,7 @@ export function coerceSummaryWithSlides({
           total: ordered.length,
         });
         const body = parsed.body || text;
-        if (looksTruncatedSlideBody(body)) {
+        if (looksTruncatedSlideBody(body, fallbackText)) {
           const hasExplicitTitle =
             Boolean(parsed.title) && Boolean(parsed.body) && parsed.body.trim() !== text.trim();
           text = hasExplicitTitle && parsed.title ? `${parsed.title}\n${fallbackText}` : fallbackText;
@@ -864,17 +864,34 @@ const TRUNCATED_TAIL_CONNECTORS = new Set([
   "as",
 ]);
 
-function looksTruncatedSlideBody(value: string): boolean {
+function looksTruncatedSlideBody(value: string, fallbackText?: string | null): boolean {
   const normalized = normalizeSlideText(value);
   if (!normalized) return false;
   const words = normalized.split(/\s+/).filter(Boolean);
   if (words.length === 0) return false;
   if (/(?:\.{3,}|…)\s*$/u.test(normalized)) return words.length >= 6;
   if (/[.!?]["')\]]?$/.test(normalized)) return false;
-  // Avoid replacing long narrative sections with raw transcript fallback.
-  if (words.length < 8 || words.length > 60) return false;
+  // Avoid replacing very short snippets and very long narrative sections.
+  if (words.length < 8 || words.length > 120) return false;
   const tail = (words[words.length - 1] ?? "").toLowerCase().replace(/[^a-z]+/g, "");
-  return TRUNCATED_TAIL_CONNECTORS.has(tail);
+  if (TRUNCATED_TAIL_CONNECTORS.has(tail)) return true;
+
+  const fallback = normalizeSlideText(fallbackText ?? "");
+  if (!fallback) return false;
+  const fallbackWords = fallback.split(/\s+/).filter(Boolean);
+  if (fallbackWords.length < 10) return false;
+
+  const danglingTailWordPattern =
+    /\b(?:to|for|of|and|or|but|that|which|because|if|when|while|than|as|so|very|much|more|less|about|with|from|into|onto|through|over|under|around|between|without|within|before|after|during|across|toward|towards|up|down|out|off|on|in|at|by|you|we|they|he|she|it|this|that|these|those|my|your|his|her|their|our|the|a|an)$/i;
+  const hasDanglingTailWord = danglingTailWordPattern.test(normalized);
+
+  // If model text ends mid-thought and fallback is substantially richer,
+  // prefer the fallback excerpt for this slide.
+  if (fallbackWords.length >= words.length + 8) return true;
+  if (hasDanglingTailWord && fallbackWords.length >= Math.max(10, Math.floor(words.length * 0.6))) {
+    return true;
+  }
+  return false;
 }
 
 function truncateSlideText(value: string, limit: number): string {

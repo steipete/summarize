@@ -369,6 +369,31 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("[slide:2]\nComplete second slide sentence.");
   });
 
+  it("replaces mid-sentence slide truncation when fallback has richer coverage", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "Real manifestation means training your mind and building the belief that you can act consistently and keep believing you",
+      "",
+      "[slide:2]",
+      "Complete second slide sentence.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText:
+        "[00:10] Real manifestation means building belief through repeated action and disciplined follow-through until success compounds.\n[00:20] Second fallback sentence.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain(
+      "[slide:1]\nReal manifestation means building belief through repeated action",
+    );
+    expect(coerced).toContain("[slide:2]\nComplete second slide sentence.");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },
