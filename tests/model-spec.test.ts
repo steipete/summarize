@@ -11,6 +11,46 @@ describe("model spec parsing", () => {
     expect(() => parseRequestedModelId("foobar")).toThrow(/Unknown model/);
   });
 
+  it("parses minimax alias model ids", () => {
+    const parsed = parseRequestedModelId("minimax");
+    expect(parsed.kind).toBe("fixed");
+    expect(parsed.transport).toBe("native");
+    expect(parsed.userModelId).toBe("openai/minimax-m2.5");
+    expect(parsed.llmModelId).toBe("openai/minimax-m2.5");
+    expect(parsed.requiredEnv).toBe("MINIMAX_API_KEY");
+    expect(parsed.forceChatCompletions).toBe(true);
+    expect(parsed.openaiBaseUrlOverride).toBe("https://api.minimax.io/v1");
+  });
+
+  it("parses minimax/<model> ids", () => {
+    const parsed = parseRequestedModelId("minimax/MiniMax-M2.5");
+    expect(parsed.kind).toBe("fixed");
+    expect(parsed.transport).toBe("native");
+    expect(parsed.userModelId).toBe("openai/minimax-m2.5");
+    expect(parsed.llmModelId).toBe("openai/minimax-m2.5");
+    expect(parsed.requiredEnv).toBe("MINIMAX_API_KEY");
+  });
+
+  it("parses kimi alias model ids", () => {
+    const parsed = parseRequestedModelId("kimi");
+    expect(parsed.kind).toBe("fixed");
+    expect(parsed.transport).toBe("native");
+    expect(parsed.userModelId).toBe("openai/kimi-k2.5");
+    expect(parsed.llmModelId).toBe("openai/kimi-k2.5");
+    expect(parsed.requiredEnv).toBe("KIMI_API_KEY");
+    expect(parsed.forceChatCompletions).toBe(true);
+    expect(parsed.openaiBaseUrlOverride).toBe("https://api.moonshot.ai/v1");
+  });
+
+  it("parses kimi/<model> ids", () => {
+    const parsed = parseRequestedModelId("kimi/kimi-k2-thinking");
+    expect(parsed.kind).toBe("fixed");
+    expect(parsed.transport).toBe("native");
+    expect(parsed.userModelId).toBe("openai/kimi-k2-thinking");
+    expect(parsed.llmModelId).toBe("openai/kimi-k2-thinking");
+    expect(parsed.requiredEnv).toBe("KIMI_API_KEY");
+  });
+
   it("parses cli model ids", () => {
     const parsed = parseRequestedModelId("cli/claude/sonnet");
     expect(parsed.kind).toBe("fixed");

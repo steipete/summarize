@@ -232,6 +232,47 @@ describe("llm generate/stream", () => {
     expect(streamArgs).toMatchObject({ temperature: 0.2 });
   });
 
+  it("forces temperature=1 for OpenAI Kimi models", async () => {
+    mocks.completeSimple.mockClear();
+    mocks.streamSimple.mockClear();
+
+    await generateTextWithModelId({
+      modelId: "openai/kimi-k2.5",
+      apiKeys: {
+        openaiApiKey: "k",
+        xaiApiKey: null,
+        googleApiKey: null,
+        anthropicApiKey: null,
+        openrouterApiKey: null,
+      },
+      prompt: { userText: "hi" },
+      temperature: 0,
+      timeoutMs: 2000,
+      fetchImpl: globalThis.fetch.bind(globalThis),
+    });
+
+    await streamTextWithModelId({
+      modelId: "openai/kimi-k2.5",
+      apiKeys: {
+        openaiApiKey: "k",
+        xaiApiKey: null,
+        googleApiKey: null,
+        anthropicApiKey: null,
+        openrouterApiKey: null,
+      },
+      prompt: { userText: "hi" },
+      temperature: 0,
+      timeoutMs: 2000,
+      fetchImpl: globalThis.fetch.bind(globalThis),
+    });
+
+    const generateArgs = (mocks.completeSimple.mock.calls[0]?.[2] ?? {}) as Record<string, unknown>;
+    const streamArgs = (mocks.streamSimple.mock.calls[0]?.[2] ?? {}) as Record<string, unknown>;
+
+    expect(generateArgs).toMatchObject({ temperature: 1 });
+    expect(streamArgs).toMatchObject({ temperature: 1 });
+  });
+
   it("uses Anthropic document calls for PDF prompts", async () => {
     mocks.completeSimple.mockClear();
 
@@ -482,6 +523,38 @@ describe("llm generate/stream", () => {
 
     expect(result.text).toBe("ok");
     expect(mocks.completeSimple).toHaveBeenCalledTimes(2);
+  });
+
+  it("surfaces provider errors when OpenAI-compatible output is empty", async () => {
+    mocks.completeSimple.mockClear();
+    mocks.completeSimple.mockImplementationOnce(async () => ({
+      ...makeAssistantMessage({
+        provider: "openai",
+        model: "minimax-m2.5",
+        api: "openai-completions",
+        text: "   ",
+        usage: { input: 0, output: 0, totalTokens: 0 },
+      }),
+      errorMessage: "insufficient balance (1008)",
+    }));
+
+    await expect(
+      generateTextWithModelId({
+        modelId: "openai/minimax-m2.5",
+        apiKeys: {
+          openaiApiKey: "k",
+          xaiApiKey: null,
+          googleApiKey: null,
+          anthropicApiKey: null,
+          openrouterApiKey: null,
+        },
+        prompt: { userText: "hi" },
+        timeoutMs: 2000,
+        fetchImpl: globalThis.fetch.bind(globalThis),
+        openaiBaseUrlOverride: "https://api.minimax.io/v1",
+        forceChatCompletions: true,
+      }),
+    ).rejects.toThrow(/insufficient balance/i);
   });
 
   it("enforces missing-key errors per provider", async () => {

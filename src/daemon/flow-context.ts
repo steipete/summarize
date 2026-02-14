@@ -172,6 +172,10 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     anthropicApiKey,
     zaiApiKey,
     zaiBaseUrl,
+    minimaxApiKey,
+    minimaxBaseUrl,
+    kimiApiKey,
+    kimiBaseUrl,
     providerBaseUrls,
     firecrawlApiKey,
     firecrawlConfigured,
@@ -264,6 +268,8 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
       openrouterConfigured,
     },
     zai: { apiKey: zaiApiKey, baseUrl: zaiBaseUrl },
+    minimax: { apiKey: minimaxApiKey, baseUrl: minimaxBaseUrl },
+    kimi: { apiKey: kimiApiKey, baseUrl: kimiBaseUrl },
     providerBaseUrls,
   });
 
@@ -347,6 +353,10 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
       providerBaseUrls,
       zaiApiKey,
       zaiBaseUrl,
+      minimaxApiKey,
+      minimaxBaseUrl,
+      kimiApiKey,
+      kimiBaseUrl,
     },
   };
 
@@ -424,6 +434,10 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
         providerBaseUrls,
         zaiApiKey,
         zaiBaseUrl,
+        minimaxApiKey,
+        minimaxBaseUrl,
+        kimiApiKey,
+        kimiBaseUrl,
         firecrawlConfigured,
         firecrawlApiKey,
         apifyToken,

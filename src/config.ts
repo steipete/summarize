@@ -76,6 +76,8 @@ export type GoogleConfig = {
 
 export type ApiKeysConfig = {
   openai?: string;
+  minimax?: string;
+  kimi?: string;
   anthropic?: string;
   google?: string;
   xai?: string;
@@ -119,7 +121,7 @@ export type AutoRule = {
   /**
    * Candidate model ids (ordered).
    *
-   * - Native: `openai/...`, `google/...`, `xai/...`, `anthropic/...`, `zai/...`
+   * - Native: `openai/...`, `minimax`, `minimax/...`, `kimi`, `kimi/...`, `google/...`, `xai/...`, `anthropic/...`, `zai/...`
    * - OpenRouter (forced): `openrouter/<provider>/<model>` (e.g. `openrouter/openai/gpt-5-mini`)
    */
   candidates?: string[];
@@ -231,6 +233,8 @@ function resolveLegacyApiKeysEnv(apiKeys: ApiKeysConfig | undefined): EnvConfig 
   if (!apiKeys) return {};
   const mapped: EnvConfig = {};
   if (typeof apiKeys.openai === "string") mapped.OPENAI_API_KEY = apiKeys.openai;
+  if (typeof apiKeys.minimax === "string") mapped.MINIMAX_API_KEY = apiKeys.minimax;
+  if (typeof apiKeys.kimi === "string") mapped.KIMI_API_KEY = apiKeys.kimi;
   if (typeof apiKeys.anthropic === "string") mapped.ANTHROPIC_API_KEY = apiKeys.anthropic;
   if (typeof apiKeys.google === "string") mapped.GEMINI_API_KEY = apiKeys.google;
   if (typeof apiKeys.xai === "string") mapped.XAI_API_KEY = apiKeys.xai;
@@ -1174,6 +1178,8 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
     const keys: Record<string, string> = {};
     const allowed = [
       "openai",
+      "minimax",
+      "kimi",
       "anthropic",
       "google",
       "xai",

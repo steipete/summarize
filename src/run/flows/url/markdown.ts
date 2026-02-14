@@ -67,13 +67,32 @@ export function createMarkdownConverters(
       ctx.model.requestedModel.kind === "fixed" &&
       ctx.model.requestedModel.transport === "native"
     ) {
-      if (ctx.model.fixedModelSpec?.requiredEnv === "Z_AI_API_KEY") {
+      if (
+        ctx.model.fixedModelSpec?.requiredEnv === "Z_AI_API_KEY" ||
+        ctx.model.fixedModelSpec?.requiredEnv === "MINIMAX_API_KEY" ||
+        ctx.model.fixedModelSpec?.requiredEnv === "KIMI_API_KEY"
+      ) {
+        const providerOverride =
+          ctx.model.fixedModelSpec.requiredEnv === "Z_AI_API_KEY"
+            ? {
+                apiKey: ctx.model.apiStatus.zaiApiKey,
+                baseUrl: ctx.model.apiStatus.zaiBaseUrl,
+              }
+            : ctx.model.fixedModelSpec.requiredEnv === "MINIMAX_API_KEY"
+              ? {
+                  apiKey: ctx.model.apiStatus.minimaxApiKey,
+                  baseUrl: ctx.model.apiStatus.minimaxBaseUrl,
+                }
+              : {
+                  apiKey: ctx.model.apiStatus.kimiApiKey,
+                  baseUrl: ctx.model.apiStatus.kimiBaseUrl,
+                };
         return {
           llmModelId: ctx.model.requestedModel.llmModelId,
           forceOpenRouter: false,
           requiredEnv: ctx.model.fixedModelSpec.requiredEnv,
-          openaiApiKeyOverride: ctx.model.apiStatus.zaiApiKey,
-          openaiBaseUrlOverride: ctx.model.apiStatus.zaiBaseUrl,
+          openaiApiKeyOverride: providerOverride.apiKey,
+          openaiBaseUrlOverride: providerOverride.baseUrl,
           forceChatCompletions: true,
         };
       }
@@ -136,6 +155,9 @@ export function createMarkdownConverters(
     if (!markdownModel) return false;
     if (markdownModel.forceOpenRouter) return ctx.model.apiStatus.openrouterConfigured;
     if (markdownModel.requiredEnv === "Z_AI_API_KEY") return Boolean(ctx.model.apiStatus.zaiApiKey);
+    if (markdownModel.requiredEnv === "MINIMAX_API_KEY")
+      return Boolean(ctx.model.apiStatus.minimaxApiKey);
+    if (markdownModel.requiredEnv === "KIMI_API_KEY") return Boolean(ctx.model.apiStatus.kimiApiKey);
     if (markdownModel.openaiApiKeyOverride) return true;
     const parsed = parseGatewayStyleModelId(markdownModel.llmModelId);
     return parsed.provider === "xai"
@@ -157,6 +179,8 @@ export function createMarkdownConverters(
     const required = (() => {
       if (markdownModel?.forceOpenRouter) return "OPENROUTER_API_KEY";
       if (markdownModel?.requiredEnv === "Z_AI_API_KEY") return "Z_AI_API_KEY";
+      if (markdownModel?.requiredEnv === "MINIMAX_API_KEY") return "MINIMAX_API_KEY";
+      if (markdownModel?.requiredEnv === "KIMI_API_KEY") return "KIMI_API_KEY";
       if (markdownModel) {
         const parsed = parseGatewayStyleModelId(markdownModel.llmModelId);
         return parsed.provider === "xai"

@@ -110,7 +110,7 @@ export function buildProgram() {
     .option("--retries <count>", "LLM retry attempts on timeout (default: 1).", "1")
     .option(
       "--model <model>",
-      "LLM model id: auto, <name>, cli/<provider>/<model>, xai/..., openai/..., google/..., anthropic/..., zai/... or openrouter/<author>/<slug> (default: auto)",
+      "LLM model id: auto, minimax, minimax/<model>, kimi, kimi/<model>, <name>, cli/<provider>/<model>, xai/..., openai/..., google/..., anthropic/..., zai/... or openrouter/<author>/<slug> (default: auto)",
       undefined,
     )
     .option(
@@ -242,6 +242,8 @@ ${heading("Examples")}
   ${cmd('summarize slides "https://www.youtube.com/watch?v=..." --render auto')} ${dim("# slides-only mode with inline thumbnails")}
   ${cmd("summarize transcriber setup")} ${dim("# configure local ONNX transcription (parakeet/canary)")}
   ${cmd('summarize "https://example.com" --length 20k --max-output-tokens 2k --timeout 2m --model openai/gpt-5-mini')}
+  ${cmd('summarize "https://example.com" --model minimax')}
+  ${cmd('summarize "https://example.com" --model kimi')}
   ${cmd('summarize "https://example.com" --model mymodel')} ${dim("# config preset")}
   ${cmd('summarize "https://example.com" --json --verbose')}
   ${cmd("pbpaste | summarize -")} ${dim("# summarize clipboard content")}
@@ -253,6 +255,10 @@ ${heading("Env Vars")}
   OPENAI_WHISPER_BASE_URL optional (OpenAI-compatible Whisper endpoint override)
   OPENAI_BASE_URL       optional (OpenAI-compatible API endpoint; e.g. OpenRouter)
   OPENAI_USE_CHAT_COMPLETIONS optional (force OpenAI chat completions)
+  MINIMAX_API_KEY       optional (required for minimax and minimax/... models)
+  MINIMAX_BASE_URL      optional (override MiniMax OpenAI-compatible endpoint)
+  KIMI_API_KEY          optional (required for kimi and kimi/... models; alias: MOONSHOT_API_KEY)
+  KIMI_BASE_URL         optional (override Kimi OpenAI-compatible endpoint; alias: MOONSHOT_BASE_URL)
   OPENROUTER_API_KEY    optional (routes openai/... models through OpenRouter)
   Z_AI_API_KEY          optional (required for zai/... models)
   Z_AI_BASE_URL         optional (override default Z.AI base URL)

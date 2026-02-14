@@ -3,6 +3,8 @@ import type { CliProvider } from "../config.js";
 export type ModelAttemptRequiredEnv =
   | "XAI_API_KEY"
   | "OPENAI_API_KEY"
+  | "MINIMAX_API_KEY"
+  | "KIMI_API_KEY"
   | "GEMINI_API_KEY"
   | "ANTHROPIC_API_KEY"
   | "OPENROUTER_API_KEY"

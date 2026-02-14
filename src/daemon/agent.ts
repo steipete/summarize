@@ -395,6 +395,8 @@ type AgentApiKeys = {
   googleApiKey: string | null;
   xaiApiKey: string | null;
   zaiApiKey: string | null;
+  minimaxApiKey: string | null;
+  kimiApiKey: string | null;
 };
 
 const REQUIRED_ENV_BY_PROVIDER: Record<string, string> = {
@@ -459,6 +461,10 @@ async function resolveAgentModel({
     googleApiKey,
     xaiApiKey,
     zaiApiKey,
+    minimaxApiKey,
+    minimaxBaseUrl,
+    kimiApiKey,
+    kimiBaseUrl,
     providerBaseUrls,
     zaiBaseUrl,
     envForAuto,
@@ -480,6 +486,8 @@ async function resolveAgentModel({
     googleApiKey,
     xaiApiKey,
     zaiApiKey,
+    minimaxApiKey,
+    kimiApiKey,
   };
 
   const overrides = resolveRunOverrides({});
@@ -516,6 +524,37 @@ async function resolveAgentModel({
       return { model: applyBaseUrlOverride(provider, modelId), maxOutputTokens, apiKeys };
     }
 
+    if (requestedModel.requiredEnv === "MINIMAX_API_KEY") {
+      const parsed = parseProviderModelId(requestedModel.llmModelId);
+      return {
+        model: resolveModelWithFallback({
+          provider: "openai",
+          modelId: parsed.model,
+          baseUrl: minimaxBaseUrl,
+        }),
+        maxOutputTokens,
+        apiKeys: {
+          ...apiKeys,
+          openaiApiKey: minimaxApiKey,
+        },
+      };
+    }
+    if (requestedModel.requiredEnv === "KIMI_API_KEY") {
+      const parsed = parseProviderModelId(requestedModel.llmModelId);
+      return {
+        model: resolveModelWithFallback({
+          provider: "openai",
+          modelId: parsed.model,
+          baseUrl: kimiBaseUrl,
+        }),
+        maxOutputTokens,
+        apiKeys: {
+          ...apiKeys,
+          openaiApiKey: kimiApiKey,
+        },
+      };
+    }
+
     const { provider, model } = parseProviderModelId(requestedModel.userModelId);
     return { model: applyBaseUrlOverride(provider, model), maxOutputTokens, apiKeys };
   }
@@ -540,6 +579,36 @@ async function resolveAgentModel({
   for (const attempt of attempts) {
     if (attempt.transport === "cli") continue;
     if (!envHasKey(envForAuto, attempt.requiredEnv)) continue;
+    if (attempt.requiredEnv === "MINIMAX_API_KEY") {
+      const parsed = parseProviderModelId(attempt.llmModelId ?? attempt.userModelId);
+      return {
+        model: resolveModelWithFallback({
+          provider: "openai",
+          modelId: parsed.model,
+          baseUrl: minimaxBaseUrl,
+        }),
+        maxOutputTokens,
+        apiKeys: {
+          ...apiKeys,
+          openaiApiKey: minimaxApiKey,
+        },
+      };
+    }
+    if (attempt.requiredEnv === "KIMI_API_KEY") {
+      const parsed = parseProviderModelId(attempt.llmModelId ?? attempt.userModelId);
+      return {
+        model: resolveModelWithFallback({
+          provider: "openai",
+          modelId: parsed.model,
+          baseUrl: kimiBaseUrl,
+        }),
+        maxOutputTokens,
+        apiKeys: {
+          ...apiKeys,
+          openaiApiKey: kimiApiKey,
+        },
+      };
+    }
     if (attempt.transport === "openrouter") {
       const modelId = attempt.userModelId.replace(/^openrouter\//i, "");
       return { model: applyBaseUrlOverride("openrouter", modelId), maxOutputTokens, apiKeys };

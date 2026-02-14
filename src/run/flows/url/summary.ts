@@ -654,7 +654,7 @@ export async function summarizeExtractedUrl({
       }
       return list.map((attempt) => {
         if (attempt.transport !== "cli")
-          return model.summaryEngine.applyZaiOverrides(attempt as ModelAttempt);
+          return model.summaryEngine.applyOpenAiProviderOverrides(attempt as ModelAttempt);
         const parsed = parseCliUserModelId(attempt.userModelId);
         return { ...attempt, cliProvider: parsed.provider, cliModel: parsed.model };
       });
@@ -684,6 +684,18 @@ export async function summarizeExtractedUrl({
             openaiBaseUrlOverride: model.apiStatus.zaiBaseUrl,
             forceChatCompletions: true,
           }
+        : model.fixedModelSpec.requiredEnv === "MINIMAX_API_KEY"
+          ? {
+              openaiApiKeyOverride: model.apiStatus.minimaxApiKey,
+              openaiBaseUrlOverride: model.apiStatus.minimaxBaseUrl,
+              forceChatCompletions: true,
+            }
+          : model.fixedModelSpec.requiredEnv === "KIMI_API_KEY"
+            ? {
+                openaiApiKeyOverride: model.apiStatus.kimiApiKey,
+                openaiBaseUrlOverride: model.apiStatus.kimiBaseUrl,
+                forceChatCompletions: true,
+              }
         : {};
     return [
       {

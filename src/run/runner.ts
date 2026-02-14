@@ -405,6 +405,10 @@ export async function runCli(
     anthropicApiKey,
     zaiApiKey,
     zaiBaseUrl,
+    minimaxApiKey,
+    minimaxBaseUrl,
+    kimiApiKey,
+    kimiBaseUrl,
     providerBaseUrls,
     firecrawlApiKey,
     firecrawlConfigured,
@@ -643,6 +647,14 @@ export async function runCli(
         apiKey: zaiApiKey,
         baseUrl: zaiBaseUrl,
       },
+      minimax: {
+        apiKey: minimaxApiKey,
+        baseUrl: minimaxBaseUrl,
+      },
+      kimi: {
+        apiKey: kimiApiKey,
+        baseUrl: kimiBaseUrl,
+      },
       providerBaseUrls,
     });
     const writeViaFooter = (parts: string[]) => {
@@ -717,6 +729,10 @@ export async function runCli(
         providerBaseUrls,
         zaiApiKey,
         zaiBaseUrl,
+        minimaxApiKey,
+        minimaxBaseUrl,
+        kimiApiKey,
+        kimiBaseUrl,
       },
     };
 
@@ -902,6 +918,10 @@ export async function runCli(
           providerBaseUrls,
           zaiApiKey,
           zaiBaseUrl,
+          minimaxApiKey,
+          minimaxBaseUrl,
+          kimiApiKey,
+          kimiBaseUrl,
           firecrawlConfigured,
           firecrawlApiKey,
           apifyToken,

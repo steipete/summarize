@@ -220,8 +220,9 @@ export function createSlidesInlineRenderer({
         name: path.basename(slide.imagePath) || "slide.png",
       });
     }
-    stdout.write("\n".repeat(Math.max(1, rows)));
-    stdout.write("\n");
+    const visualRows = Math.max(1, rows);
+    stdout.write("\r\n".repeat(visualRows));
+    stdout.write("\r\n");
     return true;
   };
 

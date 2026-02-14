@@ -138,6 +138,10 @@ function isOpenaiGpt5Model(parsed: ReturnType<typeof parseGatewayStyleModelId>):
   return parsed.provider === "openai" && /^gpt-5([-.].+)?$/i.test(parsed.model);
 }
 
+function isOpenaiKimiModel(parsed: ReturnType<typeof parseGatewayStyleModelId>): boolean {
+  return parsed.provider === "openai" && /^kimi([-.].+)?$/i.test(parsed.model);
+}
+
 function resolveEffectiveTemperature({
   parsed,
   temperature,
@@ -147,6 +151,7 @@ function resolveEffectiveTemperature({
 }): number | undefined {
   if (typeof temperature !== "number") return undefined;
   if (isOpenaiGpt5Model(parsed)) return undefined;
+  if (isOpenaiKimiModel(parsed)) return 1;
   return temperature;
 }
 

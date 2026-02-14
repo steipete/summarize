@@ -3,6 +3,55 @@ import type { SummarizeConfig } from "../src/config.js";
 import { buildAutoModelAttempts } from "../src/model-auto.js";
 
 describe("auto model selection", () => {
+  it("supports minimax aliases in auto candidates", () => {
+    const config: SummarizeConfig = {
+      model: {
+        mode: "auto",
+        rules: [{ candidates: ["minimax", "minimax/MiniMax-M2.5"] }],
+      },
+    };
+    const attempts = buildAutoModelAttempts({
+      kind: "text",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: { MINIMAX_API_KEY: "mm-key" },
+      config,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+    });
+
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]?.userModelId).toBe("openai/minimax-m2.5");
+    expect(attempts[0]?.llmModelId).toBe("openai/minimax-m2.5");
+    expect(attempts[0]?.requiredEnv).toBe("MINIMAX_API_KEY");
+  });
+
+  it("supports kimi aliases in auto candidates", () => {
+    const config: SummarizeConfig = {
+      model: {
+        mode: "auto",
+        rules: [{ candidates: ["kimi", "kimi/kimi-k2-thinking"] }],
+      },
+    };
+    const attempts = buildAutoModelAttempts({
+      kind: "text",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: { KIMI_API_KEY: "kimi-key" },
+      config,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+    });
+
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]?.userModelId).toBe("openai/kimi-k2.5");
+    expect(attempts[0]?.requiredEnv).toBe("KIMI_API_KEY");
+    expect(attempts[1]?.userModelId).toBe("openai/kimi-k2-thinking");
+    expect(attempts[1]?.requiredEnv).toBe("KIMI_API_KEY");
+  });
+
   it("preserves candidate order (native then OpenRouter fallback)", () => {
     const config: SummarizeConfig = {
       model: {

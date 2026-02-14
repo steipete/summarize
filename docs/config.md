@@ -121,6 +121,8 @@ Legacy shortcut (still supported):
 {
   "apiKeys": {
     "openai": "sk-...",
+    "minimax": "...",
+    "kimi": "...",
     "anthropic": "sk-ant-...",
     "google": "...",
     "openrouter": "sk-or-...",
