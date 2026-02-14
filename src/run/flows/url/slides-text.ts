@@ -424,6 +424,75 @@ function distributeTextAcrossSlides({
   });
 }
 
+function compactSlideSummaryText(value: string, maxChars: number): string {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return normalized;
+  if (!Number.isFinite(maxChars) || maxChars <= 0) return normalized;
+  if (normalized.length <= maxChars) return normalized;
+
+  const sentenceMatches = normalized.match(/[^.!?]+[.!?]["')\]]?(?=\s|$)/g) ?? [];
+  if (sentenceMatches.length > 0) {
+    let collected = "";
+    for (const sentence of sentenceMatches) {
+      const trimmed = sentence.trim();
+      if (!trimmed) continue;
+      const next = collected ? `${collected} ${trimmed}` : trimmed;
+      if (next.length > maxChars) break;
+      collected = next;
+    }
+    if (collected.length >= Math.floor(maxChars * 0.6)) {
+      return collected.trim();
+    }
+  }
+
+  const truncated = normalized
+    .slice(0, maxChars)
+    .trimEnd()
+    .replace(/\s+\S*$/, "")
+    .trim();
+  const compact = truncated.length > 0 ? truncated : normalized.slice(0, maxChars).trim();
+  if (!compact) return normalized;
+  return /[.!?]["')\]]?$/.test(compact) ? compact : `${compact}.`;
+}
+
+function splitExplicitSlideTitleFromText(
+  text: string,
+): { title: string; body: string } | null {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !SLIDE_LABEL_PATTERN.test(line) && !SLIDE_TAG_PATTERN.test(line));
+  if (lines.length < 2) return null;
+
+  const first = lines[0] ?? "";
+  const titleLabelMatch = first.match(/^(?:title|headline)\s*:\s*(.*)$/i);
+  if (titleLabelMatch) {
+    const labelText = collapseLineWhitespace(titleLabelMatch[1] ?? "").trim();
+    if (labelText) {
+      const body = lines.slice(1).join(" ").trim();
+      return body ? { title: labelText, body } : null;
+    }
+    const nextTitle = collapseLineWhitespace(lines[1] ?? "").trim();
+    const body = lines.slice(2).join(" ").trim();
+    return nextTitle && body ? { title: nextTitle, body } : null;
+  }
+
+  const headingMatch = first.match(/^#{1,6}\s+(.+)/);
+  if (headingMatch) {
+    const title = collapseLineWhitespace(headingMatch[1] ?? "").trim();
+    const body = lines.slice(1).join(" ").trim();
+    return title && body ? { title, body } : null;
+  }
+
+  if (isTitleOnlySlideText(first) && !isTitleOnlySlideText(lines[1] ?? "")) {
+    const body = lines.slice(1).join(" ").trim();
+    return body ? { title: first, body } : null;
+  }
+
+  return null;
+}
+
 export function buildSlideTextFallback({
   slides,
   transcriptTimedText,
@@ -470,6 +539,13 @@ export function coerceSummaryWithSlides({
 }): string {
   if (!markdown.trim() || slides.length === 0) return markdown;
   const ordered = slides.slice().sort((a, b) => a.index - b.index);
+  const slideSummaryCap = Math.max(
+    240,
+    Math.min(
+      1800,
+      resolveSlideTextBudget({ lengthArg, slideCount: ordered.length }) * 2,
+    ),
+  );
   const { summary, slidesSection } = splitSummaryFromSlides(markdown);
   const intro = pickIntroParagraph(summary);
   const slideSummaries = slidesSection ? parseSlideSummariesFromMarkdown(markdown) : new Map();
@@ -581,6 +657,14 @@ export function coerceSummaryWithSlides({
           text = hasExplicitTitle && parsed.title ? `${parsed.title}\n${chosenBody}` : chosenBody;
         }
       }
+      if (text) {
+        const explicit = splitExplicitSlideTitleFromText(text);
+        if (explicit) {
+          text = `${explicit.title}\n${compactSlideSummaryText(explicit.body, slideSummaryCap)}`;
+        } else {
+          text = compactSlideSummaryText(text, slideSummaryCap);
+        }
+      }
       const withTitle = text ? ensureSlideTitleLine({ text, slide, total: ordered.length }) : "";
       parts.push(withTitle ? `[slide:${slide.index}]\n${withTitle}` : `[slide:${slide.index}]`);
     }
@@ -603,7 +687,10 @@ export function coerceSummaryWithSlides({
             ? `${parsedText}\n${fallbackText}`
             : parsedText
         : fallbackText;
-      const withTitle = text ? ensureSlideTitleLine({ text, slide, total: ordered.length }) : "";
+      const compact = text ? compactSlideSummaryText(text, slideSummaryCap) : "";
+      const withTitle = compact
+        ? ensureSlideTitleLine({ text: compact, slide, total: ordered.length })
+        : "";
       parts.push(withTitle ? `[slide:${slide.index}]\n${withTitle}` : `[slide:${slide.index}]`);
     }
     return parts.join("\n\n");
@@ -639,7 +726,8 @@ export function coerceSummaryWithSlides({
     const fallback = fallbackSummaries.get(slideIndex) ?? "";
     const text = segment || fallback;
     const slide = ordered[i] ?? { index: slideIndex, timestamp: Number.NaN };
-    const withTitle = text ? ensureSlideTitleLine({ text, slide, total }) : "";
+    const compact = text ? compactSlideSummaryText(text, slideSummaryCap) : "";
+    const withTitle = compact ? ensureSlideTitleLine({ text: compact, slide, total }) : "";
     parts.push(withTitle ? `[slide:${slideIndex}]\n${withTitle}` : `[slide:${slideIndex}]`);
   }
   return parts.join("\n\n");

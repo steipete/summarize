@@ -420,6 +420,27 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("[slide:2]\nSecond slide stays concise.");
   });
 
+  it("compacts oversized slide blocks into sentence-complete summaries", () => {
+    const slides = [
+      { index: 1, timestamp: 1 },
+      { index: 2, timestamp: 2 },
+    ];
+    const oversized = Array.from(
+      { length: 80 },
+      (_, i) => `Sentence ${i + 1} explains the same point in a repetitive way.`,
+    ).join(" ");
+    const coerced = coerceSummaryWithSlides({
+      markdown: ["[slide:1]", oversized, "", "[slide:2]", "Second concise slide."].join("\n"),
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).not.toContain("Sentence 40 explains the same point");
+    expect(coerced).toContain("Sentence 1 explains the same point");
+    expect(coerced).toContain("[slide:2]\nSecond concise slide.");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },
