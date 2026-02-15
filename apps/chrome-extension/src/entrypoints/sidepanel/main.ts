@@ -4032,7 +4032,7 @@ function toggleAdvancedSettings(force?: boolean, opts?: { animate?: boolean }) {
         { height: "0px", opacity: 0, transform: "translateY(-6px)" },
         { height: `${targetHeight}px`, opacity: 1, transform: "translateY(0px)" },
       ],
-      { duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)" },
+      { duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)", fill: "both" },
     );
     advancedSettingsAnimation.onfinish = () => {
       advancedSettingsAnimation = null;
@@ -4056,7 +4056,7 @@ function toggleAdvancedSettings(force?: boolean, opts?: { animate?: boolean }) {
       { height: `${currentHeight}px`, opacity: 1, transform: "translateY(0px)" },
       { height: "0px", opacity: 0, transform: "translateY(-6px)" },
     ],
-    { duration: 180, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+    { duration: 180, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "both" },
   );
   advancedSettingsAnimation.onfinish = () => {
     advancedSettingsAnimation = null;
