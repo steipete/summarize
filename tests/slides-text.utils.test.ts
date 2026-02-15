@@ -748,6 +748,30 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("Eckhart Tolle explains this segment.");
   });
 
+  it("injects speaker attribution in opening slide when name appears only later", () => {
+    const slides = [
+      { index: 1, timestamp: 1 },
+      { index: 2, timestamp: 10 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "The Ego and False Identity",
+      "The ego is the false self created through identification with thoughts and emotions.",
+      "",
+      "[slide:2]",
+      "The Pain Body",
+      "Eckhart Tolle says old emotional pain can reactivate and shape behavior.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "Eckhart Tolle - Ego and Presence",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("[slide:1]\nThe Ego and False Identity\nEckhart Tolle explains this segment.");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },

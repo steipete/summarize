@@ -83,11 +83,16 @@ function inferSpeakerName({
   markdown: string;
   sourceTitle?: string | null;
 }): string | null {
-  const text = collapseLineWhitespace(markdown);
-  SPEAKER_VERB_PATTERN.lastIndex = 0;
-  for (const match of text.matchAll(SPEAKER_VERB_PATTERN)) {
-    const candidate = collapseLineWhitespace(match[1] ?? "");
-    if (isLikelySpeakerName(candidate)) return candidate;
+  const lines = markdown
+    .split("\n")
+    .map((line) => collapseLineWhitespace(line))
+    .filter(Boolean);
+  for (const line of lines) {
+    SPEAKER_VERB_PATTERN.lastIndex = 0;
+    for (const match of line.matchAll(SPEAKER_VERB_PATTERN)) {
+      const candidate = collapseLineWhitespace(match[1] ?? "");
+      if (isLikelySpeakerName(candidate)) return candidate;
+    }
   }
   const title = collapseLineWhitespace(sourceTitle ?? "");
   if (!title) return null;
@@ -105,28 +110,24 @@ function applySpeakerAttribution(markdown: string, speakerName: string | null): 
   if (!speaker) return markdown;
   const speakerPattern = new RegExp(`\\b${escapeRegExp(speaker)}\\b`, "i");
   const replaced = markdown.replace(/\bThe speaker\b/gi, speaker);
-  if (speakerPattern.test(replaced)) return replaced;
 
   const blocks = replaced.split(/\n{2,}/);
   const slideBlockIndex = blocks.findIndex((block) => /^\[slide:\d+\]/m.test(block));
   if (slideBlockIndex < 0) return replaced;
   const block = blocks[slideBlockIndex] ?? "";
+  if (speakerPattern.test(block)) return replaced;
   const lines = block.split("\n");
   if (lines.length === 0) return replaced;
-  const slideTag = lines[0] ?? "";
-  if (!/^\[slide:\d+\]/.test(slideTag.trim())) return replaced;
-
-  if (lines.length === 1) {
-    blocks[slideBlockIndex] = `${slideTag}\n${speaker} is the speaker in this segment.`;
-    return blocks.join("\n\n");
+  const slideTagIndex = lines.findIndex((line) => /^\[slide:\d+\]/i.test(line.trim()));
+  if (slideTagIndex < 0) return replaced;
+  let insertAt = slideTagIndex + 1;
+  while (insertAt < lines.length && !lines[insertAt]?.trim()) insertAt += 1;
+  if (insertAt < lines.length && isTitleOnlySlideText(lines[insertAt]?.trim() ?? "")) {
+    insertAt += 1;
   }
-
-  const title = lines[1] ?? "";
-  const body = lines.slice(2).join("\n").trim();
-  const attributedBody = body
-    ? `${speaker} explains this segment. ${body}`
-    : `${speaker} is the speaker in this segment.`;
-  blocks[slideBlockIndex] = `${slideTag}\n${title}\n${attributedBody}`.trim();
+  const attributionLine = `${speaker} explains this segment.`;
+  lines.splice(insertAt, 0, attributionLine);
+  blocks[slideBlockIndex] = lines.join("\n").trim();
   return blocks.join("\n\n");
 }
 
