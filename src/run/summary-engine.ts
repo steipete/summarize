@@ -39,7 +39,7 @@ export type SummaryEngineDeps = {
   resolveMaxOutputTokensForCall: (modelId: string) => Promise<number | null>;
   resolveMaxInputTokensForCall: (modelId: string) => Promise<number | null>;
   llmCalls: Array<{
-    provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "cli";
+    provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex" | "cli";
     model: string;
     usage: Awaited<ReturnType<typeof summarizeWithModelId>>["usage"] | null;
     costUsd?: number | null;
@@ -73,6 +73,7 @@ export type SummaryEngineDeps = {
     google: string | null;
     xai: string | null;
   };
+  vertexConfig: { project: string; location: string } | null;
 };
 
 export type SummaryStreamHandler = {
@@ -302,6 +303,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
         googleBaseUrlOverride: deps.providerBaseUrls.google,
         xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+        vertexConfig: deps.vertexConfig,
         forceChatCompletions,
         retries: deps.retries,
         onRetry: createRetryLogger({
@@ -355,6 +357,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
         googleBaseUrlOverride: deps.providerBaseUrls.google,
         xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+        vertexConfig: deps.vertexConfig,
         forceChatCompletions,
         prompt,
         temperature: 0,
@@ -383,6 +386,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
           anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
           googleBaseUrlOverride: deps.providerBaseUrls.google,
           xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+        vertexConfig: deps.vertexConfig,
           forceChatCompletions,
           retries: deps.retries,
           onRetry: createRetryLogger({
@@ -424,6 +428,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
           anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
           googleBaseUrlOverride: deps.providerBaseUrls.google,
           xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+        vertexConfig: deps.vertexConfig,
           retries: deps.retries,
           onRetry: createRetryLogger({
             stderr: deps.stderr,

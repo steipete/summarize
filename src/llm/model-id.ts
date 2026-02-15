@@ -1,4 +1,4 @@
-export type LlmProvider = "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia";
+export type LlmProvider = "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex";
 
 export type ParsedModelId = {
   provider: LlmProvider;
@@ -12,7 +12,7 @@ export type ParsedModelId = {
   canonical: string;
 };
 
-const PROVIDERS: LlmProvider[] = ["xai", "openai", "google", "anthropic", "zai", "nvidia"];
+const PROVIDERS: LlmProvider[] = ["xai", "openai", "google", "anthropic", "zai", "nvidia", "vertex"];
 
 /**
  * Anthropic short model aliases that are NOT valid API model identifiers.
@@ -63,7 +63,7 @@ export function normalizeGatewayStyleModelId(raw: string): string {
   const model = normalized.slice(slash + 1);
   if (!PROVIDERS.includes(provider as LlmProvider)) {
     throw new Error(
-      `Unsupported model provider "${provider}". Use xai/..., openai/..., google/..., anthropic/..., zai/..., or nvidia/...`,
+      `Unsupported model provider "${provider}". Use xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., or vertex/...`,
     );
   }
   if (model.trim().length === 0) {

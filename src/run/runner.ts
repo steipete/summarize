@@ -412,6 +412,8 @@ export async function runCli(
     firecrawlConfigured,
     googleConfigured,
     anthropicConfigured,
+    vertexConfigured,
+    vertexConfig,
     apifyToken,
     ytDlpPath,
     ytDlpCookiesFromBrowser,
@@ -650,6 +652,7 @@ export async function runCli(
         baseUrl: nvidiaBaseUrl,
       },
       providerBaseUrls,
+      vertexConfig: vertexConfig ?? null,
     });
     const writeViaFooter = (parts: string[]) => {
       if (json) return;

@@ -13,13 +13,14 @@ export type FixedModelSpec =
       transport: "native";
       userModelId: string;
       llmModelId: string;
-      provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia";
+      provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex";
       openrouterProviders: string[] | null;
       forceOpenRouter: false;
       requiredEnv:
         | "XAI_API_KEY"
         | "OPENAI_API_KEY"
         | "GEMINI_API_KEY"
+        | "GOOGLE_CLOUD_PROJECT"
         | "ANTHROPIC_API_KEY"
         | "Z_AI_API_KEY"
         | "NVIDIA_API_KEY";
@@ -116,6 +117,23 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     };
   }
 
+  if (lower.startsWith("vertex/")) {
+    const model = trimmed.slice("vertex/".length).trim();
+    if (model.length === 0) {
+      throw new Error("Invalid model id: vertex/… is missing the model id");
+    }
+    return {
+      kind: "fixed",
+      transport: "native",
+      userModelId: `vertex/${model}`,
+      llmModelId: `vertex/${model}`,
+      provider: "vertex",
+      openrouterProviders: null,
+      forceOpenRouter: false,
+      requiredEnv: "GOOGLE_CLOUD_PROJECT",
+    };
+  }
+
   if (lower.startsWith("cli/")) {
     const parts = trimmed
       .split("/")
@@ -157,7 +175,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
 
   if (!trimmed.includes("/")) {
     throw new Error(
-      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., anthropic/..., xai/..., zai/..., openrouter/... or cli/....`,
+      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., vertex/..., anthropic/..., xai/..., zai/..., openrouter/... or cli/....`,
     );
   }
 
@@ -168,13 +186,15 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       ? "XAI_API_KEY"
       : parsed.provider === "google"
         ? "GEMINI_API_KEY"
-        : parsed.provider === "anthropic"
-          ? "ANTHROPIC_API_KEY"
-          : parsed.provider === "zai"
-            ? "Z_AI_API_KEY"
-            : parsed.provider === "nvidia"
-              ? "NVIDIA_API_KEY"
-              : "OPENAI_API_KEY";
+        : parsed.provider === "vertex"
+          ? "GOOGLE_CLOUD_PROJECT"
+          : parsed.provider === "anthropic"
+            ? "ANTHROPIC_API_KEY"
+            : parsed.provider === "zai"
+              ? "Z_AI_API_KEY"
+              : parsed.provider === "nvidia"
+                ? "NVIDIA_API_KEY"
+                : "OPENAI_API_KEY";
   return {
     kind: "fixed",
     transport: "native",

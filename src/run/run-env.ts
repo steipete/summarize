@@ -2,6 +2,11 @@ import { isOpenRouterBaseUrl, resolveConfiguredBaseUrl } from "@steipete/summari
 import type { CliProvider, SummarizeConfig } from "../config.js";
 import { resolveCliAvailability, resolveExecutableInPath } from "./env.js";
 
+export type VertexEnvConfig = {
+  project: string;
+  location: string;
+};
+
 export type EnvState = {
   apiKey: string | null;
   openrouterApiKey: string | null;
@@ -19,6 +24,8 @@ export type EnvState = {
   firecrawlConfigured: boolean;
   googleConfigured: boolean;
   anthropicConfigured: boolean;
+  vertexConfigured: boolean;
+  vertexConfig: VertexEnvConfig | null;
   apifyToken: string | null;
   ytDlpPath: string | null;
   ytDlpCookiesFromBrowser: string | null;
@@ -146,6 +153,31 @@ export function resolveEnvState({
   const openaiTranscriptionKey = openaiKeyRaw?.trim() ?? null;
   const googleConfigured = typeof googleApiKey === "string" && googleApiKey.length > 0;
   const anthropicConfigured = typeof anthropicApiKey === "string" && anthropicApiKey.length > 0;
+
+  // Vertex AI: requires project + location + some form of credentials (service account, ADC, or GCE metadata)
+  const vertexProject =
+    typeof envForRun.GOOGLE_CLOUD_PROJECT === "string"
+      ? envForRun.GOOGLE_CLOUD_PROJECT.trim()
+      : typeof envForRun.GCLOUD_PROJECT === "string"
+        ? envForRun.GCLOUD_PROJECT.trim()
+        : typeof envForRun.VERTEX_AI_PROJECT_ID === "string"
+          ? envForRun.VERTEX_AI_PROJECT_ID.trim()
+          : "";
+  const vertexLocation =
+    typeof envForRun.GOOGLE_CLOUD_LOCATION === "string"
+      ? envForRun.GOOGLE_CLOUD_LOCATION.trim()
+      : typeof envForRun.VERTEX_AI_LOCATION === "string"
+        ? envForRun.VERTEX_AI_LOCATION.trim()
+        : "";
+  const hasVertexCredentials =
+    typeof envForRun.VERTEX_AI_SERVICE_ACCOUNT_KEY === "string" ||
+    typeof envForRun.GOOGLE_SERVICE_ACCOUNT_KEY === "string" ||
+    typeof envForRun.GOOGLE_APPLICATION_CREDENTIALS === "string";
+  const vertexConfigured =
+    vertexProject.length > 0 && vertexLocation.length > 0 && hasVertexCredentials;
+  const vertexConfig: VertexEnvConfig | null = vertexConfigured
+    ? { project: vertexProject, location: vertexLocation }
+    : null;
   const openrouterConfigured = typeof openrouterApiKey === "string" && openrouterApiKey.length > 0;
   const cliAvailability = resolveCliAvailability({ env, config: configForCli });
   const envForAuto = openrouterApiKey ? { ...env, OPENROUTER_API_KEY: openrouterApiKey } : env;
@@ -174,6 +206,8 @@ export function resolveEnvState({
     firecrawlConfigured,
     googleConfigured,
     anthropicConfigured,
+    vertexConfigured,
+    vertexConfig,
     apifyToken,
     ytDlpPath,
     ytDlpCookiesFromBrowser,

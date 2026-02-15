@@ -179,6 +179,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     firecrawlConfigured,
     googleConfigured,
     anthropicConfigured,
+    vertexConfig,
     cliAvailability,
     envForAuto,
     apifyToken,
@@ -268,6 +269,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     zai: { apiKey: zaiApiKey, baseUrl: zaiBaseUrl },
     nvidia: { apiKey: nvidiaApiKey, baseUrl: nvidiaBaseUrl },
     providerBaseUrls,
+    vertexConfig: vertexConfig ?? null,
   });
 
   const outputLanguage = resolveOutputLanguageSetting({
