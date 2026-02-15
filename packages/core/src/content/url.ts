@@ -4,7 +4,7 @@ import { isTwitterBroadcastUrl, isTwitterStatusUrl } from "./link-preview/conten
 export const isYouTubeUrl = (rawUrl: string): boolean => {
   try {
     const hostname = new URL(rawUrl).hostname.toLowerCase();
-    return hostname.includes("youtube.com") || hostname.includes("youtu.be");
+    return hostname === "youtube.com" || hostname.endsWith(".youtube.com") || hostname === "youtu.be";
   } catch {
     const lower = rawUrl.toLowerCase();
     return lower.includes("youtube.com") || lower.includes("youtu.be");
@@ -48,7 +48,7 @@ export function isYouTubeVideoUrl(rawUrl: string): boolean {
       return Boolean(url.pathname.split("/").filter(Boolean)[0]);
     }
 
-    if (!hostname.includes("youtube.com")) {
+    if (hostname !== "youtube.com" && !hostname.endsWith(".youtube.com")) {
       return false;
     }
 
@@ -75,7 +75,7 @@ export function extractYouTubeVideoId(rawUrl: string): string | null {
     if (hostname === "youtu.be") {
       candidate = url.pathname.split("/")[1] ?? null;
     }
-    if (hostname.includes("youtube.com")) {
+    if (hostname === "youtube.com" || hostname.endsWith(".youtube.com")) {
       if (url.pathname.startsWith("/watch")) {
         candidate = url.searchParams.get("v");
       } else if (url.pathname.startsWith("/shorts/")) {

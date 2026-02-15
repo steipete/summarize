@@ -78,4 +78,17 @@ describe("content/url", () => {
     );
     expect(shouldPreferUrlMode("https://example.com/article")).toBe(false);
   });
+
+  it("should not be bypassed by malicious YouTube-like hostnames", () => {
+    const malicious = [
+      "https://attacker-youtube.com/watch?v=dQw4w9WgXcQ",
+      "https://notyoutube.com/watch?v=dQw4w9WgXcQ",
+      "https://youtube.com.attacker.com/watch?v=dQw4w9WgXcQ",
+    ];
+    for (const url of malicious) {
+      expect(isYouTubeUrl(url)).toBe(false);
+      expect(isYouTubeVideoUrl(url)).toBe(false);
+      expect(extractYouTubeVideoId(url)).toBeNull();
+    }
+  });
 });
