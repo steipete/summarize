@@ -675,6 +675,26 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("No statistical difference");
   });
 
+  it("drops low-signal conversational fragments in learning-tier last slide", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Resources for Skill Development Across Price Levels",
+      "This is the beginning of where things become a little bit more valuable. Their preference like when they get like at 5K and up,, 5K to call it,, 35K, this is where they are going to get the vast majority of their in-depth stuff. The speaker is going to have some level of in person that will typically be included in something like this. There is also going to be some education plus feedback. This is where honestly this is where they spent almost all of their money. So they think in some ways their impatience decreased their action threshold enough that they was they ended up being a high ticket buyer even though they wasn't they didn't have high ticket money. This is just an idea of and like these sometimes also come with like communities.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("up,,");
+    expect(coerced).not.toContain("they was they");
+    expect(coerced).not.toContain("they wasn't");
+    expect(coerced).not.toContain("idea of and like");
+    expect(coerced).toContain("education plus feedback");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },

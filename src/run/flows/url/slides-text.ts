@@ -510,6 +510,13 @@ function removeLeadingTitleEcho(body: string, title: string): string {
 function isTranscriptLikeSlideText(value: string): boolean {
   const normalized = normalizeSlideText(value);
   if (!normalized) return false;
+  if (
+    /(?:,{2,}|\bthey was\b|\bthey wasn't\b|\bthey was they\b|\bidea of and like\b|\bpreference like when they get like at\b)/i.test(
+      normalized,
+    )
+  ) {
+    return true;
+  }
   if (/(^|\s)>>\s*/.test(normalized)) return true;
   if (/^(?:[-*]\s+)?(?:um|uh|well|so|like|even like)\b/i.test(normalized)) return true;
   if (
@@ -691,6 +698,13 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bThe speaker better\b/gi, "They should");
   text = text.replace(/\bThe speaker will just\b/gi, "They can");
   text = text.replace(/\bthey am\b/gi, "they are");
+  text = text.replace(/\bthey was they\b/gi, "they");
+  text = text.replace(/\bthey was\b/gi, "they were");
+  text = text.replace(/\bthey wasn't\b/gi, "they were not");
+  text = text.replace(/\bthis is where honestly this is where\b/gi, "this is where");
+  text = text.replace(/\b(?:their|the) preference like when they get like at\b/gi, "their preference at");
+  text = text.replace(/\bjust an idea of and like\b/gi, "a general idea, and");
+  text = text.replace(/,{2,}/g, ",");
   text = text.replace(/\s+([,.;:!?])/g, "$1");
   text = text.replace(/,\s*([.!?])/g, "$1");
   text = text.replace(/\s{2,}/g, " ").trim();
@@ -755,9 +769,15 @@ function isLowSignalTranscriptSentence(value: string): boolean {
   if (!normalized) return true;
   const words = normalized.split(/\s+/).filter(Boolean);
   if (words.length <= 5) return true;
+  if (/,{2,}/.test(normalized)) return true;
   if (/\b(?:countereidence|that is that they|some they can be like|The speaker will just)\b/i.test(normalized)) {
     return true;
   }
+  if (/\b(?:they was|they wasn't|they was they|this is where honestly this is where|idea of and like)\b/i.test(normalized)) {
+    return true;
+  }
+  const likeCount = (normalized.match(/\blike\b/gi) ?? []).length;
+  if (likeCount >= 3 && words.length <= 45) return true;
   if (
     /^(?:which|and|but|so|then|because|under|even though|while|although|though)\b/i.test(normalized) &&
     words.length <= 14
