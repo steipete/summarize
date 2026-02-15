@@ -504,6 +504,24 @@ describe("slides text helpers", () => {
     expect(coerced).not.toContain("in a way of like");
   });
 
+  it("strips leading disfluencies from titled bullet slide text", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Future Plans and Societal Impact",
+      "- Um, but this, this inherent problem that MCPs by default clutter up context. Playwright remains an acceptable exception.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nFuture Plans and Societal Impact");
+    expect(coerced).not.toContain("\n- Um");
+    expect(coerced).not.toContain("\nUm,");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },

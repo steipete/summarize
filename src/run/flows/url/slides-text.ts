@@ -553,8 +553,13 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   let text = collapseLineWhitespace(sentence).trim();
   if (!text) return "";
   text = text.replace(/^\s*>>\s*/g, "");
+  text = text.replace(/^\s*[-*]\s+/, "");
+  text = text.replace(/^(?:(?:um+|uh+|erm+|ah+|hmm+|mm+)[,.:;!?-]*\s*)+/i, "");
   text = text.replace(/^(?:so|well|and|but)\s+/i, "");
   text = text.replace(/^(?:even\s+)?like\s+/i, "");
+  text = text.replace(/^(?:(?:um+|uh+|erm+|ah+|hmm+|mm+)[,.:;!?-]*\s*)+/i, "");
+  text = text.replace(/^\s*[,.;:!?-]+\s*/, "");
+  text = text.replace(/\b(?:um|uh)\b(?=\s|[,.;:!?])/gi, "");
   text = text.replace(/\bin a way of like\b/gi, "as");
   text = text.replace(/,\s*right\?\s*$/i, "");
   text = text.replace(/\byou know\b/gi, "");
