@@ -564,6 +564,25 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("lack of purpose");
   });
 
+  it("avoids malformed rewritten starts and keeps richer corrupted-tail content", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "It is it seems to them that, the real purpose can't be find found on that level, the real purpose is to awake to their true nature, to the fact that and the implications of their true nature, and they better start acting in accordance with that, otherwise people get to their deathbed and people're like, \"Oh, well, that was a complete waste of time.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("It is it seems");
+    expect(coerced).not.toContain("The speaker better");
+    expect(coerced).not.toContain("people're");
+    expect(coerced).not.toContain("people are like.");
+    expect(coerced.length).toBeGreaterThan(180);
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },

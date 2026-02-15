@@ -597,6 +597,8 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bthere's\b/gi, "there is");
   text = text.replace(/\bcan't be find found\b/gi, "cannot be found");
   text = text.replace(/\bawake to\b/gi, "awaken to");
+  text = text.replace(/\bit is it seems to (?:them|people) that\b/gi, "it seems that");
+  text = text.replace(/\bit is it seems\b/gi, "it seems");
   text = text.replace(/\b([A-Za-z]+)'re\b/g, "$1 are");
   text = text.replace(/\b([A-Za-z]+)'ve\b/g, "$1 have");
   text = text.replace(/\b([A-Za-z]+)'ll\b/g, "$1 will");
@@ -632,11 +634,15 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bThe speaker are\b/gi, "The speaker is");
   text = text.replace(/\bThe speaker were\b/gi, "The speaker was");
   text = text.replace(/\bThe speaker have\b/gi, "The speaker has");
+  text = text.replace(/\bThe speaker better\b/gi, "They should");
   text = text.replace(/\bthey am\b/gi, "they are");
   text = text.replace(/\s+([,.;:!?])/g, "$1");
   text = text.replace(/,\s*([.!?])/g, "$1");
   text = text.replace(/\s{2,}/g, " ").trim();
   if (!text) return "";
+  text = text.replace(/([.!?]\s+)([a-z])/g, (_m, p1: string, p2: string) => `${p1}${p2.toUpperCase()}`);
+  const quoteCount = (text.match(/"/g) ?? []).length;
+  if (quoteCount % 2 === 1) text = text.replace(/"/g, "");
   const first = text[0] ?? "";
   if (first) text = `${first.toUpperCase()}${text.slice(1)}`;
   if (!/[.!?]["')\]]?$/.test(text)) text = `${text}.`;
@@ -655,12 +661,14 @@ function compactCorruptedSpeechUnit(value: string, maxChars: number): string {
         .replace(/^[,;:\-.\s]+/, "")
         .replace(/[,;:\-.\s]+$/, ""),
     )
-    .filter((chunk) => chunk.split(/\s+/).filter(Boolean).length >= 6);
+    .filter((chunk) => chunk.split(/\s+/).filter(Boolean).length >= 6)
+    .filter((chunk) => !/^(?:it is it seems|to the fact that|and the implications)\b/i.test(chunk));
   if (chunks.length >= 2) {
-    const candidate = chunks.slice(-2).join(". ").trim();
+    const chunkBudget = maxChars >= 900 ? 5 : maxChars >= 650 ? 4 : maxChars >= 420 ? 3 : 2;
+    const candidate = chunks.slice(-chunkBudget).join(". ").trim();
     if (candidate) return candidate;
   }
-  return compactSlideSummaryText(normalized, Math.min(maxChars, 220));
+  return compactSlideSummaryText(normalized, Math.min(maxChars, 360));
 }
 
 function splitTranscriptLikeUnits(normalized: string): string[] {
@@ -693,6 +701,7 @@ function summarizeTranscriptLikeSlideText(value: string, maxChars: number): stri
   const sentences = splitTranscriptLikeUnits(normalized);
   const kept: string[] = [];
   const seen = new Set<string>();
+  const maxKeptSentences = maxChars >= 1100 ? 7 : maxChars >= 800 ? 6 : maxChars >= 520 ? 5 : 4;
   for (const sentence of sentences) {
     const raw = collapseLineWhitespace(sentence).trim();
     if (!raw) continue;
@@ -707,6 +716,7 @@ function summarizeTranscriptLikeSlideText(value: string, maxChars: number): stri
     const prepared = compactCorruptedSpeechUnit(raw, maxChars);
     const rewritten = rewriteTranscriptSentenceToNeutral(prepared);
     if (!rewritten) continue;
+    if (/\b(?:is|are)\s+like\.?$/i.test(rewritten)) continue;
     if (rewritten.length < 24) continue;
     const key = rewritten.toLowerCase();
     if (seen.has(key)) continue;
@@ -714,7 +724,7 @@ function summarizeTranscriptLikeSlideText(value: string, maxChars: number): stri
     if (next.length > maxChars && kept.length > 0) break;
     seen.add(key);
     kept.push(rewritten);
-    if (kept.length >= 4) break;
+    if (kept.length >= maxKeptSentences) break;
   }
   if (kept.length === 0) return compactSlideSummaryText(normalized, maxChars);
   const merged = kept.join(" ");
