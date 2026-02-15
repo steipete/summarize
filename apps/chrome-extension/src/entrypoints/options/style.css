@@ -752,15 +752,20 @@ form {
 }
 
 .processLogsCopy {
-  padding: 0;
   width: 26px;
   height: 26px;
-  border-radius: 8px;
+}
+
+.iconButton {
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 9px;
   display: grid;
   place-items: center;
 }
 
-.processLogsCopy svg {
+.copyIcon {
   width: 14px;
   height: 14px;
   fill: currentColor;
@@ -841,8 +846,7 @@ form {
 }
 
 #automationPermissions.miniButton {
-  padding-top: 1px;
-  padding-bottom: 3px;
+  padding: 6px 14px;
   line-height: 1.1;
 }
 
@@ -1024,14 +1028,20 @@ label {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  position: relative;
 }
 
 .inputRow input {
-  flex: 1;
+  flex: 1 1 0%;
+  min-width: 0;
+  padding-right: 46px;
 }
 
-.copyButton {
-  white-space: nowrap;
+.inputCopyButton {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 label > span {
@@ -1043,6 +1053,11 @@ label > span {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.3;
+}
+
+.permissionHint code {
+  font-family: var(--mono);
+  font-size: 10px;
 }
 
 .hint {

@@ -490,7 +490,7 @@ header {
 
 .headerRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
@@ -523,6 +523,10 @@ header {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.subtitle:empty {
+  display: none;
 }
 
 .controls {
@@ -976,49 +980,59 @@ button.ghost.small {
   transform: rotate(225deg);
 }
 
-details.drawerAdvanced:not([open]) > .drawerAdvancedBody {
-  display: grid;
-}
-
 .drawerAdvancedBody {
   display: grid;
   gap: 8px;
-  margin-top: 0;
-  max-height: 0;
+  margin-top: 10px;
   opacity: 0;
-  overflow: hidden;
   pointer-events: none;
   transform: translateY(-4px);
   transition:
-    max-height 220ms ease,
     opacity 180ms ease,
-    transform 220ms ease,
-    margin-top 220ms ease;
-  will-change: max-height, opacity, transform;
+    transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, transform;
 }
 
 .drawerAdvanced[open] .drawerAdvancedBody {
-  margin-top: 10px;
-  max-height: 600px;
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .drawerAdvanced summary::after,
+  .drawerAdvancedBody {
+    transition: none;
+  }
+}
+
 .drawerAdvancedRow {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
+  min-width: 0;
 }
 
 .drawerAdvancedRow .toggleRow {
-  flex: 1;
-  min-width: 160px;
+  flex: 1 1 160px;
+  min-width: 0;
 }
 
 .drawerAdvancedActions {
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
   width: 100%;
+  min-width: 0;
+}
+
+.drawerAdvancedButtons {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .drawerAdvanced .modelRow {

@@ -182,6 +182,10 @@ const sizeLgBtn = byId<HTMLButtonElement>("sizeLg");
 const lineTightBtn = byId<HTMLButtonElement>("lineTight");
 const lineLooseBtn = byId<HTMLButtonElement>("lineLoose");
 const advancedSettingsEl = byId<HTMLDetailsElement>("advancedSettings");
+const advancedSettingsSummaryEl = advancedSettingsEl.querySelector("summary");
+if (!advancedSettingsSummaryEl) throw new Error("Missing advanced settings summary");
+const advancedSettingsBodyEl = advancedSettingsEl.querySelector<HTMLElement>(".drawerAdvancedBody");
+if (!advancedSettingsBodyEl) throw new Error("Missing advanced settings body");
 const modelPresetEl = byId<HTMLSelectElement>("modelPreset");
 const modelCustomEl = byId<HTMLInputElement>("modelCustom");
 const modelRefreshBtn = byId<HTMLButtonElement>("modelRefresh");
@@ -247,6 +251,7 @@ const panelState: PanelState = {
   chatStreaming: false,
 };
 let drawerAnimation: Animation | null = null;
+let advancedSettingsAnimation: Animation | null = null;
 let autoValue = false;
 let chatEnabledValue = defaultSettings.chatEnabled;
 let automationEnabledValue = defaultSettings.automationEnabled;
@@ -3986,6 +3991,83 @@ function toggleDrawer(force?: boolean, opts?: { animate?: boolean }) {
   };
 }
 
+function toggleAdvancedSettings(force?: boolean, opts?: { animate?: boolean }) {
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+  const animate = opts?.animate !== false && !reducedMotion;
+  const isOpen = advancedSettingsEl.open;
+  const next = typeof force === "boolean" ? force : !isOpen;
+
+  if (next === isOpen) {
+    if (next) refreshModelsIfStale();
+    return;
+  }
+
+  const cleanup = () => {
+    advancedSettingsBodyEl.style.removeProperty("height");
+    advancedSettingsBodyEl.style.removeProperty("opacity");
+    advancedSettingsBodyEl.style.removeProperty("transform");
+    advancedSettingsBodyEl.style.removeProperty("overflow");
+  };
+
+  advancedSettingsAnimation?.cancel();
+  advancedSettingsAnimation = null;
+  cleanup();
+
+  if (!animate) {
+    advancedSettingsEl.open = next;
+    if (next) refreshModelsIfStale();
+    return;
+  }
+
+  if (next) {
+    advancedSettingsBodyEl.style.height = "0px";
+    advancedSettingsBodyEl.style.opacity = "0";
+    advancedSettingsBodyEl.style.transform = "translateY(-6px)";
+    advancedSettingsBodyEl.style.overflow = "hidden";
+    advancedSettingsEl.open = true;
+
+    const targetHeight = advancedSettingsBodyEl.scrollHeight;
+    advancedSettingsAnimation = advancedSettingsBodyEl.animate(
+      [
+        { height: "0px", opacity: 0, transform: "translateY(-6px)" },
+        { height: `${targetHeight}px`, opacity: 1, transform: "translateY(0px)" },
+      ],
+      { duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)", fill: "both" },
+    );
+    advancedSettingsAnimation.onfinish = () => {
+      advancedSettingsAnimation = null;
+      cleanup();
+      refreshModelsIfStale();
+    };
+    advancedSettingsAnimation.oncancel = () => {
+      advancedSettingsAnimation = null;
+    };
+    return;
+  }
+
+  const currentHeight = advancedSettingsBodyEl.getBoundingClientRect().height;
+  advancedSettingsBodyEl.style.height = `${currentHeight}px`;
+  advancedSettingsBodyEl.style.opacity = "1";
+  advancedSettingsBodyEl.style.transform = "translateY(0px)";
+  advancedSettingsBodyEl.style.overflow = "hidden";
+
+  advancedSettingsAnimation = advancedSettingsBodyEl.animate(
+    [
+      { height: `${currentHeight}px`, opacity: 1, transform: "translateY(0px)" },
+      { height: "0px", opacity: 0, transform: "translateY(-6px)" },
+    ],
+    { duration: 180, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "both" },
+  );
+  advancedSettingsAnimation.onfinish = () => {
+    advancedSettingsAnimation = null;
+    advancedSettingsEl.open = false;
+    cleanup();
+  };
+  advancedSettingsAnimation.oncancel = () => {
+    advancedSettingsAnimation = null;
+  };
+}
+
 function resetChatState() {
   panelState.chatStreaming = false;
   chatController.reset();
@@ -4167,6 +4249,10 @@ drawerToggleBtn.addEventListener("click", () => toggleDrawer());
 advancedBtn.addEventListener("click", () => {
   void send({ type: "panel:openOptions" });
 });
+advancedSettingsSummaryEl.addEventListener("click", (event) => {
+  event.preventDefault();
+  toggleAdvancedSettings();
+});
 
 chatSendBtn.addEventListener("click", sendChatMessage);
 chatInputEl.addEventListener("keydown", (e) => {
@@ -4241,6 +4327,7 @@ modelPresetEl.addEventListener("pointerdown", refreshModelsIfStale);
 modelCustomEl.addEventListener("focus", refreshModelsIfStale);
 modelCustomEl.addEventListener("pointerdown", refreshModelsIfStale);
 advancedSettingsEl.addEventListener("toggle", () => {
+  if (advancedSettingsAnimation) return;
   if (advancedSettingsEl.open) refreshModelsIfStale();
 });
 modelRefreshBtn.addEventListener("click", () => {
