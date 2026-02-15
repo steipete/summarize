@@ -638,6 +638,25 @@ describe("slides text helpers", () => {
     expect(coerced).not.toContain("people notice");
   });
 
+  it("removes malformed final-step transcript fragments", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Practical Steps to Rewrite Your Operating System",
+      "That is that they are not going to live their life by a belief that someone else gave them. Step two, the countereidence for any limiting belief that they really strongly identified. Maybe some they can be like, Oh, that seems a bit silly. The speaker will just get rid of that. But some are quite strong.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("That is that they");
+    expect(coerced).not.toContain("countereidence");
+    expect(coerced).not.toContain("some they can be like");
+    expect(coerced).not.toContain("The speaker will just");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },

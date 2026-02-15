@@ -586,6 +586,8 @@ function isLowQualitySlideBodyText(value: string): boolean {
   if (words.length < 22) return true;
   if (/(^|\s)>>\s*/.test(normalized)) return true;
   if (looksCorruptedSpeechLikeText(normalized)) return true;
+  if (/\b(?:countereidence|that is that they|some they can be like|The speaker will just)\b/i.test(normalized))
+    return true;
   if (/\b(?:it is it seems|to the fact that and the implications)\b/i.test(normalized)) return true;
   if (/\b(?:is|are)\s+like\.?$/i.test(normalized)) return true;
   if (/\b([A-Za-z]+)'(?:re|ve|ll|d|m)\b/.test(normalized)) return true;
@@ -624,10 +626,14 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bit's\b/gi, "it is");
   text = text.replace(/\bthat's\b/gi, "that is");
   text = text.replace(/\bthere's\b/gi, "there is");
+  text = text.replace(/\bcountereidence\b/gi, "counterevidence");
   text = text.replace(/\bcan't be find found\b/gi, "cannot be found");
   text = text.replace(/\bawake to\b/gi, "awaken to");
   text = text.replace(/\bit is it seems to (?:them|people) that\b/gi, "it seems that");
   text = text.replace(/\bit is it seems\b/gi, "it seems");
+  text = text.replace(/^\s*that is that\b/i, "The key point is that");
+  text = text.replace(/\bthat is that they\b/gi, "that they");
+  text = text.replace(/\bmaybe some they can be like\b/gi, "some may feel");
   text = text.replace(/\b([A-Za-z]+)'re\b/g, "$1 are");
   text = text.replace(/\b([A-Za-z]+)'ve\b/g, "$1 have");
   text = text.replace(/\b([A-Za-z]+)'ll\b/g, "$1 will");
@@ -664,6 +670,7 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bThe speaker were\b/gi, "The speaker was");
   text = text.replace(/\bThe speaker have\b/gi, "The speaker has");
   text = text.replace(/\bThe speaker better\b/gi, "They should");
+  text = text.replace(/\bThe speaker will just\b/gi, "They can");
   text = text.replace(/\bthey am\b/gi, "they are");
   text = text.replace(/\s+([,.;:!?])/g, "$1");
   text = text.replace(/,\s*([.!?])/g, "$1");
@@ -729,6 +736,9 @@ function isLowSignalTranscriptSentence(value: string): boolean {
   if (!normalized) return true;
   const words = normalized.split(/\s+/).filter(Boolean);
   if (words.length <= 4) return true;
+  if (/\b(?:countereidence|that is that they|some they can be like|The speaker will just)\b/i.test(normalized)) {
+    return true;
+  }
   if (/\b(\w+\s+\w+)\s+\1\b/i.test(normalized)) return true;
   if (
     /^(?:how can|had they|did they|do they|can people|it seems to (?:them|people) that|to the fact that)\b/i.test(
@@ -765,6 +775,7 @@ function summarizeTranscriptLikeSlideText(value: string, maxChars: number): stri
     const prepared = compactCorruptedSpeechUnit(raw, maxChars);
     const rewritten = rewriteTranscriptSentenceToNeutral(prepared);
     if (!rewritten) continue;
+    if (isLowSignalTranscriptSentence(rewritten)) continue;
     if (/\b(?:is|are)\s+like\.?$/i.test(rewritten)) continue;
     if (rewritten.length < 24) continue;
     const key = rewritten.toLowerCase();
@@ -775,7 +786,15 @@ function summarizeTranscriptLikeSlideText(value: string, maxChars: number): stri
     kept.push(rewritten);
     if (kept.length >= maxKeptSentences) break;
   }
-  if (kept.length === 0) return compactSlideSummaryText(normalized, maxChars);
+  if (kept.length === 0) {
+    const rewrittenFull = rewriteTranscriptSentenceToNeutral(normalized);
+    if (rewrittenFull && !isLowSignalTranscriptSentence(rewrittenFull)) {
+      return rewrittenFull.length <= maxChars
+        ? rewrittenFull
+        : compactSlideSummaryText(rewrittenFull, maxChars);
+    }
+    return compactSlideSummaryText(normalized, maxChars);
+  }
   const merged = kept.join(" ");
   return merged.length <= maxChars ? merged : compactSlideSummaryText(merged, maxChars);
 }
@@ -783,7 +802,12 @@ function summarizeTranscriptLikeSlideText(value: string, maxChars: number): stri
 function normalizeSlideBodyStyle(value: string, maxChars: number): string {
   const compact = stripSingleLeadingBullet(compactSlideSummaryText(value, maxChars));
   if (!compact) return compact;
-  if (!isTranscriptLikeSlideText(compact)) return compact;
+  const needsTranscriptCleanup =
+    isTranscriptLikeSlideText(compact) ||
+    /\b(?:countereidence|that is that they|some they can be like|The speaker will just|it is it seems|can't be find found)\b/i.test(
+      compact,
+    );
+  if (!needsTranscriptCleanup) return compact;
   return summarizeTranscriptLikeSlideText(compact, maxChars);
 }
 
