@@ -559,6 +559,8 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("[slide:1]");
     expect(coerced).not.toContain("people're");
     expect(coerced).not.toContain("they have they have");
+    expect(coerced).not.toContain("let's say");
+    expect(coerced).not.toContain("to the fact that and the implications");
     expect(coerced).toContain("lack of purpose");
   });
 

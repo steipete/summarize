@@ -591,6 +591,12 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bi mean\b/gi, "");
   text = text.replace(/\bkind of\b/gi, "");
   text = text.replace(/\bsort of\b/gi, "");
+  text = text.replace(/\blet'?s say\b/gi, "");
+  text = text.replace(/\bit's\b/gi, "it is");
+  text = text.replace(/\bthat's\b/gi, "that is");
+  text = text.replace(/\bthere's\b/gi, "there is");
+  text = text.replace(/\bcan't be find found\b/gi, "cannot be found");
+  text = text.replace(/\bawake to\b/gi, "awaken to");
   text = text.replace(/\b([A-Za-z]+)'re\b/g, "$1 are");
   text = text.replace(/\b([A-Za-z]+)'ve\b/g, "$1 have");
   text = text.replace(/\b([A-Za-z]+)'ll\b/g, "$1 will");
@@ -637,6 +643,26 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   return text;
 }
 
+function compactCorruptedSpeechUnit(value: string, maxChars: number): string {
+  const normalized = collapseLineWhitespace(value).trim();
+  if (!normalized) return normalized;
+  if (!looksCorruptedSpeechLikeText(normalized)) return normalized;
+  const chunks = normalized
+    .split(/\b(?:and|but|so|then)\b/gi)
+    .map((chunk) =>
+      collapseLineWhitespace(chunk)
+        .trim()
+        .replace(/^[,;:\-.\s]+/, "")
+        .replace(/[,;:\-.\s]+$/, ""),
+    )
+    .filter((chunk) => chunk.split(/\s+/).filter(Boolean).length >= 6);
+  if (chunks.length >= 2) {
+    const candidate = chunks.slice(-2).join(". ").trim();
+    if (candidate) return candidate;
+  }
+  return compactSlideSummaryText(normalized, Math.min(maxChars, 220));
+}
+
 function splitTranscriptLikeUnits(normalized: string): string[] {
   const rawSentences = normalized.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [normalized];
   const units: string[] = [];
@@ -670,6 +696,7 @@ function summarizeTranscriptLikeSlideText(value: string, maxChars: number): stri
   for (const sentence of sentences) {
     const raw = collapseLineWhitespace(sentence).trim();
     if (!raw) continue;
+    if (/^to the fact that\b/i.test(raw)) continue;
     if (
       /\b(?:would you like to|leave a like|turn on notifications|subscribe|thanks? for watching)\b/i.test(
         raw,
@@ -677,7 +704,8 @@ function summarizeTranscriptLikeSlideText(value: string, maxChars: number): stri
     ) {
       continue;
     }
-    const rewritten = rewriteTranscriptSentenceToNeutral(raw);
+    const prepared = compactCorruptedSpeechUnit(raw, maxChars);
+    const rewritten = rewriteTranscriptSentenceToNeutral(prepared);
     if (!rewritten) continue;
     if (rewritten.length < 24) continue;
     const key = rewritten.toLowerCase();
