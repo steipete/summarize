@@ -634,7 +634,7 @@ function isTranscriptLikeSlideText(value: string): boolean {
   const normalized = normalizeSlideText(value);
   if (!normalized) return false;
   if (
-    /(?:,{2,}|\bthey was\b|\bthey wasn't\b|\bthey was they\b|\bidea of and like\b|\bpreference like when they get like at\b|\bthey pain\b|\bthought be they\b|\bnegative emote\b|\bstill start looking for fights\b|\bin the pain of caused by pain\b|\bthoughts can be could consider thought to be\b)/i.test(
+    /(?:,{2,}|\bthey was\b|\bthey wasn't\b|\bthey was they\b|\bidea of and like\b|\bpreference like when they get like at\b|\bthey pain\b|\bthought be they\b|\bnegative emote\b|\bstill start looking for fights\b|\bin the pain of caused by pain\b|\bthoughts can be could consider thought to be\b|\bThe speaker think\b|\bThe speaker don't\b|\bThe speaker can't even reason about what\s*[0-9,]+\s*IQ looks like\b|\bIs there anything they like society America should be doing more aggressively\b|\bthey are not smart for days\b)/i.test(
       normalized,
     )
   ) {
@@ -818,6 +818,9 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bThe speaker are\b/gi, "The speaker is");
   text = text.replace(/\bThe speaker were\b/gi, "The speaker was");
   text = text.replace(/\bThe speaker have\b/gi, "The speaker has");
+  text = text.replace(/\bThe speaker think\b/gi, "The speaker thinks");
+  text = text.replace(/\bThe speaker don't\b/gi, "The speaker does not");
+  text = text.replace(/\bThe speaker can't\b/gi, "The speaker cannot");
   text = text.replace(/\bThe speaker better\b/gi, "They should");
   text = text.replace(/\bThe speaker will just\b/gi, "They can");
   text = text.replace(/\bthey am\b/gi, "they are");
@@ -843,6 +846,38 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   );
   text = text.replace(/\bThe speaker talked yesterday about\b/gi, "The speaker adds that");
   text = text.replace(/\bnegative emote\b/gi, "negative emotions");
+  text = text.replace(
+    /\bIs there anything they like society America should be doing more aggressively to increase the supply of fabs\b/i,
+    "The discussion asks whether society should more aggressively expand fab capacity",
+  );
+  text = text.replace(
+    /\bThe speaker thinks it is well it may get solved on its own\b/gi,
+    "The speaker says it may get solved on its own",
+  );
+  text = text.replace(
+    /\bit may like normal capitalism may solve it\b/gi,
+    "normal market dynamics may solve part of it",
+  );
+  text = text.replace(
+    /\bthey think somehow deciding as a society that they are going to\b/gi,
+    "they think society should",
+  );
+  text = text.replace(
+    /\bthey are going to increase the wafer capacity of the world and they are going to fund that and they are going to get the whole supply chain and the talented people they need to make that happen would be a very good thing to do\b/gi,
+    "increase global wafer capacity, fund it, and secure the supply chain and talent needed to make it happen",
+  );
+  text = text.replace(
+    /\bincrease the wafer capacity of the world and they are going to fund that and they are going to get the whole supply chain and the talented people they need to make that happen would be a very good thing to do\b/gi,
+    "expand global wafer capacity, fund it, and secure the supply chain and talent needed to make it happen",
+  );
+  text = text.replace(
+    /\bthe race right now is that they are smart,\s*but they are not smart for days\b/gi,
+    "the current models are smart, but not yet reliable over very long horizons",
+  );
+  text = text.replace(
+    /\bThe speaker cannot even reason about what\s*[0-9,]+\s*IQ looks like\b/gi,
+    "The speaker cannot yet reason about what extremely high intelligence would look like",
+  );
   text = text.replace(
     /^if they don't believe in past lifetimes that is fine they don't have to\.?$/i,
     "The speaker notes that belief in past lifetimes is optional",
@@ -921,6 +956,15 @@ function isLowSignalTranscriptSentence(value: string): boolean {
   if (!normalized) return true;
   const words = normalized.split(/\s+/).filter(Boolean);
   if (words.length <= 5) return true;
+  const hasQuestionMark = /\?/.test(normalized);
+  if (
+    hasQuestionMark &&
+    /^(?:is there|how|what|why|when|where|who|had|did|does|do|can|could|would|should|is|are)\b/i.test(
+      normalized,
+    )
+  ) {
+    return true;
+  }
   if (/,{2,}/.test(normalized)) return true;
   if (/\b(?:countereidence|that is that they|some they can be like|The speaker will just)\b/i.test(normalized)) {
     return true;

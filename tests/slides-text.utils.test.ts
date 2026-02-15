@@ -695,6 +695,28 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("education plus feedback");
   });
 
+  it("rewrites fab-capacity interview tails into coherent declarative prose", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Anthropic Ads, Voice Mode, and Industry Challenges",
+      "Is there anything they like society America should be doing more aggressively to increase the supply of fabs? The speaker think it is well it may get solved on its own. It may like normal capitalism may solve it but they think somehow deciding as a society that they are going to increase the wafer capacity of the world and they are going to fund that and they are going to get the whole supply chain and the talented people they need to make that happen would be a very good thing to do. The race right now is that they are smart, but they are not smart for days. The speaker don't know how to think about that question yet. The speaker can't even reason about what 2,000 IQ looks like?",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("wafer capacity");
+    expect(coerced).toContain("The speaker says it may get solved on its own.");
+    expect(coerced).toContain("not yet reliable over very long horizons");
+    expect(coerced).not.toContain("Is there anything they like society America");
+    expect(coerced).not.toContain("The speaker think");
+    expect(coerced).not.toContain("they are going to fund that and they are going to get");
+    expect(coerced).not.toContain("2,000 IQ");
+  });
+
   it("normalizes malformed pain-body transcript tails", () => {
     const slides = [{ index: 1, timestamp: 1 }];
     const markdown = [
