@@ -523,6 +523,26 @@ describe("slides text helpers", () => {
     expect(coerced).not.toContain("this, this");
   });
 
+  it("normalizes awkward pronoun-conjugation artifacts in transcript-like tails", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "- Um, how it works internally for me is I will put it exactly how it is, you know. I'm an artist. Every day, I am painting Mona Lisa, right?",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).not.toContain("The speaker are");
+    expect(coerced).not.toContain("for them is they");
+    expect(coerced).not.toContain("they am");
+    expect(coerced).not.toContain(", .");
+    expect(coerced).toContain("Internally, the speaker will put it exactly how it is.");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },

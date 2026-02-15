@@ -570,6 +570,7 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bI've\b/gi, "they have");
   text = text.replace(/\bI'll\b/gi, "they will");
   text = text.replace(/\bI'd\b/gi, "they would");
+  text = text.replace(/\bI am\b/gi, "they are");
   text = text.replace(/\bI\b/g, "they");
   text = text.replace(/\bme\b/gi, "them");
   text = text.replace(/\bmy\b/gi, "their");
@@ -582,11 +583,22 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\byou'll\b/gi, "they will");
   text = text.replace(/\byou\b/gi, "people");
   text = text.replace(/\byour\b/gi, "their");
+  text = text.replace(/\bis they\b/gi, "is that they");
+  text = text.replace(
+    /^How it works internally for (?:them|the speaker) is that they will\s+/i,
+    "Internally, the speaker will ",
+  );
   text = text.replace(/\b(\w+)[,;:]\s+\1\b/gi, "$1");
   text = text.replace(/\bthey\s+they\b/gi, "they");
   text = text.replace(/\b(\w+)(?:\s+\1\b){1,}/gi, "$1");
   text = text.replace(/\b(and|or|but|so)\s+\1\b/gi, "$1");
   text = text.replace(/^\s*they\b/i, "The speaker");
+  text = text.replace(/\bThe speaker are\b/gi, "The speaker is");
+  text = text.replace(/\bThe speaker were\b/gi, "The speaker was");
+  text = text.replace(/\bThe speaker have\b/gi, "The speaker has");
+  text = text.replace(/\bthey am\b/gi, "they are");
+  text = text.replace(/\s+([,.;:!?])/g, "$1");
+  text = text.replace(/,\s*([.!?])/g, "$1");
   text = text.replace(/\s{2,}/g, " ").trim();
   if (!text) return "";
   const first = text[0] ?? "";
