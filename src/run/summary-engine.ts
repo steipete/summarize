@@ -123,6 +123,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     if (requiredEnv === "GEMINI_API_KEY") {
       return deps.keyFlags.googleConfigured;
     }
+    if (requiredEnv === "GOOGLE_CLOUD_PROJECT") {
+      return Boolean(deps.vertexConfig);
+    }
     if (requiredEnv === "OPENROUTER_API_KEY") {
       return deps.keyFlags.openrouterConfigured;
     }
@@ -153,6 +156,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     }
     if (attempt.requiredEnv === "CLI_AGENT") {
       return `Cursor Agent CLI not found for model ${attempt.userModelId}. Install Cursor CLI or set AGENT_PATH.`;
+    }
+    if (attempt.requiredEnv === "GOOGLE_CLOUD_PROJECT") {
+      return `Missing Vertex AI config for model ${attempt.userModelId}. Set GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, and VERTEX_AI_SERVICE_ACCOUNT_KEY (or GOOGLE_APPLICATION_CREDENTIALS).`;
     }
     return `Missing ${attempt.requiredEnv} for model ${attempt.userModelId}. Set the env var or choose a different --model.`;
   };

@@ -135,7 +135,7 @@ export function supportsNativeFileAttachment({
   provider,
   attachment,
 }: {
-  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia";
+  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex";
   attachment: { kind: "image" | "file"; mediaType: string };
 }): boolean {
   if (attachment.kind !== "file") return false;
@@ -148,7 +148,7 @@ export function assertProviderSupportsAttachment({
   modelId,
   attachment,
 }: {
-  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia";
+  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex";
   modelId: string;
   attachment: { kind: "image" | "file"; mediaType: string };
 }) {
