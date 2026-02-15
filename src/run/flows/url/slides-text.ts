@@ -110,16 +110,14 @@ function applySpeakerAttribution(markdown: string, speakerName: string | null): 
   const speaker = collapseLineWhitespace(speakerName);
   if (!speaker) return markdown;
   const speakerPattern = new RegExp(`\\b${escapeRegExp(speaker)}\\b`, "i");
-  const replaced = markdown.replace(/\bThe speaker\b/gi, speaker);
-
-  const blocks = replaced.split(/\n{2,}/);
+  const blocks = markdown.split(/\n{2,}/);
   const slideBlockIndex = blocks.findIndex((block) => /^\[slide:\d+\]/m.test(block));
-  if (slideBlockIndex < 0) return replaced;
+  if (slideBlockIndex < 0) return markdown;
   const block = blocks[slideBlockIndex] ?? "";
   const lines = block.split("\n");
-  if (lines.length === 0) return replaced;
+  if (lines.length === 0) return markdown;
   const slideTagIndex = lines.findIndex((line) => /^\[slide:\d+\]/i.test(line.trim()));
-  if (slideTagIndex < 0) return replaced;
+  if (slideTagIndex < 0) return markdown;
   let insertAt = slideTagIndex + 1;
   while (insertAt < lines.length && !lines[insertAt]?.trim()) insertAt += 1;
   if (insertAt < lines.length && isTitleOnlySlideText(lines[insertAt]?.trim() ?? "")) {
@@ -127,7 +125,12 @@ function applySpeakerAttribution(markdown: string, speakerName: string | null): 
   }
   while (insertAt < lines.length && !lines[insertAt]?.trim()) insertAt += 1;
   const firstBodyLine = lines[insertAt] ?? "";
-  if (speakerPattern.test(firstBodyLine)) return replaced;
+  if (speakerPattern.test(firstBodyLine)) return markdown;
+  if (/\bThe speaker\b/i.test(firstBodyLine)) {
+    lines[insertAt] = firstBodyLine.replace(/\bThe speaker\b/i, speaker);
+    blocks[slideBlockIndex] = lines.join("\n").trim();
+    return blocks.join("\n\n");
+  }
   const attributionLine = `${speaker} explains this segment.`;
   lines.splice(insertAt, 0, attributionLine);
   blocks[slideBlockIndex] = lines.join("\n").trim();

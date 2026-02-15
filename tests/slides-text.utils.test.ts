@@ -789,6 +789,31 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("Eckhart Tolle explains this segment.");
   });
 
+  it("does not globally replace speaker tokens outside opening attribution", () => {
+    const slides = [
+      { index: 1, timestamp: 1 },
+      { index: 2, timestamp: 8 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "Intro",
+      "The ego creates identity loops.",
+      "",
+      "[slide:2]",
+      "Later Point",
+      "The speaker says collective ego can be more dangerous.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "Eckhart Tolle: Ego and Presence",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("[slide:1]\nIntro\nEckhart Tolle explains this segment.");
+    expect(coerced).toContain("[slide:2]\nLater Point\nThe speaker says collective ego can be more dangerous.");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },
