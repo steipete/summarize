@@ -715,6 +715,39 @@ describe("slides text helpers", () => {
     expect(coerced).not.toContain("negative emote");
   });
 
+  it("uses inferred speaker name from source title for generic speaker phrasing", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = ["[slide:1]", "The speaker explains that ego identification creates suffering."].join(
+      "\n",
+    );
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "Eckhart Tolle - The Ego and Presence",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("Eckhart Tolle");
+    expect(coerced).not.toContain("The speaker explains");
+  });
+
+  it("injects speaker attribution when no speaker is referenced", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "The Ego and False Identity",
+      "The ego is the false self created through identification with thoughts and emotions.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "Eckhart Tolle: Ego and Identity",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("Eckhart Tolle explains this segment.");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },

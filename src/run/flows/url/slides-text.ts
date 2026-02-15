@@ -36,6 +36,100 @@ const clampNumber = (value: number, min: number, max: number) =>
 
 const collapseLineWhitespace = (value: string): string => value.replace(/\s+/g, " ").trim();
 
+const SPEAKER_VERB_PATTERN =
+  /\b([A-Z][A-Za-z'-]{2,}(?:\s+[A-Z][A-Za-z'-]{2,}){0,2})\s+(?:explains|notes|says|argues|describes|emphasizes|observes|adds|states|asks|responds)\b/g;
+
+const SPEAKER_TITLE_PATTERNS = [
+  /^([A-Z][A-Za-z'-]{2,}(?:\s+[A-Z][A-Za-z'-]{2,}){0,2})\s*[:\-|–—]/,
+  /(?:^|[:\-|–—]\s+)([A-Z][A-Za-z'-]{2,}(?:\s+[A-Z][A-Za-z'-]{2,}){0,2})$/,
+  /\b(?:with|feat\.?|featuring|guest|interview with)\s+([A-Z][A-Za-z'-]{2,}(?:\s+[A-Z][A-Za-z'-]{2,}){0,2})\b/i,
+];
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isLikelySpeakerName(value: string): boolean {
+  const compact = collapseLineWhitespace(value).trim();
+  if (!compact) return false;
+  if (compact.length < 3 || compact.length > 48) return false;
+  if (!/^[A-Z][A-Za-z'-]*(?:\s+[A-Z][A-Za-z'-]*){0,2}$/.test(compact)) return false;
+  const blocked = new Set([
+    "The",
+    "This",
+    "That",
+    "How",
+    "What",
+    "When",
+    "Where",
+    "Why",
+    "Who",
+    "Episode",
+    "Podcast",
+    "Interview",
+    "Part",
+    "Guide",
+    "Video",
+    "Talk",
+  ]);
+  if (blocked.has(compact)) return false;
+  return true;
+}
+
+function inferSpeakerName({
+  markdown,
+  sourceTitle,
+}: {
+  markdown: string;
+  sourceTitle?: string | null;
+}): string | null {
+  const text = collapseLineWhitespace(markdown);
+  SPEAKER_VERB_PATTERN.lastIndex = 0;
+  for (const match of text.matchAll(SPEAKER_VERB_PATTERN)) {
+    const candidate = collapseLineWhitespace(match[1] ?? "");
+    if (isLikelySpeakerName(candidate)) return candidate;
+  }
+  const title = collapseLineWhitespace(sourceTitle ?? "");
+  if (!title) return null;
+  for (const pattern of SPEAKER_TITLE_PATTERNS) {
+    const match = title.match(pattern);
+    const candidate = collapseLineWhitespace(match?.[1] ?? "");
+    if (isLikelySpeakerName(candidate)) return candidate;
+  }
+  return null;
+}
+
+function applySpeakerAttribution(markdown: string, speakerName: string | null): string {
+  if (!speakerName) return markdown;
+  const speaker = collapseLineWhitespace(speakerName);
+  if (!speaker) return markdown;
+  const speakerPattern = new RegExp(`\\b${escapeRegExp(speaker)}\\b`, "i");
+  const replaced = markdown.replace(/\bThe speaker\b/gi, speaker);
+  if (speakerPattern.test(replaced)) return replaced;
+
+  const blocks = replaced.split(/\n{2,}/);
+  const slideBlockIndex = blocks.findIndex((block) => /^\[slide:\d+\]/m.test(block));
+  if (slideBlockIndex < 0) return replaced;
+  const block = blocks[slideBlockIndex] ?? "";
+  const lines = block.split("\n");
+  if (lines.length === 0) return replaced;
+  const slideTag = lines[0] ?? "";
+  if (!/^\[slide:\d+\]/.test(slideTag.trim())) return replaced;
+
+  if (lines.length === 1) {
+    blocks[slideBlockIndex] = `${slideTag}\n${speaker} is the speaker in this segment.`;
+    return blocks.join("\n\n");
+  }
+
+  const title = lines[1] ?? "";
+  const body = lines.slice(2).join("\n").trim();
+  const attributedBody = body
+    ? `${speaker} explains this segment. ${body}`
+    : `${speaker} is the speaker in this segment.`;
+  blocks[slideBlockIndex] = `${slideTag}\n${title}\n${attributedBody}`.trim();
+  return blocks.join("\n\n");
+}
+
 const deriveHeadlineFromBody = (body: string): string | null => {
   const cleaned = collapseLineWhitespace(body);
   if (!cleaned) return null;
@@ -950,14 +1044,17 @@ export function coerceSummaryWithSlides({
   markdown,
   slides,
   transcriptTimedText,
+  sourceTitle,
   lengthArg,
 }: {
   markdown: string;
   slides: SlideTimelineEntry[];
   transcriptTimedText?: string | null;
+  sourceTitle?: string | null;
   lengthArg: { kind: "preset"; preset: SummaryLength } | { kind: "chars"; maxCharacters: number };
 }): string {
   if (!markdown.trim() || slides.length === 0) return markdown;
+  const speakerName = inferSpeakerName({ markdown, sourceTitle });
   const ordered = slides.slice().sort((a, b) => a.index - b.index);
   const slideSummaryCap = Math.max(
     240,
@@ -1114,7 +1211,7 @@ export function coerceSummaryWithSlides({
       const withTitle = text ? ensureSlideTitleLine({ text, slide, total: ordered.length }) : "";
       parts.push(withTitle ? `[slide:${slide.index}]\n${withTitle}` : `[slide:${slide.index}]`);
     }
-    return parts.join("\n\n");
+    return applySpeakerAttribution(parts.join("\n\n"), speakerName);
   }
 
   if ((slideSummaries.size === 0 || titleOnlySlideSummaries) && fallbackHasCoverage) {
@@ -1139,11 +1236,11 @@ export function coerceSummaryWithSlides({
         : "";
       parts.push(withTitle ? `[slide:${slide.index}]\n${withTitle}` : `[slide:${slide.index}]`);
     }
-    return parts.join("\n\n");
+    return applySpeakerAttribution(parts.join("\n\n"), speakerName);
   }
 
   const paragraphs = splitMarkdownParagraphs(distributionMarkdown);
-  if (paragraphs.length === 0) return markdown;
+  if (paragraphs.length === 0) return applySpeakerAttribution(markdown, speakerName);
   const autoIntroEnabled = !(titleOnlySlideSummaries && !intro);
   const introParagraph = autoIntroEnabled ? intro || paragraphs[0] || "" : intro || "";
   const introIndex = introParagraph ? paragraphs.indexOf(introParagraph) : -1;
@@ -1155,7 +1252,7 @@ export function coerceSummaryWithSlides({
     for (const slide of ordered) {
       parts.push(`[slide:${slide.index}]`);
     }
-    return parts.join("\n\n");
+    return applySpeakerAttribution(parts.join("\n\n"), speakerName);
   }
   const total = ordered.length;
   const redistributedRemaining =
@@ -1176,7 +1273,7 @@ export function coerceSummaryWithSlides({
     const withTitle = normalized ? ensureSlideTitleLine({ text: normalized, slide, total }) : "";
     parts.push(withTitle ? `[slide:${slideIndex}]\n${withTitle}` : `[slide:${slideIndex}]`);
   }
-  return parts.join("\n\n");
+  return applySpeakerAttribution(parts.join("\n\n"), speakerName);
 }
 
 function parseTimestampSeconds(value: string): number | null {

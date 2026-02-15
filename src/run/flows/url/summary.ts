@@ -1075,6 +1075,7 @@ export async function summarizeExtractedUrl({
                 timestamp: slide.timestamp,
               })),
               transcriptTimedText: extracted.transcriptTimedText ?? null,
+              sourceTitle: extracted.title,
               lengthArg: flags.lengthArg,
             })
           : normalizedSummary;
