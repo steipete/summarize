@@ -715,6 +715,25 @@ describe("slides text helpers", () => {
     expect(coerced).not.toContain("negative emote");
   });
 
+  it("cleans malformed fight-seeking pain-body tail phrasing", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "The Pain Body and Alcohol's Opposite Effect",
+      "The speaker still start looking for fights. Because it has lowered their consciousness which even in normal times was probably not that great. The speaker describes it as an accumulation of old emotion of going back to childhood that still lives in the pain of caused by pain suffered in childhood and perhaps going back to past lifetimes if they want to. The speaker notes that belief in past lifetimes is optional. The speaker describes the pain body as stored anger, fear, and heaviness. The speaker talked yesterday about the thoughts can be could consider thought to be every thought to be a little being a little energetic entity and very much so also emotion. That is the only way a child can deal with it.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("still start looking for fights");
+    expect(coerced).not.toContain("in the pain of caused by pain");
+    expect(coerced).not.toContain("thoughts can be could consider thought to be");
+    expect(coerced).toContain("The speaker describes the pain body");
+  });
+
   it("uses inferred speaker name from source title for generic speaker phrasing", () => {
     const slides = [{ index: 1, timestamp: 1 }];
     const markdown = ["[slide:1]", "The speaker explains that ego identification creates suffering."].join(

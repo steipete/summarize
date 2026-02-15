@@ -612,7 +612,7 @@ function isTranscriptLikeSlideText(value: string): boolean {
   const normalized = normalizeSlideText(value);
   if (!normalized) return false;
   if (
-    /(?:,{2,}|\bthey was\b|\bthey wasn't\b|\bthey was they\b|\bidea of and like\b|\bpreference like when they get like at\b|\bthey pain\b|\bthought be they\b|\bnegative emote\b)/i.test(
+    /(?:,{2,}|\bthey was\b|\bthey wasn't\b|\bthey was they\b|\bidea of and like\b|\bpreference like when they get like at\b|\bthey pain\b|\bthought be they\b|\bnegative emote\b|\bstill start looking for fights\b|\bin the pain of caused by pain\b|\bthoughts can be could consider thought to be\b)/i.test(
       normalized,
     )
   ) {
@@ -805,9 +805,21 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bthis is where honestly this is where\b/gi, "this is where");
   text = text.replace(/\b(?:their|the) preference like when they get like at\b/gi, "their preference at");
   text = text.replace(/\bjust an idea of and like\b/gi, "a general idea, and");
+  text = text.replace(/\bThe speaker still start looking for fights\b/gi, "The pain body can drive conflict-seeking behavior");
+  text = text.replace(/\bstill start looking for fights\b/gi, "can start looking for fights");
+  text = text.replace(
+    /\bbecause it has lowered their consciousness which even in normal times was probably not that great\b/gi,
+    "because consciousness has been lowered, especially when baseline awareness is weak",
+  );
   text = text.replace(/\bit is an accumulation of old emotion\b/gi, "The speaker describes it as an accumulation of old emotion");
   text = text.replace(/\bthey pain\b/gi, "the pain");
+  text = text.replace(/\bin the pain of caused by pain suffered in childhood\b/gi, "in pain caused by childhood suffering");
   text = text.replace(/\bthought be they\b/gi, "thoughts can be");
+  text = text.replace(
+    /\bthoughts can be could consider thought to be every thought to be a little being a little energetic entity\b/gi,
+    "thoughts can be viewed as small energetic entities",
+  );
+  text = text.replace(/\bThe speaker talked yesterday about\b/gi, "The speaker adds that");
   text = text.replace(/\bnegative emote\b/gi, "negative emotions");
   text = text.replace(
     /^if they don't believe in past lifetimes that is fine they don't have to\.?$/i,
@@ -818,6 +830,10 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
     "The speaker describes the pain body as stored anger, fear, and heaviness",
   );
   text = text.replace(/\bit could be lot of\b/gi, "it could involve");
+  text = text.replace(
+    /\bthat is the only way a child can deal with it\b/gi,
+    "as children often suppress painful emotions to cope",
+  );
   text = text.replace(/,{2,}/g, ",");
   text = text.replace(/\s+([,.;:!?])/g, "$1");
   text = text.replace(/,\s*([.!?])/g, "$1");
@@ -888,7 +904,7 @@ function isLowSignalTranscriptSentence(value: string): boolean {
     return true;
   }
   if (
-    /\b(?:they was|they wasn't|they was they|this is where honestly this is where|idea of and like|they pain|thought be they|negative emote)\b/i.test(
+    /\b(?:they was|they wasn't|they was they|this is where honestly this is where|idea of and like|they pain|thought be they|negative emote|still start looking for fights|in the pain of caused by pain|thoughts can be could consider thought to be|because it has lowered their consciousness which)\b/i.test(
       normalized,
     )
   ) {
