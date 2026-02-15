@@ -83,6 +83,14 @@ function inferSpeakerName({
   markdown: string;
   sourceTitle?: string | null;
 }): string | null {
+  const title = collapseLineWhitespace(sourceTitle ?? "");
+  if (title) {
+    for (const pattern of SPEAKER_TITLE_PATTERNS) {
+      const match = title.match(pattern);
+      const candidate = collapseLineWhitespace(match?.[1] ?? "");
+      if (isLikelySpeakerName(candidate)) return candidate;
+    }
+  }
   const lines = markdown
     .split("\n")
     .map((line) => collapseLineWhitespace(line))
@@ -93,13 +101,6 @@ function inferSpeakerName({
       const candidate = collapseLineWhitespace(match[1] ?? "");
       if (isLikelySpeakerName(candidate)) return candidate;
     }
-  }
-  const title = collapseLineWhitespace(sourceTitle ?? "");
-  if (!title) return null;
-  for (const pattern of SPEAKER_TITLE_PATTERNS) {
-    const match = title.match(pattern);
-    const candidate = collapseLineWhitespace(match?.[1] ?? "");
-    if (isLikelySpeakerName(candidate)) return candidate;
   }
   return null;
 }
@@ -115,7 +116,6 @@ function applySpeakerAttribution(markdown: string, speakerName: string | null): 
   const slideBlockIndex = blocks.findIndex((block) => /^\[slide:\d+\]/m.test(block));
   if (slideBlockIndex < 0) return replaced;
   const block = blocks[slideBlockIndex] ?? "";
-  if (speakerPattern.test(block)) return replaced;
   const lines = block.split("\n");
   if (lines.length === 0) return replaced;
   const slideTagIndex = lines.findIndex((line) => /^\[slide:\d+\]/i.test(line.trim()));
@@ -125,6 +125,9 @@ function applySpeakerAttribution(markdown: string, speakerName: string | null): 
   if (insertAt < lines.length && isTitleOnlySlideText(lines[insertAt]?.trim() ?? "")) {
     insertAt += 1;
   }
+  while (insertAt < lines.length && !lines[insertAt]?.trim()) insertAt += 1;
+  const firstBodyLine = lines[insertAt] ?? "";
+  if (speakerPattern.test(firstBodyLine)) return replaced;
   const attributionLine = `${speaker} explains this segment.`;
   lines.splice(insertAt, 0, attributionLine);
   blocks[slideBlockIndex] = lines.join("\n").trim();

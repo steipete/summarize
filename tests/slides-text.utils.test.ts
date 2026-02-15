@@ -772,6 +772,23 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("[slide:1]\nThe Ego and False Identity\nEckhart Tolle explains this segment.");
   });
 
+  it("prefers full speaker name from source title over surname mention in body", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Opening",
+      "The ego is a false identity, which Tolle describes as unconscious reactivity.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "Eckhart Tolle: The Ego and Presence",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("Eckhart Tolle explains this segment.");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },
