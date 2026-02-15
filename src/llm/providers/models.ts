@@ -152,6 +152,30 @@ export function resolveGoogleModel({
   );
 }
 
+export function resolveVertexModel({
+  modelId,
+  context,
+}: {
+  modelId: string;
+  context: Context;
+}): Model<Api> {
+  const allowImages = wantsImages(context);
+  // Vertex AI uses the same model ids as google (e.g. gemini-3-flash-preview)
+  // but dispatches via the google-vertex API which uses ADC auth.
+  const base = tryGetModel("google", modelId);
+  return {
+    ...(base ??
+      createSyntheticModel({
+        provider: "google",
+        modelId,
+        api: "google-vertex",
+        baseUrl: "https://us-central1-aiplatform.googleapis.com",
+        allowImages,
+      })),
+    api: "google-vertex" as Api,
+  };
+}
+
 export function resolveAnthropicModel({
   modelId,
   context,

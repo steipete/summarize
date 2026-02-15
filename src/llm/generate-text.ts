@@ -11,9 +11,11 @@ import {
   normalizeAnthropicModelAccessError,
 } from "./providers/anthropic.js";
 import { completeGoogleDocument, completeGoogleText } from "./providers/google.js";
+import { completeVertexText, completeVertexDocument, type VertexConfig } from "./providers/vertex.js";
 import {
   resolveAnthropicModel,
   resolveGoogleModel,
+  resolveVertexModel,
   resolveOpenAiModel,
   resolveXaiModel,
   resolveNvidiaModel,
@@ -164,6 +166,7 @@ export async function generateTextWithModelId({
   anthropicBaseUrlOverride,
   googleBaseUrlOverride,
   xaiBaseUrlOverride,
+  vertexConfig,
   forceChatCompletions,
   retries = 0,
   onRetry,
@@ -180,13 +183,14 @@ export async function generateTextWithModelId({
   anthropicBaseUrlOverride?: string | null;
   googleBaseUrlOverride?: string | null;
   xaiBaseUrlOverride?: string | null;
+  vertexConfig?: VertexConfig | null;
   forceChatCompletions?: boolean;
   retries?: number;
   onRetry?: (notice: RetryNotice) => void;
 }): Promise<{
   text: string;
   canonicalModelId: string;
-  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia";
+  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex";
   usage: LlmTokenUsage | null;
 }> {
   const parsed = parseGatewayStyleModelId(modelId);
@@ -281,6 +285,30 @@ export async function generateTextWithModelId({
       };
     }
 
+    if (parsed.provider === "vertex") {
+      if (!vertexConfig)
+        throw new Error(
+          "Missing Vertex AI configuration. Set GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, " +
+            "and VERTEX_AI_SERVICE_ACCOUNT_KEY (or GOOGLE_APPLICATION_CREDENTIALS).",
+        );
+      const result = await completeVertexDocument({
+        modelId: parsed.model,
+        vertexConfig,
+        promptText: prompt.userText,
+        document: documentAttachment,
+        maxOutputTokens,
+        temperature: effectiveTemperature,
+        timeoutMs,
+        fetchImpl,
+      });
+      return {
+        text: result.text,
+        canonicalModelId: parsed.canonical,
+        provider: parsed.provider,
+        usage: result.usage,
+      };
+    }
+
     throw createUnsupportedFunctionalityError(
       `document attachments are not supported for ${parsed.provider}/... models`,
     );
@@ -366,6 +394,28 @@ export async function generateTextWithModelId({
           maxOutputTokens,
           signal: controller.signal,
           googleBaseUrlOverride,
+        });
+        return {
+          text: result.text,
+          canonicalModelId: parsed.canonical,
+          provider: parsed.provider,
+          usage: result.usage,
+        };
+      }
+
+      if (parsed.provider === "vertex") {
+        if (!vertexConfig)
+          throw new Error(
+            "Missing Vertex AI configuration. Set GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, " +
+              "and VERTEX_AI_SERVICE_ACCOUNT_KEY (or GOOGLE_APPLICATION_CREDENTIALS).",
+          );
+        const result = await completeVertexText({
+          modelId: parsed.model,
+          vertexConfig,
+          context,
+          temperature: effectiveTemperature,
+          maxOutputTokens,
+          signal: controller.signal,
         });
         return {
           text: result.text,
@@ -479,6 +529,7 @@ export async function streamTextWithModelId({
   anthropicBaseUrlOverride,
   googleBaseUrlOverride,
   xaiBaseUrlOverride,
+  vertexConfig,
   forceChatCompletions,
 }: {
   modelId: string;
@@ -493,11 +544,12 @@ export async function streamTextWithModelId({
   anthropicBaseUrlOverride?: string | null;
   googleBaseUrlOverride?: string | null;
   xaiBaseUrlOverride?: string | null;
+  vertexConfig?: VertexConfig | null;
   forceChatCompletions?: boolean;
 }): Promise<{
   textStream: AsyncIterable<string>;
   canonicalModelId: string;
-  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia";
+  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex";
   usage: Promise<LlmTokenUsage | null>;
   lastError: () => unknown;
 }> {
@@ -515,6 +567,7 @@ export async function streamTextWithModelId({
     anthropicBaseUrlOverride,
     googleBaseUrlOverride,
     xaiBaseUrlOverride,
+    vertexConfig,
     forceChatCompletions,
   });
 }
@@ -532,6 +585,7 @@ export async function streamTextWithContext({
   anthropicBaseUrlOverride,
   googleBaseUrlOverride,
   xaiBaseUrlOverride,
+  vertexConfig,
   forceChatCompletions,
 }: {
   modelId: string;
@@ -546,11 +600,12 @@ export async function streamTextWithContext({
   anthropicBaseUrlOverride?: string | null;
   googleBaseUrlOverride?: string | null;
   xaiBaseUrlOverride?: string | null;
+  vertexConfig?: VertexConfig | null;
   forceChatCompletions?: boolean;
 }): Promise<{
   textStream: AsyncIterable<string>;
   canonicalModelId: string;
-  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia";
+  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex";
   usage: Promise<LlmTokenUsage | null>;
   lastError: () => unknown;
 }> {
@@ -680,6 +735,44 @@ export async function streamTextWithContext({
         apiKey,
         signal: controller.signal,
       });
+
+      const textStream: AsyncIterable<string> = {
+        async *[Symbol.asyncIterator]() {
+          for await (const event of stream) {
+            if (event.type === "text_delta") yield event.delta;
+            if (event.type === "error") {
+              lastError = event.error;
+              break;
+            }
+          }
+        },
+      };
+      return {
+        textStream: wrapTextStream(textStream),
+        canonicalModelId: parsed.canonical,
+        provider: parsed.provider,
+        usage: streamUsageWithTimeout({ result: stream.result(), timeoutMs }),
+        lastError: () => lastError,
+      };
+    }
+
+    if (parsed.provider === "vertex") {
+      if (!vertexConfig)
+        throw new Error(
+          "Missing Vertex AI configuration. Set GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, " +
+            "and VERTEX_AI_SERVICE_ACCOUNT_KEY (or GOOGLE_APPLICATION_CREDENTIALS).",
+        );
+      const model = resolveVertexModel({
+        modelId: parsed.model,
+        context,
+      });
+      const stream = streamSimple(model, context, {
+        ...(typeof effectiveTemperature === "number" ? { temperature: effectiveTemperature } : {}),
+        ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),
+        project: vertexConfig.project,
+        location: vertexConfig.location,
+        signal: controller.signal,
+      } as Record<string, unknown>);
 
       const textStream: AsyncIterable<string> = {
         async *[Symbol.asyncIterator]() {

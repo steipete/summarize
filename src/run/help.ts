@@ -110,7 +110,7 @@ export function buildProgram() {
     .option("--retries <count>", "LLM retry attempts on timeout (default: 1).", "1")
     .option(
       "--model <model>",
-      "LLM model id: auto, <name>, cli/<provider>/<model>, xai/..., openai/..., nvidia/..., google/..., anthropic/..., zai/... or openrouter/<author>/<slug> (default: auto)",
+      "LLM model id: auto, <name>, cli/<provider>/<model>, xai/..., openai/..., nvidia/..., google/..., vertex/..., anthropic/..., zai/... or openrouter/<author>/<slug> (default: auto)",
       undefined,
     )
     .option(
@@ -262,6 +262,10 @@ ${heading("Env Vars")}
   Z_AI_BASE_URL         optional (override default Z.AI base URL)
   GEMINI_API_KEY        optional (required for google/... models)
   GOOGLE_BASE_URL       optional (override Google API endpoint; alias: GEMINI_BASE_URL)
+  GOOGLE_CLOUD_PROJECT  optional (required for vertex/... models; alias: VERTEX_AI_PROJECT_ID)
+  GOOGLE_CLOUD_LOCATION optional (required for vertex/... models; alias: VERTEX_AI_LOCATION)
+  VERTEX_AI_SERVICE_ACCOUNT_KEY optional (inline JSON service account key for Vertex AI)
+  GOOGLE_APPLICATION_CREDENTIALS optional (path to service account JSON file for Vertex AI)
   ANTHROPIC_API_KEY     optional (required for anthropic/... models)
   ANTHROPIC_BASE_URL    optional (override Anthropic API endpoint)
   CLAUDE_PATH           optional (path to Claude CLI binary)

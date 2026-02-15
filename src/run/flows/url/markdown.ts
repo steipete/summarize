@@ -23,7 +23,7 @@ export type MarkdownConverters = {
   markdownRequested: boolean;
   transcriptMarkdownRequested: boolean;
   effectiveMarkdownMode: "off" | "auto" | "llm" | "readability";
-  markdownProvider: "none" | "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia";
+  markdownProvider: "none" | "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex";
   markdownModel: MarkdownModel | null;
   convertHtmlToMarkdown:
     | ((args: {

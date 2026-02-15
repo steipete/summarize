@@ -89,7 +89,7 @@ export function createTranscriptToMarkdownConverter({
   }) => void;
   onUsage?: (usage: {
     model: string;
-    provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia";
+    provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex";
     usage: LlmTokenUsage | null;
   }) => void;
 }): ConvertTranscriptToMarkdown {

@@ -39,7 +39,7 @@ export type SummaryEngineDeps = {
   resolveMaxOutputTokensForCall: (modelId: string) => Promise<number | null>;
   resolveMaxInputTokensForCall: (modelId: string) => Promise<number | null>;
   llmCalls: Array<{
-    provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "cli";
+    provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex" | "cli";
     model: string;
     usage: Awaited<ReturnType<typeof summarizeWithModelId>>["usage"] | null;
     costUsd?: number | null;
@@ -73,6 +73,7 @@ export type SummaryEngineDeps = {
     google: string | null;
     xai: string | null;
   };
+  vertexConfig: { project: string; location: string } | null;
 };
 
 export type SummaryStreamHandler = {
@@ -122,6 +123,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     if (requiredEnv === "GEMINI_API_KEY") {
       return deps.keyFlags.googleConfigured;
     }
+    if (requiredEnv === "GOOGLE_CLOUD_PROJECT") {
+      return Boolean(deps.vertexConfig);
+    }
     if (requiredEnv === "OPENROUTER_API_KEY") {
       return deps.keyFlags.openrouterConfigured;
     }
@@ -152,6 +156,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     }
     if (attempt.requiredEnv === "CLI_AGENT") {
       return `Cursor Agent CLI not found for model ${attempt.userModelId}. Install Cursor CLI or set AGENT_PATH.`;
+    }
+    if (attempt.requiredEnv === "GOOGLE_CLOUD_PROJECT") {
+      return `Missing Vertex AI config for model ${attempt.userModelId}. Set GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, and VERTEX_AI_SERVICE_ACCOUNT_KEY (or GOOGLE_APPLICATION_CREDENTIALS).`;
     }
     return `Missing ${attempt.requiredEnv} for model ${attempt.userModelId}. Set the env var or choose a different --model.`;
   };
@@ -302,6 +309,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
         googleBaseUrlOverride: deps.providerBaseUrls.google,
         xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+        vertexConfig: deps.vertexConfig,
         forceChatCompletions,
         retries: deps.retries,
         onRetry: createRetryLogger({
@@ -355,6 +363,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
         googleBaseUrlOverride: deps.providerBaseUrls.google,
         xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+        vertexConfig: deps.vertexConfig,
         forceChatCompletions,
         prompt,
         temperature: 0,
@@ -383,6 +392,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
           anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
           googleBaseUrlOverride: deps.providerBaseUrls.google,
           xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+        vertexConfig: deps.vertexConfig,
           forceChatCompletions,
           retries: deps.retries,
           onRetry: createRetryLogger({
@@ -424,6 +434,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
           anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
           googleBaseUrlOverride: deps.providerBaseUrls.google,
           xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+        vertexConfig: deps.vertexConfig,
           retries: deps.retries,
           onRetry: createRetryLogger({
             stderr: deps.stderr,

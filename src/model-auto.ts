@@ -40,6 +40,7 @@ export type AutoModelAttempt = {
     | "OPENAI_API_KEY"
     | "NVIDIA_API_KEY"
     | "GEMINI_API_KEY"
+    | "GOOGLE_CLOUD_PROJECT"
     | "ANTHROPIC_API_KEY"
     | "OPENROUTER_API_KEY"
     | "Z_AI_API_KEY"
@@ -253,7 +254,10 @@ function hasAnyApiKeysConfigured(env: Record<string, string | undefined>): boole
     has(env.XAI_API_KEY) ||
     has(env.OPENROUTER_API_KEY) ||
     has(env.Z_AI_API_KEY) ||
-    has(env.ZAI_API_KEY),
+    has(env.ZAI_API_KEY) ||
+    // Vertex AI: project + location + credentials counts as having API keys
+    (has(env.GOOGLE_CLOUD_PROJECT) && has(env.GOOGLE_CLOUD_LOCATION) &&
+      (has(env.VERTEX_AI_SERVICE_ACCOUNT_KEY) || has(env.GOOGLE_SERVICE_ACCOUNT_KEY) || has(env.GOOGLE_APPLICATION_CREDENTIALS))),
   );
 }
 
@@ -327,13 +331,15 @@ function requiredEnvForCandidate(modelId: string): AutoModelAttempt["requiredEnv
     ? "XAI_API_KEY"
     : parsed.provider === "google"
       ? "GEMINI_API_KEY"
-      : parsed.provider === "anthropic"
-        ? "ANTHROPIC_API_KEY"
-        : parsed.provider === "zai"
-          ? "Z_AI_API_KEY"
-          : parsed.provider === "nvidia"
-            ? "NVIDIA_API_KEY"
-            : "OPENAI_API_KEY";
+      : parsed.provider === "vertex"
+        ? "GOOGLE_CLOUD_PROJECT"
+        : parsed.provider === "anthropic"
+          ? "ANTHROPIC_API_KEY"
+          : parsed.provider === "zai"
+            ? "Z_AI_API_KEY"
+            : parsed.provider === "nvidia"
+              ? "NVIDIA_API_KEY"
+              : "OPENAI_API_KEY";
 }
 
 export function envHasKey(
@@ -345,6 +351,14 @@ export function envHasKey(
       env.GEMINI_API_KEY?.trim() ||
       env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
       env.GOOGLE_API_KEY?.trim(),
+    );
+  }
+  if (requiredEnv === "GOOGLE_CLOUD_PROJECT") {
+    // Vertex AI: needs project + location + credentials
+    return Boolean(
+      (env.GOOGLE_CLOUD_PROJECT?.trim() || env.GCLOUD_PROJECT?.trim() || env.VERTEX_AI_PROJECT_ID?.trim()) &&
+      (env.GOOGLE_CLOUD_LOCATION?.trim() || env.VERTEX_AI_LOCATION?.trim()) &&
+      (env.VERTEX_AI_SERVICE_ACCOUNT_KEY?.trim() || env.GOOGLE_SERVICE_ACCOUNT_KEY?.trim() || env.GOOGLE_APPLICATION_CREDENTIALS?.trim()),
     );
   }
   if (requiredEnv === "Z_AI_API_KEY") {

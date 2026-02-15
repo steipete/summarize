@@ -51,6 +51,7 @@ export async function summarizeWithModelId({
   anthropicBaseUrlOverride,
   googleBaseUrlOverride,
   xaiBaseUrlOverride,
+  vertexConfig,
   forceChatCompletions,
   retries,
   onRetry,
@@ -72,6 +73,7 @@ export async function summarizeWithModelId({
   anthropicBaseUrlOverride?: string | null;
   googleBaseUrlOverride?: string | null;
   xaiBaseUrlOverride?: string | null;
+  vertexConfig?: { project: string; location: string } | null;
   forceChatCompletions?: boolean;
   retries: number;
   onRetry?: (notice: {
@@ -82,7 +84,7 @@ export async function summarizeWithModelId({
   }) => void;
 }): Promise<{
   text: string;
-  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia";
+  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex";
   canonicalModelId: string;
   usage: Awaited<ReturnType<typeof generateTextWithModelId>>["usage"];
 }> {
@@ -94,6 +96,7 @@ export async function summarizeWithModelId({
     anthropicBaseUrlOverride,
     googleBaseUrlOverride,
     xaiBaseUrlOverride,
+    vertexConfig,
     forceChatCompletions,
     prompt,
     temperature: 0,

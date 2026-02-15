@@ -5,6 +5,7 @@ export type ModelAttemptRequiredEnv =
   | "OPENAI_API_KEY"
   | "NVIDIA_API_KEY"
   | "GEMINI_API_KEY"
+  | "GOOGLE_CLOUD_PROJECT"
   | "ANTHROPIC_API_KEY"
   | "OPENROUTER_API_KEY"
   | "Z_AI_API_KEY"
@@ -28,7 +29,7 @@ export type ModelAttempt = {
 };
 
 export type ModelMeta = {
-  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "cli";
+  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex" | "cli";
   canonical: string;
 };
 

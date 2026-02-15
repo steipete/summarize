@@ -38,7 +38,7 @@ export function canStream({
   prompt,
   transport,
 }: {
-  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia";
+  provider: "xai" | "openai" | "google" | "anthropic" | "zai" | "nvidia" | "vertex";
   prompt: { attachments?: Array<{ kind: "text" | "image" | "document" }> };
   transport: "cli" | "native" | "openrouter";
 }): boolean {
