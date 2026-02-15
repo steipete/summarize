@@ -648,7 +648,7 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bour\b/gi, "their");
   text = text.replace(/\bus\b/gi, "them");
   text = text.replace(/\byou'll\b/gi, "they will");
-  text = text.replace(/\byou\b/gi, "people");
+  text = text.replace(/\byou\b/gi, "they");
   text = text.replace(/\byour\b/gi, "their");
   text = text.replace(/\bis they\b/gi, "is that they");
   text = text.replace(
@@ -1136,7 +1136,13 @@ export function formatTimestamp(seconds: number): string {
 }
 
 function normalizeSlideText(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
+  return value
+    .replace(
+      /\[(?:music|applause|clapping|cheering|laughter|laughs?|inaudible|silence|sfx|sound effects?)\]/gi,
+      " ",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 const LEADING_CONTINUATION_WORDS = new Set([

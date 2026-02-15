@@ -623,6 +623,21 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("The real purpose cannot be found on that level.");
   });
 
+  it("strips transcript stage-direction tags and avoids 'people' pronoun rewrites", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = ["[slide:1]", "This is when the wound [music] becomes a scar. You notice peace."].join(
+      "\n",
+    );
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("[music]");
+    expect(coerced).not.toContain("people notice");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },
