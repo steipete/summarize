@@ -543,6 +543,25 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("Internally, the speaker will put it exactly how it is.");
   });
 
+  it("rewrites corrupted run-on slide tails with stutter/contraction artifacts", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Men in their 40s let's say who he works with and they said what he notices there's this really common that he sees sense of a lack of purpose around that age and how can people go about finding that and had they recorded any conversations about this and they have they have recorded some where it talks about on the okay they want to find a purpose in their job or whatever but it's it seems to them that then the real purpose can't be find found on that level, the real purpose is to awake to their true nature, to the fact that and the implications of their true nature, the implications that, they are people're them, things aren't real.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText:
+        "[00:01] The discussion focuses on people in midlife who feel a lack of purpose and asks how they can find meaning through direct inner work instead of external status.",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).not.toContain("people're");
+    expect(coerced).not.toContain("they have they have");
+    expect(coerced).toContain("lack of purpose");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },

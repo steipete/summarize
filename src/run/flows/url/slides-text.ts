@@ -519,6 +519,7 @@ function isTranscriptLikeSlideText(value: string): boolean {
   ) {
     return true;
   }
+  if (looksCorruptedSpeechLikeText(normalized)) return true;
   const firstPersonCount = (normalized.match(/\b(?:i|i'm|i'd|i'll|me|my|mine|we|we're|our|us)\b/gi) ?? [])
     .length;
   const secondPersonCount = (normalized.match(/\b(?:you|your|yours)\b/gi) ?? []).length;
@@ -537,6 +538,30 @@ function isTranscriptLikeSlideText(value: string): boolean {
   if (secondPersonCount >= 4 && firstPersonCount >= 1) return true;
   if (secondPersonCount >= 6) return true;
   if (quoteCount >= 2 && firstPersonCount >= 2) return true;
+  return false;
+}
+
+function looksCorruptedSpeechLikeText(value: string): boolean {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return false;
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length < 30) return false;
+  const repeatedWordCount = (normalized.match(/\b(\w+)\s+\1\b/gi) ?? []).length;
+  const malformedContractionCount = (
+    normalized.match(
+      /\b(?!i|you|we|they|he|she|it|there|here|what|who|where|when|why|how|that)\w+'(?:re|ve|ll|d|m)\b/gi,
+    ) ?? []
+  ).length;
+  const longSentenceCount = (normalized.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [])
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => part.split(/\s+/).filter(Boolean).length >= 45).length;
+  const connectorCount = (
+    normalized.match(/\b(?:and|but|so|that|then|because|if|when|while)\b/gi) ?? []
+  ).length;
+  if (malformedContractionCount >= 1) return true;
+  if (repeatedWordCount >= 2) return true;
+  if (longSentenceCount >= 1 && connectorCount >= 12) return true;
   return false;
 }
 
@@ -566,6 +591,11 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bi mean\b/gi, "");
   text = text.replace(/\bkind of\b/gi, "");
   text = text.replace(/\bsort of\b/gi, "");
+  text = text.replace(/\b([A-Za-z]+)'re\b/g, "$1 are");
+  text = text.replace(/\b([A-Za-z]+)'ve\b/g, "$1 have");
+  text = text.replace(/\b([A-Za-z]+)'ll\b/g, "$1 will");
+  text = text.replace(/\b([A-Za-z]+)'d\b/g, "$1 would");
+  text = text.replace(/\b([A-Za-z]+)'m\b/g, "$1 am");
   text = text.replace(/\bI'm\b/gi, "they are");
   text = text.replace(/\bI've\b/gi, "they have");
   text = text.replace(/\bI'll\b/gi, "they will");
@@ -607,10 +637,34 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   return text;
 }
 
+function splitTranscriptLikeUnits(normalized: string): string[] {
+  const rawSentences = normalized.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [normalized];
+  const units: string[] = [];
+  for (const sentence of rawSentences) {
+    const compact = collapseLineWhitespace(sentence).trim();
+    if (!compact) continue;
+    const wordCount = compact.split(/\s+/).filter(Boolean).length;
+    if (wordCount <= 44) {
+      units.push(compact);
+      continue;
+    }
+    const clauses = compact
+      .split(/[,;:]\s+/)
+      .map((clause) => collapseLineWhitespace(clause).trim())
+      .filter(Boolean);
+    if (clauses.length >= 2) {
+      units.push(...clauses);
+      continue;
+    }
+    units.push(compact);
+  }
+  return units.length > 0 ? units : [normalized];
+}
+
 function summarizeTranscriptLikeSlideText(value: string, maxChars: number): string {
   const normalized = normalizeSlideText(value);
   if (!normalized) return normalized;
-  const sentences = normalized.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [normalized];
+  const sentences = splitTranscriptLikeUnits(normalized);
   const kept: string[] = [];
   const seen = new Set<string>();
   for (const sentence of sentences) {
@@ -798,6 +852,16 @@ export function coerceSummaryWithSlides({
           total: ordered.length,
         });
         const body = parsed.body || text;
+        if (looksCorruptedSpeechLikeText(body)) {
+          const hasExplicitTitle =
+            Boolean(parsed.title) && Boolean(parsed.body) && parsed.body.trim() !== text.trim();
+          const fallbackWordCount = normalizeSlideText(fallbackText)
+            .split(/\s+/)
+            .filter(Boolean).length;
+          if (fallbackWordCount >= 12 && fallbackWordCount <= 260) {
+            text = hasExplicitTitle && parsed.title ? `${parsed.title}\n${fallbackText}` : fallbackText;
+          }
+        }
         if (looksTruncatedSlideBody(body, fallbackText)) {
           const hasExplicitTitle =
             Boolean(parsed.title) && Boolean(parsed.body) && parsed.body.trim() !== text.trim();
