@@ -547,20 +547,34 @@ function looksCorruptedSpeechLikeText(value: string): boolean {
   const words = normalized.split(/\s+/).filter(Boolean);
   if (words.length < 30) return false;
   const repeatedWordCount = (normalized.match(/\b(\w+)\s+\1\b/gi) ?? []).length;
+  const repeatedBigramCount = (normalized.match(/\b(\w+\s+\w+)\s+\1\b/gi) ?? []).length;
   const malformedContractionCount = (
     normalized.match(
       /\b(?!i|you|we|they|he|she|it|there|here|what|who|where|when|why|how|that)\w+'(?:re|ve|ll|d|m)\b/gi,
     ) ?? []
   ).length;
-  const longSentenceCount = (normalized.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [])
+  const sentenceParts = (normalized.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [])
     .map((part) => part.trim())
-    .filter(Boolean)
-    .filter((part) => part.split(/\s+/).filter(Boolean).length >= 45).length;
+    .filter(Boolean);
+  const longSentenceCount = sentenceParts.filter(
+    (part) => part.split(/\s+/).filter(Boolean).length >= 45,
+  ).length;
+  const shortFragmentCount = sentenceParts.filter(
+    (part) => part.split(/\s+/).filter(Boolean).length <= 9,
+  ).length;
+  const questionLeadCount = sentenceParts.filter((part) =>
+    /^(?:how|what|why|when|where|who|had|did|does|do|can|could|would|should|is|are)\b/i.test(part),
+  ).length;
   const connectorCount = (
     normalized.match(/\b(?:and|but|so|that|then|because|if|when|while)\b/gi) ?? []
   ).length;
   if (malformedContractionCount >= 1) return true;
   if (repeatedWordCount >= 2) return true;
+  if (repeatedBigramCount >= 1) return true;
+  if (shortFragmentCount >= 3 && questionLeadCount >= 1) return true;
+  if (sentenceParts.length >= 6 && shortFragmentCount >= Math.ceil(sentenceParts.length * 0.5)) {
+    return true;
+  }
   if (longSentenceCount >= 1 && connectorCount >= 12) return true;
   return false;
 }
@@ -710,6 +724,25 @@ function splitTranscriptLikeUnits(normalized: string): string[] {
   return units.length > 0 ? units : [normalized];
 }
 
+function isLowSignalTranscriptSentence(value: string): boolean {
+  const normalized = collapseLineWhitespace(value).trim();
+  if (!normalized) return true;
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length <= 4) return true;
+  if (/\b(\w+\s+\w+)\s+\1\b/i.test(normalized)) return true;
+  if (
+    /^(?:how can|had they|did they|do they|can people|it seems to (?:them|people) that|to the fact that)\b/i.test(
+      normalized,
+    )
+  ) {
+    return words.length <= 14;
+  }
+  if (/^(?:how|what|why|when|where|who|had|did|does|do|can|could|would|should|is|are)\b/i.test(normalized)) {
+    return words.length <= 10;
+  }
+  return false;
+}
+
 function summarizeTranscriptLikeSlideText(value: string, maxChars: number): string {
   const normalized = normalizeSlideText(value);
   if (!normalized) return normalized;
@@ -720,6 +753,7 @@ function summarizeTranscriptLikeSlideText(value: string, maxChars: number): stri
   for (const sentence of sentences) {
     const raw = collapseLineWhitespace(sentence).trim();
     if (!raw) continue;
+    if (isLowSignalTranscriptSentence(raw)) continue;
     if (/^to the fact that\b/i.test(raw)) continue;
     if (
       /\b(?:would you like to|leave a like|turn on notifications|subscribe|thanks? for watching)\b/i.test(

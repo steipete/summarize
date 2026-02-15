@@ -605,6 +605,24 @@ describe("slides text helpers", () => {
     expect(coerced).not.toContain("to the fact that and the implications");
   });
 
+  it("drops fragmented q-and-a transcript fragments in final slide prose", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "How can people go about finding that. Had they recorded any conversations about this. They have they have recorded some where it talks about on the okay they want to find a purpose in their job or whatever. It seems to them that. The real purpose cannot be found on that level. The real purpose is to awaken to their true nature. They should start acting in accordance with that. Otherwise, as people say, people get to their deathbed and people are like, Oh, well, that was a complete waste of time.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("How can people go about finding that.");
+    expect(coerced).not.toContain("Had they recorded any conversations about this.");
+    expect(coerced).not.toContain("they have they have");
+    expect(coerced).toContain("The real purpose cannot be found on that level.");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },
