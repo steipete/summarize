@@ -181,14 +181,12 @@ export function createSlidesTerminalOutput({
     const reason = isRichTty(io.stdout)
       ? "terminal does not support inline images"
       : "stdout is not a TTY";
-    clearProgressForStdout();
     io.stderr.write(
       `Slides saved to ${nextSlides.slidesDir}. Inline images unavailable (${reason}).\n`,
     );
     const urlArg = JSON.stringify(nextSlides.sourceUrl);
     const dirArg = JSON.stringify(nextSlides.slidesDir);
     io.stderr.write(`Use summarize slides ${urlArg} --output ${dirArg} to export only.\n`);
-    restoreProgressAfterStdout?.();
   };
 
   const onSlidesExtracted = (nextSlides: SlideExtractionResult) => {
@@ -259,6 +257,8 @@ export function createSlidesTerminalOutput({
         resolvedPath = exists ? imagePath : `${imagePath} (missing)`;
       }
       io.stdout.write(`${headerLine}\n${resolvedPath}\n\n`);
+    } else if (!inlineEnabled && imagePath) {
+      io.stdout.write(`${headerLine}\n${imagePath}\n\n`);
     } else {
       io.stdout.write(`${headerLine}\n\n`);
     }
@@ -335,16 +335,11 @@ export function createSlidesSummaryStreamHandler({
   getSlideMeta?: ((index: number) => { total: number; timestamp: number | null }) | null;
   debugWrite?: ((text: string) => void) | null;
 }): SummaryStreamHandler {
-  const shouldRenderMarkdown = !plain && isRichTty(stdout);
-  const outputGate = !shouldRenderMarkdown
-    ? createStreamOutputGate({
-        stdout,
-        clearProgressForStdout,
-        restoreProgressAfterStdout: restoreProgressAfterStdout ?? null,
-        outputMode,
-        richTty: isRichTty(stdout),
-      })
-    : null;
+  // In slides mode, prefer deterministic line output over markdown streaming.
+  // Markdown streamer buffering can delay paragraph emission and make text appear
+  // after all slide headers in some TTY environments.
+  const shouldRenderMarkdown = false;
+  const outputGate = null;
   const streamer = shouldRenderMarkdown
     ? createMarkdownStreamer({
         render: (markdown) =>
@@ -363,6 +358,8 @@ export function createSlidesSummaryStreamHandler({
   const renderedSlides = new Set<number>();
   let visible = "";
   let pendingSlide: { index: number; buffer: string } | null = null;
+  const plainWrapWidth =
+    !shouldRenderMarkdown && isRichTty(stdout) ? Math.max(32, markdownRenderWidth(stdout, env)) : 0;
   const slideTagRegex = /\[[^\]]*slide[^\d\]]*(\d+)[^\]]*\]/i;
   const slideLabelRegex =
     /(^|\n)[\t ]*slide\s+(\d+)(?:\s*(?:\/|of)\s*\d+)?(?:\s*[\u00b7:-].*)?(?=\n|$)/i;
@@ -384,17 +381,61 @@ export function createSlidesSummaryStreamHandler({
     restoreProgressAfterStdout?.();
   };
 
+  const handlePlainChunk = (appended: string) => {
+    if (!appended) return;
+    clearProgressForStdout();
+    if (isRichTty(stdout)) stdout.write("\u001b[?7h");
+    if (!wroteLeadingBlankLine) {
+      stdout.write(`\n${appended.replace(/^\n+/, "")}`);
+      wroteLeadingBlankLine = true;
+    } else {
+      stdout.write(appended);
+    }
+    restoreProgressAfterStdout?.();
+  };
+
   const pushVisible = (segment: string) => {
     if (!segment) return;
     const sanitized = segment.replace(slideStripRegex, "");
     if (!sanitized) return;
     const prevVisible = visible;
     visible += sanitized;
-    if (outputGate) {
-      outputGate.handleChunk(visible, prevVisible);
+    if (!shouldRenderMarkdown) {
+      const appended = visible.slice(prevVisible.length);
+      handlePlainChunk(appended);
       return;
     }
     handleMarkdownChunk(visible, prevVisible);
+  };
+
+  const wrapPlainLine = (line: string): string[] => {
+    if (!line) return [line];
+    if (!plainWrapWidth || line.length <= plainWrapWidth) return [line];
+    const words = line.split(/\s+/).filter(Boolean);
+    if (words.length === 0) return [line];
+    const out: string[] = [];
+    let current = "";
+    for (const word of words) {
+      if (word.length > plainWrapWidth) {
+        if (current) {
+          out.push(current);
+          current = "";
+        }
+        for (let i = 0; i < word.length; i += plainWrapWidth) {
+          out.push(word.slice(i, i + plainWrapWidth));
+        }
+        continue;
+      }
+      const next = current ? `${current} ${word}` : word;
+      if (next.length > plainWrapWidth) {
+        if (current) out.push(current);
+        current = word;
+      } else {
+        current = next;
+      }
+    }
+    if (current) out.push(current);
+    return out.length > 0 ? out : [line];
   };
 
   const pushVisibleLines = (segment: string) => {
@@ -404,7 +445,13 @@ export function createSlidesSummaryStreamHandler({
       const line = parts[i] ?? "";
       const suffix = i < parts.length - 1 ? "\n" : "";
       if (!line && !suffix) continue;
-      pushVisible(`${line}${suffix}`);
+      const wrappedLines = !shouldRenderMarkdown ? wrapPlainLine(line) : [line];
+      for (let j = 0; j < wrappedLines.length; j += 1) {
+        const wrapped = wrappedLines[j] ?? "";
+        const end = j < wrappedLines.length - 1 ? "\n" : suffix;
+        if (!wrapped && !end) continue;
+        pushVisible(`${wrapped}${end}`);
+      }
     }
   };
 
@@ -569,8 +616,12 @@ export function createSlidesSummaryStreamHandler({
           await renderSlideBlock(index, null);
         }
       }
-      if (outputGate) {
-        outputGate.finalize(visible);
+      if (!shouldRenderMarkdown) {
+        if (!visible.endsWith("\n")) {
+          clearProgressForStdout();
+          stdout.write("\n");
+          restoreProgressAfterStdout?.();
+        }
         return;
       }
       const out = streamer?.finish();

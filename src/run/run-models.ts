@@ -92,9 +92,15 @@ export function resolveModelSelection({
       );
     }
 
-    if (requestedModelInputLower !== "auto" && !requestedModelInput.includes("/")) {
+    const isKnownBareModelAlias =
+      requestedModelInputLower === "minimax" || requestedModelInputLower === "kimi";
+    if (
+      requestedModelInputLower !== "auto" &&
+      !isKnownBareModelAlias &&
+      !requestedModelInput.includes("/")
+    ) {
       throw new Error(
-        `Unknown model "${requestedModelInput}". Define it in ${configPath ?? "~/.summarize/config.json"} under "models", or use a provider-prefixed id like openai/...`,
+        `Unknown model "${requestedModelInput}". Define it in ${configPath ?? "~/.summarize/config.json"} under "models", or use minimax, kimi, minimax/..., kimi/... or a provider-prefixed id like openai/...`,
       );
     }
 

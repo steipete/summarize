@@ -82,6 +82,8 @@ describe("config env", () => {
       config: {
         apiKeys: {
           openai: "sk-openai",
+          minimax: "mm-key",
+          kimi: "kimi-key",
           openrouter: "sk-openrouter",
           zai: "sk-zai",
           apify: "apify-token",
@@ -91,6 +93,8 @@ describe("config env", () => {
     });
 
     expect(merged.OPENAI_API_KEY).toBe("sk-openai");
+    expect(merged.MINIMAX_API_KEY).toBe("mm-key");
+    expect(merged.KIMI_API_KEY).toBe("kimi-key");
     expect(merged.OPENROUTER_API_KEY).toBe("sk-openrouter");
     expect(merged.Z_AI_API_KEY).toBe("sk-zai");
     expect(merged.APIFY_API_TOKEN).toBe("apify-token");

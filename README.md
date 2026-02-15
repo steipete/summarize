@@ -231,10 +231,14 @@ Notes:
 
 ### Model ids
 
-Use gateway-style ids: `<provider>/<model>`.
+Use gateway-style ids: `<provider>/<model>`. MiniMax and Kimi also support short aliases.
 
 Examples:
 
+- `minimax` (alias for MiniMax default model)
+- `minimax/minimax-m2.5`
+- `kimi` (alias for Kimi default model)
+- `kimi/kimi-k2.5`
 - `openai/gpt-5-mini`
 - `anthropic/claude-sonnet-4-5`
 - `xai/grok-4-fast-non-reasoning`
@@ -552,7 +556,11 @@ Set the key matching your chosen `--model`:
   - legacy `"apiKeys"` still works (mapped to env names)
 
 - `OPENAI_API_KEY` (for `openai/...`)
-- `NVIDIA_API_KEY` (for `nvidia/...`)
+- `NVIDIA_API_KEY` (for `nvidia/...`; supports `NGC_API_KEY` alias)
+- `MINIMAX_API_KEY` (for `minimax` and `minimax/...`)
+- `MINIMAX_BASE_URL` (optional MiniMax base URL override, default `https://api.minimax.io/v1`)
+- `KIMI_API_KEY` (for `kimi` and `kimi/...`; supports `MOONSHOT_API_KEY` alias)
+- `KIMI_BASE_URL` (optional Kimi base URL override, default `https://api.moonshot.ai/v1`; supports `MOONSHOT_BASE_URL` alias)
 - `ANTHROPIC_API_KEY` (for `anthropic/...`)
 - `XAI_API_KEY` (for `xai/...`)
 - `Z_AI_API_KEY` (for `zai/...`; supports `ZAI_API_KEY` alias)
@@ -635,6 +643,16 @@ Z.AI (OpenAI-compatible):
 
 - `Z_AI_API_KEY=...` (or `ZAI_API_KEY=...`)
 - Optional base URL override: `Z_AI_BASE_URL=...`
+
+MiniMax (OpenAI-compatible):
+
+- `MINIMAX_API_KEY=...`
+- Optional base URL override: `MINIMAX_BASE_URL=...`
+
+Kimi (OpenAI-compatible):
+
+- `KIMI_API_KEY=...` (or `MOONSHOT_API_KEY=...`)
+- Optional base URL override: `KIMI_BASE_URL=...` (or `MOONSHOT_BASE_URL=...`)
 
 Optional services:
 

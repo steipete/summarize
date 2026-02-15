@@ -16,12 +16,12 @@ export function createProgressGate(): ProgressGate {
     },
     clearProgressForStdout: () => {
       if (!clearFn) return;
-      const restore = clearFn();
-      if (typeof restore === "function") {
-        restoreFn = restore;
-      } else {
-        restoreFn = null;
-      }
+      // Once real stdout output begins, keep progress UI hidden to avoid
+      // cursor-control races between spinner redraws (stderr) and streamed
+      // summary text (stdout) in shared terminals.
+      clearFn();
+      clearFn = null;
+      restoreFn = null;
     },
     restoreProgressAfterStdout: () => {
       if (!restoreFn) return;

@@ -26,6 +26,10 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
 - `OPENAI_USE_CHAT_COMPLETIONS` (optional; force OpenAI chat completions)
 - `NVIDIA_API_KEY` (required for `nvidia/...` models; alias: `NGC_API_KEY`)
 - `NVIDIA_BASE_URL` (optional; override NVIDIA OpenAI-compatible API endpoint; default: `https://integrate.api.nvidia.com/v1`)
+- `MINIMAX_API_KEY` (required for `minimax` and `minimax/...` models)
+- `MINIMAX_BASE_URL` (optional; override MiniMax base URL, default `https://api.minimax.io/v1`)
+- `KIMI_API_KEY` (required for `kimi` and `kimi/...` models; also accepts `MOONSHOT_API_KEY`)
+- `KIMI_BASE_URL` (optional; override Kimi base URL, default `https://api.moonshot.ai/v1`; also accepts `MOONSHOT_BASE_URL`)
 - `OPENROUTER_API_KEY` (optional; required for `openrouter/...` models; also used when `OPENAI_BASE_URL` points to OpenRouter)
 - `Z_AI_API_KEY` (required for `zai/...` models; supports `ZAI_API_KEY` alias)
 - `Z_AI_BASE_URL` (optional; override default Z.AI base URL)
@@ -47,6 +51,10 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
     - `google/gemini-3-flash-preview`
     - `openai/gpt-5-mini`
     - `nvidia/z-ai/glm5`
+    - `minimax`
+    - `minimax/minimax-m2.5`
+    - `kimi`
+    - `kimi/kimi-k2.5`
     - `zai/glm-4.7`
     - `xai/grok-4-fast-non-reasoning`
     - `google/gemini-2.0-flash`
@@ -97,6 +105,16 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
 ## Z.AI
 
 Use `--model zai/<model>` (e.g. `zai/glm-4.7`). Defaults to Z.AI’s base URL and uses chat completions.
+
+## MiniMax
+
+Use `--model minimax` (default MiniMax model) or `--model minimax/<model>`.
+Requires `MINIMAX_API_KEY`. Requests use MiniMax's OpenAI-compatible endpoint by default.
+
+## Kimi
+
+Use `--model kimi` (default Kimi model) or `--model kimi/<model>`.
+Requires `KIMI_API_KEY` (or `MOONSHOT_API_KEY`). Requests use Kimi's OpenAI-compatible endpoint by default.
 
 ## Input limits
 

@@ -396,12 +396,16 @@ type AgentApiKeys = {
   xaiApiKey: string | null;
   zaiApiKey: string | null;
   nvidiaApiKey: string | null;
+  minimaxApiKey: string | null;
+  kimiApiKey: string | null;
 };
 
 const REQUIRED_ENV_BY_PROVIDER: Record<string, string> = {
   openrouter: "OPENROUTER_API_KEY",
   openai: "OPENAI_API_KEY",
   nvidia: "NVIDIA_API_KEY",
+  minimax: "MINIMAX_API_KEY",
+  kimi: "KIMI_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
   google: "GEMINI_API_KEY",
   xai: "XAI_API_KEY",
@@ -423,6 +427,10 @@ function resolveApiKeyForModel({
         return apiKeys.openaiApiKey;
       case "nvidia":
         return apiKeys.nvidiaApiKey;
+      case "minimax":
+        return apiKeys.minimaxApiKey;
+      case "kimi":
+        return apiKeys.kimiApiKey;
       case "anthropic":
         return apiKeys.anthropicApiKey;
       case "google":
@@ -463,6 +471,10 @@ async function resolveAgentModel({
     googleApiKey,
     xaiApiKey,
     zaiApiKey,
+    minimaxApiKey,
+    minimaxBaseUrl,
+    kimiApiKey,
+    kimiBaseUrl,
     providerBaseUrls,
     zaiBaseUrl,
     nvidiaApiKey,
@@ -487,6 +499,8 @@ async function resolveAgentModel({
     xaiApiKey,
     zaiApiKey,
     nvidiaApiKey,
+    minimaxApiKey,
+    kimiApiKey,
   };
 
   const overrides = resolveRunOverrides({});
@@ -530,6 +544,39 @@ async function resolveAgentModel({
       return { ...resolved, maxOutputTokens, apiKeys };
     }
 
+    if (requestedModel.requiredEnv === "MINIMAX_API_KEY") {
+      const parsed = parseProviderModelId(requestedModel.llmModelId);
+      return {
+        provider: "openai",
+        model: resolveModelWithFallback({
+          provider: "openai",
+          modelId: parsed.model,
+          baseUrl: minimaxBaseUrl,
+        }),
+        maxOutputTokens,
+        apiKeys: {
+          ...apiKeys,
+          openaiApiKey: minimaxApiKey,
+        },
+      };
+    }
+    if (requestedModel.requiredEnv === "KIMI_API_KEY") {
+      const parsed = parseProviderModelId(requestedModel.llmModelId);
+      return {
+        provider: "openai",
+        model: resolveModelWithFallback({
+          provider: "openai",
+          modelId: parsed.model,
+          baseUrl: kimiBaseUrl,
+        }),
+        maxOutputTokens,
+        apiKeys: {
+          ...apiKeys,
+          openaiApiKey: kimiApiKey,
+        },
+      };
+    }
+
     const { provider, model } = parseProviderModelId(requestedModel.userModelId);
     const resolved = applyBaseUrlOverride(provider, model);
     return { ...resolved, maxOutputTokens, apiKeys };
@@ -555,6 +602,38 @@ async function resolveAgentModel({
   for (const attempt of attempts) {
     if (attempt.transport === "cli") continue;
     if (!envHasKey(envForAuto, attempt.requiredEnv)) continue;
+    if (attempt.requiredEnv === "MINIMAX_API_KEY") {
+      const parsed = parseProviderModelId(attempt.llmModelId ?? attempt.userModelId);
+      return {
+        provider: "openai",
+        model: resolveModelWithFallback({
+          provider: "openai",
+          modelId: parsed.model,
+          baseUrl: minimaxBaseUrl,
+        }),
+        maxOutputTokens,
+        apiKeys: {
+          ...apiKeys,
+          openaiApiKey: minimaxApiKey,
+        },
+      };
+    }
+    if (attempt.requiredEnv === "KIMI_API_KEY") {
+      const parsed = parseProviderModelId(attempt.llmModelId ?? attempt.userModelId);
+      return {
+        provider: "openai",
+        model: resolveModelWithFallback({
+          provider: "openai",
+          modelId: parsed.model,
+          baseUrl: kimiBaseUrl,
+        }),
+        maxOutputTokens,
+        apiKeys: {
+          ...apiKeys,
+          openaiApiKey: kimiApiKey,
+        },
+      };
+    }
     if (attempt.transport === "openrouter") {
       const modelId = attempt.userModelId.replace(/^openrouter\//i, "");
       const resolved = applyBaseUrlOverride("openrouter", modelId);

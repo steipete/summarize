@@ -100,6 +100,14 @@ function extractOpenAiResponseText(payload: {
   return text;
 }
 
+function extractPiAiErrorMessage(result: unknown): string | null {
+  if (!result || typeof result !== "object") return null;
+  const value = (result as { errorMessage?: unknown }).errorMessage;
+  if (typeof value !== "string") return null;
+  const message = value.trim();
+  return message.length > 0 ? message : null;
+}
+
 export async function completeOpenAiText({
   modelId,
   openaiConfig,
@@ -127,7 +135,11 @@ export async function completeOpenAiText({
     .map((c) => c.text)
     .join("")
     .trim();
-  if (!text) throw new Error(`LLM returned an empty summary (model openai/${modelId}).`);
+  if (!text) {
+    const providerError = extractPiAiErrorMessage(result);
+    if (providerError) throw new Error(`${providerError} (model openai/${modelId}).`);
+    throw new Error(`LLM returned an empty summary (model openai/${modelId}).`);
+  }
   return { text, usage: normalizeTokenUsage(result.usage) };
 }
 

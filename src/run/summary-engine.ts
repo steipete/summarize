@@ -9,6 +9,7 @@ import { parseGatewayStyleModelId } from "../llm/model-id.js";
 import { formatCompactCount } from "../tty/format.js";
 import { createRetryLogger, writeVerbose } from "./logging.js";
 import { prepareMarkdownForTerminalStreaming } from "./markdown.js";
+import { sanitizeSummaryText } from "./summary-sanitize.js";
 import { createStreamOutputGate, type StreamOutputMode } from "./stream-output.js";
 import {
   canStream,
@@ -67,6 +68,14 @@ export type SummaryEngineDeps = {
     apiKey: string | null;
     baseUrl: string;
   };
+  minimax: {
+    apiKey: string | null;
+    baseUrl: string;
+  };
+  kimi: {
+    apiKey: string | null;
+    baseUrl: string;
+  };
   providerBaseUrls: {
     openai: string | null;
     anthropic: string | null;
@@ -85,9 +94,8 @@ export type SummaryStreamHandler = {
 };
 
 export function createSummaryEngine(deps: SummaryEngineDeps) {
-  const applyOpenAiGatewayOverrides = (attempt: ModelAttempt): ModelAttempt => {
-    const modelIdLower = attempt.userModelId.toLowerCase();
-    if (modelIdLower.startsWith("zai/")) {
+  const applyOpenAiProviderOverrides = (attempt: ModelAttempt): ModelAttempt => {
+    if (attempt.requiredEnv === "Z_AI_API_KEY") {
       return {
         ...attempt,
         openaiApiKeyOverride: deps.zai.apiKey,
@@ -95,11 +103,27 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         forceChatCompletions: true,
       };
     }
-    if (modelIdLower.startsWith("nvidia/")) {
+    if (attempt.requiredEnv === "NVIDIA_API_KEY") {
       return {
         ...attempt,
         openaiApiKeyOverride: deps.nvidia.apiKey,
         openaiBaseUrlOverride: deps.nvidia.baseUrl,
+        forceChatCompletions: true,
+      };
+    }
+    if (attempt.requiredEnv === "MINIMAX_API_KEY") {
+      return {
+        ...attempt,
+        openaiApiKeyOverride: deps.minimax.apiKey,
+        openaiBaseUrlOverride: deps.minimax.baseUrl,
+        forceChatCompletions: true,
+      };
+    }
+    if (attempt.requiredEnv === "KIMI_API_KEY") {
+      return {
+        ...attempt,
+        openaiApiKeyOverride: deps.kimi.apiKey,
+        openaiBaseUrlOverride: deps.kimi.baseUrl,
         forceChatCompletions: true,
       };
     }
@@ -133,6 +157,12 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     }
     if (requiredEnv === "Z_AI_API_KEY") {
       return Boolean(deps.zai.apiKey);
+    }
+    if (requiredEnv === "MINIMAX_API_KEY") {
+      return Boolean(deps.minimax.apiKey);
+    }
+    if (requiredEnv === "KIMI_API_KEY") {
+      return Boolean(deps.kimi.apiKey);
     }
     if (requiredEnv === "XAI_API_KEY") {
       return Boolean(deps.apiKeys.xaiApiKey);
@@ -260,6 +290,8 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
       allowStreaming &&
       deps.streamingEnabled &&
       !modelResolution.forceStreamOff &&
+      attempt.requiredEnv !== "MINIMAX_API_KEY" &&
+      attempt.requiredEnv !== "KIMI_API_KEY" &&
       canStream({
         provider: parsedModelEffective.provider,
         prompt,
@@ -318,7 +350,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         usage: result.usage,
         purpose: "summary",
       });
-      const summary = result.text.trim();
+      const summary = sanitizeSummaryText(result.text).trim();
       if (!summary) throw new Error("LLM returned an empty summary");
       const displayCanonical = attempt.userModelId.toLowerCase().startsWith("openrouter/")
         ? attempt.userModelId
@@ -399,7 +431,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
           usage: result.usage,
           purpose: "summary",
         });
-        summary = result.text;
+        summary = sanitizeSummaryText(result.text);
         streamResult = null;
       } else if (
         parsedModelEffective.provider === "google" &&
@@ -439,7 +471,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
           usage: result.usage,
           purpose: "summary",
         });
-        summary = result.text;
+        summary = sanitizeSummaryText(result.text);
         streamResult = null;
       } else {
         throw error;
@@ -548,20 +580,13 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
       }
     }
 
-    summary = summary.trim();
+    summary = sanitizeSummaryText(summary).trim();
     if (summary.length === 0) {
       const last = getLastStreamError?.();
       if (last instanceof Error) {
         throw new Error(last.message, { cause: last });
       }
       throw new Error("LLM returned an empty summary");
-    }
-
-    if (!streamResult && streamHandler) {
-      const cleaned = summary.trim();
-      await streamHandler.onChunk({ streamed: cleaned, prevStreamed: "", appended: cleaned });
-      await streamHandler.onDone?.(cleaned);
-      summaryAlreadyPrinted = true;
     }
 
     return {
@@ -578,7 +603,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
   };
 
   return {
-    applyOpenAiGatewayOverrides,
+    applyOpenAiProviderOverrides,
+    applyOpenAiGatewayOverrides: applyOpenAiProviderOverrides,
+    applyZaiOverrides: applyOpenAiProviderOverrides,
     envHasKeyFor,
     formatMissingModelError,
     runSummaryAttempt,

@@ -198,7 +198,26 @@ export function buildLinkSummaryPrompt({
   const listGuidanceLine =
     "Use short paragraphs; use bullet lists only when they improve scanability; avoid rigid templates.";
   const quoteGuidanceLine =
-    "Include 1-2 short exact excerpts (max 25 words each) formatted as Markdown italics using single asterisks when there is a strong, non-sponsor line. Use straight quotation marks (no curly) as needed. If no suitable line exists, omit excerpts. Never include ad/sponsor/boilerplate excerpts and do not mention them.";
+    slides && slides.count > 0
+      ? "For slide blocks, do not include direct quotes or transcript excerpts."
+      : "Include 1-2 short exact excerpts (max 25 words each) formatted as Markdown italics using single asterisks when there is a strong, non-sponsor line. Use straight quotation marks (no curly) as needed. If no suitable line exists, omit excerpts. Never include ad/sponsor/boilerplate excerpts and do not mention them.";
+  const slideSentenceGuidance = (() => {
+    if (!(slides && slides.count > 0)) return "";
+    if (preset === "short") return "For each slide block, write a concise neutral summary (2-3 sentences).";
+    if (preset === "medium") return "For each slide block, write a concise neutral summary (2-4 sentences).";
+    if (preset === "long") return "For each slide block, write a concise neutral summary (3-5 sentences).";
+    if (preset === "xl") return "For each slide block, write a concise neutral summary (3-6 sentences).";
+    return "For each slide block, write a concise neutral summary (4-7 sentences).";
+  })();
+  const slideToneInstruction =
+    slides && slides.count > 0
+      ? [
+          slideSentenceGuidance,
+          "Use third-person prose; avoid first-person/second-person voice and direct address.",
+          "Paraphrase transcript content; do not copy long conversational passages.",
+          "Exclude banter, filler phrases, and rhetorical asides.",
+        ].join("\n")
+      : "";
   const sponsorInstruction =
     hasTranscript || (slides && slides.count > 0)
       ? "Omit sponsor messages, ads, promos, and calls-to-action (including podcast ad reads), even if they appear in the transcript or slide timeline. Do not mention or acknowledge them, and do not say you skipped or ignored anything. Avoid sponsor/ad/promo language, brand names like Squarespace, or CTA phrases like discount code. Treat them as if they do not exist. If a slide segment is purely sponsor/ad content, leave that slide marker with no text."
@@ -222,9 +241,11 @@ export function buildLinkSummaryPrompt({
     "Format the answer in Markdown and obey the length-specific formatting above.",
     listGuidanceLine,
     quoteGuidanceLine,
+    slideToneInstruction,
     "Base everything strictly on the provided content and never invent details.",
     "Final check: remove any sponsor/ad references or mentions of skipping/ignoring content. Ensure excerpts (if any) are italicized and use only straight quotes.",
     'Final check for slides: every [slide:N] must be immediately followed by a line that starts with "## ". Remove any "Title:" or "Slide" label lines.',
+    "Final check for slides: rewrite transcript-like direct speech into concise neutral summaries.",
     timestampInstruction,
     shareGuidance,
     slideInstruction,

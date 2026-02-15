@@ -283,6 +283,10 @@ export type AssetSummaryContext = {
     zaiApiKey: string | null;
     zaiBaseUrl: string;
     nvidiaBaseUrl: string;
+    minimaxApiKey: string | null;
+    minimaxBaseUrl: string;
+    kimiApiKey: string | null;
+    kimiBaseUrl: string;
   };
 };
 
@@ -390,7 +394,7 @@ export async function summarizeAsset(ctx: AssetSummaryContext, args: SummarizeAs
       });
       const mapped: ModelAttempt[] = all.map((attempt) => {
         if (attempt.transport !== "cli")
-          return ctx.summaryEngine.applyOpenAiGatewayOverrides(attempt as ModelAttempt);
+          return ctx.summaryEngine.applyOpenAiProviderOverrides(attempt as ModelAttempt);
         const parsed = parseCliUserModelId(attempt.userModelId);
         return { ...attempt, cliProvider: parsed.provider, cliModel: parsed.model };
       });
@@ -427,7 +431,19 @@ export async function summarizeAsset(ctx: AssetSummaryContext, args: SummarizeAs
               openaiBaseUrlOverride: ctx.apiStatus.nvidiaBaseUrl,
               forceChatCompletions: true,
             }
-          : {};
+          : ctx.fixedModelSpec.requiredEnv === "MINIMAX_API_KEY"
+            ? {
+                openaiApiKeyOverride: ctx.apiStatus.minimaxApiKey,
+                openaiBaseUrlOverride: ctx.apiStatus.minimaxBaseUrl,
+                forceChatCompletions: true,
+              }
+            : ctx.fixedModelSpec.requiredEnv === "KIMI_API_KEY"
+              ? {
+                  openaiApiKeyOverride: ctx.apiStatus.kimiApiKey,
+                  openaiBaseUrlOverride: ctx.apiStatus.kimiBaseUrl,
+                  forceChatCompletions: true,
+                }
+              : {};
     return [
       {
         transport: ctx.fixedModelSpec.transport === "openrouter" ? "openrouter" : "native",

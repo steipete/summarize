@@ -27,6 +27,9 @@ describe("buildLinkSummaryPrompt (slides)", () => {
     expect(prompt).toContain("If there is no obvious title, create a short 2-6 word headline");
     expect(prompt).toContain('Never output "Title:" or "Slide 1/10".');
     expect(prompt).toContain("Do not create a dedicated Slides section or list");
+    expect(prompt).toContain("Use third-person prose");
+    expect(prompt).toContain("do not include direct quotes or transcript excerpts");
+    expect(prompt).toContain("rewrite transcript-like direct speech into concise neutral summaries");
     expect(prompt).not.toContain("Include at least 3 headings");
   });
 });

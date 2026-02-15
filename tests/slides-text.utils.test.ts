@@ -125,6 +125,17 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("This segment explains the setup.");
   });
 
+  it("preserves explicit trailing delimiter ellipses from slide output", () => {
+    const slides = [{ index: 1, timestamp: 4 }];
+    const coerced = coerceSummaryWithSlides({
+      markdown: "[slide:1]\nLife comes from you, not at you... ",
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nLife comes from you, not at you...");
+  });
+
   it("detects markdown heading lines as slide titles", () => {
     const parsed = splitSlideTitleFromText({
       text: "## Graphene breakthroughs\nGraphene is strong and conductive.",
@@ -287,6 +298,678 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("[slide:2]\nSecond body paragraph.");
   });
 
+  it("fills title-only slide blocks with transcript fallback when available", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 60 },
+    ];
+    const markdown = [
+      "Intro paragraph.",
+      "",
+      "[slide:1]",
+      "Opening Title",
+      "",
+      "[slide:2]",
+      "Second slide has full text.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[00:10] First fallback sentence.\n[01:00] Second fallback sentence.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nOpening Title\nFirst fallback sentence.");
+    expect(coerced).toContain("[slide:2]\nSecond slide has full text.");
+  });
+
+  it("uses transcript fallback per slide instead of redistributing when markers are missing", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 60 },
+    ];
+    const markdown = [
+      "Intro paragraph.",
+      "",
+      "First freeform paragraph.",
+      "",
+      "Second freeform paragraph.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[00:10] First fallback sentence.\n[01:00] Second fallback sentence.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).toContain("First fallback sentence.");
+    expect(coerced).toContain("[slide:2]\nSecond fallback sentence.");
+    expect(coerced).not.toContain("[slide:1]\nFirst freeform paragraph.");
+  });
+
+  it("replaces obviously truncated slide bodies with transcript fallback", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "This thought starts clearly but then keeps going...",
+      "",
+      "[slide:2]",
+      "Complete second slide sentence.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[00:10] First fallback sentence.\n[00:20] Second fallback sentence.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).toContain("First fallback sentence.");
+    expect(coerced).toContain("[slide:2]\nComplete second slide sentence.");
+  });
+
+  it("replaces mid-sentence slide truncation when fallback has richer coverage", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "Real manifestation means training your mind and building the belief that you can act consistently and keep believing you",
+      "",
+      "[slide:2]",
+      "Complete second slide sentence.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText:
+        "[00:10] Real manifestation means building belief through repeated action and disciplined follow-through until success compounds.\n[00:20] Second fallback sentence.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain(
+      "[slide:1]\nReal manifestation means building belief through repeated action",
+    );
+    expect(coerced).toContain("[slide:2]\nComplete second slide sentence.");
+  });
+
+  it("does not inject very long transcript fallback blobs into truncated slide summaries", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "The creator closes with a warning about hardware demand and claims this window is your last chance to secure local AI before it",
+      "",
+      "[slide:2]",
+      "Second slide stays concise.",
+    ].join("\n");
+    const longFallback = Array.from({ length: 180 }, (_, i) => `word${i + 1}`).join(" ");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: `[00:10] ${longFallback}\n[00:20] Short fallback second.`,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain(
+      "The creator closes with a warning about hardware demand and claims this window is your last chance",
+    );
+    expect(coerced).not.toContain("word120 word121 word122");
+    expect(coerced).toContain("[slide:2]\nSecond slide stays concise.");
+  });
+
+  it("compacts oversized slide blocks into sentence-complete summaries", () => {
+    const slides = [
+      { index: 1, timestamp: 1 },
+      { index: 2, timestamp: 2 },
+    ];
+    const oversized = Array.from(
+      { length: 80 },
+      (_, i) => `Sentence ${i + 1} explains the same point in a repetitive way.`,
+    ).join(" ");
+    const coerced = coerceSummaryWithSlides({
+      markdown: ["[slide:1]", oversized, "", "[slide:2]", "Second concise slide."].join("\n"),
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).not.toContain("Sentence 40 explains the same point");
+    expect(coerced).toContain("Sentence 1 explains the same point");
+    expect(coerced).toContain("[slide:2]\nSecond concise slide.");
+  });
+
+  it("does not replace truncated summaries with transcript-like fallback dialog", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "This section starts as a concise recap but then trails off before it",
+      "",
+      "[slide:2]",
+      "Second slide remains concise.",
+    ].join("\n");
+    const transcriptLikeFallback =
+      "And I started at the A's and read through all the way through the Z's. >> Thank you, Tom. >> Would you like to see a better world?";
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: `[00:10] ${transcriptLikeFallback}\n[00:20] Another fallback line.`,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).not.toContain(">> Thank you, Tom");
+    expect(coerced).not.toContain("Would you like to see a better world");
+    expect(coerced).toContain("[slide:2]\nSecond slide remains concise.");
+  });
+
+  it("rewrites transcript-like direct speech into neutral slide prose", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "I'm going to show you everything I built and then we test a new model. >> Thank you, Tom. Would you like to subscribe?",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).toContain("The speaker");
+    expect(coerced).not.toContain("The speaker The speaker");
+    expect(coerced).not.toContain(">>");
+    expect(coerced).not.toContain("Would you like to subscribe");
+    expect(coerced).not.toContain("I'm going to");
+  });
+
+  it("rewrites conversational tails like 'right?' and 'in a way of like'", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Even like the stoics talked about this Marcus Aurelius, right? So he meant it more in a way of like if you think positively you'll have a positive life.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).not.toContain("Even like");
+    expect(coerced).not.toContain("right?");
+    expect(coerced).not.toContain("in a way of like");
+  });
+
+  it("strips leading disfluencies from titled bullet slide text", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Future Plans and Societal Impact",
+      "- Um, but this, this inherent problem that MCPs by default clutter up context. Playwright remains an acceptable exception.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nFuture Plans and Societal Impact");
+    expect(coerced).not.toContain("\n- Um");
+    expect(coerced).not.toContain("\nUm,");
+    expect(coerced).not.toContain("this, this");
+  });
+
+  it("normalizes awkward pronoun-conjugation artifacts in transcript-like tails", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "- Um, how it works internally for me is I will put it exactly how it is, you know. I'm an artist. Every day, I am painting Mona Lisa, right?",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).not.toContain("The speaker are");
+    expect(coerced).not.toContain("for them is they");
+    expect(coerced).not.toContain("they am");
+    expect(coerced).not.toContain(", .");
+    expect(coerced).toContain("Internally, the speaker will put it exactly how it is.");
+  });
+
+  it("rewrites corrupted run-on slide tails with stutter/contraction artifacts", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Men in their 40s let's say who he works with and they said what he notices there's this really common that he sees sense of a lack of purpose around that age and how can people go about finding that and had they recorded any conversations about this and they have they have recorded some where it talks about on the okay they want to find a purpose in their job or whatever but it's it seems to them that then the real purpose can't be find found on that level, the real purpose is to awake to their true nature, to the fact that and the implications of their true nature, the implications that, they are people're them, things aren't real.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText:
+        "[00:01] The discussion focuses on people in midlife who feel a lack of purpose and asks how they can find meaning through direct inner work instead of external status.",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("[slide:1]");
+    expect(coerced).not.toContain("people're");
+    expect(coerced).not.toContain("they have they have");
+    expect(coerced).not.toContain("let's say");
+    expect(coerced).not.toContain("to the fact that and the implications");
+    expect(coerced).toContain("lack of purpose");
+  });
+
+  it("avoids malformed rewritten starts and keeps richer corrupted-tail content", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "It is it seems to them that, the real purpose can't be find found on that level, the real purpose is to awake to their true nature, to the fact that and the implications of their true nature, and they better start acting in accordance with that, otherwise people get to their deathbed and people're like, \"Oh, well, that was a complete waste of time.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("It is it seems");
+    expect(coerced).not.toContain("The speaker better");
+    expect(coerced).not.toContain("people're");
+    expect(coerced).not.toContain("people are like.");
+    expect(coerced.length).toBeGreaterThan(130);
+  });
+
+  it("replaces low-quality final slide text with cleaned transcript fallback when available", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Implications for Living and Purpose",
+      "It is it seems to them that, the real purpose can't be find found on that level, the real purpose is to awake to their true nature, to the fact that and the implications of their true nature, and they better start acting in accordance with that, otherwise people get to their deathbed and people're like, \"Oh, well, that was a complete waste of time.",
+    ].join("\n");
+    const transcriptTimedText =
+      "[00:01] The speaker says many people in midlife feel a lack of purpose when they only chase external goals. [00:30] Real purpose comes from awakening to one's true nature and acting in alignment with that understanding. [00:58] Otherwise people risk reaching the end of life feeling they spent their time on the wrong things.";
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("[slide:1]\nImplications for Living and Purpose");
+    expect(coerced).toContain("lack of purpose");
+    expect(coerced).not.toContain("people're");
+    expect(coerced).not.toContain("It is it seems");
+    expect(coerced).not.toContain("to the fact that and the implications");
+  });
+
+  it("drops fragmented q-and-a transcript fragments in final slide prose", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "How can people go about finding that. Had they recorded any conversations about this. They have they have recorded some where it talks about on the okay they want to find a purpose in their job or whatever. It seems to them that. The real purpose cannot be found on that level. The real purpose is to awaken to their true nature. They should start acting in accordance with that. Otherwise, as people say, people get to their deathbed and people are like, Oh, well, that was a complete waste of time.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("How can people go about finding that.");
+    expect(coerced).not.toContain("Had they recorded any conversations about this.");
+    expect(coerced).not.toContain("they have they have");
+    expect(coerced).toContain("The real purpose cannot be found on that level.");
+  });
+
+  it("strips transcript stage-direction tags and avoids 'people' pronoun rewrites", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = ["[slide:1]", "This is when the wound [music] becomes a scar. You notice peace."].join(
+      "\n",
+    );
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("[music]");
+    expect(coerced).not.toContain("people notice");
+  });
+
+  it("removes malformed final-step transcript fragments", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Practical Steps to Rewrite Your Operating System",
+      "That is that they are not going to live their life by a belief that someone else gave them. Step two, the countereidence for any limiting belief that they really strongly identified. Maybe some they can be like, Oh, that seems a bit silly. The speaker will just get rid of that. But some are quite strong.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("That is that they");
+    expect(coerced).not.toContain("countereidence");
+    expect(coerced).not.toContain("some they can be like");
+    expect(coerced).not.toContain("The speaker will just");
+  });
+
+  it("drops fragment-heavy tail sentences in final slide prose", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "NDEs Under Anesthesia and Skepticism",
+      "The speaker has the same characteristics, what happens as near-death experiences under all other circumstances. In their survey, they ask about their degree of consciousness and alertness during their experience. Even though they are under general anesthesia to the survey question asking about conscious and alertness. No statistical difference between the anesthesia group and the non anesthesia group. Which is very powerful evidence that even under general anesthesia. Under the most potent brain. Stopping drugs that they have in medical science.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("Under the most potent brain.");
+    expect(coerced).not.toContain("Stopping drugs that they have in medical science.");
+    expect(coerced).toContain("No statistical difference");
+  });
+
+  it("drops low-signal conversational fragments in learning-tier last slide", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Resources for Skill Development Across Price Levels",
+      "This is the beginning of where things become a little bit more valuable. Their preference like when they get like at 5K and up,, 5K to call it,, 35K, this is where they are going to get the vast majority of their in-depth stuff. The speaker is going to have some level of in person that will typically be included in something like this. There is also going to be some education plus feedback. This is where honestly this is where they spent almost all of their money. So they think in some ways their impatience decreased their action threshold enough that they was they ended up being a high ticket buyer even though they wasn't they didn't have high ticket money. This is just an idea of and like these sometimes also come with like communities.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("up,,");
+    expect(coerced).not.toContain("they was they");
+    expect(coerced).not.toContain("they wasn't");
+    expect(coerced).not.toContain("idea of and like");
+    expect(coerced).toContain("education plus feedback");
+  });
+
+  it("rewrites fab-capacity interview tails into coherent declarative prose", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Anthropic Ads, Voice Mode, and Industry Challenges",
+      "Is there anything they like society America should be doing more aggressively to increase the supply of fabs? The speaker think it is well it may get solved on its own. It may like normal capitalism may solve it but they think somehow deciding as a society that they are going to increase the wafer capacity of the world and they are going to fund that and they are going to get the whole supply chain and the talented people they need to make that happen would be a very good thing to do. The race right now is that they are smart, but they are not smart for days. The speaker don't know how to think about that question yet. The speaker can't even reason about what 2,000 IQ looks like?",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("wafer capacity");
+    expect(coerced).toContain("The speaker says it may get solved on its own.");
+    expect(coerced).toContain("not yet reliable over very long horizons");
+    expect(coerced).not.toContain("Is there anything they like society America");
+    expect(coerced).not.toContain("The speaker think");
+    expect(coerced).not.toContain("they are going to fund that and they are going to get");
+    expect(coerced).not.toContain("2,000 IQ");
+  });
+
+  it("normalizes malformed pain-body transcript tails", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "The Pain Body and Alcohol's Activation",
+      "It is an accumulation of old emotion of going back to childhood that still lives in they pain of caused by pain suffered in childhood and perhaps going back to past lifetimes if they want to. If they don't believe in past lifetimes that is fine they don't have to. It could be lot of anger, fear, heaviness. The speaker talked yesterday about the thought be they could consider thought to be every thought to be a little being a little energetic entity and very much so also emotion. It is an energy form and so negative emotions if they are not recognized and a child needs to suppress negative emote.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("The speaker notes that belief in past lifetimes is optional");
+    expect(coerced).toContain("The speaker describes the pain body as stored anger, fear, and heaviness");
+    expect(coerced).not.toContain("they pain");
+    expect(coerced).not.toContain("thought be they");
+    expect(coerced).not.toContain("negative emote");
+  });
+
+  it("cleans malformed fight-seeking pain-body tail phrasing", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "The Pain Body and Alcohol's Opposite Effect",
+      "The speaker still start looking for fights. Because it has lowered their consciousness which even in normal times was probably not that great. The speaker describes it as an accumulation of old emotion of going back to childhood that still lives in the pain of caused by pain suffered in childhood and perhaps going back to past lifetimes if they want to. The speaker notes that belief in past lifetimes is optional. The speaker describes the pain body as stored anger, fear, and heaviness. The speaker talked yesterday about the thoughts can be could consider thought to be every thought to be a little being a little energetic entity and very much so also emotion. That is the only way a child can deal with it.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("still start looking for fights");
+    expect(coerced).not.toContain("in the pain of caused by pain");
+    expect(coerced).not.toContain("thoughts can be could consider thought to be");
+    expect(coerced).toContain("The speaker describes the pain body");
+  });
+
+  it("uses inferred speaker name from source title for generic speaker phrasing", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = ["[slide:1]", "The speaker explains that ego identification creates suffering."].join(
+      "\n",
+    );
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "Eckhart Tolle - The Ego and Presence",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("Eckhart Tolle");
+    expect(coerced).not.toContain("The speaker explains");
+  });
+
+  it("does not inject synthetic speaker attribution when no speaker is referenced", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "The Ego and False Identity",
+      "The ego is the false self created through identification with thoughts and emotions.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "Eckhart Tolle: Ego and Identity",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("explains this segment.");
+    expect(coerced).toContain("The ego is the false self created through identification with thoughts and emotions.");
+  });
+
+  it("does not add opening attribution when name appears only later", () => {
+    const slides = [
+      { index: 1, timestamp: 1 },
+      { index: 2, timestamp: 10 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "The Ego and False Identity",
+      "The ego is the false self created through identification with thoughts and emotions.",
+      "",
+      "[slide:2]",
+      "The Pain Body",
+      "Eckhart Tolle says old emotional pain can reactivate and shape behavior.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "Eckhart Tolle - Ego and Presence",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain(
+      "[slide:1]\nThe Ego and False Identity\nThe ego is the false self created through identification with thoughts and emotions.",
+    );
+    expect(coerced).not.toContain("explains this segment.");
+  });
+
+  it("does not inject speaker attribution when body already mentions the speaker surname", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Opening",
+      "The ego is a false identity, which Tolle describes as unconscious reactivity.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "Eckhart Tolle: The Ego and Presence",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("explains this segment.");
+    expect(coerced).toContain("which Tolle describes as unconscious reactivity.");
+  });
+
+  it("ignores FULL INTERVIEW title fragments as speaker names", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Software Engineering Demand and Go-to-Market Challenges",
+      "Altman addressed the Jevons paradox question of whether AI will change software engineering demand.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "FULL INTERVIEW | GPT-5.3 Codex Launch",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("FULL INTERVIEW explains this segment.");
+  });
+
+  it("preserves later speaker tokens without synthetic opening attribution", () => {
+    const slides = [
+      { index: 1, timestamp: 1 },
+      { index: 2, timestamp: 8 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "Intro",
+      "The ego creates identity loops.",
+      "",
+      "[slide:2]",
+      "Later Point",
+      "The speaker says collective ego can be more dangerous.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "Eckhart Tolle: Ego and Presence",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("[slide:1]\nIntro\nThe ego creates identity loops.");
+    expect(coerced).toContain("[slide:2]\nLater Point\nThe speaker says collective ego can be more dangerous.");
+  });
+
+  it("does not replace long bodies solely for ending mid-sentence", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+    ];
+    const longBody =
+      "Identity ultimately drives behavior and this section intentionally runs long with many details from the speaker about school discipline grades confidence and repeated effort over time so that it exceeds the truncation-heuristic word window and should not be replaced by transcript fallback even if it does not end with punctuation";
+    const markdown = [`[slide:1]`, longBody, "", "[slide:2]", "Second slide body."].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[00:10] First fallback sentence.\n[00:20] Second fallback sentence.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("Identity ultimately drives behavior");
+    expect(coerced).not.toContain("[slide:1]\nFirst fallback sentence.");
+  });
+
+  it("redistributes collapsed trailing body across all slide markers", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+      { index: 3, timestamp: 30 },
+    ];
+    const markdown = [
+      "[slide:1]",
+      "Title One",
+      "",
+      "[slide:2]",
+      "Title Two",
+      "",
+      "[slide:3]",
+      "Title Three",
+      "",
+      "Sentence one. Sentence two. Sentence three.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nSentence one.");
+    expect(coerced).toContain("[slide:2]\nSentence two.");
+    expect(coerced).toContain("[slide:3]\nSentence three.");
+  });
+
+  it("redistributes tail body when the last marker absorbs all narrative text", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+      { index: 3, timestamp: 30 },
+    ];
+    const markdown = [
+      "[slide:1] Title One",
+      "[slide:2] Title Two",
+      "[slide:3] Title Three",
+      "Sentence one. Sentence two. Sentence three.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nTitle One\nSentence one.");
+    expect(coerced).toContain("[slide:2]\nTitle Two\nSentence two.");
+    expect(coerced).toContain("[slide:3]\nTitle Three\nSentence three.");
+  });
+
+  it("fills collapsed tail blobs from transcript fallback when coverage exists", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+      { index: 3, timestamp: 30 },
+    ];
+    const markdown = [
+      "[slide:1] Title One",
+      "[slide:2] Title Two",
+      "[slide:3] Title Three",
+      "one two three four five six seven eight nine ten eleven twelve",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[00:10] Fallback one.\n[00:20] Fallback two.\n[00:30] Fallback three.",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+    expect(coerced).toContain("[slide:1]\nTitle One\nFallback one.");
+    expect(coerced).toContain("[slide:2]\nTitle Two\nFallback two.");
+    expect(coerced).toContain("[slide:3]\nTitle Three\nFallback three.");
+  });
+
   it("parses transcript timed text and sorts by timestamp", () => {
     const input = [
       "[00:10] Second",
@@ -344,7 +1027,7 @@ describe("slides text helpers", () => {
       budget: 200,
       windowSeconds: 30,
     });
-    expect(text).toBe("hello world");
+    expect(text).toBe("world");
     expect(
       getTranscriptTextForSlide({
         slide: { index: 1, timestamp: Number.NaN },
@@ -377,14 +1060,44 @@ describe("slides text helpers", () => {
       { startSeconds: 1, text: "lorem ipsum dolor sit amet" },
       { startSeconds: 2, text: "consectetur adipiscing elit" },
     ];
-    const truncated = getTranscriptTextForSlide({
+    const boundedNotTruncated = getTranscriptTextForSlide({
+      slide: { index: 1, timestamp: 1 },
+      nextSlide: { index: 2, timestamp: 30 },
+      segments: longSegments,
+      budget: 20,
+      windowSeconds: 10,
+    });
+    expect(boundedNotTruncated.endsWith("...")).toBe(false);
+    expect(boundedNotTruncated).toContain("consectetur adipiscing elit");
+
+    const finalSlideText = getTranscriptTextForSlide({
       slide: { index: 1, timestamp: 1 },
       nextSlide: null,
       segments: longSegments,
       budget: 20,
       windowSeconds: 10,
     });
-    expect(truncated.endsWith("...")).toBe(true);
+    expect(finalSlideText.endsWith("...")).toBe(false);
+    expect(finalSlideText).toContain("consectetur adipiscing elit");
+  });
+
+  it("backfills prior transcript context when a slide starts mid-sentence", () => {
+    const segments = [
+      { startSeconds: 362, text: "Belief drives behavior." },
+      { startSeconds: 366, text: "about this Marcus Aurelius, right? He" },
+      { startSeconds: 369, text: "wrote about how your thoughts pretty" },
+      { startSeconds: 370, text: "much determine your experience of life." },
+    ];
+    const text = getTranscriptTextForSlide({
+      slide: { index: 6, timestamp: 399 },
+      nextSlide: null,
+      segments,
+      budget: 500,
+      windowSeconds: 120,
+    });
+    expect(text.startsWith("wrote about how your thoughts")).toBe(false);
+    expect(text.startsWith("He wrote about how your thoughts pretty")).toBe(true);
+    expect(text).toContain("wrote about how your thoughts pretty much determine your experience of life.");
   });
 
   it("formats OSC-8 links when enabled", () => {
