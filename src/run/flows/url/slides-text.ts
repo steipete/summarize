@@ -593,7 +593,26 @@ function isLowQualitySlideBodyText(value: string): boolean {
   if (/\b([A-Za-z]+)'(?:re|ve|ll|d|m)\b/.test(normalized)) return true;
   const quoteCount = (normalized.match(/"/g) ?? []).length;
   if (quoteCount % 2 === 1) return true;
+  if (hasFragmentHeavyStructure(normalized)) return true;
   return false;
+}
+
+function hasFragmentHeavyStructure(value: string): boolean {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return false;
+  const sentenceParts = (normalized.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [])
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const shortFragmentCount = sentenceParts.filter(
+    (part) => part.split(/\s+/).filter(Boolean).length <= 6,
+  ).length;
+  const connectorLeadCount = sentenceParts.filter((part) =>
+    /^(?:which|and|but|so|then|because|under|even though|while|although|though)\b/i.test(part),
+  ).length;
+  return (
+    (sentenceParts.length >= 5 && (shortFragmentCount >= 2 || connectorLeadCount >= 2)) ||
+    (sentenceParts.length >= 4 && shortFragmentCount + connectorLeadCount >= 3)
+  );
 }
 
 function stripSingleLeadingBullet(value: string): string {
@@ -735,8 +754,14 @@ function isLowSignalTranscriptSentence(value: string): boolean {
   const normalized = collapseLineWhitespace(value).trim();
   if (!normalized) return true;
   const words = normalized.split(/\s+/).filter(Boolean);
-  if (words.length <= 4) return true;
+  if (words.length <= 5) return true;
   if (/\b(?:countereidence|that is that they|some they can be like|The speaker will just)\b/i.test(normalized)) {
+    return true;
+  }
+  if (
+    /^(?:which|and|but|so|then|because|under|even though|while|although|though)\b/i.test(normalized) &&
+    words.length <= 14
+  ) {
     return true;
   }
   if (/\b(\w+\s+\w+)\s+\1\b/i.test(normalized)) return true;
@@ -751,6 +776,44 @@ function isLowSignalTranscriptSentence(value: string): boolean {
     return words.length <= 10;
   }
   return false;
+}
+
+function pruneFragmentaryTailSentences(value: string): string {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return normalized;
+  const sentences = (normalized.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [])
+    .map((part) => collapseLineWhitespace(part).trim())
+    .filter(Boolean);
+  if (sentences.length < 4) return normalized;
+  const hasVerb = (text: string): boolean =>
+    /\b(?:is|are|was|were|be|being|been|has|have|had|do|does|did|can|could|will|would|should|may|might|must|seem|seems|show|shows|indicate|indicates|occur|occurs|provide|provides|report|reports|(?:\w+ed)|(?:\w+ing))\b/i.test(
+      text,
+    );
+  while (sentences.length > 1) {
+    const last = sentences[sentences.length - 1] ?? "";
+    const words = last.split(/\s+/).filter(Boolean);
+    if (words.length <= 5) {
+      sentences.pop();
+      continue;
+    }
+    if (
+      /^(?:which|and|but|so|then|because|under|even though|while|although|though)\b/i.test(last) &&
+      words.length <= 14
+    ) {
+      sentences.pop();
+      continue;
+    }
+    if (!hasVerb(last) && words.length <= 10) {
+      sentences.pop();
+      continue;
+    }
+    if (/^[A-Za-z]+ing\b/.test(last) && words.length <= 10) {
+      sentences.pop();
+      continue;
+    }
+    break;
+  }
+  return sentences.join(" ").trim() || normalized;
 }
 
 function summarizeTranscriptLikeSlideText(value: string, maxChars: number): string {
@@ -795,8 +858,9 @@ function summarizeTranscriptLikeSlideText(value: string, maxChars: number): stri
     }
     return compactSlideSummaryText(normalized, maxChars);
   }
-  const merged = kept.join(" ");
-  return merged.length <= maxChars ? merged : compactSlideSummaryText(merged, maxChars);
+  const merged = pruneFragmentaryTailSentences(kept.join(" "));
+  const bounded = merged.length <= maxChars ? merged : compactSlideSummaryText(merged, maxChars);
+  return pruneFragmentaryTailSentences(bounded);
 }
 
 function normalizeSlideBodyStyle(value: string, maxChars: number): string {
@@ -804,6 +868,7 @@ function normalizeSlideBodyStyle(value: string, maxChars: number): string {
   if (!compact) return compact;
   const needsTranscriptCleanup =
     isTranscriptLikeSlideText(compact) ||
+    hasFragmentHeavyStructure(compact) ||
     /\b(?:countereidence|that is that they|some they can be like|The speaker will just|it is it seems|can't be find found)\b/i.test(
       compact,
     );

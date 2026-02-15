@@ -580,7 +580,7 @@ describe("slides text helpers", () => {
     expect(coerced).not.toContain("The speaker better");
     expect(coerced).not.toContain("people're");
     expect(coerced).not.toContain("people are like.");
-    expect(coerced.length).toBeGreaterThan(180);
+    expect(coerced.length).toBeGreaterThan(130);
   });
 
   it("replaces low-quality final slide text with cleaned transcript fallback when available", () => {
@@ -655,6 +655,24 @@ describe("slides text helpers", () => {
     expect(coerced).not.toContain("countereidence");
     expect(coerced).not.toContain("some they can be like");
     expect(coerced).not.toContain("The speaker will just");
+  });
+
+  it("drops fragment-heavy tail sentences in final slide prose", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "NDEs Under Anesthesia and Skepticism",
+      "The speaker has the same characteristics, what happens as near-death experiences under all other circumstances. In their survey, they ask about their degree of consciousness and alertness during their experience. Even though they are under general anesthesia to the survey question asking about conscious and alertness. No statistical difference between the anesthesia group and the non anesthesia group. Which is very powerful evidence that even under general anesthesia. Under the most potent brain. Stopping drugs that they have in medical science.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("Under the most potent brain.");
+    expect(coerced).not.toContain("Stopping drugs that they have in medical science.");
+    expect(coerced).toContain("No statistical difference");
   });
 
   it("does not replace long bodies solely for ending mid-sentence", () => {
