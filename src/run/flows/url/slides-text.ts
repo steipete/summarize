@@ -156,10 +156,7 @@ function applySpeakerAttribution(markdown: string, speakerName: string | null): 
     blocks[slideBlockIndex] = lines.join("\n").trim();
     return blocks.join("\n\n");
   }
-  const attributionLine = `${speaker} explains this segment.`;
-  lines.splice(insertAt, 0, attributionLine);
-  blocks[slideBlockIndex] = lines.join("\n").trim();
-  return blocks.join("\n\n");
+  return markdown;
 }
 
 const deriveHeadlineFromBody = (body: string): string | null => {

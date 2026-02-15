@@ -750,7 +750,7 @@ describe("slides text helpers", () => {
     expect(coerced).not.toContain("The speaker explains");
   });
 
-  it("injects speaker attribution when no speaker is referenced", () => {
+  it("does not inject synthetic speaker attribution when no speaker is referenced", () => {
     const slides = [{ index: 1, timestamp: 1 }];
     const markdown = [
       "[slide:1]",
@@ -764,10 +764,11 @@ describe("slides text helpers", () => {
       sourceTitle: "Eckhart Tolle: Ego and Identity",
       lengthArg: { kind: "preset", preset: "xxl" },
     });
-    expect(coerced).toContain("Eckhart Tolle explains this segment.");
+    expect(coerced).not.toContain("explains this segment.");
+    expect(coerced).toContain("The ego is the false self created through identification with thoughts and emotions.");
   });
 
-  it("injects speaker attribution in opening slide when name appears only later", () => {
+  it("does not add opening attribution when name appears only later", () => {
     const slides = [
       { index: 1, timestamp: 1 },
       { index: 2, timestamp: 10 },
@@ -788,7 +789,10 @@ describe("slides text helpers", () => {
       sourceTitle: "Eckhart Tolle - Ego and Presence",
       lengthArg: { kind: "preset", preset: "xxl" },
     });
-    expect(coerced).toContain("[slide:1]\nThe Ego and False Identity\nEckhart Tolle explains this segment.");
+    expect(coerced).toContain(
+      "[slide:1]\nThe Ego and False Identity\nThe ego is the false self created through identification with thoughts and emotions.",
+    );
+    expect(coerced).not.toContain("explains this segment.");
   });
 
   it("does not inject speaker attribution when body already mentions the speaker surname", () => {
@@ -826,7 +830,7 @@ describe("slides text helpers", () => {
     expect(coerced).not.toContain("FULL INTERVIEW explains this segment.");
   });
 
-  it("does not globally replace speaker tokens outside opening attribution", () => {
+  it("preserves later speaker tokens without synthetic opening attribution", () => {
     const slides = [
       { index: 1, timestamp: 1 },
       { index: 2, timestamp: 8 },
@@ -847,7 +851,7 @@ describe("slides text helpers", () => {
       sourceTitle: "Eckhart Tolle: Ego and Presence",
       lengthArg: { kind: "preset", preset: "xxl" },
     });
-    expect(coerced).toContain("[slide:1]\nIntro\nEckhart Tolle explains this segment.");
+    expect(coerced).toContain("[slide:1]\nIntro\nThe ego creates identity loops.");
     expect(coerced).toContain("[slide:2]\nLater Point\nThe speaker says collective ego can be more dangerous.");
   });
 
