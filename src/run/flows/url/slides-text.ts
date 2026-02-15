@@ -565,6 +565,21 @@ function looksCorruptedSpeechLikeText(value: string): boolean {
   return false;
 }
 
+function isLowQualitySlideBodyText(value: string): boolean {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) return false;
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length < 22) return true;
+  if (/(^|\s)>>\s*/.test(normalized)) return true;
+  if (looksCorruptedSpeechLikeText(normalized)) return true;
+  if (/\b(?:it is it seems|to the fact that and the implications)\b/i.test(normalized)) return true;
+  if (/\b(?:is|are)\s+like\.?$/i.test(normalized)) return true;
+  if (/\b([A-Za-z]+)'(?:re|ve|ll|d|m)\b/.test(normalized)) return true;
+  const quoteCount = (normalized.match(/"/g) ?? []).length;
+  if (quoteCount % 2 === 1) return true;
+  return false;
+}
+
 function stripSingleLeadingBullet(value: string): string {
   const normalized = value.trim();
   if (!normalized) return normalized;
@@ -890,9 +905,21 @@ export function coerceSummaryWithSlides({
           total: ordered.length,
         });
         const body = parsed.body || text;
+        const hasExplicitTitle =
+          Boolean(parsed.title) && Boolean(parsed.body) && parsed.body.trim() !== text.trim();
+        const fallbackPrepared = normalizeSlideBodyStyle(fallbackText, slideSummaryCap);
+        const fallbackPreparedWords = normalizeSlideText(fallbackPrepared)
+          .split(/\s+/)
+          .filter(Boolean).length;
+        if (
+          isLowQualitySlideBodyText(body) &&
+          fallbackPrepared &&
+          fallbackPreparedWords >= 14 &&
+          !isLowQualitySlideBodyText(fallbackPrepared)
+        ) {
+          text = hasExplicitTitle && parsed.title ? `${parsed.title}\n${fallbackPrepared}` : fallbackPrepared;
+        }
         if (looksCorruptedSpeechLikeText(body)) {
-          const hasExplicitTitle =
-            Boolean(parsed.title) && Boolean(parsed.body) && parsed.body.trim() !== text.trim();
           const fallbackWordCount = normalizeSlideText(fallbackText)
             .split(/\s+/)
             .filter(Boolean).length;

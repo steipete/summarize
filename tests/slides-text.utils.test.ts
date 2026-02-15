@@ -583,6 +583,28 @@ describe("slides text helpers", () => {
     expect(coerced.length).toBeGreaterThan(180);
   });
 
+  it("replaces low-quality final slide text with cleaned transcript fallback when available", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Implications for Living and Purpose",
+      "It is it seems to them that, the real purpose can't be find found on that level, the real purpose is to awake to their true nature, to the fact that and the implications of their true nature, and they better start acting in accordance with that, otherwise people get to their deathbed and people're like, \"Oh, well, that was a complete waste of time.",
+    ].join("\n");
+    const transcriptTimedText =
+      "[00:01] The speaker says many people in midlife feel a lack of purpose when they only chase external goals. [00:30] Real purpose comes from awakening to one's true nature and acting in alignment with that understanding. [00:58] Otherwise people risk reaching the end of life feeling they spent their time on the wrong things.";
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("[slide:1]\nImplications for Living and Purpose");
+    expect(coerced).toContain("lack of purpose");
+    expect(coerced).not.toContain("people're");
+    expect(coerced).not.toContain("It is it seems");
+    expect(coerced).not.toContain("to the fact that and the implications");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },
