@@ -695,6 +695,26 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("education plus feedback");
   });
 
+  it("normalizes malformed pain-body transcript tails", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "The Pain Body and Alcohol's Activation",
+      "It is an accumulation of old emotion of going back to childhood that still lives in they pain of caused by pain suffered in childhood and perhaps going back to past lifetimes if they want to. If they don't believe in past lifetimes that is fine they don't have to. It could be lot of anger, fear, heaviness. The speaker talked yesterday about the thought be they could consider thought to be every thought to be a little being a little energetic entity and very much so also emotion. It is an energy form and so negative emotions if they are not recognized and a child needs to suppress negative emote.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).toContain("The speaker notes that belief in past lifetimes is optional");
+    expect(coerced).toContain("The speaker describes the pain body as stored anger, fear, and heaviness");
+    expect(coerced).not.toContain("they pain");
+    expect(coerced).not.toContain("thought be they");
+    expect(coerced).not.toContain("negative emote");
+  });
+
   it("does not replace long bodies solely for ending mid-sentence", () => {
     const slides = [
       { index: 1, timestamp: 10 },

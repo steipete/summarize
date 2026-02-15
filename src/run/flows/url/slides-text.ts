@@ -511,7 +511,7 @@ function isTranscriptLikeSlideText(value: string): boolean {
   const normalized = normalizeSlideText(value);
   if (!normalized) return false;
   if (
-    /(?:,{2,}|\bthey was\b|\bthey wasn't\b|\bthey was they\b|\bidea of and like\b|\bpreference like when they get like at\b)/i.test(
+    /(?:,{2,}|\bthey was\b|\bthey wasn't\b|\bthey was they\b|\bidea of and like\b|\bpreference like when they get like at\b|\bthey pain\b|\bthought be they\b|\bnegative emote\b)/i.test(
       normalized,
     )
   ) {
@@ -704,6 +704,19 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\bthis is where honestly this is where\b/gi, "this is where");
   text = text.replace(/\b(?:their|the) preference like when they get like at\b/gi, "their preference at");
   text = text.replace(/\bjust an idea of and like\b/gi, "a general idea, and");
+  text = text.replace(/\bit is an accumulation of old emotion\b/gi, "The speaker describes it as an accumulation of old emotion");
+  text = text.replace(/\bthey pain\b/gi, "the pain");
+  text = text.replace(/\bthought be they\b/gi, "thoughts can be");
+  text = text.replace(/\bnegative emote\b/gi, "negative emotions");
+  text = text.replace(
+    /^if they don't believe in past lifetimes that is fine they don't have to\.?$/i,
+    "The speaker notes that belief in past lifetimes is optional",
+  );
+  text = text.replace(
+    /^it could be lot of anger,\s*fear,\s*heaviness\.?$/i,
+    "The speaker describes the pain body as stored anger, fear, and heaviness",
+  );
+  text = text.replace(/\bit could be lot of\b/gi, "it could involve");
   text = text.replace(/,{2,}/g, ",");
   text = text.replace(/\s+([,.;:!?])/g, "$1");
   text = text.replace(/,\s*([.!?])/g, "$1");
@@ -773,7 +786,11 @@ function isLowSignalTranscriptSentence(value: string): boolean {
   if (/\b(?:countereidence|that is that they|some they can be like|The speaker will just)\b/i.test(normalized)) {
     return true;
   }
-  if (/\b(?:they was|they wasn't|they was they|this is where honestly this is where|idea of and like)\b/i.test(normalized)) {
+  if (
+    /\b(?:they was|they wasn't|they was they|this is where honestly this is where|idea of and like|they pain|thought be they|negative emote)\b/i.test(
+      normalized,
+    )
+  ) {
     return true;
   }
   const likeCount = (normalized.match(/\blike\b/gi) ?? []).length;
