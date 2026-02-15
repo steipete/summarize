@@ -791,7 +791,7 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("[slide:1]\nThe Ego and False Identity\nEckhart Tolle explains this segment.");
   });
 
-  it("prefers full speaker name from source title over surname mention in body", () => {
+  it("does not inject speaker attribution when body already mentions the speaker surname", () => {
     const slides = [{ index: 1, timestamp: 1 }];
     const markdown = [
       "[slide:1]",
@@ -805,7 +805,25 @@ describe("slides text helpers", () => {
       sourceTitle: "Eckhart Tolle: The Ego and Presence",
       lengthArg: { kind: "preset", preset: "xxl" },
     });
-    expect(coerced).toContain("Eckhart Tolle explains this segment.");
+    expect(coerced).not.toContain("explains this segment.");
+    expect(coerced).toContain("which Tolle describes as unconscious reactivity.");
+  });
+
+  it("ignores FULL INTERVIEW title fragments as speaker names", () => {
+    const slides = [{ index: 1, timestamp: 1 }];
+    const markdown = [
+      "[slide:1]",
+      "Software Engineering Demand and Go-to-Market Challenges",
+      "Altman addressed the Jevons paradox question of whether AI will change software engineering demand.",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: null,
+      sourceTitle: "FULL INTERVIEW | GPT-5.3 Codex Launch",
+      lengthArg: { kind: "preset", preset: "xxl" },
+    });
+    expect(coerced).not.toContain("FULL INTERVIEW explains this segment.");
   });
 
   it("does not globally replace speaker tokens outside opening attribution", () => {

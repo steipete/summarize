@@ -54,6 +54,19 @@ function isLikelySpeakerName(value: string): boolean {
   if (!compact) return false;
   if (compact.length < 3 || compact.length > 48) return false;
   if (!/^[A-Z][A-Za-z'-]*(?:\s+[A-Z][A-Za-z'-]*){0,2}$/.test(compact)) return false;
+  const blockedTokens = new Set([
+    "FULL",
+    "INTERVIEW",
+    "PODCAST",
+    "EPISODE",
+    "HIGHLIGHTS",
+    "HIGHLIGHT",
+    "CLIP",
+    "TRAILER",
+    "RECAP",
+  ]);
+  const tokens = compact.split(/\s+/).filter(Boolean);
+  if (tokens.some((token) => blockedTokens.has(token.toUpperCase()))) return false;
   const blocked = new Set([
     "The",
     "This",
@@ -110,6 +123,17 @@ function applySpeakerAttribution(markdown: string, speakerName: string | null): 
   const speaker = collapseLineWhitespace(speakerName);
   if (!speaker) return markdown;
   const speakerPattern = new RegExp(`\\b${escapeRegExp(speaker)}\\b`, "i");
+  const speakerTokens = speaker
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const mentionTokens = speakerTokens.filter(
+    (token, index) => token.length >= 4 || index === speakerTokens.length - 1,
+  );
+  const tokenPattern =
+    mentionTokens.length > 0
+      ? new RegExp(`\\b(?:${mentionTokens.map((token) => escapeRegExp(token)).join("|")})\\b`, "i")
+      : null;
   const blocks = markdown.split(/\n{2,}/);
   const slideBlockIndex = blocks.findIndex((block) => /^\[slide:\d+\]/m.test(block));
   if (slideBlockIndex < 0) return markdown;
@@ -125,7 +149,8 @@ function applySpeakerAttribution(markdown: string, speakerName: string | null): 
   }
   while (insertAt < lines.length && !lines[insertAt]?.trim()) insertAt += 1;
   const firstBodyLine = lines[insertAt] ?? "";
-  if (speakerPattern.test(firstBodyLine)) return markdown;
+  if (speakerPattern.test(firstBodyLine) || (tokenPattern ? tokenPattern.test(firstBodyLine) : false))
+    return markdown;
   if (/\bThe speaker\b/i.test(firstBodyLine)) {
     lines[insertAt] = firstBodyLine.replace(/\bThe speaker\b/i, speaker);
     blocks[slideBlockIndex] = lines.join("\n").trim();
