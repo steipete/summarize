@@ -520,6 +520,7 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("[slide:1]\nFuture Plans and Societal Impact");
     expect(coerced).not.toContain("\n- Um");
     expect(coerced).not.toContain("\nUm,");
+    expect(coerced).not.toContain("this, this");
   });
 
   it("does not replace long bodies solely for ending mid-sentence", () => {

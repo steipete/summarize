@@ -582,6 +582,7 @@ function rewriteTranscriptSentenceToNeutral(sentence: string): string {
   text = text.replace(/\byou'll\b/gi, "they will");
   text = text.replace(/\byou\b/gi, "people");
   text = text.replace(/\byour\b/gi, "their");
+  text = text.replace(/\b(\w+)[,;:]\s+\1\b/gi, "$1");
   text = text.replace(/\bthey\s+they\b/gi, "they");
   text = text.replace(/\b(\w+)(?:\s+\1\b){1,}/gi, "$1");
   text = text.replace(/\b(and|or|but|so)\s+\1\b/gi, "$1");
