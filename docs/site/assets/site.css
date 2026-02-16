@@ -62,6 +62,7 @@ body {
   font-family: var(--body);
   letter-spacing: 0.01em;
   line-height: 1.6;
+  overflow-x: hidden;
 }
 
 body::before {
@@ -350,12 +351,17 @@ a:hover {
   padding: 0 6px;
 }
 
+.productGrid > * {
+  min-width: 0;
+}
+
 .productCard {
   border-radius: var(--r2);
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.03);
   padding: 20px 18px;
   box-shadow: var(--shadow2);
+  min-width: 0;
 }
 
 .productCard__head {
@@ -411,16 +417,22 @@ a:hover {
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.35);
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 pre {
+  display: block;
   margin: 0;
   padding: 14px 14px 12px;
+  min-width: 0;
+  max-width: 100%;
   color: rgba(247, 242, 231, 0.94);
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.6;
-  overflow-x: auto;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 code {
