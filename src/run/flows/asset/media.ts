@@ -94,7 +94,7 @@ export async function summarizeMediaFile(
    Set FAL_KEY=...
 
 4. Local whisper.cpp (recommended, free):
-   brew install ggerganov/ggerganov/whisper-cpp
+   brew install whisper-cpp
    Ensure whisper-cli is on your PATH (or set SUMMARIZE_WHISPER_CPP_BINARY)
 
 See: https://github.com/openai/whisper for setup details`);
