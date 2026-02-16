@@ -12,10 +12,18 @@ const REQUEST_HEADERS: Record<string, string> = {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
   Accept:
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Encoding": "gzip, deflate",
   "Accept-Language": "en-US,en;q=0.9",
   "Cache-Control": "no-cache",
   Pragma: "no-cache",
 };
+
+/** Detect Bun's streaming decompression errors (ZlibError / ShortRead). */
+function isZlibError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message;
+  return msg.includes("ZlibError") || msg.includes("ShortRead") || msg.includes("Decompression error");
+}
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 5000;
 
@@ -29,9 +37,10 @@ export interface HtmlDocumentFetchResult {
   finalUrl: string;
 }
 
-export async function fetchHtmlDocument(
+async function fetchHtmlOnce(
   fetchImpl: typeof fetch,
   url: string,
+  headers: Record<string, string>,
   {
     timeoutMs,
     onProgress,
@@ -50,7 +59,7 @@ export async function fetchHtmlDocument(
 
   try {
     const response = await fetchImpl(url, {
-      headers: REQUEST_HEADERS,
+      headers,
       redirect: "follow",
       signal: controller.signal,
     });
@@ -116,6 +125,26 @@ export async function fetchHtmlDocument(
     throw error;
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+export async function fetchHtmlDocument(
+  fetchImpl: typeof fetch,
+  url: string,
+  options: { timeoutMs?: number; onProgress?: ((event: LinkPreviewProgressEvent) => void) | null } = {},
+): Promise<HtmlDocumentFetchResult> {
+  try {
+    return await fetchHtmlOnce(fetchImpl, url, REQUEST_HEADERS, options);
+  } catch (error) {
+    // Bun's fetch has known bugs where its streaming zlib decompression throws
+    // ZlibError / ShortRead on certain chunked+compressed responses. Retry the
+    // request asking the server to skip compression entirely.
+    // https://github.com/oven-sh/bun/issues/23149
+    if (isZlibError(error)) {
+      const uncompressedHeaders = { ...REQUEST_HEADERS, "Accept-Encoding": "identity" };
+      return await fetchHtmlOnce(fetchImpl, url, uncompressedHeaders, options);
+    }
+    throw error;
   }
 }
 
