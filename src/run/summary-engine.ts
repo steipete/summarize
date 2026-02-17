@@ -302,6 +302,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
         googleBaseUrlOverride: deps.providerBaseUrls.google,
         xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+        zaiBaseUrlOverride: deps.zai.baseUrl,
         forceChatCompletions,
         retries: deps.retries,
         onRetry: createRetryLogger({
@@ -383,6 +384,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
           anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
           googleBaseUrlOverride: deps.providerBaseUrls.google,
           xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+          zaiBaseUrlOverride: deps.zai.baseUrl,
           forceChatCompletions,
           retries: deps.retries,
           onRetry: createRetryLogger({
@@ -424,6 +426,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
           anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
           googleBaseUrlOverride: deps.providerBaseUrls.google,
           xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+          zaiBaseUrlOverride: deps.zai.baseUrl,
           retries: deps.retries,
           onRetry: createRetryLogger({
             stderr: deps.stderr,

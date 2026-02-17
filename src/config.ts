@@ -120,6 +120,18 @@ export type XaiConfig = {
   baseUrl?: string;
 };
 
+export type ZaiConfig = {
+  /**
+   * Override the Z.AI API base URL (e.g. use China endpoint).
+   *
+   * Default: https://api.z.ai/api/paas/v4
+   * China: https://api.zhipuai.cn/paas/v4
+   *
+   * Prefer env `Z_AI_BASE_URL` when you need per-run overrides.
+   */
+  baseUrl?: string;
+};
+
 export type AutoRule = {
   /**
    * Input kinds this rule applies to.
@@ -217,6 +229,7 @@ export type SummarizeConfig = {
   anthropic?: AnthropicConfig;
   google?: GoogleConfig;
   xai?: XaiConfig;
+  zai?: ZaiConfig;
   logging?: LoggingConfig;
   /**
    * Generic environment variable defaults.
@@ -1163,6 +1176,11 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
   const anthropic = parseProviderBaseUrlConfig(parsed.anthropic, path, "anthropic");
   const google = parseProviderBaseUrlConfig(parsed.google, path, "google");
   const xai = parseProviderBaseUrlConfig(parsed.xai, path, "xai");
+  const zai = parseProviderBaseUrlConfig(
+    (parsed as Record<string, unknown>).zai,
+    path,
+    "zai",
+  );
 
   const configEnv = (() => {
     const value = (parsed as Record<string, unknown>).env;
@@ -1235,6 +1253,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       ...(anthropic ? { anthropic } : {}),
       ...(google ? { google } : {}),
       ...(xai ? { xai } : {}),
+      ...(zai ? { zai } : {}),
       ...(logging ? { logging } : {}),
       ...(configEnv ? { env: configEnv } : {}),
       ...(apiKeys ? { apiKeys } : {}),
