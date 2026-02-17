@@ -49,6 +49,60 @@ describe("llm/cli more branches", () => {
     ).rejects.toThrow(/boom: stderr details/i);
   });
 
+  it("does not duplicate stderr when exec error message already includes stderr", async () => {
+    const error = await runCliModel({
+      provider: "gemini",
+      prompt: "hi",
+      model: "m",
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      config: null,
+      execFileImpl: (_cmd, _args, _opts, cb) => {
+        const stderrText = "stderr details";
+        const error = Object.assign(new Error(`Command failed: gemini\n${stderrText}`), {
+          code: 1,
+        });
+        cb(error as unknown as NodeJS.ErrnoException, "", stderrText);
+        return { stdin: { write() {}, end() {} } } as unknown as ChildProcess;
+      },
+    }).catch((error: unknown) => error as Error);
+
+    expect(error.message).toContain("stderr details");
+    const occurrences = error.message.match(/stderr details/gi)?.length ?? 0;
+    expect(occurrences).toBe(1);
+  });
+
+  it("formats timeout errors with duration and hint", async () => {
+    const error = await runCliModel({
+      provider: "gemini",
+      prompt: "hi",
+      model: "m",
+      allowTools: false,
+      timeoutMs: 2000,
+      env: {},
+      config: null,
+      execFileImpl: (_cmd, _args, _opts, cb) => {
+        const timeoutError = Object.assign(new Error("Command failed: gemini --prompt hi"), {
+          code: "ETIMEDOUT",
+          cmd: "gemini --prompt hi",
+          killed: true,
+          signal: "SIGTERM",
+        });
+        cb(
+          timeoutError as unknown as NodeJS.ErrnoException,
+          "",
+          "Reading prompt from stdin...",
+        );
+        return { stdin: { write() {}, end() {} } } as unknown as ChildProcess;
+      },
+    }).catch((error: unknown) => error as Error);
+
+    expect(error.message).toContain("timed out after 2s");
+    expect(error.message).toContain("Increase --timeout");
+    expect(error.message).toContain("Reading prompt from stdin...");
+  });
+
   it("codex: uses last-message file when present, otherwise stdout fallback", async () => {
     // file present
     const resultFile = await runCliModel({

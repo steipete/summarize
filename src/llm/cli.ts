@@ -84,6 +84,57 @@ export function resolveCliBinary(
   return DEFAULT_BINARIES[provider];
 }
 
+function toUtf8String(value: string | Buffer): string {
+  return typeof value === "string" ? value : value.toString("utf8");
+}
+
+function formatErrorMessageWithStderr(
+  message: string,
+  stderrText: string,
+  separator: ": " | "\n" = ": ",
+): string {
+  const trimmedStderr = stderrText.trim();
+  if (!trimmedStderr || message.includes(trimmedStderr)) return message;
+  return `${message}${separator}${trimmedStderr}`;
+}
+
+function formatTimeoutLabel(timeoutMs: number): string {
+  if (Number.isFinite(timeoutMs) && timeoutMs > 0) {
+    if (timeoutMs % 60_000 === 0) return `${Math.floor(timeoutMs / 60_000)}m`;
+    if (timeoutMs % 1000 === 0) return `${Math.floor(timeoutMs / 1000)}s`;
+    return `${Math.floor(timeoutMs)}ms`;
+  }
+  return "unknown time";
+}
+
+function getExecErrorCodeText(error: NodeJS.ErrnoException): string {
+  if (typeof error.code === "string") return error.code;
+  if (Buffer.isBuffer(error.code)) return toUtf8String(error.code);
+  if (typeof error.code === "number") return String(error.code);
+  return "";
+}
+
+function isExecTimeoutError(error: NodeJS.ErrnoException): boolean {
+  if (getExecErrorCodeText(error).toUpperCase() === "ETIMEDOUT") return true;
+  const withSignal = error as NodeJS.ErrnoException & {
+    killed?: boolean;
+    signal?: NodeJS.Signals | null;
+  };
+  return withSignal.killed === true && withSignal.signal === "SIGTERM";
+}
+
+function getExecErrorMessage(error: NodeJS.ErrnoException): string {
+  return typeof error.message === "string" && error.message.trim().length > 0
+    ? error.message.trim()
+    : "CLI command failed";
+}
+
+function getExecCommand(error: NodeJS.ErrnoException, cmd: string, args: string[]): string {
+  return typeof error.cmd === "string" && error.cmd.trim().length > 0
+    ? error.cmd.trim()
+    : [cmd, ...args].join(" ");
+}
+
 async function execCliWithInput({
   execFileImpl,
   cmd,
@@ -112,19 +163,27 @@ async function execCliWithInput({
         maxBuffer: 50 * 1024 * 1024,
       },
       (error, stdout, stderr) => {
+        const stderrText = toUtf8String(stderr);
         if (error) {
-          const stderrText =
-            typeof stderr === "string" ? stderr : (stderr as Buffer).toString("utf8");
-          const message = stderrText.trim()
-            ? `${error.message}: ${stderrText.trim()}`
-            : error.message;
-          reject(new Error(message, { cause: error }));
+          if (isExecTimeoutError(error)) {
+            const timeoutMessage =
+              `CLI command timed out after ${formatTimeoutLabel(timeoutMs)}: ${getExecCommand(error, cmd, args)}. ` +
+              "Increase --timeout (e.g. 5m).";
+            reject(
+              new Error(formatErrorMessageWithStderr(timeoutMessage, stderrText, "\n"), {
+                cause: error,
+              }),
+            );
+            return;
+          }
+          reject(
+            new Error(formatErrorMessageWithStderr(getExecErrorMessage(error), stderrText), {
+              cause: error,
+            }),
+          );
           return;
         }
-        const stdoutText =
-          typeof stdout === "string" ? stdout : (stdout as Buffer).toString("utf8");
-        const stderrText =
-          typeof stderr === "string" ? stderr : (stderr as Buffer).toString("utf8");
+        const stdoutText = toUtf8String(stdout);
         resolve({ stdout: stdoutText, stderr: stderrText });
       },
     );
