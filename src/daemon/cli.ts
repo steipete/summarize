@@ -464,6 +464,14 @@ export async function handleDaemonRequest({
       throw new Error("Daemon not configured");
     }
     const mergedEnv = mergeDaemonEnv({ envForRun, snapshot: cfg.env });
+    // Apply snapshot env to process.env so child processes (yt-dlp, ffmpeg,
+    // deno, tesseract) inherit the correct PATH and tool config under
+    // launchd/systemd where the default environment is minimal.
+    for (const [key, value] of Object.entries(cfg.env)) {
+      if (typeof value === "string") {
+        process.env[key] = value;
+      }
+    }
     await runDaemonServer({ env: mergedEnv, fetchImpl, config: cfg });
     return true;
   }
