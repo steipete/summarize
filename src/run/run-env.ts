@@ -64,6 +64,10 @@ export function resolveEnvState({
     envValue: envForRun.XAI_BASE_URL,
     configValue: configForCli?.xai?.baseUrl,
   });
+  const zaiBaseUrlFromConfig = resolveConfiguredBaseUrl({
+    envValue: null,
+    configValue: configForCli?.zai?.baseUrl,
+  });
   const zaiKeyRaw =
     typeof envForRun.Z_AI_API_KEY === "string"
       ? envForRun.Z_AI_API_KEY
@@ -75,7 +79,7 @@ export function resolveEnvState({
       ? envForRun.Z_AI_BASE_URL
       : typeof envForRun.ZAI_BASE_URL === "string"
         ? envForRun.ZAI_BASE_URL
-        : null;
+        : zaiBaseUrlFromConfig;
   const openRouterKeyRaw =
     typeof envForRun.OPENROUTER_API_KEY === "string" ? envForRun.OPENROUTER_API_KEY : null;
   const openaiKeyRaw =

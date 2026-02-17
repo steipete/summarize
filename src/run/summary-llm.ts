@@ -51,6 +51,7 @@ export async function summarizeWithModelId({
   anthropicBaseUrlOverride,
   googleBaseUrlOverride,
   xaiBaseUrlOverride,
+  zaiBaseUrlOverride,
   forceChatCompletions,
   retries,
   onRetry,
@@ -72,6 +73,7 @@ export async function summarizeWithModelId({
   anthropicBaseUrlOverride?: string | null;
   googleBaseUrlOverride?: string | null;
   xaiBaseUrlOverride?: string | null;
+  zaiBaseUrlOverride?: string | null;
   forceChatCompletions?: boolean;
   retries: number;
   onRetry?: (notice: {
@@ -94,6 +96,7 @@ export async function summarizeWithModelId({
     anthropicBaseUrlOverride,
     googleBaseUrlOverride,
     xaiBaseUrlOverride,
+    zaiBaseUrlOverride,
     forceChatCompletions,
     prompt,
     temperature: 0,

@@ -164,6 +164,7 @@ export async function generateTextWithModelId({
   anthropicBaseUrlOverride,
   googleBaseUrlOverride,
   xaiBaseUrlOverride,
+  zaiBaseUrlOverride,
   forceChatCompletions,
   retries = 0,
   onRetry,
@@ -180,6 +181,7 @@ export async function generateTextWithModelId({
   anthropicBaseUrlOverride?: string | null;
   googleBaseUrlOverride?: string | null;
   xaiBaseUrlOverride?: string | null;
+  zaiBaseUrlOverride?: string | null;
   forceChatCompletions?: boolean;
   retries?: number;
   onRetry?: (notice: RetryNotice) => void;
@@ -398,7 +400,7 @@ export async function generateTextWithModelId({
       if (parsed.provider === "zai") {
         const apiKey = apiKeys.openaiApiKey;
         if (!apiKey) throw new Error("Missing Z_AI_API_KEY for zai/... model");
-        const model = resolveZaiModel({ modelId: parsed.model, context, openaiBaseUrlOverride });
+        const model = resolveZaiModel({ modelId: parsed.model, context, openaiBaseUrlOverride: zaiBaseUrlOverride });
         const result = await completeSimpleText({ model, apiKey, signal: controller.signal });
         return {
           text: result.text,
