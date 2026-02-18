@@ -237,6 +237,16 @@ async function main() {
     ? ["macos-arm64", "linux-x64", "linux-arm64"]
     : [targetPlatform];
 
+  // When building all platforms, put the native one last so that
+  // dist-bun/summarize ends up as the locally runnable binary for smoke tests.
+  if (nativePlatform && platforms.length > 1) {
+    const idx = platforms.indexOf(nativePlatform);
+    if (idx > -1) {
+      platforms.splice(idx, 1);
+      platforms.push(nativePlatform);
+    }
+  }
+
   const builders = {
     "macos-arm64": buildMacosArm64,
     "linux-x64": buildLinuxX64,
