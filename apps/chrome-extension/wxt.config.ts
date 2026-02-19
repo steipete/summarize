@@ -34,6 +34,7 @@ export default defineConfig({
     define: {
       __SUMMARIZE_VERSION__: JSON.stringify(extensionVersion),
       __SUMMARIZE_GIT_HASH__: JSON.stringify(gitHash),
+      __SUMMARIZE_DEV_TOKEN__: JSON.stringify(process.env.SUMMARIZE_DEV_TOKEN ?? ""),
     },
     resolve: {
       alias: {

@@ -7,6 +7,8 @@ import {
   normalizeColorScheme,
 } from "./theme";
 
+declare const __SUMMARIZE_DEV_TOKEN__: string;
+
 export type Settings = {
   token: string;
   autoSummarize: boolean;
@@ -271,10 +273,16 @@ export async function loadSettings(): Promise<Settings> {
     }
   });
   const raw = (res[storageKey] ?? {}) as Partial<Settings>;
+  const devToken =
+    typeof __SUMMARIZE_DEV_TOKEN__ === "string" && __SUMMARIZE_DEV_TOKEN__.trim()
+      ? __SUMMARIZE_DEV_TOKEN__.trim()
+      : "";
+  const storedToken = typeof raw.token === "string" ? raw.token : "";
+  const token = storedToken.trim() || devToken || defaultSettings.token;
   return {
     ...defaultSettings,
     ...raw,
-    token: typeof raw.token === "string" ? raw.token : defaultSettings.token,
+    token,
     model: normalizeModel(raw.model),
     length: normalizeLength(raw.length),
     language: normalizeLanguage(raw.language),
