@@ -72,6 +72,15 @@ function chmodX(path) {
   run("chmod", ["+x", path]);
 }
 
+function sha256(filePath) {
+  // shasum on macOS/BSD, sha256sum on Linux
+  if (process.platform === "darwin") {
+    run("shasum", ["-a", "256", filePath]);
+  } else {
+    run("sha256sum", [filePath]);
+  }
+}
+
 function buildOne({ target, outName, version, gitSha }) {
   const outPath = join(distDir, outName);
   console.log(`\n🔨 Building ${outName} (target=${target}, bytecode)…`);
@@ -102,20 +111,52 @@ function buildOne({ target, outName, version, gitSha }) {
   return outPath;
 }
 
-function buildMacosArm64({ version }) {
+function buildPlatform({ bunTarget, tarName, version }) {
   const gitSha = readGitSha();
-  const outPath = buildOne({ target: "bun-darwin-arm64", outName: "summarize", version, gitSha });
+  const outPath = buildOne({ target: bunTarget, outName: "summarize", version, gitSha });
   chmodX(outPath);
 
-  const tarName = `summarize-macos-arm64-v${version}.tar.gz`;
   const tarPath = join(distDir, tarName);
   console.log("\n📦 Packaging tarball…");
   run("tar", ["-czf", tarPath, "-C", distDir, "summarize"]);
 
   console.log("\n🔐 sha256:");
-  run("shasum", ["-a", "256", tarPath]);
+  sha256(tarPath);
 
   return { binary: outPath, tarPath };
+}
+
+function buildMacosArm64({ version }) {
+  return buildPlatform({
+    bunTarget: "bun-darwin-arm64",
+    tarName: `summarize-macos-arm64-v${version}.tar.gz`,
+    version,
+  });
+}
+
+function buildLinuxX64({ version }) {
+  return buildPlatform({
+    bunTarget: "bun-linux-x64",
+    tarName: `summarize-linux-x64-v${version}.tar.gz`,
+    version,
+  });
+}
+
+function buildLinuxArm64({ version }) {
+  return buildPlatform({
+    bunTarget: "bun-linux-arm64",
+    tarName: `summarize-linux-arm64-v${version}.tar.gz`,
+    version,
+  });
+}
+
+// Returns the platform string matching the current host.
+function detectNativePlatform() {
+  const { platform, arch } = process;
+  if (platform === "darwin" && arch === "arm64") return "macos-arm64";
+  if (platform === "linux" && arch === "x64") return "linux-x64";
+  if (platform === "linux" && arch === "arm64") return "linux-arm64";
+  return null;
 }
 
 async function runE2E(binary) {
@@ -171,18 +212,65 @@ async function main() {
   console.log("========================");
 
   const version = readPackageVersion();
+  const args = process.argv.slice(2);
+  const runTests = args.includes("--test");
+  const buildAll = args.includes("--all");
+
+  // --platform <name> overrides auto-detection; --all builds every platform.
+  const platformFlagIdx = args.indexOf("--platform");
+  const explicitPlatform = platformFlagIdx !== -1 ? args[platformFlagIdx + 1] : null;
+
+  const nativePlatform = detectNativePlatform();
+  const targetPlatform = buildAll ? "all" : (explicitPlatform ?? nativePlatform);
+
+  if (!targetPlatform) {
+    throw new Error(
+      `Unsupported host ${process.platform}/${process.arch}. Use --platform <macos-arm64|linux-x64|linux-arm64> or --all.`,
+    );
+  }
 
   if (!existsSync(distDir)) {
     mkdirSync(distDir, { recursive: true });
   }
 
-  const { binary } = buildMacosArm64({ version });
+  const platforms = targetPlatform === "all"
+    ? ["macos-arm64", "linux-x64", "linux-arm64"]
+    : [targetPlatform];
 
-  if (process.argv.includes("--test")) {
-    console.log("\n🧪 Smoke…");
-    run(binary, ["--version"]);
-    run(binary, ["--help"]);
-    await runE2E(binary);
+  // When building all platforms, put the native one last so that
+  // dist-bun/summarize ends up as the locally runnable binary for smoke tests.
+  if (nativePlatform && platforms.length > 1) {
+    const idx = platforms.indexOf(nativePlatform);
+    if (idx > -1) {
+      platforms.splice(idx, 1);
+      platforms.push(nativePlatform);
+    }
+  }
+
+  const builders = {
+    "macos-arm64": buildMacosArm64,
+    "linux-x64": buildLinuxX64,
+    "linux-arm64": buildLinuxArm64,
+  };
+
+  let nativeBinary = null;
+  for (const plat of platforms) {
+    const build = builders[plat];
+    if (!build) throw new Error(`Unknown platform: ${plat}`);
+    const { binary } = build({ version });
+    if (plat === nativePlatform) nativeBinary = binary;
+  }
+
+  if (runTests) {
+    const testBinary = nativeBinary ?? (platforms.length === 1 ? join(distDir, "summarize") : null);
+    if (!testBinary) {
+      console.warn("⚠️  Skipping tests: no native platform binary built (cross-compile only).");
+    } else {
+      console.log("\n🧪 Smoke…");
+      run(testBinary, ["--version"]);
+      run(testBinary, ["--help"]);
+      await runE2E(testBinary);
+    }
   }
 
   console.log(`\n✨ Done. dist: ${distDir}`);

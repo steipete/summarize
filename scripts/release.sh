@@ -140,13 +140,31 @@ phase_tag() {
   run git push --tags
 }
 
+# sha256_file <path> — cross-platform SHA-256 (macOS uses shasum, Linux uses sha256sum)
+sha256_file() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  else
+    sha256sum "$1" | awk '{print $1}'
+  fi
+}
+
 phase_tap() {
   banner "Homebrew tap"
-  local version root_dir tap_dir formula_path url tmp_dir tarball sha
+  local version root_dir tap_dir formula_path tmp_dir
+  local repo gh_repo
+  local url_macos_arm64 sha_macos_arm64
+  local url_linux_x64 sha_linux_x64
+  local url_linux_arm64 sha_linux_arm64
+
   version="$(node -p 'require("./package.json").version')"
   root_dir="$(pwd)"
   tap_dir="${root_dir}/../homebrew-tap"
   formula_path="${tap_dir}/Formula/summarize.rb"
+
+  # Derive the GitHub repo from the git remote so forks work automatically.
+  gh_repo="$(git remote get-url origin | sed -E 's|.*github\.com[:/]||; s|\.git$||')"
+
   if [ ! -d "${tap_dir}/.git" ]; then
     echo "Missing tap repo at ${tap_dir}"
     exit 1
@@ -155,22 +173,91 @@ phase_tap() {
     echo "Tap repo is dirty: ${tap_dir}"
     exit 1
   fi
-  url="https://github.com/steipete/summarize/releases/download/v${version}/summarize-macos-arm64-v${version}.tar.gz"
+
   tmp_dir="$(mktemp -d)"
-  tarball="${tmp_dir}/summarize-macos-arm64-v${version}.tar.gz"
-  run curl -fsSL "${url}" -o "${tarball}"
-  sha="$(shasum -a 256 "${tarball}" | awk '{print $1}')"
-  run python3 - "${formula_path}" "${url}" "${sha}" <<'PY'
-import re
+  base_url="https://github.com/${gh_repo}/releases/download/v${version}"
+
+  # Download each platform tarball and compute its SHA-256.
+  for platform in macos-arm64 linux-x64 linux-arm64; do
+    tarball_name="summarize-${platform}-v${version}.tar.gz"
+    tarball_path="${tmp_dir}/${tarball_name}"
+    url="${base_url}/${tarball_name}"
+    echo "Fetching ${url}…"
+    if run curl -fsSL "${url}" -o "${tarball_path}"; then
+      sha="$(sha256_file "${tarball_path}")"
+    else
+      echo "Warning: ${platform} tarball not found at ${url}, skipping."
+      sha=""
+    fi
+    case "$platform" in
+      macos-arm64) url_macos_arm64="$url"; sha_macos_arm64="$sha" ;;
+      linux-x64)   url_linux_x64="$url";   sha_linux_x64="$sha"   ;;
+      linux-arm64) url_linux_arm64="$url"; sha_linux_arm64="$sha" ;;
+    esac
+  done
+
+  # Rewrite the formula with updated URLs and checksums for all platforms.
+  run python3 - \
+    "${formula_path}" \
+    "${url_macos_arm64}"  "${sha_macos_arm64}" \
+    "${url_linux_x64}"    "${sha_linux_x64}" \
+    "${url_linux_arm64}"  "${sha_linux_arm64}" \
+    <<'PY'
 import sys
 from pathlib import Path
 
-path, url, sha = sys.argv[1:]
-data = Path(path).read_text()
-data = re.sub(r'^  url ".*"$', f'  url "{url}"', data, flags=re.M)
-data = re.sub(r'^  sha256 ".*"$', f'  sha256 "{sha}"', data, flags=re.M)
-Path(path).write_text(data)
+(path,
+ url_macos_arm64,  sha_macos_arm64,
+ url_linux_x64,    sha_linux_x64,
+ url_linux_arm64,  sha_linux_arm64) = sys.argv[1:]
+
+def platform_block(outer, inner, url, sha):
+    """Return an on_<outer> { on_<inner> } block, or '' if sha is missing."""
+    if not sha:
+        return ""
+    return f"""
+  on_{outer} do
+    on_{inner} do
+      url "{url}"
+      sha256 "{sha}"
+    end
+  end
+"""
+
+macos_block  = platform_block("macos", "arm",   url_macos_arm64,  sha_macos_arm64)
+linux_x64    = platform_block("linux", "intel", url_linux_x64,    sha_linux_x64)
+linux_arm64  = platform_block("linux", "arm",   url_linux_arm64,  sha_linux_arm64)
+
+# Merge both linux blocks under a single on_linux do...end wrapper.
+if linux_x64 or linux_arm64:
+    intel_inner = f"    on_intel do\n      url \"{url_linux_x64}\"\n      sha256 \"{sha_linux_x64}\"\n    end\n" if sha_linux_x64 else ""
+    arm_inner   = f"    on_arm do\n      url \"{url_linux_arm64}\"\n      sha256 \"{sha_linux_arm64}\"\n    end\n" if sha_linux_arm64 else ""
+    linux_block = f"\n  on_linux do\n{intel_inner}{arm_inner}  end\n"
+else:
+    linux_block = ""
+
+formula = f"""class Summarize < Formula
+  desc "Link → clean text → summary"
+  homepage "https://github.com/steipete/summarize"
+  license "MIT"
+{macos_block}{linux_block}
+  def install
+    bin.install "summarize"
+  end
+
+  def post_install
+    chmod 0755, "#{{bin}}/summarize"
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{{bin}}/summarize --version")
+    assert_match "Summarize web pages", shell_output("#{{bin}}/summarize --help")
+  end
+end
+"""
+Path(path).write_text(formula)
 PY
+
   echo "Tap updated: ${formula_path}"
   echo "Next: git -C ${tap_dir} add ${formula_path} && git -C ${tap_dir} commit -m \"chore: bump summarize to v${version}\" && git -C ${tap_dir} push"
 }

@@ -3,10 +3,11 @@
 Ship is **not done** until:
 
 - npm is published
-- GitHub Release has the Bun tarball asset
+- GitHub Release has the macOS arm64 Bun tarball
+- GitHub Release has the Linux x64 + arm64 Bun tarballs
 - GitHub Release has the Chrome extension zip
 - GitHub Release has the Firefox extension zip
-- Homebrew tap is bumped + `brew install` verifies
+- Homebrew tap is bumped + `brew install` verifies (macOS + Linux)
 
 ## Version sources (keep in sync)
 
@@ -32,9 +33,12 @@ Ship is **not done** until:
    - `pnpm -s check`
    - `pnpm -s build`
 
-3. Build Bun artifact (prints sha256 + creates tarball)
-   - `pnpm -s build:bun:test`
-   - Artifact: `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`
+3. Build Bun artifacts for all platforms (cross-compiles Linux from macOS; prints sha256s)
+   - `pnpm -s build:bun:all:test`
+   - Artifacts in `dist-bun/`:
+     - `summarize-macos-arm64-v<ver>.tar.gz` (built + smoke-tested natively)
+     - `summarize-linux-x64-v<ver>.tar.gz` (cross-compiled)
+     - `summarize-linux-arm64-v<ver>.tar.gz` (cross-compiled)
 
 4. Build Chrome extension artifact
    - `pnpm -C apps/chrome-extension build`
@@ -74,6 +78,8 @@ Ship is **not done** until:
 
    gh release create "v${ver}" \
      "dist-bun/summarize-macos-arm64-v${ver}.tar.gz" \
+     "dist-bun/summarize-linux-x64-v${ver}.tar.gz" \
+     "dist-bun/summarize-linux-arm64-v${ver}.tar.gz" \
      "dist-chrome/summarize-chrome-extension-v${ver}.zip" \
      "dist-firefox/summarize-firefox-extension-v${ver}.zip" \
      --title "v${ver}" \
@@ -84,11 +90,17 @@ Ship is **not done** until:
 
 8. Homebrew tap bump + verify
    - Repo: `~/Projects/homebrew-tap`
-   - Update `Formula/summarize.rb`:
-     - `url` → GitHub Release asset URL
-     - `sha256` → from `pnpm build:bun:test`
-     - `version` + test expectation
-   - `git commit -am "chore: bump summarize to <ver>" && git push`
+   - Run the helper (downloads all platform tarballs, computes sha256s, rewrites the formula):
+     ```bash
+     bash scripts/release.sh tap
+     ```
+   - The formula uses `on_macos`/`on_linux` blocks covering arm64 + linux-x64 + linux-arm64.
+   - Commit and push:
+     ```bash
+     ver="$(node -p 'require("./package.json").version')"
+     git -C ~/Projects/homebrew-tap commit -am "chore: bump summarize to v${ver}" && \
+       git -C ~/Projects/homebrew-tap push
+     ```
    - Verify:
      ```bash
      brew uninstall summarize || true
@@ -128,35 +140,36 @@ Helper (npm-only): `scripts/release.sh` (phases: `gates|build|publish|smoke|tag|
 
 Goal:
 
-- Build a **macOS arm64** Bun binary named `summarize`
-- Package as `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`
-- Upload tarball as a GitHub Release asset
-- Point Homebrew formula at that asset + sha256
+- Build platform-native Bun binaries named `summarize` for all supported platforms
+- Package as `dist-bun/summarize-<platform>-v<ver>.tar.gz`
+- Supported platforms: `macos-arm64`, `linux-x64`, `linux-arm64` (all cross-compiled from macOS in one step)
+- Upload tarballs as GitHub Release assets
+- Point Homebrew formula `on_macos`/`on_linux` blocks at the correct asset + sha256
 - Formula should install the compiled `summarize` binary directly (no Bun wrapper script).
 
-1. Build the Bun artifact
-   - `pnpm build:bun`
-   - This uses `bun build --compile --bytecode` and prints the tarball sha256.
+1. Build all Bun artifacts
+   - `pnpm build:bun:all:test`
+   - Builds macOS arm64 natively (with smoke test) and cross-compiles both Linux targets.
+   - Prints sha256 for each tarball.
 
-2. Smoke test locally (before uploading)
+2. Smoke test the native binary (already done by `--test` above; optionally run a real summary)
    - `dist-bun/summarize --version`
    - `dist-bun/summarize --help`
-   - Optional: run one real file/link summary.
 
 3. GitHub Release (when approved)
    - Create a release for tag `v<ver>` with clean notes (no duplicated version header inside the notes body):
      - Prefer `--title "v<ver>"` and `--notes-file …` (avoid pasting text with escaped `\\n`)
      - Notes should start with sections like `### Changes`, not `## v<ver>` (the release already has a title)
-   - Upload `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`
+   - Upload all three tarballs alongside the extension zips (see fast path step 7).
    - Verify notes render correctly:
      - `gh release view v<ver> --json body --jq .body` (should show real newlines, not literal `\\n`)
 
-4. Homebrew tap update (when approved + after asset is live)
+4. Homebrew tap update (when approved + after assets are live)
    - Repo: `~/Projects/homebrew-tap`
-   - Add/update `Formula/summarize.rb`:
-     - `url` = GitHub Release asset URL
-     - `sha256` = from step (1)
-     - `version` = `<ver>`
+   - Run the helper (downloads all three tarballs, computes sha256s, rewrites the formula):
+     ```bash
+     bash scripts/release.sh tap
+     ```
 
 5. Homebrew verification (after formula update)
    ```bash
