@@ -1,8 +1,10 @@
 import type { Api, AssistantMessage, Message, Model, Tool } from "@mariozechner/pi-ai";
 import { completeSimple, getModel, streamSimple } from "@mariozechner/pi-ai";
 import { buildPromptHash } from "../cache.js";
+import { runCliModel } from "../llm/cli.js";
 import { createSyntheticModel } from "../llm/providers/shared.js";
 import { buildAutoModelAttempts, envHasKey } from "../model-auto.js";
+import { parseCliUserModelId } from "../run/env.js";
 import { resolveRunContextState } from "../run/run-context.js";
 import { resolveModelSelection } from "../run/run-models.js";
 import { resolveRunOverrides } from "../run/run-settings.js";
@@ -319,6 +321,24 @@ ${pageContent}
 `;
 }
 
+function flattenAgentForCli({
+  systemPrompt,
+  messages,
+}: {
+  systemPrompt: string;
+  messages: Message[];
+}): string {
+  const parts: string[] = [systemPrompt];
+  for (const msg of messages) {
+    const role = msg.role === "user" ? "User" : "Assistant";
+    const content = typeof msg.content === "string" ? msg.content : "";
+    if (content) {
+      parts.push(`${role}: ${content}`);
+    }
+  }
+  return parts.join("\n\n");
+}
+
 function normalizeMessages(raw: unknown): Message[] {
   if (!Array.isArray(raw)) return [];
   const out: Message[] = [];
@@ -521,7 +541,17 @@ async function resolveAgentModel({
 
   if (requestedModel.kind === "fixed") {
     if (requestedModel.transport === "cli") {
-      throw new Error("CLI models are not supported in the daemon");
+      return {
+        provider: "cli",
+        model: null,
+        maxOutputTokens,
+        apiKeys,
+        transport: "cli" as const,
+        cliProvider: requestedModel.cliProvider,
+        cliModel: requestedModel.cliModel,
+        userModelId: requestedModel.userModelId,
+        cliConfig: configForCli?.cli ?? null,
+      };
     }
     if (requestedModel.transport === "openrouter") {
       const provider = "openrouter";
@@ -552,8 +582,13 @@ async function resolveAgentModel({
     cliAvailability,
   });
 
+  // Prefer API-key-based models first, fall back to CLI
+  let cliAttempt: (typeof attempts)[number] | null = null;
   for (const attempt of attempts) {
-    if (attempt.transport === "cli") continue;
+    if (attempt.transport === "cli") {
+      if (!cliAttempt) cliAttempt = attempt;
+      continue;
+    }
     if (!envHasKey(envForAuto, attempt.requiredEnv)) continue;
     if (attempt.transport === "openrouter") {
       const modelId = attempt.userModelId.replace(/^openrouter\//i, "");
@@ -563,6 +598,21 @@ async function resolveAgentModel({
     const { provider, model } = parseProviderModelId(attempt.userModelId);
     const resolved = applyBaseUrlOverride(provider, model);
     return { ...resolved, maxOutputTokens, apiKeys };
+  }
+
+  if (cliAttempt) {
+    const parsed = parseCliUserModelId(cliAttempt.userModelId);
+    return {
+      provider: "cli",
+      model: null,
+      maxOutputTokens,
+      apiKeys,
+      transport: "cli" as const,
+      cliProvider: parsed.provider,
+      cliModel: parsed.model,
+      userModelId: cliAttempt.userModelId,
+      cliConfig: configForCli?.cli ?? null,
+    };
   }
 
   throw new Error("No model available for agent");
@@ -607,11 +657,29 @@ export async function streamAgentResponse({
     automationEnabled,
   });
 
-  const { provider, model, maxOutputTokens, apiKeys } = await resolveAgentModel({
+  const resolved = await resolveAgentModel({
     env,
     pageContent,
     modelOverride,
   });
+
+  if ("transport" in resolved && resolved.transport === "cli") {
+    const prompt = flattenAgentForCli({ systemPrompt, messages: normalizedMessages });
+    const result = await runCliModel({
+      provider: resolved.cliProvider,
+      prompt,
+      model: resolved.cliModel,
+      allowTools: false,
+      timeoutMs: 120_000,
+      env,
+      config: resolved.cliConfig,
+    });
+    onChunk(result.text);
+    onAssistant({ role: "assistant", content: result.text } as unknown as AssistantMessage);
+    return;
+  }
+
+  const { provider, model, maxOutputTokens, apiKeys } = resolved;
   const apiKey = resolveApiKeyForModel({ provider, apiKeys });
 
   const stream = streamSimple(
@@ -685,11 +753,27 @@ export async function completeAgentResponse({
     automationEnabled,
   });
 
-  const { provider, model, maxOutputTokens, apiKeys } = await resolveAgentModel({
+  const resolved = await resolveAgentModel({
     env,
     pageContent,
     modelOverride,
   });
+
+  if ("transport" in resolved && resolved.transport === "cli") {
+    const prompt = flattenAgentForCli({ systemPrompt, messages: normalizedMessages });
+    const result = await runCliModel({
+      provider: resolved.cliProvider,
+      prompt,
+      model: resolved.cliModel,
+      allowTools: false,
+      timeoutMs: 120_000,
+      env,
+      config: resolved.cliConfig,
+    });
+    return { role: "assistant", content: result.text } as unknown as AssistantMessage;
+  }
+
+  const { provider, model, maxOutputTokens, apiKeys } = resolved;
   const apiKey = resolveApiKeyForModel({ provider, apiKeys });
 
   const assistant = await completeSimple(

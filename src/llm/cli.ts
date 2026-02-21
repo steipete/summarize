@@ -138,7 +138,7 @@ async function execCliWithInput({
 const parseJsonFromOutput = (output: string): unknown | null => {
   const trimmed = output.trim();
   if (!trimmed) return null;
-  if (trimmed.startsWith("{")) {
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
     try {
       return JSON.parse(trimmed) as unknown;
     } catch {
@@ -436,12 +436,18 @@ export async function runCliModel({
   }
   const parsed = parseJsonFromOutput(trimmed);
   if (parsed && typeof parsed === "object") {
-    const payload = parsed as Record<string, unknown>;
-    const resultText = extractJsonResultText(payload);
-    if (resultText) {
-      const usage = parseJsonProviderUsage(provider, payload);
-      const costUsd = parseJsonProviderCostUsd(provider, payload);
-      return { text: resultText, usage, costUsd };
+    const payload = Array.isArray(parsed)
+      ? (parsed.find(
+          (item) => item && typeof item === "object" && (item as Record<string, unknown>).type === "result",
+        ) as Record<string, unknown> | undefined) ?? null
+      : (parsed as Record<string, unknown>);
+    if (payload) {
+      const resultText = extractJsonResultText(payload);
+      if (resultText) {
+        const usage = parseJsonProviderUsage(provider, payload);
+        const costUsd = parseJsonProviderCostUsd(provider, payload);
+        return { text: resultText, usage, costUsd };
+      }
     }
   }
   return { text: trimmed, usage: null, costUsd: null };
