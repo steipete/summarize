@@ -136,8 +136,27 @@ function resolveOriginHeader(req: http.IncomingMessage): string | null {
   return origin;
 }
 
+/**
+ * Returns true when the origin is a browser-extension or localhost URL that
+ * the daemon is expected to serve.  Arbitrary web origins are rejected to
+ * prevent cross-site requests from untrusted pages (CWE-942).
+ */
+function isTrustedOrigin(origin: string): boolean {
+  // Browser extensions (Chrome, Firefox, Safari, Edge)
+  if (/^(?:chrome-extension|moz-extension|safari-web-extension):\/\//i.test(origin)) return true;
+  try {
+    const parsed = new URL(origin);
+    const host = parsed.hostname;
+    // localhost / 127.0.0.1 / [::1]
+    if (host === "localhost" || host === "127.0.0.1" || host === "[::1]") return true;
+  } catch {
+    // malformed origin
+  }
+  return false;
+}
+
 function corsHeaders(origin: string | null): Record<string, string> {
-  if (!origin) return {};
+  if (!origin || !isTrustedOrigin(origin)) return {};
   return {
     "access-control-allow-origin": origin,
     "access-control-allow-credentials": "true",
