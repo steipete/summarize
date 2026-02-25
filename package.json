@@ -55,7 +55,7 @@
     "typecheck": "tsc -p tsconfig.build.json --noEmit"
   },
   "dependencies": {
-    "@mariozechner/pi-ai": "^0.52.12",
+    "@mariozechner/pi-ai": "^0.55.0",
     "@steipete/summarize-core": "workspace:*",
     "commander": "^14.0.3",
     "file-type": "^21.3.0",
@@ -70,14 +70,14 @@
   },
   "devDependencies": {
     "@fal-ai/client": "^1.9.1",
-    "@types/jsdom": "^27.0.0",
+    "@types/jsdom": "^28.0.0",
     "@types/node": "^25.2.3",
     "@types/sanitize-html": "^2.16.0",
     "@vitest/coverage-v8": "^4.0.18",
     "esbuild": "^0.27.3",
-    "oxfmt": "0.32.0",
+    "oxfmt": "0.35.0",
     "oxlint": "^1.47.0",
-    "oxlint-tsgolint": "^0.12.2",
+    "oxlint-tsgolint": "^0.15.0",
     "rimraf": "^6.1.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

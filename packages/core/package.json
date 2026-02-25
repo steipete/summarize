@@ -46,11 +46,11 @@
     "@mozilla/readability": "0.6.0",
     "cheerio": "^1.2.0",
     "es-toolkit": "^1.44.0",
-    "jsdom": "28.0.0",
+    "jsdom": "28.1.0",
     "sanitize-html": "^2.17.0"
   },
   "devDependencies": {
-    "@types/jsdom": "^27.0.0",
+    "@types/jsdom": "^28.0.0",
     "@types/node": "^25.2.3",
     "@types/sanitize-html": "^2.16.0",
     "rimraf": "^6.1.2",
