@@ -1,5 +1,6 @@
 title: "summarize"
 description: "Summarize docs"
+baseurl: ""
 markdown: kramdown
 highlighter: rouge
 
