@@ -5,6 +5,7 @@ export type {
   TranscriptCacheGetResult,
   TranscriptCacheSetArgs,
 } from "./cache/types.js";
+export { NEGATIVE_TTL_MS } from "./transcript/cache.js";
 export {
   createLinkPreviewClient,
   type LinkPreviewClient,
