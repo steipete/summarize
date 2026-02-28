@@ -184,6 +184,7 @@ a:hover {
   grid-template-columns: 1.1fr 0.9fr;
   gap: 20px;
   padding: 26px;
+  min-width: 0;
 }
 
 .hero__frame::after {
@@ -197,6 +198,7 @@ a:hover {
 .hero__copy {
   position: relative;
   z-index: 1;
+  min-width: 0;
 }
 
 .kicker {
@@ -313,6 +315,7 @@ a:hover {
   z-index: 1;
   display: grid;
   gap: 14px;
+  min-width: 0;
 }
 
 .shot {
@@ -356,6 +359,8 @@ a:hover {
   background: rgba(255, 255, 255, 0.03);
   padding: 20px 18px;
   box-shadow: var(--shadow2);
+  overflow: hidden;
+  min-width: 0;
 }
 
 .productCard__head {
@@ -411,6 +416,7 @@ a:hover {
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
 }
 
 pre {
@@ -736,13 +742,139 @@ code {
 }
 
 @media (max-width: 640px) {
+  .shell {
+    padding: 20px 12px 60px;
+  }
+  .top {
+    padding: 8px 2px 12px;
+  }
+  .nav a {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  .hero {
+    padding: 6px 0 0;
+  }
+  .hero__frame {
+    padding: 18px 14px;
+    border-radius: 20px;
+    gap: 16px;
+  }
+  .title {
+    font-size: clamp(26px, 7vw, 36px);
+  }
+  .lede {
+    font-size: 15px;
+  }
+  .quickRow {
+    padding: 10px;
+  }
+  .quickRow__code code {
+    font-size: 12px;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .quickRow__actions {
+    flex-direction: column;
+  }
+  .quickRow__actions .btn {
+    width: 100%;
+  }
+  .ctaRow {
+    flex-direction: column;
+  }
+  .ctaRow .btn {
+    width: 100%;
+    text-align: center;
+  }
+  .productGrid {
+    gap: 14px;
+    padding: 0 2px;
+  }
+  .productCard {
+    padding: 16px 14px;
+    border-radius: 20px;
+  }
+  .productCard h2 {
+    font-size: 19px;
+  }
+  pre {
+    font-size: 11.5px;
+    padding: 12px 10px;
+  }
   .capGrid {
     grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 0 2px;
   }
-  .more__grid {
-    grid-template-columns: 1fr;
+  .capCard {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .flow {
+    padding: 0 2px;
+  }
+  .flow__card {
+    padding: 16px 14px;
+    border-radius: 20px;
   }
   .flowStep {
     grid-template-columns: 1fr;
+    padding: 10px;
+  }
+  .more {
+    padding: 0 2px;
+  }
+  .more__card {
+    padding: 16px 14px;
+    border-radius: 20px;
+  }
+  .more__grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .callout {
+    font-size: 14px;
+  }
+  .shot {
+    border-radius: 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .shell {
+    padding: 14px 8px 48px;
+  }
+  .brand__word {
+    font-size: 16px;
+  }
+  .nav {
+    gap: 4px;
+  }
+  .nav a {
+    padding: 5px 6px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .hero__frame {
+    padding: 14px 10px;
+  }
+  .title {
+    font-size: 24px;
+  }
+  .lede {
+    font-size: 14px;
+  }
+  .btn {
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+  .productCard {
+    padding: 14px 12px;
+  }
+  .footer {
+    flex-direction: column;
+    gap: 6px;
   }
 }
