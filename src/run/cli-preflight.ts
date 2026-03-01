@@ -5,6 +5,7 @@ import {
   applyHelpStyle,
   attachRichHelp,
   buildDaemonHelp,
+  buildMcpHelp,
   buildProgram,
   buildRefreshFreeHelp,
   buildSlidesProgram,
@@ -50,6 +51,10 @@ export function handleHelpRequest({
   }
   if (topic === "transcriber") {
     stdout.write(`${buildTranscriberHelp()}\n`);
+    return true;
+  }
+  if (topic === "mcp") {
+    stdout.write(`${buildMcpHelp()}\n`);
     return true;
   }
 
@@ -158,4 +163,11 @@ export async function handleDaemonCliRequest(ctx: RefreshContext): Promise<boole
     stdout: ctx.stdout,
     stderr: ctx.stderr,
   });
+}
+
+export async function handleMcpRequest(normalizedArgv: string[]): Promise<boolean> {
+  if (normalizedArgv[0]?.toLowerCase() !== "mcp") return false;
+  const { runMcpServer } = await import("../mcp/server.js");
+  await runMcpServer();
+  return true;
 }

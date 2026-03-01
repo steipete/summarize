@@ -27,6 +27,7 @@ import { createCacheStateFromConfig } from "./cache-state.js";
 import {
   handleDaemonCliRequest,
   handleHelpRequest,
+  handleMcpRequest,
   handleRefreshFreeRequest,
 } from "./cli-preflight.js";
 import { parseCliProviderArg } from "./env.js";
@@ -77,6 +78,9 @@ export async function runCli(
   const env = envForRun;
 
   if (handleHelpRequest({ normalizedArgv, envForRun, stdout, stderr })) {
+    return;
+  }
+  if (await handleMcpRequest(normalizedArgv)) {
     return;
   }
   if (

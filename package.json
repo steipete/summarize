@@ -56,6 +56,7 @@
   },
   "dependencies": {
     "@mariozechner/pi-ai": "^0.52.12",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@steipete/summarize-core": "workspace:*",
     "commander": "^14.0.3",
     "file-type": "^21.3.0",

@@ -246,6 +246,7 @@ ${heading("Examples")}
   ${cmd('summarize "https://example.com" --json --verbose')}
   ${cmd("pbpaste | summarize -")} ${dim("# summarize clipboard content")}
   ${cmd("summarize refresh-free")} ${dim("# scan/update working OpenRouter :free models")}
+  ${cmd("summarize mcp")} ${dim("# start MCP server (for Claude Code, Cursor, etc.)")}
 
 ${heading("Env Vars")}
   XAI_API_KEY           optional (required for xai/... models)
@@ -337,6 +338,27 @@ export function buildDaemonHelp(): string {
     "  --dev            Install service that runs src/cli.ts via tsx (repo dev mode)",
     "  --port <n>       (default: 8787)",
     "  --token <token>  (required for install)",
+  ].join("\n");
+}
+
+export function buildMcpHelp(): string {
+  return [
+    "Usage: summarize mcp",
+    "",
+    "Start an MCP (Model Context Protocol) server over stdio.",
+    "This exposes summarize as tools for AI coding assistants like Claude Code and Cursor.",
+    "",
+    "Tools provided:",
+    "  summarize    Summarize a URL, YouTube video, or local file",
+    "  extract      Extract raw text/markdown content without summarizing",
+    "",
+    "Configuration for Claude Code (~/.claude/claude_desktop_config.json):",
+    '  { "mcpServers": { "summarize": {',
+    '      "command": "npx",',
+    '      "args": ["-y", "@steipete/summarize", "mcp"]',
+    "  }}}",
+    "",
+    "All LLM API keys are read from the environment (same as CLI).",
   ].join("\n");
 }
 
