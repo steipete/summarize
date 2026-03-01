@@ -45,6 +45,9 @@ export function terminalHeight(
   return 24;
 }
 
+/** Default max width for markdown rendering to keep text readable on wide terminals. */
+export const DEFAULT_MAX_RENDER_WIDTH = 120;
+
 export function markdownRenderWidth(
   stream: NodeJS.WritableStream,
   env: Record<string, string | undefined>,
@@ -52,7 +55,8 @@ export function markdownRenderWidth(
   // Avoid “phantom blank lines” from terminal auto-wrap when the rendered line hits the exact width.
   // Wrap 1 column earlier so explicit newlines don't combine with terminal soft-wrap.
   const w = terminalWidth(stream, env);
-  return Math.max(20, w - 1);
+  // Cap at DEFAULT_MAX_RENDER_WIDTH to keep text readable on wide terminals (see #101).
+  return Math.max(20, Math.min(w - 1, DEFAULT_MAX_RENDER_WIDTH));
 }
 
 export function ansi(code: string, input: string, enabled: boolean): string {

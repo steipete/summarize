@@ -149,6 +149,16 @@ export async function runCli(
     return;
   }
 
+  // --width: override terminal width for markdown rendering (injected via COLUMNS env).
+  const widthArg =
+    typeof program.opts().width === "string" ? Number(program.opts().width) : undefined;
+  if (widthArg !== undefined) {
+    if (!Number.isFinite(widthArg) || widthArg < 20) {
+      throw new Error("--width must be a number >= 20.");
+    }
+    env.COLUMNS = String(Math.floor(widthArg));
+  }
+
   const promptArg = typeof program.opts().prompt === "string" ? program.opts().prompt : null;
   const promptFileArg =
     typeof program.opts().promptFile === "string" ? program.opts().promptFile : null;

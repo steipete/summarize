@@ -49,6 +49,15 @@ describe("terminal helpers", () => {
     expect(markdownRenderWidth(makeStream({ columns: 10 }), {})).toBe(20);
   });
 
+  it("caps markdown render width at DEFAULT_MAX_RENDER_WIDTH on wide terminals", () => {
+    // A 200-col terminal should be capped at 120 (DEFAULT_MAX_RENDER_WIDTH)
+    expect(markdownRenderWidth(makeStream({ columns: 200 }), {})).toBe(120);
+    // 121 columns → 120 (= 121 - 1, which equals the cap)
+    expect(markdownRenderWidth(makeStream({ columns: 121 }), {})).toBe(120);
+    // COLUMNS env override should also be capped
+    expect(markdownRenderWidth(makeStream(), { COLUMNS: "300" })).toBe(120);
+  });
+
   it("wraps ANSI sequences when enabled", () => {
     expect(ansi("31", "hi", false)).toBe("hi");
     expect(ansi("31", "hi", true)).toBe("\u001b[31mhi\u001b[0m");

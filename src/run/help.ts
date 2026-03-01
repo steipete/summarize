@@ -137,6 +137,11 @@ export function buildProgram() {
       "Stream LLM output: auto (TTY only), on, off. Note: streaming is disabled in --json mode.",
       "auto",
     )
+    .option(
+      "--width <columns>",
+      "Override terminal width for markdown rendering (default: auto-detect, max 120)",
+      undefined,
+    )
     .option("--plain", "Keep raw text/markdown output (no ANSI/OSC rendering)", false)
     .option("--no-color", "Disable ANSI colors in output", false)
     .addOption(
