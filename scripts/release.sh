@@ -177,38 +177,53 @@ from pathlib import Path
 path, url_arm, sha_arm, url_x64, sha_x64 = sys.argv[1:]
 data = Path(path).read_text()
 
+def replace_once(pattern: str, repl: str | callable, src: str, *, flags: int = 0) -> str:
+    out, n = re.subn(pattern, repl, src, count=1, flags=flags)
+    if n != 1:
+        raise SystemExit(f"failed to update formula using pattern: {pattern}")
+    return out
+
 if "on_arm do" in data and "on_intel do" in data:
-    data = re.sub(
+    data = replace_once(
         r'(on_arm do\s*\n\s*url ")(.*?)(")',
         lambda m: f'{m.group(1)}{url_arm}{m.group(3)}',
         data,
-        count=1,
         flags=re.S,
     )
-    data = re.sub(
+    data = replace_once(
         r'(on_arm do.*?\n\s*sha256 ")(.*?)(")',
         lambda m: f'{m.group(1)}{sha_arm}{m.group(3)}',
         data,
-        count=1,
         flags=re.S,
     )
-    data = re.sub(
+    data = replace_once(
         r'(on_intel do\s*\n\s*url ")(.*?)(")',
         lambda m: f'{m.group(1)}{url_x64}{m.group(3)}',
         data,
-        count=1,
         flags=re.S,
     )
-    data = re.sub(
+    data = replace_once(
         r'(on_intel do.*?\n\s*sha256 ")(.*?)(")',
         lambda m: f'{m.group(1)}{sha_x64}{m.group(3)}',
         data,
-        count=1,
         flags=re.S,
     )
+elif 'depends_on arch: :arm64' in data:
+    dual_block = (
+        f'  on_arm do\n'
+        f'    url "{url_arm}"\n'
+        f'    sha256 "{sha_arm}"\n'
+        f'  end\n\n'
+        f'  on_intel do\n'
+        f'    url "{url_x64}"\n'
+        f'    sha256 "{sha_x64}"\n'
+        f'  end'
+    )
+    data = replace_once(r'  url "[^"\n]+"\n  sha256 "[^"\n]+"', dual_block, data)
+    data = replace_once(r'^  depends_on arch: :arm64\s*$', '', data, flags=re.M)
 else:
-    data = re.sub(r'^  url ".*"$', f'  url "{url_arm}"', data, flags=re.M)
-    data = re.sub(r'^  sha256 ".*"$', f'  sha256 "{sha_arm}"', data, flags=re.M)
+    data = replace_once(r'^  url ".*"$', f'  url "{url_arm}"', data, flags=re.M)
+    data = replace_once(r'^  sha256 ".*"$', f'  sha256 "{sha_arm}"', data, flags=re.M)
 
 Path(path).write_text(data)
 PY
