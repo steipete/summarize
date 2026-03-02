@@ -177,7 +177,7 @@ from pathlib import Path
 path, url_arm, sha_arm, url_x64, sha_x64 = sys.argv[1:]
 data = Path(path).read_text()
 
-def replace_once(pattern: str, repl: str | callable, src: str, *, flags: int = 0) -> str:
+def replace_once(pattern, repl, src, *, flags=0):
     out, n = re.subn(pattern, repl, src, count=1, flags=flags)
     if n != 1:
         raise SystemExit(f"failed to update formula using pattern: {pattern}")
