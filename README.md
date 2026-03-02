@@ -124,7 +124,8 @@ import { createLinkPreviewClient } from "@steipete/summarize-core/content";
 brew install steipete/tap/summarize
 ```
 
-Apple Silicon only (arm64).
+Homebrew availability depends on the current tap formula for your architecture.
+If Homebrew install fails on Intel/x64, use the npm global install above.
 
 ### Optional local dependencies
 

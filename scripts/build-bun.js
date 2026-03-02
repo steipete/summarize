@@ -6,7 +6,7 @@
 
 // Don't use Bun shell ($) as it breaks bytecode compilation.
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,6 +14,10 @@ import { join } from "node:path";
 const projectRoot = join(import.meta.dir, "..");
 const distDir = join(projectRoot, "dist-bun");
 const require = createRequire(import.meta.url);
+const MAC_TARGETS = [
+  { arch: "arm64", target: "bun-darwin-arm64", outName: "summarize" },
+  { arch: "x64", target: "bun-darwin-x64", outName: "summarize-x64" },
+];
 
 function run(cmd, args, opts = {}) {
   const printable = [cmd, ...args].map((x) => (/\s/.test(x) ? JSON.stringify(x) : x)).join(" ");
@@ -102,20 +106,35 @@ function buildOne({ target, outName, version, gitSha }) {
   return outPath;
 }
 
-function buildMacosArm64({ version }) {
-  const gitSha = readGitSha();
-  const outPath = buildOne({ target: "bun-darwin-arm64", outName: "summarize", version, gitSha });
-  chmodX(outPath);
+function packageTarball({ binaryPath, version, arch }) {
+  const stageDir = mkdtempSync(join(tmpdir(), `summarize-bun-${arch}-`));
+  const stagedBinary = join(stageDir, "summarize");
+  copyFileSync(binaryPath, stagedBinary);
+  chmodX(stagedBinary);
 
-  const tarName = `summarize-macos-arm64-v${version}.tar.gz`;
+  const tarName = `summarize-macos-${arch}-v${version}.tar.gz`;
   const tarPath = join(distDir, tarName);
-  console.log("\n📦 Packaging tarball…");
-  run("tar", ["-czf", tarPath, "-C", distDir, "summarize"]);
+  console.log(`\n📦 Packaging tarball (${arch})…`);
+  run("tar", ["-czf", tarPath, "-C", stageDir, "summarize"]);
+  return tarPath;
+}
+
+function buildMacosTargets({ version }) {
+  const gitSha = readGitSha();
+  const builds = {};
+
+  for (const { arch, target, outName } of MAC_TARGETS) {
+    const binary = buildOne({ target, outName, version, gitSha });
+    const tarPath = packageTarball({ binaryPath: binary, version, arch });
+    builds[arch] = { binary, tarPath };
+  }
 
   console.log("\n🔐 sha256:");
-  run("shasum", ["-a", "256", tarPath]);
+  for (const { arch } of MAC_TARGETS) {
+    run("shasum", ["-a", "256", builds[arch].tarPath]);
+  }
 
-  return { binary: outPath, tarPath };
+  return builds;
 }
 
 async function runE2E(binary) {
@@ -166,6 +185,12 @@ async function runE2E(binary) {
   }
 }
 
+function pickHostBinary(builds) {
+  if (process.arch === "arm64" && builds.arm64) return builds.arm64.binary;
+  if (process.arch === "x64" && builds.x64) return builds.x64.binary;
+  return builds.arm64?.binary ?? builds.x64?.binary;
+}
+
 async function main() {
   console.log("🚀 summarize Bun builder");
   console.log("========================");
@@ -176,13 +201,17 @@ async function main() {
     mkdirSync(distDir, { recursive: true });
   }
 
-  const { binary } = buildMacosArm64({ version });
+  const builds = buildMacosTargets({ version });
 
   if (process.argv.includes("--test")) {
-    console.log("\n🧪 Smoke…");
-    run(binary, ["--version"]);
-    run(binary, ["--help"]);
-    await runE2E(binary);
+    const hostBinary = pickHostBinary(builds);
+    if (!hostBinary) {
+      throw new Error("No compatible binary available for smoke tests.");
+    }
+    console.log(`\n🧪 Smoke (${process.arch})…`);
+    run(hostBinary, ["--version"]);
+    run(hostBinary, ["--help"]);
+    await runE2E(hostBinary);
   }
 
   console.log(`\n✨ Done. dist: ${distDir}`);
