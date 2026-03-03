@@ -43,6 +43,7 @@ export type Settings = {
   lineHeight: number;
   colorScheme: ColorScheme;
   colorMode: ColorMode;
+  pattern: string;
 };
 
 export type SlidesLayout = "strip" | "gallery";
@@ -254,6 +255,7 @@ export const defaultSettings: Settings = {
   lineHeight: 1.45,
   colorScheme: defaultColorScheme,
   colorMode: defaultColorMode,
+  pattern: "summarize",
 };
 
 export async function loadSettings(): Promise<Settings> {

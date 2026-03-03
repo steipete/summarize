@@ -36,6 +36,7 @@ import { createErrorController } from "./error-controller";
 import { createHeaderController } from "./header-controller";
 import { createPanelCacheController, type PanelCachePayload } from "./panel-cache";
 import {
+  mountPatternDropdown,
   mountSidepanelLengthPicker,
   mountSidepanelPickers,
   mountSummarizeControl,
@@ -65,6 +66,7 @@ type PanelToBg =
   | { type: "panel:rememberUrl"; url: string }
   | { type: "panel:setAuto"; value: boolean }
   | { type: "panel:setLength"; value: string }
+  | { type: "panel:setPattern"; value: string }
   | { type: "panel:slides-context"; requestId: string; url?: string }
   | { type: "panel:cache"; cache: PanelCachePayload }
   | { type: "panel:get-cache"; requestId: string; tabId: number; url: string }
@@ -169,6 +171,7 @@ const chatMetricsSlotEl = byId<HTMLDivElement>("chatMetricsSlot");
 const chatDockEl = byId<HTMLDivElement>("chatDock");
 const slideImageLoader = createSlideImageLoader();
 
+const patternDropdownRoot = byId<HTMLElement>("patternDropdownRoot");
 const summarizeControlRoot = byId<HTMLElement>("summarizeControlRoot");
 const drawerToggleBtn = byId<HTMLButtonElement>("drawerToggle");
 const refreshBtn = byId<HTMLButtonElement>("refresh");
@@ -2427,6 +2430,7 @@ let pickerSettings = {
   mode: defaultSettings.colorMode,
   fontFamily: defaultSettings.fontFamily,
   length: defaultSettings.length,
+  pattern: defaultSettings.pattern,
 };
 
 const pickerHandlers = {
@@ -2457,6 +2461,11 @@ const pickerHandlers = {
     pickerSettings = { ...pickerSettings, length: value };
     void send({ type: "panel:setLength", value });
   },
+  onPatternChange: (value: string) => {
+    pickerSettings = { ...pickerSettings, pattern: value };
+    void patchSettings({ pattern: value });
+    void send({ type: "panel:setPattern", value });
+  },
 };
 
 const pickers = mountSidepanelPickers(pickersRoot, {
@@ -2471,6 +2480,11 @@ const pickers = mountSidepanelPickers(pickersRoot, {
 const lengthPicker = mountSidepanelLengthPicker(lengthRoot, {
   length: pickerSettings.length,
   onLengthChange: pickerHandlers.onLengthChange,
+});
+
+const patternDropdown = mountPatternDropdown(patternDropdownRoot, {
+  pattern: pickerSettings.pattern,
+  onPatternChange: pickerHandlers.onPatternChange,
 });
 
 const autoToggle = mountCheckbox(autoToggleRoot, {
@@ -4274,6 +4288,7 @@ void (async () => {
     mode: s.colorMode,
     fontFamily: s.fontFamily,
     length: s.length,
+    pattern: s.pattern,
   };
   pickers.update({
     scheme: pickerSettings.scheme,
@@ -4286,6 +4301,10 @@ void (async () => {
   lengthPicker.update({
     length: pickerSettings.length,
     onLengthChange: pickerHandlers.onLengthChange,
+  });
+  patternDropdown.update({
+    pattern: pickerSettings.pattern,
+    onPatternChange: pickerHandlers.onPatternChange,
   });
   setDefaultModelPresets();
   setModelValue(s.model);

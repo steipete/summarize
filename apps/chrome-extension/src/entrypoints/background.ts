@@ -38,6 +38,7 @@ type PanelToBg =
   | { type: "panel:rememberUrl"; url: string }
   | { type: "panel:setAuto"; value: boolean }
   | { type: "panel:setLength"; value: string }
+  | { type: "panel:setPattern"; value: string }
   | { type: "panel:slides-context"; requestId: string; url?: string }
   | { type: "panel:cache"; cache: PanelCachePayload }
   | { type: "panel:get-cache"; requestId: string; tabId: number; url: string }
@@ -2036,6 +2037,13 @@ export default defineBackground(() => {
           await patchSettings({ length: next });
           void emitState(session, "");
           void summarizeActiveTab(session, "length-change");
+        })();
+        break;
+      case "panel:setPattern":
+        void (async () => {
+          const next = (raw as { value: string }).value;
+          await patchSettings({ pattern: next });
+          void emitState(session, "");
         })();
         break;
       case "panel:slides-context":

@@ -528,6 +528,49 @@ header {
 .controls {
   display: flex;
   gap: 8px;
+  align-items: center;
+}
+
+.patternDropdownRoot {
+  display: flex;
+}
+
+.patternPicker {
+  position: relative;
+}
+
+.patternButton {
+  position: relative;
+  font-size: 12px;
+  padding: 4px 24px 4px 8px;
+  white-space: nowrap;
+}
+
+.patternButton[data-busy="true"] {
+  pointer-events: none;
+}
+
+.patternButton.isDropdown::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(calc(-50% - 1px)) rotate(45deg);
+  pointer-events: none;
+}
+
+.patternList {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.patternToggle {
+  font-style: italic;
+  opacity: 0.7;
 }
 
 .summarizeControlRoot {

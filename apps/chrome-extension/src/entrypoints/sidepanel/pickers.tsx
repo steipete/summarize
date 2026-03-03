@@ -4,6 +4,7 @@ import { render } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ColorMode, ColorScheme } from "../../lib/theme";
+import { PATTERNS, QUICK_PATTERNS } from "../../lib/patterns";
 import { readPresetOrCustomValue, resolvePresetOrCustom } from "../../lib/combo";
 import { defaultSettings } from "../../lib/settings";
 import { getOverlayRoot } from "../../ui/portal";
@@ -671,6 +672,114 @@ export function mountSummarizeControl(root: HTMLElement, props: SummarizeControl
 
   return {
     update(next: SummarizeControlProps) {
+      current = next;
+      renderPicker();
+    },
+  };
+}
+
+/* ---------- Pattern dropdown ---------- */
+
+type PatternDropdownProps = {
+  pattern: string;
+  onPatternChange: (value: string) => void;
+  busy?: boolean;
+};
+
+const PATTERN_ITEMS: SelectItem[] = QUICK_PATTERNS.map((p) => ({
+  value: p.id,
+  label: p.label,
+}));
+
+const ALL_PATTERN_ITEMS: SelectItem[] = PATTERNS.map((p) => ({
+  value: p.id,
+  label: p.label,
+}));
+
+function PatternDropdown(props: PatternDropdownProps) {
+  const [expanded, setExpanded] = useState(false);
+  const items = expanded ? ALL_PATTERN_ITEMS : PATTERN_ITEMS;
+  const portalRoot = getOverlayRoot();
+
+  const api = useZagSelect({
+    id: "pattern",
+    items,
+    value: props.pattern,
+    onValueChange: (next) => {
+      props.onPatternChange(next);
+    },
+  });
+
+  const selectedLabel =
+    api.valueAsString ||
+    ALL_PATTERN_ITEMS.find((item) => item.value === (api.value[0] ?? ""))?.label ||
+    "Summarize";
+
+  const positionerProps = api.getPositionerProps();
+  const positionerStyle = {
+    ...(positionerProps.style ?? {}),
+    position: "fixed",
+    zIndex: 9999,
+  };
+  if ("width" in positionerStyle) delete positionerStyle.width;
+  if ("maxWidth" in positionerStyle) delete positionerStyle.maxWidth;
+
+  const content = (
+    <div
+      className="pickerPositioner"
+      data-picker="pattern"
+      {...positionerProps}
+      style={positionerStyle}
+    >
+      <div className="pickerContent" {...api.getContentProps()}>
+        <div className="pickerList patternList" {...api.getListProps()}>
+          {items.map((item) => (
+            <button key={item.value} className="pickerOption" {...api.getItemProps({ item })}>
+              {item.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="pickerOption patternToggle"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setExpanded((v) => !v);
+            }}
+          >
+            {expanded ? "Show less..." : "More patterns..."}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="picker patternPicker" {...api.getRootProps()}>
+      <button
+        type="button"
+        className="ghost patternButton isDropdown"
+        data-busy={props.busy ? "true" : "false"}
+        {...api.getTriggerProps()}
+      >
+        {selectedLabel}
+      </button>
+      {portalRoot ? createPortal(content, portalRoot) : content}
+      <select className="pickerHidden" {...api.getHiddenSelectProps()} />
+    </div>
+  );
+}
+
+export function mountPatternDropdown(root: HTMLElement, props: PatternDropdownProps) {
+  let current = props;
+  const renderPicker = () => {
+    render(<PatternDropdown {...current} />, root);
+  };
+
+  renderPicker();
+
+  return {
+    update(next: PatternDropdownProps) {
       current = next;
       renderPicker();
     },

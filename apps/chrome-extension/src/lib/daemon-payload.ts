@@ -1,3 +1,4 @@
+import { getPatternPrompt } from "./patterns";
 import type { Settings } from "./settings";
 
 export type ExtractedPage = {
@@ -18,7 +19,9 @@ export function buildDaemonRequestBody({
   settings: Settings;
   noCache?: boolean;
 }): Record<string, unknown> {
-  const promptOverride = settings.promptOverride?.trim();
+  const userPrompt = settings.promptOverride?.trim();
+  const patternPrompt = !userPrompt && settings.pattern ? getPatternPrompt(settings.pattern) : null;
+  const promptOverride = userPrompt || patternPrompt || "";
   const maxOutputTokens = settings.maxOutputTokens?.trim();
   const timeout = settings.timeout?.trim();
   const overrides: Record<string, unknown> = {};
