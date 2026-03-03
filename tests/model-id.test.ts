@@ -57,14 +57,23 @@ describe("model id parsing", () => {
     );
   });
 
-  it("normalizes casing", () => {
+  it("lowercases provider prefix but preserves model id casing", () => {
     expect(normalizeGatewayStyleModelId("GOOGLE/GEMINI-3-FLASH-PREVIEW")).toBe(
-      "google/gemini-3-flash-preview",
+      "google/GEMINI-3-FLASH-PREVIEW",
     );
-    expect(normalizeGatewayStyleModelId("GEMINI-2.0-FLASH")).toBe("google/gemini-2.0-flash");
-    expect(normalizeGatewayStyleModelId("GPT-5.2")).toBe("openai/gpt-5.2");
+    expect(normalizeGatewayStyleModelId("GEMINI-2.0-FLASH")).toBe("google/GEMINI-2.0-FLASH");
+    expect(normalizeGatewayStyleModelId("GPT-5.2")).toBe("openai/GPT-5.2");
     expect(normalizeGatewayStyleModelId("XAI/GROK-4-1-FAST-NON-REASONING")).toBe(
       "xai/grok-4-fast-non-reasoning",
+    );
+  });
+
+  it("preserves mixed-case model ids for proxy routing (#117)", () => {
+    expect(normalizeGatewayStyleModelId("openai/deepseek-ai/DeepSeek-V3.2")).toBe(
+      "openai/deepseek-ai/DeepSeek-V3.2",
+    );
+    expect(normalizeGatewayStyleModelId("openai/MyOrg/Custom-Model-v2")).toBe(
+      "openai/MyOrg/Custom-Model-v2",
     );
   });
 

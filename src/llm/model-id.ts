@@ -34,33 +34,34 @@ export function normalizeGatewayStyleModelId(raw: string): string {
     throw new Error("Missing model id");
   }
 
-  const normalized = trimmed.toLowerCase();
+  const lower = trimmed.toLowerCase();
 
   // Common historical alias (used in prompts/docs earlier)
-  if (normalized === "grok-4-1-fast-non-reasoning") return "xai/grok-4-fast-non-reasoning";
-  if (normalized === "grok-4.1-fast-non-reasoning") return "xai/grok-4-fast-non-reasoning";
-  if (normalized === "xai/grok-4-1-fast-non-reasoning") return "xai/grok-4-fast-non-reasoning";
-  if (normalized === "xai/grok-4.1-fast-non-reasoning") return "xai/grok-4-fast-non-reasoning";
+  if (lower === "grok-4-1-fast-non-reasoning") return "xai/grok-4-fast-non-reasoning";
+  if (lower === "grok-4.1-fast-non-reasoning") return "xai/grok-4-fast-non-reasoning";
+  if (lower === "xai/grok-4-1-fast-non-reasoning") return "xai/grok-4-fast-non-reasoning";
+  if (lower === "xai/grok-4.1-fast-non-reasoning") return "xai/grok-4-fast-non-reasoning";
 
   // Anthropic short aliases → versioned alias (e.g. claude-sonnet-4 → claude-sonnet-4-0)
-  const anthropicAlias = ANTHROPIC_MODEL_ALIASES[normalized];
+  const anthropicAlias = ANTHROPIC_MODEL_ALIASES[lower];
   if (anthropicAlias) return `anthropic/${anthropicAlias}`;
-  const anthropicPrefixed = normalized.startsWith("anthropic/")
-    ? ANTHROPIC_MODEL_ALIASES[normalized.slice("anthropic/".length)]
+  const anthropicPrefixed = lower.startsWith("anthropic/")
+    ? ANTHROPIC_MODEL_ALIASES[lower.slice("anthropic/".length)]
     : null;
   if (anthropicPrefixed) return `anthropic/${anthropicPrefixed}`;
 
-  const slash = normalized.indexOf("/");
+  const slash = trimmed.indexOf("/");
   if (slash === -1) {
     // Best-effort inference for backwards-compat CLI usage.
-    if (normalized.startsWith("grok-")) return `xai/${normalized}`;
-    if (normalized.startsWith("gemini-")) return `google/${normalized}`;
-    if (normalized.startsWith("claude-")) return `anthropic/${normalized}`;
-    return `openai/${normalized}`;
+    // Use lowercase for provider detection, but preserve original model casing.
+    if (lower.startsWith("grok-")) return `xai/${trimmed}`;
+    if (lower.startsWith("gemini-")) return `google/${trimmed}`;
+    if (lower.startsWith("claude-")) return `anthropic/${trimmed}`;
+    return `openai/${trimmed}`;
   }
 
-  const provider = normalized.slice(0, slash);
-  const model = normalized.slice(slash + 1);
+  const provider = lower.slice(0, slash);
+  const model = trimmed.slice(slash + 1);
   if (!PROVIDERS.includes(provider as LlmProvider)) {
     throw new Error(
       `Unsupported model provider "${provider}". Use xai/..., openai/..., google/..., anthropic/..., zai/..., or nvidia/...`,
