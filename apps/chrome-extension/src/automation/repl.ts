@@ -311,23 +311,42 @@ async function runBrowserJs(
     // ignore
   }
 
-  const results = await userScripts.execute({
-    target: { tabId: tab.id },
-    world: "USER_SCRIPT",
-    worldId: "summarize-browserjs",
-    injectImmediately: true,
-    js: [{ code: wrapperCode }],
-    ...(executionId ? { executionId } : {}),
-  });
-
-  if (signal?.aborted) {
-    if (abortHandler) signal.removeEventListener("abort", abortHandler);
-    return { ok: false, error: "Execution aborted" };
+  if (nativeInputEnabled) {
+    // Authorise this tab for debugger-backed native input. Background rejects
+    // requests from tabs that have not been armed by an extension page.
+    await chrome.runtime.sendMessage({
+      type: "automation:native-input-arm",
+      tabId: tab.id,
+      enabled: true,
+    });
   }
 
-  const result = results?.[0]?.result as BrowserJsResult | undefined;
-  if (abortHandler) signal?.removeEventListener("abort", abortHandler);
-  return result ?? { ok: false, error: "No result from browserjs()" };
+  try {
+    const results = await userScripts.execute({
+      target: { tabId: tab.id },
+      world: "USER_SCRIPT",
+      worldId: "summarize-browserjs",
+      injectImmediately: true,
+      js: [{ code: wrapperCode }],
+      ...(executionId ? { executionId } : {}),
+    });
+
+    if (signal?.aborted) {
+      return { ok: false, error: "Execution aborted" };
+    }
+
+    const result = results?.[0]?.result as BrowserJsResult | undefined;
+    return result ?? { ok: false, error: "No result from browserjs()" };
+  } finally {
+    if (abortHandler) signal?.removeEventListener("abort", abortHandler);
+    if (nativeInputEnabled) {
+      void chrome.runtime.sendMessage({
+        type: "automation:native-input-arm",
+        tabId: tab.id,
+        enabled: false,
+      });
+    }
+  }
 }
 
 function buildSandboxHtml(): string {

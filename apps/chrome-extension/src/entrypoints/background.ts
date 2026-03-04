@@ -720,6 +720,10 @@ export default defineBackground(() => {
     number,
     { requestId: string; controller: AbortController }
   >();
+  // Tabs explicitly armed by the sidepanel for debugger-driven native input.
+  // Prevents arbitrary pages from triggering trusted clicks via the
+  // postMessage → content-script → runtime bridge.
+  const nativeInputArmedTabs = new Set<number>();
 
   const resolveLogLevel = (event: string) => {
     const normalized = event.toLowerCase();
@@ -2206,6 +2210,18 @@ export default defineBackground(() => {
       }
 
       const type = (raw as { type: string }).type;
+      if (type === "automation:native-input-arm") {
+        // Only extension pages (sidepanel/options) may arm tabs for native
+        // input. Content scripts always carry sender.tab — a property Chrome
+        // sets and web pages cannot suppress — so rejecting any message that
+        // carries it ensures only genuine extension pages reach this branch.
+        if (sender.tab) return;
+        const msg = raw as { tabId?: number; enabled?: boolean };
+        if (typeof msg.tabId !== "number") return;
+        if (msg.enabled) nativeInputArmedTabs.add(msg.tabId);
+        else nativeInputArmedTabs.delete(msg.tabId);
+        return;
+      }
       if (type === "automation:native-input") {
         const msg = raw as NativeInputRequest;
         void (async () => {
@@ -2215,6 +2231,17 @@ export default defineBackground(() => {
               sendResponse({
                 ok: false,
                 error: "Missing sender tab",
+              } satisfies NativeInputResponse);
+            } catch {
+              // ignore
+            }
+            return;
+          }
+          if (!nativeInputArmedTabs.has(tabId)) {
+            try {
+              sendResponse({
+                ok: false,
+                error: "Native input not armed for this tab",
               } satisfies NativeInputResponse);
             } catch {
               // ignore
@@ -2408,6 +2435,7 @@ export default defineBackground(() => {
     lastMediaProbeByTab.delete(tabId);
     hoverControllersByTabId.delete(tabId);
     panelCacheByTabId.delete(tabId);
+    nativeInputArmedTabs.delete(tabId);
   });
 
   // Chrome: Auto-open side panel on toolbar icon click
