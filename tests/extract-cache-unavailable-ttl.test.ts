@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCacheStore, type CacheStore } from "../src/cache.js";
-import { NEGATIVE_TTL_MS } from "../packages/core/src/content/transcript/cache.js";
+import { NEGATIVE_TTL_MS } from "../packages/core/src/content/index.js";
 
 /**
  * Regression test for https://github.com/steipete/summarize/issues/114

@@ -13,6 +13,7 @@
 - Slides: warn in summary mode when `--slides` dependencies are missing, and document required local installs for `ffmpeg`, `yt-dlp`, and optional `tesseract`.
 - Docs: fix broken docs index links by setting an empty Jekyll `baseurl` (#113, thanks @Youpen-y).
 - Models: preserve model id casing after the provider prefix so OpenAI-compatible proxies can route exact names correctly (#128, thanks @WinnCook).
+- Cache: give extract entries with unavailable transcripts the same short retry TTL as negative transcript cache entries, so transient Apify failures can recover (#115, thanks @gluneau).
 
 ## 0.11.0 - 2026-02-14
 
