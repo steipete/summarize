@@ -176,6 +176,20 @@ describe("renderSlidesInline", () => {
     expect(output.getText()).toContain("\u001b]1337;File=");
   });
 
+  it("renders iTerm images when WezTerm is detected via WEZTERM_EXECUTABLE", async () => {
+    const imagePath = await createTempSlide();
+    const output = createTtyStream();
+    const result = await renderSlidesInline({
+      slides: [{ index: 1, timestamp: 5.4, imagePath }],
+      mode: "auto",
+      env: { WEZTERM_EXECUTABLE: "/Applications/WezTerm.app/Contents/MacOS/wezterm" },
+      stdout: output.stream,
+    });
+    expect(result.protocol).toBe("iterm");
+    expect(result.rendered).toBe(1);
+    expect(output.getText()).toContain("\u001b]1337;File=");
+  });
+
   it("does not render inline images for unsupported terminals", async () => {
     const imagePath = await createTempSlide();
     const output = createTtyStream();

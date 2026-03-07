@@ -43,15 +43,16 @@ function resolveInlineProtocol({
 
   const termProgram = (env.TERM_PROGRAM ?? "").toLowerCase();
   const term = (env.TERM ?? "").toLowerCase();
+  const isWezTerm = termProgram.includes("wezterm") || Boolean(env.WEZTERM_EXECUTABLE);
   if (
     env.KITTY_WINDOW_ID ||
     term.includes("xterm-kitty") ||
-    termProgram.includes("wezterm") ||
+    isWezTerm ||
     termProgram.includes("ghostty") ||
     termProgram.includes("konsole") ||
     env.KONSOLE_VERSION
   ) {
-    return termProgram.includes("wezterm") ? "iterm" : "kitty";
+    return isWezTerm ? "iterm" : "kitty";
   }
   if (termProgram.includes("iterm") || env.ITERM_SESSION_ID) {
     return "iterm";
