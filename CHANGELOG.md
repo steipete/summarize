@@ -14,6 +14,7 @@
 - Docs: fix broken docs index links by setting an empty Jekyll `baseurl` (#113, thanks @Youpen-y).
 - Models: preserve model id casing after the provider prefix so OpenAI-compatible proxies can route exact names correctly (#128, thanks @WinnCook).
 - Cache: give extract entries with unavailable transcripts the same short retry TTL as negative transcript cache entries, so transient Apify failures can recover (#115, thanks @gluneau).
+- Daemon: apply the saved env snapshot to `process.env` before `daemon run` starts so child tools inherit the right PATH and API/tool config under launchd/systemd (#99, thanks @heyalchang).
 
 ## 0.11.0 - 2026-02-14
 
