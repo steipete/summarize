@@ -8,7 +8,7 @@
 
 ### Fixes
 
-- X/Twitter: prefer `xurl` for tweet extraction when installed, fall back to `bird`, add live `xurl` coverage, and replace the stale dead-`bird` install tip with a current X CLI recommendation (#70).
+- X/Twitter: prefer `xurl` for tweet extraction when installed, fall back to `bird`, preserve long-form/article text plus media URLs, add live `xurl` extraction/media coverage, and replace the stale dead-`bird` install tip with a current X CLI recommendation (#70).
 - Models: make daemon agent `artifacts` schemas Gemini-safe, improve Google empty-response handling with preview-to-stable fallback, and switch CLI/auto Gemini defaults away from brittle preview behavior (#82, #96).
 - Agents: expand model auto-resolution errors with checked models, missing env/CLI setup, and daemon restart guidance (#107).
 - Daemon: support multiple saved extension tokens, migrate legacy single-token configs, and accept any configured token for auth (#116).

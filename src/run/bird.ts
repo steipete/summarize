@@ -230,11 +230,44 @@ function isTwitterStatusUrl(raw: string): boolean {
 function buildXurlTweetEndpoint(tweetId: string): string {
   const params = new URLSearchParams({
     expansions: "author_id,attachments.media_keys",
-    "tweet.fields": "created_at,attachments,entities",
+    "tweet.fields": "created_at,attachments,entities,note_tweet,article",
     "user.fields": "username,name",
     "media.fields": "type,url,preview_image_url,variants",
   });
   return `/2/tweets/${tweetId}?${params.toString()}`;
+}
+
+function resolveXurlArticleText(article: Record<string, unknown> | null): string | null {
+  if (!article) return null;
+
+  const title = asString(article.title)?.trim() ?? "";
+  const body =
+    asString(article.text)?.trim() ??
+    asString(article.body)?.trim() ??
+    asString(article.preview_text)?.trim() ??
+    asString(article.excerpt)?.trim() ??
+    "";
+
+  if (title && body && !body.includes(title)) {
+    return `${title}\n\n${body}`;
+  }
+  if (body) return body;
+  if (title) return title;
+
+  const articleResults = asRecord(article.article_results);
+  const articleResult = asRecord(articleResults?.result);
+  if (!articleResult) return null;
+  return resolveXurlArticleText(articleResult);
+}
+
+function resolveXurlTweetText(data: Record<string, unknown>): string | null {
+  const dataText = asString(data.text)?.trim() ?? "";
+  const noteTweet = asRecord(data.note_tweet);
+  const noteTweetText = asString(noteTweet?.text)?.trim() ?? "";
+  const articleText = resolveXurlArticleText(asRecord(data.article)) ?? "";
+  const candidates = [dataText, noteTweetText, articleText].filter((value) => value.length > 0);
+  if (candidates.length === 0) return null;
+  return candidates.sort((left, right) => right.length - left.length)[0] ?? null;
 }
 
 function parseXurlTweetPayload(raw: unknown): BirdTweetPayload {
@@ -251,7 +284,7 @@ function parseXurlTweetPayload(raw: unknown): BirdTweetPayload {
     throw new Error("xurl read returned invalid payload");
   }
 
-  const text = asString(data.text);
+  const text = resolveXurlTweetText(data);
   if (!text) {
     throw new Error("xurl read returned invalid payload");
   }

@@ -122,6 +122,52 @@ describe("tweet CLI helpers", () => {
     expect(result.media?.preferredUrl).toBe("https://video.twimg.com/high.mp4");
   });
 
+  it("prefers long-form note_tweet or article text from xurl payloads", async () => {
+    const noteTweetPayload = {
+      data: {
+        id: "5",
+        text: "short teaser",
+        note_tweet: {
+          text: "This is the full long-form X post text that should win over the teaser.",
+        },
+        author_id: "99",
+      },
+      includes: {
+        users: [{ id: "99", username: "steipete", name: "Peter" }],
+      },
+    };
+    const { binDir: noteDir } = makeCliScript("xurl", scriptForJson(noteTweetPayload));
+    const noteResult = await readTweetWithXurl({
+      url: "https://x.com/steipete/status/5",
+      timeoutMs: 1000,
+      env: { PATH: noteDir },
+    });
+    expect(noteResult.text).toContain("full long-form X post text");
+
+    const articlePayload = {
+      data: {
+        id: "6",
+        text: "short teaser",
+        article: {
+          title: "Deep Dive",
+          text: "Article body that should outrank the short teaser and preserve article content.",
+        },
+        author_id: "99",
+      },
+      includes: {
+        users: [{ id: "99", username: "steipete", name: "Peter" }],
+      },
+    };
+    const { binDir: articleDir } = makeCliScript("xurl", scriptForJson(articlePayload));
+    const articleResult = await readTweetWithXurl({
+      url: "https://x.com/steipete/status/6",
+      timeoutMs: 1000,
+      env: { PATH: articleDir },
+    });
+    expect(articleResult.text).toContain("Deep Dive");
+    expect(articleResult.text).toContain("Article body");
+  });
+
   it("prefers xurl when both CLIs are installed and falls back to bird on xurl failure", async () => {
     const root = mkdtempSync(join(tmpdir(), "summarize-tweet-cli-"));
     const binDir = join(root, "bin");

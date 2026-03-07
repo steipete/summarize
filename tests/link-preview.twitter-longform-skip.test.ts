@@ -35,6 +35,7 @@ const createDeps = (text: string, media?: { kind?: "video" | "audio"; url?: stri
   convertHtmlToMarkdown: null,
   transcriptCache: null,
   readTweetWithBird: async () => ({
+    client: "xurl",
     text,
     author: { username: "birdy" },
     media: media?.url
@@ -62,6 +63,7 @@ describe("twitter long-form transcript skip", () => {
 
     expect(mocks.resolveTranscriptForLink).not.toHaveBeenCalled();
     expect(result.transcriptSource).toBeNull();
+    expect(result.diagnostics.strategy).toBe("xurl");
     expect(result.diagnostics.transcript.attemptedProviders).toHaveLength(0);
     expect(result.diagnostics.transcript.notes ?? "").toContain("Skipped yt-dlp transcript");
   });
@@ -77,6 +79,7 @@ describe("twitter long-form transcript skip", () => {
 
     expect(mocks.resolveTranscriptForLink).not.toHaveBeenCalled();
     expect(result.transcriptSource).toBeNull();
+    expect(result.diagnostics.strategy).toBe("xurl");
     expect(result.diagnostics.transcript.notes ?? "").toContain("media transcript mode is auto");
   });
 
@@ -90,6 +93,8 @@ describe("twitter long-form transcript skip", () => {
     );
 
     expect(mocks.resolveTranscriptForLink).toHaveBeenCalledTimes(1);
+    expect(result.diagnostics.strategy).toBe("xurl");
+    expect(result.video?.url).toBe("https://video.twimg.com/test.mp4");
     expect(result.transcriptSource).toBe("yt-dlp");
   });
 
@@ -103,6 +108,7 @@ describe("twitter long-form transcript skip", () => {
     );
 
     expect(mocks.resolveTranscriptForLink).toHaveBeenCalledTimes(1);
+    expect(result.diagnostics.strategy).toBe("xurl");
     expect(result.transcriptSource).toBe("yt-dlp");
   });
 });
