@@ -9,6 +9,10 @@ import {
   parseArtifact,
   upsertArtifact,
 } from "../automation/artifacts-store";
+import {
+  getNativeInputGuardError,
+  updateNativeInputArmedTabs,
+} from "../automation/native-input-guard";
 import { readAgentResponse } from "../lib/agent-response";
 import { buildChatPageContent } from "../lib/chat-context";
 import { buildDaemonRequestBody, buildSummarizeRequestBody } from "../lib/daemon-payload";
@@ -2211,37 +2215,28 @@ export default defineBackground(() => {
 
       const type = (raw as { type: string }).type;
       if (type === "automation:native-input-arm") {
-        // Only extension pages (sidepanel/options) may arm tabs for native
-        // input. Content scripts always carry sender.tab — a property Chrome
-        // sets and web pages cannot suppress — so rejecting any message that
-        // carries it ensures only genuine extension pages reach this branch.
-        if (sender.tab) return;
         const msg = raw as { tabId?: number; enabled?: boolean };
-        if (typeof msg.tabId !== "number") return;
-        if (msg.enabled) nativeInputArmedTabs.add(msg.tabId);
-        else nativeInputArmedTabs.delete(msg.tabId);
+        updateNativeInputArmedTabs({
+          armedTabs: nativeInputArmedTabs,
+          senderHasTab: Boolean(sender.tab),
+          tabId: msg.tabId,
+          enabled: msg.enabled,
+        });
         return;
       }
       if (type === "automation:native-input") {
         const msg = raw as NativeInputRequest;
         void (async () => {
           const tabId = sender.tab?.id;
-          if (!tabId) {
+          const guardError = getNativeInputGuardError({
+            armedTabs: nativeInputArmedTabs,
+            senderTabId: tabId,
+          });
+          if (guardError) {
             try {
               sendResponse({
                 ok: false,
-                error: "Missing sender tab",
-              } satisfies NativeInputResponse);
-            } catch {
-              // ignore
-            }
-            return;
-          }
-          if (!nativeInputArmedTabs.has(tabId)) {
-            try {
-              sendResponse({
-                ok: false,
-                error: "Native input not armed for this tab",
+                error: guardError,
               } satisfies NativeInputResponse);
             } catch {
               // ignore

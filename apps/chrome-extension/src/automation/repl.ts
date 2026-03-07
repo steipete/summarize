@@ -5,6 +5,7 @@ import {
   parseArtifact,
   upsertArtifact,
 } from "./artifacts-store";
+import { withNativeInputArmedTab } from "./native-input-guard";
 import { executeNavigateTool } from "./navigate";
 import { listSkills } from "./skills-store";
 import { buildUserScriptsGuidance, getUserScriptsStatus } from "./userscripts";
@@ -311,41 +312,31 @@ async function runBrowserJs(
     // ignore
   }
 
-  if (nativeInputEnabled) {
-    // Authorise this tab for debugger-backed native input. Background rejects
-    // requests from tabs that have not been armed by an extension page.
-    await chrome.runtime.sendMessage({
-      type: "automation:native-input-arm",
-      tabId: tab.id,
-      enabled: true,
-    });
-  }
-
   try {
-    const results = await userScripts.execute({
-      target: { tabId: tab.id },
-      world: "USER_SCRIPT",
-      worldId: "summarize-browserjs",
-      injectImmediately: true,
-      js: [{ code: wrapperCode }],
-      ...(executionId ? { executionId } : {}),
+    return await withNativeInputArmedTab({
+      enabled: nativeInputEnabled,
+      tabId: tab.id,
+      sendMessage: (message) => chrome.runtime.sendMessage(message),
+      run: async () => {
+        const results = await userScripts.execute({
+          target: { tabId: tab.id },
+          world: "USER_SCRIPT",
+          worldId: "summarize-browserjs",
+          injectImmediately: true,
+          js: [{ code: wrapperCode }],
+          ...(executionId ? { executionId } : {}),
+        });
+
+        if (signal?.aborted) {
+          return { ok: false, error: "Execution aborted" };
+        }
+
+        const result = results?.[0]?.result as BrowserJsResult | undefined;
+        return result ?? { ok: false, error: "No result from browserjs()" };
+      },
     });
-
-    if (signal?.aborted) {
-      return { ok: false, error: "Execution aborted" };
-    }
-
-    const result = results?.[0]?.result as BrowserJsResult | undefined;
-    return result ?? { ok: false, error: "No result from browserjs()" };
   } finally {
     if (abortHandler) signal?.removeEventListener("abort", abortHandler);
-    if (nativeInputEnabled) {
-      void chrome.runtime.sendMessage({
-        type: "automation:native-input-arm",
-        tabId: tab.id,
-        enabled: false,
-      });
-    }
   }
 }
 
