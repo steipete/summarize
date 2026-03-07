@@ -1193,6 +1193,51 @@ describe("transcription/whisper", () => {
     }
   });
 
+  it("chunks oversized files for Groq-only transcription when ffmpeg is available", async () => {
+    const whisper = await importWhisperWithMockFfmpeg({ segmentPlan: "two-parts" });
+    const dir = await mkdtemp(join(tmpdir(), "summarize-whisper-groq-chunked-"));
+    const path = join(dir, "input.bin");
+    await writeFile(path, new Uint8Array([1, 2, 3]));
+    await truncate(path, whisper.MAX_OPENAI_UPLOAD_BYTES + 1);
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (!url.includes("groq.com")) {
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      }
+      const form = init?.body as FormData;
+      const file = form.get("file") as unknown as { name?: unknown };
+      if (typeof file?.name !== "string") throw new Error("expected file.name");
+      return new Response(JSON.stringify({ text: `G:${file.name}` }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+
+    try {
+      vi.stubGlobal("fetch", fetchMock);
+      const result = await whisper.transcribeMediaFileWithWhisper({
+        filePath: path,
+        mediaType: "audio/mpeg",
+        filename: "input.mp3",
+        groqApiKey: "GROQ",
+        openaiApiKey: null,
+        falApiKey: null,
+        segmentSeconds: 1,
+      });
+
+      expect(result.text).toContain("G:part-000.mp3");
+      expect(result.text).toContain("G:part-001.mp3");
+      expect(result.provider).toBe("groq");
+      expect(result.notes.join(" ")).toContain("ffmpeg chunked media into 2 parts");
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.doUnmock("node:child_process");
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("maps additional media types to stable Whisper filename extensions", async () => {
     const cases = [
       { mediaType: "audio/x-wav", expected: "clip.wav" },

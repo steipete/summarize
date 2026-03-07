@@ -35,6 +35,96 @@ function resolveOnnxModelPreference(env: Env): "parakeet" | "canary" | null {
   return null;
 }
 
+async function transcribeChunkedFileWithWhisper({
+  filePath,
+  groqApiKey,
+  skipGroq,
+  openaiApiKey,
+  falApiKey,
+  segmentSeconds,
+  totalDurationSeconds,
+  onProgress,
+  env,
+}: {
+  filePath: string;
+  groqApiKey: string | null;
+  skipGroq: boolean;
+  openaiApiKey: string | null;
+  falApiKey: string | null;
+  segmentSeconds: number;
+  totalDurationSeconds: number | null;
+  onProgress?: ((event: WhisperProgressEvent) => void) | null;
+  env: Env;
+}): Promise<WhisperTranscriptionResult> {
+  const notes: string[] = [];
+  const dir = await fs.mkdtemp(join(tmpdir(), "summarize-whisper-segments-"));
+  try {
+    const pattern = join(dir, "part-%03d.mp3");
+    await runFfmpegSegment({
+      inputPath: filePath,
+      outputPattern: pattern,
+      segmentSeconds,
+    });
+    const files = (await fs.readdir(dir))
+      .filter((name) => name.startsWith("part-") && name.endsWith(".mp3"))
+      .sort((a, b) => a.localeCompare(b));
+    if (files.length === 0) {
+      return {
+        text: null,
+        provider: null,
+        error: new Error("ffmpeg produced no audio segments"),
+        notes,
+      };
+    }
+
+    notes.push(`ffmpeg chunked media into ${files.length} parts (${segmentSeconds}s each)`);
+    onProgress?.({
+      partIndex: null,
+      parts: files.length,
+      processedDurationSeconds: null,
+      totalDurationSeconds,
+    });
+
+    const parts: string[] = [];
+    let usedProvider: TranscriptionProvider | null = null;
+    for (const [index, name] of files.entries()) {
+      const segmentPath = join(dir, name);
+      const segmentBytes = new Uint8Array(await fs.readFile(segmentPath));
+      const result = await transcribeMediaWithWhisper({
+        bytes: segmentBytes,
+        mediaType: "audio/mpeg",
+        filename: name,
+        groqApiKey,
+        skipGroq,
+        openaiApiKey,
+        falApiKey,
+        onProgress: null,
+        env,
+      });
+      if (!usedProvider && result.provider) usedProvider = result.provider;
+      if (result.error && !result.text) {
+        return { text: null, provider: usedProvider, error: result.error, notes };
+      }
+      if (result.text) parts.push(result.text);
+
+      const processedSeconds = Math.max(0, (index + 1) * segmentSeconds);
+      onProgress?.({
+        partIndex: index + 1,
+        parts: files.length,
+        processedDurationSeconds:
+          typeof totalDurationSeconds === "number" && totalDurationSeconds > 0
+            ? Math.min(processedSeconds, totalDurationSeconds)
+            : null,
+        totalDurationSeconds,
+      });
+    }
+
+    return { text: parts.join("\n\n"), provider: usedProvider, error: null, notes };
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 export async function transcribeMediaWithWhisper({
   bytes,
   mediaType,
@@ -346,10 +436,33 @@ export async function transcribeMediaFileWithWhisper({
         );
       }
     } else {
-      groqError = new Error(
-        `File too large for Groq upload (${formatBytes(stat.size)}); trying local providers`,
-      );
-      notes.push(groqError.message);
+      const canChunk = await isFfmpegAvailable();
+      if (canChunk) {
+        const chunked = await transcribeChunkedFileWithWhisper({
+          filePath,
+          groqApiKey,
+          skipGroq: false,
+          openaiApiKey,
+          falApiKey,
+          segmentSeconds,
+          totalDurationSeconds,
+          onProgress,
+          env,
+        });
+        if (chunked.notes.length > 0) notes.push(...chunked.notes);
+        if (chunked.text) {
+          return { ...chunked, notes };
+        }
+        groqError = chunked.error ?? new Error("Groq chunked transcription failed");
+        notes.push(
+          `Groq chunked transcription failed; falling back to local/OpenAI: ${groqError.message}`,
+        );
+      } else {
+        groqError = new Error(
+          `File too large for Groq upload (${formatBytes(stat.size)}); trying local providers`,
+        );
+        notes.push(groqError.message);
+      }
     }
   }
 
@@ -458,74 +571,19 @@ export async function transcribeMediaFileWithWhisper({
       return { ...partial, notes };
     }
 
-    const dir = await fs.mkdtemp(join(tmpdir(), "summarize-whisper-segments-"));
-    try {
-      const pattern = join(dir, "part-%03d.mp3");
-      await runFfmpegSegment({
-        inputPath: filePath,
-        outputPattern: pattern,
-        segmentSeconds,
-      });
-      const files = (await fs.readdir(dir))
-        .filter((name) => name.startsWith("part-") && name.endsWith(".mp3"))
-        .sort((a, b) => a.localeCompare(b));
-      if (files.length === 0) {
-        return {
-          text: null,
-          provider: null,
-          error: new Error("ffmpeg produced no audio segments"),
-          notes,
-        };
-      }
-
-      notes.push(`ffmpeg chunked media into ${files.length} parts (${segmentSeconds}s each)`);
-      onProgress?.({
-        partIndex: null,
-        parts: files.length,
-        processedDurationSeconds: null,
-        totalDurationSeconds,
-      });
-
-      const parts: string[] = [];
-      let usedProvider: TranscriptionProvider | null = null;
-      for (const [index, name] of files.entries()) {
-        const segmentPath = join(dir, name);
-        const segmentBytes = new Uint8Array(await fs.readFile(segmentPath));
-        const result = await transcribeMediaWithWhisper({
-          bytes: segmentBytes,
-          mediaType: "audio/mpeg",
-          filename: name,
-          groqApiKey,
-          skipGroq: skipGroqInNestedCalls,
-          openaiApiKey,
-          falApiKey,
-          onProgress: null,
-          env,
-        });
-        if (!usedProvider && result.provider) usedProvider = result.provider;
-        if (result.error && !result.text) {
-          return { text: null, provider: usedProvider, error: result.error, notes };
-        }
-        if (result.text) parts.push(result.text);
-
-        // Coarse but useful: update based on part boundaries. Duration is best-effort (RSS hints or
-        // ffprobe); the per-part time is stable enough to make the spinner feel alive.
-        const processedSeconds = Math.max(0, (index + 1) * segmentSeconds);
-        onProgress?.({
-          partIndex: index + 1,
-          parts: files.length,
-          processedDurationSeconds:
-            typeof totalDurationSeconds === "number" && totalDurationSeconds > 0
-              ? Math.min(processedSeconds, totalDurationSeconds)
-              : null,
-          totalDurationSeconds,
-        });
-      }
-
-      return { text: parts.join("\n\n"), provider: usedProvider, error: null, notes };
-    } finally {
-      await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
-    }
+    const chunked = await transcribeChunkedFileWithWhisper({
+      filePath,
+      groqApiKey,
+      skipGroq: skipGroqInNestedCalls,
+      openaiApiKey,
+      falApiKey,
+      segmentSeconds,
+      totalDurationSeconds,
+      onProgress,
+      env,
+    });
+    if (chunked.notes.length > 0) notes.push(...chunked.notes);
+    return { ...chunked, notes };
   }
 
   const bytes = new Uint8Array(await fs.readFile(filePath));
