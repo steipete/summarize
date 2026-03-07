@@ -46,11 +46,12 @@ function resolveInlineProtocol({
   if (
     env.KITTY_WINDOW_ID ||
     term.includes("xterm-kitty") ||
+    termProgram.includes("wezterm") ||
     termProgram.includes("ghostty") ||
     termProgram.includes("konsole") ||
     env.KONSOLE_VERSION
   ) {
-    return "kitty";
+    return termProgram.includes("wezterm") ? "iterm" : "kitty";
   }
   if (termProgram.includes("iterm") || env.ITERM_SESSION_ID) {
     return "iterm";

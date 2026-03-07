@@ -162,6 +162,34 @@ describe("renderSlidesInline", () => {
     expect(output.getText()).toContain("c=64");
   });
 
+  it("renders iTerm images when WezTerm is detected", async () => {
+    const imagePath = await createTempSlide();
+    const output = createTtyStream();
+    const result = await renderSlidesInline({
+      slides: [{ index: 1, timestamp: 5.1, imagePath }],
+      mode: "auto",
+      env: { TERM_PROGRAM: "WezTerm" },
+      stdout: output.stream,
+    });
+    expect(result.protocol).toBe("iterm");
+    expect(result.rendered).toBe(1);
+    expect(output.getText()).toContain("\u001b]1337;File=");
+  });
+
+  it("does not render inline images for unsupported terminals", async () => {
+    const imagePath = await createTempSlide();
+    const output = createTtyStream();
+    const result = await renderSlidesInline({
+      slides: [{ index: 1, timestamp: 4.2, imagePath }],
+      mode: "auto",
+      env: { TERM_PROGRAM: "Terminal.app" },
+      stdout: output.stream,
+    });
+    expect(result.protocol).toBe("none");
+    expect(result.rendered).toBe(0);
+    expect(output.getText()).toBe("");
+  });
+
   it("prints a missing image notice when slides are absent", async () => {
     const output = createTtyStream();
     const result = await renderSlidesInline({
