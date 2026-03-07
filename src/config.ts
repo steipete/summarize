@@ -1176,11 +1176,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
   const anthropic = parseProviderBaseUrlConfig(parsed.anthropic, path, "anthropic");
   const google = parseProviderBaseUrlConfig(parsed.google, path, "google");
   const xai = parseProviderBaseUrlConfig(parsed.xai, path, "xai");
-  const zai = parseProviderBaseUrlConfig(
-    (parsed as Record<string, unknown>).zai,
-    path,
-    "zai",
-  );
+  const zai = parseProviderBaseUrlConfig((parsed as Record<string, unknown>).zai, path, "zai");
 
   const configEnv = (() => {
     const value = (parsed as Record<string, unknown>).env;

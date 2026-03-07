@@ -400,7 +400,11 @@ export async function generateTextWithModelId({
       if (parsed.provider === "zai") {
         const apiKey = apiKeys.openaiApiKey;
         if (!apiKey) throw new Error("Missing Z_AI_API_KEY for zai/... model");
-        const model = resolveZaiModel({ modelId: parsed.model, context, openaiBaseUrlOverride: zaiBaseUrlOverride });
+        const model = resolveZaiModel({
+          modelId: parsed.model,
+          context,
+          openaiBaseUrlOverride: zaiBaseUrlOverride ?? openaiBaseUrlOverride,
+        });
         const result = await completeSimpleText({ model, apiKey, signal: controller.signal });
         return {
           text: result.text,

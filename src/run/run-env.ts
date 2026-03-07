@@ -64,8 +64,13 @@ export function resolveEnvState({
     envValue: envForRun.XAI_BASE_URL,
     configValue: configForCli?.xai?.baseUrl,
   });
-  const zaiBaseUrlFromConfig = resolveConfiguredBaseUrl({
-    envValue: null,
+  const zaiBaseUrl = resolveConfiguredBaseUrl({
+    envValue:
+      typeof envForRun.Z_AI_BASE_URL === "string"
+        ? envForRun.Z_AI_BASE_URL
+        : typeof envForRun.ZAI_BASE_URL === "string"
+          ? envForRun.ZAI_BASE_URL
+          : null,
     configValue: configForCli?.zai?.baseUrl,
   });
   const zaiKeyRaw =
@@ -74,12 +79,6 @@ export function resolveEnvState({
       : typeof envForRun.ZAI_API_KEY === "string"
         ? envForRun.ZAI_API_KEY
         : null;
-  const zaiBaseUrlRaw =
-    typeof envForRun.Z_AI_BASE_URL === "string"
-      ? envForRun.Z_AI_BASE_URL
-      : typeof envForRun.ZAI_BASE_URL === "string"
-        ? envForRun.ZAI_BASE_URL
-        : zaiBaseUrlFromConfig;
   const openRouterKeyRaw =
     typeof envForRun.OPENROUTER_API_KEY === "string" ? envForRun.OPENROUTER_API_KEY : null;
   const openaiKeyRaw =
@@ -131,7 +130,7 @@ export function resolveEnvState({
   const firecrawlConfigured = firecrawlApiKey !== null;
   const xaiApiKey = xaiKeyRaw?.trim() ?? null;
   const zaiApiKey = zaiKeyRaw?.trim() ?? null;
-  const zaiBaseUrl = (zaiBaseUrlRaw?.trim() ?? "") || "https://api.z.ai/api/paas/v4";
+  const zaiBaseUrlEffective = (zaiBaseUrl?.trim() ?? "") || "https://api.z.ai/api/paas/v4";
   const nvidiaApiKey = nvidiaKeyRaw?.trim() ?? null;
   const nvidiaBaseUrlEffective =
     (nvidiaBaseUrl?.trim() ?? "") || "https://integrate.api.nvidia.com/v1";
@@ -171,7 +170,7 @@ export function resolveEnvState({
     googleApiKey,
     anthropicApiKey,
     zaiApiKey,
-    zaiBaseUrl,
+    zaiBaseUrl: zaiBaseUrlEffective,
     nvidiaApiKey,
     nvidiaBaseUrl: nvidiaBaseUrlEffective,
     firecrawlApiKey,

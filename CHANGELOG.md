@@ -17,6 +17,7 @@
 - Docs: tighten landing-page mobile layout so hero, cards, code blocks, and nav stay readable on narrow screens (#118, thanks @Acidias).
 - Release: build macOS x64 Bun artifacts and add regression coverage for Homebrew formula rewrites during dual-arch releases (#122, thanks @androidshu).
 - YouTube: tighten hostname validation across core, slides, and extension helpers so attacker-controlled lookalike hosts are no longer treated as YouTube URLs (#91, thanks @RinZ27).
+- Config: honor `zai.baseUrl` config fallback for blank env values and keep Z.AI base URL overrides working outside the summary flow (#102, thanks @liuy).
 - Slides: warn in summary mode when `--slides` dependencies are missing, and document required local installs for `ffmpeg`, `yt-dlp`, and optional `tesseract`.
 - Docs: fix broken docs index links by setting an empty Jekyll `baseurl` (#113, thanks @Youpen-y).
 - Models: preserve model id casing after the provider prefix so OpenAI-compatible proxies can route exact names correctly (#128, thanks @WinnCook).

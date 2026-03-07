@@ -362,7 +362,8 @@ Override API endpoints for any provider to use proxies, gateways, or compatible 
   "nvidia": { "baseUrl": "https://integrate.api.nvidia.com/v1" },
   "anthropic": { "baseUrl": "https://my-anthropic-proxy.example.com" },
   "google": { "baseUrl": "https://my-google-proxy.example.com" },
-  "xai": { "baseUrl": "https://my-xai-proxy.example.com" }
+  "xai": { "baseUrl": "https://my-xai-proxy.example.com" },
+  "zai": { "baseUrl": "https://api.zhipuai.cn/paas/v4" }
 }
 ```
 
@@ -375,3 +376,4 @@ Or via environment variables (which take precedence over config):
 | Anthropic | `ANTHROPIC_BASE_URL`                         |
 | Google    | `GOOGLE_BASE_URL` (alias: `GEMINI_BASE_URL`) |
 | xAI       | `XAI_BASE_URL`                               |
+| Z.AI      | `Z_AI_BASE_URL` (alias: `ZAI_BASE_URL`)      |

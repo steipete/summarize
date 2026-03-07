@@ -594,7 +594,7 @@ describe("llm generate/stream", () => {
     expect(model.headers?.["X-Title"]).toBe("summarize");
   });
 
-  it("applies provider baseUrl overrides (google/xai)", async () => {
+  it("applies provider baseUrl overrides (google/xai/zai)", async () => {
     mocks.completeSimple.mockClear();
 
     await generateTextWithModelId({
@@ -633,6 +633,25 @@ describe("llm generate/stream", () => {
 
     const xaiModel = mocks.completeSimple.mock.calls[0]?.[0] as { baseUrl?: string };
     expect(xaiModel.baseUrl).toBe("https://xai-proxy.example.com/v1");
+
+    mocks.completeSimple.mockClear();
+    await generateTextWithModelId({
+      modelId: "zai/glm-4.7",
+      apiKeys: {
+        openaiApiKey: "k",
+        openrouterApiKey: null,
+        xaiApiKey: null,
+        googleApiKey: null,
+        anthropicApiKey: null,
+      },
+      prompt: { userText: "hi" },
+      timeoutMs: 2000,
+      fetchImpl: globalThis.fetch.bind(globalThis),
+      openaiBaseUrlOverride: "https://zai-proxy.example.com/v4",
+    });
+
+    const zaiModel = mocks.completeSimple.mock.calls[0]?.[0] as { baseUrl?: string };
+    expect(zaiModel.baseUrl).toBe("https://zai-proxy.example.com/v4");
   });
 
   it("wraps anthropic model access errors with a helpful message", async () => {

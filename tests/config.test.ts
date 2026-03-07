@@ -524,6 +524,7 @@ describe("config loading", () => {
       anthropic: { baseUrl: "https://anthropic-proxy.example.com" },
       google: { baseUrl: "https://google-proxy.example.com" },
       xai: { baseUrl: "https://xai-proxy.example.com" },
+      zai: { baseUrl: "https://api.zhipuai.cn/paas/v4" },
     });
     const result = loadSummarizeConfig({ env: { HOME: root } });
     expect(result.config).toEqual({
@@ -532,6 +533,7 @@ describe("config loading", () => {
       anthropic: { baseUrl: "https://anthropic-proxy.example.com" },
       google: { baseUrl: "https://google-proxy.example.com" },
       xai: { baseUrl: "https://xai-proxy.example.com" },
+      zai: { baseUrl: "https://api.zhipuai.cn/paas/v4" },
     });
   });
 
@@ -548,16 +550,21 @@ describe("config loading", () => {
 
     const { root: root3 } = writeJsonConfig({ xai: [] });
     expect(() => loadSummarizeConfig({ env: { HOME: root3 } })).toThrow(/"xai" must be an object/i);
+
+    const { root: root4 } = writeJsonConfig({ zai: 123 });
+    expect(() => loadSummarizeConfig({ env: { HOME: root4 } })).toThrow(/"zai" must be an object/i);
   });
 
   it("trims provider baseUrl strings and ignores empty strings", () => {
     const { root } = writeJsonConfig({
       openai: { baseUrl: "  https://example.com/v1  " },
       anthropic: { baseUrl: "   " },
+      zai: { baseUrl: "  https://api.zhipuai.cn/paas/v4  " },
     });
     const result = loadSummarizeConfig({ env: { HOME: root } });
     expect(result.config).toEqual({
       openai: { baseUrl: "https://example.com/v1" },
+      zai: { baseUrl: "https://api.zhipuai.cn/paas/v4" },
     });
   });
 });
