@@ -12,6 +12,7 @@
 - CLI help: surface `summarize refresh-free` in `summarize help` output.
 - Slides: warn in summary mode when `--slides` dependencies are missing, and document required local installs for `ffmpeg`, `yt-dlp`, and optional `tesseract`.
 - Docs: fix broken docs index links by setting an empty Jekyll `baseurl` (#113, thanks @Youpen-y).
+- Models: preserve model id casing after the provider prefix so OpenAI-compatible proxies can route exact names correctly (#128, thanks @WinnCook).
 
 ## 0.11.0 - 2026-02-14
 
