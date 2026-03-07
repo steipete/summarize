@@ -9,6 +9,7 @@
 ### Fixes
 
 - npm packaging: publish CLI with `pnpm publish` so `@steipete/summarize-core` is version-pinned in published metadata (no `workspace:*` in registry package).
+- Slides: detect WezTerm as an iTerm-compatible terminal for inline slide images in `--slides` mode. (#133) — thanks @doodaaatimmy-creator.
 - CLI help: surface `summarize refresh-free` in `summarize help` output.
 - CLI: report CLI provider timeouts explicitly, including the duration, command, and a `--timeout` hint instead of collapsing them into generic exec failures (#100, thanks @christophsturm).
 - Daemon: restrict CORS responses to trusted extension and localhost origins, with regression coverage for allowed and denied `Origin` headers (#108, thanks @sebastiondev).
