@@ -12,6 +12,7 @@
 - CLI help: surface `summarize refresh-free` in `summarize help` output.
 - CLI: report CLI provider timeouts explicitly, including the duration, command, and a `--timeout` hint instead of collapsing them into generic exec failures (#100, thanks @christophsturm).
 - Daemon: restrict CORS responses to trusted extension and localhost origins, with regression coverage for allowed and denied `Origin` headers (#108, thanks @sebastiondev).
+- Transcription: chunk oversized Groq Whisper uploads with ffmpeg in file mode instead of failing out on files above the 30MB limit (#134, thanks @WinnCook).
 - Slides: warn in summary mode when `--slides` dependencies are missing, and document required local installs for `ffmpeg`, `yt-dlp`, and optional `tesseract`.
 - Docs: fix broken docs index links by setting an empty Jekyll `baseurl` (#113, thanks @Youpen-y).
 - Models: preserve model id casing after the provider prefix so OpenAI-compatible proxies can route exact names correctly (#128, thanks @WinnCook).
