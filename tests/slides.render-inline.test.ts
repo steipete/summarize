@@ -88,7 +88,7 @@ describe("renderSlidesInline", () => {
     expect(result.rendered).toBe(1);
     expect(output.getText()).toContain("Slide 1");
     expect(output.getText()).toContain("\u001b_G");
-    expect(output.getText()).toContain("c=72");
+    expect(output.getText()).toContain("c=64");
   });
 
   it("skips rendering when stdout is not a TTY", async () => {
@@ -131,7 +131,7 @@ describe("renderSlidesInline", () => {
     expect(result.protocol).toBe("iterm");
     expect(result.rendered).toBe(1);
     expect(output.getText()).toContain("\u001b]1337;File=");
-    expect(output.getText()).toContain("width=72");
+    expect(output.getText()).toContain("width=64");
   });
 
   it("uses COLUMNS when stdout columns are unavailable", async () => {
@@ -146,6 +146,20 @@ describe("renderSlidesInline", () => {
     expect(result.protocol).toBe("kitty");
     expect(result.rendered).toBe(1);
     expect(output.getText()).toContain("c=54");
+  });
+
+  it("caps inline width at double the previous size on wide terminals", async () => {
+    const imagePath = await createTempSlide();
+    const output = createTtyStream(200);
+    const result = await renderSlidesInline({
+      slides: [{ index: 1, timestamp: 9.1, imagePath }],
+      mode: "auto",
+      env: { TERM: "xterm-kitty" },
+      stdout: output.stream,
+    });
+    expect(result.protocol).toBe("kitty");
+    expect(result.rendered).toBe(1);
+    expect(output.getText()).toContain("c=64");
   });
 
   it("prints a missing image notice when slides are absent", async () => {

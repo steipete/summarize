@@ -18,7 +18,7 @@
 - Chrome automation: require sidepanel arming before debugger-backed native input can run in a tab, and auto-disarm after browser JS execution ends (#129, thanks @omnicoder9).
 - Media setup: fix the local whisper.cpp install hint to use the current Homebrew formula name `whisper-cpp` (#92, thanks @zerone0x).
 - CLI output: cap markdown render width on very wide terminals by default, with a `--width` override for manual control (#119, thanks @howardpen9).
-- Slides: size inline slide images from terminal width instead of keeping them pinned to 32 columns, while preserving `COLUMNS` fallback behavior (#125).
+- Slides: size inline slide images from terminal width instead of keeping them pinned to 32 columns, capped at 2x the previous width while preserving `COLUMNS` fallback behavior (#125, #135, thanks @WinnCook).
 - Shell completions: add Fish shell completions for the current CLI flags and option values (#95, thanks @fbehrens).
 - Bun fetch: only opt into compressed HTML/YouTube responses when running under Bun, and retry link-preview fetches with `Accept-Encoding: identity` after Bun decompression failures (#105, thanks @maciej).
 - Daemon: support `cli/...` models in chat and agent endpoints, including CLI auto-fallback when no API-key transport is available (#109, thanks @jetm).

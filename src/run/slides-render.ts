@@ -73,7 +73,7 @@ function resolveSlideCellSize({
   height: number | null;
   termCols: number;
 }): { cols: number; rows: number } {
-  const maxCols = clampInt(24, 96, Math.floor(termCols * 0.75));
+  const maxCols = clampInt(24, 64, Math.floor(termCols * 0.75));
   const preferredCols = Math.floor(termCols * 0.6);
   const cols = clampInt(16, maxCols, preferredCols);
   if (!width || !height) {
