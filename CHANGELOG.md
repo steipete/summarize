@@ -17,6 +17,7 @@
 - Daemon: apply the saved env snapshot to `process.env` before `daemon run` starts so child tools inherit the right PATH and API/tool config under launchd/systemd (#99, thanks @heyalchang).
 - Chrome automation: require sidepanel arming before debugger-backed native input can run in a tab, and auto-disarm after browser JS execution ends (#129, thanks @omnicoder9).
 - Media setup: fix the local whisper.cpp install hint to use the current Homebrew formula name `whisper-cpp` (#92, thanks @zerone0x).
+- CLI output: cap markdown render width on very wide terminals by default, with a `--width` override for manual control (#119, thanks @howardpen9).
 
 ## 0.11.0 - 2026-02-14
 
