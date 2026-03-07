@@ -169,64 +169,7 @@ phase_tap() {
   sha_arm="$(shasum -a 256 "${tarball_arm}" | awk '{print $1}')"
   sha_x64="$(shasum -a 256 "${tarball_x64}" | awk '{print $1}')"
 
-  run python3 - "${formula_path}" "${url_arm}" "${sha_arm}" "${url_x64}" "${sha_x64}" <<'PY'
-import re
-import sys
-from pathlib import Path
-
-path, url_arm, sha_arm, url_x64, sha_x64 = sys.argv[1:]
-data = Path(path).read_text()
-
-def replace_once(pattern, repl, src, *, flags=0):
-    out, n = re.subn(pattern, repl, src, count=1, flags=flags)
-    if n != 1:
-        raise SystemExit(f"failed to update formula using pattern: {pattern}")
-    return out
-
-if "on_arm do" in data and "on_intel do" in data:
-    data = replace_once(
-        r'(on_arm do\s*\n\s*url ")(.*?)(")',
-        lambda m: f'{m.group(1)}{url_arm}{m.group(3)}',
-        data,
-        flags=re.S,
-    )
-    data = replace_once(
-        r'(on_arm do.*?\n\s*sha256 ")(.*?)(")',
-        lambda m: f'{m.group(1)}{sha_arm}{m.group(3)}',
-        data,
-        flags=re.S,
-    )
-    data = replace_once(
-        r'(on_intel do\s*\n\s*url ")(.*?)(")',
-        lambda m: f'{m.group(1)}{url_x64}{m.group(3)}',
-        data,
-        flags=re.S,
-    )
-    data = replace_once(
-        r'(on_intel do.*?\n\s*sha256 ")(.*?)(")',
-        lambda m: f'{m.group(1)}{sha_x64}{m.group(3)}',
-        data,
-        flags=re.S,
-    )
-elif 'depends_on arch: :arm64' in data:
-    dual_block = (
-        f'  on_arm do\n'
-        f'    url "{url_arm}"\n'
-        f'    sha256 "{sha_arm}"\n'
-        f'  end\n\n'
-        f'  on_intel do\n'
-        f'    url "{url_x64}"\n'
-        f'    sha256 "{sha_x64}"\n'
-        f'  end'
-    )
-    data = replace_once(r'  url "[^"\n]+"\n  sha256 "[^"\n]+"', dual_block, data)
-    data = replace_once(r'^  depends_on arch: :arm64\s*$', '', data, flags=re.M)
-else:
-    data = replace_once(r'^  url ".*"$', f'  url "{url_arm}"', data, flags=re.M)
-    data = replace_once(r'^  sha256 ".*"$', f'  sha256 "{sha_arm}"', data, flags=re.M)
-
-Path(path).write_text(data)
-PY
+  run node scripts/release-formula.js "${formula_path}" "${url_arm}" "${sha_arm}" "${url_x64}" "${sha_x64}"
 
   echo "Tap updated: ${formula_path}"
   echo "arm64 sha: ${sha_arm}"
