@@ -10,7 +10,7 @@ const pngData = Buffer.from(
   "base64",
 );
 
-function createTtyStream() {
+function createTtyStream(columns = 120) {
   let text = "";
   const stream = new Writable({
     write(chunk, _encoding, callback) {
@@ -19,7 +19,19 @@ function createTtyStream() {
     },
   });
   (stream as unknown as { isTTY?: boolean }).isTTY = true;
-  (stream as unknown as { columns?: number }).columns = 120;
+  (stream as unknown as { columns?: number }).columns = columns;
+  return { stream, getText: () => text };
+}
+
+function createTtyStreamWithoutColumns() {
+  let text = "";
+  const stream = new Writable({
+    write(chunk, _encoding, callback) {
+      text += chunk.toString();
+      callback();
+    },
+  });
+  (stream as unknown as { isTTY?: boolean }).isTTY = true;
   return { stream, getText: () => text };
 }
 
@@ -76,6 +88,7 @@ describe("renderSlidesInline", () => {
     expect(result.rendered).toBe(1);
     expect(output.getText()).toContain("Slide 1");
     expect(output.getText()).toContain("\u001b_G");
+    expect(output.getText()).toContain("c=72");
   });
 
   it("skips rendering when stdout is not a TTY", async () => {
@@ -118,6 +131,21 @@ describe("renderSlidesInline", () => {
     expect(result.protocol).toBe("iterm");
     expect(result.rendered).toBe(1);
     expect(output.getText()).toContain("\u001b]1337;File=");
+    expect(output.getText()).toContain("width=72");
+  });
+
+  it("uses COLUMNS when stdout columns are unavailable", async () => {
+    const imagePath = await createTempSlide();
+    const output = createTtyStreamWithoutColumns();
+    const result = await renderSlidesInline({
+      slides: [{ index: 1, timestamp: 9.1, imagePath }],
+      mode: "auto",
+      env: { TERM: "xterm-kitty", COLUMNS: "90" },
+      stdout: output.stream,
+    });
+    expect(result.protocol).toBe("kitty");
+    expect(result.rendered).toBe(1);
+    expect(output.getText()).toContain("c=54");
   });
 
   it("prints a missing image notice when slides are absent", async () => {
