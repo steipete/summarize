@@ -2375,7 +2375,7 @@ function buildYoutubeSourceId(videoId: string): string {
 function resolveHostSlug(parsed: URL | null): string | null {
   if (!parsed?.hostname) return null;
   const host = parsed.hostname.toLowerCase();
-  if (host.includes("youtube.com") || host === "youtu.be" || host.includes("youtu.be")) {
+  if (host === "youtube.com" || host.endsWith(".youtube.com") || host === "youtu.be") {
     return "youtube";
   }
   const slug = toSlug(host);

@@ -4,7 +4,9 @@ import { isTwitterBroadcastUrl, isTwitterStatusUrl } from "./link-preview/conten
 export const isYouTubeUrl = (rawUrl: string): boolean => {
   try {
     const hostname = new URL(rawUrl).hostname.toLowerCase();
-    return hostname === "youtube.com" || hostname.endsWith(".youtube.com") || hostname === "youtu.be";
+    return (
+      hostname === "youtube.com" || hostname.endsWith(".youtube.com") || hostname === "youtu.be"
+    );
   } catch {
     const lower = rawUrl.toLowerCase();
     return lower.includes("youtube.com") || lower.includes("youtu.be");
