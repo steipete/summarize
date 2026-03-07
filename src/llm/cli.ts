@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, type ExecFileException } from "node:child_process";
 import fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -37,6 +37,12 @@ type CliRunResult = {
   text: string;
   usage: LlmTokenUsage | null;
   costUsd: number | null;
+};
+
+type CliExecError = ExecFileException & {
+  cmd?: string;
+  killed?: boolean;
+  signal?: NodeJS.Signals | null;
 };
 
 type JsonCliProvider = Exclude<CliProvider, "codex">;
@@ -107,29 +113,25 @@ function formatTimeoutLabel(timeoutMs: number): string {
   return "unknown time";
 }
 
-function getExecErrorCodeText(error: NodeJS.ErrnoException): string {
+function getExecErrorCodeText(error: CliExecError): string {
   if (typeof error.code === "string") return error.code;
   if (Buffer.isBuffer(error.code)) return toUtf8String(error.code);
   if (typeof error.code === "number") return String(error.code);
   return "";
 }
 
-function isExecTimeoutError(error: NodeJS.ErrnoException): boolean {
+function isExecTimeoutError(error: CliExecError): boolean {
   if (getExecErrorCodeText(error).toUpperCase() === "ETIMEDOUT") return true;
-  const withSignal = error as NodeJS.ErrnoException & {
-    killed?: boolean;
-    signal?: NodeJS.Signals | null;
-  };
-  return withSignal.killed === true && withSignal.signal === "SIGTERM";
+  return error.killed === true && error.signal === "SIGTERM";
 }
 
-function getExecErrorMessage(error: NodeJS.ErrnoException): string {
+function getExecErrorMessage(error: CliExecError): string {
   return typeof error.message === "string" && error.message.trim().length > 0
     ? error.message.trim()
     : "CLI command failed";
 }
 
-function getExecCommand(error: NodeJS.ErrnoException, cmd: string, args: string[]): string {
+function getExecCommand(error: CliExecError, cmd: string, args: string[]): string {
   return typeof error.cmd === "string" && error.cmd.trim().length > 0
     ? error.cmd.trim()
     : [cmd, ...args].join(" ");

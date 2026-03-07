@@ -141,7 +141,7 @@ function resolveOriginHeader(req: http.IncomingMessage): string | null {
  * the daemon is expected to serve.  Arbitrary web origins are rejected to
  * prevent cross-site requests from untrusted pages (CWE-942).
  */
-function isTrustedOrigin(origin: string): boolean {
+export function isTrustedOrigin(origin: string): boolean {
   // Browser extensions (Chrome, Firefox, Safari, Edge)
   if (/^(?:chrome-extension|moz-extension|safari-web-extension):\/\//i.test(origin)) return true;
   try {
@@ -155,7 +155,7 @@ function isTrustedOrigin(origin: string): boolean {
   return false;
 }
 
-function corsHeaders(origin: string | null): Record<string, string> {
+export function corsHeaders(origin: string | null): Record<string, string> {
   if (!origin || !isTrustedOrigin(origin)) return {};
   return {
     "access-control-allow-origin": origin,

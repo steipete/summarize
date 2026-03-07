@@ -89,11 +89,7 @@ describe("llm/cli more branches", () => {
           killed: true,
           signal: "SIGTERM",
         });
-        cb(
-          timeoutError as unknown as NodeJS.ErrnoException,
-          "",
-          "Reading prompt from stdin...",
-        );
+        cb(timeoutError as unknown as NodeJS.ErrnoException, "", "Reading prompt from stdin...");
         return { stdin: { write() {}, end() {} } } as unknown as ChildProcess;
       },
     }).catch((error: unknown) => error as Error);
