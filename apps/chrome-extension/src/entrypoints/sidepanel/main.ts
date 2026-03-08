@@ -20,13 +20,14 @@ import { generateToken } from "../../lib/token";
 import { mountCheckbox } from "../../ui/zag-checkbox";
 import { runChatAgentLoop } from "./chat-agent-loop";
 import { ChatController } from "./chat-controller";
+import { createChatHistoryRuntime } from "./chat-history-runtime";
 import {
   buildEmptyUsage,
   createChatHistoryStore,
   normalizeStoredMessage,
 } from "./chat-history-store";
 import { createChatSession } from "./chat-session";
-import { compactChatHistory, type ChatHistoryLimits } from "./chat-state";
+import { type ChatHistoryLimits } from "./chat-state";
 import { createErrorController } from "./error-controller";
 import { createHeaderController } from "./header-controller";
 import { createMetricsController } from "./metrics-controller";
@@ -312,7 +313,6 @@ type ChatQueueItem = {
   createdAt: number;
 };
 let chatQueue: ChatQueueItem[] = [];
-let chatHistoryLoadId = 0;
 let activeTabId: number | null = null;
 let activeTabUrl: string | null = null;
 let lastPanelOpen = false;
@@ -374,6 +374,13 @@ const chatController = new ChatController({
   onNewContent: () => {
     renderInlineSlides(chatMessagesEl);
   },
+});
+const chatHistoryRuntime = createChatHistoryRuntime({
+  chatController,
+  chatHistoryStore,
+  chatLimits,
+  normalizeStoredMessage,
+  requestChatHistory: (summary) => chatSession.requestChatHistory(summary),
 });
 
 type AutomationNoticeAction = "extensions" | "options";
@@ -1676,7 +1683,7 @@ function applyChatEnabled() {
 }
 
 async function clearChatHistoryForTab(tabId: number | null) {
-  await chatHistoryStore.clear(tabId);
+  await chatHistoryRuntime.clear(tabId);
 }
 
 async function clearChatHistoryForActiveTab() {
@@ -1684,49 +1691,15 @@ async function clearChatHistoryForActiveTab() {
 }
 
 async function loadChatHistory(tabId: number): Promise<ChatMessage[] | null> {
-  return chatHistoryStore.load(tabId);
+  return chatHistoryRuntime.load(tabId);
 }
 
 async function persistChatHistory() {
-  if (!chatEnabledValue) return;
-  const tabId = activeTabId;
-  if (!tabId) return;
-  const messages = chatController.getMessages();
-  const compacted = compactChatHistory(messages, chatLimits);
-  if (compacted.length !== messages.length) {
-    chatController.setMessages(compacted, { scroll: false });
-  }
-  await chatHistoryStore.persist(tabId, compacted, chatEnabledValue);
+  await chatHistoryRuntime.persist(activeTabId, chatEnabledValue);
 }
 
 async function restoreChatHistory() {
-  const tabId = activeTabId;
-  if (!tabId) return;
-  chatHistoryLoadId += 1;
-  const loadId = chatHistoryLoadId;
-  const history = await loadChatHistory(tabId);
-  if (loadId !== chatHistoryLoadId) return;
-  if (history?.length) {
-    const compacted = compactChatHistory(history, chatLimits);
-    chatController.setMessages(compacted, { scroll: false });
-    return;
-  }
-
-  try {
-    const response = await chatSession.requestChatHistory(panelState.summaryMarkdown);
-    if (loadId !== chatHistoryLoadId || !response.ok || !Array.isArray(response.messages)) {
-      return;
-    }
-    const parsed = response.messages
-      .filter((msg) => msg && typeof msg === "object")
-      .map((msg) => normalizeStoredMessage(msg as Record<string, unknown>))
-      .filter((msg): msg is ChatMessage => Boolean(msg));
-    if (!parsed.length) return;
-    const compacted = await chatHistoryStore.persist(tabId, parsed, true);
-    chatController.setMessages(compacted, { scroll: false });
-  } catch {
-    // ignore
-  }
+  await chatHistoryRuntime.restore(activeTabId, panelState.summaryMarkdown);
 }
 
 type PlatformKind = "mac" | "windows" | "linux" | "other";
