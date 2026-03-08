@@ -1,0 +1,231 @@
+header {
+  --header-pad: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: var(--header-pad) var(--header-pad) 10px;
+  border-bottom: 0;
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+  color: var(--text);
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+  min-height: 15px;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subtitle:empty {
+  display: none;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+}
+
+.summarizeControlRoot {
+  display: flex;
+}
+
+.summarizeControlGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.summarizeButton {
+  position: relative;
+}
+
+.summarizeButton[data-busy="true"] {
+  pointer-events: none;
+}
+
+.summarizeButton.isDropdown {
+  padding-right: 28px;
+}
+
+.summarizeButton.isDropdown::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(calc(-50% - 2px)) rotate(45deg);
+  pointer-events: none;
+}
+
+.summarizeSlidesToggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  position: relative;
+}
+
+.summarizeSlidesToggle__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+  white-space: nowrap;
+}
+
+.summarizeSlidesToggle button {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: var(--muted);
+  background: transparent;
+}
+
+.summarizeSlidesToggle button[data-active="true"] {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.summarizeSlideToggle {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+}
+
+.summarizeSlideToggle svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.summarizeSlideToggle[data-active="true"] {
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--btn-border));
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.summarizeSlideToggle[data-busy="true"] {
+  position: relative;
+}
+
+.summarizeSlideToggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+button {
+  appearance: none;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--text);
+  padding: 7px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--btn-border));
+}
+
+button.primary {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--btn-border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 22%, transparent),
+    var(--btn-bg)
+  );
+}
+
+button.icon {
+  width: 34px;
+  padding: 7px 0;
+  display: grid;
+  place-items: center;
+}
+
+button.icon svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  opacity: 0.9;
+  transition: transform 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button.icon.isActive {
+  border-color: color-mix(in srgb, var(--ui-focus) 55%, var(--btn-border));
+}
+
+button.icon.isActive svg {
+  transform: rotate(22deg);
+}
+
+button.ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+button.ghost:hover {
+  border-color: color-mix(in srgb, var(--ui-focus) 35%, var(--border));
+  color: var(--text);
+}
+
+button.ghost.small {
+  padding: 6px 10px;
+  font-size: 11px;
+  min-height: 28px;
+}

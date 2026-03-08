@@ -1,0 +1,433 @@
+.drawer {
+  position: sticky;
+  top: var(--header-height, 56px);
+  z-index: 9;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: 10px 12px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+#summarize-overlay-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+#summarize-overlay-root .pickerPositioner {
+  pointer-events: auto;
+}
+
+.drawerGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+  --drawer-control-height: 32px;
+}
+
+#pickersRoot {
+  display: contents;
+}
+
+.drawerGrid .wide {
+  grid-column: 1 / -1;
+}
+
+.drawer label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  position: relative;
+  z-index: 0;
+}
+
+.drawer label:has(.picker[data-state="open"]) {
+  z-index: 8;
+}
+
+.drawer .size {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.drawer .lineHeight {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sizeControl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--field-bg);
+  overflow: hidden;
+  min-height: 28px;
+  width: 100%;
+}
+
+.sizeBtn {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 6px 10px;
+  min-width: 0;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sizeBtnLg {
+  font-size: 14px;
+}
+
+.sizeBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sizeDivider {
+  width: 1px;
+  align-self: stretch;
+  background: color-mix(in srgb, var(--border) 90%, transparent);
+}
+
+.lineHeightControl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--field-bg);
+  overflow: hidden;
+  min-height: 28px;
+  width: 100%;
+}
+
+.lineHeightBtn {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 6px 10px;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.lineHeightBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.lineIcon {
+  width: 16px;
+  height: 12px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+
+.lineIconTight {
+  transform: translateY(0.5px);
+}
+
+.lineIconLoose {
+  transform: translateY(-0.5px);
+}
+
+.drawer .toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: auto;
+  min-width: 0;
+  color: var(--text);
+  font-size: 12px;
+  align-self: center;
+}
+
+.checkboxRoot {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.drawer .checkboxRoot {
+  display: inline-flex;
+  flex-direction: row;
+}
+
+.checkboxRoot:hover .checkboxControl {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.checkboxRoot[data-disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkboxControl {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--field-bg);
+  display: grid;
+  place-items: center;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.checkboxControl[data-state="checked"] {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 75%, transparent);
+  color: #fff;
+}
+
+.checkboxControl[data-focus-visible] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.checkboxIndicator {
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.checkboxControl[data-state="checked"] .checkboxIndicator {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.checkboxIndicator svg {
+  width: 12px;
+  height: 10px;
+}
+
+.drawerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.drawerAdvanced {
+  margin-top: 10px;
+}
+
+.drawerAdvanced summary {
+  list-style: none;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawerAdvanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.drawerAdvanced summary::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.drawerAdvanced[open] summary::after {
+  transform: rotate(225deg);
+}
+
+.drawerAdvancedBody {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, transform;
+}
+
+.drawerAdvanced[open] .drawerAdvancedBody {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawerAdvanced summary::after,
+  .drawerAdvancedBody {
+    transition: none;
+  }
+}
+
+.drawerAdvancedRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+.drawerAdvancedRow .toggleRow {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.drawerAdvancedActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.drawerAdvancedButtons {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.drawerAdvanced .modelRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawerAdvanced button.ghost.small {
+  padding: 6px 10px;
+  font-size: 11px;
+  min-height: 32px;
+}
+
+.drawerAdvanced .modelRow.isCustom {
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) auto;
+}
+
+.drawerAdvanced .modelRow input {
+  height: 32px;
+}
+
+.modelStatus {
+  min-height: 14px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.modelStatus[data-state="running"] {
+  color: color-mix(in srgb, var(--accent) 65%, var(--muted));
+}
+
+.modelStatus[data-state="error"] {
+  color: color-mix(in srgb, #ff6b6b 70%, var(--muted));
+}
+
+.modelStatus[data-state="ok"] {
+  color: color-mix(in srgb, var(--accent) 80%, var(--muted));
+}
+
+.drawerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#lengthRoot {
+  min-width: 0;
+}
+
+label.length.mini {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+label.length.mini .combo {
+  display: block;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+}
+
+label.length.mini .pickerTrigger {
+  padding: 6px 10px;
+  min-width: 92px;
+}
+
+.drawerGrid .pickerTrigger,
+.drawerGrid .sizeControl,
+.drawerGrid .lineHeightControl {
+  min-height: var(--drawer-control-height);
+  height: var(--drawer-control-height);
+}
+
+label.length.mini .lengthCustomRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+label.length.mini .lengthCustomRow input[type="text"] {
+  width: 100%;
+  min-width: 0;
+}
+
+label.length.mini .presetsTrigger {
+  width: auto;
+  min-width: 88px;
+  padding: 7px 10px;
+  font-size: 11px;
+  min-height: 32px;
+}
+
+.drawer .combo {
+  display: grid;
+  gap: 8px;
+}
