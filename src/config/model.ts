@@ -1,4 +1,4 @@
-import type { AutoRule, AutoRuleKind, ModelConfig } from "../config.js";
+import type { AutoRule, AutoRuleKind, ModelConfig } from "./types.js";
 import { isRecord } from "./parse-helpers.js";
 
 function parseAutoRuleKind(value: unknown): AutoRuleKind | null {

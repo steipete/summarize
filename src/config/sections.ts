@@ -10,7 +10,7 @@ import type {
   MediaCacheVerifyMode,
   OpenAiConfig,
   VideoMode,
-} from "../config.js";
+} from "./types.js";
 import { isCliThemeName, listCliThemes } from "../tty/theme.js";
 import {
   isRecord,

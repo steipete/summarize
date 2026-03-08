@@ -1,4 +1,4 @@
-import type { ApiKeysConfig, EnvConfig, SummarizeConfig } from "../config.js";
+import type { ApiKeysConfig, EnvConfig, SummarizeConfig } from "./types.js";
 
 const LEGACY_API_KEY_ENV_MAP = {
   openai: "OPENAI_API_KEY",
