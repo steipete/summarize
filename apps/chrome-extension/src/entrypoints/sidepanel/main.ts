@@ -18,6 +18,7 @@ import {
 import { applyTheme } from "../../lib/theme";
 import { generateToken } from "../../lib/token";
 import { mountCheckbox } from "../../ui/zag-checkbox";
+import { runChatAgentLoop } from "./chat-agent-loop";
 import { ChatController } from "./chat-controller";
 import {
   buildEmptyUsage,
@@ -2708,65 +2709,20 @@ function finishStreamingMessage() {
 }
 
 async function runAgentLoop() {
-  let tools = automationEnabledValue ? getAutomationToolNames() : [];
-  if (tools.includes("debugger")) {
-    const hasDebugger = await chrome.permissions.contains({ permissions: ["debugger"] });
-    if (!hasDebugger) {
-      tools = tools.filter((tool) => tool !== "debugger");
-    }
-  }
-
-  while (true) {
-    if (chatSession.isAbortRequested()) return;
-    const messages = chatController.buildRequestMessages() as Message[];
-    const streamingMessage = buildStreamingAssistantMessage();
-    let streamedContent = "";
-    chatController.addMessage(streamingMessage);
-    scrollToBottom(true);
-    let response;
-    try {
-      response = await chatSession.requestAgent(messages, tools, panelState.summaryMarkdown, {
-        onChunk: (text) => {
-          streamedContent += text;
-          chatController.updateStreamingMessage(streamedContent);
-        },
-      });
-    } catch (error) {
-      chatController.removeMessage(streamingMessage.id);
-      if (chatSession.isAbortRequested()) return;
-      throw error;
-    }
-    if (!response.ok || !response.assistant) {
-      chatController.removeMessage(streamingMessage.id);
-      throw new Error(response.error || "Agent failed");
-    }
-
-    const assistant = { ...response.assistant, id: streamingMessage.id };
-    if (chatSession.isAbortRequested()) {
-      chatController.removeMessage(streamingMessage.id);
-      return;
-    }
-    chatController.replaceMessage(assistant);
-    chatController.finishStreamingMessage();
-    scrollToBottom(true);
-
-    const toolCalls = assistant.content.filter((part) => part.type === "toolCall") as ToolCall[];
-    if (toolCalls.length === 0) break;
-
-    for (const call of toolCalls) {
-      if (chatSession.isAbortRequested()) return;
-      if (call.name === "navigate") {
-        const args = call.arguments as { url?: string };
-        markAgentNavigationIntent(args?.url);
-      }
-      const result = (await executeToolCall(call)) as ToolResultMessage;
-      if (call.name === "navigate" && !result.isError) {
-        markAgentNavigationResult(result.details);
-      }
-      chatController.addMessage(wrapMessage(result));
-      scrollToBottom(true);
-    }
-  }
+  await runChatAgentLoop({
+    automationEnabled: automationEnabledValue,
+    chatController,
+    chatSession,
+    createStreamingAssistantMessage: buildStreamingAssistantMessage,
+    executeToolCall: async (call) => (await executeToolCall(call)) as ToolResultMessage,
+    getAutomationToolNames,
+    hasDebuggerPermission: () => chrome.permissions.contains({ permissions: ["debugger"] }),
+    markAgentNavigationIntent,
+    markAgentNavigationResult,
+    scrollToBottom,
+    summaryMarkdown: panelState.summaryMarkdown,
+    wrapMessage,
+  });
 }
 
 function startChatMessage(text: string) {
