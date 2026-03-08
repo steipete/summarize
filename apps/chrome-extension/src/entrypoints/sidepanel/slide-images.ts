@@ -59,6 +59,12 @@ export function createSlideImageLoader(
     parent?.classList.remove("isPlaceholder");
   };
 
+  const markSlideImagePending = (img: HTMLImageElement) => {
+    img.dataset.loaded = "false";
+    const parent = img.closest<HTMLElement>(SLIDE_THUMB_SELECTOR);
+    parent?.classList.add("isPlaceholder");
+  };
+
   const clearCache = () => {
     for (const cached of slideImageCache.values()) {
       URL.revokeObjectURL(cached.objectUrl);
@@ -139,6 +145,7 @@ export function createSlideImageLoader(
       window.clearTimeout(existingTimer);
       slideImageRetryTimers.delete(img);
     }
+    markSlideImagePending(img);
     const cached = slideImageCache.get(imageUrl);
     if (cached) {
       if (img.src !== cached.objectUrl) img.src = cached.objectUrl;
@@ -228,6 +235,18 @@ export function createSlideImageLoader(
       });
     }
     if (!slideImageObserver) {
+      void setSlideImage(img, imageUrl);
+      return;
+    }
+    const rect = img.getBoundingClientRect();
+    const viewportHeight =
+      globalThis.innerHeight || document.documentElement?.clientHeight || Number.MAX_SAFE_INTEGER;
+    const alreadyNearViewport =
+      rect.width > 0 && rect.height > 0 && rect.bottom >= -320 && rect.top <= viewportHeight + 320;
+    if (alreadyNearViewport) {
+      img.dataset.slideObserveArmed = "false";
+      slideImageObserverEntries.delete(img);
+      slideImageObserver.unobserve(img);
       void setSlideImage(img, imageUrl);
       return;
     }

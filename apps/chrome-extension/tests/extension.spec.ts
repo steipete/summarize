@@ -1397,7 +1397,9 @@ test("sidepanel clears summary when tab url changes", async ({
     });
 
     await expect(page.locator("#title")).toHaveText("New Title");
-    await expect(page.locator(".render__markdownHost")).toHaveText("");
+    await expect(page.locator("#render")).toContainText("Ready to summarize");
+    await expect(page.locator("#render")).toContainText("Click Summarize to analyze New Title.");
+    await expect(page.locator("#render")).not.toContainText("Hello world");
     assertNoErrors(harness);
   } finally {
     await closeExtension(harness.context, harness.userDataDir);
@@ -1680,6 +1682,99 @@ test("sidepanel auto summarizes quickly when switching YouTube tabs", async ({
       const callTime = callTimes[callsAfterReturn - 1] ?? callTimes.at(-1) ?? Date.now();
       expect(callTime - startA2).toBeLessThan(4_000);
     }
+
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
+test("sidepanel shows a ready state instead of going blank when switching tabs manually", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, {
+      token: "test-token",
+      autoSummarize: false,
+      slidesEnabled: false,
+    });
+    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+    await waitForPanelPort(page);
+
+    const sseBody = (text: string) =>
+      ["event: chunk", `data: ${JSON.stringify({ text })}`, "", "event: done", "data: {}", ""].join(
+        "\n",
+      );
+    await page.route("http://127.0.0.1:8787/v1/summarize/run-a/events", async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+        body: sseBody("Summary A"),
+      });
+    });
+
+    await sendBgMessage(harness, {
+      type: "ui:state",
+      state: buildUiState({
+        tab: { id: 1, url: "https://www.youtube.com/watch?v=alpha123", title: "Alpha Tab" },
+        settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
+        status: "",
+      }),
+    });
+    await sendBgMessage(harness, {
+      type: "run:start",
+      run: {
+        id: "run-a",
+        url: "https://www.youtube.com/watch?v=alpha123",
+        title: "Alpha Tab",
+        model: "auto",
+        reason: "manual",
+      },
+    });
+    await expect(page.locator("#render")).toContainText("Summary A");
+
+    await sendBgMessage(harness, {
+      type: "ui:state",
+      state: buildUiState({
+        tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
+        settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
+        status: "",
+      }),
+    });
+
+    await expect(page.locator("#render")).toContainText("Ready to summarize");
+    await expect(page.locator("#render")).toContainText("Click Summarize to analyze Bravo Tab.");
+    await expect(page.locator("#render")).not.toContainText("Summary A");
+
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
+test("sidepanel shows a loading state instead of going blank while waiting for auto summarize", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, { token: "test-token", autoSummarize: true, slidesEnabled: false });
+    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+    await waitForPanelPort(page);
+
+    await sendBgMessage(harness, {
+      type: "ui:state",
+      state: buildUiState({
+        tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
+        settings: { autoSummarize: true, tokenPresent: true, slidesEnabled: false },
+        status: "",
+      }),
+    });
+
+    await expect(page.locator("#render")).toContainText("Summarizing this page...");
+    await expect(page.locator("#render")).toContainText("Waiting for Bravo Tab.");
 
     assertNoErrors(harness);
   } finally {

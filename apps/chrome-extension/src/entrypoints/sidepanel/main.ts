@@ -40,9 +40,11 @@ import {
   mountSummarizeControl,
 } from "./pickers";
 import { createSlideImageLoader, normalizeSlideImageUrl } from "./slide-images";
+import { chooseSlideDescription, sanitizeSlideSummaryTitle } from "./slide-text-policy";
 import { createSlidesHydrator } from "./slides-hydrator";
 import { hasResolvedSlidesPayload } from "./slides-pending";
 import { createStreamController } from "./stream-controller";
+import { buildSummaryEmptyState } from "./summary-empty-state";
 import type { ChatMessage, PanelPhase, PanelState, RunStart, UiState } from "./types";
 
 type PanelToBg =
@@ -1265,9 +1267,36 @@ function selectMarkdownForLayout(markdown: string): string {
   return markdown;
 }
 
+function renderEmptySummaryState() {
+  const state = buildSummaryEmptyState({
+    tabTitle: panelState.currentSource?.title ?? panelState.ui?.tab.title ?? null,
+    tabUrl: panelState.currentSource?.url ?? panelState.ui?.tab.url ?? activeTabUrl ?? null,
+    autoSummarize: autoValue,
+    phase: panelState.phase,
+    hasSlides: Boolean(panelState.slides?.slides.length),
+  });
+  if (!state) {
+    renderMarkdownHostEl.innerHTML = "";
+    return;
+  }
+  const wrapper = document.createElement("section");
+  wrapper.className = "renderEmpty";
+  wrapper.dataset.emptyState = "true";
+  const title = document.createElement("h2");
+  title.textContent = state.title;
+  const message = document.createElement("p");
+  message.textContent = state.message;
+  wrapper.append(title, message);
+  renderMarkdownHostEl.replaceChildren(wrapper);
+}
+
 function renderMarkdownDisplay() {
   const markdown = panelState.summaryMarkdown ?? "";
   const displayMarkdown = selectMarkdownForLayout(markdown);
+  if (!displayMarkdown.trim()) {
+    renderEmptySummaryState();
+    return;
+  }
   try {
     renderMarkdownHostEl.innerHTML = md.render(linkifyTimestamps(displayMarkdown));
   } catch (err) {
@@ -1325,7 +1354,7 @@ function deriveSlideSummaries(markdown: string): {
   const titles = new Map<number, string>();
   for (const [index, text] of parsed) {
     const parsedSlide = splitSlideTitleFromText({ text, slideIndex: index, total });
-    const title = normalizeSlideText(parsedSlide.title ?? "");
+    const title = sanitizeSlideSummaryTitle(normalizeSlideText(parsedSlide.title ?? ""));
     const body = normalizeSlideText(parsedSlide.body ?? "");
     if (body) summaries.set(index, body);
     if (title) titles.set(index, title);
@@ -1527,39 +1556,31 @@ function rebuildSlideDescriptions() {
   const slides = panelState.slides.slides;
   for (let i = 0; i < slides.length; i += 1) {
     const slide = slides[i];
-    if (hasSummary) {
-      const summaryText = slideSummaryByIndex.get(slide.index) ?? "";
-      if (summaryText.trim()) {
-        slideDescriptions.set(slide.index, summaryText);
-        continue;
-      }
-      if (slidesTextMode === "ocr") {
-        slideDescriptions.set(slide.index, getOcrTextForSlide(slide, budget));
-        continue;
-      }
-      if (holdTranscriptFallback) {
-        slideDescriptions.set(slide.index, "");
-        continue;
-      }
-      const transcriptText = fallbackSummaries.get(slide.index) ?? "";
-      slideDescriptions.set(slide.index, transcriptText);
-      continue;
-    }
-    if (slidesTextMode === "ocr") {
-      slideDescriptions.set(slide.index, getOcrTextForSlide(slide, budget));
-      continue;
-    }
-    const ocrFallback = allowOcrFallback ? getOcrTextForSlide(slide, budget) : "";
-    if (holdTranscriptFallback) {
-      slideDescriptions.set(slide.index, ocrFallback);
-      continue;
-    }
     const transcriptText = fallbackSummaries.get(slide.index) ?? "";
-    if (!transcriptText && ocrFallback) {
-      slideDescriptions.set(slide.index, ocrFallback);
+    const ocrText = getOcrTextForSlide(slide, budget);
+    if (hasSummary) {
+      slideDescriptions.set(
+        slide.index,
+        chooseSlideDescription({
+          transcriptText,
+          ocrText,
+          preferOcr: slidesTextMode === "ocr",
+          holdTranscriptFallback,
+          allowOcrFallback: false,
+        }),
+      );
       continue;
     }
-    slideDescriptions.set(slide.index, transcriptText);
+    slideDescriptions.set(
+      slide.index,
+      chooseSlideDescription({
+        transcriptText,
+        ocrText,
+        preferOcr: slidesTextMode === "ocr",
+        holdTranscriptFallback,
+        allowOcrFallback,
+      }),
+    );
   }
 }
 
@@ -1642,7 +1663,7 @@ function updateSlideThumb(
   imageUrl: string | null | undefined,
 ) {
   if (imageUrl) {
-    thumb.classList.remove("isPlaceholder");
+    thumb.classList.add("isPlaceholder");
     slideImageLoader.observe(img, imageUrl);
     return;
   }
@@ -3715,6 +3736,9 @@ function updateControls(state: UiState) {
   } else if (!showingSetup && panelState.phase === "setup") {
     setPhase("idle");
   }
+  if (!panelState.summaryMarkdown?.trim()) {
+    renderMarkdownDisplay();
+  }
 }
 
 function handleBgMessage(msg: BgToPanel) {
@@ -3816,6 +3840,9 @@ function handleBgMessage(msg: BgToPanel) {
         };
       }
       pendingRunForPlannedSlides = msg.run;
+      if (!panelState.summaryMarkdown?.trim()) {
+        renderMarkdownDisplay();
+      }
       if (!slidesParallelValue) {
         startSlidesStream(msg.run);
       }
@@ -4426,6 +4453,7 @@ void (async () => {
   applyTypography(s.fontFamily, s.fontSize, s.lineHeight);
   applyTheme({ scheme: s.colorScheme, mode: s.colorMode });
   toggleDrawer(false, { animate: false });
+  renderMarkdownDisplay();
   void send({ type: "panel:ready" });
   scheduleAutoKick();
 })();

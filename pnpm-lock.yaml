@@ -98,6 +98,9 @@ importers:
       '@mozilla/readability':
         specifier: 0.6.0
         version: 0.6.0
+      '@steipete/summarize-core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@zag-js/checkbox':
         specifier: ^1.35.3
         version: 1.35.3

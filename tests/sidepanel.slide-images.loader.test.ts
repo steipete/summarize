@@ -75,11 +75,13 @@ describe("slide image loader", () => {
     document.body.appendChild(wrapper);
 
     loader.observe(img, "http://127.0.0.1:8787/v1/slides/abc/1");
+    expect(wrapper.classList.contains("isPlaceholder")).toBe(true);
     await waitUntil(() => {
       expect(img.getAttribute("src")).toBe("blob:mock");
     });
     img.dispatchEvent(new Event("load"));
     expect(img.dataset.loaded).toBe("true");
+    expect(wrapper.classList.contains("isPlaceholder")).toBe(false);
   });
 
   it("schedules retries when slide is not ready", async () => {
@@ -208,6 +210,56 @@ describe("slide image loader", () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(img.getAttribute("src")).toBe("blob:io");
     });
+  });
+
+  it("loads immediately when the image is already in the viewport", async () => {
+    let observerInstanceCount = 0;
+
+    class MockIntersectionObserver {
+      constructor(_callback: IntersectionObserverCallback) {
+        observerInstanceCount += 1;
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return [];
+      }
+    }
+
+    globalThis.IntersectionObserver =
+      MockIntersectionObserver as unknown as typeof IntersectionObserver;
+    const fetchSpy = vi.fn(async () => createSlideFetchResponse({ ready: "1", body: "ok" }));
+    globalThis.fetch = fetchSpy;
+    mockCreateObjectUrl(() => "blob:visible");
+
+    const loader = createSlideImageLoader({
+      loadSettings: async () => ({ token: "t", extendedLogging: false }) as Settings,
+    });
+    const wrapper = document.createElement("div");
+    wrapper.className = "slideStrip__thumb";
+    const img = document.createElement("img");
+    vi.spyOn(img, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 120,
+      height: 68,
+      top: 10,
+      right: 120,
+      bottom: 78,
+      left: 0,
+      toJSON: () => ({}),
+    });
+    wrapper.appendChild(img);
+    document.body.appendChild(wrapper);
+
+    loader.observe(img, "http://127.0.0.1:8787/v1/slides/abc/visible");
+
+    await waitUntil(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(img.getAttribute("src")).toBe("blob:visible");
+    });
+    expect(observerInstanceCount).toBe(1);
   });
 
   it("stops retrying when the retry window has elapsed", async () => {

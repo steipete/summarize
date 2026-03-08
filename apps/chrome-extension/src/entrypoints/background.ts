@@ -17,6 +17,7 @@ import { readAgentResponse } from "../lib/agent-response";
 import { buildChatPageContent } from "../lib/chat-context";
 import { buildDaemonRequestBody, buildSummarizeRequestBody } from "../lib/daemon-payload";
 import { createDaemonRecovery, isDaemonUnreachableError } from "../lib/daemon-recovery";
+import { createDaemonStatusTracker } from "../lib/daemon-status";
 import { logExtensionEvent } from "../lib/extension-logs";
 import { loadSettings, patchSettings } from "../lib/settings";
 import { parseSseStream } from "../lib/sse";
@@ -193,6 +194,7 @@ type PanelSession = {
   agentController: AbortController | null;
   lastNavAt: number;
   daemonRecovery: ReturnType<typeof createDaemonRecovery>;
+  daemonStatus: ReturnType<typeof createDaemonStatusTracker>;
 };
 
 const optionsWindowSize = { width: 940, height: 680 };
@@ -755,6 +757,7 @@ export default defineBackground(() => {
       agentController: null,
       lastNavAt: 0,
       daemonRecovery: createDaemonRecovery(),
+      daemonStatus: createDaemonStatusTracker(),
     };
     session.port = port;
     panelSessions.set(windowId, session);
@@ -998,9 +1001,15 @@ export default defineBackground(() => {
     } else {
       session.daemonRecovery.updateStatus(daemonReady);
     }
+    const daemon = session.daemonStatus.resolve(
+      { ok: health.ok, authed: authed.ok, error: health.error ?? authed.error },
+      {
+        keepReady: Boolean(session.runController || session.agentController || session.inflightUrl),
+      },
+    );
     const state: UiState = {
       panelOpen: isPanelOpen(session),
-      daemon: { ok: health.ok, authed: authed.ok, error: health.error ?? authed.error },
+      daemon,
       tab: { id: tab?.id ?? null, url: tab?.url ?? null, title: tab?.title ?? null },
       media: cached?.media ?? null,
       stats: {
@@ -1210,6 +1219,7 @@ export default defineBackground(() => {
           slides: null,
           diagnostics: null,
         });
+        session.daemonStatus.markReady();
         logPanel("extract:url-fastpath:ok", {
           url: extractedUrl,
           transcriptTimedText: Boolean(json.extracted.transcriptTimedText),
@@ -1429,6 +1439,7 @@ export default defineBackground(() => {
       if (!res.ok || !json.ok || !json.id) {
         throw new Error(json.error || `${res.status} ${res.statusText}`);
       }
+      session.daemonStatus.markReady();
       id = json.id;
     } catch (err) {
       if (controller.signal.aborted) return;
@@ -1472,6 +1483,7 @@ export default defineBackground(() => {
           if (!res.ok || !json.ok || !json.id) {
             throw new Error(json.error || `${res.status} ${res.statusText}`);
           }
+          session.daemonStatus.markReady();
           if (controller.signal.aborted) return;
           if (
             session.runController !== controller ||
