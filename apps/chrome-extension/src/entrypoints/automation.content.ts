@@ -1,4 +1,5 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
+import { isDeniedHost } from "../lib/denylist";
 
 export type ElementInfo = {
   selector: string;
@@ -398,6 +399,7 @@ export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
   main() {
+    if (isDeniedHost(location.hostname)) return;
     handleNativeInputBridge();
     handleArtifactsBridge();
 

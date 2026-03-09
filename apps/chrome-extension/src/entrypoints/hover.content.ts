@@ -1,5 +1,6 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { mergeStreamingChunk } from "../../../../src/shared/streaming-merge.js";
+import { isDeniedHost } from "../lib/denylist";
 import { loadSettings, type Settings } from "../lib/settings";
 
 type HoverCacheEntry = {
@@ -193,6 +194,7 @@ export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
   main() {
+    if (isDeniedHost(location.hostname)) return;
     const flag = "__summarize_hover_installed__";
     if ((globalThis as unknown as Record<string, unknown>)[flag]) return;
     (globalThis as unknown as Record<string, unknown>)[flag] = true;

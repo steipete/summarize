@@ -1,5 +1,6 @@
 import { Readability } from "@mozilla/readability";
 import { defineContentScript } from "wxt/utils/define-content-script";
+import { isDeniedHost } from "../lib/denylist";
 import { resolveMediaDurationSecondsFromData } from "../lib/media-duration";
 import { type SeekResponse, seekToSecondsInDocument } from "../lib/seek";
 
@@ -145,6 +146,7 @@ export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
   main() {
+    if (isDeniedHost(location.hostname)) return;
     const flag = "__summarize_extract_installed__";
     if ((globalThis as unknown as Record<string, unknown>)[flag]) return;
     (globalThis as unknown as Record<string, unknown>)[flag] = true;
