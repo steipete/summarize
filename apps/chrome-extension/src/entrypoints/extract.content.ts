@@ -142,14 +142,17 @@ function seekToSeconds(seconds: number): SeekResponse {
   return seekToSecondsInDocument(document, seconds);
 }
 
+const DENIED_ERROR = "Summarize is disabled on this site.";
+
 export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
   main() {
-    if (isDeniedHost(location.hostname)) return;
     const flag = "__summarize_extract_installed__";
     if ((globalThis as unknown as Record<string, unknown>)[flag]) return;
     (globalThis as unknown as Record<string, unknown>)[flag] = true;
+
+    const denied = isDeniedHost(location.hostname);
 
     chrome.runtime.onMessage.addListener(
       (
@@ -158,11 +161,19 @@ export default defineContentScript({
         sendResponse: (response: ExtractResponse | SeekResponse) => void,
       ) => {
         if (message?.type === "extract") {
-          sendResponse(extract(message.maxChars));
+          sendResponse(
+            denied
+              ? { ok: false, error: DENIED_ERROR }
+              : extract(message.maxChars),
+          );
           return true;
         }
         if (message?.type === "seek") {
-          sendResponse(seekToSeconds(message.seconds));
+          sendResponse(
+            denied
+              ? { ok: false, error: DENIED_ERROR }
+              : seekToSeconds(message.seconds),
+          );
           return true;
         }
         return undefined;

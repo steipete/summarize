@@ -399,9 +399,11 @@ export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
   main() {
-    if (isDeniedHost(location.hostname)) return;
-    handleNativeInputBridge();
-    handleArtifactsBridge();
+    const denied = isDeniedHost(location.hostname);
+    if (!denied) {
+      handleNativeInputBridge();
+      handleArtifactsBridge();
+    }
 
     chrome.runtime.onMessage.addListener(
       (
@@ -409,6 +411,10 @@ export default defineContentScript({
         _sender,
         sendResponse: (response: { ok: boolean; result?: ElementInfo; error?: string }) => void,
       ) => {
+        if (denied) {
+          sendResponse({ ok: false, error: "Summarize is disabled on this site." });
+          return true;
+        }
         if (raw?.type === "automation:pick-element") {
           void (async () => {
             try {
