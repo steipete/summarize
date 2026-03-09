@@ -29,3 +29,11 @@ export function isDeniedHost(
   }
   return false;
 }
+
+/**
+ * Returns a user-facing error message for a denied hostname that includes the
+ * site name so users can distinguish this from transient extraction failures.
+ */
+export function deniedSiteError(hostname: string): string {
+  return `Summarize is disabled on ${hostname} due to site restrictions.`;
+}

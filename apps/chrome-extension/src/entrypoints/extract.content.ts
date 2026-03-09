@@ -1,6 +1,6 @@
 import { Readability } from "@mozilla/readability";
 import { defineContentScript } from "wxt/utils/define-content-script";
-import { isDeniedHost } from "../lib/denylist";
+import { deniedSiteError, isDeniedHost } from "../lib/denylist";
 import { resolveMediaDurationSecondsFromData } from "../lib/media-duration";
 import { type SeekResponse, seekToSecondsInDocument } from "../lib/seek";
 
@@ -142,8 +142,6 @@ function seekToSeconds(seconds: number): SeekResponse {
   return seekToSecondsInDocument(document, seconds);
 }
 
-const DENIED_ERROR = "Summarize is disabled on this site.";
-
 export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
@@ -163,7 +161,7 @@ export default defineContentScript({
         if (message?.type === "extract") {
           sendResponse(
             denied
-              ? { ok: false, error: DENIED_ERROR }
+              ? { ok: false, error: deniedSiteError(location.hostname) }
               : extract(message.maxChars),
           );
           return true;
@@ -171,7 +169,7 @@ export default defineContentScript({
         if (message?.type === "seek") {
           sendResponse(
             denied
-              ? { ok: false, error: DENIED_ERROR }
+              ? { ok: false, error: deniedSiteError(location.hostname) }
               : seekToSeconds(message.seconds),
           );
           return true;

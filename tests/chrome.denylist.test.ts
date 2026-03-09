@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_DENIED_HOSTS,
+  deniedSiteError,
   isDeniedHost,
 } from "../apps/chrome-extension/src/lib/denylist.js";
 
@@ -54,6 +55,17 @@ describe("chrome/denylist", () => {
 
     it("does not deny empty hostname", () => {
       expect(isDeniedHost("")).toBe(false);
+    });
+  });
+
+  describe("deniedSiteError", () => {
+    it("includes the hostname in the message", () => {
+      expect(deniedSiteError("facebook.com")).toContain("facebook.com");
+      expect(deniedSiteError("www.instagram.com")).toContain("www.instagram.com");
+    });
+
+    it("mentions site restrictions", () => {
+      expect(deniedSiteError("facebook.com")).toMatch(/site restriction/i);
     });
   });
 });

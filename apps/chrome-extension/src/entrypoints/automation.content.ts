@@ -1,5 +1,5 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
-import { isDeniedHost } from "../lib/denylist";
+import { deniedSiteError, isDeniedHost } from "../lib/denylist";
 
 export type ElementInfo = {
   selector: string;
@@ -412,7 +412,7 @@ export default defineContentScript({
         sendResponse: (response: { ok: boolean; result?: ElementInfo; error?: string }) => void,
       ) => {
         if (denied) {
-          sendResponse({ ok: false, error: "Summarize is disabled on this site." });
+          sendResponse({ ok: false, error: deniedSiteError(location.hostname) });
           return true;
         }
         if (raw?.type === "automation:pick-element") {
