@@ -160,7 +160,7 @@ export default defineBackground(() => {
       buildSummarizeRequestBody,
       friendlyFetchError,
       isDaemonUnreachableError,
-      fetchImpl: fetch,
+      fetchImpl: (...args) => fetch(...args),
       resolveLogLevel,
     });
 
@@ -430,6 +430,17 @@ export default defineBackground(() => {
         })();
         break;
     }
+  };
+
+  (
+    globalThis as typeof globalThis & {
+      __summarizeDispatchPanelMessage?: (windowId: number, raw: PanelToBg) => boolean;
+    }
+  ).__summarizeDispatchPanelMessage = (windowId, raw) => {
+    const session = panelSessionStore.getPanelSession(windowId);
+    if (!session) return false;
+    handlePanelMessage(session, raw);
+    return true;
   };
 
   bindBackgroundListeners({

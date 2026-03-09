@@ -31,11 +31,11 @@ type SummaryViewRuntimeOpts = {
   renderEl: HTMLElement;
   renderSlidesHostEl: HTMLElement;
   renderMarkdownHostEl: HTMLElement;
-  slidesRenderer: { clear: () => void };
+  getSlidesRenderer: () => { clear: () => void };
   metricsController: MetricsControllerLike;
   headerController: HeaderControllerLike;
   slidesTextController: SlidesTextControllerLike;
-  slidesHydrator: SlidesHydratorLike;
+  getSlidesHydrator: () => SlidesHydratorLike;
   stopSlidesStream: () => void;
   refreshSummarizeControl: () => void;
   resetChatState: () => void;
@@ -89,7 +89,7 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     opts.setCurrentRunTabId(null);
     opts.renderEl.replaceChildren(opts.renderSlidesHostEl, opts.renderMarkdownHostEl);
     opts.renderMarkdownHostEl.innerHTML = "";
-    opts.slidesRenderer.clear();
+    opts.getSlidesRenderer().clear();
     opts.metricsController.clearForMode("summary");
     opts.panelState.summaryMarkdown = null;
     opts.panelState.summaryFromCache = null;
@@ -198,7 +198,7 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
       opts.updateSlidesTextState();
       opts.setSlidesAppliedRunId(null);
     }
-    opts.slidesHydrator.syncFromCache({
+    opts.getSlidesHydrator().syncFromCache({
       runId: opts.panelState.slidesRunId ?? null,
       summaryFromCache: payload.summaryFromCache,
       hasSlides: Boolean(payload.slides && payload.slides.slides.length > 0),

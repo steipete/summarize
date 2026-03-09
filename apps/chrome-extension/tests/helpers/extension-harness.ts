@@ -292,6 +292,38 @@ export async function sendBgMessage(harness: ExtensionHarness, message: object) 
 
 export async function sendPanelMessage(page: Page, message: object) {
   await waitForPanelPort(page);
+  const portName = await page.evaluate(() => {
+    const port = (
+      window as {
+        __summarizePanelPort?: { name?: string; postMessage?: (value: object) => void };
+      }
+    ).__summarizePanelPort;
+    return typeof port?.name === "string" ? port.name : null;
+  });
+  const windowId =
+    portName && portName.startsWith("sidepanel:")
+      ? Number.parseInt(portName.slice("sidepanel:".length), 10)
+      : Number.NaN;
+  const background =
+    page.context().serviceWorkers()[0] ??
+    (await page.context().waitForEvent("serviceworker", { timeout: 5_000 }));
+
+  if (Number.isFinite(windowId)) {
+    const sent = await background.evaluate(
+      ({ payload, targetWindowId }) => {
+        const dispatch = (
+          globalThis as typeof globalThis & {
+            __summarizeDispatchPanelMessage?: (windowId: number, msg: object) => boolean;
+          }
+        ).__summarizeDispatchPanelMessage;
+        if (typeof dispatch !== "function") return false;
+        return dispatch(targetWindowId, payload);
+      },
+      { payload: message, targetWindowId: windowId },
+    );
+    if (sent) return;
+  }
+
   await page.evaluate((payload) => {
     const port = (
       window as {

@@ -118,6 +118,22 @@ describe("chrome panel utils", () => {
     expect(chrome.tabs.query).toHaveBeenNthCalledWith(2, { active: true, windowId: 7 });
   });
 
+  it("falls back to a real content tab when the active tab is the extension page", async () => {
+    vi.mocked(chrome.tabs.query)
+      .mockResolvedValueOnce([{ id: 9, url: "chrome-extension://test/sidepanel.html" }])
+      .mockResolvedValueOnce([
+        { id: 9, url: "chrome-extension://test/sidepanel.html" },
+        { id: 3, url: "https://example.com/article" },
+      ]);
+
+    await expect(getActiveTab(7)).resolves.toMatchObject({
+      id: 3,
+      url: "https://example.com/article",
+    });
+    expect(chrome.tabs.query).toHaveBeenNthCalledWith(1, { active: true, windowId: 7 });
+    expect(chrome.tabs.query).toHaveBeenNthCalledWith(2, { windowId: 7 });
+  });
+
   it("formats slide timestamps for minutes and hours", () => {
     expect(formatSlideTimestamp(65)).toBe("1:05");
     expect(formatSlideTimestamp(3723)).toBe("1:02:03");

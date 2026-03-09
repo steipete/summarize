@@ -81,12 +81,30 @@ export async function openOptionsWindow() {
 }
 
 export async function getActiveTab(windowId?: number): Promise<chrome.tabs.Tab | null> {
-  const [tab] = await chrome.tabs.query(
+  const query =
     typeof windowId === "number"
       ? { active: true, windowId }
-      : { active: true, currentWindow: true },
+      : { active: true, currentWindow: true };
+  const [activeTab] = await chrome.tabs.query(query);
+  if (
+    activeTab?.url &&
+    !activeTab.url.startsWith("chrome-extension://") &&
+    !activeTab.url.startsWith("chrome://")
+  ) {
+    return activeTab;
+  }
+
+  const fallbackTabs = await chrome.tabs.query(
+    typeof windowId === "number" ? { windowId } : { currentWindow: true },
   );
-  return tab ?? null;
+  const contentTab =
+    fallbackTabs.find(
+      (tab) =>
+        typeof tab.url === "string" &&
+        !tab.url.startsWith("chrome-extension://") &&
+        !tab.url.startsWith("chrome://"),
+    ) ?? null;
+  return contentTab ?? activeTab ?? null;
 }
 
 export function normalizeUrl(value: string) {

@@ -285,6 +285,24 @@ let summarizeVideoDurationSeconds: number | null = null;
 let slidesBusy = false;
 let slidesExpanded = true;
 let slidesLayoutValue: SlidesLayout = defaultSettings.slidesLayout;
+let slidesRenderer: {
+  applyLayout: () => void;
+  clear: () => void;
+  forceRender: () => void;
+} | null = null;
+let slidesHydrator: {
+  handlePayload: (data: SseSlidesData) => void;
+  handleSummaryFromCache: (value: boolean | null) => void;
+  hydrateSnapshot: (reason: "timeout" | "resume") => Promise<void>;
+  isStreaming: () => boolean;
+  start: (runId: string) => Promise<void>;
+  stop: () => void;
+  syncFromCache: (payload: {
+    runId: string | null;
+    summaryFromCache: boolean | null;
+    hasSlides: boolean;
+  }) => void;
+} | null = null;
 let settingsHydrated = false;
 let pendingSettingsSnapshot: Partial<typeof defaultSettings> | null = null;
 let slidesContextRequestId = 0;
@@ -667,7 +685,7 @@ function applySlidesLayout() {
     inputMode: inputModeOverride ?? inputMode,
   });
   renderMarkdownDisplay();
-  slidesRenderer.applyLayout();
+  slidesRenderer?.applyLayout();
 }
 
 function setSlidesLayout(next: SlidesLayout) {
@@ -905,11 +923,25 @@ const summaryViewRuntime = createSummaryViewRuntime({
   renderEl,
   renderSlidesHostEl,
   renderMarkdownHostEl,
-  slidesRenderer,
+  getSlidesRenderer: () =>
+    slidesRenderer ?? {
+      applyLayout: () => {},
+      clear: () => {},
+      forceRender: () => {},
+    },
   metricsController,
   headerController,
   slidesTextController,
-  slidesHydrator,
+  getSlidesHydrator: () =>
+    slidesHydrator ?? {
+      handlePayload: () => {},
+      handleSummaryFromCache: () => {},
+      hydrateSnapshot: async () => {},
+      isStreaming: () => false,
+      start: async () => {},
+      stop: () => {},
+      syncFromCache: () => {},
+    },
   stopSlidesStream,
   refreshSummarizeControl,
   resetChatState,
@@ -1077,7 +1109,7 @@ const slidesViewRuntime = createSlidesViewRuntime({
   },
 });
 
-const slidesRenderer = slidesViewRuntime.slidesRenderer;
+slidesRenderer = slidesViewRuntime.slidesRenderer;
 
 function applySlidesPayload(data: SseSlidesData) {
   slidesViewRuntime.applySlidesPayload(data, setSlidesTranscriptTimedText);
@@ -1147,7 +1179,7 @@ registerSidepanelTestHooks({
     slidesEnabledValue = true;
     inputMode = "video";
     inputModeOverride = "video";
-    return slidesRenderer.forceRender();
+    return slidesRenderer?.forceRender();
   },
   showInlineError: (message) => {
     errorController.showInlineError(message);
@@ -1198,7 +1230,7 @@ function applyChatEnabled() {
   if (!chatEnabledValue) {
     metricsController.clearForMode("chat");
     resetChatState();
-    clearQueuedMessages();
+    chatQueueRuntime.clearQueuedMessages();
   } else {
     renderEl.classList.remove("hidden");
   }
@@ -1293,7 +1325,7 @@ function maybeApplyPendingSlidesSummary() {
   applySlidesSummaryMarkdown(markdown);
 }
 
-const slidesHydrator = createSlidesHydrator({
+slidesHydrator = createSlidesHydrator({
   getToken: async () => (await loadSettings()).token,
   onSlides: (data) => {
     applySlidesPayload(data);
