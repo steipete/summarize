@@ -1,6 +1,7 @@
 :root {
   --bg0: #0b0f12;
   --bg1: #101722;
+  --code-bg: rgba(0, 0, 0, 0.35);
   --panel: rgba(16, 22, 30, 0.9);
   --paper: #f7f2e7;
   --ink: #0b0f12;
@@ -22,8 +23,8 @@
   --display: "Fraunces", "Iowan Old Style", "Palatino Linotype", serif;
   --body: "IBM Plex Sans", "Segoe UI", sans-serif;
   --mono:
-    "IBM Plex Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+    "IBM Plex Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+    Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 @media (prefers-color-scheme: light) {
@@ -55,9 +56,21 @@ body {
   margin: 0;
   color: var(--fg0);
   background:
-    radial-gradient(800px 520px at 10% -20%, rgba(184, 255, 90, 0.2), transparent 60%),
-    radial-gradient(740px 520px at 100% 0%, rgba(255, 155, 53, 0.18), transparent 60%),
-    radial-gradient(900px 600px at 80% 100%, rgba(54, 201, 185, 0.18), transparent 55%),
+    radial-gradient(
+      800px 520px at 10% -20%,
+      rgba(184, 255, 90, 0.2),
+      transparent 60%
+    ),
+    radial-gradient(
+      740px 520px at 100% 0%,
+      rgba(255, 155, 53, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 600px at 80% 100%,
+      rgba(54, 201, 185, 0.18),
+      transparent 55%
+    ),
     linear-gradient(180deg, var(--bg0), var(--bg1));
   font-family: var(--body);
   letter-spacing: 0.01em;
@@ -121,9 +134,21 @@ a:hover {
   display: grid;
   place-items: center;
   background:
-    radial-gradient(circle at 30% 30%, rgba(184, 255, 90, 0.92), transparent 60%),
-    radial-gradient(circle at 70% 20%, rgba(255, 155, 53, 0.7), transparent 60%),
-    radial-gradient(circle at 20% 80%, rgba(54, 201, 185, 0.65), transparent 60%),
+    radial-gradient(
+      circle at 30% 30%,
+      rgba(184, 255, 90, 0.92),
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 70% 20%,
+      rgba(255, 155, 53, 0.7),
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 20% 80%,
+      rgba(54, 201, 185, 0.65),
+      transparent 60%
+    ),
     rgba(255, 255, 255, 0.08);
   border: 1px solid var(--line);
   box-shadow: var(--shadow2);
@@ -191,7 +216,11 @@ a:hover {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(140deg, rgba(184, 255, 90, 0.08), transparent 40%);
+  background: linear-gradient(
+    140deg,
+    rgba(184, 255, 90, 0.08),
+    transparent 40%
+  );
   pointer-events: none;
 }
 
@@ -300,7 +329,6 @@ a:hover {
   display: block;
   padding: 8px 10px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -412,10 +440,10 @@ a:hover {
 }
 
 .cardCode {
+  background: var(--code-bg);
   margin-top: 14px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.35);
   overflow: hidden;
 }
 
@@ -770,6 +798,7 @@ code {
     padding: 10px;
   }
   .quickRow__code code {
+    background: var(--code-bg);
     font-size: 12px;
     overflow-x: auto;
     white-space: nowrap;
