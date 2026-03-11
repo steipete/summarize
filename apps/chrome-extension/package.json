@@ -23,7 +23,7 @@
     "@zag-js/preact": "^1.35.3",
     "@zag-js/select": "^1.35.3",
     "markdown-it": "^14.1.1",
-    "preact": "10.28.4"
+    "preact": "10.29.0"
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",
