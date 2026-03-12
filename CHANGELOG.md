@@ -2,6 +2,10 @@
 
 ## 0.12.1 - UNRELEASED
 
+### Fixes
+
+- YouTube: keep Gemini-only no-caption runs on the transcription path by forwarding the Google API key from the top-level URL flow into link-preview transcription config (#148, thanks @bytrangle).
+
 ## 0.12.0 - 2026-03-11
 
 ### Features

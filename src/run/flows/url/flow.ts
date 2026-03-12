@@ -511,9 +511,7 @@ export async function runUrlFlow({
       const accent = (value: string) => theme.accent(value);
       const sentLabel = `${dim("sent ")}${extractionUi.contentSizeLabel}${extractionUi.viaSourceLabel}`;
       const modelLabel = modelId ? `${dim("model: ")}${accent(modelId)}` : "";
-      const meta = modelLabel
-        ? `${sentLabel}${dim(", ")}${modelLabel}`
-        : sentLabel;
+      const meta = modelLabel ? `${sentLabel}${dim(", ")}${modelLabel}` : sentLabel;
       return `${styleLabel("Summarizing")} ${dim("(")}${meta}${dim(")")}${dim("…")}`;
     };
 
