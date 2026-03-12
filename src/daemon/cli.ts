@@ -76,7 +76,10 @@ type DaemonService = {
     env: Record<string, string | undefined>;
     stdout: NodeJS.WritableStream;
   }) => Promise<void>;
-  restart: (args: { stdout: NodeJS.WritableStream }) => Promise<void>;
+  restart: (args: {
+    env: Record<string, string | undefined>;
+    stdout: NodeJS.WritableStream;
+  }) => Promise<void>;
   isLoaded: (args: { env: Record<string, string | undefined> }) => Promise<boolean>;
 };
 
@@ -418,7 +421,7 @@ export async function handleDaemonRequest({
       return true;
     }
 
-    await service.restart({ stdout });
+    await service.restart({ env: envForRun, stdout });
     const installedCommand = await readInstalledDaemonCommand(envForRun);
     if (installedCommand?.programArguments?.length) {
       stdout.write(
