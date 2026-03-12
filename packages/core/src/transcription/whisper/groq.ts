@@ -1,11 +1,18 @@
+import { resolveGroqBaseUrl, buildGroqApiUrl } from "./groq-base-url.js";
 import { MAX_ERROR_DETAIL_CHARS, TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
 import { ensureWhisperFilenameExtension, toArrayBuffer } from "./utils.js";
+
+type Env = Record<string, string | undefined>;
 
 export async function transcribeWithGroq(
   bytes: Uint8Array,
   mediaType: string,
   filename: string | null,
   apiKey: string,
+  options?: {
+    baseUrl?: string | null;
+    env?: Env;
+  },
 ): Promise<string | null> {
   const form = new FormData();
   const providedName = filename?.trim() ? filename.trim() : "media";
@@ -13,7 +20,13 @@ export async function transcribeWithGroq(
   form.append("file", new Blob([toArrayBuffer(bytes)], { type: mediaType }), safeName);
   form.append("model", "whisper-large-v3-turbo");
 
-  const response = await globalThis.fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+  const effectiveBaseUrl = resolveGroqBaseUrl({
+    explicitBaseUrl: options?.baseUrl,
+    env: options?.env,
+  });
+  const transcriptionUrl = buildGroqApiUrl(effectiveBaseUrl);
+
+  const response = await globalThis.fetch(transcriptionUrl, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}` },
     body: form,

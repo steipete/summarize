@@ -59,6 +59,7 @@ export async function transcribeMediaWithWhisper({
       filename,
       groqApiKey,
       notes,
+      env,
     });
     bytes = groqResult.bytes;
     mediaType = groqResult.mediaType;
@@ -239,12 +240,14 @@ async function transcribeWithGroqFirst({
   filename,
   groqApiKey,
   notes,
+  env = process.env,
 }: {
   bytes: Uint8Array;
   mediaType: string;
   filename: string | null;
   groqApiKey: string;
   notes: string[];
+  env?: Env;
 }): Promise<{
   text: string | null;
   error: Error | null;
@@ -254,7 +257,7 @@ async function transcribeWithGroqFirst({
 }> {
   let groqError: Error | null = null;
   try {
-    const text = await transcribeWithGroq(bytes, mediaType, filename, groqApiKey);
+    const text = await transcribeWithGroq(bytes, mediaType, filename, groqApiKey, { env });
     if (text) return { text, error: null, bytes, mediaType, filename };
     groqError = new Error("Groq transcription returned empty text");
   } catch (error) {
@@ -267,7 +270,7 @@ async function transcribeWithGroqFirst({
       try {
         notes.push("Groq could not decode media; transcoding via ffmpeg and retrying");
         const mp3Bytes = await transcodeBytesToMp3(bytes);
-        const retried = await transcribeWithGroq(mp3Bytes, "audio/mpeg", "audio.mp3", groqApiKey);
+        const retried = await transcribeWithGroq(mp3Bytes, "audio/mpeg", "audio.mp3", groqApiKey, { env });
         if (retried) {
           return {
             text: retried,
@@ -329,7 +332,7 @@ async function transcribeGroqFileFirst({
   if (stat.size <= MAX_OPENAI_UPLOAD_BYTES) {
     const fileBytes = new Uint8Array(await fs.readFile(filePath));
     try {
-      const text = await transcribeWithGroq(fileBytes, mediaType, filename, groqApiKey);
+      const text = await transcribeWithGroq(fileBytes, mediaType, filename, groqApiKey, { env });
       if (text) return { text, provider: "groq", error: null, notes };
       const error = new Error("Groq transcription returned empty text");
       notes.push(
