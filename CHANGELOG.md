@@ -5,6 +5,7 @@
 ### Fixes
 
 - YouTube: keep Gemini-only no-caption runs on the transcription path by forwarding the Google API key from the top-level URL flow into link-preview transcription config (#148, thanks @bytrangle).
+- Daemon tests: expand CORS allowlist edge-case coverage for localhost variants, extension-origin casing, spoofed localhost domains, and full trusted response headers (#142, thanks @sebastiondev).
 
 ## 0.12.0 - 2026-03-11
 
