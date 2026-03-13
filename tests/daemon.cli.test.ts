@@ -2,6 +2,7 @@ import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  spawn: vi.fn(),
   readDaemonConfig: vi.fn(),
   writeDaemonConfig: vi.fn(),
   runDaemonServer: vi.fn(),
@@ -22,6 +23,10 @@ const mocks = vi.hoisted(() => ({
   readScheduledTaskCommand: vi.fn(),
   restartScheduledTask: vi.fn(),
   uninstallScheduledTask: vi.fn(),
+}));
+
+vi.mock("node:child_process", () => ({
+  spawn: mocks.spawn,
 }));
 
 vi.mock("../src/daemon/config.js", async (importOriginal) => {
@@ -48,8 +53,9 @@ vi.mock("../src/daemon/launchd.js", () => ({
   restartLaunchAgent: mocks.restartLaunchAgent,
   uninstallLaunchAgent: mocks.uninstallLaunchAgent,
   resolveDaemonLogPaths: () => ({
-    daemonOutLog: "/tmp/daemon.out.log",
-    daemonErrLog: "/tmp/daemon.err.log",
+    logDir: "/tmp/.summarize/logs",
+    stdoutPath: "/tmp/.summarize/logs/daemon.log",
+    stderrPath: "/tmp/.summarize/logs/daemon.err.log",
   }),
 }));
 
@@ -94,6 +100,7 @@ describe("daemon cli", () => {
     mocks.installLaunchAgent.mockResolvedValue(undefined);
     mocks.installSystemdService.mockResolvedValue(undefined);
     mocks.installScheduledTask.mockResolvedValue(undefined);
+    mocks.spawn.mockReturnValue({ unref: vi.fn() });
   });
 
   afterEach(() => {
@@ -193,7 +200,7 @@ describe("daemon cli", () => {
     });
   });
 
-  it("prints brief manual-start instructions for Windows containers", async () => {
+  it("starts the daemon and prints container autostart instructions for Windows containers", async () => {
     Object.defineProperty(process, "platform", { value: "win32" });
     mocks.isWindowsContainerEnvironment.mockReturnValue(true);
     mocks.readDaemonConfig.mockResolvedValueOnce(null);
@@ -207,8 +214,13 @@ describe("daemon cli", () => {
       text += chunk.toString();
     });
 
-    const fetchMock = vi.fn(async () => {
-      throw new Error("fetch should not be called in Windows container install mode");
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/health"))
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      if (url.endsWith("/v1/ping"))
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      throw new Error(`Unexpected fetch: ${url}`);
     });
 
     const handled = await handleDaemonRequest({
@@ -224,9 +236,19 @@ describe("daemon cli", () => {
 
     expect(handled).toBe(true);
     expect(mocks.installScheduledTask).not.toHaveBeenCalled();
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(text).toContain("Windows container detected: no scheduling was installed.");
+    expect(mocks.spawn).toHaveBeenCalledTimes(1);
+    expect(mocks.spawn).toHaveBeenCalledWith(
+      process.execPath,
+      expect.arrayContaining(["daemon", "run"]),
+      expect.objectContaining({
+        detached: true,
+        windowsHide: true,
+      }),
+    );
+    expect(text).toContain("Windows container detected: skipped Scheduled Task registration.");
+    expect(text).toContain("Daemon autostart is not available in Windows container mode.");
     expect(text).toContain("Run `summarize daemon install --token <TOKEN>` each time the container starts");
     expect(text).toContain("Publish port 8787:8787 so the host browser can reach the daemon.");
+    expect(text).toContain("OK: daemon is running in this container session and authenticated.");
   });
 });

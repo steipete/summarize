@@ -45,7 +45,7 @@ Dev (repo checkout):
   - Install as your normal user (not root) so HOME + launchd domain match.
   - Re-run: `summarize daemon install --token <TOKEN>`.
 - Windows containers:
-  - `summarize daemon install --token <TOKEN>` does not create a Scheduled Task.
+  - `summarize daemon install --token <TOKEN>` starts the daemon for the current container session but does not create a Scheduled Task.
   - Run that command manually each time the container starts, or add it to your container startup. Also publish the daemon port in `docker-compose.yml`:
     `ports: ['8787:8787']`
     `command: ['cmd', '/c', 'summarize daemon install --token <TOKEN>']`
