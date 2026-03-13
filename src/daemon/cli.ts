@@ -33,6 +33,7 @@ import {
   restartSystemdService,
   uninstallSystemdService,
 } from "./systemd.js";
+import { isWindowsContainerEnvironment } from "./windows-container.js";
 
 type DaemonCliContext = {
   normalizedArgv: string[];
@@ -312,6 +313,18 @@ async function readInstalledDaemonCommand(
   return null;
 }
 
+function writeWindowsContainerInstallInstructions({
+  stdout,
+  port,
+}: {
+  stdout: NodeJS.WritableStream;
+  port: number;
+}) {
+  stdout.write("Windows container detected: no scheduling was installed.\n");
+  stdout.write("Run `summarize daemon install --token <TOKEN>` each time the container starts, or add that command to your container startup.\n");
+  stdout.write(`Publish port ${port}:${port} so the host browser can reach the daemon.\n`);
+}
+
 export async function handleDaemonRequest({
   normalizedArgv,
   envForRun,
@@ -328,7 +341,6 @@ export async function handleDaemonRequest({
   }
 
   if (sub === "install") {
-    const service = resolveDaemonService();
     const token = readArgValue(normalizedArgv, "--token");
     if (!token) throw new Error("Missing --token");
     const portRaw = readArgValue(normalizedArgv, "--port");
@@ -351,8 +363,19 @@ export async function handleDaemonRequest({
       },
     });
 
-    const { programArguments, workingDirectory } = await resolveDaemonProgramArguments({ dev });
+    const windowsContainerMode =
+      process.platform === "win32" && isWindowsContainerEnvironment(envForRun);
 
+    if (windowsContainerMode) {
+      writeWindowsContainerInstallInstructions({
+        stdout,
+        port,
+      });
+      return true;
+    }
+
+    const { programArguments, workingDirectory } = await resolveDaemonProgramArguments({ dev });
+    const service = resolveDaemonService();
     await service.install({ env: envForRun, stdout, programArguments, workingDirectory });
     await waitForHealthWithRetries({ fetchImpl, port, attempts: 5, timeoutMs: 5000, delayMs: 500 });
     const authed = await checkAuthWithRetries({
@@ -379,13 +402,30 @@ export async function handleDaemonRequest({
   }
 
   if (sub === "status") {
-    const service = resolveDaemonService();
     const cfg = await readDaemonConfig({ env: envForRun });
     if (!cfg) {
       stdout.write("Daemon not installed (missing ~/.summarize/daemon.json)\n");
       stdout.write("Run: summarize daemon install --token <token>\n");
       return true;
     }
+    if (process.platform === "win32" && isWindowsContainerEnvironment(envForRun)) {
+      const healthy = await (async () => {
+        try {
+          await waitForHealth({ fetchImpl, port: cfg.port, timeoutMs: 1000 });
+          return true;
+        } catch {
+          return false;
+        }
+      })();
+      const authed = healthy
+        ? await checkAuth({ fetchImpl, token: daemonConfigPrimaryToken(cfg), port: cfg.port })
+        : false;
+      stdout.write("Windows container mode: no Scheduled Task\n");
+      stdout.write(`Daemon: ${healthy ? `up on ${DAEMON_HOST}:${cfg.port}` : "down"}\n`);
+      stdout.write(`Auth: ${authed ? "ok" : "failed"}\n`);
+      return true;
+    }
+    const service = resolveDaemonService();
     const loaded = await service.isLoaded({ env: envForRun });
     const healthy = await (async () => {
       try {
@@ -406,13 +446,18 @@ export async function handleDaemonRequest({
   }
 
   if (sub === "restart") {
-    const service = resolveDaemonService();
     const cfg = await readDaemonConfig({ env: envForRun });
     if (!cfg) {
       stdout.write("Daemon not installed (missing ~/.summarize/daemon.json)\n");
       stdout.write("Run: summarize daemon install --token <token>\n");
       return true;
     }
+    if (process.platform === "win32" && isWindowsContainerEnvironment(envForRun)) {
+      stdout.write("Windows container mode has no Scheduled Task.\n");
+      stdout.write("Restart the container or rerun `summarize daemon install --token <token>` manually.\n");
+      return true;
+    }
+    const service = resolveDaemonService();
     const loaded = await service.isLoaded({ env: envForRun });
     if (!loaded) {
       stdout.write(
@@ -465,6 +510,12 @@ export async function handleDaemonRequest({
   }
 
   if (sub === "uninstall") {
+    if (process.platform === "win32" && isWindowsContainerEnvironment(envForRun)) {
+      stdout.write(
+        "Uninstalled (Windows container mode had no scheduling to remove). Config left in ~/.summarize/daemon.json\n",
+      );
+      return true;
+    }
     const service = resolveDaemonService();
     await service.uninstall({ env: envForRun, stdout });
     stdout.write(

@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { DAEMON_WINDOWS_TASK_NAME } from "./constants.js";
+import { isWindowsContainerEnvironment } from "./windows-container.js";
 
 const execFileAsync = promisify(execFile);
 
