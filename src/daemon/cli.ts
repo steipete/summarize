@@ -1,5 +1,7 @@
+import { closeSync, openSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { spawn } from "node:child_process";
 import { buildDaemonHelp } from "../run/help.js";
 import { resolveCliEntrypointPathForService } from "./cli-entrypoint.js";
 import {
@@ -16,6 +18,7 @@ import {
   isLaunchAgentLoaded,
   readLaunchAgentProgramArguments,
   restartLaunchAgent,
+  resolveDaemonLogPaths,
   uninstallLaunchAgent,
 } from "./launchd.js";
 import {
@@ -313,13 +316,56 @@ async function readInstalledDaemonCommand(
 function writeWindowsContainerInstallInstructions({
   stdout,
   port,
+  configPath,
+  programArguments,
+  workingDirectory,
 }: {
   stdout: NodeJS.WritableStream;
   port: number;
+  configPath: string;
+  programArguments: string[];
+  workingDirectory?: string;
 }) {
-  stdout.write("Windows container detected: no scheduling was installed.\n");
-  stdout.write("Run `summarize daemon install --token <TOKEN>` each time the container starts, or add that command to your container startup.\n");
+  stdout.write("Windows container detected: skipped Scheduled Task registration.\n");
+  stdout.write(`Daemon config: ${configPath}\n`);
+  stdout.write(`Daemon command: ${formatProgramArguments(programArguments)}\n`);
+  if (workingDirectory) {
+    stdout.write(`Daemon cwd: ${workingDirectory}\n`);
+  }
+  stdout.write("Daemon autostart is not available in Windows container mode.\n");
+  stdout.write(
+    "Run `summarize daemon install --token <TOKEN>` each time the container starts, or add that command to your container startup.\n",
+  );
   stdout.write(`Publish port ${port}:${port} so the host browser can reach the daemon.\n`);
+}
+
+async function startDetachedContainerDaemon({
+  env,
+  programArguments,
+  workingDirectory,
+}: {
+  env: Record<string, string | undefined>;
+  programArguments: string[];
+  workingDirectory?: string;
+}): Promise<void> {
+  const { logDir, stdoutPath, stderrPath } = resolveDaemonLogPaths(env);
+  await fs.mkdir(logDir, { recursive: true });
+
+  const stdoutFd = openSync(stdoutPath, "a");
+  const stderrFd = openSync(stderrPath, "a");
+  try {
+    const child = spawn(programArguments[0] ?? process.execPath, programArguments.slice(1), {
+      cwd: workingDirectory,
+      detached: true,
+      env: { ...process.env, ...env },
+      stdio: ["ignore", stdoutFd, stderrFd],
+      windowsHide: true,
+    });
+    child.unref();
+  } finally {
+    closeSync(stdoutFd);
+    closeSync(stderrFd);
+  }
 }
 
 export async function handleDaemonRequest({
@@ -364,10 +410,35 @@ export async function handleDaemonRequest({
       process.platform === "win32" && isWindowsContainerEnvironment(envForRun);
 
     if (windowsContainerMode) {
+      const { programArguments, workingDirectory } = await resolveDaemonProgramArguments({ dev });
+      await startDetachedContainerDaemon({
+        env: envForRun,
+        programArguments,
+        workingDirectory,
+      });
+      await waitForHealthWithRetries({
+        fetchImpl,
+        port,
+        attempts: 5,
+        timeoutMs: 5000,
+        delayMs: 500,
+      });
+      const authed = await checkAuthWithRetries({
+        fetchImpl,
+        token: token.trim(),
+        port,
+        attempts: 5,
+        delayMs: 400,
+      });
+      if (!authed) throw new Error("Daemon is up but auth failed (token mismatch?)");
       writeWindowsContainerInstallInstructions({
         stdout,
         port,
+        configPath,
+        programArguments,
+        workingDirectory,
       });
+      stdout.write("OK: daemon is running in this container session and authenticated.\n");
       return true;
     }
 
@@ -417,7 +488,7 @@ export async function handleDaemonRequest({
       const authed = healthy
         ? await checkAuth({ fetchImpl, token: daemonConfigPrimaryToken(cfg), port: cfg.port })
         : false;
-      stdout.write("Windows container mode: no Scheduled Task\n");
+      stdout.write("Autostart: manual (Windows container mode; no Scheduled Task)\n");
       stdout.write(`Daemon: ${healthy ? `up on ${DAEMON_HOST}:${cfg.port}` : "down"}\n`);
       stdout.write(`Auth: ${authed ? "ok" : "failed"}\n`);
       return true;
@@ -450,8 +521,10 @@ export async function handleDaemonRequest({
       return true;
     }
     if (process.platform === "win32" && isWindowsContainerEnvironment(envForRun)) {
-      stdout.write("Windows container mode has no Scheduled Task.\n");
-      stdout.write("Restart the container or rerun `summarize daemon install --token <token>` manually.\n");
+      stdout.write("Autostart is manual in Windows container mode; no Scheduled Task is registered.\n");
+      stdout.write(
+        "Restart the container or rerun `summarize daemon install --token <token>` to start the daemon again.\n",
+      );
       return true;
     }
     const service = resolveDaemonService();
@@ -509,7 +582,7 @@ export async function handleDaemonRequest({
   if (sub === "uninstall") {
     if (process.platform === "win32" && isWindowsContainerEnvironment(envForRun)) {
       stdout.write(
-        "Uninstalled (Windows container mode had no scheduling to remove). Config left in ~/.summarize/daemon.json\n",
+        "Uninstalled (Windows container mode does not register Scheduled Task autostart). Config left in ~/.summarize/daemon.json\n",
       );
       return true;
     }
