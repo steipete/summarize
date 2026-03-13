@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildHealthPayload, corsHeaders, isTrustedOrigin } from "../src/daemon/server.js";
+import {
+  buildHealthPayload,
+  corsHeaders,
+  isTrustedOrigin,
+  resolveDaemonListenHost,
+} from "../src/daemon/server.js";
 import { resolvePackageVersion } from "../src/version.js";
 
 describe("daemon/server health payload", () => {
@@ -36,5 +41,19 @@ describe("daemon/server CORS allowlist", () => {
 
   it("omits CORS headers when origin is missing", () => {
     expect(corsHeaders(null)).toEqual({});
+  });
+});
+
+describe("daemon/server listen host", () => {
+  it("binds to loopback by default", () => {
+    expect(resolveDaemonListenHost({})).toBe("127.0.0.1");
+  });
+
+  it("binds to all interfaces in Windows container mode", () => {
+    expect(
+      resolveDaemonListenHost({
+        CONTAINER_SANDBOX_MOUNT_POINT: "C:\\ContainerMappedDirectories",
+      }),
+    ).toBe("0.0.0.0");
   });
 });
