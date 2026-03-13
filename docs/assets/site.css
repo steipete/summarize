@@ -30,6 +30,7 @@
   :root {
     --bg0: #fbf6eb;
     --bg1: #f1ecdf;
+    --bg-code: rgba(0, 0, 0, 0.55);
     --panel: rgba(255, 255, 255, 0.86);
     --paper: #0b0f12;
     --ink: #0b0f12;
@@ -39,6 +40,9 @@
     --line: rgba(9, 12, 16, 0.14);
     --shadow: 0 26px 70px rgba(9, 12, 16, 0.12);
     --shadow2: 0 10px 26px rgba(9, 12, 16, 0.1);
+  }
+  div.highlight {
+    background-color: var(--bg-code);
   }
 }
 
@@ -539,6 +543,13 @@ code {
   color: var(--fg1);
 }
 
+div.highlight {
+  border-radius: 10px;
+}
+pre.highlight {
+  margin: 0;
+  padding: 14px;
+}
 .more {
   margin-top: 24px;
   padding: 0 6px;
