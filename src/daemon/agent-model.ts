@@ -1,5 +1,7 @@
-import type { Api, Model } from "@mariozechner/pi-ai";
+import type { Api, Context, Model } from "@mariozechner/pi-ai";
 import { getModel } from "@mariozechner/pi-ai";
+import { resolveOpenAiModel } from "../llm/providers/models.js";
+import { resolveOpenAiClientConfig } from "../llm/providers/openai.js";
 import { createSyntheticModel } from "../llm/providers/shared.js";
 import { buildAutoModelAttempts, envHasKey } from "../model-auto.js";
 import { parseCliUserModelId } from "../run/env.js";
@@ -26,6 +28,8 @@ const REQUIRED_ENV_BY_PROVIDER: Record<string, string> = {
   xai: "XAI_API_KEY",
   zai: "Z_AI_API_KEY",
 };
+
+const TEXT_ONLY_CONTEXT: Context = { messages: [] };
 
 function parseProviderModelId(modelId: string): { provider: string; model: string } {
   const trimmed = modelId.trim();
@@ -184,6 +188,7 @@ export async function resolveAgentModel({
     config,
     configPath,
     configForCli,
+    openaiUseChatCompletions,
     apiKey,
     openrouterApiKey,
     anthropicApiKey,
@@ -238,6 +243,24 @@ export async function resolveAgentModel({
 
   const applyBaseUrlOverride = (provider: string, modelId: string) => {
     const baseUrl = providerBaseUrlMap[provider] ?? null;
+    if (provider === "openai") {
+      const openaiConfig = resolveOpenAiClientConfig({
+        apiKeys: {
+          openaiApiKey: apiKeys.openaiApiKey,
+          openrouterApiKey: apiKeys.openrouterApiKey,
+        },
+        openaiBaseUrlOverride: baseUrl,
+        forceChatCompletions: openaiUseChatCompletions,
+      });
+      return {
+        provider,
+        model: resolveOpenAiModel({
+          modelId,
+          context: TEXT_ONLY_CONTEXT,
+          openaiConfig,
+        }),
+      };
+    }
     const providerForPiAi = provider === "nvidia" ? "openai" : provider;
     return {
       provider,
