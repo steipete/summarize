@@ -1,6 +1,26 @@
 import type { ChildProcess } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { runCliModel } from "../src/llm/cli.js";
+
+const CODEX_META_ONLY_STDOUT = [
+  '{"type":"thread.started","thread_id":"019cd2c2-0645-7312-b7f2-f10a3d41eb5c"}',
+  "2m 0s · 3.1k words · cli/codex/gpt-5.2",
+].join("\n");
+
+const CODEX_STDOUT_WITH_ARRAY_TEXT = [
+  JSON.stringify({
+    type: "response.completed",
+    response: {
+      output: [
+        {
+          content: [{ type: "output_text", text: "assistant text from array payload" }],
+        },
+      ],
+    },
+  }),
+  "2m 0s · 3.1k words · cli/codex/gpt-5.2",
+].join("\n");
 
 describe("llm/cli extra branches", () => {
   it("parses the last JSON object when stdout includes a preface", async () => {
@@ -57,5 +77,63 @@ describe("llm/cli extra branches", () => {
     expect(result.usage?.promptTokens).toBe(1);
     expect(result.usage?.completionTokens).toBe(2);
     expect(result.usage?.totalTokens).toBe(3);
+  });
+
+  it("throws when Codex last-message is empty and stdout only contains session metadata", async () => {
+    await expect(
+      runCliModel({
+        provider: "codex",
+        prompt: "hi",
+        model: "gpt-5.2",
+        allowTools: false,
+        timeoutMs: 1000,
+        env: {},
+        config: null,
+        execFileImpl: (_cmd, args, _opts, cb) => {
+          const outputIndex = args.indexOf("--output-last-message");
+          const outputPath = outputIndex >= 0 ? args[outputIndex + 1] : null;
+          if (!outputPath) throw new Error("missing output path");
+          writeFileSync(outputPath, "   ", "utf8");
+          cb(null, CODEX_META_ONLY_STDOUT, "");
+          return { stdin: { write() {}, end() {} } } as unknown as ChildProcess;
+        },
+      }),
+    ).rejects.toThrow(/stdout only contained session\/meta events/i);
+  });
+
+  it("throws when Codex last-message is missing and stdout only contains session metadata", async () => {
+    await expect(
+      runCliModel({
+        provider: "codex",
+        prompt: "hi",
+        model: "gpt-5.2",
+        allowTools: false,
+        timeoutMs: 1000,
+        env: {},
+        config: null,
+        execFileImpl: (_cmd, _args, _opts, cb) => {
+          cb(null, CODEX_META_ONLY_STDOUT, "");
+          return { stdin: { write() {}, end() {} } } as unknown as ChildProcess;
+        },
+      }),
+    ).rejects.toThrow(/stdout only contained session\/meta events/i);
+  });
+
+  it("keeps raw stdout fallback when Codex stdout includes nested array text", async () => {
+    const result = await runCliModel({
+      provider: "codex",
+      prompt: "hi",
+      model: "gpt-5.2",
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      config: null,
+      execFileImpl: (_cmd, _args, _opts, cb) => {
+        cb(null, CODEX_STDOUT_WITH_ARRAY_TEXT, "");
+        return { stdin: { write() {}, end() {} } } as unknown as ChildProcess;
+      },
+    });
+
+    expect(result.text).toBe(CODEX_STDOUT_WITH_ARRAY_TEXT);
   });
 });

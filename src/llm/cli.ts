@@ -49,6 +49,67 @@ type CliRunResult = {
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
+const CODEX_META_ONLY_OUTPUT_ERROR =
+  "Codex returned no assistant text; stdout only contained session/meta events.";
+
+const CODEX_FOOTER_LINE_PATTERN = /\bcli\/codex(?:\/\S+)?$/;
+const CODEX_TEXT_PAYLOAD_KEYS = [
+  "result",
+  "response",
+  "output",
+  "message",
+  "text",
+  "content",
+] as const;
+
+function hasTextPayloadValue(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.some((entry) => hasTextPayloadValue(entry));
+  if (!value || typeof value !== "object") return false;
+  return hasTextPayload(value as Record<string, unknown>);
+}
+
+function hasTextPayload(payload: Record<string, unknown>): boolean {
+  return CODEX_TEXT_PAYLOAD_KEYS.some((key) => hasTextPayloadValue(payload[key]));
+}
+
+function parseJsonRecord(line: string): Record<string, unknown> | null {
+  if (!line.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(line) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function isCodexFooterLine(line: string): boolean {
+  return line.includes("·") && CODEX_FOOTER_LINE_PATTERN.test(line);
+}
+
+function isCodexMetaOnlyOutput(output: string): boolean {
+  const lines = output
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  if (lines.length === 0) return false;
+  let sawMeta = false;
+  for (const line of lines) {
+    if (isCodexFooterLine(line)) {
+      sawMeta = true;
+      continue;
+    }
+    const payload = parseJsonRecord(line);
+    if (!payload) return false;
+    if (typeof payload.type !== "string" || hasTextPayload(payload)) {
+      return false;
+    }
+    sawMeta = true;
+  }
+  return sawMeta;
+}
+
 function getCliProviderConfig(
   provider: CliProvider,
   config: CliConfig | null | undefined,
@@ -186,6 +247,9 @@ export async function runCliModel({
     }
     const stdoutText = stdout.trim();
     if (stdoutText) {
+      if (isCodexMetaOnlyOutput(stdoutText)) {
+        throw new Error(CODEX_META_ONLY_OUTPUT_ERROR);
+      }
       return { text: stdoutText, usage, costUsd };
     }
     throw new Error("CLI returned empty output");
