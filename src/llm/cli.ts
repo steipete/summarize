@@ -53,23 +53,24 @@ const CODEX_META_ONLY_OUTPUT_ERROR =
   "Codex returned no assistant text; stdout only contained session/meta events.";
 
 const CODEX_FOOTER_LINE_PATTERN = /\bcli\/codex(?:\/\S+)?$/;
+const CODEX_TEXT_PAYLOAD_KEYS = [
+  "result",
+  "response",
+  "output",
+  "message",
+  "text",
+  "content",
+] as const;
+
+function hasTextPayloadValue(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.some((entry) => hasTextPayloadValue(entry));
+  if (!value || typeof value !== "object") return false;
+  return hasTextPayload(value as Record<string, unknown>);
+}
 
 function hasTextPayload(payload: Record<string, unknown>): boolean {
-  for (const key of ["result", "response", "output", "message", "text", "content"] as const) {
-    const value = payload[key];
-    if (typeof value === "string" && value.trim().length > 0) {
-      return true;
-    }
-    if (
-      value &&
-      typeof value === "object" &&
-      !Array.isArray(value) &&
-      hasTextPayload(value as Record<string, unknown>)
-    ) {
-      return true;
-    }
-  }
-  return false;
+  return CODEX_TEXT_PAYLOAD_KEYS.some((key) => hasTextPayloadValue(payload[key]));
 }
 
 function parseJsonRecord(line: string): Record<string, unknown> | null {

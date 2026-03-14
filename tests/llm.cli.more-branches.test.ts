@@ -8,6 +8,20 @@ const CODEX_META_ONLY_STDOUT = [
   "2m 0s · 3.1k words · cli/codex/gpt-5.2",
 ].join("\n");
 
+const CODEX_STDOUT_WITH_ARRAY_TEXT = [
+  JSON.stringify({
+    type: "response.completed",
+    response: {
+      output: [
+        {
+          content: [{ type: "output_text", text: "assistant text from array payload" }],
+        },
+      ],
+    },
+  }),
+  "2m 0s · 3.1k words · cli/codex/gpt-5.2",
+].join("\n");
+
 describe("llm/cli extra branches", () => {
   it("parses the last JSON object when stdout includes a preface", async () => {
     const result = await runCliModel({
@@ -103,5 +117,23 @@ describe("llm/cli extra branches", () => {
         },
       }),
     ).rejects.toThrow(/stdout only contained session\/meta events/i);
+  });
+
+  it("keeps raw stdout fallback when Codex stdout includes nested array text", async () => {
+    const result = await runCliModel({
+      provider: "codex",
+      prompt: "hi",
+      model: "gpt-5.2",
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      config: null,
+      execFileImpl: (_cmd, _args, _opts, cb) => {
+        cb(null, CODEX_STDOUT_WITH_ARRAY_TEXT, "");
+        return { stdin: { write() {}, end() {} } } as unknown as ChildProcess;
+      },
+    });
+
+    expect(result.text).toBe(CODEX_STDOUT_WITH_ARRAY_TEXT);
   });
 });
