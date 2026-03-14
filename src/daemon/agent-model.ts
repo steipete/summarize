@@ -251,6 +251,7 @@ export async function resolveAgentModel({
         },
         openaiBaseUrlOverride: baseUrl,
         forceChatCompletions: openaiUseChatCompletions,
+        allowProcessEnvBaseUrlFallback: false,
       });
       return {
         provider,

@@ -206,6 +206,38 @@ describe("daemon/agent", () => {
     expect(model.baseUrl).toBe("http://127.0.0.1:1234/v1");
   });
 
+  it("ignores ambient process OPENAI_BASE_URL when agent env snapshot does not set it", async () => {
+    const home = makeTempHome();
+    const originalProcessBaseUrl = process.env.OPENAI_BASE_URL;
+    process.env.OPENAI_BASE_URL = "https://ambient.example/v1";
+
+    try {
+      await completeAgentResponse({
+        env: {
+          HOME: home,
+          OPENAI_API_KEY: "sk-openai",
+        },
+        pageUrl: "https://example.com",
+        pageTitle: null,
+        pageContent: "Hello world",
+        messages: [{ role: "user", content: "Hi" }],
+        modelOverride: "openai/gpt-5-mini",
+        tools: [],
+        automationEnabled: false,
+      });
+    } finally {
+      if (typeof originalProcessBaseUrl === "string") {
+        process.env.OPENAI_BASE_URL = originalProcessBaseUrl;
+      } else {
+        delete process.env.OPENAI_BASE_URL;
+      }
+    }
+
+    const model = mockCompleteSimple.mock.calls[0]?.[0] as { api?: string; baseUrl?: string };
+    expect(model.api).toBe("openai-responses");
+    expect(model.baseUrl).toBe("https://example.com");
+  });
+
   it("throws a helpful error when openrouter key is missing", async () => {
     const home = makeTempHome();
     await expect(
