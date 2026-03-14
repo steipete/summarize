@@ -17,6 +17,7 @@ export type OpenAiClientConfigInput = {
   forceOpenRouter?: boolean;
   openaiBaseUrlOverride?: string | null;
   forceChatCompletions?: boolean;
+  allowProcessEnvBaseUrlFallback?: boolean;
 };
 
 export function resolveOpenAiClientConfig({
@@ -24,10 +25,13 @@ export function resolveOpenAiClientConfig({
   forceOpenRouter,
   openaiBaseUrlOverride,
   forceChatCompletions,
+  allowProcessEnvBaseUrlFallback = true,
 }: OpenAiClientConfigInput): OpenAiClientConfig {
   const baseUrlRaw =
     openaiBaseUrlOverride ??
-    (typeof process !== "undefined" ? process.env.OPENAI_BASE_URL : undefined);
+    (allowProcessEnvBaseUrlFallback && typeof process !== "undefined"
+      ? process.env.OPENAI_BASE_URL
+      : undefined);
   const baseUrl = normalizeBaseUrl(baseUrlRaw);
   const isOpenRouterViaBaseUrl = baseUrl ? isOpenRouterBaseUrl(baseUrl) : false;
   const hasOpenRouterKey = apiKeys.openrouterApiKey != null;

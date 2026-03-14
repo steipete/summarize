@@ -1,15 +1,17 @@
-import { mkdtempSync, writeFileSync, chmodSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AssistantMessage, Tool } from "@mariozechner/pi-ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { completeAgentResponse } from "../src/daemon/agent.js";
+import { completeAgentResponse, streamAgentResponse } from "../src/daemon/agent.js";
 import { runCliModel } from "../src/llm/cli.js";
 import * as modelAuto from "../src/model-auto.js";
+import { makeTextDeltaStream } from "./helpers/pi-ai-mock.js";
 
-const { mockCompleteSimple, mockGetModel } = vi.hoisted(() => ({
+const { mockCompleteSimple, mockGetModel, mockStreamSimple } = vi.hoisted(() => ({
   mockCompleteSimple: vi.fn(),
   mockGetModel: vi.fn(),
+  mockStreamSimple: vi.fn(),
 }));
 
 vi.mock("../src/llm/cli.js", async (importOriginal) => {
@@ -24,13 +26,18 @@ vi.mock("@mariozechner/pi-ai", () => {
   return {
     completeSimple: mockCompleteSimple,
     getModel: mockGetModel,
+    streamSimple: mockStreamSimple,
   };
 });
 
-const buildAssistant = (provider: string, model: string): AssistantMessage => ({
+const buildAssistant = (
+  provider: string,
+  model: string,
+  api: "openai-completions" | "openai-responses" = "openai-completions",
+): AssistantMessage => ({
   role: "assistant",
   content: [{ type: "text", text: "ok" }],
-  api: "openai-completions",
+  api,
   provider,
   model,
   usage: {
@@ -49,7 +56,7 @@ const makeModel = (provider: string, modelId: string) => ({
   id: modelId,
   name: modelId,
   provider,
-  api: "openai-completions" as const,
+  api: (provider === "openai" ? "openai-responses" : "openai-completions") as const,
   baseUrl: "https://example.com",
   reasoning: false,
   input: ["text"],
@@ -71,13 +78,22 @@ const makeFakeCliBin = (binary: string) => {
 beforeEach(() => {
   mockCompleteSimple.mockReset();
   mockGetModel.mockReset();
+  mockStreamSimple.mockReset();
   vi.mocked(runCliModel).mockReset();
   vi.mocked(runCliModel).mockResolvedValue({ text: "cli agent", usage: null, costUsd: null });
   mockGetModel.mockImplementation((provider: string, modelId: string) =>
     makeModel(provider, modelId),
   );
-  mockCompleteSimple.mockImplementation(async (model: { provider: string; id: string }) =>
-    buildAssistant(model.provider, model.id),
+  mockCompleteSimple.mockImplementation(
+    async (model: {
+      provider: string;
+      id: string;
+      api?: "openai-completions" | "openai-responses";
+    }) => buildAssistant(model.provider, model.id, model.api),
+  );
+  mockStreamSimple.mockImplementation(
+    (model: { provider: string; id: string; api?: "openai-completions" | "openai-responses" }) =>
+      makeTextDeltaStream(["ok"], buildAssistant(model.provider, model.id, model.api)),
   );
 });
 
@@ -114,6 +130,112 @@ describe("daemon/agent", () => {
 
     const options = mockCompleteSimple.mock.calls[0]?.[2] as { apiKey?: string };
     expect(options.apiKey).toBe("sk-openai");
+  });
+
+  it("forces chat completions for streaming agent responses via OPENAI_USE_CHAT_COMPLETIONS", async () => {
+    const home = makeTempHome();
+    const chunks: string[] = [];
+
+    await streamAgentResponse({
+      env: {
+        HOME: home,
+        OPENAI_API_KEY: "sk-openai",
+        OPENAI_USE_CHAT_COMPLETIONS: "1",
+      },
+      pageUrl: "https://example.com",
+      pageTitle: null,
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "openai/gpt-5-mini",
+      tools: [],
+      automationEnabled: false,
+      onChunk: (text) => chunks.push(text),
+      onAssistant: () => {},
+    });
+
+    const model = mockStreamSimple.mock.calls[0]?.[0] as { api?: string };
+    expect(model.api).toBe("openai-completions");
+    expect(chunks.join("")).toBe("ok");
+  });
+
+  it("forces chat completions for agent responses via config", async () => {
+    const home = makeTempHome();
+    const configDir = join(home, ".summarize");
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      join(configDir, "config.json"),
+      JSON.stringify({ openai: { useChatCompletions: true } }),
+      "utf8",
+    );
+
+    await completeAgentResponse({
+      env: { HOME: home, OPENAI_API_KEY: "sk-openai" },
+      pageUrl: "https://example.com",
+      pageTitle: null,
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "openai/gpt-5-mini",
+      tools: [],
+      automationEnabled: false,
+    });
+
+    const model = mockCompleteSimple.mock.calls[0]?.[0] as { api?: string };
+    expect(model.api).toBe("openai-completions");
+  });
+
+  it("uses chat completions for custom OpenAI-compatible base URLs", async () => {
+    const home = makeTempHome();
+
+    await completeAgentResponse({
+      env: {
+        HOME: home,
+        OPENAI_API_KEY: "sk-openai",
+        OPENAI_BASE_URL: "http://127.0.0.1:1234/v1",
+      },
+      pageUrl: "https://example.com",
+      pageTitle: null,
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "openai/gpt-5-mini",
+      tools: [],
+      automationEnabled: false,
+    });
+
+    const model = mockCompleteSimple.mock.calls[0]?.[0] as { api?: string; baseUrl?: string };
+    expect(model.api).toBe("openai-completions");
+    expect(model.baseUrl).toBe("http://127.0.0.1:1234/v1");
+  });
+
+  it("ignores ambient process OPENAI_BASE_URL when agent env snapshot does not set it", async () => {
+    const home = makeTempHome();
+    const originalProcessBaseUrl = process.env.OPENAI_BASE_URL;
+    process.env.OPENAI_BASE_URL = "https://ambient.example/v1";
+
+    try {
+      await completeAgentResponse({
+        env: {
+          HOME: home,
+          OPENAI_API_KEY: "sk-openai",
+        },
+        pageUrl: "https://example.com",
+        pageTitle: null,
+        pageContent: "Hello world",
+        messages: [{ role: "user", content: "Hi" }],
+        modelOverride: "openai/gpt-5-mini",
+        tools: [],
+        automationEnabled: false,
+      });
+    } finally {
+      if (typeof originalProcessBaseUrl === "string") {
+        process.env.OPENAI_BASE_URL = originalProcessBaseUrl;
+      } else {
+        delete process.env.OPENAI_BASE_URL;
+      }
+    }
+
+    const model = mockCompleteSimple.mock.calls[0]?.[0] as { api?: string; baseUrl?: string };
+    expect(model.api).toBe("openai-responses");
+    expect(model.baseUrl).toBe("https://example.com");
   });
 
   it("throws a helpful error when openrouter key is missing", async () => {
