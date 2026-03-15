@@ -49,8 +49,13 @@ import {
   toExtractOnlySlidesPayload,
 } from "./server-summarize-execution.js";
 import { parseSummarizeRequest } from "./server-summarize-request.js";
+import { isWindowsContainerEnvironment } from "./windows-container.js";
 
 export { corsHeaders, isTrustedOrigin } from "./server-http.js";
+
+export function resolveDaemonListenHost(env: Record<string, string | undefined>): string {
+  return isWindowsContainerEnvironment(env) ? "0.0.0.0" : DAEMON_HOST;
+}
 
 function createLineWriter(onLine: (line: string) => void) {
   let buffer = "";
@@ -126,6 +131,7 @@ export async function runDaemonServer({
 
   const processRegistry = new ProcessRegistry();
   setProcessObserver(processRegistry.createObserver());
+  const listenHost = resolveDaemonListenHost(env);
 
   const sessions = new Map<string, Session>();
   const refreshSessions = new Map<string, Session>();
@@ -395,7 +401,7 @@ export async function runDaemonServer({
   try {
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);
-      server.listen(port, DAEMON_HOST, () => {
+      server.listen(port, listenHost, () => {
         const address = server.address();
         const actualPort =
           address && typeof address === "object" && typeof address.port === "number"

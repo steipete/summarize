@@ -2,6 +2,7 @@ import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  spawn: vi.fn(),
   readDaemonConfig: vi.fn(),
   writeDaemonConfig: vi.fn(),
   runDaemonServer: vi.fn(),
@@ -17,10 +18,15 @@ const mocks = vi.hoisted(() => ({
   restartSystemdService: vi.fn(),
   uninstallSystemdService: vi.fn(),
   installScheduledTask: vi.fn(),
+  isWindowsContainerEnvironment: vi.fn(),
   isScheduledTaskInstalled: vi.fn(),
   readScheduledTaskCommand: vi.fn(),
   restartScheduledTask: vi.fn(),
   uninstallScheduledTask: vi.fn(),
+}));
+
+vi.mock("node:child_process", () => ({
+  spawn: mocks.spawn,
 }));
 
 vi.mock("../src/daemon/config.js", async (importOriginal) => {
@@ -47,8 +53,9 @@ vi.mock("../src/daemon/launchd.js", () => ({
   restartLaunchAgent: mocks.restartLaunchAgent,
   uninstallLaunchAgent: mocks.uninstallLaunchAgent,
   resolveDaemonLogPaths: () => ({
-    daemonOutLog: "/tmp/daemon.out.log",
-    daemonErrLog: "/tmp/daemon.err.log",
+    logDir: "/tmp/.summarize/logs",
+    stdoutPath: "/tmp/.summarize/logs/daemon.log",
+    stderrPath: "/tmp/.summarize/logs/daemon.err.log",
   }),
 }));
 
@@ -68,12 +75,17 @@ vi.mock("../src/daemon/schtasks.js", () => ({
   uninstallScheduledTask: mocks.uninstallScheduledTask,
 }));
 
+vi.mock("../src/daemon/windows-container.js", () => ({
+  isWindowsContainerEnvironment: mocks.isWindowsContainerEnvironment,
+}));
+
 import { handleDaemonRequest } from "../src/daemon/cli.js";
 
 describe("daemon cli", () => {
   const originalPath = process.env.PATH;
   const originalOpenAiKey = process.env.OPENAI_API_KEY;
   const originalHome = process.env.HOME;
+  const originalPlatform = process.platform;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -84,9 +96,11 @@ describe("daemon cli", () => {
     mocks.readLaunchAgentProgramArguments.mockResolvedValue(null);
     mocks.readSystemdServiceExecStart.mockResolvedValue(null);
     mocks.readScheduledTaskCommand.mockResolvedValue(null);
+    mocks.isWindowsContainerEnvironment.mockReturnValue(false);
     mocks.installLaunchAgent.mockResolvedValue(undefined);
     mocks.installSystemdService.mockResolvedValue(undefined);
     mocks.installScheduledTask.mockResolvedValue(undefined);
+    mocks.spawn.mockReturnValue({ unref: vi.fn() });
   });
 
   afterEach(() => {
@@ -96,6 +110,7 @@ describe("daemon cli", () => {
     else process.env.OPENAI_API_KEY = originalOpenAiKey;
     if (originalHome === undefined) delete process.env.HOME;
     else process.env.HOME = originalHome;
+    Object.defineProperty(process, "platform", { value: originalPlatform });
   });
 
   it("applies daemon snapshot env to process.env for child processes on run (#99)", async () => {
@@ -183,5 +198,57 @@ describe("daemon cli", () => {
         tokens: ["existing-token-1234", "new-token-123456"],
       }),
     });
+  });
+
+  it("starts the daemon and prints container autostart instructions for Windows containers", async () => {
+    Object.defineProperty(process, "platform", { value: "win32" });
+    mocks.isWindowsContainerEnvironment.mockReturnValue(true);
+    mocks.readDaemonConfig.mockResolvedValueOnce(null);
+    mocks.writeDaemonConfig.mockResolvedValueOnce(
+      "C:\\Users\\ContainerAdministrator\\.summarize\\daemon.json",
+    );
+
+    const stdout = new PassThrough();
+    let text = "";
+    stdout.on("data", (chunk) => {
+      text += chunk.toString();
+    });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/health"))
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      if (url.endsWith("/v1/ping"))
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const handled = await handleDaemonRequest({
+      normalizedArgv: ["daemon", "install", "--token", "new-token-123456"],
+      envForRun: {
+        USERPROFILE: "C:\\Users\\ContainerAdministrator",
+        CONTAINER_SANDBOX_MOUNT_POINT: "C:\\ContainerMappedDirectories",
+      },
+      fetchImpl: fetchMock as unknown as typeof fetch,
+      stdout,
+      stderr: new PassThrough(),
+    });
+
+    expect(handled).toBe(true);
+    expect(mocks.installScheduledTask).not.toHaveBeenCalled();
+    expect(mocks.spawn).toHaveBeenCalledTimes(1);
+    expect(mocks.spawn).toHaveBeenCalledWith(
+      process.execPath,
+      expect.arrayContaining(["daemon", "run"]),
+      expect.objectContaining({
+        detached: true,
+        windowsHide: true,
+      }),
+    );
+    expect(text).toContain("Windows container detected: skipped Scheduled Task registration.");
+    expect(text).toContain("Daemon autostart is not available in Windows container mode.");
+    expect(text).toContain("Run `summarize daemon install --token <TOKEN>` each time the container starts");
+    expect(text).toContain("Publish port 8787:8787 so the host browser can reach the daemon.");
+    expect(text).toContain("OK: daemon is running in this container session and authenticated.");
   });
 });

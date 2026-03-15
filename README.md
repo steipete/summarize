@@ -54,6 +54,7 @@ Notes:
 - Auto mode summarizes on navigation (incl. SPAs); otherwise use the button.
 - Daemon is localhost-only and requires a shared token; rerunning `summarize daemon install --token <TOKEN>` adds another paired browser token instead of invalidating the old one.
 - Autostart: macOS (launchd), Linux (systemd user), Windows (Scheduled Task).
+- Windows containers: `summarize daemon install` starts the daemon for the current container session but does not register a Scheduled Task. Run it each time the container starts or add that command to your container startup, and publish port `8787` so the host browser can reach the daemon.
 - Tip: configure `free` via `summarize refresh-free` (needs `OPENROUTER_API_KEY`). Add `--set-default` to set model=`free`.
 
 More:
