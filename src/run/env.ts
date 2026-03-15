@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { accessSync, constants as fsConstants } from "node:fs";
 import path from "node:path";
 import type { CliProvider, SummarizeConfig } from "../config.js";
@@ -29,6 +30,27 @@ export function resolveExecutableInPath(
     if (isExecutable(candidate)) return candidate;
   }
   return null;
+}
+
+export async function canSpawnCommand({
+  command,
+  args = ["--help"],
+  env,
+}: {
+  command: string;
+  args?: string[];
+  env: Record<string, string | undefined>;
+}): Promise<boolean> {
+  if (!command.trim()) return false;
+  return new Promise((resolve) => {
+    const proc = spawn(command, args, {
+      stdio: ["ignore", "ignore", "ignore"],
+      env,
+      windowsHide: true,
+    });
+    proc.on("error", () => resolve(false));
+    proc.on("close", (code) => resolve(code === 0));
+  });
 }
 
 export function hasBirdCli(env: Record<string, string | undefined>): boolean {
