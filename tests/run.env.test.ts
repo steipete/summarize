@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  canSpawnCommand,
   hasUvxCli,
   parseBooleanEnv,
   parseCliProviderArg,
@@ -33,6 +34,23 @@ describe("run/env", () => {
     expect(hasUvxCli({ UVX_PATH: "/custom/uvx" })).toBe(true);
     expect(hasUvxCli({ PATH: uvx.dir })).toBe(true);
     expect(hasUvxCli({ PATH: "" })).toBe(false);
+  });
+
+  it("probes runnable commands by spawning them", async () => {
+    await expect(
+      canSpawnCommand({
+        command: process.execPath,
+        args: ["--version"],
+        env: process.env as Record<string, string | undefined>,
+      }),
+    ).resolves.toBe(true);
+    await expect(
+      canSpawnCommand({
+        command: "definitely-missing-summarize-binary",
+        args: ["--help"],
+        env: process.env as Record<string, string | undefined>,
+      }),
+    ).resolves.toBe(false);
   });
 
   it("parses cli model ids and provider args", () => {
