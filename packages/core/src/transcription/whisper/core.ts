@@ -92,6 +92,7 @@ export async function transcribeMediaWithWhisper({
     filename,
     totalDurationSeconds,
     onProgress,
+    env,
     notes,
   });
   if (local) return local;
@@ -192,6 +193,7 @@ export async function transcribeMediaFileWithWhisper({
     mediaType,
     totalDurationSeconds,
     onProgress,
+    env,
     notes,
   });
   if (local) return local;
@@ -470,6 +472,7 @@ async function transcribeWithLocalWhisperBytes({
   filename,
   totalDurationSeconds,
   onProgress,
+  env,
   notes,
 }: {
   bytes: Uint8Array;
@@ -477,9 +480,10 @@ async function transcribeWithLocalWhisperBytes({
   filename: string | null;
   totalDurationSeconds: number | null;
   onProgress?: ((event: WhisperProgressEvent) => void) | null;
+  env: Env;
   notes: string[];
 }): Promise<WhisperTranscriptionResult | null> {
-  const localReady = await isWhisperCppReady();
+  const localReady = await isWhisperCppReady(env);
   if (!localReady) return null;
   const nameHint = filename?.trim() ? basename(filename.trim()) : "media";
   const tempFile = join(
@@ -493,6 +497,7 @@ async function transcribeWithLocalWhisperBytes({
       mediaType,
       totalDurationSeconds,
       onProgress,
+      env,
     });
     if (result.text) {
       if (result.notes.length > 0) notes.push(...result.notes);
@@ -513,15 +518,17 @@ async function transcribeWithLocalWhisperFile({
   mediaType,
   totalDurationSeconds,
   onProgress,
+  env,
   notes,
 }: {
   filePath: string;
   mediaType: string;
   totalDurationSeconds: number | null;
   onProgress?: ((event: WhisperProgressEvent) => void) | null;
+  env: Env;
   notes: string[];
 }): Promise<WhisperTranscriptionResult | null> {
-  const localReady = await isWhisperCppReady();
+  const localReady = await isWhisperCppReady(env);
   if (!localReady) return null;
   onProgress?.({
     partIndex: null,
@@ -534,6 +541,7 @@ async function transcribeWithLocalWhisperFile({
     mediaType,
     totalDurationSeconds,
     onProgress,
+    env,
   });
   if (result.text) {
     if (result.notes.length > 0) notes.push(...result.notes);
@@ -551,6 +559,7 @@ async function safeTranscribeWithWhisperCppFile(args: {
   mediaType: string;
   totalDurationSeconds: number | null;
   onProgress?: ((event: WhisperProgressEvent) => void) | null;
+  env: Env;
 }): Promise<WhisperTranscriptionResult> {
   try {
     return await transcribeWithWhisperCppFile(args);

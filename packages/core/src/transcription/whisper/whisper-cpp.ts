@@ -16,15 +16,17 @@ import {
 import type { WhisperProgressEvent, WhisperTranscriptionResult } from "./types.js";
 import { wrapError } from "./utils.js";
 
-export async function isWhisperCppReady(): Promise<boolean> {
-  if (!isWhisperCppEnabled()) return false;
-  if (!(await isWhisperCliAvailable())) return false;
-  const model = await resolveWhisperCppModelPath();
+export async function isWhisperCppReady(env?: Record<string, string | undefined>): Promise<boolean> {
+  if (!isWhisperCppEnabled(env)) return false;
+  if (!(await isWhisperCliAvailable(env))) return false;
+  const model = await resolveWhisperCppModelPath(env);
   return Boolean(model);
 }
 
-export async function resolveWhisperCppModelNameForDisplay(): Promise<string | null> {
-  const modelPath = await resolveWhisperCppModelPath();
+export async function resolveWhisperCppModelNameForDisplay(
+  env?: Record<string, string | undefined>,
+): Promise<string | null> {
+  const modelPath = await resolveWhisperCppModelPath(env);
   return modelPath ? resolveWhisperCppModelLabelFromPath(modelPath) : null;
 }
 
@@ -33,14 +35,16 @@ export async function transcribeWithWhisperCppFile({
   mediaType,
   totalDurationSeconds,
   onProgress,
+  env,
 }: {
   filePath: string;
   mediaType: string;
   totalDurationSeconds: number | null;
   onProgress?: ((event: WhisperProgressEvent) => void) | null;
+  env?: Record<string, string | undefined>;
 }): Promise<WhisperTranscriptionResult> {
   const notes: string[] = [];
-  const modelPath = await resolveWhisperCppModelPath();
+  const modelPath = await resolveWhisperCppModelPath(env);
   if (!modelPath) {
     return {
       text: null,
@@ -116,7 +120,7 @@ export async function transcribeWithWhisperCppFile({
 
     try {
       await new Promise<void>((resolve, reject) => {
-        const { proc, handle } = spawnTracked(resolveWhisperCppBinary(), args, {
+        const { proc, handle } = spawnTracked(resolveWhisperCppBinary(env), args, {
           stdio: ["ignore", "ignore", "pipe"],
           label: "whisper.cpp",
           kind: "whisper.cpp",
@@ -189,12 +193,13 @@ export async function transcribeWithWhisperCppFile({
   }
 }
 
-function isWhisperCppEnabled(): boolean {
-  return (process.env[DISABLE_LOCAL_WHISPER_CPP_ENV] ?? "").trim() !== "1";
+function isWhisperCppEnabled(env?: Record<string, string | undefined>): boolean {
+  const source = env ?? process.env;
+  return (source[DISABLE_LOCAL_WHISPER_CPP_ENV] ?? "").trim() !== "1";
 }
 
-async function isWhisperCliAvailable(): Promise<boolean> {
-  const bin = resolveWhisperCppBinary();
+async function isWhisperCliAvailable(env?: Record<string, string | undefined>): Promise<boolean> {
+  const bin = resolveWhisperCppBinary(env);
   return new Promise((resolve) => {
     const { proc } = spawnTracked(bin, ["--help"], {
       stdio: ["ignore", "ignore", "ignore"],
@@ -207,13 +212,17 @@ async function isWhisperCliAvailable(): Promise<boolean> {
   });
 }
 
-function resolveWhisperCppBinary(): string {
-  const override = (process.env[WHISPER_CPP_BINARY_ENV] ?? "").trim();
+function resolveWhisperCppBinary(env?: Record<string, string | undefined>): string {
+  const source = env ?? process.env;
+  const override = (source[WHISPER_CPP_BINARY_ENV] ?? "").trim();
   return override.length > 0 ? override : "whisper-cli";
 }
 
-async function resolveWhisperCppModelPath(): Promise<string | null> {
-  const override = (process.env[WHISPER_CPP_MODEL_PATH_ENV] ?? "").trim();
+async function resolveWhisperCppModelPath(
+  env?: Record<string, string | undefined>,
+): Promise<string | null> {
+  const source = env ?? process.env;
+  const override = (source[WHISPER_CPP_MODEL_PATH_ENV] ?? "").trim();
   if (override) {
     try {
       const stat = await fs.stat(override);
@@ -223,7 +232,7 @@ async function resolveWhisperCppModelPath(): Promise<string | null> {
     }
   }
 
-  const home = (process.env.HOME ?? process.env.USERPROFILE ?? "").trim();
+  const home = (source.HOME ?? source.USERPROFILE ?? "").trim();
   const cacheCandidate = home
     ? join(home, ".summarize", "cache", "whisper-cpp", "models", "ggml-base.bin")
     : null;

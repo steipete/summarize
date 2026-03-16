@@ -24,6 +24,7 @@ export type TranscriptionAvailability = {
   hasFal: boolean;
   hasAnyProvider: boolean;
   geminiModelId: string;
+  effectiveEnv: Env;
 };
 
 export async function resolveTranscriptionAvailability({
@@ -58,7 +59,7 @@ export async function resolveTranscriptionAvailability({
     ? isOnnxCliConfigured(preferredOnnxModel, effectiveEnv)
     : false;
 
-  const hasLocalWhisper = await isWhisperCppReady();
+  const hasLocalWhisper = await isWhisperCppReady(effectiveEnv);
   const hasGroq = Boolean(effective.groqApiKey);
   const hasAssemblyAi = Boolean(effective.assemblyaiApiKey);
   const hasGemini = Boolean(effective.geminiApiKey);
@@ -78,6 +79,7 @@ export async function resolveTranscriptionAvailability({
     hasFal,
     hasAnyProvider,
     geminiModelId: effective.geminiModel ?? resolveGeminiTranscriptionModel(effectiveEnv),
+    effectiveEnv,
   };
 }
 
@@ -124,7 +126,7 @@ export async function resolveTranscriptionStartInfo({
         ? `onnx/${availability.preferredOnnxModel}`
         : "onnx"
       : providerHint === "cpp"
-        ? ((await resolveWhisperCppModelNameForDisplay()) ?? "whisper.cpp")
+        ? ((await resolveWhisperCppModelNameForDisplay(availability.effectiveEnv)) ?? "whisper.cpp")
         : resolveCloudModelId(availability);
 
   return { availability, providerHint, modelId };
