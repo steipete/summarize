@@ -166,6 +166,32 @@ describe("yt-dlp transcript helper", () => {
     expect(result.error?.message).toMatch(/yt-dlp exited with code 1/);
   });
 
+  it("returns empty text and a note when yt-dlp fails with 'unable to obtain file audio codec'", async () => {
+    spawnMock.mockImplementation(() => {
+      const proc = new EventEmitter() as any;
+      proc.stdout = new PassThrough();
+      proc.stderr = new PassThrough();
+      process.nextTick(() => {
+        proc.stderr.write(
+          "ERROR: Postprocessing: WARNING: unable to obtain file audio codec with ffprobe\n",
+        );
+        proc.stderr.end();
+        process.nextTick(() => proc.emit("close", 1, null));
+      });
+      return proc;
+    });
+
+    const result = await fetchTranscriptWithYtDlp({
+      ytDlpPath: "/usr/bin/yt-dlp",
+      openaiApiKey: "OPENAI",
+      url: "https://youtu.be/dQw4w9WgXcQ",
+    });
+
+    expect(result.text).toBe("");
+    expect(result.error).toBeNull();
+    expect(result.notes).toContain("yt-dlp: Media has no audio stream");
+  });
+
   it("passes --no-playlist to yt-dlp", async () => {
     mockSpawnSuccess();
     (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(

@@ -226,6 +226,17 @@ export const fetchTranscriptWithYtDlp = async ({
     if (result.notes.length > 0) notes.push(...result.notes);
     return { text: result.text, provider: result.provider, error: result.error, notes };
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("unable to obtain file audio codec with ffprobe")
+    ) {
+      return {
+        text: "",
+        provider: null,
+        error: null,
+        notes: [...notes, "yt-dlp: Media has no audio stream"],
+      };
+    }
     return {
       text: null,
       provider: null,
