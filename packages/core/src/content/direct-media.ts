@@ -11,6 +11,7 @@ const DIRECT_VIDEO_EXTENSIONS = [
   "avi",
   "wmv",
   "flv",
+  "m3u8",
 ] as const;
 
 const DIRECT_AUDIO_EXTENSIONS = [
@@ -48,6 +49,7 @@ const DIRECT_MEDIA_TYPE_BY_EXTENSION = new Map<string, string>([
   ["avi", "video/x-msvideo"],
   ["wmv", "video/x-ms-wmv"],
   ["flv", "video/x-flv"],
+  ["m3u8", "application/vnd.apple.mpegurl"],
   ["mp3", "audio/mpeg"],
   ["m4a", "audio/mp4"],
   ["wav", "audio/wav"],

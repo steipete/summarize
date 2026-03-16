@@ -5,7 +5,7 @@ export type DetectedVideo = {
   url: string;
 };
 
-const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov", ".m4v"]);
+const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov", ".m4v", ".m3u8"]);
 
 function resolveAbsoluteUrl(candidate: string, baseUrl: string): string | null {
   const trimmed = candidate.trim();

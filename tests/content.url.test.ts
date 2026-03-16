@@ -54,6 +54,7 @@ describe("content/url", () => {
     expect(isDirectMediaUrl("https://example.com/voice.opus")).toBe(true);
     expect(isDirectMediaUrl("https://example.com/clip.avi")).toBe(true);
     expect(isDirectMediaUrl("https://example.com/track.wma#t=10")).toBe(true);
+    expect(isDirectMediaUrl("https://example.com/playlist.m3u8")).toBe(true);
     expect(isDirectMediaUrl("https://example.com/article")).toBe(false);
   });
 
@@ -65,6 +66,7 @@ describe("content/url", () => {
 
   it("infers direct media kind from URL or file path", () => {
     expect(inferDirectMediaKind("https://example.com/video.mp4")).toBe("video");
+    expect(inferDirectMediaKind("https://example.com/live.m3u8?token=1")).toBe("video");
     expect(inferDirectMediaKind("https://example.com/audio.mp3?x=1")).toBe("audio");
     expect(inferDirectMediaKind("file:///tmp/talk.webm")).toBe("video");
     expect(inferDirectMediaKind("/tmp/clip.wav")).toBe("audio");
