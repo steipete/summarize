@@ -170,6 +170,7 @@ const chatDockEl = byId<HTMLDivElement>("chatDock");
 const slideImageLoader = createSlideImageLoader();
 
 const summarizeControlRoot = byId<HTMLElement>("summarizeControlRoot");
+const copySummaryBtn = byId<HTMLButtonElement>("copySummary");
 const drawerToggleBtn = byId<HTMLButtonElement>("drawerToggle");
 const refreshBtn = byId<HTMLButtonElement>("refresh");
 const clearBtn = byId<HTMLButtonElement>("clear");
@@ -1075,6 +1076,7 @@ function resetSummaryView({
   clearSlideGallery(renderSlidesHostEl);
   clearMetricsForMode("summary");
   panelState.summaryMarkdown = null;
+  copySummaryBtn.hidden = true;
   panelState.summaryFromCache = null;
   panelState.slides = null;
   if (clearRunId) {
@@ -1254,6 +1256,7 @@ function renderMarkdownDisplay() {
 
 function renderMarkdown(markdown: string) {
   panelState.summaryMarkdown = markdown;
+  copySummaryBtn.hidden = !markdown;
   updateSlideSummaryFromMarkdown(markdown, {
     preserveIfEmpty: slideSummaryByIndex.size > 0,
     source: "summary",
@@ -4162,6 +4165,14 @@ function sendChatMessage() {
 refreshBtn.addEventListener("click", () => sendSummarize({ refresh: true }));
 clearBtn.addEventListener("click", () => {
   void clearCurrentView();
+});
+copySummaryBtn.addEventListener("click", () => {
+  const md = panelState.summaryMarkdown;
+  if (!md) return;
+  void navigator.clipboard.writeText(md).then(() => {
+    headerController.setStatus("Copied");
+    setTimeout(() => headerController.setStatus(panelState.ui?.status ?? ""), 800);
+  });
 });
 drawerToggleBtn.addEventListener("click", () => toggleDrawer());
 advancedBtn.addEventListener("click", () => {
