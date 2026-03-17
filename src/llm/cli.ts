@@ -18,6 +18,7 @@ const DEFAULT_BINARIES: Record<CliProvider, string> = {
   codex: "codex",
   gemini: "gemini",
   agent: "agent",
+  openclaw: "openclaw",
 };
 
 const PROVIDER_PATH_ENV: Record<CliProvider, string> = {
@@ -25,6 +26,7 @@ const PROVIDER_PATH_ENV: Record<CliProvider, string> = {
   codex: "CODEX_PATH",
   gemini: "GEMINI_PATH",
   agent: "AGENT_PATH",
+  openclaw: "OPENCLAW_PATH",
 };
 
 type RunCliModelOptions = {
@@ -154,6 +156,39 @@ export async function runCliModel({
   if (extraArgs?.length) {
     args.push(...extraArgs);
   }
+  if (provider === "openclaw") {
+    const args = [
+      "agent",
+      "--agent",
+      model && model.trim().length > 0 ? model.trim() : "main",
+      "--message",
+      prompt,
+      "--json",
+      "--timeout",
+      String(Math.max(1, Math.ceil(timeoutMs / 1000))),
+    ];
+    const { stdout } = await execCliWithInput({
+      execFileImpl: execFileFn,
+      cmd: binary,
+      args,
+      input: "",
+      timeoutMs,
+      env: effectiveEnv,
+      cwd,
+    });
+    const parsed = JSON.parse(stdout);
+    const payloads = parsed?.result?.payloads;
+    const text = Array.isArray(payloads)
+      ? payloads
+          .map((p) => (typeof p?.text === "string" ? p.text : ""))
+          .filter(Boolean)
+          .join("\n\n")
+      : "";
+    if (!text.trim()) throw new Error("OpenClaw CLI returned empty output");
+    const usage = parsed?.result?.meta?.agentMeta?.lastCallUsage ?? parsed?.result?.meta?.agentMeta?.usage ?? null;
+    return { text: text.trim(), usage, costUsd: null };
+  }
+
   if (provider === "codex") {
     const outputDir = await fs.mkdtemp(path.join(tmpdir(), "summarize-codex-"));
     const outputPath = path.join(outputDir, "last-message.txt");

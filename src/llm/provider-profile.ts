@@ -16,7 +16,8 @@ export type RequiredModelEnv =
   | "CLI_CLAUDE"
   | "CLI_CODEX"
   | "CLI_GEMINI"
-  | "CLI_AGENT";
+  | "CLI_AGENT"
+  | "CLI_OPENCLAW";
 
 type GatewayProviderProfile = {
   requiredEnv: RequiredModelEnv;
@@ -69,9 +70,10 @@ export const DEFAULT_CLI_MODELS: Record<CliProvider, string> = {
   codex: "gpt-5.2",
   gemini: "gemini-3-flash",
   agent: "gpt-5.2",
+  openclaw: "main",
 };
 
-export const DEFAULT_AUTO_CLI_ORDER: CliProvider[] = ["claude", "gemini", "codex", "agent"];
+export const DEFAULT_AUTO_CLI_ORDER: CliProvider[] = ["claude", "gemini", "codex", "agent", "openclaw"];
 
 export function parseCliProviderName(raw: string): CliProvider | null {
   const normalized = raw.trim().toLowerCase();
@@ -79,6 +81,7 @@ export function parseCliProviderName(raw: string): CliProvider | null {
   if (normalized === "codex") return "codex";
   if (normalized === "gemini") return "gemini";
   if (normalized === "agent") return "agent";
+  if (normalized === "openclaw") return "openclaw";
   return null;
 }
 
@@ -89,7 +92,9 @@ export function requiredEnvForCliProvider(provider: CliProvider): RequiredModelE
       ? "CLI_GEMINI"
       : provider === "agent"
         ? "CLI_AGENT"
-        : "CLI_CLAUDE";
+        : provider === "openclaw"
+          ? "CLI_OPENCLAW"
+          : "CLI_CLAUDE";
 }
 
 export function getGatewayProviderProfile(provider: GatewayProvider): GatewayProviderProfile {

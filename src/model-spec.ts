@@ -11,6 +11,7 @@ const DEFAULT_CLI_MODELS: Record<CliProvider, string> = {
   codex: "gpt-5.2",
   gemini: "gemini-3-flash",
   agent: "gpt-5.2",
+  openclaw: "main",
 };
 
 export type FixedModelSpec =
@@ -46,7 +47,7 @@ export type FixedModelSpec =
       llmModelId: null;
       openrouterProviders: null;
       forceOpenRouter: false;
-      requiredEnv: "CLI_CLAUDE" | "CLI_CODEX" | "CLI_GEMINI" | "CLI_AGENT";
+      requiredEnv: "CLI_CLAUDE" | "CLI_CODEX" | "CLI_GEMINI" | "CLI_AGENT" | "CLI_OPENCLAW";
       cliProvider: CliProvider;
       cliModel: string | null;
     };
@@ -131,7 +132,8 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       providerRaw !== "claude" &&
       providerRaw !== "codex" &&
       providerRaw !== "gemini" &&
-      providerRaw !== "agent"
+      providerRaw !== "agent" &&
+      providerRaw !== "openclaw"
     ) {
       throw new Error(`Invalid CLI model id "${trimmed}". Expected cli/<provider>/<model>.`);
     }
@@ -140,7 +142,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     const cliModel = requestedModel.length > 0 ? requestedModel : DEFAULT_CLI_MODELS[cliProvider];
     const requiredEnv = requiredEnvForCliProvider(cliProvider) as Extract<
       RequiredModelEnv,
-      "CLI_CLAUDE" | "CLI_CODEX" | "CLI_GEMINI" | "CLI_AGENT"
+      "CLI_CLAUDE" | "CLI_CODEX" | "CLI_GEMINI" | "CLI_AGENT" | "CLI_OPENCLAW"
     >;
     const userModelId = `cli/${cliProvider}/${cliModel}`;
     return {
@@ -153,6 +155,21 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       requiredEnv,
       cliProvider,
       cliModel,
+    };
+  }
+
+  if (lower.startsWith("openclaw/")) {
+    const model = trimmed.slice("openclaw/".length).trim() || "main";
+    return {
+      kind: "fixed",
+      transport: "cli",
+      userModelId: `openclaw/${model}`,
+      llmModelId: null,
+      openrouterProviders: null,
+      forceOpenRouter: false,
+      requiredEnv: "CLI_OPENCLAW",
+      cliProvider: "openclaw",
+      cliModel: model,
     };
   }
 

@@ -119,6 +119,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     if (requiredEnv === "CLI_AGENT") {
       return Boolean(deps.cliAvailability.agent);
     }
+    if (requiredEnv === "CLI_OPENCLAW") {
+      return Boolean(deps.cliAvailability.openclaw);
+    }
     if (requiredEnv === "GEMINI_API_KEY") {
       return deps.keyFlags.googleConfigured;
     }
@@ -152,6 +155,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     }
     if (attempt.requiredEnv === "CLI_AGENT") {
       return `Cursor Agent CLI not found for model ${attempt.userModelId}. Install Cursor CLI or set AGENT_PATH.`;
+    }
+    if (attempt.requiredEnv === "CLI_OPENCLAW") {
+      return `OpenClaw CLI not found for model ${attempt.userModelId}. Install OpenClaw CLI or set OPENCLAW_PATH.`;
     }
     return `Missing ${attempt.requiredEnv} for model ${attempt.userModelId}. Set the env var or choose a different --model.`;
   };
