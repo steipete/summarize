@@ -2,26 +2,26 @@ import { createHash } from "node:crypto";
 import type { LengthArg } from "./flags.js";
 import type { OutputLanguage } from "./language.js";
 
-export function hashString(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
+export function hashString(strValue: string): string {
+  return createHash("sha256").update(strValue).digest("hex");
 }
 
-export function hashJson(value: unknown): string {
-  return hashString(JSON.stringify(value));
+export function hashJson(jsonValue: unknown): string {
+  return hashString(JSON.stringify(jsonValue));
 }
 
 export function normalizeContentForHash(content: string): string {
   return content.replaceAll("\r\n", "\n").trim();
 }
 
-export function extractTaggedBlock(prompt: string, tag: "instructions" | "content"): string | null {
+export function extractTaggedBlock(promptText: string, tag: "instructions" | "content"): string | null {
   const open = `<${tag}>`;
   const close = `</${tag}>`;
-  const start = prompt.indexOf(open);
+  const start = promptText.indexOf(open);
   if (start === -1) return null;
-  const end = prompt.indexOf(close, start + open.length);
+  const end = promptText.indexOf(close, start + open.length);
   if (end === -1) return null;
-  return prompt.slice(start + open.length, end).trim();
+  return promptText.slice(start + open.length, end).trim();
 }
 
 export function buildPromptHash(prompt: string): string {
@@ -29,48 +29,33 @@ export function buildPromptHash(prompt: string): string {
   return hashString(instructions.trim());
 }
 
-export function buildPromptContentHash({
-  prompt,
-  fallbackContent,
-}: {
+export function buildPromptContentHash(promptFallbackContent: {
   prompt: string;
   fallbackContent?: string | null;
 }): string | null {
+  const { prompt, fallbackContent } = promptFallbackContent;
   const content = extractTaggedBlock(prompt, "content") ?? fallbackContent ?? null;
   if (!content || content.trim().length === 0) return null;
   return hashString(normalizeContentForHash(content));
 }
 
 export function buildLengthKey(lengthArg: LengthArg): string {
-  return lengthArg.kind === "preset"
-    ? `preset:${lengthArg.preset}`
-    : `chars:${lengthArg.maxCharacters}`;
+  return lengthArg.kind === "preset" ? `preset:${lengthArg.preset}` : `chars:${lengthArg.maxCharacters}`;
 }
 
 export function buildLanguageKey(outputLanguage: OutputLanguage): string {
   return outputLanguage.kind === "auto" ? "auto" : outputLanguage.tag;
 }
 
-export function buildExtractCacheKeyValue({
-  url,
-  options,
-  formatVersion,
-}: {
+export function buildExtractCacheKeyValue(cacheKey: {
   url: string;
   options: Record<string, unknown>;
   formatVersion: number;
 }): string {
-  return hashJson({ url, options, formatVersion });
+  return hashJson(cacheKey);
 }
 
-export function buildSummaryCacheKeyValue({
-  contentHash,
-  promptHash,
-  model,
-  lengthKey,
-  languageKey,
-  formatVersion,
-}: {
+export function buildSummaryCacheKeyValue(summaryCacheKey: {
   contentHash: string;
   promptHash: string;
   model: string;
@@ -78,21 +63,10 @@ export function buildSummaryCacheKeyValue({
   languageKey: string;
   formatVersion: number;
 }): string {
-  return hashJson({
-    contentHash,
-    promptHash,
-    model,
-    lengthKey,
-    languageKey,
-    formatVersion,
-  });
+  return hashJson(summaryCacheKey);
 }
 
-export function buildSlidesCacheKeyValue({
-  url,
-  settings,
-  formatVersion,
-}: {
+export function buildSlidesCacheKeyValue(slidesCacheKey: {
   url: string;
   settings: {
     ocr: boolean;
@@ -104,35 +78,14 @@ export function buildSlidesCacheKeyValue({
   };
   formatVersion: number;
 }): string {
-  return hashJson({
-    url,
-    settings: {
-      ocr: settings.ocr,
-      outputDir: settings.outputDir,
-      sceneThreshold: settings.sceneThreshold,
-      autoTuneThreshold: settings.autoTuneThreshold,
-      maxSlides: settings.maxSlides,
-      minDurationSeconds: settings.minDurationSeconds,
-    },
-    formatVersion,
-  });
+  return hashJson(slidesCacheKey);
 }
 
-export function buildTranscriptCacheKeyValue({
-  url,
-  namespace,
-  formatVersion,
-  fileMtime,
-}: {
+export function buildTranscriptCacheKeyValue(transcriptCacheKey: {
   url: string;
   namespace: string | null;
   formatVersion: number;
   fileMtime?: number | null;
 }): string {
-  return hashJson({
-    url,
-    namespace,
-    fileMtime: fileMtime ?? null,
-    formatVersion,
-  });
+  return hashJson({ ...transcriptCacheKey, fileMtime: transcriptCacheKey.fileMtime ?? null });
 }
