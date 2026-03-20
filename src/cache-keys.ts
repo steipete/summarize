@@ -28,15 +28,17 @@ export function extractTaggedBlock(
 }
 
 export function buildPromptHash(prompt: string): string {
-  const instructions = extractTaggedBlock(prompt, "instructions") ?? "";
-  const context = extractTaggedBlock(prompt, "context") ?? "";
+  const instructionsContent = extractTaggedBlock(prompt, "instructions");
+  const contextContent = extractTaggedBlock(prompt, "context");
 
-  // If we have both, we hash both. If we have only one, we hash that.
-  // If we have neither (tags missing), we hash the whole trimmed prompt.
-  if (instructions || context) {
+  // If at least one of the tags is present (even if empty), hash their contents.
+  if (instructionsContent !== null || contextContent !== null) {
+    const instructions = instructionsContent ?? "";
+    const context = contextContent ?? "";
     return hashString(`${instructions}\n${context}`.trim());
   }
 
+  // Fallback for prompts without any tags.
   return hashString(prompt.trim());
 }
 

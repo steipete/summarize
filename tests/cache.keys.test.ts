@@ -5,6 +5,7 @@ import {
   buildPromptHash,
   buildSummaryCacheKey,
   extractTaggedBlock,
+  hashString,
 } from "../src/cache.js";
 
 describe("cache keys and tags", () => {
@@ -39,6 +40,24 @@ describe("cache keys and tags", () => {
 
     // Both should hash just the instructions since context is empty/missing
     expect(hash1).toBe(hash2);
+  });
+
+  it("treats multiple empty tags consistently", () => {
+    const p1 = "<instructions></instructions>";
+    const p2 = "<context></context>";
+    const p3 = "<instructions></instructions><context></context>";
+    const p4 = "<instructions>  </instructions>";
+
+    const h1 = buildPromptHash(p1);
+    const h2 = buildPromptHash(p2);
+    const h3 = buildPromptHash(p3);
+    const h4 = buildPromptHash(p4);
+
+    expect(h1).toBe(h2);
+    expect(h2).toBe(h3);
+    expect(h3).toBe(h4);
+    // They should all hash to an empty string's hash (after trim)
+    expect(h1).toBe(hashString(""));
   });
 
   it("changes summary keys when inputs change", () => {
