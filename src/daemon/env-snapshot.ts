@@ -38,6 +38,7 @@ const ENV_KEYS = [
   "GEMINI_PATH",
   "AGENT_PATH",
   "OPENCLAW_PATH",
+  "OPENCODE_PATH",
   "UVX_PATH",
 ] as const;
 

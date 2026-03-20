@@ -273,6 +273,7 @@ describe("asset summary attempts", () => {
       extraArgsByProvider: {
         gemini: ["--include-directories", "/tmp/assets"],
         codex: ["-i", "/tmp/assets/file.png"],
+        opencode: ["--file", "/tmp/assets/file.png"],
       },
     });
   });
@@ -298,6 +299,7 @@ describe("asset summary attempts", () => {
     expect(result?.extraArgsByProvider).toEqual({
       gemini: ["--include-directories", "/tmp/assets"],
       codex: undefined,
+      opencode: ["--file", "/tmp/assets/file.png"],
     });
   });
 });

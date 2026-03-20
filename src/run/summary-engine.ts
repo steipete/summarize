@@ -122,6 +122,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     if (requiredEnv === "CLI_OPENCLAW") {
       return Boolean(deps.cliAvailability.openclaw);
     }
+    if (requiredEnv === "CLI_OPENCODE") {
+      return Boolean(deps.cliAvailability.opencode);
+    }
     if (requiredEnv === "GEMINI_API_KEY") {
       return deps.keyFlags.googleConfigured;
     }
@@ -158,6 +161,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     }
     if (attempt.requiredEnv === "CLI_OPENCLAW") {
       return `OpenClaw CLI not found for model ${attempt.userModelId}. Install OpenClaw CLI or set OPENCLAW_PATH.`;
+    }
+    if (attempt.requiredEnv === "CLI_OPENCODE") {
+      return `OpenCode CLI not found for model ${attempt.userModelId}. Install OpenCode CLI or set OPENCODE_PATH.`;
     }
     return `Missing ${attempt.requiredEnv} for model ${attempt.userModelId}. Set the env var or choose a different --model.`;
   };

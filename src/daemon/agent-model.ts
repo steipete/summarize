@@ -133,6 +133,8 @@ function buildNoAgentModelAvailableError({
     codex?: boolean;
     gemini?: boolean;
     agent?: boolean;
+    openclaw?: boolean;
+    opencode?: boolean;
   };
 }): Error {
   const checked = attempts.map((attempt) => attempt.userModelId);
@@ -152,7 +154,9 @@ function buildNoAgentModelAvailableError({
           if (attempt.requiredEnv === "CLI_CLAUDE") return "claude";
           if (attempt.requiredEnv === "CLI_CODEX") return "codex";
           if (attempt.requiredEnv === "CLI_GEMINI") return "gemini";
-          return "agent";
+          if (attempt.requiredEnv === "CLI_AGENT") return "agent";
+          if (attempt.requiredEnv === "CLI_OPENCLAW") return "openclaw";
+          return "opencode";
         })
         .filter((provider) => !cliAvailability[provider as keyof typeof cliAvailability]),
     ),

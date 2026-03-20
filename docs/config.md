@@ -328,16 +328,17 @@ Examples:
 ```json
 {
   "cli": {
-    "enabled": ["gemini", "agent", "openclaw"],
+    "enabled": ["gemini", "agent", "openclaw", "opencode"],
     "autoFallback": {
       "enabled": true,
       "onlyWhenNoApiKeys": true,
-      "order": ["claude", "gemini", "codex", "agent", "openclaw"]
+      "order": ["claude", "gemini", "codex", "agent", "openclaw", "opencode"]
     },
     "codex": { "model": "gpt-5.2" },
     "claude": { "binary": "/usr/local/bin/claude", "extraArgs": ["--verbose"] },
     "agent": { "binary": "/usr/local/bin/agent", "model": "gpt-5.2" },
-    "openclaw": { "binary": "/usr/local/bin/openclaw", "model": "main" }
+    "openclaw": { "binary": "/usr/local/bin/openclaw", "model": "main" },
+    "opencode": { "binary": "/usr/local/bin/opencode", "model": "openai/gpt-5.4" }
   }
 }
 ```
@@ -346,7 +347,7 @@ Notes:
 
 - `cli.enabled` is an allowlist (and order) for auto + explicit CLI model ids.
 - `cli.autoFallback` controls implicit-auto CLI fallback when `cli.enabled` is not set.
-- Default auto fallback order: `claude, gemini, codex, agent, openclaw`.
+- Default auto fallback order: `claude, gemini, codex, agent, openclaw, opencode`.
 - Auto fallback stores the last successful provider in `~/.summarize/cli-state.json` and prioritizes it on the next run.
 - `cli.<provider>.binary` overrides CLI binary discovery.
 - `cli.<provider>.extraArgs` appends extra CLI args.

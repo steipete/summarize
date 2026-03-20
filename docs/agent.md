@@ -138,7 +138,7 @@ Returns cached chat history for the same cache key as `/v1/agent`.
 - **Auto model**: uses existing auto-selection logic (`buildAutoModelAttempts`), preferring API-key transports and then CLI fallback when available.
 - **Synthetic models**: created for OpenAI-compatible base URLs (local/openrouter).
 - `maxOutputTokens` defaults to 2048 or `maxOutputTokens` override.
-- CLI models are supported as auto fallback and via explicit `cli/<provider>/<model>` overrides.
+- CLI models are supported as auto fallback and via explicit `cli/<provider>` or `cli/<provider>/<model>` overrides.
 - If the daemon still says no model is available after key/install changes, restart or reinstall it so the saved environment snapshot refreshes.
 
 ## Page Content Payload

@@ -40,6 +40,7 @@ export function createModelPresetsController({
       if (p.cliCodex === true) hints.push("cli/codex");
       if (p.cliAgent === true) hints.push("cli/agent");
       if (p.cliOpenclaw === true) hints.push("cli/openclaw");
+      if (p.cliOpencode === true) hints.push("cli/opencode");
     }
     if (discovery.localModelsSource && typeof discovery.localModelsSource === "object") {
       hints.push("local: openai/<id>");

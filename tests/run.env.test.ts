@@ -66,8 +66,13 @@ describe("run/env", () => {
       provider: "openclaw",
       model: "main",
     });
+    expect(parseCliUserModelId("cli/opencode/openai/gpt-5.4")).toEqual({
+      provider: "opencode",
+      model: "openai/gpt-5.4",
+    });
     expect(parseCliProviderArg("  AGENT ")).toBe("agent");
     expect(parseCliProviderArg(" openclaw ")).toBe("openclaw");
+    expect(parseCliProviderArg(" opencode ")).toBe("opencode");
   });
 
   it("rejects invalid cli providers and model ids", () => {

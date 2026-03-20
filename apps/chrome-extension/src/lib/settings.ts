@@ -118,7 +118,8 @@ function normalizeAutoCliOrder(value: unknown): string {
       item !== "gemini" &&
       item !== "codex" &&
       item !== "agent" &&
-      item !== "openclaw"
+      item !== "openclaw" &&
+      item !== "opencode"
     ) {
       continue;
     }
@@ -238,7 +239,7 @@ export const defaultSettings: Settings = {
   summaryTimestamps: true,
   extendedLogging: false,
   autoCliFallback: true,
-  autoCliOrder: "claude,gemini,codex,agent,openclaw",
+  autoCliOrder: "claude,gemini,codex,agent,openclaw,opencode",
   hoverPrompt:
     "Plain text only (no Markdown). Summarize the linked page concisely in 1-2 sentences; aim for 100-200 characters.",
   transcriber: "",

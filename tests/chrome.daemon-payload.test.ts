@@ -26,7 +26,7 @@ describe("chrome/daemon-payload", () => {
       length: "xl",
       language: "auto",
       autoCliFallback: true,
-      autoCliOrder: "claude,gemini,codex,agent,openclaw",
+      autoCliOrder: "claude,gemini,codex,agent,openclaw,opencode",
       maxCharacters: defaultSettings.maxChars,
     });
   });
@@ -70,7 +70,7 @@ describe("chrome/daemon-payload", () => {
       retries: 2,
       maxOutputTokens: "2k",
       autoCliFallback: true,
-      autoCliOrder: "claude,gemini,codex,agent,openclaw",
+      autoCliOrder: "claude,gemini,codex,agent,openclaw,opencode",
       maxCharacters: defaultSettings.maxChars,
     });
   });

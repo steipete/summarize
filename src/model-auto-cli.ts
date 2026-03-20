@@ -95,9 +95,8 @@ export function prependCliCandidates({
 
   const add = (provider: CliProvider, modelOverride?: string) => {
     if (hasExplicitEnabledList && !isCliProviderEnabled(provider, config)) return;
-    const model = modelOverride?.trim() || DEFAULT_CLI_MODELS[provider];
-    if (!model) return;
-    const id = `cli/${provider}/${model}`;
+    const model = modelOverride?.trim() || DEFAULT_CLI_MODELS[provider] || null;
+    const id = model ? `cli/${provider}/${model}` : `cli/${provider}`;
     if (!cliCandidates.includes(id)) cliCandidates.push(id);
   };
 
@@ -109,7 +108,11 @@ export function prependCliCandidates({
           ? cli?.codex?.model
           : provider === "agent"
             ? cli?.agent?.model
-            : cli?.claude?.model;
+            : provider === "openclaw"
+              ? cli?.openclaw?.model
+            : provider === "opencode"
+              ? cli?.opencode?.model
+              : cli?.claude?.model;
     add(provider, modelOverride);
   }
 

@@ -453,6 +453,9 @@ describe("cli helpers", () => {
     expect(resolveCliBinary("openclaw", null, { OPENCLAW_PATH: "/opt/openclaw" })).toBe(
       "/opt/openclaw",
     );
+    expect(resolveCliBinary("opencode", null, { OPENCODE_PATH: "/opt/opencode" })).toBe(
+      "/opt/opencode",
+    );
     expect(resolveCliBinary("gemini", null, {})).toBe("gemini");
   });
 });

@@ -6,12 +6,13 @@ import {
   resolveRequiredEnvForModelId,
 } from "./llm/provider-capabilities.js";
 
-const DEFAULT_CLI_MODELS: Record<CliProvider, string> = {
+const DEFAULT_CLI_MODELS: Record<CliProvider, string | null> = {
   claude: "sonnet",
   codex: "gpt-5.2",
   gemini: "gemini-3-flash",
   agent: "gpt-5.2",
   openclaw: "main",
+  opencode: null,
 };
 
 export type FixedModelSpec =
@@ -47,7 +48,13 @@ export type FixedModelSpec =
       llmModelId: null;
       openrouterProviders: null;
       forceOpenRouter: false;
-      requiredEnv: "CLI_CLAUDE" | "CLI_CODEX" | "CLI_GEMINI" | "CLI_AGENT" | "CLI_OPENCLAW";
+      requiredEnv:
+        | "CLI_CLAUDE"
+        | "CLI_CODEX"
+        | "CLI_GEMINI"
+        | "CLI_AGENT"
+        | "CLI_OPENCLAW"
+        | "CLI_OPENCODE";
       cliProvider: CliProvider;
       cliModel: string | null;
     };
@@ -133,7 +140,8 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       providerRaw !== "codex" &&
       providerRaw !== "gemini" &&
       providerRaw !== "agent" &&
-      providerRaw !== "openclaw"
+      providerRaw !== "openclaw" &&
+      providerRaw !== "opencode"
     ) {
       throw new Error(`Invalid CLI model id "${trimmed}". Expected cli/<provider>/<model>.`);
     }
@@ -142,9 +150,14 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     const cliModel = requestedModel.length > 0 ? requestedModel : DEFAULT_CLI_MODELS[cliProvider];
     const requiredEnv = requiredEnvForCliProvider(cliProvider) as Extract<
       RequiredModelEnv,
-      "CLI_CLAUDE" | "CLI_CODEX" | "CLI_GEMINI" | "CLI_AGENT" | "CLI_OPENCLAW"
+      | "CLI_CLAUDE"
+      | "CLI_CODEX"
+      | "CLI_GEMINI"
+      | "CLI_AGENT"
+      | "CLI_OPENCLAW"
+      | "CLI_OPENCODE"
     >;
-    const userModelId = `cli/${cliProvider}/${cliModel}`;
+    const userModelId = cliModel ? `cli/${cliProvider}/${cliModel}` : `cli/${cliProvider}`;
     return {
       kind: "fixed",
       transport: "cli",

@@ -111,6 +111,42 @@ describe("daemon/chat", () => {
     expect(events).toEqual([{ event: "content", data: "cli hello" }, { event: "metrics" }]);
   });
 
+  it("resolves configured OpenCode models before emitting chat metadata", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-opencode-fixed-"));
+    const meta: Array<{ model?: string | null }> = [];
+
+    await streamChatResponse({
+      env: { HOME: home },
+      fetchImpl: fetch,
+      configForCli: {
+        cli: {
+          opencode: {
+            model: "openai/gpt-5.4",
+          },
+        },
+      },
+      session: {
+        id: "s-opencode-fixed",
+        lastMeta: { model: null, modelLabel: null, inputSummary: null, summaryFromCache: null },
+      },
+      pageUrl: "https://example.com",
+      pageTitle: "Example",
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "cli/opencode",
+      pushToSession: () => {},
+      emitMeta: (patch) => meta.push(patch),
+    });
+
+    expect(runCliModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "opencode",
+        model: "openai/gpt-5.4",
+      }),
+    );
+    expect(meta[0]?.model).toBe("cli/opencode/openai/gpt-5.4");
+  });
+
   it("routes openrouter overrides through openrouter transport", async () => {
     const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-openrouter-"));
     const meta: Array<{ model?: string | null }> = [];

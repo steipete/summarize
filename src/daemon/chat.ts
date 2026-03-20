@@ -1,5 +1,5 @@
 import type { Context, Message } from "@mariozechner/pi-ai";
-import type { SummarizeConfig } from "../config.js";
+import type { CliProvider, SummarizeConfig } from "../config.js";
 import { runCliModel } from "../llm/cli.js";
 import type { LlmApiKeys } from "../llm/generate-text.js";
 import { streamTextWithContext } from "../llm/generate-text.js";
@@ -23,6 +23,26 @@ type ChatEvent = { event: string; data?: unknown };
 const SYSTEM_PROMPT = `You are Summarize Chat.
 
 You answer questions about the current page content. Keep responses concise and grounded in the page.`;
+
+function resolveConfiguredCliModel(
+  provider: CliProvider,
+  configForCli: SummarizeConfig | null | undefined,
+): string | null {
+  const cli = configForCli?.cli;
+  const raw =
+    provider === "claude"
+      ? cli?.claude?.model
+      : provider === "codex"
+        ? cli?.codex?.model
+        : provider === "gemini"
+          ? cli?.gemini?.model
+          : provider === "agent"
+            ? cli?.agent?.model
+            : provider === "openclaw"
+              ? cli?.openclaw?.model
+              : cli?.opencode?.model;
+  return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
+}
 
 function normalizeMessages(messages: Message[]): Message[] {
   return messages.map((message) => ({
@@ -114,13 +134,17 @@ export async function streamChatResponse({
         return null;
       }
       if (requested.transport === "cli") {
+        const cliModel =
+          requested.cliModel ?? resolveConfiguredCliModel(requested.cliProvider, configForCli);
         return {
-          userModelId: requested.userModelId,
+          userModelId: cliModel
+            ? `cli/${requested.cliProvider}/${cliModel}`
+            : requested.userModelId,
           modelId: null,
           forceOpenRouter: false,
           transport: "cli" as const,
           cliProvider: requested.cliProvider,
-          cliModel: requested.cliModel,
+          cliModel,
         };
       }
       return {

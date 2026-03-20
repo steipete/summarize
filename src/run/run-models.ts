@@ -1,7 +1,44 @@
-import type { ModelConfig, SummarizeConfig } from "../config.js";
+import type { CliProvider, ModelConfig, SummarizeConfig } from "../config.js";
 import type { RequestedModel } from "../model-spec.js";
 import { parseRequestedModelId } from "../model-spec.js";
 import { BUILTIN_MODELS } from "./constants.js";
+
+function resolveConfiguredCliModel(
+  provider: CliProvider,
+  config: SummarizeConfig | null,
+): string | null {
+  const cli = config?.cli;
+  const raw =
+    provider === "claude"
+      ? cli?.claude?.model
+      : provider === "codex"
+      ? cli?.codex?.model
+      : provider === "gemini"
+        ? cli?.gemini?.model
+        : provider === "agent"
+          ? cli?.agent?.model
+          : provider === "openclaw"
+            ? cli?.openclaw?.model
+          : cli?.opencode?.model;
+  return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
+}
+
+function resolveRequestedCliModelFromConfig(
+  requestedModel: RequestedModel,
+  config: SummarizeConfig | null,
+): RequestedModel {
+  if (requestedModel.kind !== "fixed" || requestedModel.transport !== "cli") return requestedModel;
+  if (requestedModel.cliModel) return requestedModel;
+
+  const configuredModel = resolveConfiguredCliModel(requestedModel.cliProvider, config);
+  if (!configuredModel) return requestedModel;
+
+  return {
+    ...requestedModel,
+    userModelId: `cli/${requestedModel.cliProvider}/${configuredModel}`,
+    cliModel: configuredModel,
+  };
+}
 
 export type ModelSelection = {
   requestedModel: RequestedModel;
@@ -101,18 +138,23 @@ export function resolveModelSelection({
     return parseRequestedModelId(requestedModelInput);
   })();
 
+  const requestedModelResolved = resolveRequestedCliModelFromConfig(
+    requestedModel,
+    configForModelSelection,
+  );
+
   const requestedModelLabel = isNamedModelSelection
     ? requestedModelInput
-    : requestedModel.kind === "auto"
+    : requestedModelResolved.kind === "auto"
       ? "auto"
-      : requestedModel.userModelId;
+      : requestedModelResolved.userModelId;
 
-  const isFallbackModel = requestedModel.kind === "auto";
+  const isFallbackModel = requestedModelResolved.kind === "auto";
   const isImplicitAutoSelection =
-    requestedModel.kind === "auto" && requestedModelSource === "default";
+    requestedModelResolved.kind === "auto" && requestedModelSource === "default";
 
   return {
-    requestedModel,
+    requestedModel: requestedModelResolved,
     requestedModelInput,
     requestedModelLabel,
     isNamedModelSelection,

@@ -1,6 +1,6 @@
 export type AutoRuleKind = "text" | "website" | "youtube" | "image" | "video" | "file";
 export type VideoMode = "auto" | "transcript" | "understand";
-export type CliProvider = "claude" | "codex" | "gemini" | "agent" | "openclaw";
+export type CliProvider = "claude" | "codex" | "gemini" | "agent" | "openclaw" | "opencode";
 export type CliProviderConfig = {
   binary?: string;
   extraArgs?: string[];
@@ -19,6 +19,7 @@ export type CliConfig = {
   gemini?: CliProviderConfig;
   agent?: CliProviderConfig;
   openclaw?: CliProviderConfig;
+  opencode?: CliProviderConfig;
   autoFallback?: CliAutoFallbackConfig;
   magicAuto?: CliAutoFallbackConfig;
   promptOverride?: string;

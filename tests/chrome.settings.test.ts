@@ -92,15 +92,15 @@ describe("chrome/settings", () => {
     await saveSettings({
       ...defaultSettings,
       autoCliFallback: false,
-      autoCliOrder: " GeMiNi,openclaw,unknown,CLAUDE,gemini ",
+      autoCliOrder: " GeMiNi,openclaw,opencode,unknown,CLAUDE,gemini ",
     });
 
     const raw = storage.settings as Record<string, unknown>;
     expect(raw.autoCliFallback).toBe(false);
-    expect(raw.autoCliOrder).toBe("gemini,openclaw,claude");
+    expect(raw.autoCliOrder).toBe("gemini,openclaw,opencode,claude");
 
     const loaded = await loadSettings();
     expect(loaded.autoCliFallback).toBe(false);
-    expect(loaded.autoCliOrder).toBe("gemini,openclaw,claude");
+    expect(loaded.autoCliOrder).toBe("gemini,openclaw,opencode,claude");
   });
 });

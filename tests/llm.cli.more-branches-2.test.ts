@@ -25,9 +25,13 @@ describe("llm/cli more branches", () => {
     expect(resolveCliBinary("agent", null, { AGENT_PATH: " /tmp/agent-bin " })).toBe(
       "/tmp/agent-bin",
     );
+    expect(resolveCliBinary("opencode", null, { OPENCODE_PATH: " /tmp/opencode-bin " })).toBe(
+      "/tmp/opencode-bin",
+    );
 
     expect(resolveCliBinary("claude", null, {})).toBe("claude");
     expect(resolveCliBinary("agent", null, {})).toBe("agent");
+    expect(resolveCliBinary("opencode", null, {})).toBe("opencode");
   });
 
   it("includes stderr in exec error messages", async () => {

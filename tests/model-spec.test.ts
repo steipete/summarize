@@ -64,6 +64,16 @@ describe("model spec parsing", () => {
     expect(parsed.requiredEnv).toBe("CLI_GEMINI");
   });
 
+  it("uses the OpenCode runtime default model when missing", () => {
+    const parsed = parseRequestedModelId("cli/opencode");
+    expect(parsed.kind).toBe("fixed");
+    expect(parsed.transport).toBe("cli");
+    expect(parsed.userModelId).toBe("cli/opencode");
+    expect(parsed.cliProvider).toBe("opencode");
+    expect(parsed.cliModel).toBeNull();
+    expect(parsed.requiredEnv).toBe("CLI_OPENCODE");
+  });
+
   it("rejects invalid cli providers", () => {
     expect(() => parseRequestedModelId("cli/unknown/model")).toThrow(/Invalid CLI model id/);
   });

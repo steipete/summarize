@@ -50,8 +50,11 @@ describe("daemon /v1/models", () => {
   it("includes available CLI model options", async () => {
     const binDir = mkdtempSync(path.join(tmpdir(), "summarize-cli-bin-"));
     const claudePath = path.join(binDir, "claude");
+    const opencodePath = path.join(binDir, "opencode");
     writeFileSync(claudePath, "#!/bin/sh\nexit 0\n", "utf8");
+    writeFileSync(opencodePath, "#!/bin/sh\nexit 0\n", "utf8");
     chmodSync(claudePath, 0o755);
+    chmodSync(opencodePath, 0o755);
 
     const result = await buildModelPickerOptions({
       env: {},
@@ -62,7 +65,9 @@ describe("daemon /v1/models", () => {
 
     expect(result.ok).toBe(true);
     expect(result.providers.cliClaude).toBe(true);
+    expect(result.providers.cliOpencode).toBe(true);
     expect(result.options.some((o) => o.id === "cli/claude")).toBe(true);
+    expect(result.options.some((o) => o.id === "cli/opencode")).toBe(true);
   });
 
   it("includes NVIDIA models when NVIDIA_API_KEY is set", async () => {
