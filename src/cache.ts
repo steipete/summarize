@@ -40,7 +40,7 @@ export type CacheConfig = {
   path?: string;
 };
 
-export const CACHE_FORMAT_VERSION = 1;
+export const CACHE_FORMAT_VERSION = 2;
 export const DEFAULT_CACHE_MAX_MB = 512;
 export const DEFAULT_CACHE_TTL_DAYS = 30;
 

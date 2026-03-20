@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildExtractCacheKey,
   buildPromptContentHash,
+  buildPromptHash,
   buildSummaryCacheKey,
   extractTaggedBlock,
 } from "../src/cache.js";
@@ -11,7 +12,22 @@ describe("cache keys and tags", () => {
     const prompt = "<instructions>Do the thing.</instructions>\n<content>Body</content>";
     expect(extractTaggedBlock(prompt, "instructions")).toBe("Do the thing.");
     expect(extractTaggedBlock(prompt, "content")).toBe("Body");
+    expect(extractTaggedBlock(prompt, "context")).toBeNull();
+    expect(extractTaggedBlock("<context>Site</context>", "context")).toBe("Site");
     expect(extractTaggedBlock("no tags here", "instructions")).toBeNull();
+  });
+
+  it("changes prompt hashes when context changes", () => {
+    const instructions = "Summarize it.";
+    const contextA = "URL: https://a.com";
+    const contextB = "URL: https://b.com";
+    const prompt1 = `<instructions>${instructions}</instructions>\n<context>${contextA}</context>\n<content></content>`;
+    const prompt2 = `<instructions>${instructions}</instructions>\n<context>${contextB}</context>\n<content></content>`;
+
+    const hash1 = buildPromptHash(prompt1);
+    const hash2 = buildPromptHash(prompt2);
+
+    expect(hash1).not.toBe(hash2);
   });
 
   it("changes summary keys when inputs change", () => {

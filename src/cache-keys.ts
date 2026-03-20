@@ -14,7 +14,10 @@ export function normalizeContentForHash(content: string): string {
   return content.replaceAll("\r\n", "\n").trim();
 }
 
-export function extractTaggedBlock(prompt: string, tag: "instructions" | "content"): string | null {
+export function extractTaggedBlock(
+  prompt: string,
+  tag: "instructions" | "content" | "context",
+): string | null {
   const open = `<${tag}>`;
   const close = `</${tag}>`;
   const start = prompt.indexOf(open);
@@ -25,8 +28,16 @@ export function extractTaggedBlock(prompt: string, tag: "instructions" | "conten
 }
 
 export function buildPromptHash(prompt: string): string {
-  const instructions = extractTaggedBlock(prompt, "instructions") ?? prompt;
-  return hashString(instructions.trim());
+  const instructions = extractTaggedBlock(prompt, "instructions") ?? "";
+  const context = extractTaggedBlock(prompt, "context") ?? "";
+
+  // If we have both, we hash both. If we have only one, we hash that.
+  // If we have neither (tags missing), we hash the whole trimmed prompt.
+  if (instructions || context) {
+    return hashString(`${instructions}\n${context}`.trim());
+  }
+
+  return hashString(prompt.trim());
 }
 
 export function buildPromptContentHash({
