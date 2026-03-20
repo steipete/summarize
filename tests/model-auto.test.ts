@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SummarizeConfig } from "../src/config.js";
 import { buildAutoModelAttempts } from "../src/model-auto.js";
+import { prependCliCandidates, resolveCliAutoFallbackConfig } from "../src/model-auto-cli.js";
 
 describe("auto model selection", () => {
   it("preserves candidate order (native then OpenRouter fallback)", () => {
@@ -502,5 +503,94 @@ describe("auto model selection", () => {
 
     expect(attempts[0]?.userModelId).toBe("cli/gemini/gemini-3-flash");
     expect(attempts[1]?.userModelId).toBe("cli/claude/sonnet");
+  });
+
+  it("prepends a bare OpenCode CLI fallback when no default model is configured", () => {
+    const config: SummarizeConfig = {
+      model: { mode: "auto", rules: [{ candidates: ["openai/gpt-5-mini"] }] },
+    };
+    const attempts = buildAutoModelAttempts({
+      kind: "text",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: {},
+      config,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+      cliAvailability: { opencode: true },
+      isImplicitAutoSelection: true,
+    });
+
+    expect(attempts[0]?.userModelId).toBe("cli/opencode");
+  });
+
+  it("uses the configured OpenCode model for CLI fallback candidates", () => {
+    const config: SummarizeConfig = {
+      model: { mode: "auto", rules: [{ candidates: ["openai/gpt-5-mini"] }] },
+      cli: {
+        opencode: {
+          model: "openai/gpt-5.4",
+        },
+      },
+    };
+    const attempts = buildAutoModelAttempts({
+      kind: "text",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: {},
+      config,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+      cliAvailability: { opencode: true },
+      isImplicitAutoSelection: true,
+    });
+
+    expect(attempts[0]?.userModelId).toBe("cli/opencode/openai/gpt-5.4");
+  });
+
+  it("dedupes configured CLI auto-fallback order", () => {
+    const config: SummarizeConfig = {
+      cli: {
+        autoFallback: {
+          enabled: true,
+          onlyWhenNoApiKeys: false,
+          order: ["opencode", "claude", "opencode"],
+        },
+      },
+    };
+
+    expect(resolveCliAutoFallbackConfig(config)).toEqual({
+      enabled: true,
+      onlyWhenNoApiKeys: false,
+      order: ["opencode", "claude"],
+    });
+  });
+
+  it("does not prepend CLI candidates when an explicit enabled list is empty", () => {
+    expect(
+      prependCliCandidates({
+        candidates: ["openai/gpt-5-mini"],
+        config: { cli: { enabled: [] } },
+        env: {},
+        isImplicitAutoSelection: true,
+        allowAutoCliFallback: false,
+        lastSuccessfulCliProvider: null,
+      }),
+    ).toEqual(["openai/gpt-5-mini"]);
+  });
+
+  it("dedupes duplicate explicit OpenCode CLI entries", () => {
+    expect(
+      prependCliCandidates({
+        candidates: ["openai/gpt-5-mini"],
+        config: { cli: { enabled: ["opencode", "opencode"] } },
+        env: {},
+        isImplicitAutoSelection: true,
+        allowAutoCliFallback: false,
+        lastSuccessfulCliProvider: null,
+      }),
+    ).toEqual(["cli/opencode", "openai/gpt-5-mini"]);
   });
 });

@@ -230,6 +230,136 @@ describe("runCliModel", () => {
     expect(seen[0]?.[seen[0].length - 1]).toBe("Test");
   });
 
+  it("handles OpenCode JSONL output via stdin", async () => {
+    const seen: string[][] = [];
+    let stdinText = "";
+    let seenCwd = "";
+    const execFileImpl: ExecFileFn = ((_cmd, args, options, cb) => {
+      seen.push(args);
+      seenCwd = ((options as { cwd?: string } | undefined)?.cwd ?? "") as string;
+      cb?.(
+        null,
+        [
+          JSON.stringify({ type: "step_start", part: { type: "step-start" } }),
+          JSON.stringify({ type: "text", part: { type: "text", text: "ok from opencode" } }),
+          JSON.stringify({
+            type: "step_finish",
+            part: {
+              type: "step-finish",
+              cost: 0.25,
+              tokens: { input: 7, output: 3, total: 10 },
+            },
+          }),
+        ].join("\n"),
+        "",
+      );
+      return {
+        stdin: {
+          write: (chunk: string | Buffer) => {
+            stdinText += String(chunk);
+          },
+          end: () => {},
+        },
+      } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const result = await runCliModel({
+      provider: "opencode",
+      prompt: "Test",
+      model: "openai/gpt-5.4",
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+
+    expect(result.text).toBe("ok from opencode");
+    expect(result.costUsd).toBe(0.25);
+    expect(result.usage).toEqual({ promptTokens: 7, completionTokens: 3, totalTokens: 10 });
+    expect(seen[0]).toContain("run");
+    expect(seen[0]).toContain("--format");
+    expect(seen[0]).toContain("json");
+    expect(seen[0]).toContain("--model");
+    expect(seen[0]).toContain("openai/gpt-5.4");
+    expect(stdinText).toBe("Test");
+    expect(seenCwd).toContain("summarize-opencode-");
+  });
+
+  it("uses configured OpenCode model when none is passed explicitly", async () => {
+    const seen: string[][] = [];
+    const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+      seen.push(args);
+      cb?.(
+        null,
+        JSON.stringify({ type: "text", part: { type: "text", text: "ok from config model" } }),
+        "",
+      );
+      return {
+        stdin: { write: () => {}, end: () => {} },
+      } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const result = await runCliModel({
+      provider: "opencode",
+      prompt: "Test",
+      model: null,
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: { opencode: { model: "openai/gpt-5.2" } },
+    });
+
+    expect(result.text).toBe("ok from config model");
+    expect(seen[0]).toContain("--model");
+    expect(seen[0]).toContain("openai/gpt-5.2");
+  });
+
+  it("reuses the provided cwd for OpenCode when tools are allowed", async () => {
+    const seen: string[][] = [];
+    let stdinText = "";
+    let seenCwd = "";
+    const execFileImpl: ExecFileFn = ((_cmd, args, options, cb) => {
+      seen.push(args);
+      seenCwd = ((options as { cwd?: string } | undefined)?.cwd ?? "") as string;
+      cb?.(null, JSON.stringify({ type: "text", part: { type: "text", text: "ok" } }), "");
+      return {
+        stdin: {
+          write: (chunk: string | Buffer) => {
+            stdinText += String(chunk);
+          },
+          end: () => {},
+        },
+      } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const result = await runCliModel({
+      provider: "opencode",
+      prompt: "Test",
+      model: null,
+      allowTools: true,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: { opencode: { extraArgs: ["--config", "fast"] } },
+      cwd: "/tmp/opencode-cwd",
+      extraArgs: ["--approval-mode", "never"],
+    });
+
+    expect(result.text).toBe("ok");
+    expect(seen[0]).toEqual([
+      "run",
+      "--config",
+      "fast",
+      "--approval-mode",
+      "never",
+      "--format",
+      "json",
+    ]);
+    expect(stdinText).toBe("Test");
+    expect(seenCwd).toBe("/tmp/opencode-cwd");
+  });
   it("accepts common JSON output fields across JSON CLI providers", async () => {
     const providers: Array<{ provider: CliProvider; model: string }> = [
       { provider: "claude", model: "sonnet" },

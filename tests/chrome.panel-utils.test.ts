@@ -134,6 +134,33 @@ describe("chrome panel utils", () => {
     expect(chrome.tabs.query).toHaveBeenNthCalledWith(2, { windowId: 7 });
   });
 
+  it("falls back to a real content tab when the active tab is about:blank", async () => {
+    vi.mocked(chrome.tabs.query)
+      .mockResolvedValueOnce([{ id: 9, url: "about:blank" }])
+      .mockResolvedValueOnce([
+        { id: 9, url: "about:blank" },
+        { id: 3, url: "https://example.com/article" },
+      ]);
+
+    await expect(getActiveTab()).resolves.toMatchObject({
+      id: 3,
+      url: "https://example.com/article",
+    });
+    expect(chrome.tabs.query).toHaveBeenNthCalledWith(1, { active: true, currentWindow: true });
+    expect(chrome.tabs.query).toHaveBeenNthCalledWith(2, { currentWindow: true });
+  });
+
+  it("returns null when a window has no content tabs", async () => {
+    vi.mocked(chrome.tabs.query)
+      .mockResolvedValueOnce([{ id: 9, url: "about:blank" }])
+      .mockResolvedValueOnce([
+        { id: 9, url: "about:blank" },
+        { id: 10, url: "chrome-extension://test/sidepanel.html" },
+      ]);
+
+    await expect(getActiveTab(7)).resolves.toBeNull();
+  });
+
   it("formats slide timestamps for minutes and hours", () => {
     expect(formatSlideTimestamp(65)).toBe("1:05");
     expect(formatSlideTimestamp(3723)).toBe("1:02:03");

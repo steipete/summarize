@@ -1,6 +1,6 @@
 import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   canSpawnCommand,
@@ -8,6 +8,7 @@ import {
   parseBooleanEnv,
   parseCliProviderArg,
   parseCliUserModelId,
+  resolveCliAvailability,
   resolveExecutableInPath,
 } from "../src/run/env.js";
 
@@ -73,6 +74,19 @@ describe("run/env", () => {
     expect(parseCliProviderArg("  AGENT ")).toBe("agent");
     expect(parseCliProviderArg(" openclaw ")).toBe("openclaw");
     expect(parseCliProviderArg(" opencode ")).toBe("opencode");
+  });
+
+  it("detects OpenCode availability from PATH and respects cli.enabled", () => {
+    const opencode = makeBin("opencode");
+    const pathEnv = [opencode.dir].join(delimiter);
+
+    expect(resolveCliAvailability({ env: { PATH: pathEnv }, config: null }).opencode).toBe(true);
+    expect(
+      resolveCliAvailability({
+        env: { PATH: pathEnv },
+        config: { cli: { enabled: ["claude"] } },
+      }).opencode,
+    ).toBe(false);
   });
 
   it("rejects invalid cli providers and model ids", () => {

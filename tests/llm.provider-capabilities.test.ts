@@ -29,6 +29,8 @@ describe("llm provider capabilities", () => {
     expect(parseCliProviderName(" GeMiNi ")).toBe("gemini");
     expect(parseCliProviderName(" openclaw ")).toBe("openclaw");
     expect(parseCliProviderName(" opencode ")).toBe("opencode");
+    expect(parseCliProviderName(" OpenCode ")).toBe("opencode");
+    expect(parseCliProviderName("nope")).toBeNull();
     expect(requiredEnvForCliProvider("agent")).toBe("CLI_AGENT");
     expect(requiredEnvForCliProvider("openclaw")).toBe("CLI_OPENCLAW");
     expect(requiredEnvForCliProvider("opencode")).toBe("CLI_OPENCODE");
@@ -59,7 +61,9 @@ describe("llm provider capabilities", () => {
   it("resolves provider requirements and OpenAI-compatible config centrally", () => {
     expect(resolveRequiredEnvForModelId("cli/gemini")).toBe("CLI_GEMINI");
     expect(resolveRequiredEnvForModelId("openclaw/main")).toBe("CLI_OPENCLAW");
+    expect(resolveRequiredEnvForModelId("cli/opencode")).toBe("CLI_OPENCODE");
     expect(resolveRequiredEnvForModelId("cli/opencode/openai/gpt-5.4")).toBe("CLI_OPENCODE");
+    expect(resolveRequiredEnvForModelId("cli/nope/test")).toBe("CLI_CLAUDE");
     expect(resolveRequiredEnvForModelId("openrouter/openai/gpt-5-mini")).toBe("OPENROUTER_API_KEY");
     expect(resolveRequiredEnvForModelId("nvidia/meta/llama-3.1-8b-instruct")).toBe(
       "NVIDIA_API_KEY",
@@ -78,5 +82,26 @@ describe("llm provider capabilities", () => {
       useChatCompletions: true,
       isOpenRouter: false,
     });
+  });
+
+  it("returns false for invalid video model ids and requires provider keys", () => {
+    expect(isVideoUnderstandingCapableModelId("not-a-model")).toBe(false);
+    expect(isVideoUnderstandingCapableModelId("invalid-provider/model")).toBe(false);
+    expect(() =>
+      resolveOpenAiCompatibleClientConfigForProvider({
+        provider: "zai",
+        openaiApiKey: null,
+        openrouterApiKey: null,
+        openaiBaseUrlOverride: null,
+      }),
+    ).toThrow(/Missing Z_AI_API_KEY/);
+    expect(() =>
+      resolveOpenAiCompatibleClientConfigForProvider({
+        provider: "nvidia",
+        openaiApiKey: null,
+        openrouterApiKey: null,
+        openaiBaseUrlOverride: null,
+      }),
+    ).toThrow(/Missing NVIDIA_API_KEY/);
   });
 });
