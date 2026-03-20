@@ -30,6 +30,17 @@ describe("cache keys and tags", () => {
     expect(hash1).not.toBe(hash2);
   });
 
+  it("hashes instructions-only prompt consistently", () => {
+    const promptWithEmptyContext = "<instructions>Summarize.</instructions>\n<context></context>\n<content>Body</content>";
+    const promptWithNoContextTag = "<instructions>Summarize.</instructions>\n<content>Body</content>";
+
+    const hash1 = buildPromptHash(promptWithEmptyContext);
+    const hash2 = buildPromptHash(promptWithNoContextTag);
+
+    // Both should hash just the instructions since context is empty/missing
+    expect(hash1).toBe(hash2);
+  });
+
   it("changes summary keys when inputs change", () => {
     const base = buildSummaryCacheKey({
       contentHash: "content",
