@@ -6,7 +6,7 @@ Ship is **not done** until:
 - GitHub Release has the Bun tarball asset
 - GitHub Release has the Chrome extension zip
 - GitHub Release has the Firefox extension zip
-- Homebrew tap is bumped + `brew install` verifies
+- Homebrew formula is bumped + `brew install` verifies
 
 ## Version sources (keep in sync)
 
@@ -82,7 +82,7 @@ Ship is **not done** until:
 
    - Verify notes render (real newlines): `gh release view v<ver> --json body --jq .body`
 
-8. Homebrew tap bump + verify
+8. Homebrew formula bump + verify
    - Repo: `~/Projects/homebrew-tap`
    - Update `Formula/summarize.rb`:
      - `url` → GitHub Release asset URL
@@ -92,8 +92,7 @@ Ship is **not done** until:
    - Verify:
      ```bash
      brew uninstall summarize || true
-     brew tap steipete/tap || true
-     brew install steipete/tap/summarize
+     brew install summarize
      summarize --version
      ```
 
@@ -161,7 +160,6 @@ Goal:
 5. Homebrew verification (after formula update)
    ```bash
    brew uninstall summarize || true
-   brew tap steipete/tap || true
    brew install steipete/tap/summarize
    summarize --version
    ```
