@@ -12,7 +12,7 @@ Quickstart:
 
 - Install summarize (choose one):
   - `npm i -g @steipete/summarize`
-  - `brew install steipete/tap/summarize` (macOS only)
+  - `brew install summarize` (macOS, Linux)
 - Build/load extension: `apps/chrome-extension/README.md`
 - Firefox sidebar build: `pnpm -C apps/chrome-extension build:firefox` (load via `about:debugging` → temporary add-on)
 - Open side panel → copy token install command → run:

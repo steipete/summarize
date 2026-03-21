@@ -36,7 +36,7 @@ YouTube slide screenshots (from the browser):
 
 1. Install the CLI (choose one):
    - **npm** (cross‑platform): `npm i -g @steipete/summarize`
-   - **Homebrew** (macOS arm64): `brew install steipete/tap/summarize`
+   - **Homebrew** (macOS arm64): `brew install summarize`
 2. Install the extension (Chrome Web Store link above) and open the Side Panel.
 3. The panel shows a token + install command. Run it in Terminal:
    - `summarize daemon install --token <TOKEN>`
@@ -113,10 +113,10 @@ npm i @steipete/summarize-core
 import { createLinkPreviewClient } from "@steipete/summarize-core/content";
 ```
 
-- Homebrew (custom tap):
+- Homebrew:
 
 ```bash
-brew install steipete/tap/summarize
+brew install summarize
 ```
 
 Homebrew availability depends on the current tap formula for your architecture.

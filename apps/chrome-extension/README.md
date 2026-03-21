@@ -63,7 +63,7 @@ The extension talks to a tiny local daemon that runs on your machine. This proce
 
 1. Install `summarize` (choose one):
    - `npm i -g @steipete/summarize` (requires Node.js 22+)
-   - `brew install steipete/tap/summarize` (macOS arm64)
+   - `brew install summarize` (macOS, Linux)
 2. Open the Side Panel (Chrome) or Sidebar (Firefox). You'll see a **Setup** screen with a token and an install command.
 3. Open Terminal:
    - macOS: Applications → Utilities → Terminal
