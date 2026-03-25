@@ -211,6 +211,8 @@ summarize "https://open.spotify.com/episode/5auotqWAXhhKyb9ymCuBJY"
 
 `--length` controls how much output we ask for (guideline), not a hard cap.
 
+Set a default in `~/.summarize/config.json` with `output.length`.
+
 ```bash
 summarize "https://example.com" --length long
 summarize "https://example.com" --length 20k
@@ -512,6 +514,7 @@ Supported keys today:
 {
   "model": { "id": "openai/gpt-5-mini" },
   "env": { "OPENAI_API_KEY": "sk-..." },
+  "output": { "length": "long" },
   "ui": { "theme": "ember" }
 }
 ```
@@ -531,6 +534,7 @@ Also supported:
 - `models` (define presets selectable via `--model <preset>`)
 - `env` (generic env var defaults; process env still wins)
 - `apiKeys` (legacy shortcut, mapped to env names; prefer `env` for new configs)
+- `output.length` (default `--length`: `short|medium|long|xl|xxl|20k`)
 - `cache.media` (media download cache: TTL 7 days, 2048 MB cap by default; `--no-media-cache` disables)
 - `media.videoMode: "auto"|"transcript"|"understand"`
 - `slides.enabled` / `slides.max` / `slides.ocr` / `slides.dir` (defaults for `--slides`)

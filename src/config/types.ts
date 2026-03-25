@@ -213,6 +213,12 @@ export type SummarizeConfig = {
      * - otherwise: translate the output into the requested language
      */
     language?: string;
+    /**
+     * Default summary length (same values as `--length`).
+     *
+     * Examples: "short", "long", "xl", "20k".
+     */
+    length?: string;
   };
   ui?: {
     /**

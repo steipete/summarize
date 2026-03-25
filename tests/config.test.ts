@@ -58,16 +58,16 @@ describe("config loading", () => {
     });
   });
 
-  it("supports output.language", () => {
+  it("supports output.language and output.length", () => {
     const { root } = writeJsonConfig({
       model: { id: "openai/gpt-5-mini" },
-      output: { language: "de" },
+      output: { language: "de", length: "long" },
     });
 
     const result = loadSummarizeConfig({ env: { HOME: root } });
     expect(result.config).toEqual({
       model: { id: "openai/gpt-5-mini" },
-      output: { language: "de" },
+      output: { language: "de", length: "long" },
     });
   });
 

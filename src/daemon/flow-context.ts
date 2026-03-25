@@ -133,7 +133,6 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
 
   const languageExplicitlySet = typeof languageRaw === "string" && Boolean(languageRaw.trim());
 
-  const { lengthArg } = resolveSummaryLength(lengthRaw);
   const resolvedOverrides: RunOverrides = overrides ?? {
     firecrawlMode: null,
     markdownMode: null,
@@ -200,6 +199,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
   });
   const configForCliWithMagic = applyAutoCliFallbackOverrides(configForCli, resolvedOverrides);
   const allowAutoCliFallback = resolvedOverrides.autoCliFallbackEnabled === true;
+  const { lengthArg } = resolveSummaryLength(lengthRaw, config?.output?.length ?? "xl");
 
   const {
     requestedModel,

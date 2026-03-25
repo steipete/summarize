@@ -29,6 +29,12 @@ For output language:
 2. Config file `output.language` (preferred) or `language` (legacy)
 3. Built-in default (`auto` = match source content language)
 
+For output length:
+
+1. CLI flag `--length`
+2. Config file `output.length`
+3. Built-in default (`xl`)
+
 See `docs/language.md` for supported values.
 
 For prompt:
@@ -58,11 +64,17 @@ For UI theme:
 {
   "model": { "id": "google/gemini-3-flash" },
   "env": { "OPENAI_API_KEY": "sk-..." },
-  "output": { "language": "auto" },
+  "output": { "language": "auto", "length": "long" },
   "prompt": "Explain like I am five.",
   "ui": { "theme": "ember" }
 }
 ```
+
+`output.length` accepts the same values as `--length`:
+
+- Presets: `short`, `medium`, `long`, `xl`, `xxl`
+- Shorthand: `s`, `m`, `l`
+- Character targets: `1500`, `20k`, `20000`
 
 Shorthand (equivalent):
 
