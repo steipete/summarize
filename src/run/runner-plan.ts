@@ -18,6 +18,7 @@ import { resolveRunInput } from "./run-input.js";
 import { createRunMetrics } from "./run-metrics.js";
 import { resolveModelSelection } from "./run-models.js";
 import { resolveDesiredOutputTokens } from "./run-output.js";
+import { resolveSummaryLength } from "./run-settings.js";
 import { resolveStreamSettings } from "./run-stream.js";
 import { createRunnerFlowContexts } from "./runner-contexts.js";
 import { executeRunnerInput } from "./runner-execution.js";
@@ -87,7 +88,7 @@ export async function createRunnerPlan(options: {
     isYoutubeUrl,
     format,
     youtubeMode,
-    lengthArg,
+    lengthArg: requestedLengthArg,
     maxOutputTokensArg,
     timeoutMs,
     retries,
@@ -176,6 +177,9 @@ export async function createRunnerPlan(options: {
   if (!promptOverride && typeof config?.prompt === "string" && config.prompt.trim().length > 0) {
     promptOverride = config.prompt.trim();
   }
+  const lengthArg = lengthExplicitlySet
+    ? requestedLengthArg
+    : resolveSummaryLength(config?.output?.length).lengthArg;
 
   const slidesSettings = resolveRunnerSlidesSettings({
     normalizedArgv,

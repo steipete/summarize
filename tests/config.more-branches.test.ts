@@ -90,6 +90,11 @@ describe("config extra branches", () => {
     );
   });
 
+  it("rejects invalid output.length", () => {
+    const root = writeJsonConfig({ output: { length: "tiny" } });
+    expect(() => loadSummarizeConfig({ env: { HOME: root } })).toThrow(/output\.length/i);
+  });
+
   it("rejects non-object ui config", () => {
     const root = writeJsonConfig({ ui: 1 });
     expect(() => loadSummarizeConfig({ env: { HOME: root } })).toThrow(/"ui" must be an object/i);

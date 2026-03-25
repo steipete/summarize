@@ -1,3 +1,4 @@
+import { parseLengthArg } from "../flags.js";
 import { isCliThemeName, listCliThemes } from "../tty/theme.js";
 import {
   isRecord,
@@ -364,7 +365,30 @@ export function parseOutputConfig(root: Record<string, unknown>, path: string) {
     typeof value.language === "string" && value.language.trim().length > 0
       ? value.language.trim()
       : undefined;
-  return typeof language === "string" ? { language } : undefined;
+  const length = (() => {
+    if (typeof value.length === "undefined") return undefined;
+    if (typeof value.length !== "string") {
+      throw new Error(`Invalid config file ${path}: "output.length" must be a string.`);
+    }
+    const trimmed = value.length.trim();
+    if (!trimmed) {
+      throw new Error(`Invalid config file ${path}: "output.length" must not be empty.`);
+    }
+    try {
+      parseLengthArg(trimmed);
+    } catch (error) {
+      throw new Error(
+        `Invalid config file ${path}: "output.length" is invalid: ${(error as Error).message}`,
+      );
+    }
+    return trimmed;
+  })();
+  return typeof language === "string" || typeof length === "string"
+    ? {
+        ...(typeof language === "string" ? { language } : {}),
+        ...(typeof length === "string" ? { length } : {}),
+      }
+    : undefined;
 }
 
 export function parseUiConfig(root: Record<string, unknown>, path: string) {
