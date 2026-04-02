@@ -16,6 +16,22 @@ import {
 } from "./captions.js";
 import { fetchDurationSecondsWithYtDlp, fetchTranscriptWithYtDlp } from "./yt-dlp.js";
 
+/**
+ * Check if a transcript is suspiciously short relative to the video duration.
+ * Returns true if the transcript appears truncated (less than 1 word per 3 seconds
+ * for videos longer than 3 minutes). This causes the provider flow to fall through
+ * to the next provider (e.g. yt-dlp audio transcription) instead of accepting
+ * a broken/truncated caption track.
+ */
+function isTranscriptTruncated(text: string, durationMetadata: DurationMetadata): boolean {
+  if (!durationMetadata) return false;
+  const { durationSeconds } = durationMetadata;
+  if (durationSeconds < 180) return false;
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  const expectedMinWords = durationSeconds / 3;
+  return wordCount < expectedMinWords;
+}
+
 const YOUTUBE_BOOTSTRAP_PATTERN = /ytcfg\.set|ytInitialPlayerResponse/;
 const WATCH_PAGE_HEADERS = {
   "User-Agent":
@@ -156,13 +172,18 @@ export async function tryWebTranscript(flow: YouTubeProviderFlow): Promise<Provi
       originalUrl: flow.context.url,
     });
     if (transcript?.text) {
-      return {
-        text: normalizeTranscriptText(transcript.text),
-        source: "youtubei",
-        segments: flow.options.transcriptTimestamps ? (transcript.segments ?? null) : null,
-        metadata: { provider: "youtubei", ...(flow.durationMetadata ?? {}) },
-        attemptedProviders: flow.attemptedProviders,
-      };
+      const normalized = normalizeTranscriptText(transcript.text);
+      if (isTranscriptTruncated(normalized, flow.durationMetadata)) {
+        flow.notes.push("youtubei transcript appears truncated; falling through to next provider");
+      } else {
+        return {
+          text: normalized,
+          source: "youtubei",
+          segments: flow.options.transcriptTimestamps ? (transcript.segments ?? null) : null,
+          metadata: { provider: "youtubei", ...(flow.durationMetadata ?? {}) },
+          attemptedProviders: flow.attemptedProviders,
+        };
+      }
     }
   }
 
@@ -180,8 +201,14 @@ export async function tryWebTranscript(flow: YouTubeProviderFlow): Promise<Provi
   });
   if (!transcript?.text) return null;
 
+  const normalized = normalizeTranscriptText(transcript.text);
+  if (isTranscriptTruncated(normalized, flow.durationMetadata)) {
+    flow.notes.push("captionTracks transcript appears truncated; falling through to next provider");
+    return null;
+  }
+
   return {
-    text: normalizeTranscriptText(transcript.text),
+    text: normalized,
     source: "captionTracks",
     segments: flow.options.transcriptTimestamps ? (transcript.segments ?? null) : null,
     metadata: { provider: "captionTracks", ...(flow.durationMetadata ?? {}) },
