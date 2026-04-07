@@ -22,6 +22,7 @@ export function startSpinner({
   stop: () => void;
   clear: () => void;
   pause: () => void;
+  refresh: () => void;
   resume: () => void;
   stopAndClear: () => void;
   setText: (next: string) => void;
@@ -31,6 +32,7 @@ export function startSpinner({
       stop: () => {},
       clear: () => {},
       pause: () => {},
+      refresh: () => {},
       resume: () => {},
       stopAndClear: () => {},
       setText: () => {},
@@ -73,6 +75,15 @@ export function startSpinner({
     spinner.start();
   };
 
+  const refresh = () => {
+    if (ended || paused) return;
+    if (!hasVisibleText(spinner.text)) return;
+    const now = Date.now();
+    if (now - lastRenderAt < 80) return;
+    lastRenderAt = now;
+    spinner.render?.();
+  };
+
   const stop = () => {
     if (ended) return;
     ended = true;
@@ -94,11 +105,7 @@ export function startSpinner({
     if (spinner.text === next) return;
     spinner.text = next;
     if (!paused) {
-      const now = Date.now();
-      if (now - lastRenderAt >= 80) {
-        lastRenderAt = now;
-        spinner.render?.();
-      }
+      refresh();
     }
   };
 
@@ -111,5 +118,5 @@ export function startSpinner({
     discardStdin: true,
   }).start();
 
-  return { stop, clear, pause, resume, stopAndClear, setText };
+  return { stop, clear, pause, refresh, resume, stopAndClear, setText };
 }

@@ -121,4 +121,32 @@ describe("tty spinner", () => {
     expect(spinnerState.text).toBe("Latest");
     vi.useRealTimers();
   });
+
+  it("can refresh the current line after external terminal writes", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000);
+    oraMock.mockReset();
+    const renderSpy = vi.fn();
+    const spinnerState = {
+      isSpinning: true,
+      text: "Loading",
+      stop: vi.fn(),
+      clear: vi.fn(),
+      render: renderSpy,
+      start() {
+        return this;
+      },
+    };
+    oraMock.mockImplementationOnce(() => spinnerState);
+
+    const spinner = startSpinner({ text: "Loading", enabled: true, stream });
+    spinner.refresh();
+    vi.setSystemTime(1_050);
+    spinner.refresh();
+    vi.setSystemTime(1_100);
+    spinner.refresh();
+
+    expect(renderSpy).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
 });

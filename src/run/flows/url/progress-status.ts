@@ -7,7 +7,7 @@ export function createUrlProgressStatus({
   now = () => Date.now(),
 }: {
   enabled: boolean;
-  spinner: { setText: (text: string) => void };
+  spinner: { setText: (text: string) => void; refresh?: () => void };
   oscProgress: OscProgressController;
   now?: () => number;
 }) {
@@ -20,6 +20,10 @@ export function createUrlProgressStatus({
     if (!enabled || !text) return;
     spinner.setText(text);
   };
+  const refresh = () => {
+    if (!enabled) return;
+    spinner.refresh?.();
+  };
 
   return {
     setSummary(text: string, oscLabel?: string | null) {
@@ -28,6 +32,7 @@ export function createUrlProgressStatus({
       render(text);
       if (oscLabel) {
         oscProgress.setIndeterminate(oscLabel);
+        refresh();
       }
     },
     setSlides(text: string, percent?: number | null) {
@@ -44,6 +49,7 @@ export function createUrlProgressStatus({
       } else {
         oscProgress.setIndeterminate("Slides");
       }
+      refresh();
     },
     clearSlides() {
       slidesActive = false;
@@ -51,6 +57,7 @@ export function createUrlProgressStatus({
       if (summaryText) {
         render(summaryText);
         oscProgress.setIndeterminate("Summarizing");
+        refresh();
       }
     },
     isSlidesActive() {

@@ -4,6 +4,7 @@ import { createUrlProgressStatus } from "../src/run/flows/url/progress-status.js
 describe("url progress status", () => {
   it("keeps slide progress visible while summary updates happen", () => {
     const setText = vi.fn();
+    const refresh = vi.fn();
     const oscProgress = {
       setIndeterminate: vi.fn(),
       setPercent: vi.fn(),
@@ -11,7 +12,7 @@ describe("url progress status", () => {
     };
     const status = createUrlProgressStatus({
       enabled: true,
-      spinner: { setText },
+      spinner: { setText, refresh },
       oscProgress,
     });
 
@@ -24,6 +25,7 @@ describe("url progress status", () => {
       "Slides: detecting scenes 35%",
     ]);
     expect(oscProgress.setPercent).toHaveBeenLastCalledWith("Slides", 35);
+    expect(refresh).toHaveBeenCalled();
   });
 
   it("restores the latest summary line after slides finish", () => {

@@ -8,7 +8,7 @@ export function createFetchHtmlProgressRenderer({
   oscProgress,
   theme,
 }: {
-  spinner: { setText: (text: string) => void };
+  spinner: { setText: (text: string) => void; refresh?: () => void };
   oscProgress?: OscProgressController | null;
   theme?: ThemeRenderer | null;
 }): {
@@ -38,6 +38,9 @@ export function createFetchHtmlProgressRenderer({
     if (!options?.force && now - state.lastSpinnerUpdateAtMs < 100) return;
     state.lastSpinnerUpdateAtMs = now;
     spinner.setText(text);
+  };
+  const refreshSpinner = () => {
+    spinner.refresh?.();
   };
 
   const render = () => {
@@ -76,6 +79,7 @@ export function createFetchHtmlProgressRenderer({
     stopTicker();
     oscProgress?.clear();
     updateSpinner(render(), { force: true });
+    refreshSpinner();
   };
 
   return {
@@ -88,6 +92,7 @@ export function createFetchHtmlProgressRenderer({
         startTicker();
         updateSpinner(renderLine("Fetching website", " (connecting)…"));
         oscProgress?.setIndeterminate("Fetching website");
+        refreshSpinner();
         return;
       }
 
@@ -103,6 +108,7 @@ export function createFetchHtmlProgressRenderer({
         } else {
           oscProgress?.setIndeterminate("Fetching website");
         }
+        refreshSpinner();
         return;
       }
 

@@ -13,7 +13,7 @@ export function createTranscriptProgressRenderer({
   oscProgress,
   theme,
 }: {
-  spinner: { setText: (text: string) => void };
+  spinner: { setText: (text: string) => void; refresh?: () => void };
   oscProgress?: OscProgressController | null;
   theme?: ThemeRenderer | null;
 }): {
@@ -58,6 +58,9 @@ export function createTranscriptProgressRenderer({
     state.lastSpinnerUpdateAtMs = now;
     spinner.setText(text);
   };
+  const refreshSpinner = () => {
+    spinner.refresh?.();
+  };
 
   const styleLabel = (text: string) => (theme ? theme.label(text) : text);
   const styleValue = (text: string) => (theme ? theme.value(text) : text);
@@ -77,11 +80,13 @@ export function createTranscriptProgressRenderer({
   const updateOscIndeterminate = (label: string) => {
     if (!oscProgress) return;
     oscProgress.setIndeterminate(label);
+    refreshSpinner();
   };
 
   const updateOscPercent = (label: string, percent: number) => {
     if (!oscProgress) return;
     oscProgress.setPercent(label, percent);
+    refreshSpinner();
   };
 
   const stopTicker = () => {
@@ -305,6 +310,7 @@ export function createTranscriptProgressRenderer({
       if (event.kind === "transcript-done") {
         stopTicker();
         oscProgress?.clear();
+        refreshSpinner();
         if (event.ok) {
           updateSpinner(renderSimple("Transcribed"), { force: true });
         } else {
