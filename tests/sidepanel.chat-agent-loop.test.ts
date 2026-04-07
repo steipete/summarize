@@ -110,6 +110,46 @@ describe("sidepanel chat agent loop", () => {
     );
   });
 
+  it("treats plain string assistant content as no tool calls", async () => {
+    const controller = createController();
+    const chatSession = {
+      isAbortRequested: vi.fn(() => false),
+      requestAgent: vi.fn(async (_messages, _tools, _summary, opts) => {
+        opts?.onChunk?.("Plain reply");
+        return {
+          ok: true,
+          assistant: {
+            role: "assistant",
+            content: "Plain reply",
+          },
+        };
+      }),
+    };
+    const executeToolCall = vi.fn();
+
+    await runChatAgentLoop({
+      automationEnabled: true,
+      summaryMarkdown: null,
+      chatController: controller as never,
+      chatSession,
+      createStreamingAssistantMessage: () =>
+        ({ id: "stream", role: "assistant", content: [] }) as never,
+      executeToolCall,
+      getAutomationToolNames: () => ["navigate"],
+      hasDebuggerPermission: async () => true,
+      markAgentNavigationIntent: vi.fn(),
+      markAgentNavigationResult: vi.fn(),
+      scrollToBottom: vi.fn(),
+      wrapMessage: vi.fn((message) => ({ ...message, id: "wrapped" }) as never),
+    });
+
+    expect(controller.updateStreamingMessage).toHaveBeenCalledWith("Plain reply");
+    expect(controller.replaceMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ content: "Plain reply" }),
+    );
+    expect(executeToolCall).not.toHaveBeenCalled();
+  });
+
   it("removes the placeholder message on request failure", async () => {
     const controller = createController();
     const chatSession = {
