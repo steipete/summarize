@@ -32,8 +32,10 @@ describe("cache keys and tags", () => {
   });
 
   it("hashes instructions-only prompt consistently", () => {
-    const promptWithEmptyContext = "<instructions>Summarize.</instructions>\n<context></context>\n<content>Body</content>";
-    const promptWithNoContextTag = "<instructions>Summarize.</instructions>\n<content>Body</content>";
+    const promptWithEmptyContext =
+      "<instructions>Summarize.</instructions>\n<context></context>\n<content>Body</content>";
+    const promptWithNoContextTag =
+      "<instructions>Summarize.</instructions>\n<content>Body</content>";
 
     const hash1 = buildPromptHash(promptWithEmptyContext);
     const hash2 = buildPromptHash(promptWithNoContextTag);
@@ -58,6 +60,12 @@ describe("cache keys and tags", () => {
     expect(h3).toBe(h4);
     // They should all hash to an empty string's hash (after trim)
     expect(h1).toBe(hashString(""));
+  });
+
+  it("keeps the legacy whole-prompt fallback when no cache tags exist", () => {
+    const prompt = "legacy prompt without tags";
+
+    expect(buildPromptHash(prompt)).toBe(hashString(prompt));
   });
 
   it("changes summary keys when inputs change", () => {
