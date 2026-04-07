@@ -76,14 +76,7 @@ export function resolveCliAvailability({
   config: ConfigForCli;
 }): Partial<Record<CliProvider, boolean>> {
   const cliConfig = config?.cli ?? null;
-  const providers: CliProvider[] = [
-    "claude",
-    "codex",
-    "gemini",
-    "agent",
-    "openclaw",
-    "opencode",
-  ];
+  const providers: CliProvider[] = ["claude", "codex", "gemini", "agent", "openclaw", "opencode"];
   const availability: Partial<Record<CliProvider, boolean>> = {};
   for (const provider of providers) {
     if (isCliDisabled(provider, cliConfig)) {

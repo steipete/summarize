@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SummarizeConfig } from "../src/config.js";
-import { buildAutoModelAttempts } from "../src/model-auto.js";
 import { prependCliCandidates, resolveCliAutoFallbackConfig } from "../src/model-auto-cli.js";
+import { buildAutoModelAttempts } from "../src/model-auto.js";
 
 describe("auto model selection", () => {
   it("preserves candidate order (native then OpenRouter fallback)", () => {

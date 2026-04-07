@@ -7,6 +7,7 @@
 - Slides: support `--slides` for local video files in the main CLI and `summarize slides`, route local videos through the shared slide-aware flow, and document the local-file workflow (#149, thanks @steipete).
 
 - Config: allow setting a default summary length via `output.length`, and keep prompt-override runs aligned with the configured length/language defaults in both CLI and daemon flows (#178, thanks @maciej).
+- Models: add OpenCode as a first-class CLI provider across CLI flags, config, auto fallback, daemon picker/chat flows, and Chrome extension settings, while preserving existing OpenClaw behavior (#169, thanks @maciej).
 
 ### Fixes
 

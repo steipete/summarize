@@ -12,14 +12,14 @@ function resolveConfiguredCliModel(
     provider === "claude"
       ? cli?.claude?.model
       : provider === "codex"
-      ? cli?.codex?.model
-      : provider === "gemini"
-        ? cli?.gemini?.model
-        : provider === "agent"
-          ? cli?.agent?.model
-          : provider === "openclaw"
-            ? cli?.openclaw?.model
-          : cli?.opencode?.model;
+        ? cli?.codex?.model
+        : provider === "gemini"
+          ? cli?.gemini?.model
+          : provider === "agent"
+            ? cli?.agent?.model
+            : provider === "openclaw"
+              ? cli?.openclaw?.model
+              : cli?.opencode?.model;
   return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
 }
 

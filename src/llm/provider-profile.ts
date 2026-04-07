@@ -106,7 +106,7 @@ export function requiredEnvForCliProvider(provider: CliProvider): RequiredModelE
           ? "CLI_OPENCLAW"
           : provider === "opencode"
             ? "CLI_OPENCODE"
-          : "CLI_CLAUDE";
+            : "CLI_CLAUDE";
 }
 
 export function getGatewayProviderProfile(provider: GatewayProvider): GatewayProviderProfile {

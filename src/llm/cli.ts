@@ -154,21 +154,21 @@ export async function runCliModel({
       : env;
 
   const providerConfig = getCliProviderConfig(provider, config);
-
-  if (providerConfig?.extraArgs?.length) {
-    args.push(...providerConfig.extraArgs);
-  }
-  if (extraArgs?.length) {
-    args.push(...extraArgs);
-  }
   const requestedModel = isNonEmptyString(model)
     ? model.trim()
     : isNonEmptyString(providerConfig?.model)
       ? providerConfig.model.trim()
       : null;
+  const providerExtraArgs: string[] = [];
+  if (providerConfig?.extraArgs?.length) {
+    providerExtraArgs.push(...providerConfig.extraArgs);
+  }
+  if (extraArgs?.length) {
+    providerExtraArgs.push(...extraArgs);
+  }
   if (provider === "openclaw") {
     const openclawArgs = [
-      ...args,
+      ...providerExtraArgs,
       "agent",
       "--agent",
       requestedModel ?? "main",
@@ -207,7 +207,7 @@ export async function runCliModel({
     const isolatedCwd =
       !allowTools && !cwd ? await fs.mkdtemp(path.join(tmpdir(), "summarize-opencode-")) : null;
     try {
-      args.push("run", "--format", "json");
+      args.push("run", ...providerExtraArgs, "--format", "json");
       if (requestedModel) {
         args.push("--model", requestedModel);
       }
@@ -231,6 +231,7 @@ export async function runCliModel({
   if (provider === "codex") {
     const outputDir = await fs.mkdtemp(path.join(tmpdir(), "summarize-codex-"));
     const outputPath = path.join(outputDir, "last-message.txt");
+    args.push(...providerExtraArgs);
     args.push("exec", "--output-last-message", outputPath, "--skip-git-repo-check", "--json");
     if (requestedModel) {
       args.push("-m", requestedModel);
@@ -268,6 +269,7 @@ export async function runCliModel({
   if (!isJsonCliProvider(provider)) {
     throw new Error(`Unsupported CLI provider "${provider}".`);
   }
+  args.push(...providerExtraArgs);
   const input = appendJsonProviderArgs({
     provider,
     args,

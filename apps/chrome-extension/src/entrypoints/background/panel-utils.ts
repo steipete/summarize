@@ -104,10 +104,7 @@ export async function getActiveTab(windowId?: number): Promise<chrome.tabs.Tab |
   const fallbackTabs = await chrome.tabs.query(
     typeof windowId === "number" ? { windowId } : { currentWindow: true },
   );
-  const contentTab =
-    fallbackTabs.find(
-      (tab) => isContentTabUrl(tab.url),
-    ) ?? null;
+  const contentTab = fallbackTabs.find((tab) => isContentTabUrl(tab.url)) ?? null;
   return contentTab;
 }
 

@@ -321,7 +321,7 @@ Summarize can use common coding CLIs as local model backends:
 Requirements:
 
 - Binary installed and on `PATH` (or set `CODEX_PATH`, `CLAUDE_PATH`, `GEMINI_PATH`, `AGENT_PATH`, `OPENCLAW_PATH`, `OPENCODE_PATH`)
-- Provider authenticated (`codex login`, `claude auth`, `gemini` login flow, `agent login` or `CURSOR_API_KEY`)
+- Provider authenticated (`codex login`, `claude auth`, `gemini` login flow, `agent login` or `CURSOR_API_KEY`, `opencode auth login`)
 
 Quick smoke test:
 

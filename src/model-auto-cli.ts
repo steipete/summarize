@@ -110,9 +110,9 @@ export function prependCliCandidates({
             ? cli?.agent?.model
             : provider === "openclaw"
               ? cli?.openclaw?.model
-            : provider === "opencode"
-              ? cli?.opencode?.model
-              : cli?.claude?.model;
+              : provider === "opencode"
+                ? cli?.opencode?.model
+                : cli?.claude?.model;
     add(provider, modelOverride);
   }
 
