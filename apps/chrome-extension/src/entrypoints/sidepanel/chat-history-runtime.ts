@@ -7,18 +7,20 @@ export function createChatHistoryRuntime({
   chatLimits,
   normalizeStoredMessage,
   requestChatHistory,
+  getActiveUrl,
 }: {
   chatController: {
     getMessages: () => ChatMessage[];
     setMessages: (messages: ChatMessage[], opts?: { scroll?: boolean }) => void;
   };
   chatHistoryStore: {
-    clear: (tabId: number | null) => Promise<void>;
-    load: (tabId: number) => Promise<ChatMessage[] | null>;
+    clear: (tabId: number | null, url?: string | null) => Promise<void>;
+    load: (tabId: number, url?: string | null) => Promise<ChatMessage[] | null>;
     persist: (
       tabId: number | null,
       messages: ChatMessage[],
       chatEnabled: boolean,
+      url?: string | null,
     ) => Promise<ChatMessage[]>;
   };
   chatLimits: ChatHistoryLimits;
@@ -26,15 +28,16 @@ export function createChatHistoryRuntime({
   requestChatHistory: (
     summary?: string | null,
   ) => Promise<{ ok: boolean; messages?: unknown[]; error?: string }>;
+  getActiveUrl: () => string | null;
 }) {
   let loadId = 0;
 
   return {
     clear(tabId: number | null) {
-      return chatHistoryStore.clear(tabId);
+      return chatHistoryStore.clear(tabId, getActiveUrl());
     },
     load(tabId: number) {
-      return chatHistoryStore.load(tabId);
+      return chatHistoryStore.load(tabId, getActiveUrl());
     },
     async persist(tabId: number | null, chatEnabled: boolean) {
       if (!chatEnabled || !tabId) return;
@@ -43,13 +46,13 @@ export function createChatHistoryRuntime({
       if (compacted.length !== messages.length) {
         chatController.setMessages(compacted, { scroll: false });
       }
-      await chatHistoryStore.persist(tabId, compacted, chatEnabled);
+      await chatHistoryStore.persist(tabId, compacted, chatEnabled, getActiveUrl());
     },
     async restore(tabId: number | null, summaryMarkdown?: string | null) {
       if (!tabId) return;
       loadId += 1;
       const currentLoadId = loadId;
-      const history = await chatHistoryStore.load(tabId);
+      const history = await chatHistoryStore.load(tabId, getActiveUrl());
       if (currentLoadId !== loadId) return;
       if (history?.length) {
         const compacted = compactChatHistory(history, chatLimits);
@@ -67,7 +70,7 @@ export function createChatHistoryRuntime({
           .map((msg) => normalizeStoredMessage(msg as Record<string, unknown>))
           .filter((msg): msg is ChatMessage => Boolean(msg));
         if (!parsed.length) return;
-        const compacted = await chatHistoryStore.persist(tabId, parsed, true);
+        const compacted = await chatHistoryStore.persist(tabId, parsed, true, getActiveUrl());
         chatController.setMessages(compacted, { scroll: false });
       } catch {
         // ignore

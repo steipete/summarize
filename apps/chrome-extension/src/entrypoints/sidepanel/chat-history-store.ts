@@ -1,8 +1,17 @@
 import type { Message } from "@mariozechner/pi-ai";
 import { compactChatHistory, type ChatHistoryLimits } from "./chat-state";
+import { normalizePanelUrl } from "./session-policy";
 import type { ChatMessage } from "./types";
 
-function getChatHistoryKey(tabId: number) {
+function getChatHistoryKey(tabId: number, url?: string | null) {
+  if (url) {
+    try {
+      const normalized = normalizePanelUrl(url);
+      return `chat:tab:${tabId}:${normalized}`;
+    } catch {
+      // fall through
+    }
+  }
   return `chat:tab:${tabId}`;
 }
 
@@ -78,25 +87,25 @@ export function createChatHistoryStore({
 }) {
   const cache = new Map<number, ChatMessage[]>();
 
-  async function clear(tabId: number | null) {
+  async function clear(tabId: number | null, url?: string | null) {
     if (!tabId) return;
     cache.delete(tabId);
     const store = getStorage();
     if (!store) return;
     try {
-      await store.remove(getChatHistoryKey(tabId));
+      await store.remove(getChatHistoryKey(tabId, url));
     } catch {
       // ignore
     }
   }
 
-  async function load(tabId: number): Promise<ChatMessage[] | null> {
+  async function load(tabId: number, url?: string | null): Promise<ChatMessage[] | null> {
     const cached = cache.get(tabId);
     if (cached) return cached;
     const store = getStorage();
     if (!store) return null;
     try {
-      const key = getChatHistoryKey(tabId);
+      const key = getChatHistoryKey(tabId, url);
       const res = await store.get(key);
       const raw = res?.[key];
       if (!Array.isArray(raw)) return null;
@@ -112,14 +121,14 @@ export function createChatHistoryStore({
     }
   }
 
-  async function persist(tabId: number | null, messages: ChatMessage[], chatEnabled: boolean) {
+  async function persist(tabId: number | null, messages: ChatMessage[], chatEnabled: boolean, url?: string | null) {
     if (!chatEnabled || !tabId) return messages;
     const compacted = compactChatHistory(messages, chatLimits);
     cache.set(tabId, compacted);
     const store = getStorage();
     if (!store) return compacted;
     try {
-      await store.set({ [getChatHistoryKey(tabId)]: compacted });
+      await store.set({ [getChatHistoryKey(tabId, url)]: compacted });
     } catch {
       // ignore
     }

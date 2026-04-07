@@ -18,6 +18,7 @@ describe("sidepanel chat history runtime", () => {
       chatLimits: { maxMessages: 10, maxChars: 100 },
       normalizeStoredMessage: vi.fn(),
       requestChatHistory: vi.fn(),
+      getActiveUrl: vi.fn(() => "https://example.com"),
     });
 
     await runtime.persist(7, true);
@@ -26,6 +27,7 @@ describe("sidepanel chat history runtime", () => {
       7,
       [{ id: "1", role: "user", content: "hello", timestamp: 1 }],
       true,
+      "https://example.com",
     );
     expect(chatController.setMessages).not.toHaveBeenCalled();
   });
@@ -48,6 +50,7 @@ describe("sidepanel chat history runtime", () => {
       chatLimits: { maxMessages: 10, maxChars: 100 },
       normalizeStoredMessage: vi.fn(),
       requestChatHistory,
+      getActiveUrl: vi.fn(() => "https://example.com"),
     });
 
     await runtime.restore(7, "summary");
@@ -82,6 +85,7 @@ describe("sidepanel chat history runtime", () => {
       chatLimits: { maxMessages: 10, maxChars: 100 },
       normalizeStoredMessage: vi.fn((raw) => (raw.role === "user" ? (raw as never) : null)),
       requestChatHistory,
+      getActiveUrl: vi.fn(() => "https://example.com"),
     });
 
     await runtime.restore(7, "summary");
@@ -89,6 +93,7 @@ describe("sidepanel chat history runtime", () => {
       7,
       [{ role: "user", content: "remote", timestamp: 1 }],
       true,
+      "https://example.com",
     );
     expect(chatController.setMessages).toHaveBeenCalledWith(
       [{ role: "user", content: "remote", timestamp: 1 }],

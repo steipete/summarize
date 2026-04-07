@@ -54,7 +54,7 @@ type UiStateRuntimeOpts = {
   requestAgentAbort: (reason: string) => void;
   clearChatHistoryForActiveTab: () => void | Promise<void>;
   resetChatState: () => void;
-  migrateChatHistory: (fromTabId: number | null, toTabId: number | null) => void | Promise<void>;
+  migrateChatHistory: (fromTabId: number | null, toTabId: number | null, toUrl: string | null) => void | Promise<void>;
   maybeStartPendingSummaryRunForUrl: (url: string | null) => boolean;
   maybeStartPendingSlidesForUrl: (url: string | null) => void;
   resolveActiveSlidesRunId: () => string | null;
@@ -218,7 +218,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
         void opts.clearChatHistoryForActiveTab();
         opts.resetChatState();
       } else if (navigation.shouldMigrateChat) {
-        void opts.migrateChatHistory(previousTabId, nextTabId);
+        void opts.migrateChatHistory(previousTabId, nextTabId, nextTabUrl);
       }
       if (navigation.nextInputMode) {
         opts.setInputMode(navigation.nextInputMode);

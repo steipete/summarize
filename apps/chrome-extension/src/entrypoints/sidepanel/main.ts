@@ -266,6 +266,7 @@ const chatHistoryRuntime = createChatHistoryRuntime({
   chatLimits,
   normalizeStoredMessage,
   requestChatHistory: (summary) => chatSession.requestChatHistory(summary),
+  getActiveUrl: () => activeTabUrl,
 });
 
 type AutomationNoticeAction = "extensions" | "options";
@@ -630,11 +631,11 @@ const navigationRuntime = createNavigationRuntime({
   },
 });
 
-async function migrateChatHistory(fromTabId: number | null, toTabId: number | null) {
+async function migrateChatHistory(fromTabId: number | null, toTabId: number | null, toUrl: string | null) {
   if (!fromTabId || !toTabId || fromTabId === toTabId) return;
   const messages = chatController.getMessages();
   if (messages.length === 0) return;
-  await chatHistoryStore.persist(toTabId, messages, true);
+  await chatHistoryStore.persist(toTabId, messages, true, toUrl);
 }
 
 const syncWithActiveTab = () => navigationRuntime.syncWithActiveTab();
