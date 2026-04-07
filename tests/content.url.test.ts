@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractYouTubeVideoId,
+  inferDirectMediaKind,
   isDirectMediaExtension,
   isDirectMediaUrl,
   isPodcastHost,
@@ -60,6 +61,14 @@ describe("content/url", () => {
     expect(isDirectMediaExtension(".ogg")).toBe(true);
     expect(isDirectMediaExtension("MP4")).toBe(true);
     expect(isDirectMediaExtension(".txt")).toBe(false);
+  });
+
+  it("infers direct media kind from URL or file path", () => {
+    expect(inferDirectMediaKind("https://example.com/video.mp4")).toBe("video");
+    expect(inferDirectMediaKind("https://example.com/audio.mp3?x=1")).toBe("audio");
+    expect(inferDirectMediaKind("file:///tmp/talk.webm")).toBe("video");
+    expect(inferDirectMediaKind("/tmp/clip.wav")).toBe("audio");
+    expect(inferDirectMediaKind("https://example.com/article")).toBeNull();
   });
 
   it("detects podcast hosts", () => {

@@ -69,4 +69,20 @@ describe("generic transcript provider (video tag fallback)", () => {
     expect(fetchTranscriptWithYtDlp).not.toHaveBeenCalled();
     expect(result.source).toBeNull();
   });
+
+  it("passes inferred video kind for direct media URLs", async () => {
+    fetchTranscriptWithYtDlp.mockClear();
+
+    await fetchTranscript(
+      { url: "file:///tmp/local-video.webm", html: null, resourceKey: null },
+      buildOptions({ mediaTranscriptMode: "prefer" }),
+    );
+
+    expect(fetchTranscriptWithYtDlp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "file:///tmp/local-video.webm",
+        mediaKind: "video",
+      }),
+    );
+  });
 });

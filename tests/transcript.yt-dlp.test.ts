@@ -1,5 +1,9 @@
 import { EventEmitter } from "node:events";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { PassThrough } from "node:stream";
+import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const spawnMock = vi.hoisted(() => vi.fn());
@@ -67,6 +71,39 @@ describe("yt-dlp transcript helper", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     globalThis.fetch = originalFetch;
+  });
+
+  it("skips yt-dlp download for local file URLs", async () => {
+    const root = await mkdtemp(join(tmpdir(), "summarize-ytdlp-local-"));
+    const filePath = join(root, "local-video.webm");
+    await writeFile(filePath, new Uint8Array([1, 2, 3]));
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(JSON.stringify({ text: "Local transcript" }), { status: 200 }),
+    );
+
+    try {
+      const events: string[] = [];
+      const result = await fetchTranscriptWithYtDlp({
+        ytDlpPath: "/usr/bin/yt-dlp",
+        groqApiKey: null,
+        openaiApiKey: "OPENAI",
+        falApiKey: null,
+        url: pathToFileURL(filePath).href,
+        mediaKind: "video",
+        onProgress: (event) => events.push(event.kind),
+      });
+
+      expect(result.text).toBe("Local transcript");
+      expect(result.provider).toBe("openai");
+      expect(events).not.toContain("transcript-media-download-start");
+      expect(spawnMock).not.toHaveBeenCalledWith(
+        "/usr/bin/yt-dlp",
+        expect.anything(),
+        expect.anything(),
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("returns a helpful error when yt-dlp path is missing", async () => {

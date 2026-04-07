@@ -35,11 +35,42 @@ export const DIRECT_MEDIA_EXTENSIONS = [
   "aiff",
   "wma",
 ] as const;
+const DIRECT_VIDEO_EXTENSION_SET = new Set<string>([
+  "mp4",
+  "mov",
+  "m4v",
+  "mkv",
+  "webm",
+  "mpeg",
+  "mpg",
+  "avi",
+  "wmv",
+  "flv",
+]);
+const DIRECT_AUDIO_EXTENSION_SET = new Set<string>([
+  "mp3",
+  "m4a",
+  "wav",
+  "flac",
+  "aac",
+  "ogg",
+  "opus",
+  "aiff",
+  "wma",
+]);
 const DIRECT_MEDIA_EXTENSION_SET = new Set<string>(DIRECT_MEDIA_EXTENSIONS);
 const DIRECT_MEDIA_URL_PATTERN = new RegExp(
   `\\.(${DIRECT_MEDIA_EXTENSIONS.join("|")})(\\?|#|$)`,
   "i",
 );
+
+function normalizePathForExtension(value: string): string {
+  try {
+    return new URL(value).pathname;
+  } catch {
+    return value.split(/[?#]/, 1)[0] ?? value;
+  }
+}
 
 export function isYouTubeVideoUrl(rawUrl: string): boolean {
   try {
@@ -107,6 +138,17 @@ export function isDirectMediaUrl(url: string): boolean {
 export function isDirectMediaExtension(ext: string): boolean {
   const normalized = ext.trim().replace(/^\./, "").toLowerCase();
   return DIRECT_MEDIA_EXTENSION_SET.has(normalized);
+}
+
+export function inferDirectMediaKind(value: string): "video" | "audio" | null {
+  const match = normalizePathForExtension(value)
+    .toLowerCase()
+    .match(/\.([a-z0-9]+)$/i);
+  const ext = match?.[1] ?? null;
+  if (!ext) return null;
+  if (DIRECT_VIDEO_EXTENSION_SET.has(ext)) return "video";
+  if (DIRECT_AUDIO_EXTENSION_SET.has(ext)) return "audio";
+  return null;
 }
 
 export function shouldPreferUrlMode(url: string): boolean {

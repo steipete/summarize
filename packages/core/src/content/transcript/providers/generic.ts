@@ -4,7 +4,7 @@ import {
   isTwitterStatusUrl,
 } from "../../link-preview/content/twitter-utils.js";
 import type { TranscriptSegment } from "../../link-preview/types.js";
-import { isDirectMediaUrl } from "../../url.js";
+import { inferDirectMediaKind, isDirectMediaUrl } from "../../url.js";
 import { normalizeTranscriptText } from "../normalize.js";
 import {
   jsonTranscriptToPlainText,
@@ -33,7 +33,8 @@ export const fetchTranscript = async (
   const twitterStatus = isTwitterStatusUrl(context.url);
   const twitterMedia = twitterStatus || isTwitterBroadcastUrl(context.url);
   const hasEmbeddedMedia = Boolean(embedded?.mediaUrl || embedded?.kind);
-  const mediaKindHint = options.mediaKindHint ?? embedded?.kind ?? null;
+  const mediaKindHint =
+    options.mediaKindHint ?? embedded?.kind ?? inferDirectMediaKind(context.url) ?? null;
   if (embedded?.track) {
     attemptedProviders.push("embedded");
     const caption = await fetchCaptionTrack(
@@ -76,7 +77,7 @@ export const fetchTranscript = async (
       transcription,
       notes,
       attemptedProviders,
-      kind: embedded?.kind ?? null,
+      kind: embedded?.kind ?? inferDirectMediaKind(mediaUrl ?? context.url) ?? null,
     });
     if (result) return result;
   }

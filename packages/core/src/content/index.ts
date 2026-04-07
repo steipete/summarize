@@ -36,6 +36,7 @@ export {
 export {
   DIRECT_MEDIA_EXTENSIONS,
   extractYouTubeVideoId,
+  inferDirectMediaKind,
   isDirectMediaExtension,
   isDirectMediaUrl,
   isPodcastHost,
