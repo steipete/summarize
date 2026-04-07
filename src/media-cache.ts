@@ -87,7 +87,10 @@ const resolveExtension = (filename: string | null, mediaType: string | null): st
   if (normalized.includes("audio/flac")) return ".flac";
   if (normalized.includes("video/mp4")) return ".mp4";
   if (normalized.includes("video/webm")) return ".webm";
-  if (normalized.includes("application/vnd.apple.mpegurl") || normalized.includes("application/x-mpegurl"))
+  if (
+    normalized.includes("application/vnd.apple.mpegurl") ||
+    normalized.includes("application/x-mpegurl")
+  )
     return ".m3u8";
   return ".bin";
 };

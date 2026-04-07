@@ -40,6 +40,30 @@ describe("media cache", () => {
     }
   });
 
+  it("uses .m3u8 for HLS playlist media types without filenames", async () => {
+    const cacheDir = await makeTempDir("summarize-media-cache-");
+    try {
+      const cache = await createMediaCache({
+        path: cacheDir,
+        maxBytes: 10 * 1024 * 1024,
+        ttlMs: 60_000,
+        verify: "size",
+      });
+      const tempFile = join(cacheDir, "playlist.bin");
+      await writeFile(tempFile, "#EXTM3U\n");
+
+      const stored = await cache.put({
+        url: "https://example.com/live",
+        filePath: tempFile,
+        mediaType: "application/vnd.apple.mpegurl",
+        filename: null,
+      });
+      expect(stored?.filePath.endsWith(".m3u8")).toBe(true);
+    } finally {
+      await rm(cacheDir, { recursive: true, force: true });
+    }
+  });
+
   it("ignores non-http urls and keeps source intact", async () => {
     const cacheDir = await makeTempDir("summarize-media-cache-");
     try {
