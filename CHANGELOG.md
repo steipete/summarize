@@ -11,6 +11,7 @@
 
 ### Fixes
 
+- CI: update the GitHub Pages workflow to `actions/configure-pages@v6` and `actions/deploy-pages@v5` (#182, thanks @dependabot).
 - Docs/setup: switch Homebrew instructions from the old tap to the official `brew install summarize` formula, including the side-panel setup UI and release checklist (#172, thanks @zeldrisho).
 - Chrome extension: detect blank `userAgentData.platform` browsers like Vivaldi by falling back to `navigator.platform` before choosing OS-specific setup instructions (#158, thanks @bytrangle).
 - YouTube: detect obviously truncated caption-track transcripts on long videos and fall through to yt-dlp transcription instead of caching a broken partial result (#184, thanks @sportiz91).
