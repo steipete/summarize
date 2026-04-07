@@ -11,6 +11,7 @@
 ### Fixes
 
 - YouTube: detect obviously truncated caption-track transcripts on long videos and fall through to yt-dlp transcription instead of caching a broken partial result (#184, thanks @sportiz91).
+- Windows containers: let `summarize daemon install` start the daemon for the current container session without Scheduled Task registration, keep `0.0.0.0` binding Windows-only, and probe slide tools by spawning commands when PATH lookup is unreliable (#152, thanks @mathicg).
 - Cache: include the prompt `<context>` block in summary cache hashing and bump the cache format version so stale cross-page summary collisions cannot be reused (#171, thanks @mvance).
 - Chrome extension chat: handle plain-string assistant replies in the side-panel agent loop instead of crashing on `.filter()` tool-call extraction (#186, thanks @Youpen-y).
 - YouTube: treat yt-dlp “no audio stream” videos as a non-fatal unavailable transcript case so summarize can continue cleanly with an explanatory note (#161, thanks @mdsakalu).

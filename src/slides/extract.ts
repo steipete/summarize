@@ -1,6 +1,5 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-<<<<<<< HEAD
 import type { MediaCache } from "../content/index.js";
 import { canSpawnCommand, resolveExecutableInPath } from "../run/env.js";
 import {
@@ -250,12 +249,12 @@ export async function extractSlidesForSource({
       const ocrEnabled = Boolean(settings.ocr && tesseractPath);
       const ocrAvailable = Boolean(
         tesseractPath ??
-          (await resolveRunnableTool({
-            binary: "tesseract",
-            env,
-            explicitEnvKey: "TESSERACT_PATH",
-            probeArgs: ["--version"],
-          })),
+        (await resolveRunnableTool({
+          binary: "tesseract",
+          env,
+          explicitEnvKey: "TESSERACT_PATH",
+          probeArgs: ["--version"],
+        })),
       );
 
       {

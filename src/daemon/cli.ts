@@ -1,7 +1,7 @@
+import { spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { spawn } from "node:child_process";
 import { buildDaemonHelp } from "../run/help.js";
 import { resolveCliEntrypointPathForService } from "./cli-entrypoint.js";
 import {
@@ -524,7 +524,9 @@ export async function handleDaemonRequest({
       return true;
     }
     if (process.platform === "win32" && isWindowsContainerEnvironment(envForRun)) {
-      stdout.write("Autostart is manual in Windows container mode; no Scheduled Task is registered.\n");
+      stdout.write(
+        "Autostart is manual in Windows container mode; no Scheduled Task is registered.\n",
+      );
       stdout.write(
         "Restart the container or rerun `summarize daemon install --token <token>` to start the daemon again.\n",
       );

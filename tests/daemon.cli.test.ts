@@ -247,7 +247,9 @@ describe("daemon cli", () => {
     );
     expect(text).toContain("Windows container detected: skipped Scheduled Task registration.");
     expect(text).toContain("Daemon autostart is not available in Windows container mode.");
-    expect(text).toContain("Run `summarize daemon install --token <TOKEN>` each time the container starts");
+    expect(text).toContain(
+      "Run `summarize daemon install --token <TOKEN>` each time the container starts",
+    );
     expect(text).toContain("Publish port 8787:8787 so the host browser can reach the daemon.");
     expect(text).toContain("OK: daemon is running in this container session and authenticated.");
   });

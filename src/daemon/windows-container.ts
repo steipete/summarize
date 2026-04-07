@@ -11,9 +11,7 @@ function isTruthyEnvValue(value: string | undefined): boolean {
   return normalized !== "" && normalized !== "0" && normalized !== "false" && normalized !== "no";
 }
 
-export function isWindowsContainerEnvironment(
-  env: Record<string, string | undefined>,
-): boolean {
+export function isWindowsContainerEnvironment(env: Record<string, string | undefined>): boolean {
   const override = env[WINDOWS_CONTAINER_INSTALL_MODE_ENV]?.trim().toLowerCase();
   if (override === "container") return true;
   if (override === "desktop") return false;
