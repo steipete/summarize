@@ -16,7 +16,7 @@ export function installStepsHtml({
   showTroubleshooting?: boolean;
 }) {
   const npmCmd = "npm i -g @steipete/summarize";
-  const brewCmd = "brew install steipete/tap/summarize";
+  const brewCmd = "brew install summarize";
   const daemonCmd = `summarize daemon install --token ${token}`;
   const isMac = platformKind === "mac";
   const isLinux = platformKind === "linux";
@@ -55,8 +55,8 @@ export function installStepsHtml({
       </div>
       <p class="setup__hint" data-install-hint>${
         isMac
-          ? "Homebrew installs the daemon-ready binary (macOS arm64)."
-          : "Homebrew tap is macOS-only."
+          ? "Homebrew installs summarize plus the local media dependencies."
+          : "NPM installs the CLI (requires Node.js)."
       }</p>
     </div>
   `;
@@ -141,7 +141,7 @@ export function wireSetupButtons({
   renderSetup: (token: string) => void;
 }) {
   const npmCmd = "npm i -g @steipete/summarize";
-  const brewCmd = "brew install steipete/tap/summarize";
+  const brewCmd = "brew install summarize";
   const daemonCmd = `summarize daemon install --token ${token}`;
   const isMac = platformKind === "mac";
   const installMethodKey = "summarize.installMethod";
@@ -187,9 +187,10 @@ export function wireSetupButtons({
     }
     if (installHintEl) {
       if (!isMac) {
-        installHintEl.textContent = "Homebrew tap is macOS-only.";
+        installHintEl.textContent = "NPM installs the CLI (requires Node.js).";
       } else if (method === "brew") {
-        installHintEl.textContent = "Homebrew installs the daemon-ready binary (macOS arm64).";
+        installHintEl.textContent =
+          "Homebrew installs summarize plus the local media dependencies.";
       } else {
         installHintEl.textContent = "NPM installs the CLI (requires Node.js).";
       }
