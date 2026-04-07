@@ -16,7 +16,9 @@ import {
 import type { WhisperProgressEvent, WhisperTranscriptionResult } from "./types.js";
 import { wrapError } from "./utils.js";
 
-export async function isWhisperCppReady(env?: Record<string, string | undefined>): Promise<boolean> {
+export async function isWhisperCppReady(
+  env?: Record<string, string | undefined>,
+): Promise<boolean> {
   if (!isWhisperCppEnabled(env)) return false;
   if (!(await isWhisperCliAvailable(env))) return false;
   const model = await resolveWhisperCppModelPath(env);
