@@ -54,7 +54,7 @@ import { isWindowsContainerEnvironment } from "./windows-container.js";
 export { corsHeaders, isTrustedOrigin } from "./server-http.js";
 
 export function resolveDaemonListenHost(env: Record<string, string | undefined>): string {
-  return isWindowsContainerEnvironment(env) ? "0.0.0.0" : DAEMON_HOST;
+  return process.platform === "win32" && isWindowsContainerEnvironment(env) ? "0.0.0.0" : DAEMON_HOST;
 }
 
 function createLineWriter(onLine: (line: string) => void) {

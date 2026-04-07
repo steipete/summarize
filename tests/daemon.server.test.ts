@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   buildHealthPayload,
   corsHeaders,
@@ -97,15 +97,31 @@ describe("daemon/server CORS allowlist", () => {
 });
 
 describe("daemon/server listen host", () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, "platform", { value: originalPlatform });
+  });
+
   it("binds to loopback by default", () => {
     expect(resolveDaemonListenHost({})).toBe("127.0.0.1");
   });
 
   it("binds to all interfaces in Windows container mode", () => {
+    Object.defineProperty(process, "platform", { value: "win32" });
     expect(
       resolveDaemonListenHost({
         CONTAINER_SANDBOX_MOUNT_POINT: "C:\\ContainerMappedDirectories",
       }),
     ).toBe("0.0.0.0");
+  });
+
+  it("keeps loopback on non-Windows hosts even with container markers", () => {
+    Object.defineProperty(process, "platform", { value: "linux" });
+    expect(
+      resolveDaemonListenHost({
+        RUNNING_IN_CONTAINER: "1",
+      }),
+    ).toBe("127.0.0.1");
   });
 });
