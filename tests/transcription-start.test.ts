@@ -132,4 +132,26 @@ describe("transcription start helper", () => {
     expect(startInfo.providerHint).toBe("cpp");
     expect(startInfo.modelId).toBe("tiny.en");
   });
+
+  it("passes resolved transcription env through to whisper.cpp helpers", async () => {
+    whisperMock.isWhisperCppReady.mockResolvedValue(true);
+    whisperMock.resolveWhisperCppModelNameForDisplay.mockResolvedValue("base");
+
+    const effectiveEnv = {
+      SUMMARIZE_WHISPER_CPP_BINARY: "/tmp/custom-whisper-cli",
+      SUMMARIZE_WHISPER_CPP_MODEL_PATH: "/tmp/ggml-base.bin",
+    };
+
+    const startInfo = await resolveTranscriptionStartInfo({
+      env: { SUMMARIZE_WHISPER_CPP_MODEL_PATH: "/tmp/ignored.bin" },
+      transcription: { env: effectiveEnv },
+      groqApiKey: null,
+      openaiApiKey: null,
+      falApiKey: null,
+    });
+
+    expect(whisperMock.isWhisperCppReady).toHaveBeenCalledWith(effectiveEnv);
+    expect(whisperMock.resolveWhisperCppModelNameForDisplay).toHaveBeenCalledWith(effectiveEnv);
+    expect(startInfo.modelId).toBe("base");
+  });
 });

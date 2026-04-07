@@ -118,4 +118,23 @@ describe("whisper.cpp readiness", () => {
     expect(await mod.isWhisperCppReady()).toBe(true);
     expect(await mod.resolveWhisperCppModelNameForDisplay()).toBe("base");
   });
+
+  it("accepts explicit env overrides without reading process.env model settings", async () => {
+    process.env.SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP = "0";
+    process.env.VITEST_WHISPER_SPAWN_MODE = "ok";
+    delete process.env.SUMMARIZE_WHISPER_CPP_MODEL_PATH;
+
+    const dir = mkdtempSync(join(tmpdir(), "summarize-whisper-env-"));
+    const modelPath = join(dir, "ggml-base.en.bin");
+    writeFileSync(modelPath, "x");
+
+    const env = {
+      SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP: "0",
+      SUMMARIZE_WHISPER_CPP_MODEL_PATH: modelPath,
+    };
+
+    const mod = await import("../packages/core/src/transcription/whisper");
+    expect(await mod.isWhisperCppReady(env)).toBe(true);
+    expect(await mod.resolveWhisperCppModelNameForDisplay(env)).toBe("base");
+  });
 });
