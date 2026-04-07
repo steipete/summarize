@@ -116,6 +116,39 @@ describe("daemon/agent", () => {
     expect(options.apiKey).toBe("sk-openai");
   });
 
+  it("falls back to a synthetic model for unknown custom models when a base url is configured", async () => {
+    const home = makeTempHome();
+    mockGetModel.mockReturnValueOnce(undefined);
+
+    await completeAgentResponse({
+      env: {
+        HOME: home,
+        OPENAI_API_KEY: "sk-openai",
+        OPENAI_BASE_URL: "http://127.0.0.1:1234/v1",
+      },
+      pageUrl: "https://example.com",
+      pageTitle: null,
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "openai/my-custom-model",
+      tools: [],
+      automationEnabled: false,
+    });
+
+    const model = mockCompleteSimple.mock.calls[0]?.[0] as {
+      id: string;
+      provider: string;
+      api: string;
+      baseUrl?: string;
+    };
+    const options = mockCompleteSimple.mock.calls[0]?.[2] as { apiKey?: string };
+    expect(model.id).toBe("my-custom-model");
+    expect(model.provider).toBe("openai");
+    expect(model.api).toBe("openai-completions");
+    expect(model.baseUrl).toBe("http://127.0.0.1:1234/v1");
+    expect(options.apiKey).toBe("sk-openai");
+  });
+
   it("throws a helpful error when openrouter key is missing", async () => {
     const home = makeTempHome();
     await expect(

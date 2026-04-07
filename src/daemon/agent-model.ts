@@ -56,10 +56,7 @@ function resolveModelWithFallback({
   try {
     const model = getModel(provider as never, modelId as never);
     if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
-    return overrideModelBaseUrl(
-      model as Model<Api>,
-      baseUrl,
-    );
+    return overrideModelBaseUrl(model as Model<Api>, baseUrl);
   } catch (error) {
     if (baseUrl) {
       return createSyntheticModel({
