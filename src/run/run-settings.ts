@@ -20,7 +20,7 @@ import {
 } from "../flags.js";
 import type { OutputLanguage } from "../language.js";
 import { resolveOutputLanguage } from "../language.js";
-import type { SummaryLengthTarget } from "../prompts/index.js";
+import { formatPresetLengthGuidance, type SummaryLengthTarget } from "../prompts/index.js";
 import {
   parseCliProvider,
   parseOptionalBoolean,
@@ -88,6 +88,12 @@ export function resolveSummaryLength(
   const summaryLength =
     lengthArg.kind === "preset" ? lengthArg.preset : { maxCharacters: lengthArg.maxCharacters };
   return { lengthArg, summaryLength };
+}
+
+export function buildPromptLengthInstruction(lengthArg: LengthArg): string {
+  return lengthArg.kind === "chars"
+    ? `Output is ${lengthArg.maxCharacters.toLocaleString()} characters.`
+    : formatPresetLengthGuidance(lengthArg.preset);
 }
 
 export function resolveOutputLanguageSetting({

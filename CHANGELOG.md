@@ -6,6 +6,8 @@
 
 - Slides: support `--slides` for local video files in the main CLI and `summarize slides`, route local videos through the shared slide-aware flow, and document the local-file workflow (#149, thanks @steipete).
 
+- Config: allow setting a default summary length via `output.length`, and keep prompt-override runs aligned with the configured length/language defaults in both CLI and daemon flows (#178, thanks @maciej).
+
 ### Fixes
 
 - YouTube: detect obviously truncated caption-track transcripts on long videos and fall through to yt-dlp transcription instead of caching a broken partial result (#184, thanks @sportiz91).

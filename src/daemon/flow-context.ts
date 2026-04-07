@@ -20,6 +20,7 @@ import { createRunMetrics } from "../run/run-metrics.js";
 import { resolveModelSelection } from "../run/run-models.js";
 import { resolveDesiredOutputTokens } from "../run/run-output.js";
 import {
+  buildPromptLengthInstruction,
   type RunOverrides,
   resolveOutputLanguageSetting,
   resolveSummaryLength,
@@ -279,16 +280,9 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     fallback: outputLanguageFromConfig,
   });
 
-  const lengthInstruction =
-    promptOverride && lengthArg.kind === "chars"
-      ? `Output is ${lengthArg.maxCharacters.toLocaleString()} characters.`
-      : null;
-  const languageExplicit =
-    typeof languageRaw === "string" &&
-    languageRaw.trim().length > 0 &&
-    languageRaw.trim().toLowerCase() !== "auto";
+  const lengthInstruction = promptOverride ? buildPromptLengthInstruction(lengthArg) : null;
   const languageInstruction =
-    promptOverride && languageExplicit && outputLanguage.kind === "fixed"
+    promptOverride && outputLanguage.kind === "fixed"
       ? `Output should be ${outputLanguage.label}.`
       : null;
 

@@ -18,7 +18,7 @@ import { resolveRunInput } from "./run-input.js";
 import { createRunMetrics } from "./run-metrics.js";
 import { resolveModelSelection } from "./run-models.js";
 import { resolveDesiredOutputTokens } from "./run-output.js";
-import { resolveSummaryLength } from "./run-settings.js";
+import { buildPromptLengthInstruction, resolveSummaryLength } from "./run-settings.js";
 import { resolveStreamSettings } from "./run-stream.js";
 import { createRunnerFlowContexts } from "./runner-contexts.js";
 import { executeRunnerInput } from "./runner-execution.js";
@@ -189,12 +189,9 @@ export async function createRunnerPlan(options: {
   });
   const transcriptTimestamps = Boolean(programOpts.timestamps) || Boolean(slidesSettings);
 
-  const lengthInstruction =
-    promptOverride && lengthExplicitlySet && lengthArg.kind === "chars"
-      ? `Output is ${lengthArg.maxCharacters.toLocaleString()} characters.`
-      : null;
+  const lengthInstruction = promptOverride ? buildPromptLengthInstruction(lengthArg) : null;
   const languageInstruction =
-    promptOverride && languageExplicitlySet && outputLanguage.kind === "fixed"
+    promptOverride && outputLanguage.kind === "fixed"
       ? `Output should be ${outputLanguage.label}.`
       : null;
 

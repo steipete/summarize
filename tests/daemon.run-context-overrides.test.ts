@@ -137,6 +137,29 @@ describe("daemon/flow-context (overrides)", () => {
     expect(requestCtx.flags.lengthArg).toEqual({ kind: "chars", maxCharacters: 20000 });
   });
 
+  it("keeps config output defaults in prompt instructions when promptOverride is set", () => {
+    const home = makeTempHome();
+    writeConfig(home, {
+      output: { length: "short", language: "de" },
+    });
+
+    const ctx = createDaemonUrlFlowContext({
+      env: { HOME: home },
+      fetchImpl: fetch,
+      cache: makeCacheState(),
+      modelOverride: null,
+      promptOverride: "Explain for a kid.",
+      lengthRaw: "",
+      languageRaw: "",
+      maxExtractCharacters: null,
+      runStartedAtMs: Date.now(),
+      stdoutSink: { writeChunk: () => {} },
+    });
+
+    expect(ctx.flags.lengthInstruction).toContain("Target length: around 900 characters");
+    expect(ctx.flags.languageInstruction).toBe("Output should be German.");
+  });
+
   it("applies run overrides for daemon contexts", () => {
     const home = makeTempHome();
     const ctx = createDaemonUrlFlowContext({
