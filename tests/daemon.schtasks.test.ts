@@ -72,13 +72,13 @@ describe("daemon/schtasks install", () => {
     mocks.execFile.mockReset();
   });
 
-  it("registers the task with cmd.exe /c <daemon.cmd>", async () => {
+  it("registers a hidden /XML task that launches via wscript with battery flags off", async () => {
     mockExecFileSuccess();
     const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
     const out = collectStream();
 
     const { scriptPath } = await installScheduledTask({
-      env: { HOME: home },
+      env: { HOME: home, USERNAME: "testuser", USERDOMAIN: "TESTHOST" },
       stdout: out.stream,
       programArguments: ["node", "dist/cli.js", "daemon", "run"],
     });
@@ -87,18 +87,47 @@ describe("daemon/schtasks install", () => {
     expect(script).toContain("node dist/cli.js daemon run");
     expect(out.getText()).toContain("Installed Scheduled Task");
 
+    const launcherPath = path.join(home, ".summarize", "daemon-launch.vbs");
+    const launcher = readFileSync(launcherPath, "utf8");
+    expect(launcher).toContain('Set sh = CreateObject("WScript.Shell")');
+    expect(launcher).toContain('sh.Run "node dist/cli.js daemon run", 0, False');
+
+    const xmlPath = path.join(home, ".summarize", "daemon-task.xml");
+    const xml = readFileSync(xmlPath, "utf8");
+    expect(xml).toContain("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>");
+    expect(xml).toContain("<StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>");
+    expect(xml).toContain("<Hidden>true</Hidden>");
+    expect(xml).toContain("<LogonTrigger>");
+    expect(xml).toContain("<UserId>TESTHOST\\testuser</UserId>");
+    expect(xml).toContain("<LogonType>InteractiveToken</LogonType>");
+    expect(xml).toContain("<RunLevel>LeastPrivilege</RunLevel>");
+    expect(xml).toContain("<Command>wscript.exe</Command>");
+    expect(xml).toContain(`<Arguments>//B //Nologo &quot;${launcherPath}&quot;</Arguments>`);
+
     const createCall = mocks.execFile.mock.calls.find(
       (call) => call[0] === "schtasks" && (call[1] as string[])[0] === "/Create",
     );
     expect(createCall).toBeTruthy();
     const createArgs = createCall?.[1] as string[];
-    const trIndex = createArgs.indexOf("/TR");
-    expect(trIndex).toBeGreaterThanOrEqual(0);
-    expect(createArgs[trIndex + 1]).toBe(`cmd.exe /c ${scriptPath}`);
-    expect(createArgs).toContain("/SC");
-    expect(createArgs).toContain("ONLOGON");
-    expect(createArgs).toContain("/RL");
-    expect(createArgs).toContain("LIMITED");
+    const xmlIndex = createArgs.indexOf("/XML");
+    expect(xmlIndex).toBeGreaterThanOrEqual(0);
+    expect(createArgs[xmlIndex + 1]).toBe(xmlPath);
+    expect(createArgs).not.toContain("/TR");
+  });
+
+  it("falls back to COMPUTERNAME when USERDOMAIN is missing", async () => {
+    mockExecFileSuccess();
+    const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
+    const out = collectStream();
+
+    await installScheduledTask({
+      env: { HOME: home, USERNAME: "testuser", COMPUTERNAME: "FALLBACK" },
+      stdout: out.stream,
+      programArguments: ["node", "dist/cli.js", "daemon", "run"],
+    });
+
+    const xml = readFileSync(path.join(home, ".summarize", "daemon-task.xml"), "utf8");
+    expect(xml).toContain("<UserId>FALLBACK\\testuser</UserId>");
   });
 
   it("cleans up legacy launcher and pid artifacts on install", async () => {
@@ -113,7 +142,7 @@ describe("daemon/schtasks install", () => {
     const out = collectStream();
 
     await installScheduledTask({
-      env: { HOME: home },
+      env: { HOME: home, USERNAME: "testuser", USERDOMAIN: "TESTHOST" },
       stdout: out.stream,
       programArguments: ["node", "dist/cli.js", "daemon", "run"],
     });
@@ -148,7 +177,7 @@ describe("daemon/schtasks install", () => {
 
     await expect(
       installScheduledTask({
-        env: { HOME: home },
+        env: { HOME: home, USERNAME: "testuser", USERDOMAIN: "TESTHOST" },
         stdout: out.stream,
         programArguments: ["node", "dist/cli.js", "daemon", "run"],
       }),
@@ -209,17 +238,21 @@ describe("daemon/schtasks lifecycle", () => {
     expect(commands).toContain(`schtasks /Run /TN ${DAEMON_WINDOWS_TASK_NAME}`);
   });
 
-  it("removes the task script and any legacy artifacts on uninstall", async () => {
+  it("removes the task script, launcher, xml definition, and any legacy artifacts on uninstall", async () => {
     mockExecFileSuccess();
     setFetchPid(5252);
     const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
     writeDaemonConfig(home);
     const summarizeDir = path.join(home, ".summarize");
     const scriptPath = path.join(summarizeDir, "daemon.cmd");
+    const launcherPath = path.join(summarizeDir, "daemon-launch.vbs");
+    const xmlPath = path.join(summarizeDir, "daemon-task.xml");
     const legacyLauncher = path.join(summarizeDir, "daemon-run.vbs");
     const legacyPid = path.join(summarizeDir, "daemon.pid");
     writeFileSync(scriptPath, "script", "utf8");
-    writeFileSync(legacyLauncher, "launcher", "utf8");
+    writeFileSync(launcherPath, "launcher", "utf8");
+    writeFileSync(xmlPath, "xml", "utf8");
+    writeFileSync(legacyLauncher, "old", "utf8");
     writeFileSync(legacyPid, "5252", "utf8");
     const out = collectStream();
 
@@ -236,6 +269,8 @@ describe("daemon/schtasks lifecycle", () => {
     expect(commands).toContain(`schtasks /Delete /F /TN ${DAEMON_WINDOWS_TASK_NAME}`);
     expect(out.getText()).toContain("Removed task script");
     expect(existsSync(scriptPath)).toBe(false);
+    expect(existsSync(launcherPath)).toBe(false);
+    expect(existsSync(xmlPath)).toBe(false);
     expect(existsSync(legacyLauncher)).toBe(false);
     expect(existsSync(legacyPid)).toBe(false);
   });

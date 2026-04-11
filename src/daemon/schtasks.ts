@@ -18,7 +18,97 @@ function resolveTaskScriptPath(env: Record<string, string | undefined>): string 
   return path.join(home, ".summarize", "daemon.cmd");
 }
 
+function resolveTaskLauncherPath(env: Record<string, string | undefined>): string {
+  const home = resolveHomeDir(env);
+  return path.join(home, ".summarize", "daemon-launch.vbs");
+}
+
+function resolveTaskDefinitionPath(env: Record<string, string | undefined>): string {
+  const home = resolveHomeDir(env);
+  return path.join(home, ".summarize", "daemon-task.xml");
+}
+
+function resolveCurrentUserPrincipal(env: Record<string, string | undefined>): string {
+  const username = env.USERNAME?.trim();
+  if (!username) throw new Error("Missing USERNAME");
+  const domain = env.USERDOMAIN?.trim() || env.COMPUTERNAME?.trim();
+  return domain ? `${domain}\\${username}` : username;
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function buildScheduledTaskXml({
+  launcherPath,
+  userPrincipal,
+}: {
+  launcherPath: string;
+  userPrincipal: string;
+}): string {
+  const userId = escapeXml(userPrincipal);
+  const args = escapeXml(`//B //Nologo "${launcherPath}"`);
+  // schtasks /Create /SC ONLOGON defaults DisallowStartIfOnBatteries and
+  // StopIfGoingOnBatteries to true. On a laptop unplugged at install time the
+  // task silently no-ops every /Run with Last Result 0, which is what made the
+  // daemon look like it was failing to start. Register via /XML so we can flip
+  // those flags off and own every other relevant setting too.
+  return [
+    '<?xml version="1.0" encoding="UTF-16"?>',
+    '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">',
+    "  <RegistrationInfo>",
+    "    <Author>summarize</Author>",
+    "  </RegistrationInfo>",
+    "  <Triggers>",
+    "    <LogonTrigger>",
+    "      <Enabled>true</Enabled>",
+    `      <UserId>${userId}</UserId>`,
+    "    </LogonTrigger>",
+    "  </Triggers>",
+    "  <Principals>",
+    '    <Principal id="Author">',
+    `      <UserId>${userId}</UserId>`,
+    "      <LogonType>InteractiveToken</LogonType>",
+    "      <RunLevel>LeastPrivilege</RunLevel>",
+    "    </Principal>",
+    "  </Principals>",
+    "  <Settings>",
+    "    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>",
+    "    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>",
+    "    <AllowHardTerminate>true</AllowHardTerminate>",
+    "    <StartWhenAvailable>true</StartWhenAvailable>",
+    "    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>",
+    "    <IdleSettings>",
+    "      <StopOnIdleEnd>false</StopOnIdleEnd>",
+    "      <RestartOnIdle>false</RestartOnIdle>",
+    "    </IdleSettings>",
+    "    <AllowStartOnDemand>true</AllowStartOnDemand>",
+    "    <Enabled>true</Enabled>",
+    "    <Hidden>true</Hidden>",
+    "    <RunOnlyIfIdle>false</RunOnlyIfIdle>",
+    "    <WakeToRun>false</WakeToRun>",
+    "    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>",
+    "    <Priority>7</Priority>",
+    "  </Settings>",
+    '  <Actions Context="Author">',
+    "    <Exec>",
+    "      <Command>wscript.exe</Command>",
+    `      <Arguments>${args}</Arguments>`,
+    "    </Exec>",
+    "  </Actions>",
+    "</Task>",
+    "",
+  ].join("\r\n");
+}
+
 function resolveLegacyLauncherPath(env: Record<string, string | undefined>): string {
+  // The pre-XML installer wrote a different VBS at this path. Removed in
+  // favor of daemon-launch.vbs; we still clean it up on upgrade.
   const home = resolveHomeDir(env);
   return path.join(home, ".summarize", "daemon-run.vbs");
 }
@@ -108,6 +198,31 @@ function buildTaskScript({
   return `${lines.join("\r\n")}\r\n`;
 }
 
+function quoteVbsString(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function buildLauncherVbs({
+  programArguments,
+  workingDirectory,
+}: {
+  programArguments: string[];
+  workingDirectory?: string;
+}): string {
+  // Run the daemon via wscript + WshShell.Run with windowStyle=0 so node is
+  // started with CREATE_NO_WINDOW. wscript itself is a Windows-subsystem app,
+  // so it never allocates a console. Net effect: zero windows, zero conhost,
+  // even on a logged-in interactive session.
+  const command = programArguments.map(quoteCmdArg).join(" ");
+  const lines = ['Set sh = CreateObject("WScript.Shell")'];
+  if (workingDirectory) {
+    lines.push(`sh.CurrentDirectory = ${quoteVbsString(workingDirectory)}`);
+  }
+  lines.push(`sh.Run ${quoteVbsString(command)}, 0, False`);
+  lines.push("");
+  return lines.join("\r\n");
+}
+
 async function execWindowsCommand(
   file: string,
   args: string[],
@@ -185,9 +300,10 @@ async function assertSchtasksAvailable() {
   throw new Error(`schtasks unavailable: ${detail || "unknown error"}`.trim());
 }
 
-async function removeLegacyLauncherArtifacts(env: Record<string, string | undefined>): Promise<void> {
-  // Earlier versions wrote a VBS launcher and a tracked PID file. Both are
-  // gone, but clean up any leftovers from upgraded installs.
+async function removeLegacyPidArtifact(env: Record<string, string | undefined>): Promise<void> {
+  // Earlier versions tracked a PID file alongside the launcher. The launcher
+  // path moved to daemon-launch.vbs and PID tracking is gone — clean up
+  // both leftovers from upgraded installs.
   await fs.unlink(resolveLegacyLauncherPath(env)).catch(() => {});
   await fs.unlink(resolveLegacyPidPath(env)).catch(() => {});
 }
@@ -205,32 +321,31 @@ export async function installScheduledTask({
 }): Promise<{ scriptPath: string }> {
   await assertSchtasksAvailable();
   const scriptPath = resolveTaskScriptPath(env);
+  const launcherPath = resolveTaskLauncherPath(env);
+  const xmlPath = resolveTaskDefinitionPath(env);
   await fs.mkdir(path.dirname(scriptPath), { recursive: true });
   const script = buildTaskScript({ programArguments, workingDirectory });
   await fs.writeFile(scriptPath, script, "utf8");
-  await removeLegacyLauncherArtifacts(env);
+  const launcher = buildLauncherVbs({ programArguments, workingDirectory });
+  await fs.writeFile(launcherPath, launcher, "utf8");
+  await removeLegacyPidArtifact(env);
 
-  // schtasks /TR runs whatever string we give it via CreateProcess. CreateProcess
-  // can't launch a .cmd directly, so wrap it in cmd.exe /c. Earlier versions used
-  // a VBS launcher to spawn cmd.exe via WMI; that path was fragile under /RL LIMITED
-  // and added nothing — schtasks /End already terminates the task's process tree.
-  const taskCommand = `cmd.exe /c ${quoteCmdArg(scriptPath)}`;
+  const userPrincipal = resolveCurrentUserPrincipal(env);
+  const xml = buildScheduledTaskXml({ launcherPath, userPrincipal });
+  await fs.writeFile(xmlPath, xml, "utf8");
+
   const create = await execSchtasks([
     "/Create",
     "/F",
-    "/SC",
-    "ONLOGON",
-    "/RL",
-    "LIMITED",
     "/TN",
     DAEMON_WINDOWS_TASK_NAME,
-    "/TR",
-    taskCommand,
+    "/XML",
+    xmlPath,
   ]);
   if (create.code !== 0) {
     const detail = (create.stderr || create.stdout).trim();
     const hint = /access is denied/i.test(detail)
-      ? " (run `summarize daemon install` from an elevated PowerShell/cmd — schtasks /SC ONLOGON requires Administrator)"
+      ? " (run `summarize daemon install` from an elevated PowerShell/cmd — schtasks /Create /XML requires Administrator)"
       : "";
     throw new Error(`schtasks create failed: ${detail}${hint}`);
   }
@@ -260,7 +375,9 @@ export async function uninstallScheduledTask({
   } catch {
     stdout.write(`Task script not found at ${scriptPath}\n`);
   }
-  await removeLegacyLauncherArtifacts(env);
+  await fs.unlink(resolveTaskLauncherPath(env)).catch(() => {});
+  await fs.unlink(resolveTaskDefinitionPath(env)).catch(() => {});
+  await removeLegacyPidArtifact(env);
 }
 
 export async function restartScheduledTask({
