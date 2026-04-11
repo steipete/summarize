@@ -2,7 +2,8 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { DAEMON_WINDOWS_TASK_NAME } from "./constants.js";
+import { readDaemonConfig } from "./config.js";
+import { DAEMON_HOST, DAEMON_WINDOWS_TASK_NAME } from "./constants.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -17,12 +18,12 @@ function resolveTaskScriptPath(env: Record<string, string | undefined>): string 
   return path.join(home, ".summarize", "daemon.cmd");
 }
 
-function resolveTaskLauncherPath(env: Record<string, string | undefined>): string {
+function resolveLegacyLauncherPath(env: Record<string, string | undefined>): string {
   const home = resolveHomeDir(env);
   return path.join(home, ".summarize", "daemon-run.vbs");
 }
 
-function resolveTaskPidPath(env: Record<string, string | undefined>): string {
+function resolveLegacyPidPath(env: Record<string, string | undefined>): string {
   const home = resolveHomeDir(env);
   return path.join(home, ".summarize", "daemon.pid");
 }
@@ -32,27 +33,19 @@ function quoteCmdArg(value: string): string {
   return `"${value.replace(/"/g, '\\"')}"`;
 }
 
-function quoteVbsString(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`;
-}
-
 function parseCommandLine(value: string): string[] {
   const args: string[] = [];
   let current = "";
   let inQuotes = false;
-  let escapeNext = false;
 
-  for (const char of value) {
-    if (escapeNext) {
-      current += char;
-      escapeNext = false;
-      continue;
-    }
-    if (char === "\\") {
-      escapeNext = true;
-      continue;
-    }
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i];
     if (char === '"') {
+      if (inQuotes && value[i + 1] === '"') {
+        current += '"';
+        i += 1;
+        continue;
+      }
       inQuotes = !inQuotes;
       continue;
     }
@@ -115,50 +108,6 @@ function buildTaskScript({
   return `${lines.join("\r\n")}\r\n`;
 }
 
-function buildTaskLauncherScript({
-  scriptPath,
-  pidPath,
-}: {
-  scriptPath: string;
-  pidPath: string;
-}): string {
-  const escapedScriptPath = quoteVbsString(scriptPath);
-  const escapedPidPath = quoteVbsString(pidPath);
-  return [
-    'Set fso = CreateObject("Scripting.FileSystemObject")',
-    'Set processStartup = GetObject("winmgmts:root\\cimv2:Win32_ProcessStartup").SpawnInstance_',
-    "processStartup.ShowWindow = 0",
-    `scriptPath = ${escapedScriptPath}`,
-    `pidPath = ${escapedPidPath}`,
-    'command = "cmd.exe /d /c " & Chr(34) & scriptPath & Chr(34)',
-    "processId = 0",
-    'result = GetObject("winmgmts:root\\cimv2:Win32_Process").Create(command, Null, processStartup, processId)',
-    "If result <> 0 Then",
-    "  WScript.Quit result",
-    "End If",
-    "Set pidFile = fso.OpenTextFile(pidPath, 2, True)",
-    "pidFile.Write CStr(processId)",
-    "pidFile.Close",
-    "Do While ProcessExists(processId)",
-    "  WScript.Sleep 1000",
-    "Loop",
-    "If fso.FileExists(pidPath) Then",
-    "  Set currentPidFile = fso.OpenTextFile(pidPath, 1, False)",
-    "  currentPid = Trim(currentPidFile.ReadAll)",
-    "  currentPidFile.Close",
-    "  If currentPid = CStr(processId) Then",
-    "    fso.DeleteFile pidPath, True",
-    "  End If",
-    "End If",
-    "",
-    "Function ProcessExists(pid)",
-    '  Set processes = GetObject("winmgmts:root\\cimv2").ExecQuery("SELECT ProcessId FROM Win32_Process WHERE ProcessId = " & pid)',
-    "  ProcessExists = (processes.Count > 0)",
-    "End Function",
-    "",
-  ].join("\r\n");
-}
-
 async function execWindowsCommand(
   file: string,
   args: string[],
@@ -192,6 +141,43 @@ async function execTaskkill(
   return execWindowsCommand("taskkill", args);
 }
 
+function isMissingProcessError(detail: string): boolean {
+  return /not found|not running|no running instance|does not exist/i.test(detail);
+}
+
+async function fetchDaemonPid(env: Record<string, string | undefined>): Promise<number | null> {
+  const cfg = await readDaemonConfig({ env });
+  if (!cfg) return null;
+  const url = `http://${DAEMON_HOST}:${cfg.port}/health`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 1000);
+  try {
+    const res = await fetch(url, { method: "GET", signal: controller.signal });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { pid?: unknown };
+    const pid = typeof body.pid === "number" ? body.pid : null;
+    return pid && Number.isInteger(pid) && pid > 0 ? pid : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// schtasks /End only kills the task action process (cmd.exe). The daemon node
+// process detaches from cmd at startup, so /End orphans it and a subsequent
+// /Run hits "port already in use" and exits 1 — silent restart no-op. Ask the
+// daemon for its own pid via /health and taskkill the tree before /End.
+async function killRunningDaemon(env: Record<string, string | undefined>): Promise<void> {
+  const pid = await fetchDaemonPid(env);
+  if (pid === null) return;
+  const res = await execTaskkill(["/PID", `${pid}`, "/T", "/F"]);
+  const detail = (res.stderr || res.stdout).trim();
+  if (res.code !== 0 && !isMissingProcessError(detail)) {
+    throw new Error(`taskkill failed: ${detail || "unknown error"}`.trim());
+  }
+}
+
 async function assertSchtasksAvailable() {
   const res = await execSchtasks(["/Query"]);
   if (res.code === 0) return;
@@ -199,32 +185,11 @@ async function assertSchtasksAvailable() {
   throw new Error(`schtasks unavailable: ${detail || "unknown error"}`.trim());
 }
 
-function isMissingProcessError(detail: string): boolean {
-  return /not found|not running|no running instance|does not exist/i.test(detail);
-}
-
-async function stopTrackedTaskProcessTree(env: Record<string, string | undefined>): Promise<void> {
-  const pidPath = resolveTaskPidPath(env);
-  let pid = "";
-  try {
-    pid = (await fs.readFile(pidPath, "utf8")).trim();
-  } catch {
-    return;
-  }
-
-  const pidNumber = Number(pid);
-  if (!Number.isInteger(pidNumber) || pidNumber <= 0) {
-    await fs.unlink(pidPath).catch(() => {});
-    return;
-  }
-
-  const res = await execTaskkill(["/PID", `${pidNumber}`, "/T", "/F"]);
-  const detail = (res.stderr || res.stdout).trim();
-  if (res.code !== 0 && !isMissingProcessError(detail)) {
-    throw new Error(`taskkill failed: ${detail || "unknown error"}`.trim());
-  }
-
-  await fs.unlink(pidPath).catch(() => {});
+async function removeLegacyLauncherArtifacts(env: Record<string, string | undefined>): Promise<void> {
+  // Earlier versions wrote a VBS launcher and a tracked PID file. Both are
+  // gone, but clean up any leftovers from upgraded installs.
+  await fs.unlink(resolveLegacyLauncherPath(env)).catch(() => {});
+  await fs.unlink(resolveLegacyPidPath(env)).catch(() => {});
 }
 
 export async function installScheduledTask({
@@ -240,16 +205,16 @@ export async function installScheduledTask({
 }): Promise<{ scriptPath: string }> {
   await assertSchtasksAvailable();
   const scriptPath = resolveTaskScriptPath(env);
-  const launcherPath = resolveTaskLauncherPath(env);
-  const pidPath = resolveTaskPidPath(env);
   await fs.mkdir(path.dirname(scriptPath), { recursive: true });
   const script = buildTaskScript({ programArguments, workingDirectory });
   await fs.writeFile(scriptPath, script, "utf8");
-  await fs.unlink(pidPath).catch(() => {});
-  const launcher = buildTaskLauncherScript({ scriptPath, pidPath });
-  await fs.writeFile(launcherPath, launcher, "utf8");
+  await removeLegacyLauncherArtifacts(env);
 
-  const quotedLauncher = quoteCmdArg(launcherPath);
+  // schtasks /TR runs whatever string we give it via CreateProcess. CreateProcess
+  // can't launch a .cmd directly, so wrap it in cmd.exe /c. Earlier versions used
+  // a VBS launcher to spawn cmd.exe via WMI; that path was fragile under /RL LIMITED
+  // and added nothing — schtasks /End already terminates the task's process tree.
+  const taskCommand = `cmd.exe /c ${quoteCmdArg(scriptPath)}`;
   const create = await execSchtasks([
     "/Create",
     "/F",
@@ -260,7 +225,7 @@ export async function installScheduledTask({
     "/TN",
     DAEMON_WINDOWS_TASK_NAME,
     "/TR",
-    quotedLauncher,
+    taskCommand,
   ]);
   if (create.code !== 0) {
     const detail = (create.stderr || create.stdout).trim();
@@ -284,26 +249,18 @@ export async function uninstallScheduledTask({
   stdout: NodeJS.WritableStream;
 }): Promise<void> {
   await assertSchtasksAvailable();
-  await stopTrackedTaskProcessTree(env);
+  await killRunningDaemon(env);
   await execSchtasks(["/End", "/TN", DAEMON_WINDOWS_TASK_NAME]);
   await execSchtasks(["/Delete", "/F", "/TN", DAEMON_WINDOWS_TASK_NAME]);
 
   const scriptPath = resolveTaskScriptPath(env);
-  const launcherPath = resolveTaskLauncherPath(env);
-  const pidPath = resolveTaskPidPath(env);
   try {
     await fs.unlink(scriptPath);
     stdout.write(`Removed task script: ${scriptPath}\n`);
   } catch {
     stdout.write(`Task script not found at ${scriptPath}\n`);
   }
-  try {
-    await fs.unlink(launcherPath);
-    stdout.write(`Removed task launcher: ${launcherPath}\n`);
-  } catch {
-    stdout.write(`Task launcher not found at ${launcherPath}\n`);
-  }
-  await fs.unlink(pidPath).catch(() => {});
+  await removeLegacyLauncherArtifacts(env);
 }
 
 export async function restartScheduledTask({
@@ -314,7 +271,7 @@ export async function restartScheduledTask({
   stdout: NodeJS.WritableStream;
 }): Promise<void> {
   await assertSchtasksAvailable();
-  await stopTrackedTaskProcessTree(env);
+  await killRunningDaemon(env);
   await execSchtasks(["/End", "/TN", DAEMON_WINDOWS_TASK_NAME]);
   const res = await execSchtasks(["/Run", "/TN", DAEMON_WINDOWS_TASK_NAME]);
   if (res.code !== 0) {

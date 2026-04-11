@@ -2,13 +2,38 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Writable } from "node:stream";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   execFile: vi.fn(),
 }));
 
 vi.mock("node:child_process", () => ({ execFile: mocks.execFile }));
+
+const originalFetch = globalThis.fetch;
+function setFetchPid(pid: number | null) {
+  globalThis.fetch = (async () => {
+    if (pid === null) throw new Error("daemon down");
+    return new Response(JSON.stringify({ ok: true, pid }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+}
+function clearFetch() {
+  globalThis.fetch = originalFetch;
+}
+
+function writeDaemonConfig(home: string, port = 8787) {
+  const dir = path.join(home, ".summarize");
+  mkdirSync(dir, { recursive: true });
+  const token = "0123456789abcdef0123456789abcdef";
+  writeFileSync(
+    path.join(dir, "daemon.json"),
+    JSON.stringify({ version: 2, token, tokens: [token], port, env: {} }),
+    "utf8",
+  );
+}
 
 import { DAEMON_WINDOWS_TASK_NAME } from "../src/daemon/constants.js";
 import {
@@ -31,19 +56,11 @@ function collectStream(): { stream: Writable; getText: () => string } {
 function mockExecFileSuccess() {
   mocks.execFile.mockImplementation(
     (
-      file: string,
-      args: string[],
+      _file: string,
+      _args: string[],
       _options: { encoding: string; windowsHide: boolean },
       callback: (error: NodeJS.ErrnoException | null, stdout: string, stderr: string) => void,
     ) => {
-      if (file === "taskkill") {
-        callback(null, "SUCCESS: The process was terminated.", "");
-        return {} as never;
-      }
-      if (file === "schtasks" && args[0] === "/Query") {
-        callback(null, "", "");
-        return {} as never;
-      }
       callback(null, "", "");
       return {} as never;
     },
@@ -55,7 +72,7 @@ describe("daemon/schtasks install", () => {
     mocks.execFile.mockReset();
   });
 
-  it("writes a hidden launcher that tracks the daemon pid", async () => {
+  it("registers the task with cmd.exe /c <daemon.cmd>", async () => {
     mockExecFileSuccess();
     const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
     const out = collectStream();
@@ -66,23 +83,76 @@ describe("daemon/schtasks install", () => {
       programArguments: ["node", "dist/cli.js", "daemon", "run"],
     });
 
-    const launcherPath = path.join(home, ".summarize", "daemon-run.vbs");
-    const pidPath = path.join(home, ".summarize", "daemon.pid");
-    const launcher = readFileSync(launcherPath, "utf8");
     const script = readFileSync(scriptPath, "utf8");
-
     expect(script).toContain("node dist/cli.js daemon run");
-    expect(launcher).toContain("processStartup.ShowWindow = 0");
-    expect(launcher).toContain('Win32_Process").Create');
-    expect(launcher).toContain(`pidPath = "${pidPath.replace(/\\/g, "\\\\")}"`);
-    expect(launcher).toContain("fso.DeleteFile pidPath, True");
     expect(out.getText()).toContain("Installed Scheduled Task");
 
     const createCall = mocks.execFile.mock.calls.find(
       (call) => call[0] === "schtasks" && (call[1] as string[])[0] === "/Create",
     );
     expect(createCall).toBeTruthy();
-    expect(createCall?.[1]).toContain(path.join(home, ".summarize", "daemon-run.vbs"));
+    const createArgs = createCall?.[1] as string[];
+    const trIndex = createArgs.indexOf("/TR");
+    expect(trIndex).toBeGreaterThanOrEqual(0);
+    expect(createArgs[trIndex + 1]).toBe(`cmd.exe /c ${scriptPath}`);
+    expect(createArgs).toContain("/SC");
+    expect(createArgs).toContain("ONLOGON");
+    expect(createArgs).toContain("/RL");
+    expect(createArgs).toContain("LIMITED");
+  });
+
+  it("cleans up legacy launcher and pid artifacts on install", async () => {
+    mockExecFileSuccess();
+    const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
+    const summarizeDir = path.join(home, ".summarize");
+    mkdirSync(summarizeDir, { recursive: true });
+    const legacyLauncher = path.join(summarizeDir, "daemon-run.vbs");
+    const legacyPid = path.join(summarizeDir, "daemon.pid");
+    writeFileSync(legacyLauncher, "old", "utf8");
+    writeFileSync(legacyPid, "1234", "utf8");
+    const out = collectStream();
+
+    await installScheduledTask({
+      env: { HOME: home },
+      stdout: out.stream,
+      programArguments: ["node", "dist/cli.js", "daemon", "run"],
+    });
+
+    expect(existsSync(legacyLauncher)).toBe(false);
+    expect(existsSync(legacyPid)).toBe(false);
+  });
+
+  it("hints at elevation when schtasks /Create returns access denied", async () => {
+    mocks.execFile.mockImplementation(
+      (
+        file: string,
+        args: string[],
+        _options: { encoding: string; windowsHide: boolean },
+        callback: (error: unknown, stdout: string, stderr: string) => void,
+      ) => {
+        if (file === "schtasks" && args[0] === "/Create") {
+          const error = Object.assign(new Error("schtasks failed"), {
+            code: 1,
+            stdout: "",
+            stderr: "ERROR: Access is denied.",
+          });
+          callback(error, "", "ERROR: Access is denied.");
+          return {} as never;
+        }
+        callback(null, "", "");
+        return {} as never;
+      },
+    );
+    const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
+    const out = collectStream();
+
+    await expect(
+      installScheduledTask({
+        env: { HOME: home },
+        stdout: out.stream,
+        programArguments: ["node", "dist/cli.js", "daemon", "run"],
+      }),
+    ).rejects.toThrow(/elevated/);
   });
 });
 
@@ -90,13 +160,15 @@ describe("daemon/schtasks lifecycle", () => {
   beforeEach(() => {
     mocks.execFile.mockReset();
   });
+  afterEach(() => {
+    clearFetch();
+  });
 
-  it("kills the tracked daemon pid before rerunning the task", async () => {
+  it("kills the live daemon pid before rerunning the task", async () => {
     mockExecFileSuccess();
+    setFetchPid(4242);
     const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
-    const pidPath = path.join(home, ".summarize", "daemon.pid");
-    mkdirSync(path.dirname(pidPath), { recursive: true });
-    writeFileSync(pidPath, "4242", "utf8");
+    writeDaemonConfig(home);
     const out = collectStream();
 
     await restartScheduledTask({
@@ -108,24 +180,47 @@ describe("daemon/schtasks lifecycle", () => {
       ([file, args]) => `${file} ${(args as string[]).join(" ")}`,
     );
     const taskkillCommand = "taskkill /PID 4242 /T /F";
+    const endCommand = `schtasks /End /TN ${DAEMON_WINDOWS_TASK_NAME}`;
     const runCommand = `schtasks /Run /TN ${DAEMON_WINDOWS_TASK_NAME}`;
     expect(commands).toContain(taskkillCommand);
+    expect(commands).toContain(endCommand);
     expect(commands).toContain(runCommand);
-    expect(commands.indexOf(taskkillCommand)).toBeLessThan(commands.indexOf(runCommand));
+    expect(commands.indexOf(taskkillCommand)).toBeLessThan(commands.indexOf(endCommand));
+    expect(commands.indexOf(endCommand)).toBeLessThan(commands.indexOf(runCommand));
     expect(out.getText()).toContain("Restarted Scheduled Task");
   });
 
-  it("removes the tracked pid and launcher on uninstall", async () => {
+  it("skips taskkill on restart when the daemon is already down", async () => {
     mockExecFileSuccess();
+    setFetchPid(null);
     const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
+    writeDaemonConfig(home);
+    const out = collectStream();
+
+    await restartScheduledTask({
+      env: { HOME: home },
+      stdout: out.stream,
+    });
+
+    const commands = mocks.execFile.mock.calls.map(
+      ([file, args]) => `${file} ${(args as string[]).join(" ")}`,
+    );
+    expect(commands.some((c) => c.startsWith("taskkill"))).toBe(false);
+    expect(commands).toContain(`schtasks /Run /TN ${DAEMON_WINDOWS_TASK_NAME}`);
+  });
+
+  it("removes the task script and any legacy artifacts on uninstall", async () => {
+    mockExecFileSuccess();
+    setFetchPid(5252);
+    const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
+    writeDaemonConfig(home);
     const summarizeDir = path.join(home, ".summarize");
-    mkdirSync(summarizeDir, { recursive: true });
-    const pidPath = path.join(summarizeDir, "daemon.pid");
-    const launcherPath = path.join(summarizeDir, "daemon-run.vbs");
     const scriptPath = path.join(summarizeDir, "daemon.cmd");
-    writeFileSync(pidPath, "5252", "utf8");
-    writeFileSync(launcherPath, "launcher", "utf8");
+    const legacyLauncher = path.join(summarizeDir, "daemon-run.vbs");
+    const legacyPid = path.join(summarizeDir, "daemon.pid");
     writeFileSync(scriptPath, "script", "utf8");
+    writeFileSync(legacyLauncher, "launcher", "utf8");
+    writeFileSync(legacyPid, "5252", "utf8");
     const out = collectStream();
 
     await uninstallScheduledTask({
@@ -137,10 +232,11 @@ describe("daemon/schtasks lifecycle", () => {
       ([file, args]) => `${file} ${(args as string[]).join(" ")}`,
     );
     expect(commands).toContain("taskkill /PID 5252 /T /F");
+    expect(commands).toContain(`schtasks /End /TN ${DAEMON_WINDOWS_TASK_NAME}`);
     expect(commands).toContain(`schtasks /Delete /F /TN ${DAEMON_WINDOWS_TASK_NAME}`);
-    expect(out.getText()).toContain("Removed task launcher");
-    expect(existsSync(pidPath)).toBe(false);
-    expect(existsSync(launcherPath)).toBe(false);
+    expect(out.getText()).toContain("Removed task script");
     expect(existsSync(scriptPath)).toBe(false);
+    expect(existsSync(legacyLauncher)).toBe(false);
+    expect(existsSync(legacyPid)).toBe(false);
   });
 });
