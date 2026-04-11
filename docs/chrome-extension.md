@@ -40,6 +40,9 @@ Dev (repo checkout):
 - “Daemon not reachable”:
   - `summarize daemon status`
   - Logs: `~/.summarize/logs/daemon.err.log`
+- Windows install:
+  - `summarize daemon install` registers a Scheduled Task via `schtasks /Create /SC ONLOGON`, which requires an **elevated** shell. Run it from an Administrator PowerShell/cmd; otherwise you'll see `schtasks create failed: ERROR: Access is denied.`
+  - The task launcher is `%USERPROFILE%\.summarize\daemon-run.vbs`. If install completes but `/health` is unreachable, run `cscript //nologo %USERPROFILE%\.summarize\daemon-run.vbs` to surface the underlying error.
 - macOS `launchctl bootstrap` errors (`Input/output error`, `Domain does not support specified action`):
   - `summarize daemon install` now tries both launchd domains (`gui/<uid>` then `user/<uid>`).
   - Install as your normal user (not root) so HOME + launchd domain match.

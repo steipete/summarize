@@ -126,13 +126,13 @@ function buildTaskLauncherScript({
   const escapedPidPath = quoteVbsString(pidPath);
   return [
     'Set fso = CreateObject("Scripting.FileSystemObject")',
-    'Set processStartup = GetObject("winmgmts:root\\\\cimv2:Win32_ProcessStartup").SpawnInstance_',
+    'Set processStartup = GetObject("winmgmts:root\\cimv2:Win32_ProcessStartup").SpawnInstance_',
     "processStartup.ShowWindow = 0",
     `scriptPath = ${escapedScriptPath}`,
     `pidPath = ${escapedPidPath}`,
     'command = "cmd.exe /d /c " & Chr(34) & scriptPath & Chr(34)',
     "processId = 0",
-    'result = GetObject("winmgmts:root\\\\cimv2:Win32_Process").Create(command, Null, processStartup, processId)',
+    'result = GetObject("winmgmts:root\\cimv2:Win32_Process").Create(command, Null, processStartup, processId)',
     "If result <> 0 Then",
     "  WScript.Quit result",
     "End If",
@@ -152,7 +152,7 @@ function buildTaskLauncherScript({
     "End If",
     "",
     "Function ProcessExists(pid)",
-    '  Set processes = GetObject("winmgmts:root\\\\cimv2").ExecQuery("SELECT ProcessId FROM Win32_Process WHERE ProcessId = " & pid)',
+    '  Set processes = GetObject("winmgmts:root\\cimv2").ExecQuery("SELECT ProcessId FROM Win32_Process WHERE ProcessId = " & pid)',
     "  ProcessExists = (processes.Count > 0)",
     "End Function",
     "",
@@ -263,7 +263,11 @@ export async function installScheduledTask({
     quotedLauncher,
   ]);
   if (create.code !== 0) {
-    throw new Error(`schtasks create failed: ${create.stderr || create.stdout}`.trim());
+    const detail = (create.stderr || create.stdout).trim();
+    const hint = /access is denied/i.test(detail)
+      ? " (run `summarize daemon install` from an elevated PowerShell/cmd — schtasks /SC ONLOGON requires Administrator)"
+      : "";
+    throw new Error(`schtasks create failed: ${detail}${hint}`);
   }
 
   await execSchtasks(["/Run", "/TN", DAEMON_WINDOWS_TASK_NAME]);

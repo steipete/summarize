@@ -67,7 +67,7 @@ The extension talks to a tiny local daemon that runs on your machine. This proce
 2. Open the Side Panel (Chrome) or Sidebar (Firefox). You'll see a **Setup** screen with a token and an install command.
 3. Open Terminal:
    - macOS: Applications → Utilities → Terminal
-   - Windows: Start menu → Terminal (or PowerShell)
+   - Windows: Start menu → Terminal (or PowerShell) — **right-click → Run as administrator**
    - Linux: your Terminal app
 4. Paste the command from the Setup screen and press Enter.
    - Installed binary: `summarize daemon install --token <TOKEN>`
