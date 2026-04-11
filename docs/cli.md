@@ -12,7 +12,7 @@ Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw,
 
 - `cli/claude/<model>` (e.g. `cli/claude/sonnet`)
 - `cli/codex/<model>` (e.g. `cli/codex/gpt-5.2`)
-- `cli/gemini/<model>` (e.g. `cli/gemini/gemini-3-flash`)
+- `cli/gemini/<model>` (e.g. `cli/gemini/flash`)
 - `cli/agent/<model>` (e.g. `cli/agent/gpt-5.2`)
 - `cli/openclaw/<model>` (e.g. `cli/openclaw/main`)
 - `openclaw/<model>` (alias for the same OpenClaw CLI path)
@@ -102,7 +102,7 @@ path-based prompt and enables the required tool flags:
       "order": ["claude", "gemini", "codex", "agent", "openclaw", "opencode"]
     },
     "codex": { "model": "gpt-5.2" },
-    "gemini": { "model": "gemini-3-flash", "extraArgs": ["--verbose"] },
+    "gemini": { "model": "flash", "extraArgs": ["--verbose"] },
     "claude": {
       "model": "sonnet",
       "binary": "/usr/local/bin/claude",
