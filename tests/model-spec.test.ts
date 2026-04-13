@@ -133,4 +133,16 @@ describe("model spec parsing", () => {
     expect(parsed.llmModelId).toBe("github-copilot/openai/gpt-4.1");
     expect(parsed.forceChatCompletions).toBe(true);
   });
+
+  it("rejects empty zai model id", () => {
+    expect(() => parseRequestedModelId("zai/")).toThrow(/missing the model id/);
+  });
+
+  it("rejects empty nvidia model id", () => {
+    expect(() => parseRequestedModelId("nvidia/")).toThrow(/missing the model id/);
+  });
+
+  it("rejects empty github-copilot model id", () => {
+    expect(() => parseRequestedModelId("github-copilot/")).toThrow(/missing the model id/);
+  });
 });

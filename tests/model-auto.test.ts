@@ -593,4 +593,47 @@ describe("auto model selection", () => {
       }),
     ).toEqual(["cli/opencode", "openai/gpt-5-mini"]);
   });
+
+  it("skips CLI candidates when video understanding is required", () => {
+    const config: SummarizeConfig = {
+      cli: { enabled: ["claude"] },
+      model: { mode: "auto", rules: [{ candidates: ["google/gemini-3-flash"] }] },
+    };
+    const attempts = buildAutoModelAttempts({
+      kind: "video",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: true,
+      env: {},
+      config,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+      cliAvailability: { claude: true },
+    });
+
+    expect(attempts.every((a) => a.transport !== "cli")).toBe(true);
+    expect(attempts[0]?.userModelId).toBe("google/gemini-3-flash");
+  });
+
+  it("does not reorder CLI providers when preferred is already first", () => {
+    const config: SummarizeConfig = {
+      model: { mode: "auto", rules: [{ candidates: ["openai/gpt-5-mini"] }] },
+    };
+    const attempts = buildAutoModelAttempts({
+      kind: "text",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: {},
+      config,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+      cliAvailability: { claude: true, gemini: true },
+      isImplicitAutoSelection: true,
+      lastSuccessfulCliProvider: "claude", // claude is already first in default order
+    });
+
+    expect(attempts[0]?.userModelId).toBe("cli/claude/sonnet");
+    expect(attempts[1]?.userModelId).toBe("cli/gemini/flash");
+  });
 });
