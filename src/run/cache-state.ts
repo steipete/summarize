@@ -33,7 +33,7 @@ export async function createCacheStateFromConfig({
   const cacheMode: CacheState["mode"] =
     !cacheEnabled || noCacheFlag || !cachePath ? "bypass" : "default";
   const cacheStore =
-    cacheMode === "default" && cachePath
+    cacheEnabled && cachePath
       ? await createCacheStore({
           path: cachePath,
           maxBytes: cacheMaxBytes,

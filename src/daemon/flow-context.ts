@@ -364,6 +364,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
       zaiBaseUrl,
       nvidiaBaseUrl,
       assemblyaiApiKey,
+      openaiTranscriptionKey,
     },
   });
 

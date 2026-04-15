@@ -240,12 +240,18 @@ export async function tryYtDlpTranscript(args: {
   const ytdlpResult = await fetchTranscriptWithYtDlp({
     ytDlpPath: flow.options.ytDlpPath,
     transcription: flow.transcription,
+    groqApiKey: flow.options.groqApiKey,
+    assemblyaiApiKey: flow.options.assemblyaiApiKey,
+    geminiApiKey: flow.options.geminiApiKey,
+    openaiApiKey: flow.options.openaiApiKey,
+    falApiKey: flow.options.falApiKey,
     mediaCache: flow.options.mediaCache ?? null,
     url: flow.context.url,
     onProgress: flow.options.onProgress ?? null,
     mediaKind: "video",
   });
   if (ytdlpResult.notes.length > 0) flow.notes.push(...ytdlpResult.notes);
+  if (ytdlpResult.error) flow.notes.push(`yt-dlp failed: ${ytdlpResult.error.message}`);
 
   if (ytdlpResult.text) {
     return {

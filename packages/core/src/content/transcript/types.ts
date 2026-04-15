@@ -31,6 +31,7 @@ export interface ProviderFetchOptions {
   groqApiKey?: string | null;
   geminiApiKey?: string | null;
   openaiApiKey?: string | null;
+  assemblyaiApiKey?: string | null;
   mediaCache?: MediaCache | null;
   resolveTwitterCookies?: ResolveTwitterCookies | null;
   onProgress?: ((event: LinkPreviewProgressEvent) => void) | null;

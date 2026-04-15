@@ -199,7 +199,7 @@ export async function createRunnerPlan(options: {
   const cacheState = await createCacheStateFromConfig({
     envForRun,
     config,
-    noCacheFlag: false,
+    noCacheFlag,
     transcriptNamespace,
   });
   const mediaCache = await createMediaCacheFromConfig({
@@ -513,6 +513,7 @@ export async function createRunnerPlan(options: {
             firecrawlConfigured,
             googleConfigured,
             anthropicConfigured,
+            openaiTranscriptionKey,
           },
         },
         summarizeAsset,

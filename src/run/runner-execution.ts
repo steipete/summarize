@@ -58,6 +58,7 @@ export async function executeRunnerInput(options: {
       firecrawlConfigured: boolean;
       googleConfigured: boolean;
       anthropicConfigured: boolean;
+      openaiTranscriptionKey: string | null;
     };
   };
   summarizeAsset: (args: SummarizeAssetArgs) => Promise<void>;
