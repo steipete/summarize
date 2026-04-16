@@ -272,7 +272,7 @@ export type AssetSummaryContext = {
     zaiBaseUrl: string;
     nvidiaBaseUrl: string;
     assemblyaiApiKey: string | null;
-    openaiTranscriptionKey: string | null;
+    openaiApiKey: string | null;
   };
 };
 

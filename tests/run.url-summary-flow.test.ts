@@ -172,7 +172,7 @@ describe("summarizeExtractedUrl timestamp guard", () => {
           falApiKey: null,
           groqApiKey: null,
           assemblyaiApiKey: null,
-          openaiTranscriptionKey: null,
+          openaiApiKey: null,
         },
         summaryEngine: {
           applyOpenAiGatewayOverrides: (attempt) => attempt,

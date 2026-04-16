@@ -111,7 +111,7 @@ export type UrlFlowModel = {
     falApiKey: string | null;
     groqApiKey: string | null;
     assemblyaiApiKey: string | null;
-    openaiTranscriptionKey: string | null;
+    openaiApiKey: string | null;
   };
   summaryEngine: ReturnType<typeof createSummaryEngine>;
   getLiteLlmCatalog: () => Promise<

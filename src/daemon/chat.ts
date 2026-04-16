@@ -93,7 +93,7 @@ function resolveApiKeys(
   const envState = resolveEnvState({ env, envForRun: env, configForCli });
   return {
     xaiApiKey: envState.xaiApiKey,
-    openaiApiKey: envState.apiKey ?? envState.openaiTranscriptionKey,
+    openaiApiKey: envState.apiKey ?? envState.openaiApiKey,
     googleApiKey: envState.googleApiKey,
     anthropicApiKey: envState.anthropicApiKey,
     openrouterApiKey: envState.openrouterApiKey,

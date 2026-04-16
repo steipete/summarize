@@ -50,7 +50,7 @@ function createCtx() {
         falApiKey: null,
         groqApiKey: null,
         assemblyaiApiKey: null,
-        openaiTranscriptionKey: null,
+        openaiApiKey: null,
         googleApiKey: null,
       },
     },

@@ -14,7 +14,15 @@ function noopStream(): Writable {
   });
 }
 
-let capturedCtx: unknown = null;
+type CapturedCtx = {
+  model: {
+    apiStatus: {
+      openaiApiKey: string | undefined;
+    };
+  };
+};
+
+let capturedCtx: CapturedCtx | null = null;
 
 // Mock the extraction session to intercept the context/model
 vi.mock("../src/run/flows/url/extraction-session.ts", async (importOriginal) => {
@@ -61,7 +69,7 @@ vi.mock("@mariozechner/pi-ai", () => ({
 }));
 
 describe("cli media API key mapping", () => {
-  it("should correctly map OPENAI_API_KEY to openaiTranscriptionKey in UrlFlowModel", async () => {
+  it("should correctly map OPENAI_API_KEY to openaiApiKey in UrlFlowModel", async () => {
     const root = mkdtempSync(join(tmpdir(), "summarize-media-key-url-integration-"));
     const summarizeDir = join(root, ".summarize");
     mkdirSync(summarizeDir, { recursive: true });
@@ -112,9 +120,9 @@ describe("cli media API key mapping", () => {
       },
     );
 
-    expect(capturedCtx, "UrlFlowContext should have been captured").toBeDefined();
+    expect(capturedCtx, "UrlFlowContext should have been captured").not.toBeNull();
     
     // THE FIX: This should now contain our key
-    expect(capturedCtx.model.apiStatus.openaiTranscriptionKey).toBe(testKey);
+    expect(capturedCtx!.model.apiStatus.openaiApiKey).toBe(testKey);
   });
 });

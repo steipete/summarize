@@ -69,7 +69,7 @@ export function createUrlExtractionSession({
       falApiKey: model.apiStatus.falApiKey,
       groqApiKey: model.apiStatus.groqApiKey,
       assemblyaiApiKey: model.apiStatus.assemblyaiApiKey,
-      openaiApiKey: model.apiStatus.openaiTranscriptionKey,
+      openaiApiKey: model.apiStatus.openaiApiKey,
       geminiApiKey: model.apiStatus.googleApiKey,
     },
     scrapeWithFirecrawl,
