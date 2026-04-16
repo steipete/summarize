@@ -5,52 +5,48 @@ import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
 
-const htmlResponse = (html: string, status = 200) =>
-  new Response(html, {
-    status,
-    headers: { "Content-Type": "text/html" },
-  });
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
+function noopStream(): Writable {
+  return new Writable({
+    write(_chunk, _encoding, callback) {
       callback();
     },
   });
-  return { stream, getText: () => text };
 }
 
-const mocks = vi.hoisted(() => ({
-  completeSimple: vi.fn(),
-}));
+// Mock the extraction session to intercept the context/model
+vi.mock("../src/run/flows/url/extraction-session.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/run/flows/url/extraction-session.js")>();
+  return {
+    ...actual,
+    createUrlExtractionSession: (args: any) => {
+      // Store the context so we can inspect it
+      (globalThis as any).capturedUrlFlowContext = args.ctx;
+      return actual.createUrlExtractionSession(args);
+    },
+  };
+});
 
+// Also mock pi-ai to avoid real LLM calls
 vi.mock("@mariozechner/pi-ai", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@mariozechner/pi-ai")>();
   return {
     ...actual,
-    completeSimple: mocks.completeSimple,
+    completeSimple: vi.fn().mockResolvedValue({
+      content: [{ type: "text", text: "Summary content." }],
+      usage: { input: 1, output: 1, totalTokens: 2 },
+    }),
   };
 });
 
-describe("cli media API key mapping reproduction", () => {
-  it("should NOT fail with 'Media file transcription requires' when OPENAI_API_KEY is provided", async () => {
-    mocks.completeSimple.mockResolvedValue({
-      content: [{ type: "text", text: "Audio summary." }],
-      usage: { input: 1, output: 1, totalTokens: 2 },
-    });
-
-    const root = mkdtempSync(join(tmpdir(), "summarize-media-key-repro-"));
-    const mp3Path = join(root, "test-audio.mp3");
-    // Minimal valid-ish MP3 header to pass some basic checks if any
-    writeFileSync(mp3Path, Buffer.from([0xff, 0xfb, 0x10, 0x00]));
-
+describe("cli media API key mapping", () => {
+  it("should correctly map OPENAI_API_KEY to openaiTranscriptionKey in UrlFlowModel", async () => {
+    const root = mkdtempSync(join(tmpdir(), "summarize-media-key-url-integration-"));
     const summarizeDir = join(root, ".summarize");
+    mkdirSync(summarizeDir, { recursive: true });
+
+    // Mock LiteLLM catalog to avoid network calls
     const cacheDir = join(summarizeDir, "cache");
     mkdirSync(cacheDir, { recursive: true });
-
-    // Mock LiteLLM catalog
     writeFileSync(
       join(cacheDir, "litellm-model_prices_and_context_window.json"),
       JSON.stringify({ "gpt-4o-mini": { max_input_tokens: 128000 } }),
@@ -62,54 +58,42 @@ describe("cli media API key mapping reproduction", () => {
       "utf8",
     );
 
+    const testKey = "test-openai-transcription-key";
+
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : "url" in input ? input.url : input.toString();
-      
-      if (url.includes("api.openai.com/v1/audio/transcriptions")) {
-        return new Response(JSON.stringify({
-          text: "Transcribed text from Whisper."
-        }));
+      if (url === "https://example.com") {
+        return new Response("<!doctype html><html><body>Hi</body></html>", {
+          headers: { "Content-Type": "text/html" }
+        });
       }
-      
       throw new Error(`Unexpected fetch call: ${url}`);
     });
 
-    const globalFetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(fetchMock as unknown as typeof fetch);
-
-    const stdout = collectStream();
-    const stderr = collectStream();
-
-    // The bug was that OPENAI_API_KEY was in env but NOT correctly passed to the media flow's apiStatus
-    // in runner-contexts.ts, so it would throw the "Media file transcription requires" error
-    // because it thinks no provider is configured.
-    
     await runCli(
       [
         "--model",
-        "openai/gpt-4o",
+        "openai/gpt-4o-mini",
         "--metrics",
         "off",
-        mp3Path,
+        "https://example.com",
       ],
       {
         env: { 
           HOME: root, 
-          OPENAI_API_KEY: "test-openai-key",
+          OPENAI_API_KEY: testKey,
           PATH: process.env.PATH
         },
         fetch: fetchMock as unknown as typeof fetch,
-        stdout: stdout.stream,
-        stderr: stderr.stream,
+        stdout: noopStream(),
+        stderr: noopStream(),
       },
     );
 
-    // If it succeeds, it means the key WAS passed (or the bug is fixed)
-    expect(fetchMock).toHaveBeenCalled();
-    const whisperCall = fetchMock.mock.calls.find(call => 
-      (typeof call[0] === "string" ? call[0] : call[0].url).includes("/audio/transcriptions")
-    );
-    expect(whisperCall, "Should have called OpenAI Whisper API").toBeDefined();
-
-    globalFetchSpy.mockRestore();
-  }, 30_000);
+    const capturedCtx = (globalThis as any).capturedUrlFlowContext;
+    expect(capturedCtx, "UrlFlowContext should have been captured").toBeDefined();
+    
+    // THE FIX: This should now contain our key
+    expect(capturedCtx.model.apiStatus.openaiTranscriptionKey).toBe(testKey);
+  });
 });

@@ -49,7 +49,7 @@ describe("--clear-cache", () => {
     ).rejects.toThrow(/--clear-cache must be used alone/i);
   });
 
-  it("still creates a cache db when --no-cache is set", async () => {
+  it("does not create a cache db when --no-cache is set", async () => {
     const root = mkdtempSync(join(tmpdir(), "summarize-no-cache-"));
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.url;
@@ -66,6 +66,6 @@ describe("--clear-cache", () => {
       stderr: noopStream(),
     });
 
-    expect(existsSync(join(root, ".summarize", "cache.sqlite"))).toBe(true);
+    expect(existsSync(join(root, ".summarize", "cache.sqlite"))).toBe(false);
   });
 });

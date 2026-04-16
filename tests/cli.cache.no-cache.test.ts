@@ -98,6 +98,7 @@ describe("cli --no-cache bug reproduction", () => {
         "openai/gpt-5.2",
         "--metrics",
         "off",
+        "--verbose",
         "https://example.com",
       ],
       {
@@ -109,6 +110,14 @@ describe("cli --no-cache bug reproduction", () => {
     );
 
     expect(fetchMock).toHaveBeenCalledTimes(4);
+    // Verify that the URL was indeed among the calls
+    const firstUrlCalls = fetchMock.mock.calls.filter(call => 
+      (typeof call[0] === "string" ? call[0] : (call[0] as any).url) === "https://example.com"
+    );
+    expect(firstUrlCalls.length).toBeGreaterThanOrEqual(1);
+
+    // Clear mock state between runs
+    fetchMock.mockClear();
 
     // Update fetch mock to return something different
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
@@ -118,7 +127,7 @@ describe("cli --no-cache bug reproduction", () => {
       }
       if (url.includes("api.openai.com")) {
         return new Response(JSON.stringify({
-          output_text: "Summary content.",
+          output_text: "New summary content.",
           usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
         }));
       }
@@ -146,12 +155,17 @@ describe("cli --no-cache bug reproduction", () => {
       },
     );
 
-    // If the bug exists, fetchMock won't be called again for the URL (it will hit cache)
-    // and mocks.streamSimple might also be skipped if the summary is cached.
+    // EXPECTATION: It SHOULD call fetch again for the URL since the cache is bypassed.
+    // We expect 4 calls: 1 for the URL, and 3 for OpenAI (catalog lookup, price check, and completion).
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     
-    // THE BUG: noCacheFlag is hardcoded to false, so it WILL hit the cache for extraction.
-    // EXPECTATION: It SHOULD call fetch again for the URL, so total calls should be 4 + 4 = 8.
-    // (1 URL fetch + 3 OpenAI calls each time)
-    expect(fetchMock, "Fetch should be called again when --no-cache is used").toHaveBeenCalledTimes(8);
+    // Verify that the URL was indeed among the calls
+    const urlCalls = fetchMock.mock.calls.filter(call => 
+      (typeof call[0] === "string" ? call[0] : (call[0] as any).url) === "https://example.com"
+    );
+    expect(urlCalls.length).toBeGreaterThanOrEqual(1);
+
+    // Verify the second run processed the NEW content
+    expect(stdout2.getText()).toContain("New summary content.");
   }, 30_000);
 });
