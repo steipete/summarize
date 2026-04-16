@@ -14,14 +14,15 @@ function noopStream(): Writable {
   });
 }
 
+let capturedCtx: unknown = null;
+
 // Mock the extraction session to intercept the context/model
 vi.mock("../src/run/flows/url/extraction-session.ts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/run/flows/url/extraction-session.js")>();
   return {
     ...actual,
     createUrlExtractionSession: (args: any) => {
-      // Store the context so we can inspect it
-      (globalThis as any).capturedUrlFlowContext = args.ctx;
+      capturedCtx = args.ctx;
       return actual.createUrlExtractionSession(args);
     },
   };
@@ -111,7 +112,6 @@ describe("cli media API key mapping", () => {
       },
     );
 
-    const capturedCtx = (globalThis as any).capturedUrlFlowContext;
     expect(capturedCtx, "UrlFlowContext should have been captured").toBeDefined();
     
     // THE FIX: This should now contain our key
