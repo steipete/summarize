@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
+import { makeAssistantMessage, makeTextDeltaStream } from "./helpers/pi-ai-mock.js";
 
 function noopStream(): Writable {
   return new Writable({
@@ -27,16 +28,36 @@ vi.mock("../src/run/flows/url/extraction-session.ts", async (importOriginal) => 
 });
 
 // Also mock pi-ai to avoid real LLM calls
-vi.mock("@mariozechner/pi-ai", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@mariozechner/pi-ai")>();
-  return {
-    ...actual,
-    completeSimple: vi.fn().mockResolvedValue({
-      content: [{ type: "text", text: "Summary content." }],
+const mocks = vi.hoisted(() => ({
+  streamSimple: vi.fn(),
+  completeSimple: vi.fn(),
+  getModel: vi.fn(() => {
+    throw new Error("no model");
+  }),
+}));
+
+mocks.streamSimple.mockImplementation(() =>
+  makeTextDeltaStream(
+    ["Summary content."],
+    makeAssistantMessage({
+      text: "Summary content.",
       usage: { input: 1, output: 1, totalTokens: 2 },
     }),
-  };
-});
+  ),
+);
+
+mocks.completeSimple.mockResolvedValue(
+  makeAssistantMessage({
+    text: "Summary content.",
+    usage: { input: 1, output: 1, totalTokens: 2 },
+  }),
+);
+
+vi.mock("@mariozechner/pi-ai", () => ({
+  streamSimple: mocks.streamSimple,
+  completeSimple: mocks.completeSimple,
+  getModel: mocks.getModel,
+}));
 
 describe("cli media API key mapping", () => {
   it("should correctly map OPENAI_API_KEY to openaiTranscriptionKey in UrlFlowModel", async () => {
