@@ -68,6 +68,8 @@ export default defineConfig({
         // Barrels / type-only entrypoints (noise for coverage).
         "src/**/index.ts",
         "src/**/types.ts",
+        "src/**/contracts.ts",
+        "src/**/slides-text.ts",
         "src/**/deps.ts",
       ],
       thresholds: {
