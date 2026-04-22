@@ -59,7 +59,7 @@ function buildScheduledTaskXml({
   // daemon look like it was failing to start. Register via /XML so we can flip
   // those flags off and own every other relevant setting too.
   return [
-    '<?xml version="1.0" encoding="UTF-16"?>',
+    '<?xml version="1.0" encoding="UTF-8"?>',
     '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">',
     "  <RegistrationInfo>",
     "    <Author>summarize</Author>",
@@ -279,9 +279,8 @@ async function fetchDaemonPid(env: Record<string, string | undefined>): Promise<
   }
 }
 
-// schtasks /End only kills the task action process (cmd.exe). The daemon node
-// process detaches from cmd at startup, so /End orphans it and a subsequent
-// /Run hits "port already in use" and exits 1 — silent restart no-op. Ask the
+// schtasks /End only targets the task action process. Our wscript launcher
+// exits after detaching node, so /End cannot stop the daemon itself. Ask the
 // daemon for its own pid via /health and taskkill the tree before /End.
 async function killRunningDaemon(env: Record<string, string | undefined>): Promise<void> {
   const pid = await fetchDaemonPid(env);
@@ -350,7 +349,10 @@ export async function installScheduledTask({
     throw new Error(`schtasks create failed: ${detail}${hint}`);
   }
 
-  await execSchtasks(["/Run", "/TN", DAEMON_WINDOWS_TASK_NAME]);
+  const run = await execSchtasks(["/Run", "/TN", DAEMON_WINDOWS_TASK_NAME]);
+  if (run.code !== 0) {
+    throw new Error(`schtasks run failed: ${run.stderr || run.stdout}`.trim());
+  }
   stdout.write(`Installed Scheduled Task: ${DAEMON_WINDOWS_TASK_NAME}\n`);
   stdout.write(`Task script: ${scriptPath}\n`);
   return { scriptPath };

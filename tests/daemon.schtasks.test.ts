@@ -94,6 +94,7 @@ describe("daemon/schtasks install", () => {
 
     const xmlPath = path.join(home, ".summarize", "daemon-task.xml");
     const xml = readFileSync(xmlPath, "utf8");
+    expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
     expect(xml).toContain("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>");
     expect(xml).toContain("<StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>");
     expect(xml).toContain("<Hidden>true</Hidden>");
@@ -182,6 +183,39 @@ describe("daemon/schtasks install", () => {
         programArguments: ["node", "dist/cli.js", "daemon", "run"],
       }),
     ).rejects.toThrow(/elevated/);
+  });
+
+  it("reports schtasks /Run failures after task creation", async () => {
+    mocks.execFile.mockImplementation(
+      (
+        file: string,
+        args: string[],
+        _options: { encoding: string; windowsHide: boolean },
+        callback: (error: unknown, stdout: string, stderr: string) => void,
+      ) => {
+        if (file === "schtasks" && args[0] === "/Run") {
+          const error = Object.assign(new Error("schtasks run failed"), {
+            code: 1,
+            stdout: "",
+            stderr: "ERROR: The task could not be started.",
+          });
+          callback(error, "", "ERROR: The task could not be started.");
+          return {} as never;
+        }
+        callback(null, "", "");
+        return {} as never;
+      },
+    );
+    const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
+    const out = collectStream();
+
+    await expect(
+      installScheduledTask({
+        env: { HOME: home, USERNAME: "testuser", USERDOMAIN: "TESTHOST" },
+        stdout: out.stream,
+        programArguments: ["node", "dist/cli.js", "daemon", "run"],
+      }),
+    ).rejects.toThrow(/task could not be started/);
   });
 });
 
