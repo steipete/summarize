@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
 import { makeAssistantMessage, makeTextDeltaStream } from "./helpers/pi-ai-mock.js";
 
+const TARGET_URL = "https://example.com";
+
 const htmlResponse = (html: string, status = 200) =>
   new Response(html, {
     status,
@@ -21,6 +23,10 @@ function collectStream() {
     },
   });
   return { stream, getText: () => text };
+}
+
+function requestUrl(input: RequestInfo | URL): string {
+  return typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 }
 
 const mocks = vi.hoisted(() => ({
@@ -48,7 +54,7 @@ vi.mock("@mariozechner/pi-ai", () => ({
 }));
 
 describe("cli --no-cache bug reproduction", () => {
-  it("should NOT reuse cached content when --no-cache is provided", async () => {
+  it("refetches URL content when --no-cache is provided", async () => {
     mocks.streamSimple.mockClear();
 
     const root = mkdtempSync(join(tmpdir(), "summarize-no-cache-repro-"));
@@ -75,15 +81,17 @@ describe("cli --no-cache bug reproduction", () => {
     );
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : "url" in input ? input.url : input.toString();
-      if (url === "https://example.com") {
+      const url = requestUrl(input);
+      if (url === TARGET_URL) {
         return htmlResponse("<!doctype html><html><body>First fetch</body></html>");
       }
       if (url.includes("api.openai.com")) {
-        return new Response(JSON.stringify({
-          output_text: "Summary content.",
-          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
-        }));
+        return new Response(
+          JSON.stringify({
+            output_text: "Summary content.",
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+        );
       }
       throw new Error(`Unexpected fetch call: ${url}`);
     });
@@ -91,43 +99,30 @@ describe("cli --no-cache bug reproduction", () => {
     const stdout1 = collectStream();
     const stderr1 = collectStream();
 
-    // First run to populate cache
-    await runCli(
-      [
-        "--model",
-        "openai/gpt-5.2",
-        "--metrics",
-        "off",
-        "https://example.com",
-      ],
-      {
-        env: { HOME: root, OPENAI_API_KEY: "test" },
-        fetch: fetchMock as unknown as typeof fetch,
-        stdout: stdout1.stream,
-        stderr: stderr1.stream,
-      },
-    );
+    await runCli(["--model", "openai/gpt-5.2", "--metrics", "off", TARGET_URL], {
+      env: { HOME: root, OPENAI_API_KEY: "test" },
+      fetch: fetchMock as unknown as typeof fetch,
+      stdout: stdout1.stream,
+      stderr: stderr1.stream,
+    });
 
-    // Verify that the URL was indeed among the calls
-    const firstUrlCalls = fetchMock.mock.calls.filter(call =>
-      (typeof call[0] === "string" ? call[0] : (call[0] as any).url) === "https://example.com"
-    );
-    expect(firstUrlCalls.length).toBeGreaterThanOrEqual(1);
+    const firstUrlCalls = fetchMock.mock.calls.filter((call) => requestUrl(call[0]) === TARGET_URL);
+    expect(firstUrlCalls.length).toBeGreaterThan(0);
 
-    // Clear mock state between runs
     fetchMock.mockClear();
 
-    // Update fetch mock to return something different
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : "url" in input ? input.url : input.toString();
-      if (url === "https://example.com") {
+      const url = requestUrl(input);
+      if (url === TARGET_URL) {
         return htmlResponse("<!doctype html><html><body>Second fetch</body></html>");
       }
       if (url.includes("api.openai.com")) {
-        return new Response(JSON.stringify({
-          output_text: "New summary content.",
-          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
-        }));
+        return new Response(
+          JSON.stringify({
+            output_text: "New summary content.",
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+        );
       }
       throw new Error(`Unexpected fetch call: ${url}`);
     });
@@ -135,32 +130,15 @@ describe("cli --no-cache bug reproduction", () => {
     const stdout2 = collectStream();
     const stderr2 = collectStream();
 
-    // Second run WITH --no-cache
-    await runCli(
-      [
-        "--model",
-        "openai/gpt-5.2",
-        "--metrics",
-        "off",
-        "--no-cache",
-        "https://example.com",
-      ],
-      {
-        env: { HOME: root, OPENAI_API_KEY: "test" },
-        fetch: fetchMock as unknown as typeof fetch,
-        stdout: stdout2.stream,
-        stderr: stderr2.stream,
-      },
-    );
+    await runCli(["--model", "openai/gpt-5.2", "--metrics", "off", "--no-cache", TARGET_URL], {
+      env: { HOME: root, OPENAI_API_KEY: "test" },
+      fetch: fetchMock as unknown as typeof fetch,
+      stdout: stdout2.stream,
+      stderr: stderr2.stream,
+    });
 
-    // EXPECTATION: It SHOULD call fetch again for the URL since the cache is bypassed.
-    // Verify that the URL was indeed among the calls
-    const urlCalls = fetchMock.mock.calls.filter(call => 
-      (typeof call[0] === "string" ? call[0] : (call[0] as any).url) === "https://example.com"
-    );
-    expect(urlCalls.length).toBeGreaterThanOrEqual(1);
-
-    // Verify the second run processed the NEW content
+    const urlCalls = fetchMock.mock.calls.filter((call) => requestUrl(call[0]) === TARGET_URL);
+    expect(urlCalls.length).toBeGreaterThan(0);
     expect(stdout2.getText()).toContain("New summary content.");
   }, 30_000);
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { SummarizeConfig } from "../src/config.js";
 import { resolveEnvState } from "../src/run/run-env.js";
 
 describe("resolveEnvState", () => {
@@ -107,7 +108,7 @@ describe("resolveEnvState", () => {
       },
       configForCli: {
         nvidia: { baseUrl: "https://custom-nvidia.com" },
-      } as any,
+      } satisfies SummarizeConfig,
     });
 
     expect(state.providerBaseUrls.openai).toBe("https://custom-openai.com");

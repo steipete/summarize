@@ -4,7 +4,10 @@ import { join } from "node:path";
 import { Writable } from "node:stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
+import type { createUrlExtractionSession as createUrlExtractionSessionType } from "../src/run/flows/url/extraction-session.js";
 import { makeAssistantMessage, makeTextDeltaStream } from "./helpers/pi-ai-mock.js";
+
+type CreateUrlExtractionSessionArgs = Parameters<typeof createUrlExtractionSessionType>[0];
 
 function noopStream(): Writable {
   return new Writable({
@@ -24,19 +27,18 @@ type CapturedCtx = {
 
 let capturedCtx: CapturedCtx | null = null;
 
-// Mock the extraction session to intercept the context/model
 vi.mock("../src/run/flows/url/extraction-session.ts", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/run/flows/url/extraction-session.js")>();
+  const actual =
+    await importOriginal<typeof import("../src/run/flows/url/extraction-session.js")>();
   return {
     ...actual,
-    createUrlExtractionSession: (args: any) => {
+    createUrlExtractionSession: (args: CreateUrlExtractionSessionArgs) => {
       capturedCtx = args.ctx;
       return actual.createUrlExtractionSession(args);
     },
   };
 });
 
-// Also mock pi-ai to avoid real LLM calls
 const mocks = vi.hoisted(() => ({
   streamSimple: vi.fn(),
   completeSimple: vi.fn(),
@@ -73,12 +75,11 @@ describe("cli media API key mapping", () => {
     capturedCtx = null;
   });
 
-  it("should correctly map OPENAI_API_KEY to openaiApiKey in UrlFlowModel", async () => {
+  it("maps OPENAI_API_KEY into URL extraction transcription options", async () => {
     const root = mkdtempSync(join(tmpdir(), "summarize-media-key-url-integration-"));
     const summarizeDir = join(root, ".summarize");
     mkdirSync(summarizeDir, { recursive: true });
 
-    // Mock LiteLLM catalog to avoid network calls
     const cacheDir = join(summarizeDir, "cache");
     mkdirSync(cacheDir, { recursive: true });
     writeFileSync(
@@ -98,35 +99,24 @@ describe("cli media API key mapping", () => {
       const url = typeof input === "string" ? input : "url" in input ? input.url : input.toString();
       if (url === "https://example.com") {
         return new Response("<!doctype html><html><body>Hi</body></html>", {
-          headers: { "Content-Type": "text/html" }
+          headers: { "Content-Type": "text/html" },
         });
       }
       throw new Error(`Unexpected fetch call: ${url}`);
     });
 
-    await runCli(
-      [
-        "--model",
-        "openai/gpt-4o-mini",
-        "--metrics",
-        "off",
-        "https://example.com",
-      ],
-      {
-        env: { 
-          HOME: root, 
-          OPENAI_API_KEY: testKey,
-          PATH: process.env.PATH
-        },
-        fetch: fetchMock as unknown as typeof fetch,
-        stdout: noopStream(),
-        stderr: noopStream(),
+    await runCli(["--model", "openai/gpt-4o-mini", "--metrics", "off", "https://example.com"], {
+      env: {
+        HOME: root,
+        OPENAI_API_KEY: testKey,
+        PATH: process.env.PATH,
       },
-    );
+      fetch: fetchMock as unknown as typeof fetch,
+      stdout: noopStream(),
+      stderr: noopStream(),
+    });
 
     expect(capturedCtx, "UrlFlowContext should have been captured").not.toBeNull();
-    
-    // THE FIX: This should now contain our key
     expect(capturedCtx!.model.apiStatus.openaiApiKey).toBe(testKey);
   });
 });

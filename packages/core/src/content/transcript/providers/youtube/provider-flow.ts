@@ -251,7 +251,8 @@ export async function tryYtDlpTranscript(args: {
     mediaKind: "video",
   });
   if (ytdlpResult.notes.length > 0) flow.notes.push(...ytdlpResult.notes);
-  if (ytdlpResult.error) flow.notes.push(`yt-dlp transcription failed: ${ytdlpResult.error.message}`);
+  if (ytdlpResult.error)
+    flow.notes.push(`yt-dlp transcription failed: ${ytdlpResult.error.message}`);
 
   if (ytdlpResult.text) {
     return {
