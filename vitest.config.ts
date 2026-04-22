@@ -70,6 +70,7 @@ export default defineConfig({
         "src/**/types.ts",
         "src/**/contracts.ts",
         "src/**/slides-text.ts",
+        "src/**/slides-text-types.ts",
         "src/**/deps.ts",
       ],
       thresholds: {
