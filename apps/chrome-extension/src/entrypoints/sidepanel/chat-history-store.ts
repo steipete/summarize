@@ -85,27 +85,28 @@ export function createChatHistoryStore({
   chatLimits: ChatHistoryLimits;
   getStorage?: () => chrome.storage.StorageArea | undefined;
 }) {
-  const cache = new Map<number, ChatMessage[]>();
+  const cache = new Map<string, ChatMessage[]>();
 
   async function clear(tabId: number | null, url?: string | null) {
     if (!tabId) return;
-    cache.delete(tabId);
+    const key = getChatHistoryKey(tabId, url);
+    cache.delete(key);
     const store = getStorage();
     if (!store) return;
     try {
-      await store.remove(getChatHistoryKey(tabId, url));
+      await store.remove(key);
     } catch {
       // ignore
     }
   }
 
   async function load(tabId: number, url?: string | null): Promise<ChatMessage[] | null> {
-    const cached = cache.get(tabId);
+    const key = getChatHistoryKey(tabId, url);
+    const cached = cache.get(key);
     if (cached) return cached;
     const store = getStorage();
     if (!store) return null;
     try {
-      const key = getChatHistoryKey(tabId, url);
       const res = await store.get(key);
       const raw = res?.[key];
       if (!Array.isArray(raw)) return null;
@@ -114,21 +115,27 @@ export function createChatHistoryStore({
         .map((msg) => normalizeStoredMessage(msg as Record<string, unknown>))
         .filter((msg): msg is ChatMessage => Boolean(msg));
       if (!parsed.length) return null;
-      cache.set(tabId, parsed);
+      cache.set(key, parsed);
       return parsed;
     } catch {
       return null;
     }
   }
 
-  async function persist(tabId: number | null, messages: ChatMessage[], chatEnabled: boolean, url?: string | null) {
+  async function persist(
+    tabId: number | null,
+    messages: ChatMessage[],
+    chatEnabled: boolean,
+    url?: string | null,
+  ) {
     if (!chatEnabled || !tabId) return messages;
+    const key = getChatHistoryKey(tabId, url);
     const compacted = compactChatHistory(messages, chatLimits);
-    cache.set(tabId, compacted);
+    cache.set(key, compacted);
     const store = getStorage();
     if (!store) return compacted;
     try {
-      await store.set({ [getChatHistoryKey(tabId, url)]: compacted });
+      await store.set({ [key]: compacted });
     } catch {
       // ignore
     }

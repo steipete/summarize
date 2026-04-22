@@ -54,7 +54,11 @@ type UiStateRuntimeOpts = {
   requestAgentAbort: (reason: string) => void;
   clearChatHistoryForActiveTab: () => void | Promise<void>;
   resetChatState: () => void;
-  migrateChatHistory: (fromTabId: number | null, toTabId: number | null, toUrl: string | null) => void | Promise<void>;
+  migrateChatHistory: (
+    fromTabId: number | null,
+    toTabId: number | null,
+    toUrl: string | null,
+  ) => void | Promise<void>;
   maybeStartPendingSummaryRunForUrl: (url: string | null) => boolean;
   maybeStartPendingSlidesForUrl: (url: string | null) => void;
   resolveActiveSlidesRunId: () => string | null;

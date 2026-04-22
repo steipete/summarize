@@ -7,6 +7,7 @@
 - CLI build: mark the generated `dist/cli.js` wrapper executable so `npm link` and global installs can run the binary directly on Unix-like systems (#191, thanks @maciej).
 - CLI providers: use stable default aliases for Gemini (`flash`) and Cursor Agent (`auto`) so installed CLI versions resolve supported models reliably (#193, thanks @mvance).
 - YouTube and cache: make `--no-cache` bypass cached URL extraction, forward `OPENAI_API_KEY` into media transcription, and surface yt-dlp transcription failures in diagnostics (#197, thanks @mvance).
+- Chrome extension chat: isolate side-panel chat history by both tab and URL so navigating within a tab no longer shows another page's conversation (#189, thanks @Youpen-y).
 - Spotify podcasts: skip encrypted Spotify embed audio, fall back to publisher RSS enclosures, and surface podcast transcription failures instead of summarizing a bare URL.
 - CLI progress: show only the active transcription provider/model in status text instead of the full remote fallback chain.
 
