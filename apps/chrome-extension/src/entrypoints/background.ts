@@ -3,6 +3,7 @@ import { defineBackground } from "wxt/utils/define-background";
 import { buildDaemonRequestBody, buildSummarizeRequestBody } from "../lib/daemon-payload";
 import { createDaemonRecovery, isDaemonUnreachableError } from "../lib/daemon-recovery";
 import { createDaemonStatusTracker } from "../lib/daemon-status";
+import { logExtensionEvent } from "../lib/extension-logs";
 import type { BgToPanel, PanelCachePayload, PanelToBg } from "../lib/panel-contracts";
 import { loadSettings, patchSettings } from "../lib/settings";
 import { canSummarizeUrl, extractFromTab, seekInTab } from "./background/content-script-bridge";
@@ -63,6 +64,16 @@ export default defineBackground(() => {
     if (normalized.includes("warn")) return "warn";
     return "verbose";
   }
+  const logExtract = (windowId: number) => (event: string, detail?: Record<string, unknown>) => {
+    const detailPayload = detail ? { windowId, ...detail } : { windowId };
+    logExtensionEvent({
+      event,
+      detail: detailPayload,
+      scope: "extractor",
+      level: resolveLogLevel(event),
+    });
+    console.debug("[summarize][extractor]", { event, ...detailPayload });
+  };
   const runtimeActionsHandler = createRuntimeActionsHandler({
     armedTabs: nativeInputArmedTabs,
   });
@@ -175,6 +186,7 @@ export default defineBackground(() => {
               sendStatus: (status) => sendStatus(session, status),
               extractFromTab,
               fetchImpl: fetch,
+              log: logExtract(session.windowId),
             });
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
@@ -252,6 +264,7 @@ export default defineBackground(() => {
               sendStatus: () => {},
               extractFromTab,
               fetchImpl: fetch,
+              log: logExtract(session.windowId),
             });
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);

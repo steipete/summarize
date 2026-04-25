@@ -4,6 +4,7 @@ import type { Settings } from "../../lib/settings";
 import { isYouTubeWatchUrl } from "../../lib/youtube-url";
 import type { ExtractResponse } from "./content-script-bridge";
 import type { CachedExtract } from "./extract-cache";
+import { routeExtract, type ExtractorContext, type ExtractorResult } from "./extractors/router";
 
 type DaemonRecoveryLike = {
   recordFailure: (url: string) => void;
@@ -90,14 +91,7 @@ export async function summarizeActiveTab({
   sendStatus: (status: string) => void;
   send: SendFn;
   fetchImpl: typeof fetch;
-  extractFromTab: (
-    tabId: number,
-    maxChars: number,
-    opts?: {
-      timeoutMs?: number;
-      log?: (event: string, detail?: Record<string, unknown>) => void;
-    },
-  ) => Promise<ExtractResponse>;
+  extractFromTab: ExtractorContext["extractFromTab"];
   urlsMatch: (left: string, right: string) => boolean;
   buildSummarizeRequestBody: (args: {
     extracted: ExtractResponse & { ok: true };
@@ -144,7 +138,10 @@ export async function summarizeActiveTab({
     Boolean(tab.url && isYouTubeWatchUrl(tab.url)) && opts?.inputMode !== "page" && prefersUrlMode;
 
   let extracted: ExtractResponse & { ok: true };
+  let routedResult: Pick<ExtractorResult, "source" | "diagnostics"> | null = null;
   if (wantsUrlFastPath) {
+    logPanel("extractor.route.start", { tabId: tab.id, preferUrl: prefersUrlMode });
+    logPanel("extractor.route.preferUrlHardSwitch", { tabId: tab.id });
     sendStatus(`Fetching transcript… (${reason})`);
     logPanel("extract:url-fastpath:start", { reason, tabId: tab.id });
     try {
@@ -245,22 +242,61 @@ export async function summarizeActiveTab({
         sendStatus(`Extracting: reading… (${reason})`);
       }
     };
-    const extractedAttempt = await extractFromTab(tab.id, settings.maxChars, {
-      timeoutMs: 8_000,
-      log: (event, detail) => {
-        statusFromExtractEvent(event);
-        logPanel(event, detail);
-      },
-    });
-    logPanel(extractedAttempt.ok ? "extract:done" : "extract:failed", {
-      ok: extractedAttempt.ok,
-      ...(extractedAttempt.ok
-        ? { url: extractedAttempt.data.url }
-        : { error: extractedAttempt.error }),
-    });
-    extracted = extractedAttempt.ok
-      ? extractedAttempt.data
-      : {
+    if (prefersUrlMode) {
+      logPanel("extractor.route.start", { tabId: tab.id, preferUrl: true });
+      logPanel("extractor.route.preferUrlHardSwitch", { tabId: tab.id });
+      const extractedAttempt = await extractFromTab(tab.id, settings.maxChars, {
+        timeoutMs: 8_000,
+        log: (event, detail) => {
+          statusFromExtractEvent(event);
+          logPanel(event, detail);
+        },
+      });
+      logPanel(extractedAttempt.ok ? "extract:done" : "extract:failed", {
+        ok: extractedAttempt.ok,
+        ...(extractedAttempt.ok
+          ? { url: extractedAttempt.data.url }
+          : { error: extractedAttempt.error }),
+      });
+      extracted = extractedAttempt.ok
+        ? extractedAttempt.data
+        : {
+            ok: true,
+            url: tab.url,
+            title: tab.title ?? null,
+            text: "",
+            truncated: false,
+            media: null,
+          };
+    } else {
+      const routed = await routeExtract({
+        tabId: tab.id,
+        url: tab.url,
+        title: tab.title?.trim() ?? null,
+        maxChars: settings.maxChars,
+        minTextChars: 1,
+        token: settings.token,
+        noCache: Boolean(opts?.refresh),
+        includeDiagnostics: settings.extendedLogging,
+        signal: controller.signal,
+        fetchImpl,
+        extractFromTab,
+        log: (event, detail) => {
+          statusFromExtractEvent(event);
+          logPanel(event, detail);
+        },
+      });
+      logPanel(routed ? "extract:done" : "extract:failed", {
+        ok: Boolean(routed),
+        ...(routed
+          ? { url: routed.extracted.url, source: routed.source }
+          : { error: "No extractor result" }),
+      });
+      if (routed) {
+        extracted = routed.extracted;
+        routedResult = routed;
+      } else {
+        extracted = {
           ok: true,
           url: tab.url,
           title: tab.title ?? null,
@@ -268,6 +304,8 @@ export async function summarizeActiveTab({
           truncated: false,
           media: null,
         };
+      }
+    }
   }
 
   if (tab.url && extracted.url && !urlsMatch(tab.url, extracted.url)) {
@@ -279,6 +317,7 @@ export async function summarizeActiveTab({
     });
     if (retry.ok) {
       extracted = retry.data;
+      routedResult = null;
     }
   }
 
@@ -341,7 +380,7 @@ export async function summarizeActiveTab({
     url: resolvedPayload.url,
     title: resolvedTitle,
     text: resolvedPayload.text,
-    source: "page",
+    source: routedResult?.source ?? "page",
     truncated: resolvedPayload.truncated,
     totalCharacters: resolvedPayload.text.length,
     wordCount,
@@ -354,7 +393,7 @@ export async function summarizeActiveTab({
     transcriptTimedText: null,
     mediaDurationSeconds: resolvedPayload.mediaDurationSeconds ?? null,
     slides: null,
-    diagnostics: null,
+    diagnostics: routedResult?.diagnostics ?? null,
   });
 
   sendStatus("Connecting…");

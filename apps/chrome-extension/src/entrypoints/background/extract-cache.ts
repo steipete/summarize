@@ -1,5 +1,11 @@
 import { shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import type { ExtractResponse } from "./content-script-bridge";
+import {
+  routeExtract,
+  type ExtractLog,
+  type ExtractorContext,
+  type ExtractorResult,
+} from "./extractors/router";
 import type { SlidesPayload } from "./panel-utils";
 
 export type CachedExtract = {
@@ -39,6 +45,8 @@ type CachedExtractStore = {
 };
 
 type LoadSettingsResult = {
+  extendedLogging: boolean;
+  maxChars: number;
   slidesEnabled: boolean;
   token: string;
 };
@@ -52,6 +60,7 @@ function countWords(text: string): number {
 
 function fromPageExtract({
   extracted,
+  result,
   title,
 }: {
   extracted: {
@@ -62,13 +71,14 @@ function fromPageExtract({
     media?: { hasVideo: boolean; hasAudio: boolean; hasCaptions: boolean } | null;
     mediaDurationSeconds?: number | null;
   };
+  result?: Pick<ExtractorResult, "source" | "diagnostics"> | null;
   title: string | null;
 }): CachedExtract {
   return {
     url: extracted.url,
     title: extracted.title ?? title,
     text: extracted.text,
-    source: "page",
+    source: result?.source ?? "page",
     truncated: extracted.truncated,
     totalCharacters: extracted.text.length,
     wordCount: countWords(extracted.text),
@@ -81,7 +91,7 @@ function fromPageExtract({
     transcriptTimedText: null,
     mediaDurationSeconds: extracted.mediaDurationSeconds ?? null,
     slides: null,
-    diagnostics: null,
+    diagnostics: result?.diagnostics ?? null,
   };
 }
 
@@ -93,14 +103,16 @@ export async function ensureChatExtract({
   sendStatus,
   extractFromTab,
   fetchImpl,
+  log,
 }: {
   session: { windowId: number };
   tab: chrome.tabs.Tab;
   settings: LoadSettingsResult;
   panelSessionStore: CachedExtractStore;
   sendStatus: (status: string) => void;
-  extractFromTab: (tabId: number, maxCharacters: number) => Promise<ExtractResponse>;
+  extractFromTab: ExtractorContext["extractFromTab"];
   fetchImpl: typeof fetch;
+  log?: ExtractLog;
 }): Promise<CachedExtract> {
   if (!tab.id || !tab.url) {
     throw new Error("Cannot chat on this page");
@@ -109,30 +121,53 @@ export async function ensureChatExtract({
   const preferUrl = shouldPreferUrlMode(tab.url);
   const cached = panelSessionStore.getCachedExtract(tab.id, tab.url);
   if (cached && (!preferUrl || cached.source === "url")) return cached;
+  const routeLog = log ?? (() => {});
 
-  if (!preferUrl) {
-    const extractedAttempt = await extractFromTab(tab.id, CHAT_FULL_TRANSCRIPT_MAX_CHARS);
-    if (extractedAttempt.ok) {
-      const extracted = extractedAttempt.data;
-      const text = extracted.text.trim();
-      if (text.length >= MIN_CHAT_CHARS) {
-        const next = fromPageExtract({
-          extracted,
-          title: tab.title?.trim() ?? null,
-        });
-        panelSessionStore.setCachedExtract(tab.id, next);
-        return next;
-      }
-    } else if (
-      extractedAttempt.error.toLowerCase().includes("chrome blocked") ||
-      extractedAttempt.error.toLowerCase().includes("failed to inject")
-    ) {
-      throw new Error(extractedAttempt.error);
+  if (preferUrl) {
+    await routeExtract({
+      tabId: tab.id,
+      url: tab.url,
+      title: tab.title?.trim() ?? null,
+      maxChars: settings.maxChars,
+      minTextChars: 1,
+      token: settings.token,
+      includeDiagnostics: settings.extendedLogging,
+      fetchImpl,
+      extractFromTab,
+      log: routeLog,
+    });
+  } else {
+    const routed = await routeExtract({
+      tabId: tab.id,
+      url: tab.url,
+      title: tab.title?.trim() ?? null,
+      maxChars: CHAT_FULL_TRANSCRIPT_MAX_CHARS,
+      minTextChars: MIN_CHAT_CHARS,
+      token: settings.token,
+      includeDiagnostics: settings.extendedLogging,
+      fetchImpl,
+      extractFromTab,
+      log: routeLog,
+    });
+    if (routed) {
+      const next = fromPageExtract({
+        extracted: routed.extracted,
+        result: routed,
+        title: tab.title?.trim() ?? null,
+      });
+      panelSessionStore.setCachedExtract(tab.id, next);
+      return next;
     }
   }
 
   const wantsSlides = settings.slidesEnabled && shouldPreferUrlMode(tab.url);
-  sendStatus(wantsSlides ? "Extracting video + thumbnails…" : "Extracting video transcript…");
+  sendStatus(
+    wantsSlides
+      ? "Extracting video + thumbnails…"
+      : preferUrl
+        ? "Extracting video transcript…"
+        : "Extracting URL content…",
+  );
   const extractTimeoutMs = wantsSlides ? 6 * 60_000 : 3 * 60_000;
   const extractController = new AbortController();
   const extractTimeout = setTimeout(() => {
