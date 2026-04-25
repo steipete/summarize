@@ -2,8 +2,10 @@ import fs from "node:fs";
 import { createServer as createHttpServer } from "node:http";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { runDaemonServer } from "../../../src/daemon/server.js";
+import { META_SITE_EXCLUDE_MATCHES } from "../src/lib/content-script-matches";
 import {
   BLOCKED_ENV_KEYS,
   DAEMON_PORT,
@@ -54,10 +56,33 @@ import {
 import { allowFirefoxExtensionTests } from "./helpers/extension-test-config";
 import { getPanelModel, getPanelPhase } from "./helpers/panel-hooks";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 test.skip(
   ({ browserName }) => browserName === "firefox" && !allowFirefoxExtensionTests,
   "Firefox extension tests are blocked by Playwright limitations. Set ALLOW_FIREFOX_EXTENSION_TESTS=1 to run.",
 );
+
+test("manifest excludes Meta sites from always-on content scripts", () => {
+  const manifestPath = path.resolve(__dirname, "..", ".output", "chrome-mv3", "manifest.json");
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+    content_scripts?: Array<{ js?: string[]; exclude_matches?: string[] }>;
+  };
+  const contentScripts = manifest.content_scripts ?? [];
+  const alwaysOnScripts = new Set([
+    "content-scripts/automation.js",
+    "content-scripts/extract.js",
+    "content-scripts/hover.js",
+  ]);
+  const matchingEntries = contentScripts.filter((entry) =>
+    entry.js?.some((script) => alwaysOnScripts.has(script)),
+  );
+
+  expect(matchingEntries.length).toBeGreaterThan(0);
+  for (const entry of matchingEntries) {
+    expect(entry.exclude_matches ?? []).toEqual(expect.arrayContaining(META_SITE_EXCLUDE_MATCHES));
+  }
+});
 
 test("sidepanel shows a ready state instead of going blank when switching tabs manually", async ({
   browserName: _browserName,

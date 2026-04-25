@@ -1,5 +1,6 @@
 import { Readability } from "@mozilla/readability";
 import { defineContentScript } from "wxt/utils/define-content-script";
+import { META_SITE_EXCLUDE_MATCHES } from "../lib/content-script-matches";
 import { resolveMediaDurationSecondsFromData } from "../lib/media-duration";
 import { type SeekResponse, seekToSecondsInDocument } from "../lib/seek";
 
@@ -143,6 +144,7 @@ function seekToSeconds(seconds: number): SeekResponse {
 
 export default defineContentScript({
   matches: ["<all_urls>"],
+  excludeMatches: META_SITE_EXCLUDE_MATCHES,
   runAt: "document_idle",
   main() {
     const flag = "__summarize_extract_installed__";
