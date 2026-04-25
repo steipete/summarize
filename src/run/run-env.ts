@@ -156,7 +156,9 @@ export function resolveEnvState({
   const anthropicConfigured = typeof anthropicApiKey === "string" && anthropicApiKey.length > 0;
   const openrouterConfigured = typeof openrouterApiKey === "string" && openrouterApiKey.length > 0;
   const cliAvailability = resolveCliAvailability({ env, config: configForCli });
-  const envForAuto = openrouterApiKey ? { ...env, OPENROUTER_API_KEY: openrouterApiKey } : env;
+  const envForAuto = openrouterApiKey
+    ? { ...envForRun, OPENROUTER_API_KEY: openrouterApiKey }
+    : envForRun;
   const providerBaseUrls = {
     openai: openaiBaseUrl,
     nvidia: nvidiaBaseUrl,

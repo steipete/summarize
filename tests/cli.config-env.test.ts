@@ -87,4 +87,42 @@ describe("cli config env", () => {
     expect(stdout.getText().trim()).toBe("OK");
     expect(mocks.completeSimple).toHaveBeenCalledTimes(1);
   });
+
+  it("uses API keys from config env for auto model selection", async () => {
+    mocks.completeSimple.mockClear();
+
+    const root = mkdtempSync(join(tmpdir(), "summarize-cli-config-env-auto-"));
+    mkdirSync(join(root, ".summarize"), { recursive: true });
+    writeFileSync(
+      join(root, ".summarize", "config.json"),
+      JSON.stringify({
+        model: {
+          mode: "auto",
+          rules: [{ candidates: ["openai/gpt-5-chat"] }],
+        },
+        env: { OPENAI_API_KEY: "test-config-key" },
+      }),
+      "utf8",
+    );
+
+    const html =
+      "<!doctype html><html><head><title>Hello</title></head>" +
+      `<body><article><p>${"Hello world. ".repeat(800)}</p></article></body></html>`;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url === "https://example.com") return htmlResponse(html);
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+    const stdout = collectStdout();
+
+    await runCli(["--force-summary", "--timeout", "2s", "https://example.com"], {
+      env: { HOME: root },
+      fetch: fetchMock as unknown as typeof fetch,
+      stdout: stdout.stream,
+      stderr: noopStream(),
+    });
+
+    expect(stdout.getText().trim()).toBe("OK");
+    expect(mocks.completeSimple).toHaveBeenCalledTimes(1);
+  });
 });
