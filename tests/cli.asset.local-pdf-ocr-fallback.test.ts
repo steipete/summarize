@@ -36,6 +36,42 @@ vi.mock("@mariozechner/pi-ai", () => ({
 const FAKE_PDF = Buffer.from("%PDF-1.7\n%âãÏÓ\n1 0 obj\n<<>>\nendobj\n", "utf8");
 
 describe("markitdown OCR fallback for image-based PDFs", () => {
+  it("--extract: finish line shows 'markitdown+ocr' when OCR fallback was used", async () => {
+    const root = mkdtempSync(join(tmpdir(), "summarize-ocr-label-"));
+    try {
+      const pdfPath = join(root, "scanned.pdf");
+      writeFileSync(pdfPath, FAKE_PDF);
+
+      const stderr = collectStream();
+      let callCount = 0;
+
+      const execFileMock = vi.fn(((file, _args, _options, callback) => {
+        callCount++;
+        if (callCount === 1) {
+          expect(file).toBe("uvx");
+          callback(null, "## Page 1\n\n## Page 2\n", ""); // page-headers-only
+        } else {
+          callback(null, "# OCR Result\n\nExtracted text.\n", "");
+        }
+        return { pid: 123 } as unknown as ChildProcess;
+      }) as ExecFileFn);
+
+      await runCli(["--extract", "--metrics", "on", pdfPath], {
+        env: { HOME: root, UVX_PATH: "uvx", OPENAI_API_KEY: "test-key" },
+        fetch: vi.fn(async () => {
+          throw new Error("unexpected fetch");
+        }) as unknown as typeof fetch,
+        execFile: execFileMock,
+        stdout: collectStream().stream,
+        stderr: stderr.stream,
+      });
+
+      expect(stderr.getText()).toContain("markitdown+ocr");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("--extract: retries with markitdown-ocr when first call returns empty, outputs OCR content", async () => {
     const root = mkdtempSync(join(tmpdir(), "summarize-ocr-extract-"));
     try {
