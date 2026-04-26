@@ -6,6 +6,7 @@ import {
   parseCliConfig,
   parseEnvConfig,
   parseLoggingConfig,
+  parseLocalModelRoutingConfig,
   parseMediaConfig,
   parseOpenAiConfig,
   parseOutputConfig,
@@ -30,6 +31,7 @@ export type {
   LoggingConfig,
   LoggingFormat,
   LoggingLevel,
+  LocalModelRoutingConfig,
   MediaCacheConfig,
   MediaCacheVerifyMode,
   ModelConfig,
@@ -88,6 +90,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
   const output = parseOutputConfig(parsed, path);
   const ui = parseUiConfig(parsed, path);
   const logging = parseLoggingConfig(parsed, path);
+  const localRouting = parseLocalModelRoutingConfig(parsed, path);
   const openai = parseOpenAiConfig(parsed, path);
 
   const nvidia = parseProviderBaseUrlConfig(
@@ -121,6 +124,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       ...(google ? { google } : {}),
       ...(xai ? { xai } : {}),
       ...(zai ? { zai } : {}),
+      ...(localRouting ? { localRouting } : {}),
       ...(logging ? { logging } : {}),
       ...(configEnv ? { env: configEnv } : {}),
       ...(apiKeys ? { apiKeys } : {}),

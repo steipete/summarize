@@ -269,6 +269,8 @@ export async function createRunnerPlan(options: {
     configPath,
     envForRun,
     explicitModelArg,
+    outputLanguage,
+    allowLanguageAwareLocalRouting: !cliFlagPresent,
   });
 
   const verboseColor = supportsColor(stderr, envForRun);

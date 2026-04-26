@@ -77,9 +77,11 @@ const LANGUAGE_ALIASES: Record<string, { tag: string; label: string }> = {
   zh: { tag: "zh", label: "Chinese" },
   "zh-cn": { tag: "zh-CN", label: "Chinese (Simplified)" },
   "zh-hans": { tag: "zh-Hans", label: "Chinese (Simplified)" },
-  "zh-tw": { tag: "zh-TW", label: "Chinese (Traditional)" },
-  "zh-hant": { tag: "zh-Hant", label: "Chinese (Traditional)" },
+  "zh-tw": { tag: "zh-TW", label: "Traditional Chinese" },
+  "zh-hant": { tag: "zh-Hant", label: "Traditional Chinese" },
   chinese: { tag: "zh", label: "Chinese" },
+  "traditional-chinese": { tag: "zh-TW", label: "Traditional Chinese" },
+  "chinese-traditional": { tag: "zh-TW", label: "Traditional Chinese" },
 
   ja: { tag: "ja", label: "Japanese" },
   japanese: { tag: "ja", label: "Japanese" },
@@ -154,9 +156,27 @@ export function resolveOutputLanguage(raw: string | null | undefined): OutputLan
   }
 }
 
+function isTraditionalChineseLanguage(language: OutputLanguage): boolean {
+  if (language.kind !== "fixed") return false;
+  const normalized = `${language.tag} ${language.label}`
+    .toLowerCase()
+    .replaceAll("_", "-")
+    .replaceAll(NORMALIZE_PATTERN, "-")
+    .replaceAll(/-+/g, "-");
+  return (
+    normalized.includes("zh-tw") ||
+    normalized.includes("zh-hant") ||
+    normalized.includes("traditional-chinese") ||
+    normalized.includes("chinese-traditional")
+  );
+}
+
 export function formatOutputLanguageInstruction(language: OutputLanguage): string {
   if (language.kind === "auto") {
     return "Match the dominant source language. If you can't confidently detect it, use English.";
+  }
+  if (isTraditionalChineseLanguage(language)) {
+    return "Write the answer in Traditional Chinese (zh-Hant) using Traditional Chinese characters. Do not answer in English except for unavoidable source quotes or proper nouns.";
   }
   return `Write the answer in ${language.label}.`;
 }

@@ -1,8 +1,10 @@
 import type { CliProvider, ModelConfig, SummarizeConfig } from "../config.js";
+import type { OutputLanguage } from "../language.js";
 import { mergeModelRequestOptions } from "../llm/model-options.js";
 import type { RequestedModel } from "../model-spec.js";
 import { parseRequestedModelId } from "../model-spec.js";
 import { BUILTIN_MODELS } from "./constants.js";
+import { resolveLanguageAwareLocalModelInput } from "./local-model-routing.js";
 
 function resolveConfiguredCliModel(
   provider: CliProvider,
@@ -58,6 +60,7 @@ export type ModelSelection = {
   requestedModel: RequestedModel;
   requestedModelInput: string;
   requestedModelLabel: string;
+  selectionSource: ModelSelectionSource;
   isNamedModelSelection: boolean;
   isImplicitAutoSelection: boolean;
   wantsFreeNamedModel: boolean;
@@ -65,18 +68,30 @@ export type ModelSelection = {
   isFallbackModel: boolean;
 };
 
+export type ModelSelectionSource =
+  | "explicit"
+  | "env"
+  | "config"
+  | "local-routing"
+  | "auto"
+  | "fallback";
+
 export function resolveModelSelection({
   config,
   configForCli,
   configPath,
   envForRun,
   explicitModelArg,
+  outputLanguage,
+  allowLanguageAwareLocalRouting = true,
 }: {
   config: SummarizeConfig | null;
   configForCli: SummarizeConfig | null;
   configPath: string | null;
   envForRun: Record<string, string | undefined>;
   explicitModelArg: string | null;
+  outputLanguage?: OutputLanguage | null;
+  allowLanguageAwareLocalRouting?: boolean;
 }): ModelSelection {
   const modelMap = (() => {
     const out = new Map<string, { name: string; model: ModelConfig }>();
@@ -118,9 +133,19 @@ export function resolveModelSelection({
   })();
 
   const explicitModelInput = explicitModelArg?.trim() ?? "";
-  const requestedModelInput = (explicitModelInput || defaultModelResolution.value).trim();
-  const requestedModelSource =
-    explicitModelInput.length > 0 ? ("explicit" as const) : defaultModelResolution.source;
+  const baseRequestedModelInput = (explicitModelInput || defaultModelResolution.value).trim();
+  const localRoute =
+    allowLanguageAwareLocalRouting && baseRequestedModelInput.toLowerCase() === "auto"
+      ? resolveLanguageAwareLocalModelInput({ config, outputLanguage })
+      : null;
+  const requestedModelInput = (localRoute?.modelInput ?? baseRequestedModelInput).trim();
+  const requestedModelSource: ModelSelectionSource = localRoute
+    ? "local-routing"
+    : explicitModelInput.length > 0
+      ? "explicit"
+      : defaultModelResolution.source === "default"
+        ? "auto"
+        : defaultModelResolution.source;
   const requestedModelInputLower = requestedModelInput.toLowerCase();
   const wantsFreeNamedModel = requestedModelInputLower === "free";
 
@@ -176,12 +201,13 @@ export function resolveModelSelection({
 
   const isFallbackModel = requestedModelResolved.kind === "auto";
   const isImplicitAutoSelection =
-    requestedModelResolved.kind === "auto" && requestedModelSource === "default";
+    requestedModelResolved.kind === "auto" && requestedModelSource === "auto";
 
   return {
     requestedModel: requestedModelResolved,
     requestedModelInput,
     requestedModelLabel,
+    selectionSource: requestedModelSource,
     isNamedModelSelection,
     isImplicitAutoSelection,
     wantsFreeNamedModel,

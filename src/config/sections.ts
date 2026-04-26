@@ -16,12 +16,28 @@ import type {
   CliProvider,
   CliProviderConfig,
   EnvConfig,
+  LocalModelRoutingConfig,
   LoggingConfig,
   MediaCacheConfig,
   MediaCacheVerifyMode,
   OpenAiConfig,
   VideoMode,
 } from "./types.js";
+
+function parseLocalRoutingModel(raw: unknown, path: string, label: string): string | undefined {
+  if (typeof raw === "undefined") return undefined;
+  if (typeof raw !== "string") {
+    throw new Error(`Invalid config file ${path}: "localRouting.${label}" must be a string.`);
+  }
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    throw new Error(`Invalid config file ${path}: "localRouting.${label}" must not be empty.`);
+  }
+  if (trimmed.toLowerCase() === "auto") {
+    throw new Error(`Invalid config file ${path}: "localRouting.${label}" must not be "auto".`);
+  }
+  return trimmed;
+}
 
 export function parseProviderBaseUrlConfig(
   raw: unknown,
@@ -487,6 +503,50 @@ export function parseLoggingConfig(
         ...(file ? { file } : {}),
         ...(typeof maxMb === "number" ? { maxMb } : {}),
         ...(typeof maxFiles === "number" ? { maxFiles } : {}),
+      }
+    : undefined;
+}
+
+export function parseLocalModelRoutingConfig(
+  root: Record<string, unknown>,
+  path: string,
+): LocalModelRoutingConfig | undefined {
+  const value = root.localRouting;
+  if (typeof value === "undefined") return undefined;
+  if (!isRecord(value)) {
+    throw new Error(`Invalid config file ${path}: "localRouting" must be an object.`);
+  }
+
+  const enabled =
+    typeof value.enabled === "boolean"
+      ? value.enabled
+      : typeof value.enabled === "undefined"
+        ? undefined
+        : (() => {
+            throw new Error(
+              `Invalid config file ${path}: "localRouting.enabled" must be a boolean.`,
+            );
+          })();
+  const englishModel = parseLocalRoutingModel(value.englishModel, path, "englishModel");
+  const traditionalChineseModel = parseLocalRoutingModel(
+    value.traditionalChineseModel,
+    path,
+    "traditionalChineseModel",
+  );
+  const bilingualModel = parseLocalRoutingModel(value.bilingualModel, path, "bilingualModel");
+  const fallbackModel = parseLocalRoutingModel(value.fallbackModel, path, "fallbackModel");
+
+  return typeof enabled === "boolean" ||
+    englishModel ||
+    traditionalChineseModel ||
+    bilingualModel ||
+    fallbackModel
+    ? {
+        ...(typeof enabled === "boolean" ? { enabled } : {}),
+        ...(englishModel ? { englishModel } : {}),
+        ...(traditionalChineseModel ? { traditionalChineseModel } : {}),
+        ...(bilingualModel ? { bilingualModel } : {}),
+        ...(fallbackModel ? { fallbackModel } : {}),
       }
     : undefined;
 }

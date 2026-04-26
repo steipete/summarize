@@ -1,0 +1,21 @@
+{
+  "buckets": {
+    "english": {
+      "configKey": "englishModel",
+      "defaultModel": "openai/gemma4-31b"
+    },
+    "traditionalChinese": {
+      "configKey": "traditionalChineseModel",
+      "defaultModel": "openai/qwen3.6-27b"
+    },
+    "bilingual": {
+      "configKey": "bilingualModel",
+      "defaultModel": "openai/qwen3.6-27b"
+    },
+    "fallback": {
+      "configKey": "fallbackModel",
+      "defaultModel": "openai/gemma4-31b"
+    }
+  },
+  "retiredModelInputPatterns": ["^openai/qwen3\\.6-[0-9]+b-a3b$"]
+}

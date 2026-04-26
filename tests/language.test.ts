@@ -16,6 +16,16 @@ describe("output language", () => {
     expect(parseOutputLanguage("English")).toEqual({ kind: "fixed", tag: "en", label: "English" });
     expect(parseOutputLanguage("de")).toEqual({ kind: "fixed", tag: "de", label: "German" });
     expect(parseOutputLanguage("Deutsch")).toEqual({ kind: "fixed", tag: "de", label: "German" });
+    expect(parseOutputLanguage("zh-tw")).toEqual({
+      kind: "fixed",
+      tag: "zh-TW",
+      label: "Traditional Chinese",
+    });
+    expect(parseOutputLanguage("Traditional Chinese")).toEqual({
+      kind: "fixed",
+      tag: "zh-TW",
+      label: "Traditional Chinese",
+    });
     expect(parseOutputLanguage("pt-BR")).toEqual({
       kind: "fixed",
       tag: "pt-BR",
@@ -65,6 +75,15 @@ describe("output language", () => {
     expect(formatOutputLanguageInstruction({ kind: "auto" })).toMatch(/dominant source language/i);
     expect(formatOutputLanguageInstruction({ kind: "fixed", tag: "en", label: "English" })).toBe(
       "Write the answer in English.",
+    );
+    expect(
+      formatOutputLanguageInstruction({
+        kind: "fixed",
+        tag: "zh-TW",
+        label: "Traditional Chinese",
+      }),
+    ).toBe(
+      "Write the answer in Traditional Chinese (zh-Hant) using Traditional Chinese characters. Do not answer in English except for unavoidable source quotes or proper nouns.",
     );
   });
 

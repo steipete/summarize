@@ -151,6 +151,29 @@ export type ZaiConfig = {
   baseUrl?: string;
 };
 
+export type LocalModelRoutingConfig = {
+  /**
+   * Enable language-aware local model routing when the requested model is auto.
+   */
+  enabled?: boolean;
+  /**
+   * Preferred local model for English output.
+   */
+  englishModel?: string;
+  /**
+   * Preferred local model for Traditional Chinese output.
+   */
+  traditionalChineseModel?: string;
+  /**
+   * Preferred local model for bilingual output.
+   */
+  bilingualModel?: string;
+  /**
+   * Local model used when the language bucket is auto, unknown, or missing.
+   */
+  fallbackModel?: string;
+};
+
 export type AutoRule = {
   /**
    * Input kinds this rule applies to.
@@ -259,6 +282,7 @@ export type SummarizeConfig = {
   google?: GoogleConfig;
   xai?: XaiConfig;
   zai?: ZaiConfig;
+  localRouting?: LocalModelRoutingConfig;
   logging?: LoggingConfig;
   /**
    * Generic environment variable defaults.
