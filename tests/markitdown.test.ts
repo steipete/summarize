@@ -164,4 +164,85 @@ describe("markitdown", () => {
       }),
     ).rejects.toThrow(/^Command failed$/);
   });
+
+  it("deriveUvCommand: absolute path /usr/local/bin/uvx → /usr/local/bin/uv", async () => {
+    let callCount = 0;
+    const execFileMock = vi.fn(((file, _args, _opts, cb) => {
+      callCount++;
+      if (callCount === 1) {
+        expect(file).toBe("/usr/local/bin/uvx");
+        cb(null, "", ""); // image-based PDF, triggers OCR path
+      } else {
+        expect(file).toBe("/usr/local/bin/uv");
+        cb(null, "# ocr\n", "");
+      }
+    }) as unknown as ExecFileFn);
+
+    await expect(
+      convertToMarkdownWithMarkitdown({
+        bytes: new Uint8Array([1, 2, 3]),
+        filenameHint: "x.pdf",
+        mediaTypeHint: "application/pdf",
+        uvxCommand: "/usr/local/bin/uvx",
+        timeoutMs: 1000,
+        env: { OPENAI_API_KEY: "test" },
+        execFileImpl: execFileMock,
+        ocrFallback: true,
+      }),
+    ).resolves.toMatchObject({ usedOcr: true });
+  });
+
+  it("deriveUvCommand: uvx.exe → uv.exe (Windows extension preserved)", async () => {
+    let callCount = 0;
+    const execFileMock = vi.fn(((file, _args, _opts, cb) => {
+      callCount++;
+      if (callCount === 1) {
+        expect(file).toBe("uvx.exe");
+        cb(null, "", "");
+      } else {
+        expect(file).toBe("uv.exe");
+        cb(null, "# ocr\n", "");
+      }
+    }) as unknown as ExecFileFn);
+
+    await expect(
+      convertToMarkdownWithMarkitdown({
+        bytes: new Uint8Array([1, 2, 3]),
+        filenameHint: "x.pdf",
+        mediaTypeHint: "application/pdf",
+        uvxCommand: "uvx.exe",
+        timeoutMs: 1000,
+        env: { OPENAI_API_KEY: "test" },
+        execFileImpl: execFileMock,
+        ocrFallback: true,
+      }),
+    ).resolves.toMatchObject({ usedOcr: true });
+  });
+
+  it("deriveUvCommand: non-matching wrapper name is passed through unchanged", async () => {
+    let callCount = 0;
+    const execFileMock = vi.fn(((file, _args, _opts, cb) => {
+      callCount++;
+      if (callCount === 1) {
+        expect(file).toBe("my-uvx-wrapper");
+        cb(null, "", "");
+      } else {
+        expect(file).toBe("my-uvx-wrapper"); // not matching ^uvx...$ — left as-is
+        cb(null, "# ocr\n", "");
+      }
+    }) as unknown as ExecFileFn);
+
+    await expect(
+      convertToMarkdownWithMarkitdown({
+        bytes: new Uint8Array([1, 2, 3]),
+        filenameHint: "x.pdf",
+        mediaTypeHint: "application/pdf",
+        uvxCommand: "my-uvx-wrapper",
+        timeoutMs: 1000,
+        env: { OPENAI_API_KEY: "test" },
+        execFileImpl: execFileMock,
+        ocrFallback: true,
+      }),
+    ).resolves.toMatchObject({ usedOcr: true });
+  });
 });
