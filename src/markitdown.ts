@@ -7,7 +7,11 @@ export type ExecFileFn = typeof import("node:child_process").execFile;
 
 /**
  * Derives the `uv` command from a `uvx` command path.
- * e.g. "uvx" → "uv", "/usr/local/bin/uvx" → "/usr/local/bin/uv"
+ * e.g. "uvx" → "uv", "/usr/local/bin/uvx" → "/usr/local/bin/uv",
+ * "uvx.exe" → "uv.exe".
+ * Non-matching basenames (e.g. a custom wrapper) are passed through
+ * unchanged — the caller is responsible for ensuring the command
+ * accepts `uv run` arguments in that case.
  */
 function deriveUvCommand(uvxCmd: string): string {
   const dir = path.dirname(uvxCmd);
