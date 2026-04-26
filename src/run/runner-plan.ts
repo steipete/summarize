@@ -9,7 +9,7 @@ import {
 } from "../tty/theme.js";
 import { createCacheStateFromConfig } from "./cache-state.js";
 import { parseCliProviderArg } from "./env.js";
-import { isTranscribableExtension } from "./flows/asset/input.js";
+import { isPdfExtension, isTranscribableExtension } from "./flows/asset/input.js";
 import { summarizeMediaFile as summarizeMediaFileImpl } from "./flows/asset/media.js";
 import { createMediaCacheFromConfig } from "./media-cache-state.js";
 import { createProgressGate } from "./progress.js";
@@ -284,10 +284,11 @@ export async function createRunnerPlan(options: {
   if (
     extractMode &&
     inputTarget.kind === "file" &&
-    !isTranscribableExtension(inputTarget.filePath)
+    !isTranscribableExtension(inputTarget.filePath) &&
+    !isPdfExtension(inputTarget.filePath)
   ) {
     throw new Error(
-      "--extract for local files is only supported for media files (MP3, MP4, WAV, etc.)",
+      "--extract for local files is only supported for media files (MP3, MP4, WAV, etc.) and PDF files",
     );
   }
   if (extractMode && inputTarget.kind === "stdin") {

@@ -211,6 +211,7 @@ export async function prepareAssetPrompt({
   };
 
   let preprocessedMarkdown: string | null = null;
+  let preprocessedOcrUsed = false;
   let usingPreprocessedMarkdown = false;
 
   const documentHandling =
@@ -276,7 +277,7 @@ export async function prepareAssetPrompt({
     }
 
     try {
-      preprocessedMarkdown = await convertToMarkdownWithMarkitdown({
+      ({ markdown: preprocessedMarkdown, usedOcr: preprocessedOcrUsed } = await convertToMarkdownWithMarkitdown({
         bytes: fileBytes,
         filenameHint: attachment.filename,
         mediaTypeHint: attachment.mediaType,
@@ -284,7 +285,8 @@ export async function prepareAssetPrompt({
         timeoutMs: ctx.timeoutMs,
         env: ctx.env,
         execFileImpl: ctx.execFileImpl,
-      });
+        ocrFallback: true,
+      }));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to preprocess ${attachment.mediaType} with markitdown: ${message}.`);
@@ -295,7 +297,7 @@ export async function prepareAssetPrompt({
       );
     }
     usingPreprocessedMarkdown = true;
-    assetFooterParts.push(`markitdown(${attachment.mediaType})`);
+    assetFooterParts.push(`markitdown${preprocessedOcrUsed ? "+ocr" : ""}(${attachment.mediaType})`);
   }
 
   if (attachment.kind === "image") {

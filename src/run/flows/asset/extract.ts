@@ -82,8 +82,9 @@ export async function extractAssetContent({
   }
 
   let markdown: string;
+  let usedOcr: boolean;
   try {
-    markdown = await convertToMarkdownWithMarkitdown({
+    ({ markdown, usedOcr } = await convertToMarkdownWithMarkitdown({
       bytes: fileBytes,
       filenameHint: attachment.filename,
       mediaTypeHint: attachment.mediaType,
@@ -91,7 +92,8 @@ export async function extractAssetContent({
       timeoutMs: ctx.timeoutMs,
       env: ctx.env,
       execFileImpl: ctx.execFileImpl,
-    });
+      ocrFallback: true,
+    }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to preprocess ${attachment.mediaType} with markitdown: ${message}.`);
@@ -107,7 +109,7 @@ export async function extractAssetContent({
     content: markdown,
     diagnostics: {
       ...baseDiagnostics,
-      markdown: { used: true, provider: null, notes: "markitdown" },
+      markdown: { used: true, provider: null, notes: usedOcr ? "markitdown+ocr" : "markitdown" },
     },
   };
 }

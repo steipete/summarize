@@ -70,6 +70,10 @@ export function isTranscribableExtension(filePath: string): boolean {
   return isDirectMediaExtension(ext);
 }
 
+export function isPdfExtension(filePath: string): boolean {
+  return path.extname(normalizePathForExtension(filePath)).toLowerCase() === ".pdf";
+}
+
 function formatTranscriptionMeta({
   filename,
   sizeLabel,

@@ -28,7 +28,7 @@ describe("markitdown", () => {
         env: {},
         execFileImpl: execFileMock,
       }),
-    ).resolves.toContain("# ok");
+    ).resolves.toMatchObject({ markdown: expect.stringContaining("# ok"), usedOcr: false });
   });
 
   it("uses filename extension when present (no media type hint)", async () => {
@@ -49,7 +49,7 @@ describe("markitdown", () => {
         env: {},
         execFileImpl: execFileMock,
       }),
-    ).resolves.toContain("# ok");
+    ).resolves.toMatchObject({ markdown: expect.stringContaining("# ok"), usedOcr: false });
   });
 
   it("infers .html when media type is html and filename has no extension", async () => {
@@ -70,7 +70,7 @@ describe("markitdown", () => {
         env: {},
         execFileImpl: execFileMock,
       }),
-    ).resolves.toContain("# ok");
+    ).resolves.toMatchObject({ markdown: expect.stringContaining("# ok"), usedOcr: false });
   });
 
   it("falls back to .bin when no filename extension or known media type exists", async () => {
@@ -91,7 +91,7 @@ describe("markitdown", () => {
         env: {},
         execFileImpl: execFileMock,
       }),
-    ).resolves.toContain("# ok");
+    ).resolves.toMatchObject({ markdown: expect.stringContaining("# ok"), usedOcr: false });
   });
 
   it("throws when markitdown returns empty output", async () => {
@@ -143,7 +143,7 @@ describe("markitdown", () => {
         env: {},
         execFileImpl: execFileMock,
       }),
-    ).resolves.toContain("# ok");
+    ).resolves.toMatchObject({ markdown: expect.stringContaining("# ok"), usedOcr: false });
   });
 
   it("keeps error message when stderr is empty (buffer)", async () => {

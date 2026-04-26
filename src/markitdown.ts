@@ -50,6 +50,7 @@ export async function convertToMarkdownWithMarkitdown({
   timeoutMs,
   env,
   execFileImpl,
+  ocrFallback = false,
 }: {
   bytes: Uint8Array;
   filenameHint: string | null;
@@ -58,32 +59,43 @@ export async function convertToMarkdownWithMarkitdown({
   timeoutMs: number;
   env: Record<string, string | undefined>;
   execFileImpl: ExecFileFn;
-}): Promise<string> {
+  ocrFallback?: boolean;
+}): Promise<{ markdown: string; usedOcr: boolean }> {
   const dir = await fs.mkdtemp(path.join(tmpdir(), "summarize-markitdown-"));
   const ext = guessExtension({ filenameHint, mediaType: mediaTypeHint });
   const base = (filenameHint ? path.basename(filenameHint, path.extname(filenameHint)) : "input")
     .replaceAll(/[^\w.-]+/g, "-")
     .slice(0, 64);
   const filePath = path.join(dir, `${base}${ext}`);
+  const uvx = uvxCommand && uvxCommand.trim().length > 0 ? uvxCommand.trim() : "uvx";
+  const from = "markitdown[all]";
+  const execOptions = {
+    timeout: timeoutMs,
+    env: { ...process.env, ...env },
+    maxBuffer: 50 * 1024 * 1024,
+  };
 
   try {
     await fs.writeFile(filePath, bytes);
-    const from = "markitdown[all]";
-    const { stdout } = await execFileText(
-      execFileImpl,
-      uvxCommand && uvxCommand.trim().length > 0 ? uvxCommand.trim() : "uvx",
-      ["--from", from, "markitdown", filePath],
-      {
-        timeout: timeoutMs,
-        env: { ...process.env, ...env },
-        maxBuffer: 50 * 1024 * 1024,
-      },
-    );
+
+    // First attempt: standard markitdown
+    const { stdout } = await execFileText(execFileImpl, uvx, ["--from", from, "markitdown", filePath], execOptions);
     const markdown = stdout.trim();
-    if (!markdown) {
-      throw new Error("markitdown returned empty output");
+    if (markdown) return { markdown, usedOcr: false };
+
+    // Second attempt: OCR fallback via markitdown-ocr plugin
+    if (ocrFallback) {
+      const { stdout: ocrStdout } = await execFileText(
+        execFileImpl,
+        uvx,
+        ["--from", from, "--with", "markitdown-ocr", "markitdown", "--use-plugins", filePath],
+        execOptions,
+      );
+      const ocrMarkdown = ocrStdout.trim();
+      if (ocrMarkdown) return { markdown: ocrMarkdown, usedOcr: true };
     }
-    return markdown;
+
+    throw new Error("markitdown returned empty output");
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
