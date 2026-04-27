@@ -76,7 +76,7 @@ export function resolveCliAvailability({
   config: ConfigForCli;
 }): Partial<Record<CliProvider, boolean>> {
   const cliConfig = config?.cli ?? null;
-  const providers: CliProvider[] = ["claude", "codex", "gemini", "agent", "openclaw", "opencode"];
+  const providers: CliProvider[] = ["claude", "codex", "gemini", "agent", "openclaw", "opencode", "copilot"];
   const availability: Partial<Record<CliProvider, boolean>> = {};
   for (const provider of providers) {
     if (isCliDisabled(provider, cliConfig)) {
@@ -104,7 +104,8 @@ export function parseCliUserModelId(modelId: string): {
     provider !== "gemini" &&
     provider !== "agent" &&
     provider !== "openclaw" &&
-    provider !== "opencode"
+    provider !== "opencode" &&
+    provider !== "copilot"
   ) {
     throw new Error(`Invalid CLI model id "${modelId}". Expected cli/<provider>/<model>.`);
   }
@@ -120,7 +121,8 @@ export function parseCliProviderArg(raw: string): CliProvider {
     normalized === "gemini" ||
     normalized === "agent" ||
     normalized === "openclaw" ||
-    normalized === "opencode"
+    normalized === "opencode" ||
+    normalized === "copilot"
   ) {
     return normalized as CliProvider;
   }

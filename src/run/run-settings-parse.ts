@@ -43,6 +43,7 @@ export const parseCliProvider = (raw: string): CliProvider | null => {
   if (normalized === "agent") return "agent";
   if (normalized === "openclaw") return "openclaw";
   if (normalized === "opencode") return "opencode";
+  if (normalized === "copilot") return "copilot";
   return null;
 };
 
