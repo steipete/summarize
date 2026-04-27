@@ -120,7 +120,10 @@ export async function completeGoogleDocument({
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  const payload = {
+  const generationConfig: Record<string, unknown> = {};
+  if (typeof maxOutputTokens === "number") generationConfig.maxOutputTokens = maxOutputTokens;
+  if (typeof temperature === "number") generationConfig.temperature = temperature;
+  const payload: Record<string, unknown> = {
     contents: [
       {
         parts: [
@@ -134,8 +137,7 @@ export async function completeGoogleDocument({
         ],
       },
     ],
-    ...(typeof maxOutputTokens === "number" ? { maxOutputTokens } : {}),
-    ...(typeof temperature === "number" ? { temperature } : {}),
+    ...(Object.keys(generationConfig).length > 0 ? { generationConfig } : {}),
   };
 
   try {
@@ -148,7 +150,9 @@ export async function completeGoogleDocument({
 
     const bodyText = await response.text();
     if (!response.ok) {
-      const error = new Error(`Google API error (${response.status}).`);
+      const detail = extractGoogleErrorMessage(bodyText);
+      const hint = detail ? `: ${detail}` : "";
+      const error = new Error(`Google API error (${response.status})${hint}.`);
       (error as { statusCode?: number }).statusCode = response.status;
       (error as { responseBody?: string }).responseBody = bodyText;
       throw error;
