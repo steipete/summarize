@@ -1,4 +1,6 @@
 ---
+title: "Agent / daemon"
+kicker: "apps"
 summary: "Automation agent for the Chrome side panel (daemon-backed)."
 read_when:
   - "When working on automation tools, /v1/agent, or the side panel agent loop."

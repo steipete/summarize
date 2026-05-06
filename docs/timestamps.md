@@ -1,4 +1,6 @@
 ---
+title: "Timestamps"
+kicker: "modes"
 summary: "Transcript timestamps plan + clickable chat jumps."
 read_when:
   - "When planning transcript timestamps or click-to-seek UX."

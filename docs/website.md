@@ -1,4 +1,6 @@
 ---
+title: "Website"
+kicker: "modes"
 summary: "Website extraction pipeline, flags, and fallbacks."
 read_when:
   - "When changing website extraction behavior."

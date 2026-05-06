@@ -1,4 +1,6 @@
 ---
+title: "CLI providers"
+kicker: "models"
 summary: "CLI model providers and config for Claude, Codex, Gemini, Cursor Agent, OpenClaw, and OpenCode."
 read_when:
   - "When changing CLI model integration."

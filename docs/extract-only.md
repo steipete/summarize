@@ -1,4 +1,6 @@
 ---
+title: "Extract"
+kicker: "modes"
 summary: "Extract mode behavior and markdown handling."
 read_when:
   - "When changing extract pipeline or flags."

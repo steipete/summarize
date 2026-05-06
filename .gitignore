@@ -14,3 +14,11 @@ _pack
 *.zip
 apps/chrome-extension/test-results
 /slides/
+
+# Jekyll docs
+docs/.bundle
+docs/.jekyll-cache
+docs/.jekyll-metadata
+docs/_site
+_site
+Gemfile.lock

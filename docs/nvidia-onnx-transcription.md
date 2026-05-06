@@ -1,4 +1,6 @@
 ---
+title: "ONNX transcription"
+kicker: "internals"
 summary: "Local Parakeet/Canary ONNX transcription via external CLI."
 read_when:
   - "When configuring or changing local ONNX transcription (parakeet/canary)."

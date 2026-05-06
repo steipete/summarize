@@ -1,4 +1,6 @@
 ---
+title: "YouTube"
+kicker: "modes"
 summary: "YouTube transcript extraction modes and fallbacks."
 read_when:
   - "When changing YouTube handling."

@@ -6,17 +6,23 @@
     <meta name="color-scheme" content="dark light" />
     {% assign page_title = page.title | default: page.name | default: "Docs" | replace: ".md", "" | replace: "-", " " %}
     <title>{{ page_title }} — summarize</title>
-    <meta name="description" content="{{ page.summary | default: site.description | escape }}" />
+    <meta name="description" content="{{ page.summary | default: page.description | default: site.description | escape }}" />
     <link rel="canonical" href="https://summarize.sh{{ page.url | replace: 'index.html', '' }}" />
+    <meta property="og:title" content="{{ page_title }} — summarize" />
+    <meta property="og:description" content="{{ page.summary | default: page.description | default: site.description | escape }}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://summarize.sh{{ page.url }}" />
+    <meta name="theme-color" content="#0b0f12" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/assets/site.css" />
+    <link rel="stylesheet" href="/assets/highlight.css" />
   </head>
-  <body>
+  <body data-page="{{ page.url }}">
     <main class="shell">
       <header class="top">
         <a class="brand" href="/" aria-label="summarize home">
@@ -25,33 +31,89 @@
         </a>
         <nav class="nav" aria-label="Primary">
           <a data-nav="home" href="/">Home</a>
-          <a data-nav="docs" href="/docs/index.html">Docs</a>
+          <a data-nav="docs" href="/docs/">Docs</a>
+          <a data-nav="commands" href="/docs/commands/">Commands</a>
           <a href="https://github.com/steipete/summarize">GitHub</a>
         </nav>
       </header>
 
       <section class="docShell">
         <aside class="side" aria-label="Docs navigation">
-          <h2>Docs</h2>
-          <a href="/docs/index.html">Overview</a>
-          <a href="/docs/chrome-extension.html">Chrome extension</a>
-          <a href="/docs/website.html">Website mode</a>
-          <a href="/docs/youtube.html">YouTube mode</a>
-          <a href="/docs/extract-only.html">Extract</a>
-          <a href="/docs/llm.html">LLM</a>
-          <a href="/docs/openai.html">OpenAI</a>
-          <a href="/docs/firecrawl.html">Firecrawl</a>
-          <a href="/docs/config.html">Config</a>
+          {% assign current = page.url %}
+
+          <h2>Get started</h2>
+          <a href="/docs/" {% if current == "/docs/" or current == "/docs/index.html" %}aria-current="page"{% endif %}>Overview</a>
+          <a href="/docs/install.html" {% if current contains "/install" %}aria-current="page"{% endif %}>Install</a>
+          <a href="/docs/quickstart.html" {% if current contains "/quickstart" %}aria-current="page"{% endif %}>Quickstart</a>
+          <a href="/docs/config.html" {% if current contains "/config" %}aria-current="page"{% endif %}>Config</a>
+
+          <h2>Commands</h2>
+          <a href="/docs/commands/" {% if current == "/docs/commands/" or current == "/docs/commands/index.html" %}aria-current="page"{% endif %}>Reference index</a>
+          <a href="/docs/commands/summarize.html" {% if current contains "commands/summarize" %}aria-current="page"{% endif %}>summarize</a>
+          <a href="/docs/commands/slides.html" {% if current contains "commands/slides" %}aria-current="page"{% endif %}>summarize slides</a>
+          <a href="/docs/commands/transcriber.html" {% if current contains "commands/transcriber" %}aria-current="page"{% endif %}>summarize transcriber</a>
+          <a href="/docs/commands/daemon.html" {% if current contains "commands/daemon" %}aria-current="page"{% endif %}>summarize daemon</a>
+          <a href="/docs/commands/refresh-free.html" {% if current contains "commands/refresh-free" %}aria-current="page"{% endif %}>summarize refresh-free</a>
+
+          <h2>Modes</h2>
+          <a href="/docs/website.html" {% if current contains "/website" %}aria-current="page"{% endif %}>Website</a>
+          <a href="/docs/youtube.html" {% if current contains "/youtube" %}aria-current="page"{% endif %}>YouTube</a>
+          <a href="/docs/media.html" {% if current contains "/media" %}aria-current="page"{% endif %}>Media + podcasts</a>
+          <a href="/docs/extract-only.html" {% if current contains "/extract-only" %}aria-current="page"{% endif %}>Extract</a>
+          <a href="/docs/slides.html" {% if current == "/docs/slides.html" %}aria-current="page"{% endif %}>Slides</a>
+          <a href="/docs/timestamps.html" {% if current contains "/timestamps" %}aria-current="page"{% endif %}>Timestamps</a>
+          <a href="/docs/language.html" {% if current contains "/language" %}aria-current="page"{% endif %}>Language</a>
+
+          <h2>Models</h2>
+          <a href="/docs/llm.html" {% if current contains "/llm" %}aria-current="page"{% endif %}>LLM overview</a>
+          <a href="/docs/openai.html" {% if current contains "/openai" %}aria-current="page"{% endif %}>OpenAI</a>
+          <a href="/docs/model-auto.html" {% if current == "/docs/model-auto.html" %}aria-current="page"{% endif %}>Auto selection</a>
+          <a href="/docs/model-provider-resolution.html" {% if current contains "/model-provider-resolution" %}aria-current="page"{% endif %}>Provider resolution</a>
+          <a href="/docs/firecrawl.html" {% if current contains "/firecrawl" %}aria-current="page"{% endif %}>Firecrawl</a>
+
+          <h2>Apps</h2>
+          <a href="/docs/chrome-extension.html" {% if current contains "/chrome-extension" %}aria-current="page"{% endif %}>Chrome extension</a>
+          <a href="/docs/agent.html" {% if current contains "/agent" %}aria-current="page"{% endif %}>Agent / daemon</a>
+
+          <h2>Internals</h2>
+          <a href="/docs/cache.html" {% if current contains "/cache" %}aria-current="page"{% endif %}>Cache</a>
+          <a href="/docs/transcript-provider-flow.html" {% if current contains "/transcript-provider-flow" %}aria-current="page"{% endif %}>Transcript flow</a>
+          <a href="/docs/nvidia-onnx-transcription.html" {% if current contains "/nvidia-onnx-transcription" %}aria-current="page"{% endif %}>ONNX transcription</a>
+          <a href="/docs/slides-rendering-flow.html" {% if current contains "/slides-rendering-flow" %}aria-current="page"{% endif %}>Slides rendering</a>
+
+          <h2>Project</h2>
+          <a href="/docs/releasing.html" {% if current contains "/releasing" %}aria-current="page"{% endif %}>Releasing</a>
+          <a href="/docs/manual-tests.html" {% if current contains "/manual-tests" %}aria-current="page"{% endif %}>Manual tests</a>
+          <a href="/docs/smoketest.html" {% if current contains "/smoketest" %}aria-current="page"{% endif %}>Smoke test</a>
+          <a href="https://github.com/steipete/summarize/blob/main/CHANGELOG.md">Changelog</a>
         </aside>
 
         <article class="doc reveal">
+          {% if page.kicker %}<p class="kicker">{{ page.kicker }}</p>{% endif %}
           {{ content }}
+
+          {% if page.prev or page.next %}
+          <nav class="pageNav" aria-label="Page navigation">
+            {% if page.prev %}
+              <a class="pageNav__prev" href="{{ page.prev.url }}">
+                <span class="pageNav__label">Previous</span>
+                <span class="pageNav__title">{{ page.prev.title }}</span>
+              </a>
+            {% else %}<span></span>{% endif %}
+            {% if page.next %}
+              <a class="pageNav__next" href="{{ page.next.url }}">
+                <span class="pageNav__label">Next</span>
+                <span class="pageNav__title">{{ page.next.title }}</span>
+              </a>
+            {% endif %}
+          </nav>
+          {% endif %}
         </article>
       </section>
 
       <footer class="footer">
         <span>summarize — Link → clean text → summary.</span>
-        <span><a href="/docs/index.html">Docs</a> · <a href="https://github.com/steipete/summarize">Repo</a></span>
+        <span><a href="/docs/">Docs</a> · <a href="https://github.com/steipete/summarize">Repo</a></span>
       </footer>
     </main>
 

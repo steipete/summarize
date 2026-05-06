@@ -1,4 +1,6 @@
 ---
+title: "Slides rendering flow"
+kicker: "internals"
 summary: "Map of slide extraction terminal output and extension streaming flow."
 read_when:
   - "When changing slide terminal output, streaming, or sidepanel state."

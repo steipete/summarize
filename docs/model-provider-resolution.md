@@ -1,4 +1,6 @@
 ---
+title: "Provider resolution"
+kicker: "models"
 summary: "Map of model auto-selection, provider capabilities, and LLM execution paths."
 read_when:
   - "When changing auto model order or CLI fallback behavior."

@@ -1,4 +1,6 @@
 ---
+title: "Media + podcasts"
+kicker: "modes"
 summary: "Embedded media detection + transcript-first pipeline."
 read_when:
   - "When changing media detection, embedded captions, or video-mode behavior."

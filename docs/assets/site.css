@@ -698,14 +698,34 @@ pre.highlight {
 }
 
 .doc h2 {
-  margin: 18px 0 8px;
+  margin: 28px 0 10px;
   font-family: var(--display);
   font-weight: 650;
   letter-spacing: -0.01em;
-  font-size: 20px;
+  font-size: 22px;
 }
 
-.doc ul {
+.doc h3 {
+  margin: 22px 0 8px;
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  font-size: 17px;
+  color: var(--fg0);
+}
+
+.doc h4 {
+  margin: 18px 0 6px;
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg2);
+}
+
+.doc ul,
+.doc ol {
   margin: 8px 0 0 18px;
   color: var(--fg1);
 }
@@ -714,9 +734,73 @@ pre.highlight {
   margin: 6px 0;
 }
 
+.doc li > code {
+  font-size: 0.92em;
+}
+
 .doc p {
   margin: 10px 0 0;
   color: var(--fg1);
+}
+
+.doc strong {
+  color: var(--fg0);
+}
+
+.doc a {
+  color: var(--fg0);
+  border-bottom: 1px solid rgba(184, 255, 90, 0.4);
+}
+
+.doc a:hover {
+  text-decoration: none;
+  border-bottom-color: rgba(184, 255, 90, 0.9);
+}
+
+.doc blockquote {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-left: 3px solid rgba(54, 201, 185, 0.6);
+  background: rgba(54, 201, 185, 0.06);
+  border-radius: 0 12px 12px 0;
+  color: var(--fg1);
+}
+
+.doc blockquote p:first-child {
+  margin-top: 0;
+}
+
+.doc table {
+  margin-top: 14px;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  font-family: var(--mono);
+}
+
+.doc table th,
+.doc table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.doc table th {
+  color: var(--fg0);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid rgba(184, 255, 90, 0.35);
+}
+
+.doc table td {
+  color: var(--fg1);
+}
+
+.doc hr {
+  margin: 26px 0;
+  border: 0;
+  border-top: 1px dashed var(--line);
 }
 
 .doc .note {
@@ -726,6 +810,100 @@ pre.highlight {
   border: 1px dashed rgba(184, 255, 90, 0.45);
   background: rgba(184, 255, 90, 0.08);
   color: var(--fg1);
+}
+
+/* Sidebar — multiple section headings. */
+.side h2 {
+  margin: 14px 0 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg2);
+}
+
+.side h2:first-child {
+  margin-top: 0;
+}
+
+/* Prev / next page navigation. */
+.pageNav {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.pageNav a {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--line);
+}
+
+.pageNav a:hover {
+  text-decoration: none;
+  border-color: rgba(184, 255, 90, 0.4);
+  background: rgba(184, 255, 90, 0.06);
+}
+
+.pageNav__next {
+  text-align: right;
+}
+
+.pageNav__label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg2);
+}
+
+.pageNav__title {
+  font-family: var(--display);
+  font-size: 16px;
+  color: var(--fg0);
+}
+
+/* Definition lists — used by command pages for flag tables. */
+.doc dl {
+  margin: 12px 0 0;
+  display: grid;
+  grid-template-columns: minmax(180px, 26%) 1fr;
+  gap: 10px 18px;
+}
+
+.doc dt {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--fg0);
+  padding-top: 2px;
+}
+
+.doc dd {
+  margin: 0;
+  color: var(--fg1);
+}
+
+@media (max-width: 720px) {
+  .doc dl {
+    grid-template-columns: 1fr;
+    gap: 4px 0;
+  }
+  .doc dd {
+    margin-bottom: 6px;
+  }
+  .pageNav {
+    grid-template-columns: 1fr;
+  }
+  .pageNav__next {
+    text-align: left;
+  }
 }
 
 @media (max-width: 980px) {

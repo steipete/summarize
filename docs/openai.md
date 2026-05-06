@@ -1,4 +1,6 @@
 ---
+title: "OpenAI"
+kicker: "models"
 summary: "OpenAI model usage and flags."
 read_when:
   - "When changing OpenAI integration."

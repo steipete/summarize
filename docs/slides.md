@@ -1,4 +1,6 @@
 ---
+title: "Slides"
+kicker: "modes"
 summary: "Plan for slide-first UX without model usage."
 read_when:
   - "When changing slide summaries, slide UI, or slide/seek behavior in the side panel."

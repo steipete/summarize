@@ -1,4 +1,6 @@
 ---
+title: "LLM overview"
+kicker: "models"
 summary: "LLM usage, env vars, flags, and prompt rules."
 read_when:
   - "When changing model selection or prompt formatting."

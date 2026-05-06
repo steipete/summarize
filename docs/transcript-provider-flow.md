@@ -1,4 +1,6 @@
 ---
+title: "Transcript flow"
+kicker: "internals"
 summary: "Map of transcript provider selection and transcription fallback flow."
 read_when:
   - "When changing podcast, YouTube, or generic transcript provider order."

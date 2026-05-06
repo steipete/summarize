@@ -1,4 +1,6 @@
 ---
+title: "Cache"
+kicker: "internals"
 summary: "CLI cache design, keys, config, and eviction."
 read_when:
   - "When changing cache behavior, keys, or defaults."

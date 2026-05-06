@@ -1,0 +1,300 @@
+/*
+ * Rouge syntax highlight theme for the summarize docs.
+ * Palette tracks the site accents: lime / orange / teal on ivory.
+ * Dark-first; light overrides at the bottom.
+ */
+
+:root {
+  --hl-bg: rgba(0, 0, 0, 0.42);
+  --hl-bg-inline: rgba(255, 255, 255, 0.06);
+  --hl-fg: rgba(247, 242, 231, 0.96);
+  --hl-muted: rgba(247, 242, 231, 0.55);
+  --hl-comment: rgba(247, 242, 231, 0.45);
+  --hl-keyword: #ff9b35;
+  --hl-string: #b8ff5a;
+  --hl-number: #36c9b9;
+  --hl-name: #f1ead7;
+  --hl-fn: #ffd56b;
+  --hl-type: #36c9b9;
+  --hl-builtin: #ff9b35;
+  --hl-tag: #ff9b35;
+  --hl-attr: #ffd56b;
+  --hl-operator: rgba(247, 242, 231, 0.78);
+  --hl-punct: rgba(247, 242, 231, 0.7);
+  --hl-error: #ff6b6b;
+  --hl-diff-add-fg: #b8ff5a;
+  --hl-diff-add-bg: rgba(184, 255, 90, 0.1);
+  --hl-diff-del-fg: #ff6b6b;
+  --hl-diff-del-bg: rgba(255, 107, 107, 0.08);
+  --hl-prompt: #36c9b9;
+  --hl-line: rgba(247, 242, 231, 0.06);
+}
+
+div.highlight,
+figure.highlight {
+  position: relative;
+  margin: 14px 0;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--hl-bg);
+  overflow: hidden;
+}
+
+figure.highlight figcaption {
+  padding: 8px 14px;
+  font-family: var(--mono, ui-monospace);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hl-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+div.highlight pre,
+figure.highlight pre,
+pre.highlight {
+  margin: 0;
+  padding: 14px 16px;
+  color: var(--hl-fg);
+  font-family: var(--mono, ui-monospace);
+  font-size: 12.5px;
+  line-height: 1.6;
+  overflow-x: auto;
+  background: transparent;
+}
+
+/* Inline code outside of code blocks. */
+:not(pre) > code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--hl-bg-inline);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.92em;
+}
+
+/* --- Rouge token classes --- */
+
+/* Comments */
+.highlight .c,
+.highlight .ch,
+.highlight .cd,
+.highlight .cm,
+.highlight .cp,
+.highlight .cpf,
+.highlight .c1,
+.highlight .cs {
+  color: var(--hl-comment);
+  font-style: italic;
+}
+
+/* Errors */
+.highlight .err {
+  color: var(--hl-error);
+}
+
+/* Keywords */
+.highlight .k,
+.highlight .kc,
+.highlight .kd,
+.highlight .kn,
+.highlight .kp,
+.highlight .kr,
+.highlight .kv {
+  color: var(--hl-keyword);
+  font-weight: 600;
+}
+.highlight .kt {
+  color: var(--hl-type);
+}
+
+/* Names */
+.highlight .n {
+  color: var(--hl-name);
+}
+.highlight .na {
+  color: var(--hl-attr);
+}
+.highlight .nb,
+.highlight .bp {
+  color: var(--hl-builtin);
+}
+.highlight .nc,
+.highlight .ne,
+.highlight .nn {
+  color: var(--hl-type);
+  font-weight: 600;
+}
+.highlight .no,
+.highlight .nv,
+.highlight .vc,
+.highlight .vg,
+.highlight .vi {
+  color: var(--hl-builtin);
+}
+.highlight .nf,
+.highlight .py {
+  color: var(--hl-fn);
+}
+.highlight .nl {
+  color: var(--hl-attr);
+}
+.highlight .nt {
+  color: var(--hl-tag);
+  font-weight: 600;
+}
+.highlight .nx {
+  color: var(--hl-name);
+}
+
+/* Operators / punctuation */
+.highlight .o,
+.highlight .ow {
+  color: var(--hl-operator);
+}
+.highlight .p,
+.highlight .pi {
+  color: var(--hl-punct);
+}
+
+/* Literals */
+.highlight .l,
+.highlight .ld {
+  color: var(--hl-string);
+}
+
+/* Numbers */
+.highlight .m,
+.highlight .mb,
+.highlight .mf,
+.highlight .mh,
+.highlight .mi,
+.highlight .mo,
+.highlight .il {
+  color: var(--hl-number);
+}
+
+/* Strings */
+.highlight .s,
+.highlight .sa,
+.highlight .sb,
+.highlight .sc,
+.highlight .dl,
+.highlight .sd,
+.highlight .s2,
+.highlight .sh,
+.highlight .sx,
+.highlight .s1,
+.highlight .ss {
+  color: var(--hl-string);
+}
+.highlight .se {
+  color: var(--hl-keyword);
+}
+.highlight .si {
+  color: var(--hl-fn);
+}
+.highlight .sr {
+  color: var(--hl-number);
+}
+
+/* Generic (diff, headings, etc.) */
+.highlight .gd {
+  color: var(--hl-diff-del-fg);
+  background: var(--hl-diff-del-bg);
+  display: inline-block;
+  width: 100%;
+}
+.highlight .gi {
+  color: var(--hl-diff-add-fg);
+  background: var(--hl-diff-add-bg);
+  display: inline-block;
+  width: 100%;
+}
+.highlight .gh,
+.highlight .gu {
+  color: var(--hl-fn);
+  font-weight: 600;
+}
+.highlight .ge {
+  font-style: italic;
+}
+.highlight .gs {
+  font-weight: 600;
+}
+.highlight .gp {
+  color: var(--hl-prompt);
+  font-weight: 600;
+  user-select: none;
+}
+.highlight .go {
+  color: var(--hl-muted);
+}
+.highlight .gr,
+.highlight .gt {
+  color: var(--hl-error);
+}
+
+/* Line numbers */
+.highlight .lineno,
+.highlight .ln,
+.highlight .gl {
+  color: var(--hl-muted);
+  margin-right: 12px;
+  user-select: none;
+}
+
+/* Whitespace */
+.highlight .w {
+  color: rgba(255, 255, 255, 0.06);
+}
+
+/* Filename caption injected by Kramdown via {: filename="..." } */
+.highlight[data-filename]::before {
+  content: attr(data-filename);
+  display: block;
+  padding: 8px 14px;
+  font-family: var(--mono, ui-monospace);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hl-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* --- Light mode --- */
+@media (prefers-color-scheme: light) {
+  :root {
+    --hl-bg: #1a2129;
+    --hl-bg-inline: rgba(9, 12, 16, 0.06);
+    --hl-fg: rgba(247, 242, 231, 0.96);
+    --hl-muted: rgba(247, 242, 231, 0.55);
+    --hl-comment: rgba(247, 242, 231, 0.5);
+    --hl-keyword: #ffb46b;
+    --hl-string: #c8ff7a;
+    --hl-number: #6dd9cf;
+    --hl-name: #f1ead7;
+    --hl-fn: #ffe08a;
+    --hl-type: #6dd9cf;
+    --hl-builtin: #ffb46b;
+    --hl-tag: #ffb46b;
+    --hl-attr: #ffe08a;
+    --hl-operator: rgba(247, 242, 231, 0.82);
+    --hl-punct: rgba(247, 242, 231, 0.72);
+    --hl-error: #ff8a8a;
+    --hl-diff-add-fg: #c8ff7a;
+    --hl-diff-add-bg: rgba(200, 255, 122, 0.1);
+    --hl-diff-del-fg: #ff8a8a;
+    --hl-diff-del-bg: rgba(255, 138, 138, 0.1);
+    --hl-prompt: #6dd9cf;
+    --hl-line: rgba(247, 242, 231, 0.06);
+  }
+  div.highlight,
+  figure.highlight {
+    border-color: rgba(9, 12, 16, 0.18);
+  }
+  :not(pre) > code {
+    border-color: rgba(9, 12, 16, 0.12);
+  }
+}

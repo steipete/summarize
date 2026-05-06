@@ -1,4 +1,6 @@
 ---
+title: "Auto selection"
+kicker: "models"
 summary: "Auto model selection logic and config rules."
 read_when:
   - "When changing auto selection behavior."

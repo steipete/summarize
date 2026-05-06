@@ -1,4 +1,6 @@
 ---
+title: "Language"
+kicker: "modes"
 summary: "Output language flag and config options."
 read_when:
   - "When changing language handling."

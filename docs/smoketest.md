@@ -1,4 +1,6 @@
 ---
+title: "Smoke test"
+kicker: "project"
 summary: "20-case smoke test plan for inputs and models."
 read_when:
   - "When running smoke tests."

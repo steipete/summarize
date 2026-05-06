@@ -1,4 +1,6 @@
 ---
+title: "Releasing"
+kicker: "project"
 summary: "Release checklist + Homebrew/core verify step."
 ---
 

@@ -1,4 +1,6 @@
 ---
+title: "Config"
+kicker: "get started"
 summary: "Config file location, precedence, and schema."
 read_when:
   - "When adding config keys or defaults."

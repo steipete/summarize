@@ -1,4 +1,6 @@
 ---
+title: "Chrome extension"
+kicker: "apps"
 summary: "Chrome side panel extension + daemon architecture, setup, and troubleshooting."
 read_when:
   - "When working on the extension, daemon, or side panel UX."

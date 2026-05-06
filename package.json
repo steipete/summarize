@@ -41,6 +41,7 @@
     "clean": "rimraf dist packages/core/dist",
     "dev:cli": "pnpm -C packages/core build && tsx src/cli.ts",
     "docs:list": "tsx scripts/docs-list.ts",
+    "docs:serve": "bash scripts/docs-serve.sh",
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "lint": "oxlint --type-aware --tsconfig tsconfig.build.json --config .oxlintrc.json .",
