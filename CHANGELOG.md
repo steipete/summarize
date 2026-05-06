@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Google document summaries: send `temperature` and `maxOutputTokens` inside Gemini `generationConfig` for document requests, and include API error details when Google rejects the payload (#209, thanks @vincent-peng).
+
 ## 0.14.1 - 2026-04-26
 
 ### Features
