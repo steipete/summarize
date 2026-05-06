@@ -16,9 +16,7 @@ describe("completeGoogleDocument payload", () => {
         status: 200,
         text: async () =>
           JSON.stringify({
-            candidates: [
-              { content: { parts: [{ text: "Summary result" }] } },
-            ],
+            candidates: [{ content: { parts: [{ text: "Summary result" }] } }],
             usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
           }),
       };
@@ -64,9 +62,7 @@ describe("completeGoogleDocument payload", () => {
         status: 200,
         text: async () =>
           JSON.stringify({
-            candidates: [
-              { content: { parts: [{ text: "Summary result" }] } },
-            ],
+            candidates: [{ content: { parts: [{ text: "Summary result" }] } }],
             usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
           }),
       };
@@ -106,9 +102,7 @@ describe("completeGoogleDocument payload", () => {
         status: 200,
         text: async () =>
           JSON.stringify({
-            candidates: [
-              { content: { parts: [{ text: "Summary result" }] } },
-            ],
+            candidates: [{ content: { parts: [{ text: "Summary result" }] } }],
             usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
           }),
       };
@@ -143,7 +137,8 @@ describe("completeGoogleDocument payload", () => {
       text: async () =>
         JSON.stringify({
           error: {
-            message: "Invalid JSON payload received. Unknown name \"temperature\": Cannot find field.",
+            message:
+              'Invalid JSON payload received. Unknown name "temperature": Cannot find field.',
             status: "INVALID_ARGUMENT",
           },
         }),
