@@ -158,7 +158,10 @@ export async function writeDaemonConfig({
 }): Promise<string> {
   const configPath = resolveDaemonConfigPath(env);
   const dir = path.dirname(configPath);
-  await fs.mkdir(dir, { recursive: true });
+  await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+  await fs.chmod(dir, 0o700).catch(() => {
+    // Best effort: Windows and some filesystems do not support POSIX modes.
+  });
   const primaryToken = normalizeDaemonToken(config.token);
   const tokens = normalizeDaemonTokens(
     Array.isArray(config.tokens) ? [primaryToken, ...config.tokens] : [primaryToken],
@@ -171,6 +174,12 @@ export async function writeDaemonConfig({
     env: config.env ?? {},
     installedAt: config.installedAt ?? new Date().toISOString(),
   };
-  await fs.writeFile(configPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  await fs.writeFile(configPath, `${JSON.stringify(payload, null, 2)}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
+  });
+  await fs.chmod(configPath, 0o600).catch(() => {
+    // Best effort: Windows and some filesystems do not support POSIX modes.
+  });
   return configPath;
 }
