@@ -39,6 +39,7 @@ const ENV_KEYS = [
   "AGENT_PATH",
   "OPENCLAW_PATH",
   "OPENCODE_PATH",
+  "COPILOT_PATH",
   "UVX_PATH",
 ] as const;
 

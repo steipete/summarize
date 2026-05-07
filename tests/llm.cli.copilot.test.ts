@@ -92,9 +92,9 @@ describe("runCliModel - copilot provider", () => {
     expect(resolveCliBinary("copilot", null, { COPILOT_PATH: "/custom/copilot" })).toBe(
       "/custom/copilot",
     );
-    expect(
-      resolveCliBinary("copilot", { copilot: { binary: "/cfg/copilot" } }, {}),
-    ).toBe("/cfg/copilot");
+    expect(resolveCliBinary("copilot", { copilot: { binary: "/cfg/copilot" } }, {})).toBe(
+      "/cfg/copilot",
+    );
     expect(resolveCliBinary("copilot", null, {})).toBe("copilot");
 
     const seen: string[][] = [];

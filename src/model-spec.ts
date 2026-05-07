@@ -178,7 +178,13 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     const cliModel = requestedModel.length > 0 ? requestedModel : DEFAULT_CLI_MODELS[cliProvider];
     const requiredEnv = requiredEnvForCliProvider(cliProvider) as Extract<
       RequiredModelEnv,
-      "CLI_CLAUDE" | "CLI_CODEX" | "CLI_GEMINI" | "CLI_AGENT" | "CLI_OPENCLAW" | "CLI_OPENCODE" | "CLI_COPILOT"
+      | "CLI_CLAUDE"
+      | "CLI_CODEX"
+      | "CLI_GEMINI"
+      | "CLI_AGENT"
+      | "CLI_OPENCLAW"
+      | "CLI_OPENCODE"
+      | "CLI_COPILOT"
     >;
     const userModelId = cliModel ? `cli/${cliProvider}/${cliModel}` : `cli/${cliProvider}`;
     return {

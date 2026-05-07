@@ -111,7 +111,7 @@ If `[input]` is omitted, summarize prints concise help and exits.
 : Model id. `auto`, `<config-preset>`, `cli/<provider>/<model>`, `xai/...`, `openai/...`, `nvidia/...`, `google/...`, `anthropic/...`, `zai/...`, `github-copilot/...`, or `openrouter/<author>/<slug>`. Default `auto`. See [LLM overview](../llm.md).
 
 `--cli [provider]`
-: Use a logged-in CLI provider: `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`. Equivalent to `--model cli/<provider>`. Without a value: enable CLI providers in auto-selection.
+: Use a logged-in CLI provider: `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`, `copilot`. Equivalent to `--model cli/<provider>`. Without a value: enable CLI providers in auto-selection.
 
 `--thinking <effort>`
 : OpenAI reasoning effort. `none`, `low`, `medium`, `high`, `xhigh`. Aliases: `off`, `min`, `mid`. Only affects reasoning-capable OpenAI models.

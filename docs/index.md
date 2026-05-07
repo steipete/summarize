@@ -37,7 +37,7 @@ summarize "https://example.com" --json --metrics detailed
 
 - **Real extraction.** Readability for articles, `markitdown` for files, Firecrawl as fallback when sites fight back.
 - **Media-aware.** YouTube and podcast pages prefer published transcripts, then yt-dlp + Whisper, then optional ONNX models (Parakeet/Canary).
-- **Provider-agnostic models.** xAI, OpenAI, Google, Anthropic, NVIDIA, Z.AI, OpenRouter, GitHub Copilot, plus local CLI providers (Claude Code, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode).
+- **Provider-agnostic models.** xAI, OpenAI, Google, Anthropic, NVIDIA, Z.AI, OpenRouter, GitHub Copilot, plus local CLI providers (Claude Code, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, Copilot CLI).
 - **Shaped output.** Streamed ANSI Markdown for terminals, plain text for pipes, JSON envelope for scripts, ANSI-stripped for `--no-color`.
 - **Slides for video.** `--slides` extracts scene-change keyframes from videos and renders them inline (Kitty / iTerm) or saves them to disk.
 - **Stays local where it matters.** Optional daemon + Chrome Side Panel pair the CLI with the active tab; the daemon is localhost-only and token-protected.

@@ -51,10 +51,13 @@ describe("daemon /v1/models", () => {
     const binDir = mkdtempSync(path.join(tmpdir(), "summarize-cli-bin-"));
     const claudePath = path.join(binDir, "claude");
     const opencodePath = path.join(binDir, "opencode");
+    const copilotPath = path.join(binDir, "copilot");
     writeFileSync(claudePath, "#!/bin/sh\nexit 0\n", "utf8");
     writeFileSync(opencodePath, "#!/bin/sh\nexit 0\n", "utf8");
+    writeFileSync(copilotPath, "#!/bin/sh\nexit 0\n", "utf8");
     chmodSync(claudePath, 0o755);
     chmodSync(opencodePath, 0o755);
+    chmodSync(copilotPath, 0o755);
 
     const result = await buildModelPickerOptions({
       env: {},
@@ -66,8 +69,10 @@ describe("daemon /v1/models", () => {
     expect(result.ok).toBe(true);
     expect(result.providers.cliClaude).toBe(true);
     expect(result.providers.cliOpencode).toBe(true);
+    expect(result.providers.cliCopilot).toBe(true);
     expect(result.options.some((o) => o.id === "cli/claude")).toBe(true);
     expect(result.options.some((o) => o.id === "cli/opencode")).toBe(true);
+    expect(result.options.some((o) => o.id === "cli/copilot")).toBe(true);
   });
 
   it("includes NVIDIA models when NVIDIA_API_KEY is set", async () => {

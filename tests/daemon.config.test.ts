@@ -146,6 +146,7 @@ describe("daemon config", () => {
         env: buildEnvSnapshotFromEnv({
           OPENAI_API_KEY: " k ",
           OPENAI_WHISPER_BASE_URL: " http://127.0.0.1:8080/v1 ",
+          COPILOT_PATH: " /opt/copilot ",
           PATH: "",
           SUMMARIZE_TRANSCRIBER: " parakeet ",
           SUMMARIZE_ONNX_PARAKEET_CMD: " run-parakeet {input} ",
@@ -166,6 +167,7 @@ describe("daemon config", () => {
     expect(parsed.env).toEqual({
       OPENAI_API_KEY: "k",
       OPENAI_WHISPER_BASE_URL: "http://127.0.0.1:8080/v1",
+      COPILOT_PATH: "/opt/copilot",
       SUMMARIZE_TRANSCRIBER: "parakeet",
       SUMMARIZE_ONNX_PARAKEET_CMD: "run-parakeet {input}",
       SUMMARIZE_ONNX_CANARY_CMD: "run-canary {input}",

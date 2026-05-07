@@ -1,14 +1,14 @@
 ---
 title: "CLI providers"
 kicker: "models"
-summary: "CLI model providers and config for Claude, Codex, Gemini, Cursor Agent, OpenClaw, and OpenCode."
+summary: "CLI model providers and config for Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, and GitHub Copilot."
 read_when:
   - "When changing CLI model integration."
 ---
 
 # CLI models
 
-Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode) as local model backends.
+Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, GitHub Copilot) as local model backends.
 
 ## Model ids
 
@@ -20,6 +20,8 @@ Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw,
 - `openclaw/<model>` (alias for the same OpenClaw CLI path)
 - `cli/opencode/<model>` (e.g. `cli/opencode/openai/gpt-5.4`)
 - `cli/opencode` (use the OpenCode runtime default model)
+- `cli/copilot/<model>` (e.g. `cli/copilot/gpt-5.2`)
+- `cli/copilot` (use the Copilot CLI runtime default model)
 
 Use `--cli [provider]` (case-insensitive) for the provider default, or `--model cli/<provider>/<model>` to pin a model.
 If `--cli` is provided without a provider, auto selection is used with CLI enabled.
@@ -39,7 +41,7 @@ Auto mode can prepend CLI attempts in two ways:
 - Auto CLI fallback (`cli.autoFallback`, default enabled):
   - Applies only to **implicit** auto (when no model is set via flag/env/config).
   - Default behavior: only when no API key is configured.
-  - Default order: `claude, gemini, codex, agent, openclaw, opencode`.
+  - Default order: `claude, gemini, codex, agent, openclaw, opencode, copilot`.
   - Remembers + prioritizes the last successful CLI provider (`~/.summarize/cli-state.json`).
 
 Gemini CLI performance: summarize sets `GEMINI_CLI_NO_RELAUNCH=true` for Gemini CLI runs to avoid a costly self-relaunch (can be overridden by setting it yourself).
@@ -60,7 +62,7 @@ Configure auto CLI fallback:
     "autoFallback": {
       "enabled": true,
       "onlyWhenNoApiKeys": true,
-      "order": ["claude", "gemini", "codex", "agent", "openclaw", "opencode"]
+      "order": ["claude", "gemini", "codex", "agent", "openclaw", "opencode", "copilot"]
     }
   }
 }
@@ -84,6 +86,7 @@ Binary lookup:
 - `AGENT_PATH` (optional override)
 - `OPENCLAW_PATH` (optional override)
 - `OPENCODE_PATH` (optional override)
+- `COPILOT_PATH` (optional override)
 - Otherwise uses `PATH`
 
 ## Attachments (images/files)
@@ -96,17 +99,18 @@ path-based prompt and enables the required tool flags:
 - Codex: `codex exec --output-last-message ...` and `-i <image>` for images
 - Agent: uses built-in file tools in `agent --print` mode (no extra flags)
 - OpenCode: `opencode run --format json ... --file <path>` when a file/image path is required
+- Copilot: `copilot -p <prompt>`; passes `--model <model>` when one is configured
 
 ## Config
 
 ```json
 {
   "cli": {
-    "enabled": ["claude", "gemini", "codex", "agent", "openclaw", "opencode"],
+    "enabled": ["claude", "gemini", "codex", "agent", "openclaw", "opencode", "copilot"],
     "autoFallback": {
       "enabled": true,
       "onlyWhenNoApiKeys": true,
-      "order": ["claude", "gemini", "codex", "agent", "openclaw", "opencode"]
+      "order": ["claude", "gemini", "codex", "agent", "openclaw", "opencode", "copilot"]
     },
     "codex": { "model": "gpt-5.2" },
     "gemini": { "model": "flash", "extraArgs": ["--verbose"] },
@@ -125,6 +129,9 @@ path-based prompt and enables the required tool flags:
     },
     "opencode": {
       "binary": "/usr/local/bin/opencode"
+    },
+    "copilot": {
+      "binary": "/usr/local/bin/copilot"
     }
   }
 }
@@ -138,6 +145,7 @@ Notes:
 - Gemini CLI is invoked in headless mode with `--prompt` for compatibility with current Gemini CLI releases.
 - OpenClaw uses `openclaw agent --agent <model> --message <prompt> --json` because current OpenClaw requires `-m/--message`; very large extracted inputs are rejected before launch to avoid argv limits.
 - OpenCode uses `opencode run --format json`, streams prompt text over stdin, and uses the runtime default model when none is configured.
+- Copilot uses `copilot -p`, treats stdout as plain text, and uses the runtime default model when none is configured.
 
 ## Quick smoke test (all CLI providers)
 
@@ -152,6 +160,7 @@ summarize --cli gemini --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli agent --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli openclaw --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli opencode --plain --timeout 2m /tmp/summarize-cli-smoke.txt
+summarize --cli copilot --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 ```
 
 If Agent fails with auth, run `agent login` (interactive) or set `CURSOR_API_KEY`.

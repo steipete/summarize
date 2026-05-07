@@ -87,6 +87,35 @@ describe("run model selection", () => {
     }
   });
 
+  it("resolves provider-default Copilot CLI ids through summarize config", () => {
+    const config = {
+      cli: {
+        opencode: {
+          model: "openai/gpt-5.4",
+        },
+        copilot: {
+          model: "gpt-5.2",
+        },
+      },
+    };
+
+    const result = resolveModelSelection({
+      config,
+      configForCli: config,
+      configPath: null,
+      envForRun: {},
+      explicitModelArg: "cli/copilot",
+    });
+
+    expect(result.requestedModel.kind).toBe("fixed");
+    expect(result.requestedModel.userModelId).toBe("cli/copilot/gpt-5.2");
+    expect(result.requestedModelLabel).toBe("cli/copilot/gpt-5.2");
+    if (result.requestedModel.kind === "fixed" && result.requestedModel.transport === "cli") {
+      expect(result.requestedModel.cliProvider).toBe("copilot");
+      expect(result.requestedModel.cliModel).toBe("gpt-5.2");
+    }
+  });
+
   it("keeps bare OpenCode ids when no configured model is available", () => {
     const result = resolveModelSelection({
       config: { cli: { opencode: { model: "   " } } },

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+- CLI providers: add GitHub Copilot CLI as `--cli copilot` / `--model cli/copilot`, including config, auto fallback, daemon model discovery, and Chrome extension settings (#211, thanks @izecell).
+
 ### Fixes
 
 - Google document summaries: send `temperature` and `maxOutputTokens` inside Gemini `generationConfig` for document requests, and include API error details when Google rejects the payload (#209, thanks @vincent-peng).
