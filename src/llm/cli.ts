@@ -22,6 +22,7 @@ const DEFAULT_BINARIES: Record<CliProvider, string> = {
   agent: "agent",
   openclaw: "openclaw",
   opencode: "opencode",
+  copilot: "copilot",
 };
 
 const OPENCLAW_MAX_MESSAGE_ARG_BYTES = 120 * 1024;
@@ -35,6 +36,7 @@ const PROVIDER_PATH_ENV: Record<CliProvider, string> = {
   agent: "AGENT_PATH",
   openclaw: "OPENCLAW_PATH",
   opencode: "OPENCODE_PATH",
+  copilot: "COPILOT_PATH",
 };
 
 type RunCliModelOptions = {
@@ -69,7 +71,8 @@ function getCliProviderConfig(
   if (provider === "gemini") return config.gemini;
   if (provider === "agent") return config.agent;
   if (provider === "openclaw") return config.openclaw;
-  return config.opencode;
+  if (provider === "opencode") return config.opencode;
+  return config.copilot;
 }
 
 export function isCliDisabled(
@@ -312,6 +315,28 @@ export async function runCliModel({
       return { text: stdoutText, usage, costUsd };
     }
     throw new Error("CLI returned empty output");
+  }
+
+  if (provider === "copilot") {
+    const copilotArgs: string[] = [...providerExtraArgs, "-p", prompt];
+    if (allowTools) {
+      copilotArgs.push("--allow-all-tools");
+    }
+    if (requestedModel) {
+      copilotArgs.push("--model", requestedModel);
+    }
+    const { stdout } = await execCliWithInput({
+      execFileImpl: execFileFn,
+      cmd: binary,
+      args: copilotArgs,
+      input: "",
+      timeoutMs,
+      env: effectiveEnv,
+      cwd,
+    });
+    const text = stdout.trim();
+    if (!text) throw new Error("CLI returned empty output");
+    return { text, usage: null, costUsd: null };
   }
 
   if (!isJsonCliProvider(provider)) {

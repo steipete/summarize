@@ -6,7 +6,7 @@ summary: "Docs index for summarize behaviors and modes."
 
 - `docs/chrome-extension.md` — Chrome side panel extension + daemon setup/troubleshooting
 - `docs/cache.md` — cache design + config (SQLite)
-- `docs/cli.md` — CLI models (Claude/Codex/Gemini/Agent/OpenClaw/OpenCode)
+- `docs/cli.md` — CLI models (Claude/Codex/Gemini/Agent/OpenClaw/OpenCode/Copilot)
 - `docs/config.md` — config file location, precedence, and schema
 - `docs/extract-only.md` — extract mode (no summary LLM call)
 - `docs/firecrawl.md` — Firecrawl mode + API key

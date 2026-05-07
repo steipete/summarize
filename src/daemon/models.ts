@@ -140,6 +140,7 @@ export async function buildModelPickerOptions({
     cliAgent: boolean;
     cliOpenclaw: boolean;
     cliOpencode: boolean;
+    cliCopilot: boolean;
   };
   openaiBaseUrl: string | null;
   localModelsSource: { kind: "openai-compatible"; baseUrlHost: string } | null;
@@ -160,6 +161,7 @@ export async function buildModelPickerOptions({
     cliAgent: false,
     cliOpenclaw: false,
     cliOpencode: false,
+    cliCopilot: false,
   };
   const cliAvailability = resolveCliAvailability({ env: envForRun, config: configForCli });
   providers.cliClaude = Boolean(cliAvailability.claude);
@@ -168,6 +170,7 @@ export async function buildModelPickerOptions({
   providers.cliAgent = Boolean(cliAvailability.agent);
   providers.cliOpenclaw = Boolean(cliAvailability.openclaw);
   providers.cliOpencode = Boolean(cliAvailability.opencode);
+  providers.cliCopilot = Boolean(cliAvailability.copilot);
 
   const options: ModelPickerOption[] = [
     { id: "auto", label: "Auto" },
@@ -192,6 +195,9 @@ export async function buildModelPickerOptions({
   }
   if (providers.cliOpencode) {
     options.push({ id: "cli/opencode", label: "CLI: OpenCode" });
+  }
+  if (providers.cliCopilot) {
+    options.push({ id: "cli/copilot", label: "CLI: GitHub Copilot" });
   }
 
   if (providers.openrouter) {

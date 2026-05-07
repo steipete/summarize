@@ -141,7 +141,7 @@ export function buildProgram() {
     .addOption(
       new Option(
         "--cli [provider]",
-        "Use a CLI provider: claude, gemini, codex, agent, openclaw, opencode (equivalent to --model cli/<provider>). If omitted, use auto selection with CLI enabled.",
+        "Use a CLI provider: claude, gemini, codex, agent, openclaw, opencode, copilot (equivalent to --model cli/<provider>). If omitted, use auto selection with CLI enabled.",
       ),
     )
     .option("--extract", "Print extracted content and exit (no LLM summary)", false)
@@ -294,6 +294,7 @@ ${heading("Env Vars")}
   AGENT_PATH            optional (path to Cursor Agent CLI binary)
   OPENCLAW_PATH         optional (path to OpenClaw CLI binary)
   OPENCODE_PATH         optional (path to OpenCode CLI binary)
+  COPILOT_PATH          optional (path to GitHub Copilot CLI binary)
   SUMMARIZE_MODEL       optional (overrides default model selection)
   SUMMARIZE_THEME       optional (${CLI_THEME_NAMES.join(", ")})
   SUMMARIZE_TRUECOLOR   optional (force 24-bit color)

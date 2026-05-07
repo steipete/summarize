@@ -9,18 +9,15 @@ function resolveConfiguredCliModel(
   config: SummarizeConfig | null,
 ): string | null {
   const cli = config?.cli;
-  const raw =
-    provider === "claude"
-      ? cli?.claude?.model
-      : provider === "codex"
-        ? cli?.codex?.model
-        : provider === "gemini"
-          ? cli?.gemini?.model
-          : provider === "agent"
-            ? cli?.agent?.model
-            : provider === "openclaw"
-              ? cli?.openclaw?.model
-              : cli?.opencode?.model;
+  const raw = (() => {
+    if (provider === "claude") return cli?.claude?.model;
+    if (provider === "codex") return cli?.codex?.model;
+    if (provider === "gemini") return cli?.gemini?.model;
+    if (provider === "agent") return cli?.agent?.model;
+    if (provider === "openclaw") return cli?.openclaw?.model;
+    if (provider === "opencode") return cli?.opencode?.model;
+    return cli?.copilot?.model;
+  })();
   return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
 }
 

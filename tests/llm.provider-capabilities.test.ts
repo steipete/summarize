@@ -22,18 +22,22 @@ describe("llm provider capabilities", () => {
       "agent",
       "openclaw",
       "opencode",
+      "copilot",
     ]);
     expect(DEFAULT_CLI_MODELS.gemini).toBe("flash");
     expect(DEFAULT_CLI_MODELS.openclaw).toBe("main");
     expect(DEFAULT_CLI_MODELS.opencode).toBeNull();
+    expect(DEFAULT_CLI_MODELS.copilot).toBeNull();
     expect(parseCliProviderName(" GeMiNi ")).toBe("gemini");
     expect(parseCliProviderName(" openclaw ")).toBe("openclaw");
     expect(parseCliProviderName(" opencode ")).toBe("opencode");
     expect(parseCliProviderName(" OpenCode ")).toBe("opencode");
+    expect(parseCliProviderName(" Copilot ")).toBe("copilot");
     expect(parseCliProviderName("nope")).toBeNull();
     expect(requiredEnvForCliProvider("agent")).toBe("CLI_AGENT");
     expect(requiredEnvForCliProvider("openclaw")).toBe("CLI_OPENCLAW");
     expect(requiredEnvForCliProvider("opencode")).toBe("CLI_OPENCODE");
+    expect(requiredEnvForCliProvider("copilot")).toBe("CLI_COPILOT");
   });
 
   it("tracks native provider capabilities centrally", () => {
