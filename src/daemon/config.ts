@@ -162,6 +162,9 @@ export async function writeDaemonConfig({
   await fs.chmod(dir, 0o700).catch(() => {
     // Best effort: Windows and some filesystems do not support POSIX modes.
   });
+  await fs.chmod(configPath, 0o600).catch(() => {
+    // Tighten existing files before rewriting secrets; ignore first install.
+  });
   const primaryToken = normalizeDaemonToken(config.token);
   const tokens = normalizeDaemonTokens(
     Array.isArray(config.tokens) ? [primaryToken, ...config.tokens] : [primaryToken],
