@@ -114,6 +114,10 @@ type HoverFromBg =
   | { type: "hover:done"; requestId: string; url: string }
   | { type: "hover:error"; requestId: string; url: string; message: string };
 
+export function shouldHandleHoverTriggerEvent(event: Pick<Event, "isTrusted">): boolean {
+  return event.isTrusted === true;
+}
+
 function ensureTooltip(): Tooltip {
   ensureStyle();
   let el = document.getElementById(TOOLTIP_ID) as HTMLDivElement | null;
@@ -394,6 +398,7 @@ export default defineContentScript({
     };
 
     document.addEventListener("mouseover", (event) => {
+      if (!shouldHandleHoverTriggerEvent(event)) return;
       const anchor = getAnchorFromEvent(event);
       if (!anchor) return;
       if (activeAnchor === anchor) {

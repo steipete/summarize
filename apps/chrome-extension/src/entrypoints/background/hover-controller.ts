@@ -47,6 +47,61 @@ async function resolveHoverTabId(sender: chrome.runtime.MessageSender): Promise<
   return active?.id ?? null;
 }
 
+function isPrivateIpv4(hostname: string): boolean {
+  const parts = hostname.split(".");
+  if (parts.length !== 4) return false;
+  const octets = parts.map((part) => Number.parseInt(part, 10));
+  if (octets.some((octet, index) => !/^\d+$/.test(parts[index]) || octet < 0 || octet > 255)) {
+    return false;
+  }
+  const [first, second] = octets;
+  return (
+    first === 10 ||
+    first === 127 ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168) ||
+    (first === 169 && second === 254) ||
+    first === 0
+  );
+}
+
+function isPrivateIpv6Hostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  if (!normalized.startsWith("[") || !normalized.endsWith("]")) return false;
+  const address = normalized.slice(1, -1);
+  return (
+    address === "::1" ||
+    address.startsWith("fe8") ||
+    address.startsWith("fe9") ||
+    address.startsWith("fea") ||
+    address.startsWith("feb") ||
+    address.startsWith("fc") ||
+    address.startsWith("fd") ||
+    address === "::"
+  );
+}
+
+export function isHoverSummarizeUrlAllowed(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    const hostname = url.hostname.toLowerCase();
+    if (!hostname) return false;
+    if (
+      hostname === "localhost" ||
+      hostname.endsWith(".localhost") ||
+      hostname.endsWith(".local")
+    ) {
+      return false;
+    }
+    if (isPrivateIpv4(hostname)) return false;
+    if (isPrivateIpv6Hostname(hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function createHoverController({
   hoverControllersByTabId,
   buildDaemonRequestBody,
@@ -105,6 +160,18 @@ export function createHoverController({
         requestId: msg.requestId,
         url: msg.url,
         message: "Setup required (missing token)",
+      });
+      return;
+    }
+
+    if (!isHoverSummarizeUrlAllowed(msg.url)) {
+      const message = "Hover summaries can only summarize public HTTP(S) URLs";
+      notifyStart({ ok: false, error: message });
+      await sendHover(tabId, {
+        type: "hover:error",
+        requestId: msg.requestId,
+        url: msg.url,
+        message,
       });
       return;
     }
