@@ -1,4 +1,4 @@
-import type { Message, ToolCall } from "@mariozechner/pi-ai";
+import type { Message, ToolCall, ToolResultMessage } from "@mariozechner/pi-ai";
 import { extractYouTubeVideoId } from "@steipete/summarize-core/content/url";
 import MarkdownIt from "markdown-it";
 import { executeToolCall, getAutomationToolNames } from "../../automation/tools";
@@ -1530,11 +1530,28 @@ function seedPlannedSlidesForRun(run: RunStart) {
   return true;
 }
 
+function describeAutomationToolCall(call: ToolCall): string {
+  const args = call.arguments ? JSON.stringify(call.arguments, null, 2) : "{}";
+  return `${call.name}\n\n${args}`;
+}
+
+async function confirmAutomationToolCall(call: ToolCall): Promise<boolean> {
+  return window.confirm(
+    [
+      "Summarize agent wants to run an automation tool.",
+      "Only approve this if you expected the current task to control the browser or extension automation.",
+      "",
+      describeAutomationToolCall(call),
+    ].join("\n"),
+  );
+}
+
 async function runAgentLoop() {
   await runChatAgentLoop({
     automationEnabled: automationEnabledValue,
     chatController,
     chatSession,
+    confirmToolCall: confirmAutomationToolCall,
     createStreamingAssistantMessage: buildStreamingAssistantMessage,
     executeToolCall: async (call) => (await executeToolCall(call)) as ToolResultMessage,
     getAutomationToolNames,

@@ -8,6 +8,7 @@ export async function runChatAgentLoop({
   chatController,
   chatSession,
   createStreamingAssistantMessage,
+  confirmToolCall,
   executeToolCall,
   getAutomationToolNames,
   hasDebuggerPermission,
@@ -37,6 +38,7 @@ export async function runChatAgentLoop({
     ) => Promise<{ ok: boolean; assistant?: Message; error?: string }>;
   };
   createStreamingAssistantMessage: () => ChatMessage;
+  confirmToolCall?: (call: ToolCall) => boolean | Promise<boolean>;
   executeToolCall: (call: ToolCall) => Promise<ToolResultMessage>;
   getAutomationToolNames: () => string[];
   hasDebuggerPermission: () => Promise<boolean>;
@@ -99,6 +101,29 @@ export async function runChatAgentLoop({
       if (call.name === "navigate") {
         const args = call.arguments as { url?: string };
         markAgentNavigationIntent(args?.url);
+      }
+      if (confirmToolCall) {
+        const confirmed = await confirmToolCall(call);
+        if (!confirmed) {
+          const toolCallId =
+            (call as { toolCallId?: string; id?: string }).toolCallId ??
+            (call as { id?: string }).id ??
+            `${call.name}-${Date.now()}`;
+          chatController.addMessage(
+            wrapMessage({
+              role: "toolResult",
+              toolCallId,
+              toolName: call.name,
+              content: [
+                { type: "text", text: `Tool call ${call.name} was cancelled by the user.` },
+              ],
+              isError: true,
+              timestamp: Date.now(),
+            }),
+          );
+          scrollToBottom(true);
+          continue;
+        }
       }
       const result = await executeToolCall(call);
       if (call.name === "navigate" && !result.isError) {
