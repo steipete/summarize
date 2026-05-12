@@ -38,7 +38,11 @@ function resolveRequestSlidesSettings({
   return resolveSlideSettings({
     slides: slidesValue,
     slidesOcr: slidesOcrValue,
-    slidesDir: request.slidesDir ?? ".summarize/slides",
+    // Daemon/API callers may be browser-extension or localhost clients that
+    // only need to request extraction, not select host filesystem paths. Keep
+    // slide artifacts under the per-user Summarize directory so an authenticated
+    // request cannot write/delete slide files in arbitrary writable locations.
+    slidesDir: ".summarize/slides",
     slidesSceneThreshold: request.slidesSceneThreshold,
     slidesSceneThresholdExplicit: typeof request.slidesSceneThreshold !== "undefined",
     slidesMax: request.slidesMax,
