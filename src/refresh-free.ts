@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import JSON5 from "json5";
@@ -747,11 +747,14 @@ export async function refreshFree({
     root.model = "free";
   }
 
-  await mkdir(dirname(configPath), { recursive: true });
+  const configDir = dirname(configPath);
+  await mkdir(configDir, { recursive: true, mode: 0o700 });
+  await chmod(configDir, 0o700).catch(() => {});
   const next = `${JSON.stringify(root, null, 2)}\n`;
   const tmp = `${configPath}.tmp-${process.pid}-${Date.now()}`;
-  await writeFile(tmp, next, "utf8");
+  await writeFile(tmp, next, { encoding: "utf8", mode: 0o600 });
   await rename(tmp, configPath);
+  await chmod(configPath, 0o600).catch(() => {});
 
   stdout.write(`Wrote ${configPath} (models.free)\n`);
 
