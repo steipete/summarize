@@ -8,6 +8,7 @@
 
 ### Fixes
 
+- Daemon slides: ignore request-provided slide output directories and keep extracted slide artifacts under `~/.summarize/slides` (#220, thanks @Hinotoi-agent).
 - CLI progress: keep Ctrl+C responsive while spinners are active and forward interrupts to active CLI model backends so child processes are not left running (#216).
 - Codex CLI: isolate normal summary runs with `--ephemeral`, `--ignore-user-config`, `--ignore-rules`, a temporary cwd, and a sanitized temporary `CODEX_HOME` so local Codex context cannot bleed into summaries with little or no extracted content (#215, thanks @anntnzrb).
 - Daemon: write `~/.summarize/daemon.json` with owner-only permissions and tighten existing config paths before rewriting daemon tokens or captured provider env values (#214, thanks @Hinotoi-agent).
