@@ -55,6 +55,11 @@ export function bindBackgroundListeners<Session extends SessionWithNavAt>(option
     );
   });
 
+  chrome.runtime.onUserScriptMessage?.addListener(
+    (raw, sender, sendResponse): boolean | undefined =>
+      runtimeActionsHandler(raw, sender, sendResponse),
+  );
+
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
     if (!changes.settings) return;

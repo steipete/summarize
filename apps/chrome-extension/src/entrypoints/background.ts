@@ -57,6 +57,7 @@ export default defineBackground(() => {
   // Prevents arbitrary pages from triggering trusted clicks via the
   // postMessage → content-script → runtime bridge.
   const nativeInputArmedTabs = new Set<number>();
+  const artifactsArmedTabs = new Set<number>();
 
   function resolveLogLevel(event: string) {
     const normalized = event.toLowerCase();
@@ -75,7 +76,8 @@ export default defineBackground(() => {
     console.debug("[summarize][extractor]", { event, ...detailPayload });
   };
   const runtimeActionsHandler = createRuntimeActionsHandler({
-    armedTabs: nativeInputArmedTabs,
+    nativeInputArmedTabs,
+    artifactsArmedTabs,
   });
   const hoverController = createHoverController({
     hoverControllersByTabId,
@@ -412,6 +414,7 @@ export default defineBackground(() => {
     onTabRemoved: (tabId) => {
       hoverController.abortHoverForTab(tabId);
       nativeInputArmedTabs.delete(tabId);
+      artifactsArmedTabs.delete(tabId);
     },
   });
 

@@ -6,8 +6,9 @@ import {
   upsertArtifact,
 } from "../../automation/artifacts-store";
 import {
+  getArtifactsGuardError,
   getNativeInputGuardError,
-  updateNativeInputArmedTabs,
+  updateArmedTabs,
 } from "../../automation/native-input-guard";
 
 export type NativeInputRequest = {
@@ -33,7 +34,8 @@ export type ArtifactsRequest = {
 type RuntimeMessage =
   | NativeInputRequest
   | ArtifactsRequest
-  | { type: "automation:native-input-arm" };
+  | { type: "automation:native-input-arm"; tabId?: number; enabled?: boolean }
+  | { type: "automation:artifacts-arm"; tabId?: number; enabled?: boolean };
 
 function safeSendResponse(sendResponse: (response?: unknown) => void, value: unknown) {
   try {
@@ -154,7 +156,13 @@ async function dispatchNativeInput(
   }
 }
 
-export function createRuntimeActionsHandler({ armedTabs }: { armedTabs: Set<number> }) {
+export function createRuntimeActionsHandler({
+  nativeInputArmedTabs,
+  artifactsArmedTabs,
+}: {
+  nativeInputArmedTabs: Set<number>;
+  artifactsArmedTabs: Set<number>;
+}) {
   return (
     raw: unknown,
     sender: chrome.runtime.MessageSender,
@@ -165,10 +173,11 @@ export function createRuntimeActionsHandler({ armedTabs }: { armedTabs: Set<numb
     }
 
     const type = (raw as RuntimeMessage).type;
-    if (type === "automation:native-input-arm") {
+    if (type === "automation:native-input-arm" || type === "automation:artifacts-arm") {
       const msg = raw as { tabId?: number; enabled?: boolean };
-      updateNativeInputArmedTabs({
-        armedTabs,
+      updateArmedTabs({
+        armedTabs:
+          type === "automation:native-input-arm" ? nativeInputArmedTabs : artifactsArmedTabs,
         senderHasTab: Boolean(sender.tab),
         tabId: msg.tabId,
         enabled: msg.enabled,
@@ -181,7 +190,7 @@ export function createRuntimeActionsHandler({ armedTabs }: { armedTabs: Set<numb
       void (async () => {
         const tabId = sender.tab?.id;
         const guardError = getNativeInputGuardError({
-          armedTabs,
+          armedTabs: nativeInputArmedTabs,
           senderTabId: tabId,
         });
         if (guardError) {
@@ -202,8 +211,12 @@ export function createRuntimeActionsHandler({ armedTabs }: { armedTabs: Set<numb
     const msg = raw as ArtifactsRequest;
     void (async () => {
       const tabId = sender.tab?.id;
-      if (!tabId) {
-        safeSendResponse(sendResponse, { ok: false, error: "Missing sender tab" });
+      const guardError = getArtifactsGuardError({
+        armedTabs: artifactsArmedTabs,
+        senderTabId: tabId,
+      });
+      if (guardError) {
+        safeSendResponse(sendResponse, { ok: false, error: guardError });
         return;
       }
 

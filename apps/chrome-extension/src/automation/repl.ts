@@ -5,7 +5,7 @@ import {
   parseArtifact,
   upsertArtifact,
 } from "./artifacts-store";
-import { withNativeInputArmedTab } from "./native-input-guard";
+import { withArtifactsArmedTab, withNativeInputArmedTab } from "./native-input-guard";
 import { executeNavigateTool } from "./navigate";
 import { listSkills } from "./skills-store";
 import { buildUserScriptsGuidance, getUserScriptsStatus } from "./userscripts";
@@ -229,17 +229,17 @@ async function runBrowserJs(
 
         const sendArtifactRpc = (action, payload) => {
           return new Promise((resolve, reject) => {
-            const requestId = \`\${Date.now()}-\${Math.random().toString(36).slice(2)}\`
-            const handler = (event) => {
-              if (event.source !== window) return
-              const msg = event.data || {}
-              if (msg?.source !== 'summarize-artifacts' || msg.requestId !== requestId) return
-              window.removeEventListener('message', handler)
-              if (msg.ok) resolve(msg.result)
-              else reject(new Error(msg.error || 'Artifact operation failed'))
-            }
-            window.addEventListener('message', handler)
-            window.postMessage({ source: 'summarize-artifacts', requestId, action, payload }, '*')
+            chrome.runtime.sendMessage(
+              { source: 'summarize-artifacts', type: 'automation:artifacts', action, payload },
+              (response) => {
+                if (chrome.runtime.lastError) {
+                  reject(new Error(chrome.runtime.lastError.message || 'Artifact operation failed'))
+                  return
+                }
+                if (response?.ok) resolve(response.result)
+                else reject(new Error(response?.error || 'Artifact operation failed'))
+              }
+            )
           })
         }
 
@@ -305,7 +305,7 @@ async function runBrowserJs(
   try {
     await userScripts.configureWorld?.({
       worldId: "summarize-browserjs",
-      messaging: false,
+      messaging: true,
       csp: "script-src 'unsafe-eval' 'unsafe-inline'; connect-src 'none'; img-src 'none'; media-src 'none'; frame-src 'none'; font-src 'none'; object-src 'none'; default-src 'none';",
     });
   } catch {
@@ -313,27 +313,33 @@ async function runBrowserJs(
   }
 
   try {
-    return await withNativeInputArmedTab({
-      enabled: nativeInputEnabled,
+    return await withArtifactsArmedTab({
+      enabled: true,
       tabId: tab.id,
       sendMessage: (message) => chrome.runtime.sendMessage(message),
-      run: async () => {
-        const results = await userScripts.execute({
-          target: { tabId: tab.id },
-          world: "USER_SCRIPT",
-          worldId: "summarize-browserjs",
-          injectImmediately: true,
-          js: [{ code: wrapperCode }],
-          ...(executionId ? { executionId } : {}),
-        });
+      run: async () =>
+        withNativeInputArmedTab({
+          enabled: nativeInputEnabled,
+          tabId: tab.id,
+          sendMessage: (message) => chrome.runtime.sendMessage(message),
+          run: async () => {
+            const results = await userScripts.execute({
+              target: { tabId: tab.id },
+              world: "USER_SCRIPT",
+              worldId: "summarize-browserjs",
+              injectImmediately: true,
+              js: [{ code: wrapperCode }],
+              ...(executionId ? { executionId } : {}),
+            });
 
-        if (signal?.aborted) {
-          return { ok: false, error: "Execution aborted" };
-        }
+            if (signal?.aborted) {
+              return { ok: false, error: "Execution aborted" };
+            }
 
-        const result = results?.[0]?.result as BrowserJsResult | undefined;
-        return result ?? { ok: false, error: "No result from browserjs()" };
-      },
+            const result = results?.[0]?.result as BrowserJsResult | undefined;
+            return result ?? { ok: false, error: "No result from browserjs()" };
+          },
+        }),
     });
   } finally {
     if (abortHandler) signal?.removeEventListener("abort", abortHandler);

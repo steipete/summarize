@@ -361,47 +361,12 @@ function handleNativeInputBridge() {
   });
 }
 
-// Bridge artifact RPC calls from userScripts (page world) to the extension.
-function handleArtifactsBridge() {
-  window.addEventListener("message", (event) => {
-    if (event.source !== window) return;
-    const data = event.data as {
-      source?: string;
-      requestId?: string;
-      action?: string;
-      payload?: unknown;
-    };
-    if (data?.source !== "summarize-artifacts" || !data.requestId) return;
-    chrome.runtime.sendMessage(
-      {
-        type: "automation:artifacts",
-        requestId: data.requestId,
-        action: data.action,
-        payload: data.payload,
-      },
-      (response: { ok: boolean; result?: unknown; error?: string } | undefined) => {
-        window.postMessage(
-          {
-            source: "summarize-artifacts",
-            requestId: data.requestId,
-            ok: response?.ok ?? false,
-            result: response?.result,
-            error: response?.error,
-          },
-          "*",
-        );
-      },
-    );
-  });
-}
-
 export default defineContentScript({
   matches: ["<all_urls>"],
   excludeMatches: META_SITE_EXCLUDE_MATCHES,
   runAt: "document_idle",
   main() {
     handleNativeInputBridge();
-    handleArtifactsBridge();
 
     chrome.runtime.onMessage.addListener(
       (
