@@ -98,10 +98,6 @@ export async function runChatAgentLoop({
 
     for (const call of toolCalls) {
       if (chatSession.isAbortRequested()) return;
-      if (call.name === "navigate") {
-        const args = call.arguments as { url?: string };
-        markAgentNavigationIntent(args?.url);
-      }
       if (confirmToolCall) {
         const confirmed = await confirmToolCall(call);
         if (!confirmed) {
@@ -124,6 +120,10 @@ export async function runChatAgentLoop({
           scrollToBottom(true);
           continue;
         }
+      }
+      if (call.name === "navigate") {
+        const args = call.arguments as { url?: string };
+        markAgentNavigationIntent(args?.url);
       }
       const result = await executeToolCall(call);
       if (call.name === "navigate" && !result.isError) {

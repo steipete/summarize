@@ -3,7 +3,21 @@ import { runChatAgentLoop } from "../apps/chrome-extension/src/entrypoints/sidep
 
 function buildHarness({
   confirmToolCall,
-}: { confirmToolCall?: () => Promise<boolean> | boolean } = {}) {
+  toolCall = {
+    type: "toolCall",
+    id: "call-1",
+    name: "debugger",
+    arguments: { action: "eval", expression: "document.body.innerText" },
+  },
+}: {
+  confirmToolCall?: () => Promise<boolean> | boolean;
+  toolCall?: {
+    type: "toolCall";
+    id: string;
+    name: string;
+    arguments: Record<string, unknown>;
+  };
+} = {}) {
   const executeToolCall = vi.fn(async (call) => ({
     role: "toolResult" as const,
     toolCallId: call.id,
@@ -38,14 +52,7 @@ function buildHarness({
           ok: true,
           assistant: {
             role: "assistant",
-            content: [
-              {
-                type: "toolCall",
-                id: "call-1",
-                name: "debugger",
-                arguments: { action: "eval", expression: "document.body.innerText" },
-              },
-            ],
+            content: [toolCall],
             timestamp: Date.now(),
           },
         };
@@ -73,7 +80,7 @@ function buildHarness({
         timestamp: Date.now(),
       }),
       executeToolCall,
-      getAutomationToolNames: () => ["debugger"],
+      getAutomationToolNames: () => [toolCall.name],
       hasDebuggerPermission: async () => true,
       markAgentNavigationIntent: vi.fn(),
       markAgentNavigationResult: vi.fn(),
@@ -105,5 +112,24 @@ describe("chat agent automation tool confirmation", () => {
         isError: true,
       }),
     );
+  });
+
+  it("does not mark navigation intent before a denied navigate call", async () => {
+    const confirmToolCall = vi.fn(async () => false);
+    const harness = buildHarness({
+      confirmToolCall,
+      toolCall: {
+        type: "toolCall",
+        id: "call-1",
+        name: "navigate",
+        arguments: { url: "https://example.com/phishing" },
+      },
+    });
+
+    await runChatAgentLoop(harness.args as never);
+
+    expect(harness.args.markAgentNavigationIntent).not.toHaveBeenCalled();
+    expect(harness.args.markAgentNavigationResult).not.toHaveBeenCalled();
+    expect(harness.executeToolCall).not.toHaveBeenCalled();
   });
 });
