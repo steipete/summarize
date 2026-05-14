@@ -340,6 +340,7 @@ Use `summarize --help` or `summarize help` for the full help text.
 - `--markdown-mode off|auto|llm|readability`: HTML -> Markdown mode (default `readability`)
 - `--preprocess off|auto|always`: controls `uvx markitdown` usage (default `auto`)
   - Install `uvx`: `brew install uv` (or https://astral.sh/uv/)
+  - Image-only PDFs can fall back to OpenAI vision OCR when `OPENAI_API_KEY` is set; override the OCR model with `MARKITDOWN_OCR_MODEL` or page render DPI with `MARKITDOWN_OCR_DPI`.
 - `--extract`: print extracted content and exit (URLs only; stdin `-` is not supported)
   - Deprecated alias: `--extract-only`
 - `--slides`: extract slides for YouTube, direct video URLs, or local video files and render them inline in the summary narrative (auto-renders inline in supported terminals)

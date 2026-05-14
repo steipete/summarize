@@ -28,7 +28,7 @@ describe("markitdown", () => {
         env: {},
         execFileImpl: execFileMock,
       }),
-    ).resolves.toContain("# ok");
+    ).resolves.toMatchObject({ markdown: expect.stringContaining("# ok"), usedOcr: false });
   });
 
   it("uses filename extension when present (no media type hint)", async () => {
@@ -49,7 +49,7 @@ describe("markitdown", () => {
         env: {},
         execFileImpl: execFileMock,
       }),
-    ).resolves.toContain("# ok");
+    ).resolves.toMatchObject({ markdown: expect.stringContaining("# ok"), usedOcr: false });
   });
 
   it("infers .html when media type is html and filename has no extension", async () => {
@@ -70,7 +70,7 @@ describe("markitdown", () => {
         env: {},
         execFileImpl: execFileMock,
       }),
-    ).resolves.toContain("# ok");
+    ).resolves.toMatchObject({ markdown: expect.stringContaining("# ok"), usedOcr: false });
   });
 
   it("falls back to .bin when no filename extension or known media type exists", async () => {
@@ -91,7 +91,7 @@ describe("markitdown", () => {
         env: {},
         execFileImpl: execFileMock,
       }),
-    ).resolves.toContain("# ok");
+    ).resolves.toMatchObject({ markdown: expect.stringContaining("# ok"), usedOcr: false });
   });
 
   it("throws when markitdown returns empty output", async () => {
@@ -143,7 +143,7 @@ describe("markitdown", () => {
         env: {},
         execFileImpl: execFileMock,
       }),
-    ).resolves.toContain("# ok");
+    ).resolves.toMatchObject({ markdown: expect.stringContaining("# ok"), usedOcr: false });
   });
 
   it("keeps error message when stderr is empty (buffer)", async () => {
@@ -163,5 +163,160 @@ describe("markitdown", () => {
         execFileImpl: execFileMock,
       }),
     ).rejects.toThrow(/^Command failed$/);
+  });
+
+  it("triggers OCR fallback when markitdown returns page-headers-only output", async () => {
+    let callCount = 0;
+    const execFileMock = vi.fn(((file, _args, _opts, cb) => {
+      callCount++;
+      if (callCount === 1) {
+        cb(null, "## Page 1\n\n## Page 2\n\n## Page 3\n", ""); // page headers only
+      } else {
+        cb(null, "# OCR result\n\nExtracted text.\n", "");
+      }
+    }) as unknown as ExecFileFn);
+
+    await expect(
+      convertToMarkdownWithMarkitdown({
+        bytes: new Uint8Array([1, 2, 3]),
+        filenameHint: "scan.pdf",
+        mediaTypeHint: "application/pdf",
+        uvxCommand: null,
+        timeoutMs: 1000,
+        env: { OPENAI_API_KEY: "test" },
+        execFileImpl: execFileMock,
+        ocrFallback: true,
+      }),
+    ).resolves.toMatchObject({
+      markdown: expect.stringContaining("Extracted text."),
+      usedOcr: true,
+    });
+    expect(callCount).toBe(2);
+  });
+
+  it("rejects OCR output that is still page-headers-only", async () => {
+    let callCount = 0;
+    const execFileMock = vi.fn(((_file, _args, _opts, cb) => {
+      callCount++;
+      cb(null, callCount === 1 ? "## Page 1\n" : "## Page 1\n\n## Page 2\n", "");
+    }) as unknown as ExecFileFn);
+
+    await expect(
+      convertToMarkdownWithMarkitdown({
+        bytes: new Uint8Array([1, 2, 3]),
+        filenameHint: "scan.pdf",
+        mediaTypeHint: "application/pdf",
+        uvxCommand: null,
+        timeoutMs: 1000,
+        env: { OPENAI_API_KEY: "test" },
+        execFileImpl: execFileMock,
+        ocrFallback: true,
+      }),
+    ).rejects.toThrow(/returned empty output/i);
+    expect(callCount).toBe(2);
+  });
+
+  it("does NOT trigger OCR when first call returns real text alongside page headers", async () => {
+    const execFileMock = vi.fn(((_file, _args, _opts, cb) => {
+      cb(null, "## Page 1\n\nActual content here.\n## Page 2\n\nMore content.\n", "");
+    }) as unknown as ExecFileFn);
+
+    await expect(
+      convertToMarkdownWithMarkitdown({
+        bytes: new Uint8Array([1, 2, 3]),
+        filenameHint: "book.pdf",
+        mediaTypeHint: "application/pdf",
+        uvxCommand: null,
+        timeoutMs: 1000,
+        env: { OPENAI_API_KEY: "test" },
+        execFileImpl: execFileMock,
+        ocrFallback: true,
+      }),
+    ).resolves.toMatchObject({
+      markdown: expect.stringContaining("Actual content here."),
+      usedOcr: false,
+    });
+    expect(execFileMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("deriveUvCommand: absolute path /usr/local/bin/uvx to /usr/local/bin/uv", async () => {
+    let callCount = 0;
+    const execFileMock = vi.fn(((file, _args, _opts, cb) => {
+      callCount++;
+      if (callCount === 1) {
+        expect(file).toBe("/usr/local/bin/uvx");
+        cb(null, "", ""); // image-based PDF, triggers OCR path
+      } else {
+        expect(file).toBe("/usr/local/bin/uv");
+        cb(null, "# ocr\n", "");
+      }
+    }) as unknown as ExecFileFn);
+
+    await expect(
+      convertToMarkdownWithMarkitdown({
+        bytes: new Uint8Array([1, 2, 3]),
+        filenameHint: "x.pdf",
+        mediaTypeHint: "application/pdf",
+        uvxCommand: "/usr/local/bin/uvx",
+        timeoutMs: 1000,
+        env: { OPENAI_API_KEY: "test" },
+        execFileImpl: execFileMock,
+        ocrFallback: true,
+      }),
+    ).resolves.toMatchObject({ usedOcr: true });
+  });
+
+  it("deriveUvCommand: uvx.exe to uv.exe (Windows extension preserved)", async () => {
+    let callCount = 0;
+    const execFileMock = vi.fn(((file, _args, _opts, cb) => {
+      callCount++;
+      if (callCount === 1) {
+        expect(file).toBe("uvx.exe");
+        cb(null, "", "");
+      } else {
+        expect(file).toBe("uv.exe");
+        cb(null, "# ocr\n", "");
+      }
+    }) as unknown as ExecFileFn);
+
+    await expect(
+      convertToMarkdownWithMarkitdown({
+        bytes: new Uint8Array([1, 2, 3]),
+        filenameHint: "x.pdf",
+        mediaTypeHint: "application/pdf",
+        uvxCommand: "uvx.exe",
+        timeoutMs: 1000,
+        env: { OPENAI_API_KEY: "test" },
+        execFileImpl: execFileMock,
+        ocrFallback: true,
+      }),
+    ).resolves.toMatchObject({ usedOcr: true });
+  });
+
+  it("deriveUvCommand: non-matching wrapper name is passed through unchanged", async () => {
+    let callCount = 0;
+    const execFileMock = vi.fn(((file, _args, _opts, cb) => {
+      callCount++;
+      if (callCount === 1) {
+        expect(file).toBe("my-uvx-wrapper");
+        cb(null, "", "");
+      } else {
+        expect(file).toBe("my-uvx-wrapper"); // not matching ^uvx...$; left as-is
+        cb(null, "# ocr\n", "");
+      }
+    }) as unknown as ExecFileFn);
+
+    await expect(
+      convertToMarkdownWithMarkitdown({
+        bytes: new Uint8Array([1, 2, 3]),
+        filenameHint: "x.pdf",
+        mediaTypeHint: "application/pdf",
+        uvxCommand: "my-uvx-wrapper",
+        timeoutMs: 1000,
+        env: { OPENAI_API_KEY: "test" },
+        execFileImpl: execFileMock,
+        ocrFallback: true,
+      }),
+    ).resolves.toMatchObject({ usedOcr: true });
   });
 });

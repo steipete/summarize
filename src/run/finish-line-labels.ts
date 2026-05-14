@@ -43,6 +43,7 @@ export function buildExtractFinishLabel(args: {
     if (mdUsed) {
       if (args.markdownMode === "readability") return `${base} via readability`;
       if (args.hasMarkdownLlmCall) return `${base} via llm`;
+      if (mdNotes === "markitdown+ocr") return `${base} via markitdown+ocr`;
       return `${base} via markitdown`;
     }
   }

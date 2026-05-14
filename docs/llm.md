@@ -145,4 +145,5 @@ Use `--model github-copilot/<model>` for explicit GitHub-hosted model calls.
 
 - For PDF inputs, `--preprocess auto` will send the PDF directly to Anthropic/OpenAI/Gemini when a fixed model supports documents; otherwise we fall back to markitdown.
 - `--preprocess always` forces markitdown (no direct attachments).
+- When markitdown returns only page headers for an image-only PDF, summarize can retry with OpenAI vision OCR if `OPENAI_API_KEY` is available. The OCR model defaults to `gpt-4o-mini`; set `MARKITDOWN_OCR_MODEL` to override it, or `MARKITDOWN_OCR_DPI` to tune rendered page size. This sends rendered PDF pages to the OpenAI API and may incur per-page vision costs.
 - Streaming is disabled for document attachments.

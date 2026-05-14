@@ -47,6 +47,7 @@ If `[input]` is omitted, summarize prints concise help and exits.
 
 `--preprocess <mode>`
 : `off`, `auto`, `always`. Default `auto`. Controls `markitdown` usage for files. `always` only affects file inputs.
+: Image-only PDFs can retry through OpenAI vision OCR when `OPENAI_API_KEY` is set. Set `MARKITDOWN_OCR_MODEL` to choose the OCR model, or `MARKITDOWN_OCR_DPI` to tune rendered page size.
 
 `--markdown-mode <mode>`
 : `off`, `auto`, `llm`, `readability`. For websites: HTML → Markdown strategy. For YouTube/transcripts: `llm` formats raw transcripts into clean Markdown with headings.

@@ -5,6 +5,7 @@
 ### Features
 
 - CLI providers: add GitHub Copilot CLI as `--cli copilot` / `--model cli/copilot`, including config, auto fallback, daemon model discovery, and Chrome extension settings (#211, thanks @izecell).
+- CLI extraction: fall back to OpenAI vision OCR for image-only PDFs when markitdown returns only page headers, so `--extract` and forced preprocessing can recover scanned PDF text (#204, thanks @mvance).
 
 ### Fixes
 
