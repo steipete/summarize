@@ -108,6 +108,26 @@ describe("run/attachments", () => {
     await fs.rm(path.dirname(filePath), { recursive: true, force: true });
   });
 
+  it("strips directory components from caller-supplied filenames", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const attachment = {
+      kind: "file",
+      mediaType: "application/octet-stream",
+      bytes,
+      filename: "../../escape.bin",
+    } as unknown as AssetAttachment;
+    const filePath = await ensureCliAttachmentPath({
+      sourceKind: "asset-url",
+      sourceLabel: "https://example.com/escape.bin",
+      attachment,
+    });
+    const dir = path.dirname(filePath);
+    expect(path.basename(filePath)).toBe("escape.bin");
+    // The written file must stay inside the freshly-created temp dir.
+    expect(path.relative(dir, filePath).includes("..")).toBe(false);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
   it("throws when CLI attachment bytes are missing", async () => {
     const attachment = {
       kind: "file",
