@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.15.2 - 2026-05-17
+
 ### Fixes
 
 - CLI streaming: fall back to non-streaming summaries when a stream iterator times out before yielding text, without marking slide streaming complete on failed partial output.
