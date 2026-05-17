@@ -14,6 +14,7 @@ import { createMediaCacheFromConfig } from "../run/media-cache-state.js";
 import { type SseEvent } from "../shared/sse-events.js";
 import type { SlideSettings } from "../slides/index.js";
 import { resolvePackageVersion } from "../version.js";
+import { AuthRateLimiter } from "./auth-rate-limit.js";
 import { type DaemonRequestedMode } from "./auto-mode.js";
 import { daemonConfigTokens, type DaemonConfig } from "./config.js";
 import { DAEMON_HOST, DAEMON_PORT_DEFAULT } from "./constants.js";
@@ -160,6 +161,7 @@ export async function runDaemonServer({
   const refreshSessions = new Map<string, Session>();
   const activeTasks = new Set<Promise<void>>();
   let activeRefreshSessionId: string | null = null;
+  const authLimiter = new AuthRateLimiter();
 
   const server = http.createServer((req, res) => {
     const requestTask = (async () => {
@@ -181,9 +183,37 @@ export async function runDaemonServer({
 
       const token = readBearerToken(req);
       const authed = token ? daemonConfigTokens(config).includes(token) : false;
-      if (pathname.startsWith("/v1/") && !authed) {
-        json(res, 401, { ok: false, error: "unauthorized" }, cors);
-        return;
+      if (pathname.startsWith("/v1/")) {
+        // `req.socket.remoteAddress` is loopback in the common case; for
+        // 0.0.0.0 binds inside Windows containers it's the caller's IP.
+        const clientKey = req.socket.remoteAddress ?? null;
+        const preCheck = authLimiter.check(clientKey);
+        if (!preCheck.allowed) {
+          json(
+            res,
+            429,
+            { ok: false, error: "too many auth failures" },
+            { ...cors, "retry-after": String(preCheck.retryAfterSeconds) },
+          );
+          return;
+        }
+        if (!authed) {
+          const decision = authLimiter.recordFailure(clientKey);
+          const headers = decision.allowed
+            ? cors
+            : { ...cors, "retry-after": String(decision.retryAfterSeconds) };
+          json(
+            res,
+            decision.allowed ? 401 : 429,
+            {
+              ok: false,
+              error: decision.allowed ? "unauthorized" : "too many auth failures",
+            },
+            headers,
+          );
+          return;
+        }
+        authLimiter.recordSuccess(clientKey);
       }
 
       if (
