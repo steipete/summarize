@@ -16,6 +16,7 @@
 - YouTube transcripts: try same-language caption fallbacks when the preferred caption URL is blocked or dead.
 - Chrome extension: match CLI slide defaults for YouTube slide summaries and replace transcript fallback card text with LLM-written slide summaries.
 - Chrome extension: make picker popovers opaque again and reorganize advanced options into clearer groups.
+- Chrome extension options: avoid crashing when Chrome opens settings without the extension storage API available.
 
 ## 0.15.2 - 2026-05-17
 
