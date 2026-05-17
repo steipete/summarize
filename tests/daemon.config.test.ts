@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   daemonConfigPrimaryToken,
   daemonConfigTokens,
+  isAuthorizedDaemonToken,
   normalizeDaemonPort,
   normalizeDaemonToken,
   normalizeDaemonTokens,
@@ -211,5 +212,25 @@ describe("daemon config", () => {
     expect(modeDuringWrite).toBe(0o600);
     expect((await fs.stat(configDir)).mode & 0o777).toBe(0o700);
     expect((await fs.stat(writtenPath)).mode & 0o777).toBe(0o600);
+  });
+
+  describe("isAuthorizedDaemonToken", () => {
+    const tokens = ["correct-horse-battery-staple", "another-valid-token"];
+
+    it("accepts an exact match against any configured token", () => {
+      expect(isAuthorizedDaemonToken("correct-horse-battery-staple", tokens)).toBe(true);
+      expect(isAuthorizedDaemonToken("another-valid-token", tokens)).toBe(true);
+    });
+
+    it("rejects mismatched, empty, or differently-sized candidates", () => {
+      expect(isAuthorizedDaemonToken("wrong-token", tokens)).toBe(false);
+      expect(isAuthorizedDaemonToken("", tokens)).toBe(false);
+      expect(isAuthorizedDaemonToken("correct-horse-battery-stapl", tokens)).toBe(false);
+      expect(isAuthorizedDaemonToken("correct-horse-battery-staplee", tokens)).toBe(false);
+    });
+
+    it("handles an empty token list", () => {
+      expect(isAuthorizedDaemonToken("anything", [])).toBe(false);
+    });
   });
 });

@@ -15,7 +15,7 @@ import { type SseEvent } from "../shared/sse-events.js";
 import type { SlideSettings } from "../slides/index.js";
 import { resolvePackageVersion } from "../version.js";
 import { type DaemonRequestedMode } from "./auto-mode.js";
-import { daemonConfigTokens, type DaemonConfig } from "./config.js";
+import { daemonConfigTokens, isAuthorizedDaemonToken, type DaemonConfig } from "./config.js";
 import { DAEMON_HOST, DAEMON_PORT_DEFAULT } from "./constants.js";
 import { resolveDaemonLogPaths } from "./launchd.js";
 import { ProcessRegistry } from "./process-registry.js";
@@ -180,7 +180,7 @@ export async function runDaemonServer({
       }
 
       const token = readBearerToken(req);
-      const authed = token ? daemonConfigTokens(config).includes(token) : false;
+      const authed = token ? isAuthorizedDaemonToken(token, daemonConfigTokens(config)) : false;
       if (pathname.startsWith("/v1/") && !authed) {
         json(res, 401, { ok: false, error: "unauthorized" }, cors);
         return;
