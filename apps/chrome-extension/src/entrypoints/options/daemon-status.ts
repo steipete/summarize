@@ -56,14 +56,14 @@ export function createDaemonStatusChecker({
   };
 
   const checkDaemonStatus = async (token: string) => {
+    daemonCheckId += 1;
+    const checkId = daemonCheckId;
     const trimmedToken = token.trim();
     if (!trimmedToken) {
       setDaemonStatus("Add token to verify daemon connection", "warn");
       return;
     }
 
-    daemonCheckId += 1;
-    const checkId = daemonCheckId;
     setDaemonStatus("Checking daemon…");
 
     try {
