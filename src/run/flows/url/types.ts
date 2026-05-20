@@ -109,6 +109,7 @@ export type UrlFlowModel = {
     zaiApiKey: string | null;
     zaiBaseUrl: string;
     nvidiaBaseUrl: string;
+    ollamaBaseUrl: string;
     firecrawlConfigured: boolean;
     firecrawlApiKey: string | null;
     apifyToken: string | null;

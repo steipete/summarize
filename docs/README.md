@@ -14,6 +14,7 @@ summary: "Docs index for summarize behaviors and modes."
 - `docs/llm.md` — LLM summarization + model config (Gateway/OpenAI)
 - `docs/manual-tests.md` — manual end-to-end test checklist
 - `docs/model-auto.md` — automatic model selection (`--model auto`)
+- `docs/ollama.md` — Local Ollama models (offline, OpenAI-compatible endpoint)
 - `docs/openai.md` — OpenAI model usage + flags
 - `docs/releasing.md` — release checklist + Homebrew/core verify
 - `docs/smoketest.md` — 20-case smoke test plan

@@ -27,6 +27,7 @@ import {
   resolveGoogleModel,
   resolveOpenAiModel,
   resolveNvidiaModel,
+  resolveOllamaModel,
   resolveXaiModel,
   resolveZaiModel,
 } from "./providers/models.js";
@@ -72,6 +73,7 @@ export async function generateTextWithModelId({
   googleBaseUrlOverride,
   xaiBaseUrlOverride,
   zaiBaseUrlOverride,
+  ollamaBaseUrlOverride,
   forceChatCompletions,
   requestOptions,
   retries = 0,
@@ -90,6 +92,7 @@ export async function generateTextWithModelId({
   googleBaseUrlOverride?: string | null;
   xaiBaseUrlOverride?: string | null;
   zaiBaseUrlOverride?: string | null;
+  ollamaBaseUrlOverride?: string | null;
   forceChatCompletions?: boolean;
   requestOptions?: ModelRequestOptions;
   retries?: number;
@@ -136,6 +139,7 @@ export async function generateTextWithModelId({
         googleBaseUrlOverride,
         xaiBaseUrlOverride,
         zaiBaseUrlOverride,
+        ollamaBaseUrlOverride,
         forceChatCompletions,
         requestOptions,
         retries,
@@ -309,6 +313,32 @@ export async function generateTextWithModelId({
         };
       }
 
+      if (parsed.provider === "ollama") {
+        const openaiConfig = resolveOpenAiCompatibleClientConfigForProvider({
+          provider: "ollama",
+          openaiApiKey: apiKeys.openaiApiKey,
+          openrouterApiKey: apiKeys.openrouterApiKey,
+          openaiBaseUrlOverride: ollamaBaseUrlOverride ?? openaiBaseUrlOverride,
+          requestOptions,
+        });
+        const model = resolveOllamaModel({
+          modelId: parsed.model,
+          context,
+          ollamaBaseUrlOverride: openaiConfig.baseURL,
+        });
+        const result = await completeSimpleText({
+          model,
+          apiKey: openaiConfig.apiKey,
+          signal: controller.signal,
+        });
+        return {
+          text: result.text,
+          canonicalModelId: parsed.canonical,
+          provider: parsed.provider,
+          usage: result.usage,
+        };
+      }
+
       if (parsed.provider === "openai" || parsed.provider === "github-copilot") {
         const openaiConfig = resolveOpenAiConfig(parsed.provider);
         const result = await completeOpenAiText({
@@ -362,6 +392,7 @@ export async function generateTextWithModelId({
           googleBaseUrlOverride,
           xaiBaseUrlOverride,
           zaiBaseUrlOverride,
+          ollamaBaseUrlOverride,
           forceChatCompletions,
           requestOptions,
           retries: Math.max(0, maxRetries - attempt),
@@ -383,6 +414,7 @@ export async function generateTextWithModelId({
           googleBaseUrlOverride,
           xaiBaseUrlOverride,
           zaiBaseUrlOverride,
+          ollamaBaseUrlOverride,
           forceChatCompletions,
           requestOptions,
           retries: Math.max(0, maxRetries - attempt),
@@ -422,6 +454,7 @@ export async function streamTextWithModelId({
   anthropicBaseUrlOverride,
   googleBaseUrlOverride,
   xaiBaseUrlOverride,
+  ollamaBaseUrlOverride,
   forceChatCompletions,
   requestOptions,
 }: {
@@ -437,6 +470,7 @@ export async function streamTextWithModelId({
   anthropicBaseUrlOverride?: string | null;
   googleBaseUrlOverride?: string | null;
   xaiBaseUrlOverride?: string | null;
+  ollamaBaseUrlOverride?: string | null;
   forceChatCompletions?: boolean;
   requestOptions?: ModelRequestOptions;
 }): Promise<{
@@ -460,6 +494,7 @@ export async function streamTextWithModelId({
     anthropicBaseUrlOverride,
     googleBaseUrlOverride,
     xaiBaseUrlOverride,
+    ollamaBaseUrlOverride,
     forceChatCompletions,
     requestOptions,
   });

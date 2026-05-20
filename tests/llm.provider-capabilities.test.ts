@@ -77,6 +77,7 @@ describe("llm provider capabilities", () => {
       "NVIDIA_API_KEY",
     );
     expect(resolveRequiredEnvForModelId("github-copilot/gpt-4.1")).toBe("GITHUB_TOKEN");
+    expect(resolveRequiredEnvForModelId("ollama/qwen3:14b")).toBe("OLLAMA_BASE_URL");
 
     expect(
       resolveOpenAiCompatibleClientConfigForProvider({
@@ -108,6 +109,51 @@ describe("llm provider capabilities", () => {
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2026-03-10",
       },
+    });
+
+    // ollama: no api key required — defaults to localhost + dummy bearer + chat completions
+    expect(
+      resolveOpenAiCompatibleClientConfigForProvider({
+        provider: "ollama",
+        openaiApiKey: null,
+        openrouterApiKey: null,
+        openaiBaseUrlOverride: null,
+      }),
+    ).toEqual({
+      apiKey: "ollama",
+      baseURL: "http://localhost:11434/v1",
+      useChatCompletions: true,
+      isOpenRouter: false,
+    });
+
+    // ollama: honors baseUrl override (e.g. remote Ollama host)
+    expect(
+      resolveOpenAiCompatibleClientConfigForProvider({
+        provider: "ollama",
+        openaiApiKey: null,
+        openrouterApiKey: null,
+        openaiBaseUrlOverride: "http://gpu-rig.lan:11434/v1",
+      }),
+    ).toEqual({
+      apiKey: "ollama",
+      baseURL: "http://gpu-rig.lan:11434/v1",
+      useChatCompletions: true,
+      isOpenRouter: false,
+    });
+
+    // ollama: honors explicit api key (when sitting behind a proxy that enforces auth)
+    expect(
+      resolveOpenAiCompatibleClientConfigForProvider({
+        provider: "ollama",
+        openaiApiKey: "proxy-secret",
+        openrouterApiKey: null,
+        openaiBaseUrlOverride: null,
+      }),
+    ).toEqual({
+      apiKey: "proxy-secret",
+      baseURL: "http://localhost:11434/v1",
+      useChatCompletions: true,
+      isOpenRouter: false,
     });
   });
 

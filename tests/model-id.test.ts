@@ -12,6 +12,8 @@ describe("model id parsing", () => {
       "anthropic/claude-sonnet-4-5",
     );
     expect(normalizeGatewayStyleModelId("nvidia/z-ai/glm5")).toBe("nvidia/z-ai/glm5");
+    expect(normalizeGatewayStyleModelId("ollama/qwen3:14b")).toBe("ollama/qwen3:14b");
+    expect(normalizeGatewayStyleModelId("Ollama/Qwen3:14b")).toBe("ollama/Qwen3:14b");
     expect(normalizeGatewayStyleModelId("github-copilot/gpt-5.4")).toBe(
       "github-copilot/openai/gpt-5.4",
     );

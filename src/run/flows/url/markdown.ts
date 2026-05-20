@@ -34,7 +34,8 @@ export type MarkdownConverters = {
     | "anthropic"
     | "zai"
     | "nvidia"
-    | "github-copilot";
+    | "github-copilot"
+    | "ollama";
   markdownModel: MarkdownModel | null;
   convertHtmlToMarkdown:
     | ((args: {

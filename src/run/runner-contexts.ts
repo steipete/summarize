@@ -119,6 +119,7 @@ export function createRunnerFlowContexts(options: {
       zaiApiKey: model.apiStatus.zaiApiKey,
       zaiBaseUrl: model.apiStatus.zaiBaseUrl,
       nvidiaBaseUrl: model.apiStatus.nvidiaBaseUrl,
+      ollamaBaseUrl: model.apiStatus.ollamaBaseUrl,
       assemblyaiApiKey: model.apiStatus.assemblyaiApiKey,
       openaiApiKey: model.apiStatus.openaiApiKey,
     },

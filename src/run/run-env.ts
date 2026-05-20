@@ -1,5 +1,6 @@
 import { isOpenRouterBaseUrl, resolveConfiguredBaseUrl } from "@steipete/summarize-core";
 import type { CliProvider, SummarizeConfig } from "../config.js";
+import { DEFAULT_OLLAMA_BASE_URL } from "../llm/provider-profile.js";
 import { resolveCliAvailability, resolveExecutableInPath } from "./env.js";
 
 export type EnvState = {
@@ -16,6 +17,7 @@ export type EnvState = {
   zaiBaseUrl: string;
   nvidiaApiKey: string | null;
   nvidiaBaseUrl: string;
+  ollamaBaseUrl: string;
   firecrawlApiKey: string | null;
   firecrawlConfigured: boolean;
   googleConfigured: boolean;
@@ -73,6 +75,10 @@ export function resolveEnvState({
           ? envForRun.ZAI_BASE_URL
           : null,
     configValue: configForCli?.zai?.baseUrl,
+  });
+  const ollamaBaseUrl = resolveConfiguredBaseUrl({
+    envValue: envForRun.OLLAMA_BASE_URL,
+    configValue: configForCli?.ollama?.baseUrl,
   });
   const zaiKeyRaw =
     typeof envForRun.Z_AI_API_KEY === "string"
@@ -139,6 +145,7 @@ export function resolveEnvState({
   const nvidiaApiKey = nvidiaKeyRaw?.trim() ?? null;
   const nvidiaBaseUrlEffective =
     (nvidiaBaseUrl?.trim() ?? "") || "https://integrate.api.nvidia.com/v1";
+  const ollamaBaseUrlEffective = (ollamaBaseUrl?.trim() ?? "") || DEFAULT_OLLAMA_BASE_URL;
   const googleApiKey = googleKeyRaw?.trim() ?? null;
   const anthropicApiKey = anthropicKeyRaw?.trim() ?? null;
   const openrouterApiKey = (() => {
@@ -181,6 +188,7 @@ export function resolveEnvState({
     zaiBaseUrl: zaiBaseUrlEffective,
     nvidiaApiKey,
     nvidiaBaseUrl: nvidiaBaseUrlEffective,
+    ollamaBaseUrl: ollamaBaseUrlEffective,
     firecrawlApiKey,
     firecrawlConfigured,
     googleConfigured,

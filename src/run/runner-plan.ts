@@ -154,6 +154,7 @@ export async function createRunnerPlan(options: {
     zaiBaseUrl,
     nvidiaApiKey,
     nvidiaBaseUrl,
+    ollamaBaseUrl,
     providerBaseUrls,
     firecrawlApiKey,
     firecrawlConfigured,
@@ -360,6 +361,9 @@ export async function createRunnerPlan(options: {
       apiKey: nvidiaApiKey,
       baseUrl: nvidiaBaseUrl,
     },
+    ollama: {
+      baseUrl: ollamaBaseUrl,
+    },
     providerBaseUrls,
     perfTrace,
   });
@@ -455,6 +459,7 @@ export async function createRunnerPlan(options: {
         zaiApiKey,
         zaiBaseUrl,
         nvidiaBaseUrl,
+        ollamaBaseUrl,
         firecrawlConfigured,
         firecrawlApiKey,
         apifyToken,

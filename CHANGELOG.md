@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+- Add Ollama as a first-class provider (`ollama/<model>`). Uses Ollama's OpenAI-compatible endpoint (default `http://localhost:11434/v1`), no API key required, forces chat completions. Configurable via env `OLLAMA_BASE_URL` or config `ollama.baseUrl`. Daemon model picker auto-discovers Ollama models when `OLLAMA_BASE_URL` is set. See `docs/ollama.md`.
+
 ### Fixes
 
 - Daemon: block daemon URL-mode extraction from fetching loopback, private-network, link-local, and redirect targets that resolve to local networks, and disable unguarded `yt-dlp` media fetches in guarded daemon URL runs.

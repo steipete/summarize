@@ -75,6 +75,71 @@ describe("daemon /v1/models", () => {
     expect(result.options.some((o) => o.id === "cli/copilot")).toBe(true);
   });
 
+  it("includes Ollama models when OLLAMA_BASE_URL is set", async () => {
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe("http://localhost:11434/v1/models");
+      expect(init?.headers).toBeUndefined();
+      return {
+        ok: true,
+        json: async () => ({ data: [{ id: "qwen3:14b" }, { id: "llama3.2:3b" }] }),
+      } as Response;
+    }) as unknown as typeof fetch;
+
+    const result = await buildModelPickerOptions({
+      env: {},
+      envForRun: { OLLAMA_BASE_URL: "http://localhost:11434/v1" },
+      configForCli: null,
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.providers.ollama).toBe(true);
+    expect(result.options.some((o) => o.id === "ollama/qwen3:14b")).toBe(true);
+    expect(result.options.some((o) => o.id === "ollama/llama3.2:3b")).toBe(true);
+  });
+
+  it("forwards OPENAI_API_KEY to Ollama probe for auth-fronted proxies", async () => {
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe("http://ollama-proxy.example.com/v1/models");
+      expect(init?.headers).toEqual({ authorization: "Bearer proxy-secret" });
+      return {
+        ok: true,
+        json: async () => ({ data: [{ id: "qwen3:14b" }] }),
+      } as Response;
+    }) as unknown as typeof fetch;
+
+    const result = await buildModelPickerOptions({
+      env: {},
+      envForRun: {
+        OLLAMA_BASE_URL: "http://ollama-proxy.example.com/v1",
+        OPENAI_API_KEY: "proxy-secret",
+      },
+      configForCli: null,
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.providers.ollama).toBe(true);
+    expect(result.options.some((o) => o.id === "ollama/qwen3:14b")).toBe(true);
+  });
+
+  it("does not probe Ollama when OLLAMA_BASE_URL is unset (opt-in)", async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new Error("should not probe Ollama without explicit OLLAMA_BASE_URL");
+    }) as unknown as typeof fetch;
+
+    const result = await buildModelPickerOptions({
+      env: {},
+      envForRun: {},
+      configForCli: null,
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.providers.ollama).toBe(false);
+    expect(result.options.some((o) => o.id.startsWith("ollama/"))).toBe(false);
+  });
+
   it("includes NVIDIA models when NVIDIA_API_KEY is set", async () => {
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
       expect(url).toBe("https://integrate.api.nvidia.com/v1/models");
