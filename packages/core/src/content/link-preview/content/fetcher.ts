@@ -23,6 +23,8 @@ const REQUEST_HEADERS: Record<string, string> = {
 };
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 5000;
+const PAYLOAD_SNIFF_BYTES = 4096;
+const TEXT_DECODER = new TextDecoder();
 
 export interface FirecrawlFetchResult {
   payload: FirecrawlScrapeResult | null;
@@ -34,6 +36,173 @@ export interface HtmlDocumentFetchResult {
   finalUrl: string;
 }
 
+function looksLikeBinaryDocument(bytes: Uint8Array): boolean {
+  if (bytes.length === 0) return false;
+
+  const startsWithAt = (signature: number[], offset: number) =>
+    signature.every((byte, index) => bytes[offset + index] === byte);
+  const hasOnlyIgnorablePrefix = (offset: number) => {
+    for (let index = 0; index < offset; index += 1) {
+      const byte = bytes[index];
+      if (byte === 0xef && bytes[index + 1] === 0xbb && bytes[index + 2] === 0xbf) {
+        index += 2;
+        continue;
+      }
+      if (byte !== 0x09 && byte !== 0x0a && byte !== 0x0d && byte !== 0x20) return false;
+    }
+    return true;
+  };
+  const hasSignatureNearStart = (signature: number[]) => {
+    const maxOffset = Math.min(64, bytes.length - signature.length);
+    for (let offset = 0; offset <= maxOffset; offset += 1) {
+      if (startsWithAt(signature, offset) && hasOnlyIgnorablePrefix(offset)) return true;
+    }
+    return false;
+  };
+
+  if (
+    hasSignatureNearStart([0x25, 0x50, 0x44, 0x46]) || // %PDF
+    hasSignatureNearStart([0x89, 0x50, 0x4e, 0x47]) || // PNG
+    hasSignatureNearStart([0xff, 0xd8, 0xff]) || // JPEG
+    hasSignatureNearStart([0x47, 0x49, 0x46, 0x38]) || // GIF
+    hasSignatureNearStart([0x50, 0x4b, 0x03, 0x04]) || // ZIP/docx/xlsx/pptx
+    hasSignatureNearStart([0x1f, 0x8b]) // gzip
+  ) {
+    return true;
+  }
+
+  const sample = bytes.slice(0, PAYLOAD_SNIFF_BYTES);
+  let suspicious = 0;
+  for (const byte of sample) {
+    if (byte === 0) return true;
+    if (byte < 0x08 || (byte > 0x0d && byte < 0x20)) suspicious += 1;
+  }
+  return suspicious / sample.length > 0.1;
+}
+
+function isHtmlLikeContentType(contentType: string | null): boolean {
+  return Boolean(
+    contentType &&
+    (contentType.includes("text/html") ||
+      contentType.includes("application/xhtml+xml") ||
+      contentType.includes("application/xml") ||
+      contentType.includes("text/xml") ||
+      contentType.includes("application/rss+xml") ||
+      contentType.includes("application/atom+xml")),
+  );
+}
+
+function isTextAssetContentType(contentType: string | null): boolean {
+  return Boolean(
+    contentType &&
+    contentType.startsWith("text/") &&
+    !contentType.includes("text/html") &&
+    !contentType.includes("text/xml"),
+  );
+}
+
+function isAttachmentContentDisposition(contentDisposition: string | null): boolean {
+  return Boolean(contentDisposition && contentDisposition.includes("attachment"));
+}
+
+function looksLikeHtmlText(bytes: Uint8Array): boolean {
+  let head = TEXT_DECODER.decode(bytes.slice(0, PAYLOAD_SNIFF_BYTES)).trimStart().toLowerCase();
+  for (;;) {
+    if (head.startsWith("\ufeff")) {
+      head = head.slice(1).trimStart();
+      continue;
+    }
+    if (head.startsWith("<!--")) {
+      const end = head.indexOf("-->");
+      if (end === -1) return true;
+      head = head.slice(end + 3).trimStart();
+      continue;
+    }
+    if (head.startsWith("<?")) {
+      const end = head.indexOf("?>");
+      if (end === -1) return true;
+      head = head.slice(end + 2).trimStart();
+      continue;
+    }
+    break;
+  }
+  return (
+    head.startsWith("<!doctype html") ||
+    head.startsWith("<html") ||
+    head.startsWith("<head") ||
+    head.startsWith("<body") ||
+    head.startsWith("<main") ||
+    head.startsWith("<article") ||
+    head.startsWith("<rss") ||
+    head.startsWith("<feed")
+  );
+}
+
+function assertHtmlPayload(
+  bytes: Uint8Array,
+  {
+    contentType,
+    contentDisposition,
+    rejectNonHtmlText,
+  }: {
+    contentType: string | null;
+    contentDisposition: string | null;
+    rejectNonHtmlText?: boolean;
+  },
+) {
+  if (looksLikeBinaryDocument(bytes)) {
+    throw new Error("Unsupported binary payload for HTML document fetch");
+  }
+  if (rejectNonHtmlText && !contentType && !looksLikeHtmlText(bytes)) {
+    throw new Error("Unsupported content-type for HTML document fetch: missing");
+  }
+  if (
+    rejectNonHtmlText &&
+    isAttachmentContentDisposition(contentDisposition) &&
+    !looksLikeHtmlText(bytes)
+  ) {
+    throw new Error(
+      `Unsupported content-disposition for HTML document fetch: ${contentDisposition}`,
+    );
+  }
+  if (rejectNonHtmlText && isTextAssetContentType(contentType) && !looksLikeHtmlText(bytes)) {
+    throw new Error(`Unsupported content-type for HTML document fetch: ${contentType}`);
+  }
+}
+
+function appendSniffBytes(existing: Uint8Array, chunk: Uint8Array): Uint8Array {
+  const needed = PAYLOAD_SNIFF_BYTES - existing.byteLength;
+  if (needed <= 0) return existing;
+  const next = chunk.byteLength > needed ? chunk.slice(0, needed) : chunk;
+  const merged = new Uint8Array(existing.byteLength + next.byteLength);
+  merged.set(existing);
+  merged.set(next, existing.byteLength);
+  return merged;
+}
+
+async function assertHtmlPayloadOrCancel(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  controller: AbortController,
+  bytes: Uint8Array,
+  options: {
+    contentType: string | null;
+    contentDisposition: string | null;
+    rejectNonHtmlText?: boolean;
+  },
+) {
+  try {
+    assertHtmlPayload(bytes, options);
+  } catch (error) {
+    controller.abort();
+    try {
+      await reader.cancel();
+    } catch {
+      // The abort above may already have closed the reader.
+    }
+    throw error;
+  }
+}
+
 async function fetchHtmlOnce(
   fetchImpl: typeof fetch,
   url: string,
@@ -41,7 +210,12 @@ async function fetchHtmlOnce(
   {
     timeoutMs,
     onProgress,
-  }: { timeoutMs?: number; onProgress?: ((event: LinkPreviewProgressEvent) => void) | null } = {},
+    rejectNonHtmlText,
+  }: {
+    timeoutMs?: number;
+    onProgress?: ((event: LinkPreviewProgressEvent) => void) | null;
+    rejectNonHtmlText?: boolean;
+  } = {},
 ): Promise<HtmlDocumentFetchResult> {
   onProgress?.({ kind: "fetch-html-start", url });
 
@@ -68,16 +242,8 @@ async function fetchHtmlOnce(
     const finalUrl = response.url?.trim() || url;
 
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? null;
-    if (
-      contentType &&
-      !contentType.includes("text/html") &&
-      !contentType.includes("application/xhtml+xml") &&
-      !contentType.includes("application/xml") &&
-      !contentType.includes("text/xml") &&
-      !contentType.includes("application/rss+xml") &&
-      !contentType.includes("application/atom+xml") &&
-      !contentType.startsWith("text/")
-    ) {
+    const contentDisposition = response.headers.get("content-disposition")?.toLowerCase() ?? null;
+    if (contentType && !isHtmlLikeContentType(contentType) && !contentType.startsWith("text/")) {
       throw new Error(`Unsupported content-type for HTML document fetch: ${contentType}`);
     }
 
@@ -91,8 +257,9 @@ async function fetchHtmlOnce(
     const body = response.body;
     if (!body) {
       const text = await response.text();
-      const bytes = new TextEncoder().encode(text).byteLength;
-      onProgress?.({ kind: "fetch-html-done", url, downloadedBytes: bytes, totalBytes });
+      const bytes = new TextEncoder().encode(text);
+      assertHtmlPayload(bytes, { contentType, contentDisposition, rejectNonHtmlText });
+      onProgress?.({ kind: "fetch-html-done", url, downloadedBytes: bytes.byteLength, totalBytes });
       return { html: text, finalUrl };
     }
 
@@ -100,6 +267,8 @@ async function fetchHtmlOnce(
     const decoder = new TextDecoder();
     let downloadedBytes = 0;
     let text = "";
+    let sniffBytes: Uint8Array<ArrayBufferLike> = new Uint8Array();
+    let sniffChecked = false;
 
     onProgress?.({ kind: "fetch-html-progress", url, downloadedBytes: 0, totalBytes });
 
@@ -107,11 +276,25 @@ async function fetchHtmlOnce(
       const { value, done } = await reader.read();
       if (done) break;
       if (!value) continue;
+      if (!sniffChecked) {
+        sniffBytes = appendSniffBytes(sniffBytes, value);
+        if (sniffBytes.byteLength >= PAYLOAD_SNIFF_BYTES) {
+          await assertHtmlPayloadOrCancel(reader, controller, sniffBytes, {
+            contentType,
+            contentDisposition,
+            rejectNonHtmlText,
+          });
+          sniffChecked = true;
+        }
+      }
       downloadedBytes += value.byteLength;
       text += decoder.decode(value, { stream: true });
       onProgress?.({ kind: "fetch-html-progress", url, downloadedBytes, totalBytes });
     }
 
+    if (!sniffChecked) {
+      assertHtmlPayload(sniffBytes, { contentType, contentDisposition, rejectNonHtmlText });
+    }
     text += decoder.decode();
     onProgress?.({ kind: "fetch-html-done", url, downloadedBytes, totalBytes });
     return { html: text, finalUrl };
@@ -131,6 +314,7 @@ export async function fetchHtmlDocument(
   options: {
     timeoutMs?: number;
     onProgress?: ((event: LinkPreviewProgressEvent) => void) | null;
+    rejectNonHtmlText?: boolean;
   } = {},
 ): Promise<HtmlDocumentFetchResult> {
   try {

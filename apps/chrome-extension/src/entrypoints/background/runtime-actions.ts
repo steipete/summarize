@@ -13,6 +13,7 @@ import {
 
 export type NativeInputRequest = {
   type: "automation:native-input";
+  capability?: string | null;
   payload: {
     action: "click" | "type" | "press" | "keydown" | "keyup";
     x?: number;
@@ -34,7 +35,12 @@ export type ArtifactsRequest = {
 type RuntimeMessage =
   | NativeInputRequest
   | ArtifactsRequest
-  | { type: "automation:native-input-arm"; tabId?: number; enabled?: boolean }
+  | {
+      type: "automation:native-input-arm";
+      tabId?: number;
+      enabled?: boolean;
+      capability?: string | null;
+    }
   | { type: "automation:artifacts-arm"; tabId?: number; enabled?: boolean };
 
 function safeSendResponse(sendResponse: (response?: unknown) => void, value: unknown) {
@@ -160,7 +166,7 @@ export function createRuntimeActionsHandler({
   nativeInputArmedTabs,
   artifactsArmedTabs,
 }: {
-  nativeInputArmedTabs: Set<number>;
+  nativeInputArmedTabs: Set<number> | Map<number, string>;
   artifactsArmedTabs: Set<number>;
 }) {
   return (
@@ -181,6 +187,7 @@ export function createRuntimeActionsHandler({
         senderHasTab: Boolean(sender.tab),
         tabId: msg.tabId,
         enabled: msg.enabled,
+        capability: (msg as { capability?: string | null }).capability,
       });
       return;
     }
@@ -192,6 +199,7 @@ export function createRuntimeActionsHandler({
         const guardError = getNativeInputGuardError({
           armedTabs: nativeInputArmedTabs,
           senderTabId: tabId,
+          capability: msg.capability,
         });
         if (guardError) {
           safeSendResponse(sendResponse, {

@@ -13,7 +13,30 @@ export type Skill = {
 
 const STORAGE_KEY = "automation.skills";
 const SEEDED_KEY = "automation.skillsSeeded";
+const FALLBACK_PREFIX = "summarize.";
 const defaultSkills = defaultSkillsRaw as Skill[];
+
+function getLocalStorageArea(): chrome.storage.StorageArea | null {
+  return globalThis.chrome?.storage?.local ?? null;
+}
+
+function loadFallbackValue<T>(key: string, fallback: T): T {
+  try {
+    const raw = globalThis.localStorage?.getItem(`${FALLBACK_PREFIX}${key}`);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveFallbackValue(key: string, value: unknown): void {
+  try {
+    globalThis.localStorage?.setItem(`${FALLBACK_PREFIX}${key}`, JSON.stringify(value));
+  } catch {
+    // Best-effort fallback for non-extension previews.
+  }
+}
 
 function normalizeName(value: string): string {
   return value.trim();
@@ -24,19 +47,29 @@ function nowIso(): string {
 }
 
 async function loadSkillsMap(): Promise<Record<string, Skill>> {
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
-  const raw = stored[STORAGE_KEY];
+  const storage = getLocalStorageArea();
+  const raw = storage
+    ? (await storage.get(STORAGE_KEY))[STORAGE_KEY]
+    : loadFallbackValue<Record<string, Skill>>(STORAGE_KEY, {});
   if (!raw || typeof raw !== "object") return {};
   return raw as Record<string, Skill>;
 }
 
 async function saveSkillsMap(map: Record<string, Skill>): Promise<void> {
-  await chrome.storage.local.set({ [STORAGE_KEY]: map });
+  const storage = getLocalStorageArea();
+  if (storage) {
+    await storage.set({ [STORAGE_KEY]: map });
+    return;
+  }
+  saveFallbackValue(STORAGE_KEY, map);
 }
 
 export async function ensureDefaultSkills(): Promise<void> {
-  const seeded = await chrome.storage.local.get(SEEDED_KEY);
-  if (seeded[SEEDED_KEY]) return;
+  const storage = getLocalStorageArea();
+  const seeded = storage
+    ? (await storage.get(SEEDED_KEY))[SEEDED_KEY]
+    : loadFallbackValue<boolean>(SEEDED_KEY, false);
+  if (seeded) return;
   const map = await loadSkillsMap();
   let changed = false;
   for (const skill of defaultSkills) {
@@ -46,7 +79,11 @@ export async function ensureDefaultSkills(): Promise<void> {
     changed = true;
   }
   if (changed) await saveSkillsMap(map);
-  await chrome.storage.local.set({ [SEEDED_KEY]: true });
+  if (storage) {
+    await storage.set({ [SEEDED_KEY]: true });
+  } else {
+    saveFallbackValue(SEEDED_KEY, true);
+  }
 }
 
 export async function listSkills(url?: string): Promise<Skill[]> {

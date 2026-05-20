@@ -32,6 +32,7 @@ export function createSidepanelDom() {
   const chatMetricsSlotEl = byId<HTMLDivElement>("chatMetricsSlot");
   const chatDockEl = byId<HTMLDivElement>("chatDock");
   const summarizeControlRoot = byId<HTMLElement>("summarizeControlRoot");
+  const summaryCopyBtn = byId<HTMLButtonElement>("summaryCopy");
   const drawerToggleBtn = byId<HTMLButtonElement>("drawerToggle");
   const refreshBtn = byId<HTMLButtonElement>("refresh");
   const clearBtn = byId<HTMLButtonElement>("clear");
@@ -130,6 +131,7 @@ export function createSidepanelDom() {
     slidesLayoutEl,
     subtitleEl,
     summarizeControlRoot,
+    summaryCopyBtn,
     titleEl,
   };
 }

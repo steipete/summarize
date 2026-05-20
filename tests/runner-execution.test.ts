@@ -158,6 +158,13 @@ describe("runner execution", () => {
     withUrlAsset.mockResolvedValue(false);
 
     await executeRunnerInput(buildOptions());
+    expect(withUrlAsset).toHaveBeenCalledWith(
+      {},
+      "https://example.com",
+      false,
+      expect.any(Function),
+      { detectUnknownAssetUrls: false, assumeAsset: false },
+    );
     expect(runUrlFlow).toHaveBeenCalledWith({
       ctx: {},
       url: "https://example.com",
@@ -166,6 +173,81 @@ describe("runner execution", () => {
 
     await expect(executeRunnerInput(buildOptions({ url: null }))).rejects.toThrow(
       "Only HTTP and HTTPS URLs can be summarized",
+    );
+  });
+
+  it("falls back to slower unknown asset detection only after URL flow fails", async () => {
+    handleFileInput.mockResolvedValue(false);
+    runUrlFlow.mockRejectedValueOnce(
+      new Error("Unsupported binary payload for HTML document fetch"),
+    );
+    withUrlAsset.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+    await executeRunnerInput(buildOptions());
+
+    expect(runUrlFlow).toHaveBeenCalledTimes(1);
+    expect(withUrlAsset).toHaveBeenNthCalledWith(
+      1,
+      {},
+      "https://example.com",
+      false,
+      expect.any(Function),
+      { detectUnknownAssetUrls: false, assumeAsset: false },
+    );
+    expect(withUrlAsset).toHaveBeenNthCalledWith(
+      2,
+      {},
+      "https://example.com",
+      false,
+      expect.any(Function),
+      { detectUnknownAssetUrls: true, assumeAsset: true },
+    );
+  });
+
+  it("allows Firecrawl fallback when unknown asset retry misses", async () => {
+    handleFileInput.mockResolvedValue(false);
+    runUrlFlow
+      .mockRejectedValueOnce(
+        new Error("Unsupported content-type for HTML document fetch: application/pdf"),
+      )
+      .mockResolvedValueOnce(undefined);
+    withUrlAsset.mockResolvedValue(false);
+
+    await executeRunnerInput(
+      buildOptions({
+        runUrlFlowContext: {
+          flags: { firecrawlMode: "auto", throwOnAssetLikeHtmlError: true },
+          model: { apiStatus: { firecrawlConfigured: true } },
+        },
+      }),
+    );
+
+    expect(runUrlFlow).toHaveBeenCalledTimes(2);
+    expect(runUrlFlow.mock.calls[1]?.[0]).toMatchObject({
+      ctx: { flags: { firecrawlMode: "auto", throwOnAssetLikeHtmlError: false } },
+      url: "https://example.com",
+      isYoutubeUrl: false,
+    });
+    expect(withUrlAsset).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not run slow unknown asset detection for ordinary URL flow failures", async () => {
+    handleFileInput.mockResolvedValue(false);
+    runUrlFlow.mockRejectedValueOnce(new Error("Fetching HTML document timed out"));
+    withUrlAsset.mockResolvedValueOnce(false);
+
+    await expect(executeRunnerInput(buildOptions())).rejects.toThrow(
+      "Fetching HTML document timed out",
+    );
+
+    expect(withUrlAsset).toHaveBeenCalledTimes(1);
+    expect(withUrlAsset).toHaveBeenNthCalledWith(
+      1,
+      {},
+      "https://example.com",
+      false,
+      expect.any(Function),
+      { detectUnknownAssetUrls: false, assumeAsset: false },
     );
   });
 

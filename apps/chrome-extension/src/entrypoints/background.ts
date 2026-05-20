@@ -56,7 +56,7 @@ export default defineBackground(() => {
   // Tabs explicitly armed by the sidepanel for debugger-driven native input.
   // Prevents arbitrary pages from triggering trusted clicks via the
   // postMessage → content-script → runtime bridge.
-  const nativeInputArmedTabs = new Set<number>();
+  const nativeInputArmedTabs = new Map<number, string>();
   const artifactsArmedTabs = new Set<number>();
 
   function resolveLogLevel(event: string) {

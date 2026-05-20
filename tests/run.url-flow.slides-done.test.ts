@@ -104,6 +104,7 @@ describe("runUrlFlow slides done hook", () => {
     const ctx = createDaemonUrlFlowContext({
       env: { HOME: root, OPENAI_API_KEY: "test" },
       fetchImpl,
+      urlFetchImpl: fetchImpl,
       cache,
       mediaCache,
       modelOverride: "openai/gpt-5.2",
@@ -129,6 +130,9 @@ describe("runUrlFlow slides done hook", () => {
     expect(doneResult?.ok).toBe(true);
     const call = extractSlidesForSource.mock.calls[0]?.[0];
     expect(call?.mediaCache).toBe(mediaCache);
+    expect(call?.ytDlpPath).toBeNull();
+    expect(call?.disableYtDlpAutoResolve).toBe(true);
+    expect(call?.allowRemoteUrlFallback).toBe(false);
   });
 
   it("emits error when slides extraction fails", async () => {

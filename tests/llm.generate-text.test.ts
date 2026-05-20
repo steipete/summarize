@@ -1128,6 +1128,110 @@ describe("llm generate/stream", () => {
     ).rejects.toThrow(/Anthropic API rejected model "claude-3-5-sonnet-latest"/i);
   });
 
+  it("streams OpenAI Responses when request options are set", async () => {
+    delete process.env.OPENAI_BASE_URL;
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const event of [
+          { type: "response.output_text.delta", delta: "He" },
+          { type: "response.output_text.delta", delta: "llo" },
+          {
+            type: "response.completed",
+            response: { usage: { input_tokens: 3, output_tokens: 4, total_tokens: 7 } },
+          },
+        ]) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        }
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(_input)).toBe("https://api.openai.com/v1/responses");
+      const requestBody = JSON.parse(String(init?.body)) as {
+        model: string;
+        stream?: boolean;
+        service_tier?: string;
+        reasoning?: { effort?: string };
+        text?: { verbosity?: string };
+      };
+      expect(requestBody.model).toBe("gpt-5.5");
+      expect(requestBody.stream).toBe(true);
+      expect(requestBody.service_tier).toBe("priority");
+      expect(requestBody.reasoning?.effort).toBe("medium");
+      expect(requestBody.text?.verbosity).toBe("low");
+      return new Response(body, {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      });
+    });
+
+    const result = await streamTextWithModelId({
+      modelId: "openai/gpt-5.5",
+      apiKeys: {
+        openaiApiKey: "k",
+        xaiApiKey: null,
+        googleApiKey: null,
+        anthropicApiKey: null,
+        openrouterApiKey: null,
+      },
+      prompt: { userText: "hi" },
+      timeoutMs: 2000,
+      fetchImpl: fetchMock as typeof fetch,
+      requestOptions: {
+        serviceTier: "fast",
+        reasoningEffort: "medium",
+        textVerbosity: "low",
+      },
+    });
+
+    const chunks: string[] = [];
+    for await (const delta of result.textStream) chunks.push(delta);
+
+    expect(chunks).toEqual(["He", "llo"]);
+    expect(result.canonicalModelId).toBe("openai/gpt-5.5");
+    await expect(result.usage).resolves.toEqual({
+      promptTokens: 3,
+      completionTokens: 4,
+      totalTokens: 7,
+    });
+    expect(mocks.streamSimple).not.toHaveBeenCalled();
+    expect(mocks.completeSimple).not.toHaveBeenCalled();
+  });
+
+  it("times out when OpenAI Responses streaming stalls before headers", async () => {
+    vi.useFakeTimers();
+    delete process.env.OPENAI_BASE_URL;
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(_input)).toBe("https://api.openai.com/v1/responses");
+      expect((init?.signal as AbortSignal | undefined)?.aborted).toBe(false);
+      await new Promise(() => {});
+      return new Response(null);
+    });
+
+    const resultPromise = streamTextWithModelId({
+      modelId: "openai/gpt-5.5",
+      apiKeys: {
+        openaiApiKey: "k",
+        xaiApiKey: null,
+        googleApiKey: null,
+        anthropicApiKey: null,
+        openrouterApiKey: null,
+      },
+      prompt: { userText: "hi" },
+      timeoutMs: 5,
+      fetchImpl: fetchMock as typeof fetch,
+      requestOptions: {
+        serviceTier: "fast",
+      },
+    });
+
+    const rejection = expect(resultPromise).rejects.toThrow(/timed out/i);
+    await vi.advanceTimersByTimeAsync(5);
+    await rejection;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("throws a friendly timeout error on AbortError (streamText)", async () => {
     mocks.streamSimple.mockImplementationOnce(() => {
       throw new DOMException("aborted", "AbortError");

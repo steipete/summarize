@@ -11,7 +11,7 @@ import { createModelPresetsController } from "./model-presets";
 import { createOptionsSaveRuntime } from "./persistence";
 import { mountOptionsPickers } from "./pickers";
 import { createProcessesViewer } from "./processes-viewer";
-import { createSkillsController } from "./skills-controller";
+import type { createSkillsController } from "./skills-controller";
 import {
   applyBuildInfo,
   copyTokenToClipboard,
@@ -95,6 +95,57 @@ const {
 } = getOptionsElements();
 
 let isInitializing = true;
+const { setStatus, flashStatus } = createStatusController(statusEl);
+type SkillsController = ReturnType<typeof createSkillsController>;
+let skillsController: SkillsController | null = null;
+let skillsControllerPromise: Promise<SkillsController> | null = null;
+let skillsLoadPromise: Promise<void> | null = null;
+
+const getSkillsController = async () => {
+  if (skillsController) return skillsController;
+  if (!skillsControllerPromise) {
+    skillsControllerPromise = import("./skills-controller")
+      .then(({ createSkillsController }) => {
+        const controller = createSkillsController({
+          elements: {
+            searchEl: skillsSearchEl,
+            listEl: skillsListEl,
+            emptyEl: skillsEmptyEl,
+            conflictsEl: skillsConflictsEl,
+            exportBtn: skillsExportBtn,
+            importBtn: skillsImportBtn,
+          },
+          setStatus,
+          flashStatus,
+        });
+        controller.bind();
+        skillsController = controller;
+        return controller;
+      })
+      .catch((error) => {
+        skillsControllerPromise = null;
+        throw error;
+      });
+  }
+  return skillsControllerPromise;
+};
+
+const ensureSkillsLoaded = async () => {
+  const controller = await getSkillsController();
+  if (!skillsLoadPromise) {
+    skillsLoadPromise = controller.load().catch((error) => {
+      skillsLoadPromise = null;
+      throw error;
+    });
+  }
+  await skillsLoadPromise;
+};
+
+const loadSkillsTab = () => {
+  void ensureSkillsLoaded().catch((error) => {
+    setStatus(`Failed to load skills: ${error instanceof Error ? error.message : String(error)}`);
+  });
+};
 
 const logsViewer = createLogsViewer({
   elements: {
@@ -136,6 +187,9 @@ const { resolveActiveTab } = createOptionsTabs({
   buttons: tabButtons,
   panels: tabPanels,
   storageKey: optionsTabStorageKey,
+  onTabActivated: (tabId) => {
+    if (tabId === "skills") loadSkillsTab();
+  },
   onLogsActiveChange: (active) => {
     if (active) {
       logsViewer.handleTabActivated();
@@ -152,7 +206,6 @@ const { resolveActiveTab } = createOptionsTabs({
   },
 });
 
-const { setStatus, flashStatus } = createStatusController(statusEl);
 let booleanSettings: ReturnType<typeof createBooleanSettingsRuntime> | null = null;
 const settingsElements = {
   tokenEl,
@@ -224,19 +277,6 @@ booleanSettings = createBooleanSettingsRuntime({
   },
 });
 
-const skillsController = createSkillsController({
-  elements: {
-    searchEl: skillsSearchEl,
-    listEl: skillsListEl,
-    emptyEl: skillsEmptyEl,
-    conflictsEl: skillsConflictsEl,
-    exportBtn: skillsExportBtn,
-    importBtn: skillsImportBtn,
-  },
-  setStatus,
-  flashStatus,
-});
-
 const resolveExtensionVersion = () => {
   const injected =
     typeof __SUMMARIZE_VERSION__ === "string" && __SUMMARIZE_VERSION__ ? __SUMMARIZE_VERSION__ : "";
@@ -286,7 +326,6 @@ const automationPermissions = createAutomationPermissionsController({
 automationPermissionsBtn.addEventListener("click", () => {
   void automationPermissions.requestPermissions();
 });
-skillsController.bind();
 
 async function load() {
   const s = await loadSettings();
@@ -305,7 +344,6 @@ async function load() {
   currentMode = loadedState.colorMode;
   pickers.update({ scheme: currentScheme, mode: currentMode, ...pickerHandlers });
   applyTheme({ scheme: s.colorScheme, mode: s.colorMode });
-  await skillsController.load();
   await automationPermissions.updateUi();
   if (resolveActiveTab() === "logs") {
     logsViewer.handleTokenChanged();

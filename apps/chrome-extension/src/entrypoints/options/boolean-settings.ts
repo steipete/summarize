@@ -120,7 +120,7 @@ export function createBooleanSettingsRuntime(options: {
     createBooleanToggleController({
       root: options.roots.extendedLoggingToggleRoot,
       id: "options-extended-logging",
-      label: "Extended logging (send full input/output to daemon logs)",
+      label: "Extended logging",
       getValue: () => state.extendedLogging,
       setValue: (checked) => {
         state.extendedLogging = checked;
@@ -130,7 +130,7 @@ export function createBooleanSettingsRuntime(options: {
     createBooleanToggleController({
       root: options.roots.autoCliFallbackToggleRoot,
       id: "options-auto-cli-fallback",
-      label: "Auto CLI fallback for Auto model",
+      label: "Auto CLI fallback",
       getValue: () => state.autoCliFallback,
       setValue: (checked) => {
         state.autoCliFallback = checked;

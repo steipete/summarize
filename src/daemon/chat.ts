@@ -199,9 +199,12 @@ export async function streamChatResponse({
             ? envState.zaiBaseUrl
             : requested.requiredEnv === "NVIDIA_API_KEY"
               ? envState.nvidiaBaseUrl
-              : (requested.openaiBaseUrlOverride ?? null),
+              : requested.requiredEnv === "OLLAMA_BASE_URL"
+                ? envState.ollamaBaseUrl
+                : (requested.openaiBaseUrlOverride ?? null),
         forceChatCompletions:
           Boolean(requested.forceChatCompletions) ||
+          requested.requiredEnv === "OLLAMA_BASE_URL" ||
           (requested.provider === "openai" && openaiUseChatCompletions),
         requestOptions: requested.requestOptions,
       };

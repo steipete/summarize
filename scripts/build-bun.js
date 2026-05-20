@@ -79,20 +79,25 @@ function chmodX(path) {
 function buildOne({ target, outName, version, gitSha }) {
   const outPath = join(distDir, outName);
   console.log(`\n🔨 Building ${outName} (target=${target}, bytecode)…`);
-  if (version) process.env.SUMMARIZE_VERSION = version;
-  if (gitSha) process.env.SUMMARIZE_GIT_SHA = gitSha;
-  run("bun", [
-    "build",
-    join(projectRoot, "src/cli.ts"),
-    "--compile",
-    "--bytecode",
-    "--minify",
-    "--target",
-    target,
-    "--env=SUMMARIZE_*",
-    "--outfile",
-    outPath,
-  ]);
+  const env = { ...process.env };
+  if (version) env.SUMMARIZE_VERSION = version;
+  if (gitSha) env.SUMMARIZE_GIT_SHA = gitSha;
+  run(
+    "bun",
+    [
+      "build",
+      join(projectRoot, "src/cli.ts"),
+      "--compile",
+      "--bytecode",
+      "--minify",
+      "--target",
+      target,
+      "--env=SUMMARIZE_*",
+      "--outfile",
+      outPath,
+    ],
+    { env },
+  );
   chmodX(outPath);
 
   try {

@@ -7,6 +7,12 @@ import {
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/summary-renderer.js";
 
 describe("sidepanel summary renderer", () => {
+  function createHeaderCopyButton() {
+    const button = document.createElement("button");
+    button.className = "hidden";
+    return button;
+  }
+
   it("renders and clears empty states", () => {
     const hostEl = document.createElement("div");
     renderSummaryEmptyState({
@@ -32,6 +38,7 @@ describe("sidepanel summary renderer", () => {
 
   it("renders markdown links and timestamp anchors", () => {
     const hostEl = document.createElement("div");
+    const copyButtonEl = createHeaderCopyButton();
     const renderInlineSlides = vi.fn();
     renderSummaryMarkdownDisplay({
       activeTabUrl: "https://example.com/watch",
@@ -41,6 +48,7 @@ describe("sidepanel summary renderer", () => {
       hasSlides: false,
       headerSetStatus: vi.fn(),
       hostEl,
+      copyButtonEl,
       inputMode: "video",
       markdown: "[00:10] intro\n\n[link](https://example.com)",
       md: {
@@ -62,11 +70,13 @@ describe("sidepanel summary renderer", () => {
     expect(links[0]?.getAttribute("target")).toBeNull();
     expect(links[1]?.getAttribute("target")).toBe("_blank");
     expect(renderInlineSlides).toHaveBeenCalledWith(hostEl, { fallback: true });
-    expect(hostEl.querySelector(".render__copy")).not.toBeNull();
+    expect(hostEl.querySelector(".render__copy")).toBeNull();
+    expect(copyButtonEl.classList.contains("hidden")).toBe(false);
   });
 
   it("copies rendered markdown text to the clipboard", async () => {
     const hostEl = document.createElement("div");
+    const copyButtonEl = createHeaderCopyButton();
     const setStatus = vi.fn();
     const writeText = vi.fn(async () => {});
     Object.assign(navigator, {
@@ -83,6 +93,7 @@ describe("sidepanel summary renderer", () => {
       hasSlides: false,
       headerSetStatus: setStatus,
       hostEl,
+      copyButtonEl,
       inputMode: "video",
       markdown: "# Title\n\nBody",
       md: { render: (value) => `<p>${value}</p>` },
@@ -94,7 +105,7 @@ describe("sidepanel summary renderer", () => {
       tabUrl: "https://example.com/watch",
     });
 
-    hostEl.querySelector<HTMLButtonElement>(".render__copy")?.click();
+    copyButtonEl.click();
     await Promise.resolve();
 
     expect(writeText).toHaveBeenCalledWith("# Title\n\nBody");
@@ -103,6 +114,7 @@ describe("sidepanel summary renderer", () => {
 
   it("reports empty copy attempts without touching the clipboard", async () => {
     const hostEl = document.createElement("div");
+    const copyButtonEl = createHeaderCopyButton();
     const setStatus = vi.fn();
     const writeText = vi.fn(async () => {});
     Object.assign(navigator, {
@@ -119,6 +131,7 @@ describe("sidepanel summary renderer", () => {
       hasSlides: false,
       headerSetStatus: setStatus,
       hostEl,
+      copyButtonEl,
       inputMode: "video",
       markdown: "   ",
       md: { render: (value) => `<p>${value}</p>` },
@@ -131,12 +144,14 @@ describe("sidepanel summary renderer", () => {
     });
 
     expect(hostEl.textContent).toContain("Summarize");
+    expect(copyButtonEl.classList.contains("hidden")).toBe(true);
     expect(writeText).not.toHaveBeenCalled();
     expect(setStatus).not.toHaveBeenCalledWith("Copied");
   });
 
   it("falls back to execCommand copy when clipboard write fails", async () => {
     const hostEl = document.createElement("div");
+    const copyButtonEl = createHeaderCopyButton();
     const setStatus = vi.fn();
     const writeText = vi.fn(async () => {
       throw new Error("blocked");
@@ -157,6 +172,7 @@ describe("sidepanel summary renderer", () => {
       hasSlides: false,
       headerSetStatus: setStatus,
       hostEl,
+      copyButtonEl,
       inputMode: "video",
       markdown: "Body",
       md: { render: (value) => `<p>${value}</p>` },
@@ -168,7 +184,7 @@ describe("sidepanel summary renderer", () => {
       tabUrl: "https://example.com/watch",
     });
 
-    hostEl.querySelector<HTMLButtonElement>(".render__copy")?.click();
+    copyButtonEl.click();
     await Promise.resolve();
 
     expect(execCommand).toHaveBeenCalledWith("copy");
@@ -177,6 +193,7 @@ describe("sidepanel summary renderer", () => {
 
   it("surfaces a failed execCommand fallback", async () => {
     const hostEl = document.createElement("div");
+    const copyButtonEl = createHeaderCopyButton();
     const setStatus = vi.fn();
     const writeText = vi.fn(async () => {
       throw new Error("blocked");
@@ -197,6 +214,7 @@ describe("sidepanel summary renderer", () => {
       hasSlides: false,
       headerSetStatus: setStatus,
       hostEl,
+      copyButtonEl,
       inputMode: "video",
       markdown: "Body",
       md: { render: (value) => `<p>${value}</p>` },
@@ -208,7 +226,7 @@ describe("sidepanel summary renderer", () => {
       tabUrl: "https://example.com/watch",
     });
 
-    hostEl.querySelector<HTMLButtonElement>(".render__copy")?.click();
+    copyButtonEl.click();
     await Promise.resolve();
 
     expect(execCommand).toHaveBeenCalledWith("copy");

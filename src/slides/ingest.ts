@@ -25,7 +25,9 @@ export async function prepareSlidesInput({
   source,
   mediaCache,
   timeoutMs,
+  fetchImpl,
   ytDlpPath,
+  allowRemoteUrlFallback = true,
   ytDlpCookiesFromBrowser,
   resolveSlidesYtDlpExtractFormat,
   resolveSlidesStreamFallback,
@@ -40,7 +42,9 @@ export async function prepareSlidesInput({
   source: SlideSource;
   mediaCache: MediaCache | null;
   timeoutMs: number;
+  fetchImpl?: typeof fetch;
   ytDlpPath: string | null;
+  allowRemoteUrlFallback?: boolean;
   ytDlpCookiesFromBrowser?: string | null;
   resolveSlidesYtDlpExtractFormat: () => string;
   resolveSlidesStreamFallback: () => boolean;
@@ -59,6 +63,7 @@ export async function prepareSlidesInput({
   downloadRemoteVideo: (args: {
     url: string;
     timeoutMs: number;
+    fetchImpl?: typeof fetch;
     onProgress?: ((percent: number, detail?: string) => void) | null;
   }) => Promise<{ filePath: string; cleanup: () => Promise<void> }>;
   resolveYoutubeStreamUrl: (args: {
@@ -228,6 +233,7 @@ export async function prepareSlidesInput({
     const downloaded = await downloadRemoteVideo({
       url: source.url,
       timeoutMs,
+      fetchImpl,
       onProgress: (percent, detail) => {
         reportSlidesProgress?.(
           "downloading video",
@@ -251,7 +257,7 @@ export async function prepareSlidesInput({
       warnings,
     };
   } catch (error) {
-    if (!allowStreamFallback) throw error;
+    if (!allowStreamFallback || !allowRemoteUrlFallback) throw error;
     warnings.push(`Failed to download video; falling back to stream URL: ${String(error)}`);
     return {
       inputPath: source.url,

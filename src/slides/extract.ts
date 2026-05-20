@@ -144,8 +144,11 @@ type ExtractSlidesArgs = {
   noCache?: boolean;
   mediaCache?: MediaCache | null;
   env: Record<string, string | undefined>;
+  fetchImpl?: typeof fetch;
   timeoutMs: number;
   ytDlpPath: string | null;
+  disableYtDlpAutoResolve?: boolean;
+  allowRemoteUrlFallback?: boolean;
   ytDlpCookiesFromBrowser?: string | null;
   ffmpegPath: string | null;
   tesseractPath: string | null;
@@ -172,8 +175,11 @@ export async function extractSlidesForSource({
   noCache = false,
   mediaCache = null,
   env,
+  fetchImpl,
   timeoutMs,
   ytDlpPath,
+  disableYtDlpAutoResolve = false,
+  allowRemoteUrlFallback = true,
   ytDlpCookiesFromBrowser,
   ffmpegPath,
   tesseractPath,
@@ -266,12 +272,14 @@ export async function extractSlidesForSource({
 
       const ytDlpBinary =
         ytDlpPath ??
-        (await resolveRunnableTool({
-          binary: "yt-dlp",
-          env,
-          explicitEnvKey: "YT_DLP_PATH",
-          probeArgs: ["--version"],
-        }));
+        (disableYtDlpAutoResolve
+          ? null
+          : await resolveRunnableTool({
+              binary: "yt-dlp",
+              env,
+              explicitEnvKey: "YT_DLP_PATH",
+              probeArgs: ["--version"],
+            }));
 
       const {
         inputPath,
@@ -281,7 +289,9 @@ export async function extractSlidesForSource({
         source,
         mediaCache,
         timeoutMs,
+        fetchImpl,
         ytDlpPath: ytDlpBinary,
+        allowRemoteUrlFallback,
         ytDlpCookiesFromBrowser,
         resolveSlidesYtDlpExtractFormat: () => resolveSlidesYtDlpExtractFormat(env),
         resolveSlidesStreamFallback: () => resolveSlidesStreamFallback(env),

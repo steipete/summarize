@@ -69,6 +69,7 @@ describe("slides ingest", () => {
 
   it("downloads direct remote video and preserves cleanup", async () => {
     const cleanup = vi.fn(async () => {});
+    const fetchImpl = vi.fn();
     const downloadRemoteVideo = vi.fn(async () => ({
       filePath: "/tmp/direct.mp4",
       cleanup,
@@ -82,6 +83,7 @@ describe("slides ingest", () => {
       source: { kind: "direct", url: "https://cdn.example/video.mp4", sourceId: "direct:1" },
       mediaCache: { get: vi.fn(async () => null), put } as never,
       timeoutMs: 1000,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
       ytDlpPath: null,
       ytDlpCookiesFromBrowser: null,
       resolveSlidesYtDlpExtractFormat: () => "best",
@@ -95,10 +97,38 @@ describe("slides ingest", () => {
       resolveYoutubeStreamUrl: vi.fn(),
     });
 
-    expect(downloadRemoteVideo).toHaveBeenCalled();
+    expect(downloadRemoteVideo).toHaveBeenCalledWith(
+      expect.objectContaining({ fetchImpl, url: "https://cdn.example/video.mp4" }),
+    );
     expect(put).toHaveBeenCalled();
     expect(result.inputPath).toBe("/tmp/direct.mp4");
     expect(result.inputCleanup).toBe(cleanup);
+  });
+
+  it("does not return a remote URL fallback when that fallback is disabled", async () => {
+    const downloadRemoteVideo = vi.fn(async () => {
+      throw new Error("guarded download rejected");
+    });
+
+    await expect(
+      prepareSlidesInput({
+        source: { kind: "direct", url: "https://cdn.example/video.mp4", sourceId: "direct:1" },
+        mediaCache: null,
+        timeoutMs: 1000,
+        ytDlpPath: null,
+        allowRemoteUrlFallback: false,
+        ytDlpCookiesFromBrowser: null,
+        resolveSlidesYtDlpExtractFormat: () => "best",
+        resolveSlidesStreamFallback: () => true,
+        buildSlidesMediaCacheKey: (url) => `${url}#slides`,
+        formatBytes: (bytes) => `${bytes}B`,
+        reportSlidesProgress: vi.fn(),
+        logSlidesTiming: vi.fn(),
+        downloadYoutubeVideo: vi.fn(),
+        downloadRemoteVideo,
+        resolveYoutubeStreamUrl: vi.fn(),
+      }),
+    ).rejects.toThrow(/guarded download rejected/);
   });
 
   it("uses local file URLs directly without downloading", async () => {

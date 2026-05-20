@@ -151,6 +151,18 @@ export type ZaiConfig = {
   baseUrl?: string;
 };
 
+export type OllamaConfig = {
+  /**
+   * Override the Ollama OpenAI-compatible API base URL (e.g. point at a remote
+   * Ollama instance or a reverse proxy).
+   *
+   * Default: http://localhost:11434/v1
+   *
+   * Prefer env `OLLAMA_BASE_URL` when you need per-run overrides.
+   */
+  baseUrl?: string;
+};
+
 export type AutoRule = {
   /**
    * Input kinds this rule applies to.
@@ -259,6 +271,7 @@ export type SummarizeConfig = {
   google?: GoogleConfig;
   xai?: XaiConfig;
   zai?: ZaiConfig;
+  ollama?: OllamaConfig;
   logging?: LoggingConfig;
   /**
    * Generic environment variable defaults.

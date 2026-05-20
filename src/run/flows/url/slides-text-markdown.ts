@@ -160,7 +160,10 @@ export const splitSlideTitleFromText = ({
     }
   }
 
-  const body = bodyLines.join("\n").trim();
+  const body = bodyLines
+    .map((line) => line.replace(/^#{1,6}\s+/, ""))
+    .join("\n")
+    .trim();
   if (!title && body) {
     title = deriveHeadlineFromBody(body);
   }
@@ -178,7 +181,11 @@ export const ensureSlideTitleLine = ({
 }): string => {
   void slide;
   void total;
-  return text.trim();
+  return text
+    .trim()
+    .split("\n")
+    .map((line) => line.replace(/^(#{1,6})([^#\s])/, "$1 $2"))
+    .join("\n");
 };
 
 export function findSlidesSectionStart(markdown: string): number | null {
@@ -344,7 +351,22 @@ export function normalizeSummarySlideHeadings(markdown: string): string {
   if (!markdown.trim()) return markdown;
   if (!/\[slide:\d+\]/i.test(markdown)) return markdown;
   const deleteMarker = "__SUMMARIZE_DELETE__";
-  const lines = markdown.split("\n");
+  const lines: string[] = [];
+  for (const line of markdown.split("\n")) {
+    const trimmed = line.trim();
+    const headingSlideMatch = trimmed.match(
+      /^#{1,6}\s*(\[[^\]]*slide[^\d\]]*\d+[^\]]*\])\s*(.*)$/i,
+    );
+    if (!headingSlideMatch) {
+      lines.push(line);
+      continue;
+    }
+    lines.push(headingSlideMatch[1] ?? "");
+    const rest = (headingSlideMatch[2] ?? "").replace(/^\[[\d:\s.\-\u2013\u2014]+\]\s*/, "").trim();
+    if (rest) {
+      lines.push(`## ${rest.replace(/^#{1,6}\s*/, "")}`);
+    }
+  }
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i] ?? "";
     if (!SLIDE_TAG_PATTERN.test(line.trim())) continue;

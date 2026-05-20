@@ -14,9 +14,10 @@ summary: "Release checklist + Homebrew/core verify step."
 
 ## Checklist
 
-1. `scripts/release.sh all` (gates → build → verify → publish → smoke → tag).
-2. Create GitHub release for the new tag (match version, attach notes/assets as needed).
-3. Verify the Homebrew/core formula reflects the new version:
+1. `scripts/release.sh all` (gates → build all assets → pack verify → publish → smoke → tag → GitHub release/assets).
+2. Verify the GitHub release notes and uploaded Bun/extension assets.
+3. After Homebrew/core autobump catches up, verify the formula reflects the new version:
+   - `scripts/release.sh homebrew`
    - `brew install summarize`
    - `summarize --version` matches tag.
    - Run a feature added in the release (for example `summarize daemon install`).

@@ -470,21 +470,80 @@ form {
 }
 
 .advancedFields {
-  display: block;
+  display: grid;
+  gap: 14px;
 }
 
 .advancedFields[hidden] {
   display: none;
 }
 
-.advancedGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
+.advancedSection {
+  gap: 14px;
 }
 
-.advancedGrid .span-2 {
-  grid-column: 1 / -1;
+.advancedHead {
+  display: grid;
+  gap: 4px;
+}
+
+.advancedHead h2 {
+  margin: 0;
+}
+
+.subgroup {
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  overflow: hidden;
+}
+
+.subgroupHead {
+  padding: 8px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  background: color-mix(in srgb, var(--surface) 75%, transparent);
+}
+
+.subgroupTitle {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.subgroupBody {
+  padding: 12px 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.subgroupBody.advancedGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+.subgroupBody.advancedGrid--thirds {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.toggleField {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
+}
+
+.toggleField > div:first-child {
+  align-self: center;
+}
+
+.toggleField .toggleHint {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .logsHeader {
@@ -974,12 +1033,9 @@ form {
 }
 
 @media (max-width: 760px) {
-  .advancedGrid {
+  .subgroupBody.advancedGrid,
+  .subgroupBody.advancedGrid--thirds {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .advancedGrid .span-2 {
-    grid-column: auto;
   }
 
   .uiGrid {
@@ -1016,11 +1072,6 @@ label {
   gap: 6px;
   padding: 2px 0;
   min-width: 0;
-}
-
-.advancedGrid > label {
-  align-content: start;
-  grid-template-rows: auto minmax(32px, auto) auto;
 }
 
 .inputRow {
@@ -1174,8 +1225,8 @@ select {
 }
 
 .pickerContent {
-  background: rgba(18, 22, 32, 0.22);
-  background: color-mix(in srgb, var(--panel) 22%, transparent);
+  background: rgba(18, 22, 32, 0.94);
+  background: var(--panel);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   border-radius: 14px;
   padding: 6px;
@@ -1472,4 +1523,33 @@ button:hover {
   border-radius: 999px;
   background: currentColor;
   box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.advancedFields .field {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  align-content: start;
+}
+
+.advancedFields .field > span:first-child {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.advancedFields .field > .subtitle {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.advancedFields .field .labelRow {
+  align-items: baseline;
+}
+
+.advancedFields .field .labelRow > span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
 }

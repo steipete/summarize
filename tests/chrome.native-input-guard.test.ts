@@ -52,6 +52,25 @@ describe("chrome native input guard", () => {
     expect(getNativeInputGuardError({ armedTabs, senderTabId: 3 })).toBeNull();
   });
 
+  it("requires a matching native-input capability when using capability-backed arms", () => {
+    const armedTabs = new Map<number, string>([[3, "x".repeat(32)]]);
+
+    expect(
+      getNativeInputGuardError({
+        armedTabs,
+        senderTabId: 3,
+        capability: "wrong".repeat(7),
+      }),
+    ).toBe("Native input capability mismatch");
+    expect(
+      getNativeInputGuardError({
+        armedTabs,
+        senderTabId: 3,
+        capability: "x".repeat(32),
+      }),
+    ).toBeNull();
+  });
+
   it("arms before execution and disarms after success", async () => {
     const sendMessage = vi.fn(async () => undefined);
     const run = vi.fn(async () => "ok");
@@ -61,13 +80,21 @@ describe("chrome native input guard", () => {
         enabled: true,
         tabId: 9,
         sendMessage,
+        capability: "c".repeat(32),
         run,
       }),
     ).resolves.toBe("ok");
 
     expect(sendMessage.mock.calls).toEqual([
-      [{ type: "automation:native-input-arm", tabId: 9, enabled: true }],
-      [{ type: "automation:native-input-arm", tabId: 9, enabled: false }],
+      [
+        {
+          type: "automation:native-input-arm",
+          tabId: 9,
+          enabled: true,
+          capability: "c".repeat(32),
+        },
+      ],
+      [{ type: "automation:native-input-arm", tabId: 9, enabled: false, capability: null }],
     ]);
     expect(run).toHaveBeenCalledTimes(1);
   });
@@ -83,13 +110,21 @@ describe("chrome native input guard", () => {
         enabled: true,
         tabId: 11,
         sendMessage,
+        capability: "d".repeat(32),
         run,
       }),
     ).rejects.toThrow("boom");
 
     expect(sendMessage.mock.calls).toEqual([
-      [{ type: "automation:native-input-arm", tabId: 11, enabled: true }],
-      [{ type: "automation:native-input-arm", tabId: 11, enabled: false }],
+      [
+        {
+          type: "automation:native-input-arm",
+          tabId: 11,
+          enabled: true,
+          capability: "d".repeat(32),
+        },
+      ],
+      [{ type: "automation:native-input-arm", tabId: 11, enabled: false, capability: null }],
     ]);
   });
 });

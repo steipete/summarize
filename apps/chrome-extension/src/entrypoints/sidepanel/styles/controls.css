@@ -96,8 +96,8 @@ select {
 }
 
 .pickerContent {
-  background: rgba(18, 22, 32, 0.22);
-  background: color-mix(in srgb, var(--panel) 22%, transparent);
+  background: rgba(18, 22, 32, 0.94);
+  background: var(--panel);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   border-radius: 14px;
   padding: 6px;

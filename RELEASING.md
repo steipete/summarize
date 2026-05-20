@@ -6,7 +6,7 @@ Ship is **not done** until:
 - GitHub Release has the Bun tarball asset
 - GitHub Release has the Chrome extension zip
 - GitHub Release has the Firefox extension zip
-- Homebrew tap is bumped + `brew install` verifies
+- Homebrew/core formula is updated + `brew install summarize` verifies
 
 ## Version sources (keep in sync)
 
@@ -34,7 +34,7 @@ Ship is **not done** until:
 
 3. Build Bun artifact (prints sha256 + creates tarball)
    - `pnpm -s build:bun:test`
-   - Artifact: `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`
+   - Artifacts: `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`, `dist-bun/summarize-macos-x64-v<ver>.tar.gz`
 
 4. Build Chrome extension artifact
    - `pnpm -C apps/chrome-extension build`
@@ -74,6 +74,7 @@ Ship is **not done** until:
 
    gh release create "v${ver}" \
      "dist-bun/summarize-macos-arm64-v${ver}.tar.gz" \
+     "dist-bun/summarize-macos-x64-v${ver}.tar.gz" \
      "dist-chrome/summarize-chrome-extension-v${ver}.zip" \
      "dist-firefox/summarize-firefox-extension-v${ver}.zip" \
      --title "v${ver}" \
@@ -82,18 +83,12 @@ Ship is **not done** until:
 
    - Verify notes render (real newlines): `gh release view v<ver> --json body --jq .body`
 
-8. Homebrew tap bump + verify
-   - Repo: `~/Projects/homebrew-tap`
-   - Update `Formula/summarize.rb`:
-     - `url` → GitHub Release asset URL
-     - `sha256` → from `pnpm build:bun:test`
-     - `version` + test expectation
-   - `git commit -am "chore: bump summarize to <ver>" && git push`
-   - Verify:
+8. Homebrew/core verify
+   - Homebrew/core is autobumped from the GitHub Release; this can lag the npm/GitHub release.
+   - Verify when the formula catches up:
      ```bash
-     brew uninstall summarize || true
-     brew tap steipete/tap || true
-     brew install steipete/tap/summarize
+     scripts/release.sh homebrew
+     brew install summarize
      summarize --version
      ```
 
@@ -122,21 +117,21 @@ Notes:
 - npm may prompt for browser auth when `npm config get auth-type` is `web`. For scripted publishes, use `npm_config_auth_type=legacy` + `--otp`.
 - `prepare` runs `pnpm build` automatically during publish.
 
-Helper (npm-only): `scripts/release.sh` (phases: `gates|build|publish|smoke|tag|all`).
+Helper: `scripts/release.sh` (phases: `gates|build|bun|chrome|firefox|verify|publish|smoke|tag|github|homebrew|all`).
 
 ## Homebrew (Bun-compiled binary w/ bytecode) - details
 
 Goal:
 
-- Build a **macOS arm64** Bun binary named `summarize`
-- Package as `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`
+- Build **macOS arm64 + x64** Bun binaries named `summarize`
+- Package as `dist-bun/summarize-macos-<arch>-v<ver>.tar.gz`
 - Upload tarball as a GitHub Release asset
-- Point Homebrew formula at that asset + sha256
+- Homebrew/core autobump points the formula at those assets + sha256
 - Formula should install the compiled `summarize` binary directly (no Bun wrapper script).
 
 1. Build the Bun artifact
-   - `pnpm build:bun`
-   - This uses `bun build --compile --bytecode` and prints the tarball sha256.
+   - `pnpm build:bun:test`
+   - This uses `bun build --compile --bytecode`, prints tarball sha256s, and smokes the host binary.
 
 2. Smoke test locally (before uploading)
    - `dist-bun/summarize --version`
@@ -148,21 +143,14 @@ Goal:
      - Prefer `--title "v<ver>"` and `--notes-file …` (avoid pasting text with escaped `\\n`)
      - Notes should start with sections like `### Changes`, not `## v<ver>` (the release already has a title)
    - Upload `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`
+   - Upload `dist-bun/summarize-macos-x64-v<ver>.tar.gz`
    - Verify notes render correctly:
      - `gh release view v<ver> --json body --jq .body` (should show real newlines, not literal `\\n`)
 
-4. Homebrew tap update (when approved + after asset is live)
-   - Repo: `~/Projects/homebrew-tap`
-   - Add/update `Formula/summarize.rb`:
-     - `url` = GitHub Release asset URL
-     - `sha256` = from step (1)
-     - `version` = `<ver>`
-
-5. Homebrew verification (after formula update)
+4. Homebrew/core verification (after autobump)
    ```bash
-   brew uninstall summarize || true
-   brew tap steipete/tap || true
-   brew install steipete/tap/summarize
+   scripts/release.sh homebrew
+   brew install summarize
    summarize --version
    ```
 

@@ -26,6 +26,7 @@ export interface FetchLinkContentOptions {
   format?: ContentFormat;
   markdownMode?: MarkdownMode;
   fileMtime?: number | null;
+  throwOnAssetLikeHtmlError?: boolean;
 }
 
 export interface TranscriptResolution {

@@ -120,6 +120,29 @@ test("options keeps custom model selected while presets refresh", async ({
   }
 });
 
+test("options defers automation skills until Skills tab opens", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    const page = await openExtensionPage(harness, "options.html", "#tabs");
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.locator("#panel-general")).toBeVisible();
+    await expect(page.locator("#skillsList .skillCard")).toHaveCount(0);
+
+    await page.click("#tab-skills");
+    await expect(page.locator("#panel-skills")).toBeVisible();
+    await expect
+      .poll(async () => page.locator("#skillsList .skillCard").count())
+      .toBeGreaterThan(0);
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
 test("options persists automation toggle without save", async ({
   browserName: _browserName,
 }, testInfo) => {

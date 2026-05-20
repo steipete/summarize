@@ -10,6 +10,11 @@ export function createOptionsSaveRuntime(options: {
   let saveQueued = false;
   let saveSequence = 0;
 
+  const formatSaveError = (error: unknown) => {
+    const message = error instanceof Error ? error.message.trim() : String(error).trim();
+    return message ? `Save failed: ${message}` : "Save failed";
+  };
+
   const saveNow = async () => {
     if (saveInFlight) {
       saveQueued = true;
@@ -23,6 +28,10 @@ export function createOptionsSaveRuntime(options: {
       await persist();
       if (currentSeq === saveSequence) {
         flashStatus("Saved");
+      }
+    } catch (error) {
+      if (currentSeq === saveSequence) {
+        setStatus(formatSaveError(error));
       }
     } finally {
       saveInFlight = false;
