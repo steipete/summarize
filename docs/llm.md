@@ -32,6 +32,7 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
 - `GITHUB_TOKEN` / `GH_TOKEN` (required for `github-copilot/...` models via GitHub Models)
 - `Z_AI_API_KEY` (required for `zai/...` models; supports `ZAI_API_KEY` alias)
 - `Z_AI_BASE_URL` (optional; override default Z.AI base URL)
+- `OLLAMA_BASE_URL` (optional; override default Ollama OpenAI-compatible base URL — default `http://localhost:11434/v1`. Set this to enable Ollama auto-discovery in the extension model picker.)
 - `GEMINI_API_KEY` (required for `google/...` models; also accepts `GOOGLE_GENERATIVE_AI_API_KEY` / `GOOGLE_API_KEY`)
 - `GOOGLE_BASE_URL` / `GEMINI_BASE_URL` (optional; override Google API endpoint)
 - `ANTHROPIC_API_KEY` (required for `anthropic/...` models)
@@ -61,6 +62,8 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
     - `github-copilot/gpt-5.4`
     - `nvidia/z-ai/glm5`
     - `zai/glm-4.7`
+    - `ollama/qwen3:14b`
+    - `ollama/llama3.1:8b`
     - `xai/grok-4-fast-non-reasoning`
     - `google/gemini-2.0-flash`
     - `anthropic/claude-sonnet-4-5`
@@ -118,6 +121,12 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
 ## Z.AI
 
 Use `--model zai/<model>` (e.g. `zai/glm-4.7`). Defaults to Z.AI’s base URL and uses chat completions.
+
+## Ollama
+
+Use `--model ollama/<model>` (e.g. `ollama/qwen3:14b`, `ollama/gemma3:12b`) to talk to a local
+[Ollama](https://ollama.com) instance over its OpenAI-compatible endpoint. See `docs/ollama.md`
+for full setup, model recommendations, and limitations.
 
 ## GitHub Copilot / GitHub Models
 

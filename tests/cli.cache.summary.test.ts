@@ -137,7 +137,7 @@ describe("cli cache summary", () => {
     );
 
     expect(mocks.streamSimple).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(stdout2.getText()).toBe(first);
 
     globalFetchSpy.mockRestore();

@@ -128,6 +128,7 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
   let refreshInFlight = false;
   let needsRefresh = false;
   let selectedId: string | null = null;
+  let logsRequestId = 0;
   let logsText = "";
 
   logsCopyBtn.disabled = true;
@@ -194,7 +195,13 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
   };
 
   const refreshLogs = async () => {
-    if (!selectedId) {
+    const requestId = ++logsRequestId;
+    const requestedId = selectedId;
+    const isCurrentRequest = () => requestId === logsRequestId && selectedId === requestedId;
+    const clearLogsIfCurrent = () => {
+      if (isCurrentRequest()) clearLogs();
+    };
+    if (!requestedId) {
       clearLogs();
       return;
     }
@@ -208,29 +215,31 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
     const stream =
       streamEl.value === "stdout" || streamEl.value === "stderr" ? streamEl.value : "merged";
     try {
-      const url = new URL(`http://127.0.0.1:8787/v1/processes/${selectedId}/logs`);
+      const url = new URL(`http://127.0.0.1:8787/v1/processes/${requestedId}/logs`);
       url.searchParams.set("tail", String(tail));
       url.searchParams.set("stream", stream);
       const res = await (fetchImpl ?? fetch)(url.toString(), {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!isCurrentRequest()) return;
       if (!res.ok) {
         clearLogs();
         return;
       }
       const json = (await res.json()) as ProcessLogResponse;
-      if (!json?.ok || !Array.isArray(json.lines)) {
+      if (!isCurrentRequest()) return;
+      if (!json?.ok || json.id !== requestedId || !Array.isArray(json.lines)) {
         clearLogs();
         return;
       }
-      logsTitleEl.textContent = `Logs · ${selectedId.slice(0, 8)}`;
+      logsTitleEl.textContent = `Logs · ${requestedId.slice(0, 8)}`;
       logsText = json.lines
         .map((line) => `${line.stream === "stderr" ? "err" : "out"} | ${line.line}`)
         .join("\n");
       logsOutputEl.textContent = logsText;
       logsCopyBtn.disabled = logsText.trim().length === 0;
     } catch {
-      clearLogs();
+      clearLogsIfCurrent();
     }
   };
 

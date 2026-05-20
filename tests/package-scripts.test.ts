@@ -12,6 +12,7 @@ const corePackage = JSON.parse(readFileSync(resolve("packages/core/package.json"
   devDependencies: Record<string, string>;
   engines: Record<string, string>;
 };
+const releaseScript = readFileSync(resolve("scripts/release.sh"), "utf8");
 const oxfmtConfig = JSON5.parse(readFileSync(resolve(".oxfmtrc.jsonc"), "utf8")) as {
   ignorePatterns?: string[];
 };
@@ -54,6 +55,10 @@ describe("package scripts", () => {
 
   it("keeps formatter checks away from local tool metadata", () => {
     expect(oxfmtConfig.ignorePatterns).toContain(".clawpatch/");
+  });
+
+  it("rejects empty release notes before creating GitHub releases", () => {
+    expect(releaseScript).toContain("grep -q '[^[:space:]]'");
   });
 
   it("keeps Node typings aligned with the supported engine floor", () => {

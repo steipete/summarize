@@ -10,6 +10,7 @@ type UrlFetchFlags = {
   transcriptTimestamps: boolean;
   firecrawlMode: "off" | "auto" | "always";
   slides: object | null;
+  throwOnAssetLikeHtmlError?: boolean;
 };
 
 type UrlMarkdownOptions = {
@@ -41,28 +42,30 @@ export function resolveUrlFetchOptions({
   cacheMode: CacheMode;
 }): { localFile: boolean; options: FetchLinkContentOptions } {
   const localFile = isLocalFileUrl(targetUrl);
+  const options = {
+    timeoutMs: flags.timeoutMs,
+    maxCharacters:
+      typeof flags.maxExtractCharacters === "number" && flags.maxExtractCharacters > 0
+        ? flags.maxExtractCharacters
+        : undefined,
+    youtubeTranscript: flags.youtubeMode,
+    mediaTranscript: shouldPreferTranscriptForTarget({
+      targetUrl,
+      videoMode: flags.videoMode,
+      slides: flags.slides,
+    })
+      ? "prefer"
+      : "auto",
+    transcriptTimestamps: flags.transcriptTimestamps,
+    firecrawl: flags.firecrawlMode,
+    format: markdown.markdownRequested ? "markdown" : "text",
+    markdownMode: markdown.markdownRequested ? markdown.effectiveMarkdownMode : undefined,
+    cacheMode,
+    fileMtime: localFile ? resolveLocalFileMtime(targetUrl) : null,
+    throwOnAssetLikeHtmlError: flags.throwOnAssetLikeHtmlError ?? false,
+  } satisfies FetchLinkContentOptions;
   return {
     localFile,
-    options: {
-      timeoutMs: flags.timeoutMs,
-      maxCharacters:
-        typeof flags.maxExtractCharacters === "number" && flags.maxExtractCharacters > 0
-          ? flags.maxExtractCharacters
-          : undefined,
-      youtubeTranscript: flags.youtubeMode,
-      mediaTranscript: shouldPreferTranscriptForTarget({
-        targetUrl,
-        videoMode: flags.videoMode,
-        slides: flags.slides,
-      })
-        ? "prefer"
-        : "auto",
-      transcriptTimestamps: flags.transcriptTimestamps,
-      firecrawl: flags.firecrawlMode,
-      format: markdown.markdownRequested ? "markdown" : "text",
-      markdownMode: markdown.markdownRequested ? markdown.effectiveMarkdownMode : undefined,
-      cacheMode,
-      fileMtime: localFile ? resolveLocalFileMtime(targetUrl) : null,
-    },
+    options,
   };
 }

@@ -7,6 +7,7 @@ import {
   validateSlidesCache,
 } from "../../../slides/index.js";
 import { writeVerbose } from "../../logging.js";
+import { resolveUrlFlowYtDlpPath } from "./external-media.js";
 import { createSlidesTerminalOutput, type SlidesTerminalOutput } from "./slides-output.js";
 import { composeUrlFlowHooks, type UrlFlowContext } from "./types.js";
 
@@ -164,8 +165,14 @@ export function createUrlSlidesSession({
         noCache: cacheState.mode === "bypass",
         mediaCache: ctx.mediaCache,
         env: io.env,
+        fetchImpl: io.urlFetch ?? io.fetch,
         timeoutMs: flags.timeoutMs,
-        ytDlpPath: model.apiStatus.ytDlpPath,
+        ytDlpPath: resolveUrlFlowYtDlpPath({
+          urlFetch: io.urlFetch,
+          ytDlpPath: model.apiStatus.ytDlpPath,
+        }),
+        disableYtDlpAutoResolve: Boolean(io.urlFetch),
+        allowRemoteUrlFallback: !io.urlFetch,
         ytDlpCookiesFromBrowser: model.apiStatus.ytDlpCookiesFromBrowser,
         ffmpegPath: null,
         tesseractPath: null,

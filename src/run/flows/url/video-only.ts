@@ -84,7 +84,7 @@ export async function handleVideoOnlyExtractedContent({
   if (flags.progressEnabled) spinner.setText(renderStatus("Downloading video"));
   const loadedVideo = await loadRemoteAsset({
     url: extracted.video.url,
-    fetchImpl: io.fetch,
+    fetchImpl: io.urlFetch ?? io.fetch,
     timeoutMs: flags.timeoutMs,
   });
   assertAssetMediaTypeSupported({ attachment: loadedVideo.attachment, sizeLabel: null });

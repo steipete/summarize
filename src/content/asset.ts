@@ -101,13 +101,52 @@ function looksLikeHtml(bytes: Uint8Array): boolean {
   return head.startsWith("<!doctype html") || head.startsWith("<html") || head.startsWith("<head");
 }
 
-function isLikelyAssetPathname(pathname: string): boolean {
+function looksLikePlainText(bytes: Uint8Array): boolean {
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return false;
+  }
+  let suspicious = 0;
+  for (const byte of bytes.slice(0, 512)) {
+    if (byte === 0) return false;
+    if (byte < 0x08 || (byte > 0x0d && byte < 0x20)) suspicious += 1;
+  }
+  return bytes.byteLength === 0 || suspicious / Math.min(bytes.byteLength, 512) <= 0.1;
+}
+
+export function isLikelyAssetPathname(pathname: string): boolean {
   const ext = path.extname(pathname).toLowerCase();
   if (!ext) return false;
   if (ext === ".html" || ext === ".htm" || ext === ".php" || ext === ".asp" || ext === ".aspx") {
     return false;
   }
   return true;
+}
+
+export function isLikelyAssetUrl(url: string): boolean {
+  try {
+    return isLikelyAssetPathname(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
+
+export function shouldProbeUnknownAssetUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (isLikelyAssetPathname(parsed.pathname)) return true;
+    const pathname = parsed.pathname.toLowerCase();
+    if (/(^|\/)(attachment|download|export|file|raw)(\/|$)/u.test(pathname)) return true;
+    for (const key of ["download", "filename", "format", "response-content-disposition"]) {
+      const value = parsed.searchParams.get(key)?.trim().toLowerCase();
+      if (!value) continue;
+      if (key !== "format" || value === "pdf" || value === "csv" || value === "txt") return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export function resolveInputTarget(raw: string): InputTarget {
@@ -247,6 +286,8 @@ async function detectMediaType({
     const byExt = mime.getType(nameHint);
     if (typeof byExt === "string" && byExt.length > 0) return byExt;
   }
+
+  if (looksLikePlainText(bytes)) return "text/plain";
 
   return "application/octet-stream";
 }

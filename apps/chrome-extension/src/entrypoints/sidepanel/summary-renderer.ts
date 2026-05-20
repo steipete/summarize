@@ -2,26 +2,29 @@ import { selectMarkdownForLayout } from "./slides-state";
 import { buildSummaryEmptyState } from "./summary-empty-state";
 import { linkifyTimestamps } from "./timestamp-links";
 
-function createCopyButton({
+export function clearSummaryCopyButton(button: HTMLButtonElement | null | undefined) {
+  if (!button) return;
+  button.classList.add("hidden");
+  button.disabled = true;
+  button.onclick = null;
+}
+
+function configureCopyButton({
+  button,
   text,
   headerSetStatus,
 }: {
+  button: HTMLButtonElement;
   text: string;
   headerSetStatus: (text: string) => void;
 }) {
-  const button = document.createElement("button");
-  button.className = "ghost icon render__copy";
-  button.type = "button";
+  button.classList.remove("hidden");
+  button.disabled = false;
   button.setAttribute("aria-label", "Copy summary");
-  button.innerHTML = `
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M8 6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2V6Zm-4 4a2 2 0 0 1 2-2h1v2H6v8h8v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9Z" />
-    </svg>
-  `;
-  button.addEventListener("click", () => {
+  button.title = "Copy summary";
+  button.onclick = () => {
     void copySummaryText({ text, headerSetStatus });
-  });
-  return button;
+  };
 }
 
 async function copySummaryText({
@@ -98,6 +101,7 @@ export function renderSummaryMarkdownDisplay({
   hasSlides,
   headerSetStatus,
   hostEl,
+  copyButtonEl,
   inputMode,
   markdown,
   md,
@@ -115,6 +119,7 @@ export function renderSummaryMarkdownDisplay({
   hasSlides: boolean;
   headerSetStatus: (text: string) => void;
   hostEl: HTMLElement;
+  copyButtonEl?: HTMLButtonElement | null;
   inputMode: "page" | "video";
   markdown: string;
   md: { render: (value: string) => string };
@@ -132,6 +137,7 @@ export function renderSummaryMarkdownDisplay({
     hasSlides,
     slidesLayout,
   });
+  clearSummaryCopyButton(copyButtonEl);
   if (!displayMarkdown.trim()) {
     renderSummaryEmptyState({
       hostEl,
@@ -147,13 +153,13 @@ export function renderSummaryMarkdownDisplay({
   }
   try {
     hostEl.innerHTML = "";
-    const actions = document.createElement("div");
-    actions.className = "render__actions";
-    actions.append(createCopyButton({ text: displayMarkdown, headerSetStatus }));
     const markdownHost = document.createElement("div");
     markdownHost.className = "render__markdownBody";
     markdownHost.innerHTML = md.render(linkifyTimestamps(displayMarkdown));
-    hostEl.append(actions, markdownHost);
+    if (copyButtonEl) {
+      configureCopyButton({ button: copyButtonEl, text: displayMarkdown, headerSetStatus });
+    }
+    hostEl.append(markdownHost);
   } catch (err) {
     const message = err instanceof Error ? err.stack || err.message : String(err);
     headerSetStatus(`Error: ${message}`);

@@ -193,6 +193,8 @@ test("sidepanel video selection requests slides when enabled", async ({
     expect(body?.videoMode).toBe("transcript");
     expect(body?.slides).toBe(true);
     expect(body?.slidesOcr).toBe(true);
+    expect(body).not.toHaveProperty("slidesMax");
+    expect(body).not.toHaveProperty("slidesMinDuration");
     assertNoErrors(harness);
   } finally {
     await closeExtension(harness.context, harness.userDataDir);

@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+import { timingSafeEqual } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { DAEMON_CONFIG_DIR, DAEMON_CONFIG_FILENAME, DAEMON_PORT_DEFAULT } from "./constants.js";
@@ -78,6 +80,31 @@ export function daemonConfigTokens(config: DaemonConfig): string[] {
     return tokens.includes(primary) ? tokens : [primary, ...tokens];
   }
   return [trimDaemonToken(config.token)];
+}
+
+/**
+ * Constant-time check that `candidate` matches one of the configured tokens.
+ *
+ * `Array.prototype.includes` short-circuits on `===` (both per-token and
+ * per-character), so the time it takes to reject a guess leaks how much of a
+ * configured token matched. We compare every configured token, using
+ * `crypto.timingSafeEqual` for each, so the running time depends only on the
+ * number of configured tokens — never on the candidate's content.
+ */
+export function isAuthorizedDaemonToken(candidate: string, tokens: readonly string[]): boolean {
+  if (typeof candidate !== "string" || candidate.length === 0) return false;
+  const candidateBuf = Buffer.from(candidate, "utf8");
+  let matched = false;
+  for (const token of tokens) {
+    if (typeof token !== "string" || token.length === 0) continue;
+    const tokenBuf = Buffer.from(token, "utf8");
+    // timingSafeEqual requires equal-length buffers; mismatched length is
+    // already not a match, but we still iterate every token to keep the work
+    // independent of which (if any) entry matches.
+    if (tokenBuf.length !== candidateBuf.length) continue;
+    if (timingSafeEqual(tokenBuf, candidateBuf)) matched = true;
+  }
+  return matched;
 }
 
 export function normalizeDaemonPort(raw: unknown): number {

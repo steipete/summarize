@@ -28,7 +28,7 @@ export {
   normalizeContentForHash,
   extractTaggedBlock,
 } from "./cache-keys.js";
-import { cleanupSlidesPayload } from "./cache-slides-cleanup.js";
+import { cleanupSlidesPayload, collectSlidesPayloadArtifactPaths } from "./cache-slides-cleanup.js";
 import type { TranscriptCache, TranscriptSource } from "./content/index.js";
 
 export type CacheKind = "extract" | "summary" | "transcript" | "chat" | "slides";
@@ -60,6 +60,7 @@ type CacheRow = {
   value: string;
   expires_at: number | null;
   size_bytes: number;
+  created_at: number;
 };
 
 const TRANSCRIPT_SOURCES: readonly TranscriptSource[] = [
@@ -204,14 +205,14 @@ export async function createCacheStore({
   db.exec("CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache_entries(expires_at)");
 
   const stmtGet = db.prepare(
-    "SELECT value, expires_at, size_bytes FROM cache_entries WHERE kind = ? AND key = ?",
+    "SELECT value, expires_at, size_bytes, created_at FROM cache_entries WHERE kind = ? AND key = ?",
   );
   const stmtTouch = db.prepare(
     "UPDATE cache_entries SET last_accessed_at = ? WHERE kind = ? AND key = ?",
   );
   const stmtDelete = db.prepare("DELETE FROM cache_entries WHERE kind = ? AND key = ?");
-  const stmtDeleteExpired = db.prepare(
-    "DELETE FROM cache_entries WHERE expires_at IS NOT NULL AND expires_at <= ?",
+  const stmtSelectExpired = db.prepare(
+    "SELECT kind, key, value, created_at FROM cache_entries WHERE expires_at IS NOT NULL AND expires_at <= ?",
   );
   const stmtUpsert = db.prepare(`
     INSERT INTO cache_entries (
@@ -228,12 +229,41 @@ export async function createCacheStore({
     "SELECT COALESCE(SUM(size_bytes), 0) AS total FROM cache_entries",
   );
   const stmtOldest = db.prepare(
-    "SELECT kind, key, size_bytes FROM cache_entries ORDER BY last_accessed_at ASC LIMIT ?",
+    "SELECT kind, key, value, size_bytes, created_at FROM cache_entries ORDER BY last_accessed_at ASC LIMIT ?",
   );
+  const stmtSlides = db.prepare("SELECT kind, key, value FROM cache_entries WHERE kind = 'slides'");
   const stmtClear = db.prepare("DELETE FROM cache_entries");
 
+  const buildReferencedSlideArtifacts = (excludingKey: string): Set<string> => {
+    const rows = stmtSlides.all() as Array<{ key: string; value: string }>;
+    const referenced = new Set<string>();
+    for (const row of rows) {
+      if (row.key === excludingKey) continue;
+      for (const filePath of collectSlidesPayloadArtifactPaths(row.value)) {
+        referenced.add(filePath);
+      }
+    }
+    return referenced;
+  };
+
+  const deleteEntry = (kind: string, key: string, value: string, createdAt?: number | null) => {
+    if (kind === "slides") {
+      const referenced = buildReferencedSlideArtifacts(key);
+      cleanupSlidesPayload(value, { preservePaths: referenced, preserveNewerThanMs: createdAt });
+    }
+    stmtDelete.run(kind, key);
+  };
+
   const sweepExpired = (now: number) => {
-    stmtDeleteExpired.run(now);
+    const rows = stmtSelectExpired.all(now) as Array<{
+      kind: string;
+      key: string;
+      value: string;
+      created_at: number;
+    }>;
+    for (const row of rows) {
+      deleteEntry(row.kind, row.key, row.value, row.created_at);
+    }
   };
 
   const enforceSize = () => {
@@ -246,12 +276,14 @@ export async function createCacheStore({
       const rows = stmtOldest.all(batchSize) as Array<{
         kind: string;
         key: string;
+        value: string;
         size_bytes: number;
+        created_at: number;
       }>;
       if (rows.length === 0) break;
       for (const row of rows) {
         if (total <= maxBytes) break;
-        stmtDelete.run(row.kind, row.key);
+        deleteEntry(row.kind, row.key, row.value, row.created_at);
         total -= row.size_bytes ?? 0;
       }
       if (total <= maxBytes) break;
@@ -264,10 +296,7 @@ export async function createCacheStore({
     if (!row) return null;
     const expiresAt = row.expires_at;
     if (typeof expiresAt === "number" && expiresAt <= now) {
-      if (kind === "slides") {
-        cleanupSlidesPayload(row.value);
-      }
-      stmtDelete.run(kind, key);
+      deleteEntry(kind, key, row.value, row.created_at);
       return { ...row, expires_at: expiresAt };
     }
     stmtTouch.run(now, kind, key);
@@ -307,6 +336,10 @@ export async function createCacheStore({
   };
 
   const clear = () => {
+    const rows = stmtSlides.all() as Array<{ value: string }>;
+    for (const row of rows) {
+      cleanupSlidesPayload(row.value);
+    }
     stmtClear.run();
     db.exec("PRAGMA incremental_vacuum");
   };

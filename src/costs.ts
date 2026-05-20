@@ -8,6 +8,7 @@ export type LlmProvider =
   | "zai"
   | "nvidia"
   | "github-copilot"
+  | "ollama"
   | "cli";
 
 export type LlmCall = {

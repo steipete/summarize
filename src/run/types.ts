@@ -11,6 +11,7 @@ export type ModelAttemptRequiredEnv =
   | "OPENROUTER_API_KEY"
   | "Z_AI_API_KEY"
   | "GITHUB_TOKEN"
+  | "OLLAMA_BASE_URL"
   | "CLI_CLAUDE"
   | "CLI_CODEX"
   | "CLI_GEMINI"
@@ -44,6 +45,7 @@ export type MarkdownModel = {
   forceOpenRouter: boolean;
   openaiApiKeyOverride?: string | null;
   openaiBaseUrlOverride?: string | null;
+  ollamaBaseUrlOverride?: string | null;
   forceChatCompletions?: boolean;
   requestOptions?: ModelRequestOptions;
   requiredEnv?: ModelAttemptRequiredEnv;

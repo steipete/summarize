@@ -134,6 +134,7 @@ export async function buildModelPickerOptions({
     anthropic: boolean;
     openrouter: boolean;
     zai: boolean;
+    ollama: boolean;
     cliClaude: boolean;
     cliGemini: boolean;
     cliCodex: boolean;
@@ -155,6 +156,7 @@ export async function buildModelPickerOptions({
     anthropic: envState.anthropicConfigured,
     openrouter: envState.openrouterConfigured,
     zai: Boolean(envState.zaiApiKey),
+    ollama: false,
     cliClaude: false,
     cliGemini: false,
     cliCodex: false,
@@ -267,6 +269,29 @@ export async function buildModelPickerOptions({
       });
       for (const id of discovered) {
         options.push({ id: `nvidia/${id}`, label: `NVIDIA (${baseUrlHost}): ${id}` });
+      }
+    }
+  }
+
+  const ollamaExplicitlyConfigured =
+    Boolean(envForRun.OLLAMA_BASE_URL?.trim()) || Boolean(configForCli?.ollama?.baseUrl?.trim());
+  if (ollamaExplicitlyConfigured) {
+    const baseUrl = envState.ollamaBaseUrl;
+    const baseUrlHost = describeBaseUrlHost(baseUrl);
+    if (baseUrlHost) {
+      const discovered = await discoverOpenAiCompatibleModelIds({
+        baseUrl,
+        // Bare Ollama ignores auth, but forward the OpenAI key so a proxy in front of Ollama
+        // can authenticate the /v1/models probe (the summarize calls forward it the same way).
+        apiKey: envState.apiKey,
+        fetchImpl,
+        timeoutMs: 1200,
+      });
+      if (discovered.length > 0) {
+        providers.ollama = true;
+        for (const id of discovered) {
+          options.push({ id: `ollama/${id}`, label: `Ollama (${baseUrlHost}): ${id}` });
+        }
       }
     }
   }

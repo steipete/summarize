@@ -7,7 +7,8 @@ export type LlmProvider =
   | "anthropic"
   | "zai"
   | "nvidia"
-  | "github-copilot";
+  | "github-copilot"
+  | "ollama";
 
 export type ParsedModelId = {
   provider: LlmProvider;
@@ -29,6 +30,7 @@ const PROVIDERS: LlmProvider[] = [
   "zai",
   "nvidia",
   "github-copilot",
+  "ollama",
 ];
 
 /**
@@ -88,7 +90,7 @@ export function normalizeGatewayStyleModelId(raw: string): string {
   }
   if (!PROVIDERS.includes(provider as LlmProvider)) {
     throw new Error(
-      `Unsupported model provider "${provider}". Use xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., or github-copilot/...`,
+      `Unsupported model provider "${provider}". Use xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., github-copilot/..., or ollama/...`,
     );
   }
   if (model.trim().length === 0) {

@@ -72,6 +72,7 @@ function applyAutoCliFallbackOverrides(
 export type DaemonUrlFlowContextArgs = {
   env: Record<string, string | undefined>;
   fetchImpl: typeof fetch;
+  urlFetchImpl?: typeof fetch | null;
   cache: CacheState;
   mediaCache?: MediaCache | null;
   modelOverride: string | null;
@@ -114,6 +115,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
   const {
     env,
     fetchImpl,
+    urlFetchImpl,
     cache,
     mediaCache = null,
     modelOverride,
@@ -178,6 +180,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     zaiBaseUrl,
     nvidiaApiKey,
     nvidiaBaseUrl,
+    ollamaBaseUrl,
     providerBaseUrls,
     firecrawlApiKey,
     firecrawlConfigured,
@@ -272,6 +275,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     },
     zai: { apiKey: zaiApiKey, baseUrl: zaiBaseUrl },
     nvidia: { apiKey: nvidiaApiKey, baseUrl: nvidiaBaseUrl },
+    ollama: { baseUrl: ollamaBaseUrl },
     providerBaseUrls,
   });
 
@@ -363,6 +367,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
       zaiApiKey,
       zaiBaseUrl,
       nvidiaBaseUrl,
+      ollamaBaseUrl,
       assemblyaiApiKey,
       openaiApiKey,
     },
@@ -376,6 +381,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
       stderr,
       execFileImpl: execFileTracked as unknown as ExecFileFn,
       fetch: metrics.trackedFetch,
+      ...(urlFetchImpl ? { urlFetch: urlFetchImpl } : {}),
     },
     flags: {
       timeoutMs,
@@ -444,6 +450,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
         zaiApiKey,
         zaiBaseUrl,
         nvidiaBaseUrl,
+        ollamaBaseUrl,
         firecrawlConfigured,
         firecrawlApiKey,
         apifyToken,

@@ -174,6 +174,7 @@ async function runBrowserJs(
       : null;
 
   const executionId = terminate ? crypto.randomUUID() : undefined;
+  const nativeInputCapability = nativeInputEnabled ? crypto.randomUUID() : "";
   let abortHandler: (() => void) | null = null;
 
   if (signal && executionId && terminate) {
@@ -208,22 +209,26 @@ async function runBrowserJs(
           originalLog(...args)
         }
 
-        const postNativeInput = (payload) => {
+        const sendNativeInput = (payload) => {
           if (!${nativeInputEnabled ? "true" : "false"}) {
             throw new Error('Native input requires debugger permission')
           }
           return new Promise((resolve, reject) => {
-            const requestId = \`\${Date.now()}-\${Math.random().toString(36).slice(2)}\`
-            const handler = (event) => {
-              if (event.source !== window) return
-              const msg = event.data || {}
-              if (msg?.source !== 'summarize-native-input' || msg.requestId !== requestId) return
-              window.removeEventListener('message', handler)
-              if (msg.ok) resolve(true)
-              else reject(new Error(msg.error || 'Native input failed'))
-            }
-            window.addEventListener('message', handler)
-            window.postMessage({ source: 'summarize-native-input', requestId, payload }, '*')
+            chrome.runtime.sendMessage(
+              {
+                type: 'automation:native-input',
+                capability: ${JSON.stringify(nativeInputCapability)},
+                payload,
+              },
+              (response) => {
+                if (chrome.runtime.lastError) {
+                  reject(new Error(chrome.runtime.lastError.message || 'Native input failed'))
+                  return
+                }
+                if (response?.ok) resolve(true)
+                else reject(new Error(response?.error || 'Native input failed'))
+              }
+            )
           })
         }
 
@@ -253,25 +258,25 @@ async function runBrowserJs(
           window.nativeClick = async (selector) => {
             const el = resolveElement(selector)
             const rect = el.getBoundingClientRect()
-            await postNativeInput({ action: 'click', x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+            await sendNativeInput({ action: 'click', x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
           }
 
           window.nativeType = async (selector, text) => {
             const el = resolveElement(selector)
             el.focus()
-            await postNativeInput({ action: 'type', text })
+            await sendNativeInput({ action: 'type', text })
           }
 
           window.nativePress = async (key) => {
-            await postNativeInput({ action: 'press', key })
+            await sendNativeInput({ action: 'press', key })
           }
 
           window.nativeKeyDown = async (key) => {
-            await postNativeInput({ action: 'keydown', key })
+            await sendNativeInput({ action: 'keydown', key })
           }
 
           window.nativeKeyUp = async (key) => {
-            await postNativeInput({ action: 'keyup', key })
+            await sendNativeInput({ action: 'keyup', key })
           }
         }
 
@@ -322,6 +327,7 @@ async function runBrowserJs(
           enabled: nativeInputEnabled,
           tabId: tab.id,
           sendMessage: (message) => chrome.runtime.sendMessage(message),
+          capability: nativeInputCapability,
           run: async () => {
             const results = await userScripts.execute({
               target: { tabId: tab.id },

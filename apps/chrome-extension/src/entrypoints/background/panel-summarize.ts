@@ -35,32 +35,6 @@ type SendFn = (
     | { type: "slides:run"; ok: boolean; runId?: string; url?: string; error?: string },
 ) => void;
 
-function resolveSlidesForLength(
-  lengthValue: string,
-  durationSeconds: number | null | undefined,
-): { maxSlides: number | null; minDurationSeconds: number | null } {
-  if (!durationSeconds || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-    return { maxSlides: null, minDurationSeconds: null };
-  }
-  const normalized = lengthValue.trim().toLowerCase();
-  const chunkSeconds =
-    normalized === "short"
-      ? 600
-      : normalized === "medium"
-        ? 450
-        : normalized === "long"
-          ? 300
-          : normalized === "xl"
-            ? 180
-            : normalized === "xxl"
-              ? 120
-              : 300;
-  const target = Math.max(3, Math.round(durationSeconds / chunkSeconds));
-  const maxSlides = Math.max(3, Math.min(80, target));
-  const minDuration = Math.max(2, Math.floor(durationSeconds / maxSlides));
-  return { maxSlides, minDurationSeconds: minDuration };
-}
-
 export async function summarizeActiveTab({
   session,
   reason,
@@ -398,15 +372,12 @@ export async function summarizeActiveTab({
 
   sendStatus("Connecting…");
   session.inflightUrl = resolvedPayload.url;
-  const slideAuto = wantsSlides
-    ? resolveSlidesForLength(settings.length, resolvedPayload.mediaDurationSeconds)
-    : { maxSlides: null, minDurationSeconds: null };
   const slidesConfig = wantsSlides
     ? {
         enabled: true as const,
         ocr: settings.slidesOcrEnabled,
-        maxSlides: slideAuto.maxSlides,
-        minDurationSeconds: slideAuto.minDurationSeconds,
+        maxSlides: null,
+        minDurationSeconds: null,
       }
     : { enabled: false as const };
   const summarySlides = wantsParallelSlides ? { enabled: false as const } : slidesConfig;

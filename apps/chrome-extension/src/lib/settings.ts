@@ -46,10 +46,34 @@ export type Settings = {
 export type SlidesLayout = "strip" | "gallery";
 
 const storageKey = "settings";
+const fallbackStorageKey = "summarize.settings";
+
+function getLocalStorageArea(): chrome.storage.StorageArea | null {
+  return globalThis.chrome?.storage?.local ?? null;
+}
+
+function loadFallbackSettings(): Record<string, unknown> {
+  try {
+    const raw = globalThis.localStorage?.getItem(fallbackStorageKey);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveFallbackSettings(settings: Settings): void {
+  try {
+    globalThis.localStorage?.setItem(fallbackStorageKey, JSON.stringify(settings));
+  } catch {
+    // Best-effort fallback for non-extension previews.
+  }
+}
 const COUNT_PATTERN = /^(?<value>\d+(?:\.\d+)?)(?<unit>k|m)?$/i;
 const DURATION_PATTERN = /^(?<value>\d+(?:\.\d+)?)(?<unit>ms|s|m|h)?$/i;
 const MIN_MAX_CHARS = 20_000;
-const MAX_MAX_CHARS = 2_000_000;
+export const MAX_MAX_CHARS = 2_000_000;
 const MIN_MAX_OUTPUT_TOKENS = 16;
 const MIN_FONT_SIZE = 12;
 const MAX_FONT_SIZE = 20;
@@ -312,21 +336,24 @@ export const defaultSettings: Settings = {
 };
 
 export async function loadSettings(): Promise<Settings> {
-  const res = await new Promise<Record<string, unknown>>((resolve, reject) => {
-    let settled = false;
-    const maybePromise = chrome.storage.local.get(storageKey, (result) => {
-      settled = true;
-      resolve(result as Record<string, unknown>);
-    });
-    if (maybePromise && typeof (maybePromise as Promise<unknown>).then === "function") {
-      (maybePromise as Promise<Record<string, unknown>>)
-        .then((result) => {
-          if (settled) return;
+  const storage = getLocalStorageArea();
+  const res = storage
+    ? await new Promise<Record<string, unknown>>((resolve, reject) => {
+        let settled = false;
+        const maybePromise = storage.get(storageKey, (result) => {
+          settled = true;
           resolve(result as Record<string, unknown>);
-        })
-        .catch(reject);
-    }
-  });
+        });
+        if (maybePromise && typeof (maybePromise as Promise<unknown>).then === "function") {
+          (maybePromise as Promise<Record<string, unknown>>)
+            .then((result) => {
+              if (settled) return;
+              resolve(result as Record<string, unknown>);
+            })
+            .catch(reject);
+        }
+      })
+    : { [storageKey]: loadFallbackSettings() };
   const raw = (res[storageKey] ?? {}) as Partial<Settings>;
   return {
     ...defaultSettings,
@@ -394,31 +421,39 @@ export async function loadSettings(): Promise<Settings> {
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
-  await chrome.storage.local.set({
+  const normalized = {
+    ...settings,
+    model: normalizeModel(settings.model),
+    length: normalizeLength(settings.length),
+    language: normalizeLanguage(settings.language),
+    promptOverride: normalizePromptOverride(settings.promptOverride),
+    hoverPrompt: normalizeHoverPrompt(settings.hoverPrompt),
+    autoCliOrder: normalizeAutoCliOrder(settings.autoCliOrder),
+    requestMode: normalizeRequestMode(settings.requestMode),
+    slidesLayout: normalizeSlidesLayout(settings.slidesLayout),
+    firecrawlMode: normalizeFirecrawlMode(settings.firecrawlMode),
+    markdownMode: normalizeMarkdownMode(settings.markdownMode),
+    preprocessMode: normalizePreprocessMode(settings.preprocessMode),
+    youtubeMode: normalizeYoutubeMode(settings.youtubeMode),
+    timeout: normalizeTimeout(settings.timeout),
+    retries: normalizeRetries(settings.retries),
+    maxOutputTokens: normalizeMaxOutputTokens(settings.maxOutputTokens),
+    transcriber: normalizeTranscriber(settings.transcriber),
+    fontFamily: normalizeFontFamily(settings.fontFamily),
+    maxChars: normalizeMaxChars(settings.maxChars),
+    fontSize: normalizeFontSize(settings.fontSize),
+    lineHeight: normalizeLineHeight(settings.lineHeight),
+    colorScheme: normalizeColorScheme(settings.colorScheme),
+    colorMode: normalizeColorMode(settings.colorMode),
+  };
+  const storage = getLocalStorageArea();
+  if (!storage) {
+    saveFallbackSettings(normalized);
+    return;
+  }
+  await storage.set({
     [storageKey]: {
-      ...settings,
-      model: normalizeModel(settings.model),
-      length: normalizeLength(settings.length),
-      language: normalizeLanguage(settings.language),
-      promptOverride: normalizePromptOverride(settings.promptOverride),
-      hoverPrompt: normalizeHoverPrompt(settings.hoverPrompt),
-      autoCliOrder: normalizeAutoCliOrder(settings.autoCliOrder),
-      requestMode: normalizeRequestMode(settings.requestMode),
-      slidesLayout: normalizeSlidesLayout(settings.slidesLayout),
-      firecrawlMode: normalizeFirecrawlMode(settings.firecrawlMode),
-      markdownMode: normalizeMarkdownMode(settings.markdownMode),
-      preprocessMode: normalizePreprocessMode(settings.preprocessMode),
-      youtubeMode: normalizeYoutubeMode(settings.youtubeMode),
-      timeout: normalizeTimeout(settings.timeout),
-      retries: normalizeRetries(settings.retries),
-      maxOutputTokens: normalizeMaxOutputTokens(settings.maxOutputTokens),
-      transcriber: normalizeTranscriber(settings.transcriber),
-      fontFamily: normalizeFontFamily(settings.fontFamily),
-      maxChars: normalizeMaxChars(settings.maxChars),
-      fontSize: normalizeFontSize(settings.fontSize),
-      lineHeight: normalizeLineHeight(settings.lineHeight),
-      colorScheme: normalizeColorScheme(settings.colorScheme),
-      colorMode: normalizeColorMode(settings.colorMode),
+      ...normalized,
     },
   });
 }

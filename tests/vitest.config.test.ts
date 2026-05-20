@@ -42,4 +42,10 @@ describe("vitest config", () => {
       "packages/core/src/**/*.ts",
     ]);
   });
+
+  it("excludes browser content scripts from node coverage", () => {
+    expect(createVitestConfig({ env: {} }).test?.coverage?.exclude).toContain(
+      "apps/chrome-extension/src/entrypoints/*.content.ts",
+    );
+  });
 });

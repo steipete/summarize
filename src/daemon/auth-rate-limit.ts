@@ -5,9 +5,7 @@
 // but bearer-token endpoints with no lockout are still cheap to brute-force,
 // so we keep a small per-IP failure counter as defense in depth.
 
-export type RateLimitDecision =
-  | { allowed: true }
-  | { allowed: false; retryAfterSeconds: number };
+export type RateLimitDecision = { allowed: true } | { allowed: false; retryAfterSeconds: number };
 
 export type AuthRateLimiterOptions = {
   /** Max consecutive failures before the IP is locked out. */

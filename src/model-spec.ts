@@ -8,6 +8,7 @@ import {
   requiredEnvForCliProvider,
   resolveRequiredEnvForModelId,
 } from "./llm/provider-capabilities.js";
+import { DEFAULT_OLLAMA_BASE_URL } from "./llm/provider-profile.js";
 
 export type FixedModelSpec =
   | {
@@ -24,7 +25,8 @@ export type FixedModelSpec =
         | "ANTHROPIC_API_KEY"
         | "Z_AI_API_KEY"
         | "NVIDIA_API_KEY"
-        | "GITHUB_TOKEN";
+        | "GITHUB_TOKEN"
+        | "OLLAMA_BASE_URL";
       openaiBaseUrlOverride?: string | null;
       forceChatCompletions?: boolean;
       requestOptions?: ModelRequestOptions;
@@ -132,6 +134,26 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       requiredEnv: "NVIDIA_API_KEY",
       // Default; can be overridden at runtime via NVIDIA_BASE_URL / config.nvidia.baseUrl.
       openaiBaseUrlOverride: "https://integrate.api.nvidia.com/v1",
+      forceChatCompletions: true,
+    };
+  }
+
+  if (lower.startsWith("ollama/")) {
+    const model = trimmed.slice("ollama/".length).trim();
+    if (model.length === 0) {
+      throw new Error("Invalid model id: ollama/… is missing the model id");
+    }
+    return {
+      kind: "fixed",
+      transport: "native",
+      userModelId: `ollama/${model}`,
+      llmModelId: `ollama/${model}`,
+      provider: "ollama",
+      openrouterProviders: null,
+      forceOpenRouter: false,
+      requiredEnv: "OLLAMA_BASE_URL",
+      // Default; can be overridden at runtime via OLLAMA_BASE_URL / config.ollama.baseUrl.
+      openaiBaseUrlOverride: DEFAULT_OLLAMA_BASE_URL,
       forceChatCompletions: true,
     };
   }
@@ -248,6 +270,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     | "Z_AI_API_KEY"
     | "NVIDIA_API_KEY"
     | "GITHUB_TOKEN"
+    | "OLLAMA_BASE_URL"
   >;
   return {
     kind: "fixed",

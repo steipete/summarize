@@ -12,6 +12,7 @@ import { readTweetWithPreferredClient } from "../../bird.js";
 import { resolveTwitterCookies } from "../../cookies/twitter.js";
 import { hasBirdCli, hasXurlCli } from "../../env.js";
 import { writeVerbose } from "../../logging.js";
+import { resolveUrlFlowYtDlpPath } from "./external-media.js";
 import { fetchLinkContentWithBirdTip } from "./extract.js";
 import { resolveUrlFetchOptions } from "./fetch-options.js";
 import type { UrlFlowContext } from "./types.js";
@@ -43,6 +44,7 @@ export function createUrlExtractionSession({
   onProgress: LinkPreviewProgressHandler;
 }): UrlExtractionSession {
   const { io, flags, model, cache: cacheState } = ctx;
+  const urlFetch = io.urlFetch ?? io.fetch;
   const cacheStore = cacheState.mode === "default" ? cacheState.store : null;
   const transcriptCache = cacheStore ? cacheStore.transcriptCache : null;
   const firecrawlApiKey = model.apiStatus.firecrawlApiKey;
@@ -63,7 +65,10 @@ export function createUrlExtractionSession({
   const client = createLinkPreviewClient({
     env: io.envForRun,
     apifyApiToken: model.apiStatus.apifyToken,
-    ytDlpPath: model.apiStatus.ytDlpPath,
+    ytDlpPath: resolveUrlFlowYtDlpPath({
+      urlFetch: io.urlFetch,
+      ytDlpPath: model.apiStatus.ytDlpPath,
+    }),
     transcription: {
       env: io.envForRun,
       falApiKey: model.apiStatus.falApiKey,
@@ -83,7 +88,7 @@ export function createUrlExtractionSession({
         warnings: res.warnings,
       };
     },
-    fetch: io.fetch,
+    fetch: urlFetch,
     transcriptCache,
     mediaCache: ctx.mediaCache ?? null,
     onProgress,
@@ -110,6 +115,7 @@ export function createUrlExtractionSession({
               format: options.format,
               markdownMode: options.markdownMode ?? null,
               transcriptTimestamps: options.transcriptTimestamps ?? false,
+              throwOnAssetLikeHtmlError: options.throwOnAssetLikeHtmlError ?? false,
               ...(typeof options.maxCharacters === "number"
                 ? { maxCharacters: options.maxCharacters }
                 : {}),

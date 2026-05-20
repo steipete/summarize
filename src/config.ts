@@ -34,6 +34,7 @@ export type {
   MediaCacheVerifyMode,
   ModelConfig,
   NvidiaConfig,
+  OllamaConfig,
   OpenAiConfig,
   SummarizeConfig,
   VideoMode,
@@ -99,6 +100,11 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
   const google = parseProviderBaseUrlConfig(parsed.google, path, "google");
   const xai = parseProviderBaseUrlConfig(parsed.xai, path, "xai");
   const zai = parseProviderBaseUrlConfig((parsed as Record<string, unknown>).zai, path, "zai");
+  const ollama = parseProviderBaseUrlConfig(
+    (parsed as Record<string, unknown>).ollama,
+    path,
+    "ollama",
+  );
 
   const configEnv = parseEnvConfig(parsed, path);
   const apiKeys = parseApiKeysConfig(parsed, path);
@@ -121,6 +127,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       ...(google ? { google } : {}),
       ...(xai ? { xai } : {}),
       ...(zai ? { zai } : {}),
+      ...(ollama ? { ollama } : {}),
       ...(logging ? { logging } : {}),
       ...(configEnv ? { env: configEnv } : {}),
       ...(apiKeys ? { apiKeys } : {}),

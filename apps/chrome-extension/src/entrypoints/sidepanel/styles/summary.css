@@ -171,26 +171,6 @@ button.setup__pill.isActive {
   margin-top: 0;
 }
 
-.render__actions {
-  display: flex;
-  justify-content: flex-end;
-  margin: 0 0 8px;
-}
-
-.render__copy {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-}
-
-.render__copy svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
-}
-
 .render__markdownBody > :first-child {
   margin-top: 0;
 }

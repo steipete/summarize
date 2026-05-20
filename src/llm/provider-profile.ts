@@ -16,7 +16,8 @@ export type GatewayProvider =
   | "anthropic"
   | "zai"
   | "nvidia"
-  | "github-copilot";
+  | "github-copilot"
+  | "ollama";
 
 export type RequiredModelEnv =
   | "XAI_API_KEY"
@@ -27,6 +28,7 @@ export type RequiredModelEnv =
   | "OPENROUTER_API_KEY"
   | "Z_AI_API_KEY"
   | "GITHUB_TOKEN"
+  | "OLLAMA_BASE_URL"
   | "CLI_CLAUDE"
   | "CLI_CODEX"
   | "CLI_GEMINI"
@@ -85,7 +87,15 @@ const GATEWAY_PROVIDER_PROFILES: Record<GatewayProvider, GatewayProviderProfile>
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
   },
+  ollama: {
+    requiredEnv: "OLLAMA_BASE_URL",
+    supportsDocuments: false,
+    supportsStreaming: true,
+    supportsVideoUnderstanding: false,
+  },
 };
+
+export const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434/v1";
 
 export const DEFAULT_CLI_MODELS: Record<CliProvider, string | null> = {
   claude: "sonnet",
@@ -172,6 +182,9 @@ export function envHasRequiredKey(
   if (requiredEnv === "GITHUB_TOKEN") {
     return Boolean(resolveGitHubModelsApiKey(env));
   }
+  if (requiredEnv === "OLLAMA_BASE_URL") {
+    return true;
+  }
   return Boolean(env[requiredEnv]?.trim());
 }
 
@@ -206,7 +219,7 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
   forceChatCompletions,
   requestOptions,
 }: {
-  provider: "openai" | "zai" | "nvidia" | "github-copilot";
+  provider: "openai" | "zai" | "nvidia" | "github-copilot" | "ollama";
   openaiApiKey: string | null;
   openrouterApiKey: string | null;
   forceOpenRouter?: boolean;
@@ -237,6 +250,15 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
       useChatCompletions: true,
       isOpenRouter: false,
       extraHeaders: buildGitHubModelsHeaders(),
+    };
+  }
+  if (provider === "ollama") {
+    return {
+      apiKey: openaiApiKey?.trim() || "ollama",
+      baseURL: openaiBaseUrlOverride ?? DEFAULT_OLLAMA_BASE_URL,
+      useChatCompletions: true,
+      isOpenRouter: false,
+      ...(requestOptions ? { requestOptions } : {}),
     };
   }
 

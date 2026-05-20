@@ -16,7 +16,7 @@ import type { SlideSettings } from "../slides/index.js";
 import { resolvePackageVersion } from "../version.js";
 import { AuthRateLimiter } from "./auth-rate-limit.js";
 import { type DaemonRequestedMode } from "./auto-mode.js";
-import { daemonConfigTokens, type DaemonConfig } from "./config.js";
+import { daemonConfigTokens, isAuthorizedDaemonToken, type DaemonConfig } from "./config.js";
 import { DAEMON_HOST, DAEMON_PORT_DEFAULT } from "./constants.js";
 import { resolveDaemonLogPaths } from "./launchd.js";
 import { ProcessRegistry } from "./process-registry.js";
@@ -50,11 +50,22 @@ import {
   toExtractOnlySlidesPayload,
 } from "./server-summarize-execution.js";
 import { parseSummarizeRequest } from "./server-summarize-request.js";
+import { assertDaemonUrlFetchAllowed, createDaemonUrlFetchGuard } from "./url-fetch-guard.js";
 import { isWindowsContainerEnvironment } from "./windows-container.js";
 
 export { corsHeaders, isTrustedOrigin } from "./server-http.js";
 
 const DAEMON_SHUTDOWN_ACTIVE_SESSION_GRACE_MS = 5000;
+const DAEMON_MAX_ACTIVE_SUMMARIES_DEFAULT = 4;
+const DAEMON_MAX_ACTIVE_SUMMARIES_LIMIT = 32;
+
+export function resolveDaemonMaxActiveSummaries(env: Record<string, string | undefined>): number {
+  const raw = env.SUMMARIZE_DAEMON_MAX_ACTIVE_SUMMARIES?.trim();
+  if (!raw) return DAEMON_MAX_ACTIVE_SUMMARIES_DEFAULT;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return DAEMON_MAX_ACTIVE_SUMMARIES_DEFAULT;
+  return clampNumber(Math.floor(parsed), 1, DAEMON_MAX_ACTIVE_SUMMARIES_LIMIT);
+}
 
 async function waitForActiveTasks(
   activeTasks: Set<Promise<void>>,
@@ -160,8 +171,33 @@ export async function runDaemonServer({
   const sessions = new Map<string, Session>();
   const refreshSessions = new Map<string, Session>();
   const activeTasks = new Set<Promise<void>>();
+  const maxActiveSummaries = resolveDaemonMaxActiveSummaries(env);
+  let activeSummarizeCount = 0;
   let activeRefreshSessionId: string | null = null;
   const authLimiter = new AuthRateLimiter();
+
+  const reserveSummarizeSlot = (): (() => void) | null => {
+    if (activeSummarizeCount >= maxActiveSummaries) return null;
+    activeSummarizeCount += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      activeSummarizeCount = Math.max(0, activeSummarizeCount - 1);
+    };
+  };
+
+  const trackSummarizeTask = (task: Promise<unknown>, releaseSlot: () => void): void => {
+    const tracked = task.then(
+      () => undefined,
+      () => undefined,
+    );
+    activeTasks.add(tracked);
+    void tracked.finally(() => {
+      activeTasks.delete(tracked);
+      releaseSlot();
+    });
+  };
 
   const server = http.createServer((req, res) => {
     const requestTask = (async () => {
@@ -182,7 +218,7 @@ export async function runDaemonServer({
       }
 
       const token = readBearerToken(req);
-      const authed = token ? daemonConfigTokens(config).includes(token) : false;
+      const authed = token ? isAuthorizedDaemonToken(token, daemonConfigTokens(config)) : false;
       if (pathname.startsWith("/v1/")) {
         // `req.socket.remoteAddress` is loopback in the common case; for
         // 0.0.0.0 binds inside Windows containers it's the caller's IP.
@@ -275,7 +311,6 @@ export async function runDaemonServer({
       }
 
       if (req.method === "POST" && pathname === "/v1/summarize") {
-        await refreshCacheStoreIfMissing({ cacheState, transcriptNamespace: "yt:auto" });
         const request = await parseSummarizeRequest({
           req,
           res,
@@ -285,6 +320,18 @@ export async function runDaemonServer({
         });
         if (!request) {
           return;
+        }
+        const urlFetchNeeded = request.extractOnly || request.mode === "url" || !request.hasText;
+        let summarizeUrlFetchImpl: typeof fetch | null = null;
+        if (urlFetchNeeded) {
+          try {
+            await assertDaemonUrlFetchAllowed(request.pageUrl);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            json(res, 400, { ok: false, error: message }, cors);
+            return;
+          }
+          summarizeUrlFetchImpl = createDaemonUrlFetchGuard(fetchImpl);
         }
         const {
           pageUrl,
@@ -306,117 +353,138 @@ export async function runDaemonServer({
           hasText,
         } = request;
         const includeContentLog = daemonLogger.enabled && diagnostics.includeContent;
-        if (extractOnly) {
-          try {
-            const { extracted, slides } = await handleExtractOnlySummarizeRequest({
-              request,
-              env,
-              fetchImpl,
-              cacheState,
-              mediaCache,
-            });
-            const slidesPayload = toExtractOnlySlidesPayload(slides);
-            json(
-              res,
-              200,
-              {
-                ok: true,
-                extracted: {
-                  content: extracted.content,
-                  title: extracted.title,
-                  url: extracted.url,
-                  wordCount: extracted.wordCount,
-                  totalCharacters: extracted.totalCharacters,
-                  truncated: extracted.truncated,
-                  transcriptSource: extracted.transcriptSource ?? null,
-                  transcriptCharacters: extracted.transcriptCharacters ?? null,
-                  transcriptWordCount: extracted.transcriptWordCount ?? null,
-                  transcriptLines: extracted.transcriptLines ?? null,
-                  transcriptSegments: extracted.transcriptSegments ?? null,
-                  transcriptTimedText: extracted.transcriptTimedText ?? null,
-                  transcriptionProvider: extracted.transcriptionProvider ?? null,
-                  mediaDurationSeconds: extracted.mediaDurationSeconds ?? null,
-                  diagnostics: extracted.diagnostics,
-                },
-                ...(slidesPayload ? { slides: slidesPayload } : {}),
-              },
-              cors,
-            );
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            json(res, 500, { ok: false, error: message }, cors);
-          }
+        const releaseSummarizeSlot = reserveSummarizeSlot();
+        if (!releaseSummarizeSlot) {
+          json(
+            res,
+            429,
+            { ok: false, error: `too many active summarize requests (max ${maxActiveSummaries})` },
+            cors,
+          );
           return;
         }
+        try {
+          await refreshCacheStoreIfMissing({ cacheState, transcriptNamespace: "yt:auto" });
+          if (extractOnly) {
+            const extractTask = (async () => {
+              try {
+                const { extracted, slides } = await handleExtractOnlySummarizeRequest({
+                  request,
+                  env,
+                  fetchImpl,
+                  urlFetchImpl: summarizeUrlFetchImpl,
+                  cacheState,
+                  mediaCache,
+                });
+                const slidesPayload = toExtractOnlySlidesPayload(slides);
+                json(
+                  res,
+                  200,
+                  {
+                    ok: true,
+                    extracted: {
+                      content: extracted.content,
+                      title: extracted.title,
+                      url: extracted.url,
+                      wordCount: extracted.wordCount,
+                      totalCharacters: extracted.totalCharacters,
+                      truncated: extracted.truncated,
+                      transcriptSource: extracted.transcriptSource ?? null,
+                      transcriptCharacters: extracted.transcriptCharacters ?? null,
+                      transcriptWordCount: extracted.transcriptWordCount ?? null,
+                      transcriptLines: extracted.transcriptLines ?? null,
+                      transcriptSegments: extracted.transcriptSegments ?? null,
+                      transcriptTimedText: extracted.transcriptTimedText ?? null,
+                      transcriptionProvider: extracted.transcriptionProvider ?? null,
+                      mediaDurationSeconds: extracted.mediaDurationSeconds ?? null,
+                      diagnostics: extracted.diagnostics,
+                    },
+                    ...(slidesPayload ? { slides: slidesPayload } : {}),
+                  },
+                  cors,
+                );
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                json(res, 500, { ok: false, error: message }, cors);
+              }
+            })();
+            trackSummarizeTask(extractTask, releaseSummarizeSlot);
+            await extractTask;
+            return;
+          }
 
-        const session = createSession(() => randomUUID());
-        session.slidesRequested = Boolean(slidesSettings);
-        sessions.set(session.id, session);
-        const requestLogger = daemonLogger.getSubLogger("daemon.summarize", {
-          requestId: session.id,
-        });
-        const logStartedAt = Date.now();
-        let logSummaryFromCache = false;
-        let logInputSummary: string | null = null;
-        let logSummaryText = "";
-        let logExtracted: Record<string, unknown> | null = null;
-        const logInput = includeContentLog
-          ? {
-              url: pageUrl,
-              title,
-              text: hasText ? textContent : null,
-              truncated: hasText ? truncated : null,
-            }
-          : null;
-        const logSlidesSettings =
-          includeContentLog && slidesSettings
+          const session = createSession(() => randomUUID());
+          session.slidesRequested = Boolean(slidesSettings);
+          sessions.set(session.id, session);
+          const requestLogger = daemonLogger.getSubLogger("daemon.summarize", {
+            requestId: session.id,
+          });
+          const logStartedAt = Date.now();
+          let logSummaryFromCache = false;
+          let logInputSummary: string | null = null;
+          let logSummaryText = "";
+          let logExtracted: Record<string, unknown> | null = null;
+          const logInput = includeContentLog
             ? {
-                enabled: slidesSettings.enabled,
-                ocr: slidesSettings.ocr,
-                outputDir: slidesSettings.outputDir,
-                sceneThreshold: slidesSettings.sceneThreshold,
-                autoTuneThreshold: slidesSettings.autoTuneThreshold,
-                maxSlides: slidesSettings.maxSlides,
-                minDurationSeconds: slidesSettings.minDurationSeconds,
+                url: pageUrl,
+                title,
+                text: hasText ? textContent : null,
+                truncated: hasText ? truncated : null,
               }
             : null;
-        requestLogger?.info({
-          event: "summarize.request",
-          url: pageUrl,
-          mode,
-          hasText,
-          noCache,
-          length: lengthRaw,
-          language: languageRaw,
-          model: modelOverride,
-          includeContent: includeContentLog,
-          slides: Boolean(slidesSettings),
-          ...(logSlidesSettings ? { slidesSettings: logSlidesSettings } : {}),
-          ...(includeContentLog ? { diagnostics } : {}),
-        });
+          const logSlidesSettings =
+            includeContentLog && slidesSettings
+              ? {
+                  enabled: slidesSettings.enabled,
+                  ocr: slidesSettings.ocr,
+                  outputDir: slidesSettings.outputDir,
+                  sceneThreshold: slidesSettings.sceneThreshold,
+                  autoTuneThreshold: slidesSettings.autoTuneThreshold,
+                  maxSlides: slidesSettings.maxSlides,
+                  minDurationSeconds: slidesSettings.minDurationSeconds,
+                }
+              : null;
+          requestLogger?.info({
+            event: "summarize.request",
+            url: pageUrl,
+            mode,
+            hasText,
+            noCache,
+            length: lengthRaw,
+            language: languageRaw,
+            model: modelOverride,
+            includeContent: includeContentLog,
+            slides: Boolean(slidesSettings),
+            ...(logSlidesSettings ? { slidesSettings: logSlidesSettings } : {}),
+            ...(includeContentLog ? { diagnostics } : {}),
+          });
 
-        json(res, 200, { ok: true, id: session.id }, cors);
+          json(res, 200, { ok: true, id: session.id }, cors);
 
-        const summaryTask = executeSummarizeSession({
-          session,
-          request,
-          env,
-          fetchImpl,
-          cacheState,
-          mediaCache,
-          port,
-          onSessionEvent,
-          requestLogger,
-          includeContentLog,
-          logStartedAt,
-          logInput,
-          logSlidesSettings,
-          sessions,
-          refreshSessions,
-        });
-        activeTasks.add(summaryTask);
-        void summaryTask.finally(() => activeTasks.delete(summaryTask));
-        return;
+          const summaryTask = executeSummarizeSession({
+            session,
+            request,
+            env,
+            fetchImpl,
+            urlFetchImpl: summarizeUrlFetchImpl,
+            cacheState,
+            mediaCache,
+            port,
+            onSessionEvent,
+            requestLogger,
+            includeContentLog,
+            logStartedAt,
+            logInput,
+            logSlidesSettings,
+            sessions,
+            refreshSessions,
+          });
+          trackSummarizeTask(summaryTask, releaseSummarizeSlot);
+          return;
+        } catch (error) {
+          releaseSummarizeSlot();
+          throw error;
+        }
       }
 
       if (await handleAgentRoute({ req, res, url, cors, env, createRunId: randomUUID })) {

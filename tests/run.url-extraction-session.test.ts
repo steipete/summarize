@@ -210,6 +210,54 @@ describe("createUrlExtractionSession", () => {
     expect(fetchLinkContentWithBirdTip.mock.calls[0]?.[0]?.options.mediaTranscript).toBe("prefer");
   });
 
+  it("disables yt-dlp media fetches when daemon URL fetch guarding is active", () => {
+    const ctx = createCtx();
+    const guardedFetch = vi.fn();
+    (ctx.io as typeof ctx.io & { urlFetch: typeof fetch }).urlFetch =
+      guardedFetch as unknown as typeof fetch;
+    ctx.model.apiStatus.ytDlpPath = "/usr/bin/yt-dlp";
+
+    createUrlExtractionSession({
+      ctx: ctx as never,
+      markdown: {
+        convertHtmlToMarkdown: vi.fn(),
+        effectiveMarkdownMode: "off",
+        markdownRequested: false,
+      },
+      onProgress: null,
+    });
+
+    expect(createLinkPreviewClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fetch: guardedFetch,
+        ytDlpPath: null,
+      }),
+    );
+  });
+
+  it("includes asset-like html error mode in extract cache keys", async () => {
+    const ctx = createCtx();
+    (ctx.flags as { throwOnAssetLikeHtmlError?: boolean }).throwOnAssetLikeHtmlError = true;
+    const session = createUrlExtractionSession({
+      ctx: ctx as never,
+      markdown: {
+        convertHtmlToMarkdown: vi.fn(),
+        effectiveMarkdownMode: "off",
+        markdownRequested: false,
+      },
+      onProgress: null,
+    });
+
+    await session.fetchWithCache("https://example.com/download");
+
+    expect(buildExtractCacheKey).toHaveBeenCalledWith({
+      url: "https://example.com/download",
+      options: expect.objectContaining({
+        throwOnAssetLikeHtmlError: true,
+      }),
+    });
+  });
+
   it("surfaces podcast extraction errors instead of falling back to empty URL-only content", async () => {
     const ctx = createCtx();
     const session = createUrlExtractionSession({

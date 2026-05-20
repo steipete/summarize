@@ -120,6 +120,7 @@ const {
   slidesLayoutEl,
   subtitleEl,
   summarizeControlRoot,
+  summaryCopyBtn,
   titleEl,
 } = createSidepanelDom();
 
@@ -662,6 +663,7 @@ const summaryViewRuntime = createSummaryViewRuntime({
   renderEl,
   renderSlidesHostEl,
   renderMarkdownHostEl,
+  summaryCopyBtn,
   getSlidesRenderer: () =>
     slidesRenderer ?? {
       applyLayout: () => {},
@@ -798,6 +800,7 @@ function rebuildSlideDescriptions() {
 slidesViewRuntime = createSlidesViewRuntime({
   renderMarkdownHostEl,
   renderSlidesHostEl,
+  summaryCopyBtn,
   chatMessagesEl,
   md,
   headerSetStatus: (text) => headerController.setStatus(text),

@@ -125,7 +125,7 @@ describe("daemon redirect e2e", () => {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          url: "https://t.co/abc",
+          url: "https://8.8.8.8/abc",
           title: null,
           model: "cli/codex",
           length: "short",
@@ -153,7 +153,7 @@ describe("daemon redirect e2e", () => {
 
       const summary = await chunkPromise;
       expect(summary).toContain("https://summarize.sh/");
-      expect(summary).not.toContain("https://t.co/abc");
+      expect(summary).not.toContain("https://8.8.8.8/abc");
     } finally {
       clearTimeout(timeoutId);
       abortController.abort();

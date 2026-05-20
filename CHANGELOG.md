@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+### Features
+
+- Add Ollama as a first-class provider (`ollama/<model>`). Uses Ollama's OpenAI-compatible endpoint (default `http://localhost:11434/v1`), no API key required, forces chat completions. Configurable via env `OLLAMA_BASE_URL` or config `ollama.baseUrl`. Daemon model picker auto-discovers Ollama models when `OLLAMA_BASE_URL` is set. See `docs/ollama.md`.
+
+### Fixes
+
+- CLI attachments: sanitize asset filenames before writing temp files so caller-supplied path components cannot escape the temp directory (#225, thanks @ejames-dev).
+- CLI slides: keep local Ollama summaries from leaking planning text or malformed nested slide headings.
+- Daemon: rate-limit repeated failed `/v1/*` bearer-token auth attempts with a bounded in-memory lockout (#227, thanks @ejames-dev).
+- Daemon: use timing-safe bearer-token comparisons for local `/v1/*` authorization checks (#226, thanks @ejames-dev).
+- Daemon: block daemon URL-mode extraction from fetching loopback, private-network, link-local, and redirect targets that resolve to local networks, and disable unguarded `yt-dlp` media fetches in guarded daemon URL runs.
+- Chrome extension automation: require an extension-only native-input capability so page scripts cannot piggyback trusted input while automation is armed.
+- Chrome extension: keep stale summarize stream starts from canceling newer streams after token lookup races.
+- Chrome extension slides: request transcript context after restoring cached slides that do not include timed transcript text.
+- Cache: clean generated slide artifacts when slide cache rows expire, evict, or clear.
+- Release: align the release helper and docs with GitHub assets plus Homebrew/core verification instead of the retired tap flow.
+- Daemon: cap concurrent summarize requests with an env-tunable limit so runaway extension/API clients receive a clear 429 instead of piling up background work.
+- Chrome extension: allow max-size page extraction payloads to reach the daemon instead of failing JSON body parsing before summarization starts.
+- CLI streaming: write interactive raw summary deltas as soon as they arrive instead of waiting for a newline before the first stdout output.
+- Chrome extension: stream OpenAI GPT-5 summaries with fast/reasoning options instead of waiting for a blocking completion.
+- Chrome extension: move the summary copy action into the header toolbar instead of reserving space above the rendered summary.
+- Chrome extension automation: avoid duplicate content-script listeners when automation is injected more than once into the same tab.
+- Chrome extension options: keep slower process-log responses from overwriting the logs for a newly selected process.
+- Chrome extension: keep stale model discovery responses from reverting newer token results or user-selected models.
+- Chrome extension options: keep stale daemon status checks from replacing the missing-token warning after the token field is cleared.
+- Chrome extension options: show save failures instead of leaving the form stuck on Saving.
+- CLI performance: skip remote asset probes for normal web URLs so extraction reaches first stdout sooner while preserving unknown-asset fallback after URL extraction failures.
+- YouTube transcripts: try same-language caption fallbacks when the preferred caption URL is blocked or dead.
+- Chrome extension: match CLI slide defaults for YouTube slide summaries and replace transcript fallback card text with LLM-written slide summaries.
+- Chrome extension options: defer loading automation skills until the Skills tab opens so settings startup avoids the large skills bundle.
+- Chrome extension: make picker popovers opaque again and reorganize advanced options into clearer groups.
+- Chrome extension options: avoid crashing when Chrome opens settings without the extension storage API available.
+
 ## 0.15.2 - 2026-05-17
 
 ### Fixes

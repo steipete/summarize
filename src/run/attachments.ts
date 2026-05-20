@@ -113,7 +113,10 @@ export async function ensureCliAttachmentPath({
       : attachment.mediaType
         ? `.${mime.getExtension(attachment.mediaType) ?? "bin"}`
         : ".bin";
-  const filename = attachment.filename?.trim() || `asset${ext}`;
+  const rawName = attachment.filename?.trim() || `asset${ext}`;
+  // Strip any directory components from the caller-supplied filename so a name
+  // like `../../foo` can't escape the temp dir we just created.
+  const filename = path.basename(rawName) || `asset${ext}`;
   const dir = await fs.mkdtemp(path.join(tmpdir(), "summarize-cli-asset-"));
   const filePath = path.join(dir, filename);
   await fs.writeFile(filePath, bytes);

@@ -14,6 +14,35 @@ import type { SummarizeAssetArgs } from "./flows/asset/summary.js";
 import { runUrlFlow } from "./flows/url/flow.js";
 import { createTempFileFromStdin } from "./stdin-temp-file.js";
 
+function shouldRetryUrlAsUnknownAsset(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("unsupported binary payload for html document fetch") ||
+    message.includes("unsupported content-type for html document fetch") ||
+    message.includes("unsupported content-disposition for html document fetch")
+  );
+}
+
+function canRetryUrlFlowAfterAssetMiss(ctx: unknown): boolean {
+  if (!ctx || typeof ctx !== "object") return false;
+  const { flags, model } = ctx as {
+    flags?: { firecrawlMode?: unknown };
+    model?: { apiStatus?: { firecrawlConfigured?: unknown } };
+  };
+  return flags?.firecrawlMode !== "off" && model?.apiStatus?.firecrawlConfigured === true;
+}
+
+function allowUrlFlowFirecrawlFallback(ctx: unknown): unknown {
+  if (!ctx || typeof ctx !== "object") return ctx;
+  const flags = (ctx as { flags?: unknown }).flags;
+  if (!flags || typeof flags !== "object") return ctx;
+  return {
+    ...(ctx as object),
+    flags: { ...(flags as object), throwOnAssetLikeHtmlError: false },
+  };
+}
+
 export async function executeRunnerInput(options: {
   inputTarget: InputTarget;
   stdin: NodeJS.ReadableStream;
@@ -149,10 +178,12 @@ export async function executeRunnerInput(options: {
     return;
   }
 
-  if (
-    !slidesDirectInputUrl &&
-    url &&
-    (await withUrlAsset(
+  const tryUrlAsset = async (
+    detectUnknownAssetUrls: boolean,
+    assumeAsset = false,
+  ): Promise<boolean> => {
+    if (slidesDirectInputUrl || !url) return false;
+    return await withUrlAsset(
       withUrlAssetContext as never,
       url,
       isYoutubeUrl,
@@ -190,8 +221,11 @@ export async function executeRunnerInput(options: {
           },
         });
       },
-    ))
-  ) {
+      { detectUnknownAssetUrls, assumeAsset },
+    );
+  };
+
+  if (await tryUrlAsset(false)) {
     return;
   }
 
@@ -204,5 +238,20 @@ export async function executeRunnerInput(options: {
     throw new Error("Only HTTP and HTTPS URLs can be summarized");
   }
 
-  await runUrlFlow({ ctx: runUrlFlowContext as never, url, isYoutubeUrl });
+  try {
+    await runUrlFlow({ ctx: runUrlFlowContext as never, url, isYoutubeUrl });
+  } catch (error) {
+    if (shouldRetryUrlAsUnknownAsset(error)) {
+      if (await tryUrlAsset(true, true)) return;
+      if (canRetryUrlFlowAfterAssetMiss(runUrlFlowContext)) {
+        await runUrlFlow({
+          ctx: allowUrlFlowFirecrawlFallback(runUrlFlowContext) as never,
+          url,
+          isYoutubeUrl,
+        });
+        return;
+      }
+    }
+    throw error;
+  }
 }

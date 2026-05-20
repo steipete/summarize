@@ -3,6 +3,7 @@ export function createOptionsTabs({
   buttons,
   panels,
   storageKey,
+  onTabActivated,
   onLogsActiveChange,
   onProcessesActiveChange,
 }: {
@@ -10,6 +11,7 @@ export function createOptionsTabs({
   buttons: HTMLButtonElement[];
   panels: HTMLElement[];
   storageKey: string;
+  onTabActivated?: (tabId: string) => void;
   onLogsActiveChange: (active: boolean) => void;
   onProcessesActiveChange: (active: boolean) => void;
 }) {
@@ -31,6 +33,7 @@ export function createOptionsTabs({
       panel.hidden = panel.dataset.tabPanel !== tabId;
     }
     localStorage.setItem(storageKey, tabId);
+    onTabActivated?.(tabId);
     onLogsActiveChange(tabId === "logs");
     onProcessesActiveChange(tabId === "processes");
   };

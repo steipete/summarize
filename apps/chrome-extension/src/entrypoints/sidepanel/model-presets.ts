@@ -105,6 +105,10 @@ export function createModelPresetsController({
     presetValue: modelPresetEl.value,
     customValue: modelCustomEl.value,
   });
+  const sameSelection = (
+    a: { presetValue: string; customValue: string },
+    b: { presetValue: string; customValue: string },
+  ) => a.presetValue === b.presetValue && a.customValue === b.customValue;
 
   const restoreSelection = (selection: { presetValue: string; customValue: string }) => {
     if (selection.presetValue === "custom") {
@@ -122,10 +126,18 @@ export function createModelPresetsController({
     setValue(selection.presetValue);
   };
 
+  let refreshRequestId = 0;
   const refreshPresets = async (token: string) => {
-    const selection = captureSelection();
+    const requestId = ++refreshRequestId;
+    const selectionAtStart = captureSelection();
+    const isCurrentRequest = () => requestId === refreshRequestId;
+    const selectionToRestore = () => {
+      const current = captureSelection();
+      return sameSelection(current, selectionAtStart) ? selectionAtStart : current;
+    };
     const trimmed = token.trim();
     if (!trimmed) {
+      const selection = selectionToRestore();
       setDefaultPresets();
       setPlaceholderFromDiscovery({});
       restoreSelection(selection);
@@ -135,12 +147,15 @@ export function createModelPresetsController({
       const response = await fetch("http://127.0.0.1:8787/v1/models", {
         headers: { Authorization: `Bearer ${trimmed}` },
       });
+      if (!isCurrentRequest()) return;
       if (!response.ok) {
+        const selection = selectionToRestore();
         setDefaultPresets();
         restoreSelection(selection);
         return;
       }
       const json = (await response.json()) as unknown;
+      if (!isCurrentRequest()) return;
       if (!json || typeof json !== "object") return;
       const record = json as Record<string, unknown>;
       if (record.ok !== true) return;
@@ -165,11 +180,13 @@ export function createModelPresetsController({
         .filter((item): item is { id: string; label: string } => item !== null);
 
       if (options.length === 0) {
+        const selection = selectionToRestore();
         setDefaultPresets();
         restoreSelection(selection);
         return;
       }
 
+      const selection = selectionToRestore();
       setDefaultPresets();
       const seen = new Set(Array.from(modelPresetEl.options).map((option) => option.value));
       for (const option of options) {

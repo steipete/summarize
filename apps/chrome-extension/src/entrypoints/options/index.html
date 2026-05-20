@@ -311,159 +311,196 @@
           aria-labelledby="tab-advanced"
           hidden
         >
-          <section class="section">
-            <h2>Advanced Overrides</h2>
-            <div class="hint">
-              Values set here override daemon config. Leave blank to use config.
-            </div>
+          <section class="section advancedSection">
+            <header class="advancedHead">
+              <h2>Advanced Overrides</h2>
+              <div class="hint">
+                Values here override daemon config. Leave blank to use the daemon default.
+              </div>
+            </header>
             <div id="advancedFields" class="advancedFields">
-              <div class="advancedGrid">
-                <div class="combo span-2">
-                  <div id="extendedLoggingToggle"></div>
-                  <span class="subtitle">
-                    Include full input + output in daemon logs (large, only when daemon logging is
-                    enabled).
-                  </span>
+              <div class="subgroup">
+                <div class="subgroupHead">
+                  <span class="subgroupTitle">Logging</span>
                 </div>
-                <div class="combo span-2">
-                  <div id="autoCliFallbackToggle"></div>
-                  <span class="subtitle">
-                    Auto CLI fallback: when model is Auto, try coding CLIs if no API model key is
-                    configured.
-                  </span>
-                </div>
-                <label>
-                  <span>Auto CLI order</span>
-                  <span class="subtitle"
-                    >Comma-separated providers (claude, gemini, codex, agent, openclaw, opencode,
-                    copilot).</span
-                  >
-                  <input
-                    id="autoCliOrder"
-                    type="text"
-                    placeholder="claude,gemini,codex,agent,openclaw,opencode,copilot"
-                  />
-                </label>
-                <div class="combo span-2">
-                  <div id="hoverSummariesToggle"></div>
-                  <span class="subtitle"
-                    >Show hover summary tooltips in pages. Experimental, default off.</span
-                  >
-                </div>
-                <div class="combo span-2">
-                  <div id="summaryTimestampsToggle"></div>
-                  <span class="subtitle">
-                    Include clickable timestamps in summaries for media (default on).
-                  </span>
-                </div>
-                <div class="combo span-2">
-                  <div id="slidesParallelToggle"></div>
-                  <span class="subtitle">Show summary first while slides extract in parallel.</span>
-                </div>
-                <div class="combo span-2">
-                  <div id="slidesOcrToggle"></div>
-                  <span class="subtitle">Allow OCR text for slides (off by default).</span>
-                </div>
-                <label class="span-2">
-                  <div class="labelRow">
-                    <span>Hover summary prompt</span>
-                    <button id="hoverPromptReset" type="button" class="miniButton">Reset</button>
+                <div class="subgroupBody">
+                  <div class="toggleField">
+                    <div id="extendedLoggingToggle"></div>
+                    <span class="toggleHint">
+                      Include full input + output in daemon logs. Large; only when daemon logging is
+                      enabled.
+                    </span>
                   </div>
-                  <span class="subtitle">Prompt used for hover summaries in pages.</span>
-                  <textarea id="hoverPrompt" rows="3"></textarea>
-                </label>
-                <label>
-                  <span>Pipeline mode</span>
-                  <span class="subtitle"
-                    >Choose the input pipeline (page text vs URL extraction).</span
-                  >
-                  <select id="requestMode">
-                    <option value="">Default (auto)</option>
-                    <option value="page">Page (use visible text)</option>
-                    <option value="url">URL (force URL extraction)</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Firecrawl</span>
-                  <span class="subtitle">
-                    Firecrawl fetches + cleans pages to Markdown via its API. Off, auto fallback, or
-                    always use it.
-                  </span>
-                  <select id="firecrawlMode">
-                    <option value="">Default (auto)</option>
-                    <option value="off">Off</option>
-                    <option value="auto">Auto</option>
-                    <option value="always">Always</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Markdown mode</span>
-                  <span class="subtitle"
-                    >How HTML is converted to Markdown before summarizing.</span
-                  >
-                  <select id="markdownMode">
-                    <option value="">Default (readability)</option>
-                    <option value="readability">Readability</option>
-                    <option value="llm">LLM</option>
-                    <option value="auto">Auto</option>
-                    <option value="off">Off</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Preprocess</span>
-                  <span class="subtitle">
-                    For file inputs: convert to text/Markdown first (PDF/Doc/etc) to improve model
-                    compatibility.
-                  </span>
-                  <select id="preprocessMode">
-                    <option value="">Default (off)</option>
-                    <option value="off">Off</option>
-                    <option value="auto">Auto</option>
-                    <option value="always">Always</option>
-                  </select>
-                </label>
-                <label>
-                  <span>YouTube mode</span>
-                  <span class="subtitle">
-                    Auto picks best transcript; Web uses YouTube captions; yt-dlp extracts audio for
-                    transcription; Apify is fallback; No-auto skips auto captions.
-                  </span>
-                  <select id="youtubeMode">
-                    <option value="">Default (config)</option>
-                    <option value="auto">Auto (best transcript)</option>
-                    <option value="no-auto">No auto captions</option>
-                    <option value="yt-dlp">yt-dlp</option>
-                    <option value="web">Web</option>
-                    <option value="apify">Apify</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Transcriber</span>
-                  <span class="subtitle"
-                    >Override the daemon's default (whisper, parakeet, canary).</span
-                  >
-                  <select id="transcriber">
-                    <option value="">Default (daemon config)</option>
-                    <option value="whisper">Whisper (default)</option>
-                    <option value="parakeet">NVIDIA Parakeet</option>
-                    <option value="canary">NVIDIA Canary</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Timeout</span>
-                  <span class="subtitle">Overall timeout for fetch + model (e.g. 90s, 2m).</span>
-                  <input id="timeout" type="text" placeholder="2m" />
-                </label>
-                <label>
-                  <span>Retries</span>
-                  <span class="subtitle">LLM retry attempts on timeout (0–5).</span>
-                  <input id="retries" type="number" min="0" max="5" step="1" />
-                </label>
-                <label>
-                  <span>Max output tokens</span>
-                  <span class="subtitle">Hard cap for model output (e.g. 2k).</span>
-                  <input id="maxOutputTokens" type="text" placeholder="2k" />
-                </label>
+                </div>
+              </div>
+
+              <div class="subgroup">
+                <div class="subgroupHead">
+                  <span class="subgroupTitle">Auto model fallback</span>
+                </div>
+                <div class="subgroupBody">
+                  <div class="toggleField">
+                    <div id="autoCliFallbackToggle"></div>
+                    <span class="toggleHint">
+                      When model is Auto, try coding CLIs if no API model key is configured.
+                    </span>
+                  </div>
+                  <label class="field">
+                    <span>Auto CLI order</span>
+                    <input
+                      id="autoCliOrder"
+                      type="text"
+                      placeholder="claude,gemini,codex,agent,openclaw,opencode,copilot"
+                    />
+                    <span class="subtitle">
+                      Comma-separated providers (claude, gemini, codex, agent, openclaw, opencode,
+                      copilot).
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="subgroup">
+                <div class="subgroupHead">
+                  <span class="subgroupTitle">Summary display</span>
+                </div>
+                <div class="subgroupBody">
+                  <div class="toggleField">
+                    <div id="summaryTimestampsToggle"></div>
+                    <span class="toggleHint">
+                      Include clickable timestamps in summaries for media (default on).
+                    </span>
+                  </div>
+                  <div class="toggleField">
+                    <div id="slidesParallelToggle"></div>
+                    <span class="toggleHint">
+                      Show summary first while slides extract in parallel.
+                    </span>
+                  </div>
+                  <div class="toggleField">
+                    <div id="slidesOcrToggle"></div>
+                    <span class="toggleHint">Allow OCR text for slides (off by default).</span>
+                  </div>
+                  <div class="toggleField">
+                    <div id="hoverSummariesToggle"></div>
+                    <span class="toggleHint">
+                      Show hover summary tooltips in pages. Experimental, default off.
+                    </span>
+                  </div>
+                  <label class="field">
+                    <div class="labelRow">
+                      <span>Hover summary prompt</span>
+                      <button id="hoverPromptReset" type="button" class="miniButton">Reset</button>
+                    </div>
+                    <textarea id="hoverPrompt" rows="3"></textarea>
+                    <span class="subtitle">Prompt used for hover summaries in pages.</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="subgroup">
+                <div class="subgroupHead">
+                  <span class="subgroupTitle">Pipeline</span>
+                </div>
+                <div class="subgroupBody advancedGrid">
+                  <label class="field">
+                    <span>Pipeline mode</span>
+                    <select id="requestMode">
+                      <option value="">Default (auto)</option>
+                      <option value="page">Page (use visible text)</option>
+                      <option value="url">URL (force URL extraction)</option>
+                    </select>
+                    <span class="subtitle">Page text vs URL extraction.</span>
+                  </label>
+                  <label class="field">
+                    <span>Firecrawl</span>
+                    <select id="firecrawlMode">
+                      <option value="">Default (auto)</option>
+                      <option value="off">Off</option>
+                      <option value="auto">Auto</option>
+                      <option value="always">Always</option>
+                    </select>
+                    <span class="subtitle">Fetches + cleans pages to Markdown via API.</span>
+                  </label>
+                  <label class="field">
+                    <span>Markdown mode</span>
+                    <select id="markdownMode">
+                      <option value="">Default (readability)</option>
+                      <option value="readability">Readability</option>
+                      <option value="llm">LLM</option>
+                      <option value="auto">Auto</option>
+                      <option value="off">Off</option>
+                    </select>
+                    <span class="subtitle">HTML → Markdown conversion strategy.</span>
+                  </label>
+                  <label class="field">
+                    <span>Preprocess</span>
+                    <select id="preprocessMode">
+                      <option value="">Default (off)</option>
+                      <option value="off">Off</option>
+                      <option value="auto">Auto</option>
+                      <option value="always">Always</option>
+                    </select>
+                    <span class="subtitle">
+                      Convert PDF/Doc files to text first for better model compatibility.
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="subgroup">
+                <div class="subgroupHead">
+                  <span class="subgroupTitle">Media</span>
+                </div>
+                <div class="subgroupBody advancedGrid">
+                  <label class="field">
+                    <span>YouTube mode</span>
+                    <select id="youtubeMode">
+                      <option value="">Default (config)</option>
+                      <option value="auto">Auto (best transcript)</option>
+                      <option value="no-auto">No auto captions</option>
+                      <option value="yt-dlp">yt-dlp</option>
+                      <option value="web">Web</option>
+                      <option value="apify">Apify</option>
+                    </select>
+                    <span class="subtitle">
+                      Auto picks best; Web uses captions; yt-dlp extracts audio; Apify is fallback.
+                    </span>
+                  </label>
+                  <label class="field">
+                    <span>Transcriber</span>
+                    <select id="transcriber">
+                      <option value="">Default (daemon config)</option>
+                      <option value="whisper">Whisper (default)</option>
+                      <option value="parakeet">NVIDIA Parakeet</option>
+                      <option value="canary">NVIDIA Canary</option>
+                    </select>
+                    <span class="subtitle">Override the daemon's default transcriber.</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="subgroup">
+                <div class="subgroupHead">
+                  <span class="subgroupTitle">Limits</span>
+                </div>
+                <div class="subgroupBody advancedGrid advancedGrid--thirds">
+                  <label class="field">
+                    <span>Timeout</span>
+                    <input id="timeout" type="text" placeholder="2m" />
+                    <span class="subtitle">Overall fetch + model timeout (e.g. 90s, 2m).</span>
+                  </label>
+                  <label class="field">
+                    <span>Retries</span>
+                    <input id="retries" type="number" min="0" max="5" step="1" />
+                    <span class="subtitle">LLM retry attempts on timeout (0–5).</span>
+                  </label>
+                  <label class="field">
+                    <span>Max output tokens</span>
+                    <input id="maxOutputTokens" type="text" placeholder="2k" />
+                    <span class="subtitle">Hard cap for model output (e.g. 2k).</span>
+                  </label>
+                </div>
               </div>
             </div>
           </section>

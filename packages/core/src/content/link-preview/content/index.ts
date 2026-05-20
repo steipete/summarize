@@ -32,6 +32,16 @@ import {
 
 const MAX_TWITTER_TEXT_FOR_TRANSCRIPT = 500;
 
+function isAssetLikeHtmlFetchError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("unsupported binary payload for html document fetch") ||
+    message.includes("unsupported content-type for html document fetch") ||
+    message.includes("unsupported content-disposition for html document fetch")
+  );
+}
+
 const buildSkippedTwitterTranscript = (
   cacheMode: CacheMode,
   notes: string,
@@ -552,12 +562,16 @@ export async function fetchLinkContent(
     htmlResult = await fetchHtmlDocument(deps.fetch, url, {
       timeoutMs,
       onProgress: deps.onProgress ?? null,
+      rejectNonHtmlText: options?.throwOnAssetLikeHtmlError ?? false,
     });
   } catch (error) {
     htmlError = error;
   }
 
   if (!htmlResult) {
+    if (options?.throwOnAssetLikeHtmlError && isAssetLikeHtmlFetchError(htmlError)) {
+      throw htmlError;
+    }
     if (!canUseFirecrawl) {
       throw htmlError instanceof Error ? htmlError : new Error("Failed to fetch HTML document");
     }

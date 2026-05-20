@@ -99,6 +99,18 @@ describe("options support", () => {
     expect(el.textContent).toBe("");
   });
 
+  it("keeps explicit status text from being cleared by an older flash timer", () => {
+    vi.useFakeTimers();
+    const el = createFakeElement();
+    const controller = createStatusController(el);
+
+    controller.flashStatus("Saved", 100);
+    controller.setStatus("Save failed");
+    vi.advanceTimersByTime(100);
+
+    expect(el.textContent).toBe("Save failed");
+  });
+
   it("copies token via clipboard when available", async () => {
     const tokenEl = createFakeInput("  abc123  ");
     const flashStatus = vi.fn();

@@ -141,6 +141,17 @@ describe("model spec parsing", () => {
     expect(nvidia.provider).toBe("nvidia");
     expect(nvidia.requiredEnv).toBe("NVIDIA_API_KEY");
     expect(nvidia.llmModelId).toBe("nvidia/z-ai/glm5");
+
+    const ollama = parseRequestedModelId("ollama/qwen3:14b");
+    expect(ollama.kind).toBe("fixed");
+    expect(ollama.transport).toBe("native");
+    if (ollama.kind === "fixed" && ollama.transport === "native") {
+      expect(ollama.provider).toBe("ollama");
+      expect(ollama.requiredEnv).toBe("OLLAMA_BASE_URL");
+      expect(ollama.llmModelId).toBe("ollama/qwen3:14b");
+      expect(ollama.openaiBaseUrlOverride).toBe("http://localhost:11434/v1");
+      expect(ollama.forceChatCompletions).toBe(true);
+    }
   });
 
   it("parses github-copilot model ids as native gateway models", () => {
@@ -159,6 +170,10 @@ describe("model spec parsing", () => {
 
   it("rejects empty nvidia model id", () => {
     expect(() => parseRequestedModelId("nvidia/")).toThrow(/missing the model id/);
+  });
+
+  it("rejects empty ollama model id", () => {
+    expect(() => parseRequestedModelId("ollama/")).toThrow(/missing the model id/);
   });
 
   it("rejects empty github-copilot model id", () => {

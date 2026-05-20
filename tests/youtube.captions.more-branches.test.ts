@@ -100,6 +100,52 @@ describe("YouTube captionTracks extra branches", () => {
     expect(transcript?.text).toBe("Manual");
   });
 
+  it("tries same-language caption fallbacks when the preferred track fails", async () => {
+    const html =
+      "<!doctype html><html><head><title>Sample</title>" +
+      '<script>var ytInitialPlayerResponse = {"captions":{"playerCaptionsTracklistRenderer":{"captionTracks":[' +
+      '{"languageCode":"en","baseUrl":"https://example.com/captions-dead"},' +
+      '{"languageCode":"en","baseUrl":"https://example.com/captions-working"}' +
+      "]}}};</script>" +
+      "</head><body></body></html>";
+
+    const fetchMock = vi.fn<[RequestInfo | URL, RequestInit?], Promise<Response>>((input) => {
+      const url = typeof input === "string" ? input : input.url;
+
+      if (url.startsWith("https://example.com/captions-dead")) {
+        return Promise.resolve(new Response("blocked", { status: 403 }));
+      }
+
+      if (url.startsWith("https://example.com/captions-working") && url.includes("fmt=json3")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ events: [{ segs: [{ utf8: "Fallback" }] }] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+
+    const transcript = await fetchTranscriptFromCaptionTracks(
+      fetchMock as unknown as typeof fetch,
+      {
+        html,
+        originalUrl: "https://www.youtube.com/watch?v=abcdefghijk",
+        videoId: "abcdefghijk",
+      },
+    );
+
+    expect(transcript?.text).toBe("Fallback");
+    expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("captions-dead"),
+        expect.stringContaining("captions-working"),
+      ]),
+    );
+  });
+
   it("handles invalid baseUrl and falls back to XML via string URL builder", async () => {
     const html =
       "<!doctype html><html><head><title>Sample</title>" +

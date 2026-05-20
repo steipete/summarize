@@ -40,4 +40,47 @@ describe("options persistence", () => {
     expect(blockedPersist).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
   });
+
+  it("surfaces direct save failures instead of leaving Saving visible", async () => {
+    const persist = vi.fn(async () => {
+      throw new Error("storage unavailable");
+    });
+    const setStatus = vi.fn();
+    const flashStatus = vi.fn();
+
+    const runtime = createOptionsSaveRuntime({
+      isInitializing: () => false,
+      setStatus,
+      flashStatus,
+      persist,
+    });
+
+    await expect(runtime.saveNow()).resolves.toBeUndefined();
+
+    expect(setStatus).toHaveBeenLastCalledWith("Save failed: storage unavailable");
+    expect(flashStatus).not.toHaveBeenCalledWith("Saved");
+  });
+
+  it("handles autosave failures without an unhandled rejection", async () => {
+    vi.useFakeTimers();
+    const persist = vi.fn(async () => {
+      throw new Error("quota exceeded");
+    });
+    const setStatus = vi.fn();
+    const flashStatus = vi.fn();
+
+    const runtime = createOptionsSaveRuntime({
+      isInitializing: () => false,
+      setStatus,
+      flashStatus,
+      persist,
+    });
+
+    runtime.scheduleAutoSave(10);
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(setStatus).toHaveBeenLastCalledWith("Save failed: quota exceeded");
+    expect(flashStatus).not.toHaveBeenCalledWith("Saved");
+    vi.useRealTimers();
+  });
 });
