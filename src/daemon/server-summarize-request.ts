@@ -5,6 +5,8 @@ import { resolveSlideSettings } from "../slides/index.js";
 import type { DaemonRequestedMode } from "./auto-mode.js";
 import { json, readJsonBody } from "./server-http.js";
 
+export const SUMMARIZE_REQUEST_BODY_MAX_BYTES = 8_000_000;
+
 export function parseDiagnostics(raw: unknown): { includeContent: boolean } {
   if (!raw || typeof raw !== "object") {
     return { includeContent: false };
@@ -90,7 +92,7 @@ export async function parseSummarizeRequest({
 }): Promise<ParsedSummarizeRequest | null> {
   let body: unknown;
   try {
-    body = await readJsonBody(req, 2_000_000);
+    body = await readJsonBody(req, SUMMARIZE_REQUEST_BODY_MAX_BYTES);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     json(res, 400, { ok: false, error: message }, cors);

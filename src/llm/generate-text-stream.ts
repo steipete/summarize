@@ -17,7 +17,7 @@ import {
   resolveOpenAiModel,
   resolveXaiModel,
 } from "./providers/models.js";
-import { completeOpenAiText } from "./providers/openai.js";
+import { completeOpenAiText, streamOpenAiText } from "./providers/openai.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
 import type { LlmTokenUsage } from "./types.js";
 
@@ -34,6 +34,7 @@ export type StreamTextWithContextArgs = {
   anthropicBaseUrlOverride?: string | null;
   googleBaseUrlOverride?: string | null;
   xaiBaseUrlOverride?: string | null;
+  ollamaBaseUrlOverride?: string | null;
   forceChatCompletions?: boolean;
   requestOptions?: ModelRequestOptions;
 };
@@ -102,7 +103,13 @@ function createTimedTextStream({
       const iterator = textStream[Symbol.asyncIterator]();
       try {
         while (true) {
-          const result = await nextWithDeadline(iterator.next());
+          let result: IteratorResult<string>;
+          try {
+            result = await nextWithDeadline(iterator.next());
+          } catch (error) {
+            setLastError(error);
+            throw error;
+          }
           if (result.done) break;
           yield result.value;
         }
@@ -119,6 +126,41 @@ function createTimedTextStream({
       }
     },
   };
+}
+
+async function withRequestDeadline<T>({
+  promise,
+  timeoutMs,
+  controller,
+  setLastError,
+}: {
+  promise: Promise<T>;
+  timeoutMs: number;
+  controller: AbortController;
+  setLastError: (error: unknown) => void;
+}): Promise<T> {
+  const timeoutError = new Error("LLM request timed out");
+  if (timeoutMs <= 0) {
+    setLastError(timeoutError);
+    controller.abort();
+    throw timeoutError;
+  }
+
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          setLastError(timeoutError);
+          controller.abort();
+          reject(timeoutError);
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function collectTextDeltas({
@@ -156,6 +198,7 @@ export async function streamTextWithContext({
   anthropicBaseUrlOverride,
   googleBaseUrlOverride,
   xaiBaseUrlOverride,
+  ollamaBaseUrlOverride,
   forceChatCompletions,
   requestOptions,
 }: StreamTextWithContextArgs): Promise<StreamTextResult> {
@@ -287,14 +330,18 @@ export async function streamTextWithContext({
       parsed.provider === "openai" ||
       parsed.provider === "zai" ||
       parsed.provider === "nvidia" ||
-      parsed.provider === "github-copilot"
+      parsed.provider === "github-copilot" ||
+      parsed.provider === "ollama"
     ) {
       const openaiConfig: OpenAiClientConfig = resolveOpenAiCompatibleClientConfigForProvider({
         provider: parsed.provider,
         openaiApiKey: apiKeys.openaiApiKey,
         openrouterApiKey: apiKeys.openrouterApiKey,
         forceOpenRouter,
-        openaiBaseUrlOverride,
+        openaiBaseUrlOverride:
+          parsed.provider === "ollama"
+            ? (ollamaBaseUrlOverride ?? openaiBaseUrlOverride)
+            : openaiBaseUrlOverride,
         forceChatCompletions,
         requestOptions,
       });
@@ -302,6 +349,38 @@ export async function streamTextWithContext({
         parsed.provider === "github-copilot" ||
         (parsed.provider === "openai" && requestOptions)
       ) {
+        if (parsed.provider === "openai") {
+          const streamResult = await withRequestDeadline({
+            promise: streamOpenAiText({
+              modelId: parsed.model,
+              openaiConfig,
+              context,
+              temperature: effectiveTemperature,
+              maxOutputTokens,
+              signal: controller.signal,
+              fetchImpl,
+            }),
+            timeoutMs,
+            controller,
+            setLastError,
+          });
+          if (streamResult) {
+            return {
+              textStream: createTimedTextStream({
+                textStream: streamResult.textStream,
+                timeoutMs,
+                controller,
+                setLastError,
+              }),
+              canonicalModelId: streamResult.resolvedModelId
+                ? `${parsed.provider}/${streamResult.resolvedModelId}`
+                : parsed.canonical,
+              provider: parsed.provider,
+              usage: streamResult.usage,
+              lastError: () => lastError,
+            };
+          }
+        }
         const result = await completeOpenAiText({
           modelId: parsed.model,
           openaiConfig,

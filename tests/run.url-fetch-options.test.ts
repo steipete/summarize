@@ -63,4 +63,22 @@ describe("url fetch options", () => {
       await fs.rm(filePath, { force: true });
     }
   });
+
+  it("leaves asset-like HTML errors off unless the CLI runner opts in", () => {
+    const defaultResult = resolveUrlFetchOptions({
+      targetUrl: "https://example.com/download",
+      flags: baseFlags,
+      markdown,
+      cacheMode: "default",
+    });
+    const cliResult = resolveUrlFetchOptions({
+      targetUrl: "https://example.com/download",
+      flags: { ...baseFlags, throwOnAssetLikeHtmlError: true },
+      markdown,
+      cacheMode: "default",
+    });
+
+    expect(defaultResult.options.throwOnAssetLikeHtmlError).toBe(false);
+    expect(cliResult.options.throwOnAssetLikeHtmlError).toBe(true);
+  });
 });

@@ -1,4 +1,5 @@
 import type { Api, Context, Model } from "@earendil-works/pi-ai";
+import { DEFAULT_OLLAMA_BASE_URL } from "../provider-profile.js";
 import {
   createSyntheticModel,
   resolveBaseUrlOverride,
@@ -81,6 +82,28 @@ export function resolveNvidiaModel({
     baseUrl,
     input: allowImages ? ["text", "image"] : ["text"],
   };
+}
+
+export function resolveOllamaModel({
+  modelId,
+  context,
+  ollamaBaseUrlOverride,
+}: {
+  modelId: string;
+  context: Context;
+  ollamaBaseUrlOverride?: string | null;
+}): Model<Api> {
+  const allowImages = wantsImages(context);
+  // Ollama exposes an OpenAI-compatible API at /v1; treat it like an OpenAI gateway.
+  const api = "openai-completions";
+  const baseUrl = ollamaBaseUrlOverride ?? DEFAULT_OLLAMA_BASE_URL;
+  return createSyntheticModel({
+    provider: "openai",
+    modelId,
+    api,
+    baseUrl,
+    allowImages,
+  });
 }
 
 export function resolveXaiModel({

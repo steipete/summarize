@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# summarize release helper (npm)
-# Phases: gates | build | publish | smoke | tag | tap | chrome | firefox | all
+# summarize release helper
+# Phases: gates | build | bun | chrome | firefox | verify | tag | github | publish | smoke | homebrew | all
 
 # npm@11 warns on unknown env configs; keep CI/logs clean.
 unset npm_config_manage_package_manager_versions || true
@@ -35,10 +35,35 @@ require_lockstep_versions() {
   fi
 }
 
+write_release_notes() {
+  local version notes_file
+  version="$1"
+  notes_file="$2"
+  awk -v start="$version" '
+    BEGIN { p=0 }
+    $0 ~ ("^## " start "([ -]|$)") { p=1; next }
+    p && $0 ~ /^## / { exit }
+    p { print }
+  ' CHANGELOG.md >"${notes_file}"
+  if ! grep -q '[^[:space:]]' "${notes_file}"; then
+    echo "Missing CHANGELOG.md notes for ${version}"
+    exit 1
+  fi
+}
+
+phase_release_notes_preflight() {
+  local version notes_file
+  version="$(node -p 'require("./package.json").version')"
+  notes_file="$(mktemp)"
+  write_release_notes "${version}" "${notes_file}"
+  rm -f "${notes_file}"
+}
+
 phase_gates() {
   banner "Gates"
   require_clean_git
   require_lockstep_versions
+  phase_release_notes_preflight
   run pnpm check
 }
 
@@ -46,8 +71,16 @@ phase_build() {
   banner "Build"
   require_lockstep_versions
   run pnpm build
+  phase_bun
   phase_chrome
   phase_firefox
+}
+
+phase_bun() {
+  banner "Bun artifacts"
+  require_lockstep_versions
+  run pnpm -C packages/core build
+  run pnpm build:bun:test
 }
 
 phase_verify_pack() {
@@ -140,51 +173,77 @@ phase_tag() {
   run git push --tags
 }
 
-phase_tap() {
-  banner "Homebrew tap"
-  local version root_dir tap_dir formula_path tmp_dir
-  local url_arm url_x64 tarball_arm tarball_x64 sha_arm sha_x64
+phase_github() {
+  banner "GitHub release"
+  require_clean_git
+  require_lockstep_versions
+  local version root_dir notes_file
   version="$(node -p 'require("./package.json").version')"
   root_dir="$(pwd)"
-  tap_dir="${root_dir}/../homebrew-tap"
-  formula_path="${tap_dir}/Formula/summarize.rb"
-  if [ ! -d "${tap_dir}/.git" ]; then
-    echo "Missing tap repo at ${tap_dir}"
+  local assets=(
+    "${root_dir}/dist-bun/summarize-macos-arm64-v${version}.tar.gz"
+    "${root_dir}/dist-bun/summarize-macos-x64-v${version}.tar.gz"
+    "${root_dir}/dist-chrome/summarize-chrome-extension-v${version}.zip"
+    "${root_dir}/dist-firefox/summarize-firefox-extension-v${version}.zip"
+  )
+  for asset in "${assets[@]}"; do
+    if [ ! -f "${asset}" ]; then
+      echo "Missing release asset: ${asset}"
+      exit 1
+    fi
+  done
+  if ! git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
+    echo "Missing tag v${version}. Run: scripts/release.sh tag"
     exit 1
   fi
-  if ! git -C "${tap_dir}" diff --quiet || ! git -C "${tap_dir}" diff --cached --quiet; then
-    echo "Tap repo is dirty: ${tap_dir}"
+  notes_file="$(mktemp)"
+  write_release_notes "${version}" "${notes_file}"
+  run gh release create "v${version}" "${assets[@]}" --verify-tag --title "v${version}" --notes-file "${notes_file}"
+  run gh release view "v${version}" --json body --jq .body >/dev/null
+}
+
+phase_homebrew() {
+  banner "Homebrew/core verify"
+  require_lockstep_versions
+  local version installed homebrew_bin homebrew_version
+  version="$(node -p 'require("./package.json").version')"
+  if ! command -v brew >/dev/null 2>&1; then
+    echo "Homebrew not found"
     exit 1
   fi
-
-  url_arm="https://github.com/steipete/summarize/releases/download/v${version}/summarize-macos-arm64-v${version}.tar.gz"
-  url_x64="https://github.com/steipete/summarize/releases/download/v${version}/summarize-macos-x64-v${version}.tar.gz"
-
-  tmp_dir="$(mktemp -d)"
-  tarball_arm="${tmp_dir}/summarize-macos-arm64-v${version}.tar.gz"
-  tarball_x64="${tmp_dir}/summarize-macos-x64-v${version}.tar.gz"
-  run curl -fsSL "${url_arm}" -o "${tarball_arm}"
-  run curl -fsSL "${url_x64}" -o "${tarball_x64}"
-
-  sha_arm="$(shasum -a 256 "${tarball_arm}" | awk '{print $1}')"
-  sha_x64="$(shasum -a 256 "${tarball_x64}" | awk '{print $1}')"
-
-  run node scripts/release-formula.js "${formula_path}" "${url_arm}" "${sha_arm}" "${url_x64}" "${sha_x64}"
-
-  echo "Tap updated: ${formula_path}"
-  echo "arm64 sha: ${sha_arm}"
-  echo "x64   sha: ${sha_x64}"
-  echo "Next: git -C ${tap_dir} add ${formula_path} && git -C ${tap_dir} commit -m \"chore: bump summarize to v${version}\" && git -C ${tap_dir} push"
+  run brew update
+  installed="$(brew info --json=v2 summarize | node -e 'let s=""; process.stdin.on("data",c=>s+=c); process.stdin.on("end",()=>{ const j=JSON.parse(s); const f=j.formulae?.[0]; console.log(f?.versions?.stable ?? ""); })')"
+  if [ "${installed}" != "${version}" ]; then
+    echo "Homebrew/core summarize is ${installed:-unknown}, expected ${version}. Wait for Homebrew autobump, then rerun."
+    exit 1
+  fi
+  run brew reinstall summarize
+  homebrew_bin="$(brew --prefix summarize)/bin/summarize"
+  if [ ! -x "${homebrew_bin}" ]; then
+    echo "Missing Homebrew summarize binary: ${homebrew_bin}"
+    exit 1
+  fi
+  homebrew_version="$("${homebrew_bin}" --version)"
+  case "${homebrew_version}" in
+    "${version}"*) ;;
+    *)
+      echo "Homebrew summarize reports ${homebrew_version}, expected ${version}"
+      exit 1
+      ;;
+  esac
+  echo "${homebrew_version}"
 }
 
 case "$PHASE" in
   gates) phase_gates ;;
   build) phase_build ;;
+  bun) phase_bun ;;
   verify) phase_verify_pack ;;
   publish) phase_publish ;;
   smoke) phase_smoke ;;
   tag) phase_tag ;;
-  tap) phase_tap ;;
+  github) phase_github ;;
+  homebrew) phase_homebrew ;;
   chrome) phase_chrome ;;
   firefox) phase_firefox ;;
   all)
@@ -194,22 +253,24 @@ case "$PHASE" in
     phase_publish
     phase_smoke
     phase_tag
-    phase_tap
+    phase_github
     ;;
   *)
     echo "Usage: scripts/release.sh [phase]"
     echo
     echo "Phases:"
     echo "  gates     pnpm check"
-    echo "  build     pnpm build"
+    echo "  build     pnpm build + Bun/Chrome/Firefox artifacts"
+    echo "  bun       build + smoke Bun release tarballs"
     echo "  verify    pack + install tarball + --help"
     echo "  publish   pnpm publish --tag latest --access public"
     echo "  smoke     npm view + pnpm dlx @steipete/summarize --help"
     echo "  tag       git tag vX.Y.Z + push tags"
-    echo "  tap       update homebrew-tap formula + sha"
+    echo "  github    create GitHub Release + upload release assets"
+    echo "  homebrew  verify Homebrew/core formula has current version"
     echo "  chrome    build + zip Chrome extension"
     echo "  firefox   build + zip Firefox extension"
-    echo "  all       gates + build + verify + publish + smoke + tag + tap"
+    echo "  all       gates + build + verify + publish + smoke + tag + github"
     exit 2
     ;;
 esac

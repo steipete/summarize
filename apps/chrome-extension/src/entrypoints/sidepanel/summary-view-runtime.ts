@@ -2,6 +2,7 @@ import { buildIdleSubtitle } from "../../lib/header";
 import type { PanelCachePayload } from "./panel-cache";
 import { normalizeSlideImageUrl } from "./slide-images";
 import { normalizeSlidesPayload } from "./slides-payload";
+import { clearSummaryCopyButton } from "./summary-renderer";
 import type { PanelPhase, PanelState } from "./types";
 
 type SlidesTextControllerLike = {
@@ -32,6 +33,7 @@ type SummaryViewRuntimeOpts = {
   renderEl: HTMLElement;
   renderSlidesHostEl: HTMLElement;
   renderMarkdownHostEl: HTMLElement;
+  summaryCopyBtn: HTMLButtonElement;
   getSlidesRenderer: () => { clear: () => void };
   metricsController: MetricsControllerLike;
   headerController: HeaderControllerLike;
@@ -90,6 +92,7 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     opts.setCurrentRunTabId(null);
     opts.renderEl.replaceChildren(opts.renderSlidesHostEl, opts.renderMarkdownHostEl);
     opts.renderMarkdownHostEl.innerHTML = "";
+    clearSummaryCopyButton(opts.summaryCopyBtn);
     opts.getSlidesRenderer().clear();
     opts.metricsController.clearForMode("summary");
     opts.panelState.summaryMarkdown = null;
@@ -184,7 +187,9 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
         })),
       };
       opts.setSlidesContextPending(false);
-      opts.setSlidesContextUrl(payload.url);
+      opts.setSlidesContextUrl(
+        opts.slidesTextController.getTranscriptAvailable() ? payload.url : null,
+      );
       opts.updateSlidesTextState();
       if (!opts.slidesTextController.getTranscriptAvailable()) {
         void opts.requestSlidesContext();

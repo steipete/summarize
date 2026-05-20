@@ -6,6 +6,7 @@ import {
   type InputTarget,
   loadLocalAsset,
   loadRemoteAsset,
+  shouldProbeUnknownAssetUrl,
 } from "../../../content/asset.js";
 import { formatBytes } from "../../../tty/format.js";
 import { startOscProgress } from "../../../tty/osc-progress.js";
@@ -263,6 +264,7 @@ export async function withUrlAsset(
   url: string,
   isYoutubeUrl: boolean,
   handler: UrlAssetHandler,
+  options: { detectUnknownAssetUrls?: boolean; assumeAsset?: boolean } = {},
 ): Promise<boolean> {
   if (!url || isYoutubeUrl) return false;
 
@@ -318,8 +320,14 @@ export async function withUrlAsset(
     }
   }
 
-  const kind = await classifyUrl({ url, fetchImpl: ctx.trackedFetch, timeoutMs: ctx.timeoutMs });
-  if (kind.kind !== "asset") return false;
+  if (!options.assumeAsset) {
+    if (options.detectUnknownAssetUrls === false && !shouldProbeUnknownAssetUrl(url)) {
+      return false;
+    }
+
+    const kind = await classifyUrl({ url, fetchImpl: ctx.trackedFetch, timeoutMs: ctx.timeoutMs });
+    if (kind.kind !== "asset") return false;
+  }
 
   const theme = createProgressTheme(ctx.envForRun, ctx.progressEnabled);
   const stopOscProgress = startOscProgress({

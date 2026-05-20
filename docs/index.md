@@ -48,7 +48,7 @@ summarize "https://example.com" --json --metrics detailed
 
 - **Real extraction.** Readability for articles, `markitdown` for files, Firecrawl as a fallback when sites fight back.
 - **Media-aware.** YouTube and podcast pages prefer published transcripts, then `yt-dlp` + Whisper, then optional ONNX models (Parakeet/Canary).
-- **Provider-agnostic models.** xAI, OpenAI, Google, Anthropic, NVIDIA, Z.AI, OpenRouter, GitHub Copilot — plus local CLI providers (Claude Code, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, Copilot CLI).
+- **Provider-agnostic models.** xAI, OpenAI, Google, Anthropic, NVIDIA, Z.AI, OpenRouter, GitHub Copilot, Ollama (local) — plus local CLI providers (Claude Code, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, Copilot CLI).
 - **Shaped output.** Streamed ANSI Markdown for terminals, plain text for pipes, JSON envelope for scripts, ANSI-stripped under `--no-color`.
 - **Slides for video.** `--slides` extracts scene-change keyframes and renders them inline (Kitty / iTerm) or saves them to disk.
 - **Stays local.** Optional daemon + Chrome Side Panel pair the CLI with the active tab. The daemon binds to `127.0.0.1` only and uses a shared bearer token.
@@ -57,7 +57,7 @@ summarize "https://example.com" --json --metrics detailed
 
 - **Trying it for the first time.** [Install](docs/install.html) → [Quickstart](docs/quickstart.html). Five minutes from `npm i -g` to your first summary.
 - **Looking up a flag.** [Commands](docs/commands/) — every subcommand and flag, with examples.
-- **Wiring up a model.** [LLM overview](docs/llm.html), [Auto selection](docs/model-auto.html), [OpenAI options](docs/openai.html), [CLI providers](docs/cli.html).
+- **Wiring up a model.** [LLM overview](docs/llm.html), [Auto selection](docs/model-auto.html), [OpenAI options](docs/openai.html), [Ollama (local)](docs/ollama.html), [CLI providers](docs/cli.html).
 - **Stuck site.** [Website mode](docs/website.html) and [Firecrawl](docs/firecrawl.html) cover extractor selection and fallbacks.
 - **Audio / video work.** [YouTube](docs/youtube.html), [Media + podcasts](docs/media.html), [Slides](docs/slides.html), [ONNX transcription](docs/nvidia-onnx-transcription.html).
 - **Browser pairing.** [Chrome extension](docs/chrome-extension.html) walks through pairing with the local daemon.

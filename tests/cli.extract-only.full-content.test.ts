@@ -59,7 +59,7 @@ describe("cli --extract", () => {
 
     expect(stdoutText).toContain(body.slice(0, 200));
     expect(stdoutText.length).toBeGreaterThanOrEqual(59_000);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("keeps --extract-only as a deprecated alias", async () => {

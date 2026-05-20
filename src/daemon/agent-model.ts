@@ -152,6 +152,8 @@ export function resolveApiKeyForModel({
         return apiKeys.xaiApiKey;
       case "zai":
         return apiKeys.zaiApiKey;
+      case "ollama":
+        return apiKeys.openaiApiKey ?? "ollama";
       default:
         return null;
     }
@@ -247,6 +249,7 @@ export async function resolveAgentModel({
     zaiBaseUrl,
     nvidiaApiKey,
     nvidiaBaseUrl,
+    ollamaBaseUrl,
     envForAuto,
     cliAvailability,
     openaiUseChatCompletions,
@@ -288,11 +291,12 @@ export async function resolveAgentModel({
     xai: providerBaseUrls.xai,
     zai: zaiBaseUrl,
     nvidia: nvidiaBaseUrl,
+    ollama: ollamaBaseUrl,
   };
 
   const applyBaseUrlOverride = (provider: string, modelId: string) => {
     const baseUrl = providerBaseUrlMap[provider] ?? null;
-    const providerForPiAi = provider === "nvidia" ? "openai" : provider;
+    const providerForPiAi = provider === "nvidia" || provider === "ollama" ? "openai" : provider;
     return {
       provider,
       model: resolveModelWithFallback({

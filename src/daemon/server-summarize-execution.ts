@@ -22,6 +22,7 @@ import {
   streamSummaryForUrl,
   streamSummaryForVisiblePage,
 } from "./summarize.js";
+import { assertDaemonUrlFetchAllowed, createDaemonUrlFetchGuard } from "./url-fetch-guard.js";
 
 type LoggerLike = {
   info?: (payload: Record<string, unknown>) => void;
@@ -55,6 +56,7 @@ type ExecuteSummarizeSessionArgs = {
   request: ParsedSummarizeRequest;
   env: Record<string, string | undefined>;
   fetchImpl: typeof fetch;
+  urlFetchImpl?: typeof fetch | null;
   cacheState: CacheState;
   mediaCache: MediaCache | null;
   port: number;
@@ -104,12 +106,14 @@ export async function handleExtractOnlySummarizeRequest({
   request,
   env,
   fetchImpl,
+  urlFetchImpl,
   cacheState,
   mediaCache,
 }: {
   request: ParsedSummarizeRequest;
   env: Record<string, string | undefined>;
   fetchImpl: typeof fetch;
+  urlFetchImpl?: typeof fetch | null;
   cacheState: CacheState;
   mediaCache: MediaCache | null;
 }): Promise<{
@@ -124,6 +128,7 @@ export async function handleExtractOnlySummarizeRequest({
     extractContentForUrl({
       env,
       fetchImpl,
+      urlFetchImpl,
       input: { url: request.pageUrl, title: request.title, maxCharacters: request.maxCharacters },
       cache: requestCache,
       mediaCache,
@@ -222,6 +227,7 @@ export async function executeSummarizeSession({
   request,
   env,
   fetchImpl,
+  urlFetchImpl,
   cacheState,
   mediaCache,
   port,
@@ -318,9 +324,12 @@ export async function executeSummarizeSession({
       }
 
       if (resolved === "url") {
+        await assertDaemonUrlFetchAllowed(pageUrl);
+        const guardedUrlFetchImpl = createDaemonUrlFetchGuard(fetchImpl);
         return await streamSummaryForUrl({
           env,
           fetchImpl,
+          urlFetchImpl: guardedUrlFetchImpl,
           modelOverride: normalizedModelOverride,
           promptOverride,
           lengthRaw,
@@ -423,6 +432,7 @@ export async function executeSummarizeSession({
       return await streamSummaryForVisiblePage({
         env,
         fetchImpl,
+        urlFetchImpl,
         modelOverride: normalizedModelOverride,
         promptOverride,
         lengthRaw,

@@ -54,6 +54,7 @@ export async function summarizeWithModelId({
   googleBaseUrlOverride,
   xaiBaseUrlOverride,
   zaiBaseUrlOverride,
+  ollamaBaseUrlOverride,
   forceChatCompletions,
   requestOptions,
   retries,
@@ -77,6 +78,7 @@ export async function summarizeWithModelId({
   googleBaseUrlOverride?: string | null;
   xaiBaseUrlOverride?: string | null;
   zaiBaseUrlOverride?: string | null;
+  ollamaBaseUrlOverride?: string | null;
   forceChatCompletions?: boolean;
   requestOptions?: ModelRequestOptions;
   retries: number;
@@ -101,6 +103,7 @@ export async function summarizeWithModelId({
     googleBaseUrlOverride,
     xaiBaseUrlOverride,
     zaiBaseUrlOverride,
+    ollamaBaseUrlOverride,
     forceChatCompletions,
     requestOptions,
     prompt,

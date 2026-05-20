@@ -75,6 +75,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
   let streaming = false;
   let hadError = false;
   let sawDone = false;
+  let activeGeneration = 0;
 
   const queueRender = () => {
     if (renderQueued || !onRender) return;
@@ -99,6 +100,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
   };
 
   const abort = () => {
+    activeGeneration += 1;
     if (!controller) return;
     if (activeAbortState) activeAbortState.reason = "manual";
     controller.abort();
@@ -112,13 +114,17 @@ export function createStreamController(options: StreamControllerOptions): Stream
   };
 
   const start = async (run: RunStart) => {
+    const generation = activeGeneration + 1;
+    activeGeneration = generation;
+    abort();
+    activeGeneration = generation;
     const token = (await getToken()).trim();
+    if (generation !== activeGeneration) return;
     if (!token) {
       onStatus("Setup required (missing token)");
       return;
     }
 
-    abort();
     const nextController = new AbortController();
     controller = nextController;
     const abortState = { reason: null as "manual" | "timeout" | null };
@@ -146,6 +152,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
           signal: nextController.signal,
         },
       );
+      if (generation !== activeGeneration) return;
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       if (!res.body) throw new Error("Missing stream body");
 
@@ -174,6 +181,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
       while (true) {
         const { value: msg, done } = await nextWithTimeout();
         if (done) break;
+        if (generation !== activeGeneration) return;
         if (nextController.signal.aborted) return;
 
         const event = parseSseEvent(msg);
@@ -220,7 +228,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
         }
       }
 
-      if (nextController.signal.aborted) return;
+      if (generation !== activeGeneration || nextController.signal.aborted) return;
       const terminalError = getTerminalStreamError({ sawDone, streamedAnyNonWhitespace });
       if (terminalError) {
         throw terminalError;
@@ -235,14 +243,19 @@ export function createStreamController(options: StreamControllerOptions): Stream
           nextController.abort();
         }
       }
-      if (nextController.signal.aborted && abortState.reason !== "timeout") return;
+      if (
+        (generation !== activeGeneration || nextController.signal.aborted) &&
+        abortState.reason !== "timeout"
+      ) {
+        return;
+      }
       hadError = true;
       const message = onError ? onError(err) : err instanceof Error ? err.message : String(err);
       onStatus(`Error: ${message}`);
       onPhaseChange("error");
       onDone?.();
     } finally {
-      if (controller === nextController) {
+      if (generation === activeGeneration && controller === nextController) {
         streaming = false;
         if (!nextController.signal.aborted && !hadError) {
           onPhaseChange("idle");

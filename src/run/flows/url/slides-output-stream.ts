@@ -101,7 +101,7 @@ export function createSlidesSummaryStreamHandler({
     if (!segment) return;
     const parts = segment.split("\n");
     for (let i = 0; i < parts.length; i += 1) {
-      const line = parts[i] ?? "";
+      const line = (parts[i] ?? "").replace(/^#{1,6}\s+/, "");
       const suffix = i < parts.length - 1 ? "\n" : "";
       if (!line && !suffix) continue;
       pushVisible(`${line}${suffix}`);

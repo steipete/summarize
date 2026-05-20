@@ -65,6 +65,8 @@ export function createVitestConfig({
           "**/dist/**",
           "**/node_modules/**",
           "tests/**",
+          // Browser content scripts are covered by extension/browser tests; node V8 coverage is noisy.
+          "apps/chrome-extension/src/entrypoints/*.content.ts",
           // Daemon is integration-tested / manually tested; unit coverage is noisy + brittle.
           "**/src/daemon/**",
           // Slide extraction is integration-tested; unit coverage is too noisy.

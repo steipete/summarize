@@ -148,9 +148,10 @@ export async function downloadYoutubeVideo(options: {
 export async function downloadRemoteVideo(options: {
   url: string;
   timeoutMs: number;
+  fetchImpl?: typeof fetch;
   onProgress?: ((percent: number, detail?: string) => void) | null;
 }): Promise<{ filePath: string; cleanup: () => Promise<void> }> {
-  const { url, timeoutMs, onProgress } = options;
+  const { url, timeoutMs, fetchImpl = fetch, onProgress } = options;
   const dir = await fs.mkdtemp(path.join(tmpdir(), `summarize-slides-${randomUUID()}-`));
   let suffix = ".bin";
   try {
@@ -164,7 +165,7 @@ export async function downloadRemoteVideo(options: {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetchImpl(url, { signal: controller.signal });
     if (!res.ok) {
       throw new Error(`Download failed: ${res.status} ${res.statusText}`);
     }

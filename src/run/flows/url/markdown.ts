@@ -17,6 +17,7 @@ export type MarkdownModel = {
   forceOpenRouter: boolean;
   openaiApiKeyOverride?: string | null;
   openaiBaseUrlOverride?: string | null;
+  ollamaBaseUrlOverride?: string | null;
   forceChatCompletions?: boolean;
   requestOptions?: ModelAttempt["requestOptions"];
   requiredEnv?: ModelAttempt["requiredEnv"];
@@ -34,7 +35,8 @@ export type MarkdownConverters = {
     | "anthropic"
     | "zai"
     | "nvidia"
-    | "github-copilot";
+    | "github-copilot"
+    | "ollama";
   markdownModel: MarkdownModel | null;
   convertHtmlToMarkdown:
     | ((args: {
@@ -111,6 +113,17 @@ export function createMarkdownConverters(
           requestOptions: ctx.model.requestedModel.requestOptions,
         };
       }
+      if (ctx.model.fixedModelSpec?.requiredEnv === "OLLAMA_BASE_URL") {
+        return {
+          llmModelId: ctx.model.requestedModel.llmModelId,
+          forceOpenRouter: false,
+          requiredEnv: ctx.model.fixedModelSpec.requiredEnv,
+          openaiBaseUrlOverride: ctx.model.apiStatus.ollamaBaseUrl,
+          ollamaBaseUrlOverride: ctx.model.apiStatus.ollamaBaseUrl,
+          forceChatCompletions: true,
+          requestOptions: ctx.model.requestedModel.requestOptions,
+        };
+      }
       return {
         llmModelId: ctx.model.requestedModel.llmModelId,
         forceOpenRouter: false,
@@ -175,6 +188,7 @@ export function createMarkdownConverters(
       return Boolean(ctx.model.apiStatus.nvidiaApiKey);
     if (markdownModel.requiredEnv === "GITHUB_TOKEN")
       return Boolean(resolveGitHubModelsApiKey(ctx.io.envForRun));
+    if (markdownModel.requiredEnv === "OLLAMA_BASE_URL") return true;
     if (markdownModel.openaiApiKeyOverride) return true;
     const parsed = parseGatewayStyleModelId(markdownModel.llmModelId);
     return parsed.provider === "xai"
@@ -200,6 +214,7 @@ export function createMarkdownConverters(
       if (markdownModel?.requiredEnv === "Z_AI_API_KEY") return "Z_AI_API_KEY";
       if (markdownModel?.requiredEnv === "NVIDIA_API_KEY") return "NVIDIA_API_KEY";
       if (markdownModel?.requiredEnv === "GITHUB_TOKEN") return "GITHUB_TOKEN (or GH_TOKEN)";
+      if (markdownModel?.requiredEnv === "OLLAMA_BASE_URL") return "OLLAMA_BASE_URL";
       if (markdownModel) {
         const parsed = parseGatewayStyleModelId(markdownModel.llmModelId);
         return parsed.provider === "xai"
@@ -235,6 +250,7 @@ export function createMarkdownConverters(
           openrouterApiKey: ctx.model.apiStatus.openrouterApiKey,
           openaiBaseUrlOverride:
             markdownModel.openaiBaseUrlOverride ?? ctx.model.apiStatus.providerBaseUrls.openai,
+          ollamaBaseUrlOverride: markdownModel.ollamaBaseUrlOverride,
           anthropicBaseUrlOverride: ctx.model.apiStatus.providerBaseUrls.anthropic,
           googleBaseUrlOverride: ctx.model.apiStatus.providerBaseUrls.google,
           xaiBaseUrlOverride: ctx.model.apiStatus.providerBaseUrls.xai,
@@ -340,6 +356,7 @@ export function createMarkdownConverters(
           openrouterApiKey: ctx.model.apiStatus.openrouterApiKey,
           openaiBaseUrlOverride:
             markdownModel.openaiBaseUrlOverride ?? ctx.model.apiStatus.providerBaseUrls.openai,
+          ollamaBaseUrlOverride: markdownModel.ollamaBaseUrlOverride,
           anthropicBaseUrlOverride: ctx.model.apiStatus.providerBaseUrls.anthropic,
           googleBaseUrlOverride: ctx.model.apiStatus.providerBaseUrls.google,
           xaiBaseUrlOverride: ctx.model.apiStatus.providerBaseUrls.xai,

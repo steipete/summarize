@@ -141,6 +141,7 @@ function buildInputSummaryForExtracted(extracted: ExtractedLinkContent): string 
 export async function streamSummaryForVisiblePage({
   env,
   fetchImpl,
+  urlFetchImpl,
   input,
   modelOverride,
   promptOverride,
@@ -154,6 +155,7 @@ export async function streamSummaryForVisiblePage({
 }: {
   env: Record<string, string | undefined>;
   fetchImpl: typeof fetch;
+  urlFetchImpl?: typeof fetch | null;
   input: VisiblePageInput;
   modelOverride: string | null;
   promptOverride: string | null;
@@ -174,6 +176,7 @@ export async function streamSummaryForVisiblePage({
   const ctx = createDaemonUrlFlowContext({
     env,
     fetchImpl,
+    urlFetchImpl,
     cache,
     mediaCache,
     modelOverride,
@@ -295,6 +298,7 @@ export async function streamSummaryForVisiblePage({
 export async function streamSummaryForUrl({
   env,
   fetchImpl,
+  urlFetchImpl,
   input,
   modelOverride,
   promptOverride,
@@ -310,6 +314,7 @@ export async function streamSummaryForUrl({
 }: {
   env: Record<string, string | undefined>;
   fetchImpl: typeof fetch;
+  urlFetchImpl?: typeof fetch | null;
   input: UrlModeInput;
   modelOverride: string | null;
   promptOverride: string | null;
@@ -348,6 +353,7 @@ export async function streamSummaryForUrl({
   const ctx = createDaemonUrlFlowContext({
     env,
     fetchImpl,
+    urlFetchImpl,
     cache,
     mediaCache,
     modelOverride,
@@ -431,6 +437,7 @@ export async function streamSummaryForUrl({
 export async function extractContentForUrl({
   env,
   fetchImpl,
+  urlFetchImpl,
   input,
   cache,
   mediaCache,
@@ -441,6 +448,7 @@ export async function extractContentForUrl({
 }: {
   env: Record<string, string | undefined>;
   fetchImpl: typeof fetch;
+  urlFetchImpl?: typeof fetch | null;
   input: UrlModeInput;
   cache: CacheState;
   mediaCache: MediaCache | null;
@@ -457,6 +465,7 @@ export async function extractContentForUrl({
   const ctx = createDaemonUrlFlowContext({
     env,
     fetchImpl,
+    urlFetchImpl,
     cache,
     mediaCache,
     modelOverride: null,

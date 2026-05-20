@@ -60,11 +60,16 @@ header {
 
 .controls {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
 .summarizeControlRoot {
   display: flex;
+}
+
+.summaryCopy {
+  flex: 0 0 auto;
 }
 
 .summarizeControlGroup {

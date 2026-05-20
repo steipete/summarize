@@ -27,6 +27,12 @@ type OpenAiTextCompletionResult = {
   resolvedModelId?: string;
 };
 
+type OpenAiTextStreamResult = {
+  textStream: AsyncIterable<string>;
+  usage: Promise<LlmTokenUsage | null>;
+  resolvedModelId?: string;
+};
+
 function isGitHubModelsBaseUrl(baseUrl: string | undefined): boolean {
   if (!baseUrl) return false;
   try {
@@ -223,6 +229,72 @@ function extractChatCompletionText(payload: {
     .trim();
 }
 
+function extractOpenAiResponsesStreamUsage(payload: Record<string, unknown>): LlmTokenUsage | null {
+  const response = payload.response;
+  const usage =
+    response && typeof response === "object"
+      ? (response as Record<string, unknown>).usage
+      : payload.usage;
+  return normalizeOpenAiUsage(usage);
+}
+
+async function* parseOpenAiSseJsonStream(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<Record<string, unknown>> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let currentData = "";
+
+  const flush = (): Record<string, unknown> | null => {
+    const data = currentData.trim();
+    currentData = "";
+    if (!data || data === "[DONE]") return null;
+    const parsed = JSON.parse(data);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  };
+
+  const processLine = (line: string): Record<string, unknown> | null => {
+    if (line === "") return flush();
+    if (line.startsWith(":")) return null;
+    if (line.startsWith("data:")) {
+      currentData += `${line.slice("data:".length).trimStart()}\n`;
+    }
+    return null;
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    while (true) {
+      const idx = buffer.indexOf("\n");
+      if (idx === -1) break;
+      const rawLine = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 1);
+      const event = processLine(rawLine.replace(/\r$/, ""));
+      if (event) yield event;
+    }
+  }
+
+  buffer += decoder.decode();
+  if (buffer) {
+    const event = processLine(buffer.replace(/\r$/, ""));
+    if (event) yield event;
+  }
+  const event = flush();
+  if (event) yield event;
+}
+
+function createDeferredUsage() {
+  let resolve: (value: LlmTokenUsage | null) => void = () => {};
+  const promise = new Promise<LlmTokenUsage | null>((nextResolve) => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve };
+}
+
 function contextToChatCompletionMessages(
   context: Context,
 ): Array<{ role: string; content: string }> {
@@ -385,6 +457,155 @@ async function completeOpenAiResponsesText({
   return { text, usage: normalizeOpenAiUsage(data.usage), resolvedModelId: modelId };
 }
 
+async function streamOpenAiResponsesText({
+  modelId,
+  openaiConfig,
+  context,
+  temperature,
+  maxOutputTokens,
+  signal,
+  fetchImpl,
+}: {
+  modelId: string;
+  openaiConfig: OpenAiClientConfig;
+  context: Context;
+  temperature?: number;
+  maxOutputTokens?: number;
+  signal: AbortSignal;
+  fetchImpl: typeof fetch;
+}): Promise<OpenAiTextStreamResult> {
+  const baseUrl = openaiConfig.baseURL ?? "https://api.openai.com/v1";
+  const response = await fetchImpl(String(resolveOpenAiResponsesUrl(baseUrl)), {
+    method: "POST",
+    headers: buildOpenAiRequestHeaders(openaiConfig),
+    body: JSON.stringify({
+      model: modelId,
+      input: contextToResponsesInput(context),
+      ...(context.systemPrompt?.trim() ? { instructions: context.systemPrompt.trim() } : {}),
+      ...buildOpenAiResponsesRequestOptions(openaiConfig.requestOptions),
+      stream: true,
+      ...(typeof maxOutputTokens === "number" ? { max_output_tokens: maxOutputTokens } : {}),
+      ...(typeof temperature === "number" ? { temperature } : {}),
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const bodyText = await response.text();
+    throw createOpenAiHttpError({ baseUrl, status: response.status, bodyText });
+  }
+  if (!response.body) {
+    throw new Error("OpenAI stream response was empty.");
+  }
+
+  const usage = createDeferredUsage();
+  const textStream = {
+    async *[Symbol.asyncIterator]() {
+      let finalUsage: LlmTokenUsage | null = null;
+      try {
+        for await (const event of parseOpenAiSseJsonStream(response.body!)) {
+          const type = typeof event.type === "string" ? event.type : "";
+          if (type === "response.output_text.delta" && typeof event.delta === "string") {
+            yield event.delta;
+            continue;
+          }
+          if (type === "response.completed") {
+            finalUsage = extractOpenAiResponsesStreamUsage(event);
+            continue;
+          }
+          if (type === "response.failed" || type === "error") {
+            const error = event.error;
+            const message =
+              error &&
+              typeof error === "object" &&
+              typeof (error as { message?: unknown }).message === "string"
+                ? String((error as { message?: unknown }).message)
+                : "OpenAI stream failed.";
+            throw new Error(message);
+          }
+        }
+      } finally {
+        usage.resolve(finalUsage);
+      }
+    },
+  };
+
+  return { textStream, usage: usage.promise, resolvedModelId: modelId };
+}
+
+async function streamOpenAiChatText({
+  modelId,
+  openaiConfig,
+  context,
+  temperature,
+  maxOutputTokens,
+  signal,
+  fetchImpl,
+}: {
+  modelId: string;
+  openaiConfig: OpenAiClientConfig;
+  context: Context;
+  temperature?: number;
+  maxOutputTokens?: number;
+  signal: AbortSignal;
+  fetchImpl: typeof fetch;
+}): Promise<OpenAiTextStreamResult> {
+  const baseUrl = openaiConfig.baseURL ?? "https://api.openai.com/v1";
+  const response = await fetchImpl(String(resolveOpenAiChatCompletionsUrl(baseUrl)), {
+    method: "POST",
+    headers: buildOpenAiRequestHeaders(openaiConfig),
+    body: JSON.stringify({
+      model: modelId,
+      messages: contextToChatCompletionMessages(context),
+      ...buildOpenAiChatRequestOptions(openaiConfig.requestOptions),
+      stream: true,
+      stream_options: { include_usage: true },
+      ...(typeof maxOutputTokens === "number" ? { max_tokens: maxOutputTokens } : {}),
+      ...(typeof temperature === "number" ? { temperature } : {}),
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const bodyText = await response.text();
+    throw createOpenAiHttpError({ baseUrl, status: response.status, bodyText });
+  }
+  if (!response.body) {
+    throw new Error("OpenAI stream response was empty.");
+  }
+
+  const usage = createDeferredUsage();
+  const textStream = {
+    async *[Symbol.asyncIterator]() {
+      let finalUsage: LlmTokenUsage | null = null;
+      try {
+        for await (const event of parseOpenAiSseJsonStream(response.body!)) {
+          if (event.error) {
+            const error = event.error;
+            const message =
+              error &&
+              typeof error === "object" &&
+              typeof (error as { message?: unknown }).message === "string"
+                ? String((error as { message?: unknown }).message)
+                : "OpenAI stream failed.";
+            throw new Error(message);
+          }
+          if (event.usage) finalUsage = normalizeOpenAiUsage(event.usage);
+          const choices = Array.isArray(event.choices) ? event.choices : [];
+          const delta = choices[0]?.delta;
+          const content =
+            delta && typeof delta === "object" ? (delta as { content?: unknown }).content : null;
+          if (typeof content === "string") yield content;
+        }
+      } finally {
+        usage.resolve(finalUsage);
+      }
+    },
+  };
+
+  return { textStream, usage: usage.promise, resolvedModelId: modelId };
+}
+
 async function completeGitHubModelsText({
   modelId,
   openaiConfig,
@@ -513,6 +734,57 @@ export async function completeOpenAiText({
     .trim();
   if (!text) throw new Error(`LLM returned an empty summary (model openai/${modelId}).`);
   return { text, usage: normalizeTokenUsage(result.usage) };
+}
+
+export async function streamOpenAiText({
+  modelId,
+  openaiConfig,
+  context,
+  temperature,
+  maxOutputTokens,
+  signal,
+  fetchImpl = globalThis.fetch.bind(globalThis),
+}: {
+  modelId: string;
+  openaiConfig: OpenAiClientConfig;
+  context: Context;
+  temperature?: number;
+  maxOutputTokens?: number;
+  signal: AbortSignal;
+  fetchImpl?: typeof fetch;
+}): Promise<OpenAiTextStreamResult | null> {
+  if (
+    openaiConfig.useChatCompletions &&
+    openaiConfig.requestOptions &&
+    !openaiConfig.isOpenRouter &&
+    isApiOpenAiBaseUrl(openaiConfig.baseURL)
+  ) {
+    return streamOpenAiChatText({
+      modelId,
+      openaiConfig,
+      context,
+      temperature,
+      maxOutputTokens,
+      signal,
+      fetchImpl,
+    });
+  }
+  if (
+    !openaiConfig.isOpenRouter &&
+    isApiOpenAiBaseUrl(openaiConfig.baseURL) &&
+    isOpenAiResponsesTextModelId(modelId)
+  ) {
+    return streamOpenAiResponsesText({
+      modelId,
+      openaiConfig,
+      context,
+      temperature,
+      maxOutputTokens,
+      signal,
+      fetchImpl,
+    });
+  }
+  return null;
 }
 
 export async function completeOpenAiDocument({

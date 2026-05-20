@@ -15,6 +15,7 @@ import type { PanelPhase, PanelState, UiState } from "./types";
 export function createSlidesViewRuntime({
   renderMarkdownHostEl,
   renderSlidesHostEl,
+  summaryCopyBtn,
   chatMessagesEl,
   md,
   headerSetStatus,
@@ -41,6 +42,7 @@ export function createSlidesViewRuntime({
 }: {
   renderMarkdownHostEl: HTMLElement;
   renderSlidesHostEl: HTMLElement;
+  summaryCopyBtn: HTMLButtonElement;
   chatMessagesEl: HTMLElement;
   md: MarkdownIt;
   headerSetStatus: (text: string) => void;
@@ -186,6 +188,7 @@ export function createSlidesViewRuntime({
       hasSlides: Boolean(state.panelState.slides?.slides.length),
       headerSetStatus,
       hostEl: renderMarkdownHostEl,
+      copyButtonEl: summaryCopyBtn,
       inputMode: state.inputMode,
       markdown: state.panelState.summaryMarkdown ?? "",
       md,
@@ -208,6 +211,7 @@ export function createSlidesViewRuntime({
       hasSlides: Boolean(state.panelState.slides?.slides.length),
       headerSetStatus,
       hostEl: renderMarkdownHostEl,
+      copyButtonEl: summaryCopyBtn,
       inputMode: state.inputMode,
       markdown: "",
       md,

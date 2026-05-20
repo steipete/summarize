@@ -14,13 +14,16 @@ const htmlResponse = (html: string, status = 200) =>
 
 function collectStream() {
   let text = "";
+  const chunks: string[] = [];
   const stream = new Writable({
     write(chunk, _encoding, callback) {
-      text += chunk.toString();
+      const value = chunk.toString();
+      chunks.push(value);
+      text += value;
       callback();
     },
   });
-  return { stream, getText: () => text };
+  return { stream, getText: () => text, chunks };
 }
 
 const mocks = vi.hoisted(() => ({
@@ -55,7 +58,7 @@ function writeLiteLlmCache(root: string) {
 async function runStreamedSummary(
   chunks: string[],
   options?: { perfTrace?: boolean; stdoutIsTty?: boolean; writeLiteLlmCatalog?: boolean },
-): Promise<{ stderr: string; stdout: string }> {
+): Promise<{ stderr: string; stdout: string; stdoutChunks: string[] }> {
   mocks.streamSimple.mockReset().mockImplementation(() =>
     makeTextDeltaStream(
       chunks,
@@ -121,7 +124,7 @@ async function runStreamedSummary(
     globalFetchSpy.mockRestore();
   }
 
-  return { stdout: stdout.getText(), stderr: stderr.getText() };
+  return { stdout: stdout.getText(), stderr: stderr.getText(), stdoutChunks: stdout.chunks };
 }
 
 describe("cli stream chunk merge", () => {
@@ -137,6 +140,17 @@ describe("cli stream chunk merge", () => {
   it("keeps delta chunks unchanged", async () => {
     const { stdout: out } = await runStreamedSummary(["Hello ", "world", "!"]);
     expect(out).toBe("Hello world!\n");
+  }, 20_000);
+
+  it("writes the first plain stdout chunk before a newline arrives", async () => {
+    const { stdout: out, stdoutChunks } = await runStreamedSummary(["Hello", " world\n"], {
+      stdoutIsTty: true,
+      writeLiteLlmCatalog: false,
+    });
+
+    expect(out).toBe("Hello world\n");
+    expect(stdoutChunks[0]).toBe("Hello");
+    expect(stdoutChunks[1]).toBe(" world\n");
   }, 20_000);
 
   it("handles mixed delta then cumulative chunks", async () => {

@@ -47,6 +47,7 @@ function createContext(overrides: Record<string, unknown> = {}) {
       zaiBaseUrl: "https://z.ai",
       nvidiaApiKey: "nv-key",
       nvidiaBaseUrl: "https://nvidia",
+      ollamaBaseUrl: "http://ollama:11434/v1",
     },
     outputLanguage: { kind: "auto" },
     promptOverride: null,
@@ -144,7 +145,7 @@ describe("asset summary attempts", () => {
     ]);
   });
 
-  it("adds gateway overrides for fixed Z.ai and NVIDIA specs", async () => {
+  it("adds gateway overrides for fixed Z.ai, NVIDIA, and Ollama specs", async () => {
     const zaiAttempts = await buildAssetModelAttempts({
       ctx: createContext({
         isFallbackModel: false,
@@ -190,6 +191,29 @@ describe("asset summary attempts", () => {
       openaiBaseUrlOverride: "https://nvidia",
       forceChatCompletions: true,
     });
+
+    const ollamaAttempts = await buildAssetModelAttempts({
+      ctx: createContext({
+        isFallbackModel: false,
+        fixedModelSpec: {
+          transport: "native",
+          userModelId: "ollama/qwen3:0.6b",
+          llmModelId: "ollama/qwen3:0.6b",
+          openrouterProviders: null,
+          forceOpenRouter: false,
+          requiredEnv: "OLLAMA_BASE_URL",
+        },
+      }) as never,
+      kind: "file",
+      promptTokensForAuto: null,
+      requiresVideoUnderstanding: false,
+      lastSuccessfulCliProvider: null,
+    });
+    expect(ollamaAttempts[0]).toMatchObject({
+      openaiBaseUrlOverride: "http://ollama:11434/v1",
+      forceChatCompletions: true,
+    });
+    expect(ollamaAttempts[0]).not.toHaveProperty("openaiApiKeyOverride");
   });
 
   it("returns null cli context when cli transport or attachments are not eligible", async () => {

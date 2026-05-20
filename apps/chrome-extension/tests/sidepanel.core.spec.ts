@@ -297,6 +297,20 @@ test("sidepanel mode picker applies overlay selection", async ({
     await modeTrigger.press("Enter");
     const modeList = getOpenPickerList(page);
     await expect(modeList).toBeVisible();
+    const modeContent = page.locator(
+      '#summarize-overlay-root .pickerPositioner[data-picker="mode"] .pickerContent:not([hidden])',
+    );
+    const pickerAlpha = await modeContent.evaluate((element) => {
+      const background = getComputedStyle(element).backgroundColor;
+      const rgba = /^rgba?\(([^)]+)\)$/.exec(background);
+      if (!rgba) return 1;
+      const parts = rgba[1]
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean);
+      return parts.length >= 4 ? Number(parts[3]) : 1;
+    });
+    expect(pickerAlpha).toBeGreaterThanOrEqual(0.85);
     await modeList.locator('[role="option"]').nth(2).click();
 
     await expect(modeTrigger).toHaveText("Dark");

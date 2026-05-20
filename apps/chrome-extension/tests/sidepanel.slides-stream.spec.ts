@@ -285,3 +285,125 @@ test("sidepanel retry requests a fresh run when parallel slides have no run id",
     await closeExtension(harness.context, harness.userDataDir);
   }
 });
+
+test("sidepanel replaces transcript slide copy with slides LLM summaries", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, {
+      token: "test-token",
+      autoSummarize: false,
+      slidesEnabled: true,
+      slidesParallel: true,
+      slidesOcrEnabled: true,
+    });
+    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+    await waitForPanelPort(page);
+    await waitForSettingsHydratedHook(page);
+
+    const sourceUrl = "https://www.youtube.com/watch?v=llmSlides123";
+    const slidesPayload = buildSlidesPayload({
+      sourceUrl,
+      sourceId: "youtube-llmSlides123",
+      count: 2,
+      textPrefix: "Raw transcript fallback",
+    });
+    const slidesStreamBody = [
+      "event: slides",
+      `data: ${JSON.stringify(slidesPayload)}`,
+      "",
+      "event: done",
+      "data: {}",
+      "",
+    ].join("\n");
+    await page.route(
+      "http://127.0.0.1:8787/v1/summarize/slides-llm/slides/events",
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+          body: slidesStreamBody,
+        });
+      },
+    );
+
+    const llmMarkdown = [
+      "The video argues that the movie works because the premise stays emotionally grounded.",
+      "",
+      "[slide:1]",
+      "## Blockbuster setup",
+      "The LLM-written card frames the opening amnesia and spacecraft mystery without quoting the transcript.",
+      "",
+      "[slide:2]",
+      "## Stakes and tone",
+      "The LLM-written card connects the science problem to the story's warmer buddy-movie rhythm.",
+    ].join("\n");
+    const summaryStreamBody = [
+      "event: chunk",
+      `data: ${JSON.stringify({ text: llmMarkdown })}`,
+      "",
+      "event: done",
+      "data: {}",
+      "",
+    ].join("\n");
+    await page.route("http://127.0.0.1:8787/v1/summarize/slides-llm/events", async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+        body: summaryStreamBody,
+      });
+    });
+    const placeholderPng = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO3kq0cAAAAASUVORK5CYII=",
+      "base64",
+    );
+    await page.route("http://127.0.0.1:8787/v1/slides/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: {
+          "content-type": "image/png",
+          "x-summarize-slide-ready": "1",
+        },
+        body: placeholderPng,
+      });
+    });
+
+    await sendBgMessage(harness, {
+      type: "ui:state",
+      state: buildUiState({
+        tab: { id: 1, url: sourceUrl, title: "LLM Slides" },
+        media: { hasVideo: true, hasAudio: true, hasCaptions: true },
+        settings: {
+          autoSummarize: false,
+          slidesEnabled: true,
+          slidesParallel: true,
+          slidesOcrEnabled: true,
+          tokenPresent: true,
+        },
+      }),
+    });
+    await sendBgMessage(harness, {
+      type: "slides:run",
+      ok: true,
+      runId: "slides-llm",
+      url: sourceUrl,
+    });
+
+    await expect.poll(async () => (await getPanelSlidesTimeline(page)).length).toBe(2);
+    await expect
+      .poll(
+        async () => (await getPanelSlideDescriptions(page)).map(([, text]) => text).join("\n"),
+        { timeout: 10_000 },
+      )
+      .toContain("LLM-written card");
+    const descriptions = await getPanelSlideDescriptions(page);
+    expect(descriptions).toHaveLength(2);
+    expect(descriptions.every(([, text]) => !text.includes("Raw transcript fallback"))).toBe(true);
+
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});

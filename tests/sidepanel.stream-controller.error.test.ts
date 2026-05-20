@@ -43,6 +43,41 @@ const run = {
 };
 
 describe("sidepanel stream controller error handling", () => {
+  it("does not let stale starts cancel newer streams after token lookup races", async () => {
+    let releaseFirstToken: ((value: string) => void) | null = null;
+    const firstToken = new Promise<string>((resolve) => {
+      releaseFirstToken = resolve;
+    });
+    const tokenCalls: Promise<string>[] = [firstToken, Promise.resolve("token-2")];
+    const fetched: string[] = [];
+    const phases: string[] = [];
+    const controller = createStreamController({
+      getToken: async () => await (tokenCalls.shift() ?? Promise.resolve("token")),
+      onStatus: () => {},
+      onPhaseChange: (phase) => phases.push(phase),
+      onMeta: () => {},
+      fetchImpl: async (input) => {
+        fetched.push(String(input));
+        return new Response(
+          streamFromEvents([
+            { event: "chunk", data: { text: "ok" } },
+            { event: "done", data: {} },
+          ]),
+          { status: 200 },
+        );
+      },
+    });
+
+    const staleStart = controller.start({ ...run, id: "run-old" });
+    const currentStart = controller.start({ ...run, id: "run-new" });
+    await currentStart;
+    releaseFirstToken?.("token-1");
+    await staleStart;
+
+    expect(fetched).toEqual(["http://127.0.0.1:8787/v1/summarize/run-new/events"]);
+    expect(phases.at(-1)).toBe("idle");
+  });
+
   it("keeps error phase when SSE returns an error event", async () => {
     const phases: string[] = [];
     const statuses: string[] = [];

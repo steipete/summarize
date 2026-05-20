@@ -53,6 +53,7 @@ export type SummaryEngineDeps = {
       | "zai"
       | "nvidia"
       | "github-copilot"
+      | "ollama"
       | "cli";
     model: string;
     usage: Awaited<ReturnType<typeof summarizeWithModelId>>["usage"] | null;
@@ -79,6 +80,9 @@ export type SummaryEngineDeps = {
   };
   nvidia: {
     apiKey: string | null;
+    baseUrl: string;
+  };
+  ollama: {
     baseUrl: string;
   };
   providerBaseUrls: {
@@ -115,6 +119,13 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         ...attempt,
         openaiApiKeyOverride: deps.nvidia.apiKey,
         openaiBaseUrlOverride: deps.nvidia.baseUrl,
+        forceChatCompletions: true,
+      };
+    }
+    if (modelIdLower.startsWith("ollama/")) {
+      return {
+        ...attempt,
+        openaiBaseUrlOverride: deps.ollama.baseUrl,
         forceChatCompletions: true,
       };
     }
@@ -172,6 +183,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     }
     if (requiredEnv === "XAI_API_KEY") {
       return Boolean(deps.apiKeys.xaiApiKey);
+    }
+    if (requiredEnv === "OLLAMA_BASE_URL") {
+      return true;
     }
     return Boolean(deps.apiKeys.anthropicApiKey);
   };
@@ -307,12 +321,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
       attempt.requestOptions,
       deps.openaiRequestOptionsOverride,
     );
-    const hasOpenAiRequestOptions =
-      parsedModelEffective.provider === "openai" && Boolean(requestOptions);
     const streamingEnabledForCall =
       allowStreaming &&
       deps.streamingEnabled &&
-      !hasOpenAiRequestOptions &&
       !modelResolution.forceStreamOff &&
       canStream({
         provider: parsedModelEffective.provider,
@@ -359,6 +370,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         googleBaseUrlOverride: deps.providerBaseUrls.google,
         xaiBaseUrlOverride: deps.providerBaseUrls.xai,
         zaiBaseUrlOverride: deps.zai.baseUrl,
+        ollamaBaseUrlOverride: deps.ollama.baseUrl,
         forceChatCompletions,
         requestOptions,
         retries: deps.retries,
@@ -418,6 +430,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         googleBaseUrlOverride: deps.providerBaseUrls.google,
         xaiBaseUrlOverride: deps.providerBaseUrls.xai,
         zaiBaseUrlOverride: deps.zai.baseUrl,
+        ollamaBaseUrlOverride: deps.ollama.baseUrl,
         forceChatCompletions,
         requestOptions,
         retries: deps.retries,
@@ -469,6 +482,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         anthropicBaseUrlOverride: deps.providerBaseUrls.anthropic,
         googleBaseUrlOverride: deps.providerBaseUrls.google,
         xaiBaseUrlOverride: deps.providerBaseUrls.xai,
+        ollamaBaseUrlOverride: deps.ollama.baseUrl,
         forceChatCompletions,
         requestOptions,
         prompt,
@@ -510,13 +524,18 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
           })
         : null;
 
+      const stdoutIsRichTty = isRichTty(deps.stdout);
+      const streamOutputMode = deps.streamingOutputMode ?? (stdoutIsRichTty ? "delta" : "line");
       const outputGate = shouldStreamSummaryToStdout
         ? createStreamOutputGate({
             stdout: deps.stdout,
             clearProgressForStdout: deps.clearProgressForStdout,
-            restoreProgressAfterStdout: deps.restoreProgressAfterStdout ?? null,
-            outputMode: deps.streamingOutputMode ?? "line",
-            richTty: isRichTty(deps.stdout),
+            restoreProgressAfterStdout:
+              streamOutputMode === "delta" ? null : (deps.restoreProgressAfterStdout ?? null),
+            outputMode: streamOutputMode,
+            richTty: stdoutIsRichTty && streamOutputMode === "line",
+            rewriteOnReplacement: stdoutIsRichTty && streamOutputMode === "delta",
+            restoreDuringStream: streamOutputMode !== "delta",
           })
         : null;
 
@@ -602,6 +621,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         if (shouldStreamSummaryToStdout) {
           const finalText = streamedRaw || streamed;
           outputGate?.finalize(finalText);
+          if (streamOutputMode === "delta") deps.restoreProgressAfterStdout?.();
           summaryAlreadyPrinted = true;
         }
       }

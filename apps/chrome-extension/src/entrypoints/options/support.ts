@@ -20,11 +20,11 @@ export function createStatusController(statusEl: HTMLElement) {
   let statusTimer = 0;
 
   const setStatus = (text: string) => {
+    window.clearTimeout(statusTimer);
     statusEl.textContent = text;
   };
 
   const flashStatus = (text: string, duration = 900) => {
-    window.clearTimeout(statusTimer);
     setStatus(text);
     statusTimer = window.setTimeout(() => setStatus(""), duration);
   };

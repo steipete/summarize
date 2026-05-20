@@ -278,4 +278,25 @@ describe("link preview extraction (Firecrawl fallback)", () => {
     expect(scrapeWithFirecrawl).toHaveBeenCalledTimes(1);
     expect(result.content).toContain("Hello from Firecrawl");
   });
+
+  it("can surface non-HTML responses before Firecrawl for CLI asset retry", async () => {
+    const scrapeWithFirecrawl = vi.fn(async () => ({
+      markdown: "Should not run",
+      html: "<html><head><title>Firecrawl</title></head><body></body></html>",
+      metadata: { title: "Firecrawl title" },
+    }));
+
+    const client = createLinkPreviewClient({
+      fetch: async () => pdfResponse("%PDF-1.4 fake payload"),
+      scrapeWithFirecrawl,
+    });
+
+    await expect(
+      client.fetchLinkContent("https://example.com/paper", {
+        timeoutMs: 2000,
+        throwOnAssetLikeHtmlError: true,
+      }),
+    ).rejects.toThrow(/unsupported content-type/i);
+    expect(scrapeWithFirecrawl).not.toHaveBeenCalled();
+  });
 });
