@@ -51,9 +51,9 @@ The `<model>` part must match the tag in `ollama list` exactly, including the va
 
 ### Environment
 
-| Var               | Purpose                                                          | Default                          |
-| ----------------- | ---------------------------------------------------------------- | -------------------------------- |
-| `OLLAMA_BASE_URL` | Override the Ollama OpenAI-compatible base URL (incl. `/v1`).    | `http://localhost:11434/v1`      |
+| Var               | Purpose                                                       | Default                     |
+| ----------------- | ------------------------------------------------------------- | --------------------------- |
+| `OLLAMA_BASE_URL` | Override the Ollama OpenAI-compatible base URL (incl. `/v1`). | `http://localhost:11434/v1` |
 
 `OLLAMA_BASE_URL` also gates auto-discovery in the Chrome/Firefox extension model picker — set it
 (or `ollama.baseUrl` in config) and your installed Ollama models appear in the dropdown

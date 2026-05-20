@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { CacheStore } from "../src/cache.js";
 import type { ExtractedLinkContent } from "../src/content/index.js";
 import { parseRequestedModelId } from "../src/model-spec.js";
+import { resolveUrlSummaryExecution } from "../src/run/flows/url/summary-resolution.js";
 import { summarizeExtractedUrl } from "../src/run/flows/url/summary.js";
 import type { UrlFlowContext } from "../src/run/flows/url/types.js";
 
@@ -164,6 +165,7 @@ describe("summarizeExtractedUrl timestamp guard", () => {
           zaiApiKey: null,
           zaiBaseUrl: "",
           nvidiaBaseUrl: "",
+          ollamaBaseUrl: "http://localhost:11434/v1",
           firecrawlConfigured: false,
           firecrawlApiKey: null,
           apifyToken: null,
@@ -243,5 +245,85 @@ describe("summarizeExtractedUrl timestamp guard", () => {
     expect(writes.text[0]).toContain("[12:54] Midpoint");
     expect(writes.text[0]).not.toContain("[33:10]");
     expect(stderr.getText()).toBe("");
+  });
+
+  it("passes custom Ollama base URL for fixed URL summary attempts", async () => {
+    const fixedModel = parseRequestedModelId("ollama/qwen3:0.6b");
+    if (fixedModel.kind !== "fixed" || fixedModel.transport !== "native") {
+      throw new Error("expected fixed native Ollama model");
+    }
+
+    let capturedAttempt: unknown = null;
+    const ctx = {
+      io: {
+        env: {},
+        envForRun: {},
+        stderr: collectStream().stream,
+        fetch: globalThis.fetch.bind(globalThis),
+      },
+      flags: {
+        verbose: false,
+        verboseColor: false,
+        lengthArg: { kind: "preset", preset: "short" },
+        outputLanguage: { kind: "auto" },
+        summaryCacheBypass: true,
+        forceSummary: false,
+        maxOutputTokensArg: null,
+        json: false,
+        slides: null,
+        streamMode: "off",
+        streamingEnabled: false,
+      },
+      model: {
+        requestedModel: fixedModel,
+        requestedModelInput: "ollama/qwen3:0.6b",
+        fixedModelSpec: fixedModel,
+        isFallbackModel: false,
+        isImplicitAutoSelection: false,
+        isNamedModelSelection: true,
+        wantsFreeNamedModel: false,
+        desiredOutputTokens: null,
+        configForModelSelection: null,
+        envForAuto: {},
+        cliAvailability: {},
+        allowAutoCliFallback: false,
+        apiStatus: {
+          ollamaBaseUrl: "http://ollama-box:11434/v1",
+        },
+        summaryEngine: {
+          envHasKeyFor: () => true,
+          formatMissingModelError: () => "missing",
+          runSummaryAttempt: async ({ attempt }: { attempt: unknown }) => {
+            capturedAttempt = attempt;
+            return {
+              summary: "Summary paragraph.",
+              summaryAlreadyPrinted: false,
+              modelMeta: { provider: "ollama", canonical: "ollama/qwen3:0.6b" },
+              maxOutputTokensForCall: null,
+            };
+          },
+        },
+        getLiteLlmCatalog: async () => ({ catalog: [] }),
+      },
+      cache: { mode: "bypass", store: null },
+      hooks: {
+        onSummaryCached: null,
+      },
+    } as unknown as UrlFlowContext;
+
+    const result = await resolveUrlSummaryExecution({
+      ctx,
+      url: extracted.url,
+      extracted,
+      prompt: "Prompt",
+      onModelChosen: null,
+    });
+
+    expect(result.kind).toBe("summary");
+    expect(capturedAttempt).toMatchObject({
+      userModelId: "ollama/qwen3:0.6b",
+      openaiBaseUrlOverride: "http://ollama-box:11434/v1",
+      forceChatCompletions: true,
+    });
   });
 });

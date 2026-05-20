@@ -46,6 +46,7 @@ export function createHtmlToMarkdownConverter({
   googleApiKey,
   openaiApiKey,
   openaiBaseUrlOverride,
+  ollamaBaseUrlOverride,
   anthropicBaseUrlOverride,
   googleBaseUrlOverride,
   xaiBaseUrlOverride,
@@ -64,6 +65,7 @@ export function createHtmlToMarkdownConverter({
   googleApiKey: string | null;
   openaiApiKey: string | null;
   openaiBaseUrlOverride?: string | null;
+  ollamaBaseUrlOverride?: string | null;
   anthropicBaseUrlOverride?: string | null;
   googleBaseUrlOverride?: string | null;
   xaiBaseUrlOverride?: string | null;
@@ -96,6 +98,7 @@ export function createHtmlToMarkdownConverter({
       apiKeys: { xaiApiKey, googleApiKey, openaiApiKey, anthropicApiKey, openrouterApiKey },
       forceOpenRouter,
       openaiBaseUrlOverride,
+      ollamaBaseUrlOverride,
       anthropicBaseUrlOverride,
       googleBaseUrlOverride,
       xaiBaseUrlOverride,

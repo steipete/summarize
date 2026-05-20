@@ -45,6 +45,7 @@ export type MarkdownModel = {
   forceOpenRouter: boolean;
   openaiApiKeyOverride?: string | null;
   openaiBaseUrlOverride?: string | null;
+  ollamaBaseUrlOverride?: string | null;
   forceChatCompletions?: boolean;
   requestOptions?: ModelRequestOptions;
   requiredEnv?: ModelAttemptRequiredEnv;

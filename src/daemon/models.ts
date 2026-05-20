@@ -274,8 +274,7 @@ export async function buildModelPickerOptions({
   }
 
   const ollamaExplicitlyConfigured =
-    Boolean(envForRun.OLLAMA_BASE_URL?.trim()) ||
-    Boolean(configForCli?.ollama?.baseUrl?.trim());
+    Boolean(envForRun.OLLAMA_BASE_URL?.trim()) || Boolean(configForCli?.ollama?.baseUrl?.trim());
   if (ollamaExplicitlyConfigured) {
     const baseUrl = envState.ollamaBaseUrl;
     const baseUrlHost = describeBaseUrlHost(baseUrl);
