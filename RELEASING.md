@@ -18,7 +18,8 @@ Ship is **not done** until:
 
 0. Preflight
    - Clean git: `git status`
-   - Auth: `gh auth status`, `npm whoami`
+   - Auth: `gh auth status`
+   - npm auth must use the `$npm` tmux/1Password workflow with a temporary npmrc (`NPM_CONFIG_USERCONFIG`). Do not use raw `npm publish`.
 
 1. Bump version + notes
    - Update version in:
@@ -47,7 +48,19 @@ Ship is **not done** until:
    - `cd apps/chrome-extension/.output/firefox-mv3 && zip -r -FS ../../../../dist-firefox/summarize-firefox-extension-v<ver>.zip . && cd -`
    - Verify: `unzip -l dist-firefox/summarize-firefox-extension-v<ver>.zip | head -20`
 
-6. Tag
+6. Publish to npm + smoke + promote
+   - Use the helper only:
+     ```bash
+     scripts/release.sh publish
+     ```
+   - This publishes core first, then CLI, both with `pnpm publish --tag next`.
+   - It blocks raw `npm publish` via `prepublishOnly`, verifies tarball metadata has no `workspace:*`, smokes the exact version with `pnpm dlx`, and only then promotes both packages to `latest`.
+   - If exact-version smoke fails, do not tag or create a GitHub Release. Deprecate the broken CLI version and ship a patch:
+     ```bash
+     BAD_VERSION=<bad-version> DEPRECATE_MESSAGE="Broken package metadata. Use a newer version." scripts/release.sh deprecate
+     ```
+
+7. Tag
 
    ```bash
    ver="$(node -p 'require(\"./package.json\").version')"
@@ -55,7 +68,7 @@ Ship is **not done** until:
    git push --tags
    ```
 
-7. GitHub Release + assets
+8. GitHub Release + assets
 
    ```bash
    ver="$(node -p 'require(\"./package.json\").version')"
@@ -83,7 +96,7 @@ Ship is **not done** until:
 
    - Verify notes render (real newlines): `gh release view v<ver> --json body --jq .body`
 
-8. Homebrew/core verify
+9. Homebrew/core verify
    - Homebrew/core is autobumped from the GitHub Release; this can lag the npm/GitHub release.
    - Verify when the formula catches up:
      ```bash
@@ -92,32 +105,16 @@ Ship is **not done** until:
      summarize --version
      ```
 
-9. Publish to npm + smoke
-   - If npm asks for OTP:
-     - `npm_config_auth_type=legacy pnpm publish --tag latest --access public --otp <otp>`
-   - Otherwise:
-     - Publish core first, then CLI:
-       - `pnpm -C packages/core publish --tag latest --access public`
-       - `pnpm publish --tag latest --access public`
-   - If the CLI forces browser auth, prefer the legacy path above by sourcing `~/.profile`
-     (must include `NODE_AUTH_TOKEN`) before running the publish command.
-   - Smoke:
-     ```bash
-     ver="$(node -p 'require(\"./package.json\").version')"
-     npm view @steipete/summarize version
-     npm view @steipete/summarize-core version
-     pnpm -s dlx @steipete/summarize@"${ver}" --version
-     pnpm -s dlx @steipete/summarize@"${ver}" --help >/dev/null
-     ```
-
 ## npm (npmjs)
 
 Notes:
 
-- npm may prompt for browser auth when `npm config get auth-type` is `web`. For scripted publishes, use `npm_config_auth_type=legacy` + `--otp`.
+- npm may prompt for browser auth when `npm config get auth-type` is `web`. For scripted publishes, create auth in the `$npm` tmux/1Password workflow and pass OTP as `NPM_OTP` only when needed.
+- Publishing with raw `npm publish` is forbidden here. Use `pnpm publish` only; it rewrites `workspace:*` dependencies in the packed CLI metadata.
+- `scripts/release.sh publish` uses `next` first, then exact-version smoke, then `latest`. Tag/GitHub release come after that smoke passes.
 - `prepare` runs `pnpm build` automatically during publish.
 
-Helper: `scripts/release.sh` (phases: `gates|build|bun|chrome|firefox|verify|publish|smoke|tag|github|homebrew|all`).
+Helper: `scripts/release.sh` (phases: `gates|build|bun|chrome|firefox|verify|publish|smoke|promote|tag|github|homebrew|deprecate|all`).
 
 ## Homebrew (Bun-compiled binary w/ bytecode) - details
 

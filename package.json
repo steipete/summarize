@@ -48,6 +48,7 @@
     "lint": "oxlint --type-aware --tsconfig tsconfig.build.json --config .oxlintrc.json .",
     "lint:fix": "oxlint --type-aware --tsconfig tsconfig.build.json --config .oxlintrc.json --fix . && pnpm format",
     "prepare": "pnpm build",
+    "prepublishOnly": "node scripts/require-pnpm-publish.mjs",
     "release": "bash scripts/release.sh",
     "s": "tsx src/cli.ts",
     "summarize": "tsx src/cli.ts",

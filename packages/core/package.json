@@ -43,6 +43,7 @@
   "scripts": {
     "build": "pnpm clean && tsgo -p tsconfig.build.json",
     "clean": "rimraf dist",
+    "prepublishOnly": "node ../../scripts/require-pnpm-publish.mjs",
     "typecheck": "tsgo -p tsconfig.build.json --noEmit"
   },
   "dependencies": {
