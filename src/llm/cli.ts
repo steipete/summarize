@@ -383,27 +383,39 @@ export async function runCliModel({
   }
 
   if (provider === "agy") {
-    const agyArgs: string[] = [...providerExtraArgs, "--print"];
-    if (
-      Number.isFinite(timeoutMs) &&
-      timeoutMs > 0 &&
-      !hasAnyFlag(providerExtraArgs, ["--print-timeout", "-print-timeout"])
-    ) {
-      agyArgs.push("--print-timeout", goDurationFromMs(timeoutMs));
+    const isolatedCwd = !allowTools
+      ? await fs.mkdtemp(path.join(tmpdir(), "summarize-agy-"))
+      : null;
+    try {
+      const agyArgs: string[] = [...providerExtraArgs, "--print"];
+      if (!allowTools && !hasAnyFlag(providerExtraArgs, ["--sandbox"])) {
+        agyArgs.push("--sandbox");
+      }
+      if (
+        Number.isFinite(timeoutMs) &&
+        timeoutMs > 0 &&
+        !hasAnyFlag(providerExtraArgs, ["--print-timeout", "-print-timeout"])
+      ) {
+        agyArgs.push("--print-timeout", goDurationFromMs(timeoutMs));
+      }
+      // agy print mode accepts stdin; keep prompt content out of argv and process listings.
+      const { stdout } = await execCliWithInput({
+        execFileImpl: execFileFn,
+        cmd: binary,
+        args: agyArgs,
+        input: prompt,
+        timeoutMs,
+        env: effectiveEnv,
+        cwd: isolatedCwd ?? cwd,
+      });
+      const text = stdout.trim();
+      if (!text) throw new Error("CLI returned empty output");
+      return { text, usage: null, costUsd: null };
+    } finally {
+      if (isolatedCwd) {
+        await fs.rm(isolatedCwd, { recursive: true, force: true }).catch(() => {});
+      }
     }
-    // agy print mode accepts stdin; keep prompt content out of argv and process listings.
-    const { stdout } = await execCliWithInput({
-      execFileImpl: execFileFn,
-      cmd: binary,
-      args: agyArgs,
-      input: prompt,
-      timeoutMs,
-      env: effectiveEnv,
-      cwd,
-    });
-    const text = stdout.trim();
-    if (!text) throw new Error("CLI returned empty output");
-    return { text, usage: null, costUsd: null };
   }
 
   if (!isJsonCliProvider(provider)) {

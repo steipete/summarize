@@ -18,11 +18,13 @@ const makeStub = (
 describe("runCliModel - agy provider", () => {
   it("invokes agy with --print, passes prompt via stdin, returns plain text", async () => {
     let seenCmd = "";
+    let seenCwd = "";
     let seenInput = "";
     const seen: string[][] = [];
-    const execFileImpl: ExecFileFn = ((cmd, args, _options, cb) => {
+    const execFileImpl: ExecFileFn = ((cmd, args, options, cb) => {
       seenCmd = String(cmd);
       seen.push(args);
+      seenCwd = typeof options?.cwd === "string" ? options.cwd : "";
       cb?.(null, "  Hello from agy.  \n", "");
       return {
         stdin: {
@@ -43,6 +45,7 @@ describe("runCliModel - agy provider", () => {
       env: {},
       execFileImpl,
       config: null,
+      cwd: "/tmp/agy-original-cwd",
     });
 
     expect(result.text).toBe("Hello from agy.");
@@ -50,9 +53,12 @@ describe("runCliModel - agy provider", () => {
     expect(result.costUsd).toBeNull();
     expect(seenCmd).toBe("agy");
     expect(seen[0]).toContain("--print");
+    expect(seen[0]).toContain("--sandbox");
     expect(seen[0]).toContain("--print-timeout");
     expect(seen[0]).toContain("1s");
     expect(seen[0]).not.toContain("--output-format");
+    expect(seenCwd).toContain("summarize-agy-");
+    expect(seenCwd).not.toBe("/tmp/agy-original-cwd");
     expect(seenInput).toContain("Summarize this.");
   });
 
@@ -82,10 +88,15 @@ describe("runCliModel - agy provider", () => {
 
   it("does not auto-approve agy tools when allowTools is true", async () => {
     const seen: string[][] = [];
+    let seenCwd = "";
     const execFileImpl = makeStub((args) => {
       seen.push(args);
       return { stdout: "ok" };
     });
+    const wrappedExecFileImpl: ExecFileFn = ((cmd, args, options, cb) => {
+      seenCwd = typeof options?.cwd === "string" ? options.cwd : "";
+      return execFileImpl(cmd, args, options, cb);
+    }) as ExecFileFn;
 
     await runCliModel({
       provider: "agy",
@@ -94,11 +105,14 @@ describe("runCliModel - agy provider", () => {
       allowTools: true,
       timeoutMs: 1000,
       env: {},
-      execFileImpl,
+      execFileImpl: wrappedExecFileImpl,
       config: null,
+      cwd: "/tmp/agy-tools-cwd",
     });
 
     expect(seen[0]).not.toContain("--dangerously-skip-permissions");
+    expect(seen[0]).not.toContain("--sandbox");
+    expect(seenCwd).toBe("/tmp/agy-tools-cwd");
   });
 
   it("passes summarize timeout to agy unless extra args override it", async () => {
