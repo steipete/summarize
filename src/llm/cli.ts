@@ -26,7 +26,7 @@ const DEFAULT_BINARIES: Record<CliProvider, string> = {
   agy: "agy",
 };
 
-const OPENCLAW_MAX_MESSAGE_ARG_BYTES = 120 * 1024;
+const CLI_MAX_MESSAGE_ARG_BYTES = 120 * 1024;
 const CODEX_GPT_FAST_MODEL = "gpt-5.5";
 const CODEX_GPT_FAST_ALIASES = new Set(["gpt-fast", "gpt-5.5-fast"]);
 
@@ -218,7 +218,7 @@ export async function runCliModel({
   }
   if (provider === "openclaw") {
     const promptBytes = Buffer.byteLength(prompt, "utf8");
-    if (promptBytes > OPENCLAW_MAX_MESSAGE_ARG_BYTES) {
+    if (promptBytes > CLI_MAX_MESSAGE_ARG_BYTES) {
       throw new Error(
         `OpenClaw CLI requires --message and cannot safely receive large prompts over argv (${promptBytes} bytes). ` +
           "Use a different CLI provider for this input, reduce extracted content, or update OpenClaw to support stdin/file input.",
@@ -387,7 +387,7 @@ export async function runCliModel({
       ? await fs.mkdtemp(path.join(tmpdir(), "summarize-agy-"))
       : null;
     try {
-      const agyArgs: string[] = [...providerExtraArgs, "--print"];
+      const agyArgs: string[] = [...providerExtraArgs];
       if (!allowTools && !hasAnyFlag(providerExtraArgs, ["--sandbox"])) {
         agyArgs.push("--sandbox");
       }
@@ -398,7 +398,7 @@ export async function runCliModel({
       ) {
         agyArgs.push("--print-timeout", goDurationFromMs(timeoutMs));
       }
-      // agy print mode accepts stdin; keep prompt content out of argv and process listings.
+      agyArgs.push("--print");
       const { stdout } = await execCliWithInput({
         execFileImpl: execFileFn,
         cmd: binary,
