@@ -499,6 +499,21 @@ describe("config loading", () => {
     expect(() => loadSummarizeConfig({ env: { HOME: root } })).toThrow(/unknown CLI provider/);
   });
 
+  it("parses agy cli config", () => {
+    const { root } = writeJsonConfig({
+      cli: {
+        enabled: ["agy"],
+        agy: { binary: "/usr/local/bin/agy", extraArgs: ["--sandbox"] },
+      },
+    });
+    expect(loadSummarizeConfig({ env: { HOME: root } }).config).toEqual({
+      cli: {
+        enabled: ["agy"],
+        agy: { binary: "/usr/local/bin/agy", extraArgs: ["--sandbox"] },
+      },
+    });
+  });
+
   it("parses openclaw cli config", () => {
     const { root } = writeJsonConfig({
       cli: {

@@ -42,7 +42,11 @@ function resolveConfiguredCliModel(
             ? cli?.agent?.model
             : provider === "openclaw"
               ? cli?.openclaw?.model
-              : cli?.opencode?.model;
+              : provider === "opencode"
+                ? cli?.opencode?.model
+                : provider === "agy"
+                  ? null
+                  : cli?.copilot?.model;
   return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
 }
 

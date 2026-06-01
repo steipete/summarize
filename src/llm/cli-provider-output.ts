@@ -1,7 +1,10 @@
 import type { CliProvider } from "../config.js";
 import type { LlmTokenUsage } from "./generate-text.js";
 
-export type JsonCliProvider = Exclude<CliProvider, "codex" | "openclaw" | "opencode" | "copilot">;
+export type JsonCliProvider = Exclude<
+  CliProvider,
+  "codex" | "openclaw" | "opencode" | "copilot" | "agy"
+>;
 
 const JSON_RESULT_FIELDS = ["result", "response", "output", "message", "text"] as const;
 
@@ -10,7 +13,8 @@ export function isJsonCliProvider(provider: CliProvider): provider is JsonCliPro
     provider !== "codex" &&
     provider !== "openclaw" &&
     provider !== "opencode" &&
-    provider !== "copilot"
+    provider !== "copilot" &&
+    provider !== "agy"
   );
 }
 

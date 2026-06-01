@@ -142,6 +142,7 @@ export async function buildModelPickerOptions({
     cliOpenclaw: boolean;
     cliOpencode: boolean;
     cliCopilot: boolean;
+    cliAgy: boolean;
   };
   openaiBaseUrl: string | null;
   localModelsSource: { kind: "openai-compatible"; baseUrlHost: string } | null;
@@ -164,6 +165,7 @@ export async function buildModelPickerOptions({
     cliOpenclaw: false,
     cliOpencode: false,
     cliCopilot: false,
+    cliAgy: false,
   };
   const cliAvailability = resolveCliAvailability({ env: envForRun, config: configForCli });
   providers.cliClaude = Boolean(cliAvailability.claude);
@@ -173,6 +175,7 @@ export async function buildModelPickerOptions({
   providers.cliOpenclaw = Boolean(cliAvailability.openclaw);
   providers.cliOpencode = Boolean(cliAvailability.opencode);
   providers.cliCopilot = Boolean(cliAvailability.copilot);
+  providers.cliAgy = Boolean(cliAvailability.agy);
 
   const options: ModelPickerOption[] = [
     { id: "auto", label: "Auto" },
@@ -200,6 +203,9 @@ export async function buildModelPickerOptions({
   }
   if (providers.cliCopilot) {
     options.push({ id: "cli/copilot", label: "CLI: GitHub Copilot" });
+  }
+  if (providers.cliAgy) {
+    options.push({ id: "cli/agy", label: "CLI: Antigravity (agy)" });
   }
 
   if (providers.openrouter) {

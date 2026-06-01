@@ -432,4 +432,38 @@ describe("daemon/agent", () => {
       autoSpy.mockRestore();
     }
   });
+
+  it("labels CLI_AGY as agy in unavailable-provider diagnostics", async () => {
+    const home = makeTempHome();
+    const autoSpy = vi.spyOn(modelAuto, "buildAutoModelAttempts").mockReturnValue([
+      {
+        transport: "cli",
+        userModelId: "cli/agy",
+        llmModelId: null,
+        openrouterProviders: null,
+        forceOpenRouter: false,
+        requiredEnv: "CLI_AGY",
+        cliProvider: "agy",
+        cliModel: null,
+        debug: "agy fallback",
+      },
+    ]);
+
+    try {
+      await expect(
+        completeAgentResponse({
+          env: { HOME: home, PATH: "" },
+          pageUrl: "https://example.com",
+          pageTitle: null,
+          pageContent: "Hello world",
+          messages: [{ role: "user", content: "Hi" }],
+          modelOverride: null,
+          tools: [],
+          automationEnabled: false,
+        }),
+      ).rejects.toThrow(/CLI unavailable: agy/i);
+    } finally {
+      autoSpy.mockRestore();
+    }
+  });
 });

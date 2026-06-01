@@ -151,7 +151,8 @@ function normalizeAutoCliOrder(value: unknown): string {
       item !== "agent" &&
       item !== "openclaw" &&
       item !== "opencode" &&
-      item !== "copilot"
+      item !== "copilot" &&
+      item !== "agy"
     ) {
       continue;
     }

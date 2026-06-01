@@ -35,7 +35,8 @@ export type RequiredModelEnv =
   | "CLI_AGENT"
   | "CLI_OPENCLAW"
   | "CLI_OPENCODE"
-  | "CLI_COPILOT";
+  | "CLI_COPILOT"
+  | "CLI_AGY";
 
 type GatewayProviderProfile = {
   requiredEnv: RequiredModelEnv;
@@ -105,6 +106,7 @@ export const DEFAULT_CLI_MODELS: Record<CliProvider, string | null> = {
   openclaw: "main",
   opencode: null,
   copilot: null,
+  agy: null,
 };
 
 export const DEFAULT_AUTO_CLI_ORDER: CliProvider[] = [
@@ -115,6 +117,8 @@ export const DEFAULT_AUTO_CLI_ORDER: CliProvider[] = [
   "openclaw",
   "opencode",
   "copilot",
+  // agy is intentionally excluded from the default auto-fallback order.
+  // Use --cli agy or --model cli/agy to opt in explicitly.
 ];
 
 export function parseCliProviderName(raw: string): CliProvider | null {
@@ -126,6 +130,7 @@ export function parseCliProviderName(raw: string): CliProvider | null {
   if (normalized === "openclaw") return "openclaw";
   if (normalized === "opencode") return "opencode";
   if (normalized === "copilot") return "copilot";
+  if (normalized === "agy") return "agy";
   return null;
 }
 
@@ -142,7 +147,9 @@ export function requiredEnvForCliProvider(provider: CliProvider): RequiredModelE
             ? "CLI_OPENCODE"
             : provider === "copilot"
               ? "CLI_COPILOT"
-              : "CLI_CLAUDE";
+              : provider === "agy"
+                ? "CLI_AGY"
+                : "CLI_CLAUDE";
 }
 
 export function getGatewayProviderProfile(provider: GatewayProvider): GatewayProviderProfile {

@@ -17,7 +17,8 @@ export function parseCliProvider(value: unknown, path: string): CliProvider {
     trimmed === "agent" ||
     trimmed === "openclaw" ||
     trimmed === "opencode" ||
-    trimmed === "copilot"
+    trimmed === "copilot" ||
+    trimmed === "agy"
   ) {
     return trimmed as CliProvider;
   }

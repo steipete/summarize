@@ -16,6 +16,7 @@ function resolveConfiguredCliModel(
     if (provider === "agent") return cli?.agent?.model;
     if (provider === "openclaw") return cli?.openclaw?.model;
     if (provider === "opencode") return cli?.opencode?.model;
+    if (provider === "agy") return null;
     return cli?.copilot?.model;
   })();
   return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;

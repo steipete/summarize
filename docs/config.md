@@ -361,7 +361,7 @@ Examples:
 ```json
 {
   "cli": {
-    "enabled": ["gemini", "agent", "openclaw", "opencode", "copilot"],
+    "enabled": ["gemini", "agent", "openclaw", "opencode", "copilot", "agy"],
     "autoFallback": {
       "enabled": true,
       "onlyWhenNoApiKeys": true,
@@ -372,7 +372,8 @@ Examples:
     "agent": { "binary": "/usr/local/bin/agent", "model": "gpt-5.2" },
     "openclaw": { "binary": "/usr/local/bin/openclaw", "model": "main" },
     "opencode": { "binary": "/usr/local/bin/opencode", "model": "openai/gpt-5.4" },
-    "copilot": { "binary": "/usr/local/bin/copilot", "model": "gpt-5.2" }
+    "copilot": { "binary": "/usr/local/bin/copilot", "model": "gpt-5.2" },
+    "agy": { "binary": "/usr/local/bin/agy" }
   }
 }
 ```
@@ -385,6 +386,7 @@ Notes:
 - Auto fallback stores the last successful provider in `~/.summarize/cli-state.json` and prioritizes it on the next run.
 - `cli.<provider>.binary` overrides CLI binary discovery.
 - `cli.<provider>.extraArgs` appends extra CLI args.
+- Antigravity CLI uses the active agy session model; `cli.agy.model` is ignored by runtime selection.
 - `cli.codex.isolated` defaults to `true` for normal summaries, adding Codex ephemeral/no-user-config/no-rules flags, a temporary cwd, and a sanitized temporary `CODEX_HOME` that carries auth only. Set it to `false` only when local Codex config/rules are intentional.
 
 ## OpenAI config

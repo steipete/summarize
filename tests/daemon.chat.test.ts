@@ -206,6 +206,42 @@ describe("daemon/chat", () => {
     expect(meta[0]?.model).toBe("cli/opencode/openai/gpt-5.4");
   });
 
+  it("uses agy's active session model for chat metadata", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-agy-fixed-"));
+    const meta: Array<{ model?: string | null }> = [];
+
+    await streamChatResponse({
+      env: { HOME: home },
+      fetchImpl: fetch,
+      configForCli: {
+        cli: {
+          agy: {
+            model: "Gemini 3.5 Flash (Medium)",
+          },
+        },
+      },
+      session: {
+        id: "s-agy-fixed",
+        lastMeta: { model: null, modelLabel: null, inputSummary: null, summaryFromCache: null },
+      },
+      pageUrl: "https://example.com",
+      pageTitle: "Example",
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "cli/agy",
+      pushToSession: () => {},
+      emitMeta: (patch) => meta.push(patch),
+    });
+
+    expect(runCliModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "agy",
+        model: null,
+      }),
+    );
+    expect(meta[0]?.model).toBe("cli/agy");
+  });
+
   it("routes openrouter overrides through openrouter transport", async () => {
     const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-openrouter-"));
     const meta: Array<{ model?: string | null }> = [];

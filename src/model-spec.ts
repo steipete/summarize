@@ -54,7 +54,8 @@ export type FixedModelSpec =
         | "CLI_AGENT"
         | "CLI_OPENCLAW"
         | "CLI_OPENCODE"
-        | "CLI_COPILOT";
+        | "CLI_COPILOT"
+        | "CLI_AGY";
       cliProvider: CliProvider;
       cliModel: string | null;
     };
@@ -191,12 +192,18 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       providerRaw !== "agent" &&
       providerRaw !== "openclaw" &&
       providerRaw !== "opencode" &&
-      providerRaw !== "copilot"
+      providerRaw !== "copilot" &&
+      providerRaw !== "agy"
     ) {
       throw new Error(`Invalid CLI model id "${trimmed}". Expected cli/<provider>/<model>.`);
     }
     const cliProvider = providerRaw as CliProvider;
     const requestedModel = parts.slice(2).join("/").trim();
+    if (cliProvider === "agy" && requestedModel.length > 0) {
+      throw new Error(
+        `Invalid CLI model id "${trimmed}". Antigravity CLI uses cli/agy without a model suffix.`,
+      );
+    }
     const cliModel = requestedModel.length > 0 ? requestedModel : DEFAULT_CLI_MODELS[cliProvider];
     const requiredEnv = requiredEnvForCliProvider(cliProvider) as Extract<
       RequiredModelEnv,
@@ -207,6 +214,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       | "CLI_OPENCLAW"
       | "CLI_OPENCODE"
       | "CLI_COPILOT"
+      | "CLI_AGY"
     >;
     const userModelId = cliModel ? `cli/${cliProvider}/${cliModel}` : `cli/${cliProvider}`;
     return {

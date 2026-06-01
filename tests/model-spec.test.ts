@@ -74,6 +74,19 @@ describe("model spec parsing", () => {
     expect(parsed.requiredEnv).toBe("CLI_OPENCODE");
   });
 
+  it("uses agy's active session model and rejects model suffixes", () => {
+    const parsed = parseRequestedModelId("cli/agy");
+    expect(parsed.kind).toBe("fixed");
+    expect(parsed.transport).toBe("cli");
+    expect(parsed.userModelId).toBe("cli/agy");
+    expect(parsed.cliProvider).toBe("agy");
+    expect(parsed.cliModel).toBeNull();
+    expect(parsed.requiredEnv).toBe("CLI_AGY");
+    expect(() => parseRequestedModelId("cli/agy/Gemini 3.5 Flash (Medium)")).toThrow(
+      /without a model suffix/,
+    );
+  });
+
   it("rejects invalid cli providers", () => {
     expect(() => parseRequestedModelId("cli/unknown/model")).toThrow(/Invalid CLI model id/);
   });

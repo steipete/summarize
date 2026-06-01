@@ -41,6 +41,8 @@ const ENV_KEYS = [
   "OPENCLAW_PATH",
   "OPENCODE_PATH",
   "COPILOT_PATH",
+  "AGY_PATH",
+  "ANTIGRAVITY_API_KEY",
   "UVX_PATH",
 ] as const;
 

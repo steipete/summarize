@@ -1,14 +1,14 @@
 ---
 title: "CLI providers"
 kicker: "models"
-summary: "CLI model providers and config for Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, and GitHub Copilot."
+summary: "CLI model providers and config for Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, GitHub Copilot, and Antigravity."
 read_when:
   - "When changing CLI model integration."
 ---
 
 # CLI models
 
-Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, GitHub Copilot) as local model backends.
+Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, GitHub Copilot, Antigravity) as local model backends.
 
 ## Model ids
 
@@ -22,8 +22,10 @@ Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw,
 - `cli/opencode` (use the OpenCode runtime default model)
 - `cli/copilot/<model>` (e.g. `cli/copilot/gpt-5.2`)
 - `cli/copilot` (use the Copilot CLI runtime default model)
+- `cli/agy` (use the Antigravity CLI active session model)
 
 Use `--cli [provider]` (case-insensitive) for the provider default, or `--model cli/<provider>/<model>` to pin a model.
+Antigravity does not support per-call model selection in print mode, so use `cli/agy` without a model suffix.
 If `--cli` is provided without a provider, auto selection is used with CLI enabled.
 
 Codex GPT Fast:
@@ -100,13 +102,14 @@ path-based prompt and enables the required tool flags:
 - Agent: uses built-in file tools in `agent --print` mode (no extra flags)
 - OpenCode: `opencode run --format json ... --file <path>` when a file/image path is required
 - Copilot: `copilot -p <prompt>`; passes `--model <model>` when one is configured
+- Antigravity: `agy --print`; does not auto-approve tools for attachment prompts
 
 ## Config
 
 ```json
 {
   "cli": {
-    "enabled": ["claude", "gemini", "codex", "agent", "openclaw", "opencode", "copilot"],
+    "enabled": ["claude", "gemini", "codex", "agent", "openclaw", "opencode", "copilot", "agy"],
     "autoFallback": {
       "enabled": true,
       "onlyWhenNoApiKeys": true,
@@ -132,6 +135,9 @@ path-based prompt and enables the required tool flags:
     },
     "copilot": {
       "binary": "/usr/local/bin/copilot"
+    },
+    "agy": {
+      "binary": "/usr/local/bin/agy"
     }
   }
 }
@@ -142,6 +148,8 @@ Notes:
 - CLI output is treated as text only (no token accounting).
 - If a CLI call fails, auto mode falls back to the next candidate.
 - Cursor Agent CLI uses the `agent` binary and relies on Cursor CLI auth (login or `CURSOR_API_KEY`).
+- Antigravity CLI uses the active agy session model; `cli.agy.model` is ignored by runtime selection.
+- Antigravity normal text summaries run `agy --print` with no prompt argument in a temporary cwd with `--sandbox`, streaming the prompt over stdin so extracted content is not exposed in argv. Attachment prompts keep the caller cwd so agy can inspect the requested path but do not auto-approve tools.
 - Codex CLI normal text summaries run isolated by default: `codex exec --ephemeral --ignore-user-config --ignore-rules -C <temp-dir> ...` with a sanitized temporary `CODEX_HOME` that carries auth only. Set `cli.codex.isolated` to `false` only when you intentionally need Codex to inherit local config/rules.
 - Gemini CLI is invoked in headless mode with `--prompt` for compatibility with current Gemini CLI releases.
 - OpenClaw uses `openclaw agent --agent <model> --message <prompt> --json` because current OpenClaw requires `-m/--message`; very large extracted inputs are rejected before launch to avoid argv limits.

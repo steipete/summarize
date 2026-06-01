@@ -84,6 +84,7 @@ export function resolveCliAvailability({
     "openclaw",
     "opencode",
     "copilot",
+    "agy",
   ];
   const availability: Partial<Record<CliProvider, boolean>> = {};
   for (const provider of providers) {
@@ -113,7 +114,8 @@ export function parseCliUserModelId(modelId: string): {
     provider !== "agent" &&
     provider !== "openclaw" &&
     provider !== "opencode" &&
-    provider !== "copilot"
+    provider !== "copilot" &&
+    provider !== "agy"
   ) {
     throw new Error(`Invalid CLI model id "${modelId}". Expected cli/<provider>/<model>.`);
   }
@@ -130,7 +132,8 @@ export function parseCliProviderArg(raw: string): CliProvider {
     normalized === "agent" ||
     normalized === "openclaw" ||
     normalized === "opencode" ||
-    normalized === "copilot"
+    normalized === "copilot" ||
+    normalized === "agy"
   ) {
     return normalized as CliProvider;
   }

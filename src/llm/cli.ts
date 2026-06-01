@@ -23,9 +23,10 @@ const DEFAULT_BINARIES: Record<CliProvider, string> = {
   openclaw: "openclaw",
   opencode: "opencode",
   copilot: "copilot",
+  agy: "agy",
 };
 
-const OPENCLAW_MAX_MESSAGE_ARG_BYTES = 120 * 1024;
+const CLI_MAX_MESSAGE_ARG_BYTES = 120 * 1024;
 const CODEX_GPT_FAST_MODEL = "gpt-5.5";
 const CODEX_GPT_FAST_ALIASES = new Set(["gpt-fast", "gpt-5.5-fast"]);
 
@@ -37,6 +38,7 @@ const PROVIDER_PATH_ENV: Record<CliProvider, string> = {
   openclaw: "OPENCLAW_PATH",
   opencode: "OPENCODE_PATH",
   copilot: "COPILOT_PATH",
+  agy: "AGY_PATH",
 };
 
 type RunCliModelOptions = {
@@ -72,6 +74,7 @@ function getCliProviderConfig(
   if (provider === "agent") return config.agent;
   if (provider === "openclaw") return config.openclaw;
   if (provider === "opencode") return config.opencode;
+  if (provider === "agy") return config.agy;
   return config.copilot;
 }
 
@@ -121,6 +124,14 @@ function resolveCodexModelAndArgs(
     extraArgs.push("-c", 'service_tier="fast"');
   }
   return { model: CODEX_GPT_FAST_MODEL, extraArgs };
+}
+
+function hasAnyFlag(args: string[], flags: string[]): boolean {
+  return args.some((arg) => flags.some((flag) => arg === flag || arg.startsWith(`${flag}=`)));
+}
+
+function goDurationFromMs(timeoutMs: number): string {
+  return `${Math.max(1, Math.ceil(timeoutMs / 1000))}s`;
 }
 
 async function copyCodexAuthFiles(sourceDir: string | undefined, targetDir: string): Promise<void> {
@@ -207,7 +218,7 @@ export async function runCliModel({
   }
   if (provider === "openclaw") {
     const promptBytes = Buffer.byteLength(prompt, "utf8");
-    if (promptBytes > OPENCLAW_MAX_MESSAGE_ARG_BYTES) {
+    if (promptBytes > CLI_MAX_MESSAGE_ARG_BYTES) {
       throw new Error(
         `OpenClaw CLI requires --message and cannot safely receive large prompts over argv (${promptBytes} bytes). ` +
           "Use a different CLI provider for this input, reduce extracted content, or update OpenClaw to support stdin/file input.",
@@ -369,6 +380,43 @@ export async function runCliModel({
     const text = stdout.trim();
     if (!text) throw new Error("CLI returned empty output");
     return { text, usage: null, costUsd: null };
+  }
+
+  if (provider === "agy") {
+    const isolatedCwd = !allowTools
+      ? await fs.mkdtemp(path.join(tmpdir(), "summarize-agy-"))
+      : null;
+    try {
+      const agyArgs: string[] = [...providerExtraArgs];
+      if (!allowTools && !hasAnyFlag(providerExtraArgs, ["--sandbox"])) {
+        agyArgs.push("--sandbox");
+      }
+      // With no prompt argument, agy print mode reads the prompt from stdin.
+      agyArgs.push("--print");
+      if (
+        Number.isFinite(timeoutMs) &&
+        timeoutMs > 0 &&
+        !hasAnyFlag(providerExtraArgs, ["--print-timeout", "-print-timeout"])
+      ) {
+        agyArgs.push("--print-timeout", goDurationFromMs(timeoutMs));
+      }
+      const { stdout } = await execCliWithInput({
+        execFileImpl: execFileFn,
+        cmd: binary,
+        args: agyArgs,
+        input: prompt,
+        timeoutMs,
+        env: effectiveEnv,
+        cwd: isolatedCwd ?? cwd,
+      });
+      const text = stdout.trim();
+      if (!text) throw new Error("CLI returned empty output");
+      return { text, usage: null, costUsd: null };
+    } finally {
+      if (isolatedCwd) {
+        await fs.rm(isolatedCwd, { recursive: true, force: true }).catch(() => {});
+      }
+    }
   }
 
   if (!isJsonCliProvider(provider)) {

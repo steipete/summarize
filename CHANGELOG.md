@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+- Add Antigravity CLI (`agy`) as a supported CLI provider. (#231, thanks @yetmike)
+
 ### Fixes
 
 - Chrome extension: abort stale side-panel summary streams on tab changes so delayed output from a closed or replaced tab cannot render under the new page title.

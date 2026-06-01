@@ -206,8 +206,10 @@ function buildNoAgentModelAvailableError({
           if (attempt.requiredEnv === "CLI_GEMINI") return "gemini";
           if (attempt.requiredEnv === "CLI_AGENT") return "agent";
           if (attempt.requiredEnv === "CLI_OPENCLAW") return "openclaw";
+          if (attempt.requiredEnv === "CLI_OPENCODE") return "opencode";
           if (attempt.requiredEnv === "CLI_COPILOT") return "copilot";
-          return "opencode";
+          if (attempt.requiredEnv === "CLI_AGY") return "agy";
+          return "unknown";
         })
         .filter((provider) => !cliAvailability[provider as keyof typeof cliAvailability]),
     ),

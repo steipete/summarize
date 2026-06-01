@@ -325,6 +325,7 @@ export function parseCliConfig(root: Record<string, unknown>, path: string): Cli
   const copilot = value.copilot
     ? parseCliProviderConfig(value.copilot, path, "copilot")
     : undefined;
+  const agy = value.agy ? parseCliProviderConfig(value.agy, path, "agy") : undefined;
   if (typeof value.autoFallback !== "undefined" && typeof value.magicAuto !== "undefined") {
     throw new Error(
       `Invalid config file ${path}: use only one of "cli.autoFallback" or legacy "cli.magicAuto".`,
@@ -359,6 +360,7 @@ export function parseCliConfig(root: Record<string, unknown>, path: string): Cli
     openclaw ||
     opencode ||
     copilot ||
+    agy ||
     autoFallback ||
     promptOverride ||
     typeof allowTools === "boolean" ||
@@ -373,6 +375,7 @@ export function parseCliConfig(root: Record<string, unknown>, path: string): Cli
         ...(openclaw ? { openclaw } : {}),
         ...(opencode ? { opencode } : {}),
         ...(copilot ? { copilot } : {}),
+        ...(agy ? { agy } : {}),
         ...(autoFallback ? { autoFallback } : {}),
         ...(promptOverride ? { promptOverride } : {}),
         ...(typeof allowTools === "boolean" ? { allowTools } : {}),

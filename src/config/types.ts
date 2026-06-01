@@ -7,7 +7,8 @@ export type CliProvider =
   | "agent"
   | "openclaw"
   | "opencode"
-  | "copilot";
+  | "copilot"
+  | "agy";
 export type OpenAiReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh";
 export type OpenAiTextVerbosity = "low" | "medium" | "high";
 export type ModelRequestOptions = {
@@ -36,6 +37,7 @@ export type CliConfig = {
   openclaw?: CliProviderConfig;
   opencode?: CliProviderConfig;
   copilot?: CliProviderConfig;
+  agy?: CliProviderConfig;
   autoFallback?: CliAutoFallbackConfig;
   magicAuto?: CliAutoFallbackConfig;
   promptOverride?: string;

@@ -163,6 +163,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     if (requiredEnv === "CLI_COPILOT") {
       return Boolean(deps.cliAvailability.copilot);
     }
+    if (requiredEnv === "CLI_AGY") {
+      return Boolean(deps.cliAvailability.agy);
+    }
     if (requiredEnv === "GEMINI_API_KEY") {
       return deps.keyFlags.googleConfigured;
     }
@@ -211,6 +214,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     }
     if (attempt.requiredEnv === "CLI_COPILOT") {
       return `GitHub Copilot CLI not found for model ${attempt.userModelId}. Install Copilot CLI or set COPILOT_PATH.`;
+    }
+    if (attempt.requiredEnv === "CLI_AGY") {
+      return `Antigravity CLI not found for model ${attempt.userModelId}. Install agy or set AGY_PATH.`;
     }
     return `Missing ${attempt.requiredEnv} for model ${attempt.userModelId}. Set the env var or choose a different --model.`;
   };
