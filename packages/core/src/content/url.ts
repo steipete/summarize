@@ -63,6 +63,8 @@ export function extractYouTubeVideoId(rawUrl: string): string | null {
         candidate = url.searchParams.get("v");
       } else if (url.pathname.startsWith("/shorts/")) {
         candidate = url.pathname.split("/")[2] ?? null;
+      } else if (url.pathname.startsWith("/live/")) {
+        candidate = url.pathname.split("/")[2] ?? null;
       } else if (url.pathname.startsWith("/embed/")) {
         candidate = url.pathname.split("/")[2] ?? null;
       } else if (url.pathname.startsWith("/v/")) {

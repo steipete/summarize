@@ -23,6 +23,7 @@ describe("content/url", () => {
     expect(isYouTubeVideoUrl("https://youtu.be/dQw4w9WgXcQ")).toBe(true);
     expect(isYouTubeVideoUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toBe(true);
     expect(isYouTubeVideoUrl("https://www.youtube.com/shorts/dQw4w9WgXcQ")).toBe(true);
+    expect(isYouTubeVideoUrl("https://www.youtube.com/live/dQw4w9WgXcQ")).toBe(true);
     expect(isYouTubeVideoUrl("https://youtu.be/")).toBe(false);
     expect(isYouTubeVideoUrl("https://www.youtube.com/watch?v=abc")).toBe(true);
   });
@@ -32,6 +33,10 @@ describe("content/url", () => {
       "dQw4w9WgXcQ",
     );
     expect(extractYouTubeVideoId("https://youtu.be/dQw4w9WgXcQ?t=1")).toBe("dQw4w9WgXcQ");
+    expect(extractYouTubeVideoId("https://www.youtube.com/live/dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
+    expect(extractYouTubeVideoId("https://www.youtube.com/live/dQw4w9WgXcQ?feature=share")).toBe(
+      "dQw4w9WgXcQ",
+    );
     expect(extractYouTubeVideoId("https://youtu.be/")).toBeNull();
   });
 
