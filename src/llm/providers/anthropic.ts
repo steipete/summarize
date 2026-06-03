@@ -1,10 +1,18 @@
-import type { Context } from "@earendil-works/pi-ai";
+import type { Context, ThinkingLevel } from "@earendil-works/pi-ai";
 import { completeSimple } from "@earendil-works/pi-ai";
 import type { Attachment } from "../attachments.js";
+import type { OpenAiReasoningEffort } from "../model-options.js";
 import type { LlmTokenUsage } from "../types.js";
 import { normalizeAnthropicUsage, normalizeTokenUsage } from "../usage.js";
 import { resolveAnthropicModel } from "./models.js";
 import { bytesToBase64, extractText, resolveBaseUrlOverride } from "./shared.js";
+
+function effortToThinkingLevel(
+  effort: OpenAiReasoningEffort | undefined,
+): ThinkingLevel | undefined {
+  if (!effort || effort === "none") return undefined;
+  return effort;
+}
 
 function parseAnthropicErrorPayload(
   responseBody: string,
@@ -57,6 +65,7 @@ export async function completeAnthropicText({
   context,
   temperature,
   maxOutputTokens,
+  reasoningEffort,
   signal,
   anthropicBaseUrlOverride,
 }: {
@@ -65,17 +74,25 @@ export async function completeAnthropicText({
   context: Context;
   temperature?: number;
   maxOutputTokens?: number;
+  reasoningEffort?: OpenAiReasoningEffort;
   signal: AbortSignal;
   anthropicBaseUrlOverride?: string | null;
 }): Promise<{ text: string; usage: LlmTokenUsage | null }> {
-  const model = resolveAnthropicModel({
+  const baseModel = resolveAnthropicModel({
     modelId,
     context,
     anthropicBaseUrlOverride,
   });
+  const reasoning = effortToThinkingLevel(reasoningEffort);
+  // Synthetic (unknown) models default to `reasoning: false`, which makes the
+  // pi-ai Anthropic adapter silently drop the thinking block. When the caller
+  // requested a reasoning level, opt the model into thinking so the parameter
+  // round-trips to the API.
+  const model = reasoning && !baseModel.reasoning ? { ...baseModel, reasoning: true } : baseModel;
   const result = await completeSimple(model, context, {
     ...(typeof temperature === "number" ? { temperature } : {}),
     ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),
+    ...(reasoning ? { reasoning } : {}),
     apiKey,
     signal,
   });

@@ -250,6 +250,7 @@ export async function generateTextWithModelId({
           context,
           temperature: effectiveTemperature,
           maxOutputTokens,
+          reasoningEffort: requestOptions?.reasoningEffort,
           signal: controller.signal,
           anthropicBaseUrlOverride,
         });
