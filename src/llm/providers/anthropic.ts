@@ -1,17 +1,48 @@
-import type { Context, ThinkingLevel } from "@earendil-works/pi-ai";
+import type { Context, Model, ThinkingLevel } from "@earendil-works/pi-ai";
+import type { Api } from "@earendil-works/pi-ai";
 import { completeSimple } from "@earendil-works/pi-ai";
 import type { Attachment } from "../attachments.js";
 import type { OpenAiReasoningEffort } from "../model-options.js";
 import type { LlmTokenUsage } from "../types.js";
 import { normalizeAnthropicUsage, normalizeTokenUsage } from "../usage.js";
 import { resolveAnthropicModel } from "./models.js";
-import { bytesToBase64, extractText, resolveBaseUrlOverride } from "./shared.js";
+import { bytesToBase64, extractText, resolveBaseUrlOverride, tryGetModel } from "./shared.js";
 
 function effortToThinkingLevel(
   effort: OpenAiReasoningEffort | undefined,
 ): ThinkingLevel | undefined {
   if (!effort || effort === "none") return undefined;
   return effort;
+}
+
+/**
+ * Decide the model and `reasoning` option to pass into the pi-ai Anthropic
+ * adapter. Shared by non-streaming and streaming text dispatch.
+ *
+ * pi-ai gates extended thinking on `model.reasoning`. For models present in
+ * the pi-ai registry, we trust that flag — flipping it for known unsupported
+ * Claude 3/3.5 models would turn previously successful no-thinking requests
+ * into API rejections. For synthetic models (`tryGetModel` miss — typically
+ * custom `ANTHROPIC_BASE_URL` proxies in front of newer Claude versions),
+ * `createSyntheticModel` hard-codes `reasoning: false`, so we opt them into
+ * thinking when the caller asked for an effort level.
+ */
+export function prepareAnthropicReasoning({
+  modelId,
+  baseModel,
+  reasoningEffort,
+}: {
+  modelId: string;
+  baseModel: Model<Api>;
+  reasoningEffort?: OpenAiReasoningEffort;
+}): { model: Model<Api>; reasoning?: ThinkingLevel } {
+  const reasoning = effortToThinkingLevel(reasoningEffort);
+  if (!reasoning) return { model: baseModel };
+  const isSynthetic = !tryGetModel("anthropic", modelId);
+  if (isSynthetic && !baseModel.reasoning) {
+    return { model: { ...baseModel, reasoning: true }, reasoning };
+  }
+  return { model: baseModel, reasoning };
 }
 
 function parseAnthropicErrorPayload(
@@ -83,12 +114,7 @@ export async function completeAnthropicText({
     context,
     anthropicBaseUrlOverride,
   });
-  const reasoning = effortToThinkingLevel(reasoningEffort);
-  // Synthetic (unknown) models default to `reasoning: false`, which makes the
-  // pi-ai Anthropic adapter silently drop the thinking block. When the caller
-  // requested a reasoning level, opt the model into thinking so the parameter
-  // round-trips to the API.
-  const model = reasoning && !baseModel.reasoning ? { ...baseModel, reasoning: true } : baseModel;
+  const { model, reasoning } = prepareAnthropicReasoning({ modelId, baseModel, reasoningEffort });
   const result = await completeSimple(model, context, {
     ...(typeof temperature === "number" ? { temperature } : {}),
     ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),

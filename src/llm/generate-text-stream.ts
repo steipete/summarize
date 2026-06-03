@@ -10,7 +10,10 @@ import {
   resolveOpenAiCompatibleClientConfigForProvider,
   supportsStreaming,
 } from "./provider-capabilities.js";
-import { normalizeAnthropicModelAccessError } from "./providers/anthropic.js";
+import {
+  normalizeAnthropicModelAccessError,
+  prepareAnthropicReasoning,
+} from "./providers/anthropic.js";
 import {
   resolveAnthropicModel,
   resolveGoogleModel,
@@ -296,14 +299,20 @@ export async function streamTextWithContext({
     if (parsed.provider === "anthropic") {
       const apiKey = apiKeys.anthropicApiKey;
       if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY for anthropic/... model");
-      const model = resolveAnthropicModel({
+      const baseModel = resolveAnthropicModel({
         modelId: parsed.model,
         context,
         anthropicBaseUrlOverride,
       });
+      const { model, reasoning } = prepareAnthropicReasoning({
+        modelId: parsed.model,
+        baseModel,
+        reasoningEffort: requestOptions?.reasoningEffort,
+      });
       const stream = streamSimple(model, context, {
         ...(typeof effectiveTemperature === "number" ? { temperature: effectiveTemperature } : {}),
         ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),
+        ...(reasoning ? { reasoning } : {}),
         apiKey,
         signal: controller.signal,
       });
