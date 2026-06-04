@@ -59,9 +59,9 @@
     "typecheck": "pnpm -C packages/core typecheck && tsgo -p tsconfig.build.json --noEmit"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^0.75.3",
+    "@earendil-works/pi-ai": "^0.78.0",
     "@steipete/summarize-core": "workspace:*",
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "file-type": "^22.0.1",
     "gpt-tokenizer": "^3.4.0",
     "json5": "^2.2.3",
@@ -76,12 +76,12 @@
   "devDependencies": {
     "@fal-ai/client": "^1.10.1",
     "@types/jsdom": "^28.0.3",
-    "@types/node": "^24.12.4",
+    "@types/node": "^25.9.1",
     "@types/sanitize-html": "^2.16.1",
-    "@typescript/native-preview": "7.0.0-dev.20260526.1",
+    "@typescript/native-preview": "7.0.0-dev.20260603.1",
     "@vitest/coverage-v8": "^4.1.6",
     "esbuild": "^0.28.0",
-    "oxfmt": "0.52.0",
+    "oxfmt": "0.53.0",
     "oxlint": "^1.64.0",
     "oxlint-tsgolint": "^0.23.0",
     "rimraf": "^6.1.3",
