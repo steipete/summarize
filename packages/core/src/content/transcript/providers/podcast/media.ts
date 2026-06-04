@@ -81,9 +81,7 @@ export async function transcribeMediaUrl({
 
   const head = await probeRemoteMedia(fetchImpl, url);
   if (head.contentLength !== null && head.contentLength > MAX_REMOTE_MEDIA_BYTES) {
-    throw new Error(
-      `Remote media too large (${formatBytes(head.contentLength)}). Limit is ${formatBytes(MAX_REMOTE_MEDIA_BYTES)}.`,
-    );
+    throw remoteMediaTooLargeError(head.contentLength, MAX_REMOTE_MEDIA_BYTES);
   }
 
   const mediaType = head.mediaType ?? "application/octet-stream";
@@ -216,6 +214,7 @@ export async function transcribeMediaUrl({
   const tmpFile = join(tmpdir(), `summarize-podcast-${randomUUID()}.bin`);
   try {
     const downloadedBytes = await downloadToFile(fetchImpl, url, tmpFile, {
+      maxBytes: MAX_REMOTE_MEDIA_BYTES,
       totalBytes,
       onProgress: (nextDownloadedBytes) =>
         progress?.onProgress?.({
@@ -354,7 +353,11 @@ export async function downloadToFile(
   fetchImpl: typeof fetch,
   url: string,
   filePath: string,
-  options?: { totalBytes: number | null; onProgress?: ((downloadedBytes: number) => void) | null },
+  options?: {
+    maxBytes?: number;
+    totalBytes: number | null;
+    onProgress?: ((downloadedBytes: number) => void) | null;
+  },
 ): Promise<number> {
   const res = await fetchImpl(url, {
     redirect: "follow",
@@ -363,9 +366,13 @@ export async function downloadToFile(
   if (!res.ok) {
     throw new Error(`Download failed (${res.status})`);
   }
+  const maxBytes = options?.maxBytes ?? Number.POSITIVE_INFINITY;
   const body = res.body;
   if (!body) {
     const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.byteLength > maxBytes) {
+      throw remoteMediaTooLargeError(bytes.byteLength, maxBytes);
+    }
     await fs.writeFile(filePath, bytes);
     options?.onProgress?.(bytes.byteLength);
     return bytes.byteLength;
@@ -381,8 +388,12 @@ export async function downloadToFile(
         const { value, done } = await reader.read();
         if (done) break;
         if (!value) continue;
+        const nextDownloadedBytes = downloadedBytes + value.byteLength;
+        if (nextDownloadedBytes > maxBytes) {
+          throw remoteMediaTooLargeError(nextDownloadedBytes, maxBytes);
+        }
         await handle.write(value);
-        downloadedBytes += value.byteLength;
+        downloadedBytes = nextDownloadedBytes;
         if (downloadedBytes - lastReported >= 128 * 1024) {
           lastReported = downloadedBytes;
           options?.onProgress?.(downloadedBytes);
@@ -396,6 +407,12 @@ export async function downloadToFile(
     await handle.close().catch(() => {});
   }
   return downloadedBytes;
+}
+
+function remoteMediaTooLargeError(bytes: number, maxBytes: number): Error {
+  return new Error(
+    `Remote media too large (${formatBytes(bytes)}). Limit is ${formatBytes(maxBytes)}.`,
+  );
 }
 
 export function normalizeHeaderType(value: string | null): string | null {

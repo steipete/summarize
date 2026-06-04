@@ -1,0 +1,96 @@
+import { mkdtemp, readFile, rm, stat, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { downloadToFile } from "../packages/core/src/content/transcript/providers/podcast/media.js";
+
+function oversizedStream({
+  firstChunkBytes,
+  secondChunkBytes,
+}: {
+  firstChunkBytes: number;
+  secondChunkBytes: number;
+}) {
+  let chunkIndex = 0;
+  return new ReadableStream<Uint8Array>({
+    pull(controller) {
+      chunkIndex += 1;
+      if (chunkIndex === 1) {
+        controller.enqueue(new Uint8Array(firstChunkBytes));
+        return;
+      }
+      if (chunkIndex === 2) {
+        controller.enqueue(new Uint8Array(secondChunkBytes));
+        return;
+      }
+      controller.close();
+    },
+  });
+}
+
+describe("remote media temp-file download cap", () => {
+  it("rejects streaming downloads before writing past the configured byte limit", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "summarize-media-cap-"));
+    const filePath = join(dir, "episode.mp3");
+    const maxBytes = 64 * 1024;
+
+    const fetchImpl = async () =>
+      new Response(oversizedStream({ firstChunkBytes: maxBytes, secondChunkBytes: 1 }), {
+        status: 200,
+        headers: { "content-type": "audio/mpeg", "content-length": String(maxBytes) },
+      });
+
+    try {
+      await expect(
+        downloadToFile(
+          fetchImpl as unknown as typeof fetch,
+          "https://example.com/episode.mp3",
+          filePath,
+          {
+            maxBytes,
+            totalBytes: maxBytes,
+          },
+        ),
+      ).rejects.toThrow("Remote media too large");
+
+      await expect(stat(filePath).then((entry) => entry.size)).resolves.toBe(maxBytes);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects non-streaming downloads before writing files above the configured byte limit", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "summarize-media-cap-"));
+    const filePath = join(dir, "episode.mp3");
+    const maxBytes = 64 * 1024;
+
+    const fetchImpl = async () =>
+      ({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "audio/mpeg" }),
+        body: null,
+        async arrayBuffer() {
+          return new Uint8Array(maxBytes + 1).buffer;
+        },
+      }) as Response;
+
+    try {
+      await expect(
+        downloadToFile(
+          fetchImpl as unknown as typeof fetch,
+          "https://example.com/episode.mp3",
+          filePath,
+          {
+            maxBytes,
+            totalBytes: null,
+          },
+        ),
+      ).rejects.toThrow("Remote media too large");
+      await expect(readFile(filePath)).rejects.toThrow();
+    } finally {
+      await unlink(filePath).catch(() => {});
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
