@@ -79,6 +79,24 @@ describe("openai provider helpers", () => {
     });
   });
 
+  it("respects forceChatCompletions=false for custom base URLs", () => {
+    expect(
+      resolveOpenAiClientConfig({
+        apiKeys: {
+          openaiApiKey: "oa-key",
+          openrouterApiKey: null,
+        },
+        openaiBaseUrlOverride: "https://gateway.example/v1",
+        forceChatCompletions: false,
+      }),
+    ).toEqual({
+      apiKey: "oa-key",
+      baseURL: "https://gateway.example/v1",
+      useChatCompletions: false,
+      isOpenRouter: false,
+    });
+  });
+
   it("raises missing key errors for OpenAI and OpenRouter modes", () => {
     expect(() =>
       resolveOpenAiClientConfig({

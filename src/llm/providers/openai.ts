@@ -95,7 +95,10 @@ export function resolveOpenAiClientConfig({
     }
   })();
 
-  const useChatCompletions = Boolean(forceChatCompletions) || isOpenRouter || isCustomBaseURL;
+  const useChatCompletions =
+    typeof forceChatCompletions === "boolean"
+      ? forceChatCompletions
+      : isOpenRouter || isCustomBaseURL;
   return {
     apiKey,
     baseURL: baseURL ?? undefined,

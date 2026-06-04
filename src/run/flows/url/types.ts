@@ -85,7 +85,7 @@ export type UrlFlowModel = {
   configForModelSelection: SummarizeConfig | null;
   envForAuto: Record<string, string | undefined>;
   cliAvailability: Partial<Record<CliProvider, boolean>>;
-  openaiUseChatCompletions: boolean;
+  openaiUseChatCompletions: boolean | undefined;
   openaiRequestOptions?: ModelRequestOptions;
   openaiRequestOptionsOverride?: ModelRequestOptions;
   openaiWhisperUsdPerMinute: number;

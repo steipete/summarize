@@ -100,6 +100,36 @@ describe("daemon/chat", () => {
     expect(args.forceChatCompletions).toBe(true);
   });
 
+  it("passes through openai.useChatCompletions=false for fixed sidepanel chat models", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-openai-responses-"));
+
+    await streamChatResponse({
+      env: { HOME: home, OPENAI_API_KEY: "sk-openai" },
+      fetchImpl: fetch,
+      configForCli: {
+        openai: {
+          baseUrl: "https://gateway.example/v1",
+          useChatCompletions: false,
+        },
+      },
+      session: {
+        id: "s-openai-responses",
+        lastMeta: { model: null, modelLabel: null, inputSummary: null, summaryFromCache: null },
+      },
+      pageUrl: "https://example.com",
+      pageTitle: "Example",
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "openai/gpt-5.4",
+      pushToSession: () => {},
+      emitMeta: () => {},
+    });
+
+    const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const args = calls[0]?.[0] as { forceChatCompletions?: boolean };
+    expect(args.forceChatCompletions).toBe(false);
+  });
+
   it("routes github-copilot overrides through the GitHub Models gateway", async () => {
     const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-github-models-"));
     const meta: Array<{ model?: string | null }> = [];

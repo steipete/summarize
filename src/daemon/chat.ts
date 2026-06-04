@@ -111,10 +111,12 @@ function resolveOpenAiUseChatCompletions({
 }: {
   env: Record<string, string | undefined>;
   configForCli: SummarizeConfig | null;
-}): boolean {
+}): boolean | undefined {
   const envValue = parseBooleanEnv(env.OPENAI_USE_CHAT_COMPLETIONS);
   if (envValue !== null) return envValue;
-  return configForCli?.openai?.useChatCompletions === true;
+  return typeof configForCli?.openai?.useChatCompletions === "boolean"
+    ? configForCli.openai.useChatCompletions
+    : undefined;
 }
 
 export async function streamChatResponse({
@@ -207,9 +209,13 @@ export async function streamChatResponse({
                 ? envState.ollamaBaseUrl
                 : (requested.openaiBaseUrlOverride ?? null),
         forceChatCompletions:
-          Boolean(requested.forceChatCompletions) ||
-          requested.requiredEnv === "OLLAMA_BASE_URL" ||
-          (requested.provider === "openai" && openaiUseChatCompletions),
+          typeof requested.forceChatCompletions === "boolean"
+            ? requested.forceChatCompletions
+            : requested.requiredEnv === "OLLAMA_BASE_URL"
+              ? true
+              : requested.provider === "openai"
+                ? openaiUseChatCompletions
+                : undefined,
         requestOptions: requested.requestOptions,
       };
     }
