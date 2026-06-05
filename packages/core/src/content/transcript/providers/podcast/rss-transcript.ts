@@ -1,3 +1,6 @@
+import { lookup as dnsLookup } from "node:dns/promises";
+import { createRequire } from "node:module";
+import { isIP } from "node:net";
 import type { TranscriptSegment } from "../../../link-preview/types.js";
 import {
   jsonTranscriptToPlainText,
@@ -14,8 +17,24 @@ import {
 } from "./rss-feed.js";
 
 type TranscriptCandidate = { url: string; type: string | null };
+type LookupAddress = { address: string; family?: number };
+type LookupFn = (hostname: string) => Promise<LookupAddress[]>;
+type LookupCallback = (
+  error: Error | null,
+  address: string | LookupAddress[],
+  family?: number,
+) => void;
+type UndiciAgentConstructor = new (options: {
+  autoSelectFamily?: boolean;
+  autoSelectFamilyAttemptTimeout?: number;
+  connect: {
+    lookup: (hostname: string, options: unknown, callback: LookupCallback) => void;
+  };
+}) => unknown;
+type UndiciModule = { Agent: UndiciAgentConstructor; fetch: typeof fetch };
 
 const MAX_TRANSCRIPT_REDIRECTS = 10;
+const require = createRequire(import.meta.url);
 
 function parseIpv4(address: string): number[] | null {
   const parts = address.split(".");
@@ -28,9 +47,9 @@ function parseIpv4(address: string): number[] | null {
   return octets.every((value) => value != null) ? (octets as number[]) : null;
 }
 
-function isBlockedIpv4Literal(hostname: string): boolean {
-  const octets = parseIpv4(hostname);
-  if (!octets) return false;
+function isBlockedIpv4(address: string): boolean {
+  const octets = parseIpv4(address);
+  if (!octets) return true;
   const [a, b] = octets;
   return (
     a === 0 ||
@@ -72,9 +91,9 @@ function expandIpv6(address: string): number[] | null {
   return parts.length === 8 && parts.every((part) => part >= 0 && part <= 0xffff) ? parts : null;
 }
 
-function isBlockedIpv6Literal(hostname: string): boolean {
-  const parts = expandIpv6(hostname);
-  if (!parts) return false;
+function isBlockedIpv6(address: string): boolean {
+  const parts = expandIpv6(address);
+  if (!parts) return true;
   const [first, second, , , , fifth, sixth, eighth] = parts;
   const allZero = parts.every((part) => part === 0);
   const loopback = parts.slice(0, 7).every((part) => part === 0) && eighth === 1;
@@ -82,7 +101,7 @@ function isBlockedIpv6Literal(hostname: string): boolean {
   const compatibleIpv4 = parts.slice(0, 6).every((part) => part === 0) && !allZero && !loopback;
   if (mappedIpv4 || compatibleIpv4) {
     const ipv4 = `${((sixth ?? 0) >> 8) & 0xff}.${(sixth ?? 0) & 0xff}.${((eighth ?? 0) >> 8) & 0xff}.${(eighth ?? 0) & 0xff}`;
-    return isBlockedIpv4Literal(ipv4);
+    return isBlockedIpv4(ipv4);
   }
   return (
     allZero ||
@@ -102,7 +121,22 @@ function normalizeHostname(hostname: string): string {
     .replace(/\.$/, "");
 }
 
-function assertSafeTranscriptUrl(rawUrl: string): URL {
+export function isBlockedNetworkAddress(address: string): boolean {
+  const normalized = address.trim().replace(/^\[|\]$/g, "");
+  const family = isIP(normalized);
+  if (family === 4) return isBlockedIpv4(normalized);
+  if (family === 6) return isBlockedIpv6(normalized);
+  return true;
+}
+
+async function defaultLookup(hostname: string): Promise<LookupAddress[]> {
+  return await dnsLookup(hostname, { all: true, verbatim: true });
+}
+
+async function resolveSafeTranscriptUrl(
+  rawUrl: string,
+  { lookup = defaultLookup }: { lookup?: LookupFn } = {},
+): Promise<{ url: URL; addresses: LookupAddress[] }> {
   let url: URL;
   try {
     url = new URL(rawUrl);
@@ -113,41 +147,82 @@ function assertSafeTranscriptUrl(rawUrl: string): URL {
     throw new Error("RSS transcript URL must use http or https");
   }
   const hostname = normalizeHostname(url.hostname);
-  if (
-    hostname === "localhost" ||
-    hostname.endsWith(".localhost") ||
-    isBlockedIpv4Literal(hostname) ||
-    isBlockedIpv6Literal(hostname)
-  ) {
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) {
     throw new Error("RSS transcript URL targets a blocked local network host");
   }
-  return url;
+  if (isIP(hostname)) {
+    if (isBlockedNetworkAddress(hostname)) {
+      throw new Error("RSS transcript URL resolves to a blocked local network address");
+    }
+    return { url, addresses: [] };
+  }
+  const addresses = await lookup(hostname);
+  if (addresses.length === 0 || addresses.some((entry) => isBlockedNetworkAddress(entry.address))) {
+    throw new Error("RSS transcript URL resolves to a blocked local network address");
+  }
+  return { url, addresses };
 }
 
 function isRedirectStatus(status: number): boolean {
   return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
 }
 
+function isNativeFetchImpl(fetchImpl: typeof fetch): boolean {
+  return fetchImpl === globalThis.fetch || fetchImpl.name === "bound fetch";
+}
+
+function loadUndici(): UndiciModule {
+  return require("undici") as UndiciModule;
+}
+
+function createPinnedDispatcher(addresses: LookupAddress[]): unknown {
+  const { Agent } = loadUndici();
+  const pinnedAddresses = addresses.map((address) => ({
+    address: address.address,
+    family: address.family ?? (isIP(address.address) || 4),
+  }));
+  return new Agent({
+    autoSelectFamily: true,
+    autoSelectFamilyAttemptTimeout: 250,
+    connect: {
+      lookup: (_hostname, options, callback) => {
+        if ((options as { all?: boolean } | undefined)?.all) {
+          callback(null, pinnedAddresses);
+          return;
+        }
+        const first = pinnedAddresses[0];
+        callback(null, first?.address ?? "0.0.0.0", first?.family ?? 4);
+      },
+    },
+  });
+}
+
 async function fetchSafeTranscriptUrl(
   fetchImpl: typeof fetch,
   transcriptUrl: string,
+  { lookup = defaultLookup }: { lookup?: LookupFn } = {},
   redirectCount = 0,
 ): Promise<Response> {
-  const url = assertSafeTranscriptUrl(transcriptUrl);
-  const res = await fetchImpl(url.href, {
-    redirect: "manual",
+  const target = await resolveSafeTranscriptUrl(transcriptUrl, { lookup });
+  const pinnedInit = {
+    redirect: "manual" as const,
     signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
     headers: { accept: "text/vtt,text/plain,application/json;q=0.9,*/*;q=0.8" },
-  });
+    ...(target.addresses.length > 0
+      ? { dispatcher: createPinnedDispatcher(target.addresses) }
+      : {}),
+  } as RequestInit & { dispatcher?: unknown };
+  const pinnedFetchImpl =
+    target.addresses.length > 0 && isNativeFetchImpl(fetchImpl) ? loadUndici().fetch : fetchImpl;
+  const res = await pinnedFetchImpl(target.url.href, pinnedInit);
   if (!isRedirectStatus(res.status)) return res;
   const location = res.headers.get("location");
   if (!location) return res;
   if (redirectCount >= MAX_TRANSCRIPT_REDIRECTS) {
     throw new Error("RSS transcript URL redirected too many times");
   }
-  const nextUrl = new URL(location, res.url || url.href).href;
-  assertSafeTranscriptUrl(nextUrl);
-  return await fetchSafeTranscriptUrl(fetchImpl, nextUrl, redirectCount + 1);
+  const nextUrl = new URL(location, res.url || target.url.href).href;
+  return await fetchSafeTranscriptUrl(fetchImpl, nextUrl, { lookup }, redirectCount + 1);
 }
 
 export async function tryFetchTranscriptFromFeedXml({
@@ -155,11 +230,13 @@ export async function tryFetchTranscriptFromFeedXml({
   feedXml,
   episodeTitle,
   notes,
+  lookup,
 }: {
   fetchImpl: typeof fetch;
   feedXml: string;
   episodeTitle: string | null;
   notes: string[];
+  lookup?: LookupFn;
 }): Promise<{
   text: string;
   transcriptUrl: string;
@@ -185,7 +262,7 @@ export async function tryFetchTranscriptFromFeedXml({
 
     const transcriptUrl = decodeXmlEntities(preferred.url);
     try {
-      const res = await fetchSafeTranscriptUrl(fetchImpl, transcriptUrl);
+      const res = await fetchSafeTranscriptUrl(fetchImpl, transcriptUrl, { lookup });
       if (!res.ok) throw new Error(`transcript fetch failed (${res.status})`);
 
       const contentType =
