@@ -40,14 +40,9 @@ export function normalizeRemoteMediaMaxBytes(
   raw: number | string | null | undefined,
 ): number | null {
   if (raw == null) return null;
-  if (typeof raw === "number") {
-    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : null;
-  }
 
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null;
+  const parsed = typeof raw === "number" ? raw : Number(raw.trim());
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 export function resolveTranscriptionConfig(input: TranscriptionConfigInput): TranscriptionConfig {

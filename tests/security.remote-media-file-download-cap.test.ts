@@ -48,6 +48,8 @@ describe("remote media temp-file download cap", () => {
     ).toBeNull();
     expect(normalizeRemoteMediaMaxBytes(Number.POSITIVE_INFINITY)).toBeNull();
     expect(normalizeRemoteMediaMaxBytes(-1)).toBeNull();
+    expect(normalizeRemoteMediaMaxBytes(0.5)).toBeNull();
+    expect(normalizeRemoteMediaMaxBytes("1.5")).toBeNull();
   });
 
   it("allows callers to opt in to a larger finite cap", async () => {
