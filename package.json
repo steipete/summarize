@@ -76,7 +76,7 @@
   "devDependencies": {
     "@fal-ai/client": "^1.10.1",
     "@types/jsdom": "^28.0.3",
-    "@types/node": "^25.9.1",
+    "@types/node": "^24.13.0",
     "@types/sanitize-html": "^2.16.1",
     "@typescript/native-preview": "7.0.0-dev.20260603.1",
     "@vitest/coverage-v8": "^4.1.6",
