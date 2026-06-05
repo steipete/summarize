@@ -26,7 +26,8 @@ read_when:
 - YouTube still uses the YouTube transcript pipeline (captions → yt-dlp fallback).
 - X/Twitter status URLs with detected video auto-switch to transcript-first (yt-dlp), even in auto mode.
 - X broadcasts (`/i/broadcasts/...`) are treated as media-only and go transcript-first by default.
-- Local media files are capped at 2 GB. Remote podcast/media transcription downloads are capped at 512 MB and fail closed with `Remote media too large` even when the server omits or under-reports `Content-Length`; other remote media URLs are best-effort via yt-dlp.
+- Local media files are capped at 2 GB. Remote podcast/media transcription downloads are capped at 512 MB by default and fail closed with `Remote media too large` even when the server omits or under-reports `Content-Length`; other remote media URLs are best-effort via yt-dlp.
+- Operators who accept the disk/DoS tradeoff for larger remote podcast/media files can opt in with `SUMMARIZE_REMOTE_MEDIA_MAX_BYTES=<positive byte limit>`. The override must be a finite positive byte count; invalid values are ignored and the default 512 MB cap remains in effect.
 - Remote transcription providers: `ASSEMBLYAI_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` / `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `FAL_KEY` (plus `GROQ_API_KEY` before local/remote fallback).
 - Gemini uses the Files API automatically for larger uploads.
 

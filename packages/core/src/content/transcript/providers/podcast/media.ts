@@ -73,6 +73,7 @@ export async function transcribeMediaUrl({
     falApiKey,
   });
   const effectiveEnv = effectiveTranscription.env ?? process.env;
+  const remoteMediaMaxBytes = effectiveTranscription.remoteMediaMaxBytes ?? MAX_REMOTE_MEDIA_BYTES;
   const startInfo = await resolveTranscriptionStartInfo({
     transcription: effectiveTranscription,
   });
@@ -80,8 +81,8 @@ export async function transcribeMediaUrl({
   const modelId = startInfo.modelId;
 
   const head = await probeRemoteMedia(fetchImpl, url);
-  if (head.contentLength !== null && head.contentLength > MAX_REMOTE_MEDIA_BYTES) {
-    throw remoteMediaTooLargeError(head.contentLength, MAX_REMOTE_MEDIA_BYTES);
+  if (head.contentLength !== null && head.contentLength > remoteMediaMaxBytes) {
+    throw remoteMediaTooLargeError(head.contentLength, remoteMediaMaxBytes);
   }
 
   const mediaType = head.mediaType ?? "application/octet-stream";
@@ -214,7 +215,7 @@ export async function transcribeMediaUrl({
   const tmpFile = join(tmpdir(), `summarize-podcast-${randomUUID()}.bin`);
   try {
     const downloadedBytes = await downloadToFile(fetchImpl, url, tmpFile, {
-      maxBytes: MAX_REMOTE_MEDIA_BYTES,
+      maxBytes: remoteMediaMaxBytes,
       totalBytes,
       onProgress: (nextDownloadedBytes) =>
         progress?.onProgress?.({

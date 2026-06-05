@@ -3,6 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { downloadToFile } from "../packages/core/src/content/transcript/providers/podcast/media.js";
+import {
+  REMOTE_MEDIA_MAX_BYTES_ENV,
+  normalizeRemoteMediaMaxBytes,
+  resolveTranscriptionConfig,
+} from "../packages/core/src/content/transcript/transcription-config.js";
 
 function oversizedStream({
   firstChunkBytes,
@@ -29,6 +34,53 @@ function oversizedStream({
 }
 
 describe("remote media temp-file download cap", () => {
+  it("keeps the built-in 512 MB cap unless an explicit finite opt-in is configured", () => {
+    expect(resolveTranscriptionConfig({}).remoteMediaMaxBytes).toBeNull();
+    expect(
+      resolveTranscriptionConfig({
+        env: { [REMOTE_MEDIA_MAX_BYTES_ENV]: String(768 * 1024 * 1024) },
+      }).remoteMediaMaxBytes,
+    ).toBe(768 * 1024 * 1024);
+    expect(
+      resolveTranscriptionConfig({
+        env: { [REMOTE_MEDIA_MAX_BYTES_ENV]: "not-a-number" },
+      }).remoteMediaMaxBytes,
+    ).toBeNull();
+    expect(normalizeRemoteMediaMaxBytes(Number.POSITIVE_INFINITY)).toBeNull();
+    expect(normalizeRemoteMediaMaxBytes(-1)).toBeNull();
+  });
+
+  it("allows callers to opt in to a larger finite cap", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "summarize-media-cap-"));
+    const filePath = join(dir, "episode.mp3");
+    const defaultMaxBytes = 64 * 1024;
+    const optInMaxBytes = defaultMaxBytes + 1;
+
+    const fetchImpl = async () =>
+      new Response(oversizedStream({ firstChunkBytes: defaultMaxBytes, secondChunkBytes: 1 }), {
+        status: 200,
+        headers: { "content-type": "audio/mpeg" },
+      });
+
+    try {
+      await expect(
+        downloadToFile(
+          fetchImpl as unknown as typeof fetch,
+          "https://example.com/episode.mp3",
+          filePath,
+          {
+            maxBytes: optInMaxBytes,
+            totalBytes: null,
+          },
+        ),
+      ).resolves.toBe(optInMaxBytes);
+
+      await expect(stat(filePath).then((entry) => entry.size)).resolves.toBe(optInMaxBytes);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("rejects streaming downloads before writing past the configured byte limit", async () => {
     const dir = await mkdtemp(join(tmpdir(), "summarize-media-cap-"));
     const filePath = join(dir, "episode.mp3");
