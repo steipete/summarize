@@ -15,6 +15,141 @@ import {
 
 type TranscriptCandidate = { url: string; type: string | null };
 
+const MAX_TRANSCRIPT_REDIRECTS = 10;
+
+function parseIpv4(address: string): number[] | null {
+  const parts = address.split(".");
+  if (parts.length !== 4) return null;
+  const octets = parts.map((part) => {
+    if (!/^\d{1,3}$/.test(part)) return null;
+    const value = Number(part);
+    return Number.isInteger(value) && value >= 0 && value <= 255 ? value : null;
+  });
+  return octets.every((value) => value != null) ? (octets as number[]) : null;
+}
+
+function isBlockedIpv4Literal(hostname: string): boolean {
+  const octets = parseIpv4(hostname);
+  if (!octets) return false;
+  const [a, b] = octets;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 192 && b === 0) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    a >= 224
+  );
+}
+
+function expandIpv6(address: string): number[] | null {
+  const normalized = address.split("%", 1)[0]?.toLowerCase() ?? "";
+  if (!normalized) return null;
+  const mapped = normalized.match(/^(.*:)(\d{1,3}(?:\.\d{1,3}){3})$/);
+  const ipv4 = mapped ? parseIpv4(mapped[2] ?? "") : null;
+  const head = mapped ? (mapped[1] ?? "") : normalized;
+  const partsAroundGap = head.split("::");
+  if (partsAroundGap.length > 2) return null;
+  const [leftRaw, rightRaw] = partsAroundGap;
+  const left = leftRaw ? leftRaw.split(":").filter(Boolean) : [];
+  const right = typeof rightRaw === "string" && rightRaw ? rightRaw.split(":").filter(Boolean) : [];
+  const ipv4Parts = ipv4
+    ? [((ipv4[0] ?? 0) << 8) | (ipv4[1] ?? 0), ((ipv4[2] ?? 0) << 8) | (ipv4[3] ?? 0)]
+    : [];
+  const missing = 8 - left.length - right.length - ipv4Parts.length;
+  if (missing < 0 || (partsAroundGap.length === 1 && missing !== 0)) return null;
+  const parsePart = (part: string) => (/^[0-9a-f]{1,4}$/.test(part) ? parseInt(part, 16) : -1);
+  const parts = [
+    ...left.map(parsePart),
+    ...Array.from({ length: missing }, () => 0),
+    ...right.map(parsePart),
+    ...ipv4Parts,
+  ];
+  return parts.length === 8 && parts.every((part) => part >= 0 && part <= 0xffff) ? parts : null;
+}
+
+function isBlockedIpv6Literal(hostname: string): boolean {
+  const parts = expandIpv6(hostname);
+  if (!parts) return false;
+  const [first, second, , , , fifth, sixth, eighth] = parts;
+  const allZero = parts.every((part) => part === 0);
+  const loopback = parts.slice(0, 7).every((part) => part === 0) && eighth === 1;
+  const mappedIpv4 = parts.slice(0, 5).every((part) => part === 0) && fifth === 0xffff;
+  const compatibleIpv4 = parts.slice(0, 6).every((part) => part === 0) && !allZero && !loopback;
+  if (mappedIpv4 || compatibleIpv4) {
+    const ipv4 = `${((sixth ?? 0) >> 8) & 0xff}.${(sixth ?? 0) & 0xff}.${((eighth ?? 0) >> 8) & 0xff}.${(eighth ?? 0) & 0xff}`;
+    return isBlockedIpv4Literal(ipv4);
+  }
+  return (
+    allZero ||
+    loopback ||
+    ((first ?? 0) & 0xfe00) === 0xfc00 ||
+    ((first ?? 0) & 0xffc0) === 0xfe80 ||
+    ((first ?? 0) & 0xff00) === 0xff00 ||
+    (first === 0x2001 && second === 0xdb8)
+  );
+}
+
+function normalizeHostname(hostname: string): string {
+  return hostname
+    .trim()
+    .replace(/^\[|\]$/g, "")
+    .toLowerCase()
+    .replace(/\.$/, "");
+}
+
+function assertSafeTranscriptUrl(rawUrl: string): URL {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new Error("RSS transcript URL is invalid");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("RSS transcript URL must use http or https");
+  }
+  const hostname = normalizeHostname(url.hostname);
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    isBlockedIpv4Literal(hostname) ||
+    isBlockedIpv6Literal(hostname)
+  ) {
+    throw new Error("RSS transcript URL targets a blocked local network host");
+  }
+  return url;
+}
+
+function isRedirectStatus(status: number): boolean {
+  return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
+}
+
+async function fetchSafeTranscriptUrl(
+  fetchImpl: typeof fetch,
+  transcriptUrl: string,
+  redirectCount = 0,
+): Promise<Response> {
+  const url = assertSafeTranscriptUrl(transcriptUrl);
+  const res = await fetchImpl(url.href, {
+    redirect: "manual",
+    signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
+    headers: { accept: "text/vtt,text/plain,application/json;q=0.9,*/*;q=0.8" },
+  });
+  if (!isRedirectStatus(res.status)) return res;
+  const location = res.headers.get("location");
+  if (!location) return res;
+  if (redirectCount >= MAX_TRANSCRIPT_REDIRECTS) {
+    throw new Error("RSS transcript URL redirected too many times");
+  }
+  const nextUrl = new URL(location, res.url || url.href).href;
+  assertSafeTranscriptUrl(nextUrl);
+  return await fetchSafeTranscriptUrl(fetchImpl, nextUrl, redirectCount + 1);
+}
+
 export async function tryFetchTranscriptFromFeedXml({
   fetchImpl,
   feedXml,
@@ -50,11 +185,7 @@ export async function tryFetchTranscriptFromFeedXml({
 
     const transcriptUrl = decodeXmlEntities(preferred.url);
     try {
-      const res = await fetchImpl(transcriptUrl, {
-        redirect: "follow",
-        signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
-        headers: { accept: "text/vtt,text/plain,application/json;q=0.9,*/*;q=0.8" },
-      });
+      const res = await fetchSafeTranscriptUrl(fetchImpl, transcriptUrl);
       if (!res.ok) throw new Error(`transcript fetch failed (${res.status})`);
 
       const contentType =
