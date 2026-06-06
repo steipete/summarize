@@ -19,13 +19,17 @@ function effortToThinkingLevel(
  * Decide the model and `reasoning` option to pass into the pi-ai Anthropic
  * adapter. Shared by non-streaming and streaming text dispatch.
  *
- * pi-ai gates extended thinking on `model.reasoning`. For models present in
- * the pi-ai registry, we trust that flag — flipping it for known unsupported
- * Claude 3/3.5 models would turn previously successful no-thinking requests
- * into API rejections. For synthetic models (`tryGetModel` miss — typically
- * custom `ANTHROPIC_BASE_URL` proxies in front of newer Claude versions),
- * `createSyntheticModel` hard-codes `reasoning: false`, so we opt them into
- * thinking when the caller asked for an effort level.
+ * pi-ai 0.75.5 enables extended thinking whenever the caller passes a
+ * `reasoning` option, regardless of `model.reasoning`. So:
+ *
+ * - Registered models with `reasoning: true` (Claude 4+): forward `reasoning`.
+ * - Registered models with `reasoning: false` (Claude 3 / 3.5): drop
+ *   `reasoning` entirely; forwarding it would have pi-ai send a `thinking`
+ *   block to an API that rejects it.
+ * - Synthetic models (`tryGetModel` miss — typically custom
+ *   `ANTHROPIC_BASE_URL` proxies in front of newer Claude versions):
+ *   `createSyntheticModel` hard-codes `reasoning: false`, so we flip a copy
+ *   to `reasoning: true` and forward the effort level.
  */
 export function prepareAnthropicReasoning({
   modelId,
@@ -39,8 +43,13 @@ export function prepareAnthropicReasoning({
   const reasoning = effortToThinkingLevel(reasoningEffort);
   if (!reasoning) return { model: baseModel };
   const isSynthetic = !tryGetModel("anthropic", modelId);
-  if (isSynthetic && !baseModel.reasoning) {
-    return { model: { ...baseModel, reasoning: true }, reasoning };
+  if (!baseModel.reasoning) {
+    if (isSynthetic) {
+      return { model: { ...baseModel, reasoning: true }, reasoning };
+    }
+    // Registered but flagged unsupported (e.g. Claude 3/3.5): drop reasoning
+    // so pi-ai does not enable thinking on a model the API rejects it for.
+    return { model: baseModel };
   }
   return { model: baseModel, reasoning };
 }

@@ -54,21 +54,20 @@ describe("prepareAnthropicReasoning", () => {
     expect(result.model.reasoning).toBe(true);
   });
 
-  it("does NOT flip reasoning:false on registered unsupported models (Claude 3/3.5)", () => {
-    // pi-ai's registry marks Claude 3.5 Sonnet as reasoning: false because
-    // extended thinking is unsupported. We must preserve that flag so the SDK
-    // can keep dropping the thinking block instead of getting a 4xx from API.
+  it("drops reasoning on registered unsupported models (Claude 3/3.5) so pi-ai does not enable thinking", () => {
+    // pi-ai 0.75.5 enables extended thinking whenever `options.reasoning` is
+    // present, regardless of `model.reasoning`. For Claude 3/3.5 the API
+    // rejects thinking blocks, so we must drop the reasoning option entirely
+    // when the user has a global `thinking` setting active.
     const baseModel = makeBase("claude-3-5-sonnet-20241022", false);
     const result = prepareAnthropicReasoning({
       modelId: "claude-3-5-sonnet-20241022",
       baseModel,
       reasoningEffort: "high",
     });
-    // We still forward `reasoning` to pi-ai — pi-ai's adapter is responsible
-    // for deciding what to do with it given the model's metadata. The key
-    // invariant is that we did not mutate the model's reasoning flag.
     expect(result.model).toBe(baseModel);
     expect(result.model.reasoning).toBe(false);
+    expect(result.reasoning).toBeUndefined();
   });
 
   it("opts synthetic models into thinking so the request body carries thinking", () => {
@@ -76,7 +75,11 @@ describe("prepareAnthropicReasoning", () => {
     // routed through a jdcloud-style proxy) is built via createSyntheticModel
     // with reasoning: false. Without opting in, the pi-ai Anthropic adapter
     // would silently drop the thinking block.
-    const baseModel = makeBase("Definitely-Not-A-Real-Claude-Model-Id-42", false, "https://proxy.example/anthropic");
+    const baseModel = makeBase(
+      "Definitely-Not-A-Real-Claude-Model-Id-42",
+      false,
+      "https://proxy.example/anthropic",
+    );
     const result = prepareAnthropicReasoning({
       modelId: "Definitely-Not-A-Real-Claude-Model-Id-42",
       baseModel,
