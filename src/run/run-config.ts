@@ -3,7 +3,7 @@ import { loadSummarizeConfig } from "../config.js";
 import { parseVideoMode } from "../flags.js";
 import { type OutputLanguage, parseOutputLanguage } from "../language.js";
 import { parseOpenAiReasoningEffort, parseOpenAiServiceTier } from "../llm/model-options.js";
-import type { ModelRequestOptions } from "../llm/model-options.js";
+import type { ModelRequestOptions, OpenAiReasoningEffort } from "../llm/model-options.js";
 import { parseBooleanEnv } from "./env.js";
 
 export type ConfigState = {
@@ -17,6 +17,7 @@ export type ConfigState = {
   openaiUseChatCompletions: boolean | undefined;
   openaiRequestOptions: ModelRequestOptions | undefined;
   openaiRequestOptionsOverride: ModelRequestOptions | undefined;
+  cliReasoningEffortOverride: OpenAiReasoningEffort | undefined;
   configModelLabel: string | null;
 };
 
@@ -110,11 +111,13 @@ export function resolveConfigState({
       }
       options.serviceTier = serviceTier;
     }
-    const rawThinking = typeof programOpts.thinking === "string" ? programOpts.thinking : null;
-    if (rawThinking) {
-      options.reasoningEffort = parseOpenAiReasoningEffort(rawThinking, "--thinking");
-    }
     return Object.keys(options).length > 0 ? options : undefined;
+  })();
+
+  const cliReasoningEffortOverride: OpenAiReasoningEffort | undefined = (() => {
+    const rawThinking = typeof programOpts.thinking === "string" ? programOpts.thinking : null;
+    if (!rawThinking) return undefined;
+    return parseOpenAiReasoningEffort(rawThinking, "--thinking");
   })();
 
   const configModelLabel = (() => {
@@ -137,6 +140,7 @@ export function resolveConfigState({
     openaiUseChatCompletions,
     openaiRequestOptions,
     openaiRequestOptionsOverride,
+    cliReasoningEffortOverride,
     configModelLabel,
   };
 }

@@ -4,7 +4,8 @@ import { runCliModel } from "../llm/cli.js";
 import type { LlmApiKeys } from "../llm/generate-text.js";
 import { streamTextWithContext } from "../llm/generate-text.js";
 import { resolveGitHubModelsApiKey } from "../llm/github-models.js";
-import { mergeModelRequestOptions } from "../llm/model-options.js";
+import { parseGatewayStyleModelId } from "../llm/model-id.js";
+import { mergeModelRequestOptions, mergeRequestOptionsForProvider } from "../llm/model-options.js";
 import { buildAutoModelAttempts, envHasKey } from "../model-auto.js";
 import { parseBooleanEnv, parseCliUserModelId } from "../run/env.js";
 import { resolveEnvState } from "../run/run-env.js";
@@ -257,7 +258,12 @@ export async function streamChatResponse({
       forceOpenRouter: resolved.forceOpenRouter,
       openaiBaseUrlOverride: resolved.openaiBaseUrlOverride,
       forceChatCompletions: resolved.forceChatCompletions,
-      requestOptions: mergeModelRequestOptions(openaiRequestOptions, resolved.requestOptions),
+      requestOptions: mergeRequestOptionsForProvider({
+        provider: parseGatewayStyleModelId(resolved.modelId!).provider,
+        openaiGlobalDefault: openaiRequestOptions,
+        attemptOptions: resolved.requestOptions,
+        openaiOverride: undefined,
+      }),
     });
     for await (const chunk of result.textStream) {
       pushToSession({ event: "content", data: chunk });
@@ -332,7 +338,12 @@ export async function streamChatResponse({
         : attempt.requiredEnv === "OPENAI_API_KEY"
           ? openaiUseChatCompletions
           : undefined,
-    requestOptions: mergeModelRequestOptions(openaiRequestOptions, attempt.requestOptions),
+    requestOptions: mergeRequestOptionsForProvider({
+      provider: parseGatewayStyleModelId(attempt.llmModelId!).provider,
+      openaiGlobalDefault: openaiRequestOptions,
+      attemptOptions: attempt.requestOptions,
+      openaiOverride: undefined,
+    }),
   });
   for await (const chunk of result.textStream) {
     pushToSession({ event: "content", data: chunk });

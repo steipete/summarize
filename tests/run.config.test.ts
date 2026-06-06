@@ -33,13 +33,12 @@ function resolveTestConfigStateWithEnv(
 }
 
 describe("run config", () => {
-  it("maps --fast and --thinking to OpenAI request overrides", () => {
-    expect(
-      resolveTestConfigState({ fast: true, thinking: "mid" }).openaiRequestOptionsOverride,
-    ).toEqual({
+  it("maps --fast to OpenAI request overrides and --thinking to the cross-provider CLI override", () => {
+    const state = resolveTestConfigState({ fast: true, thinking: "mid" });
+    expect(state.openaiRequestOptionsOverride).toEqual({
       serviceTier: "fast",
-      reasoningEffort: "medium",
     });
+    expect(state.cliReasoningEffortOverride).toBe("medium");
   });
 
   it("maps --service-tier to OpenAI request overrides", () => {
@@ -71,5 +70,11 @@ describe("run config", () => {
 
   it("leaves openaiUseChatCompletions unset when there is no env or config override", () => {
     expect(resolveTestConfigState({}).openaiUseChatCompletions).toBeUndefined();
+  });
+
+  it("lifts --thinking out of the openai-scoped override entirely", () => {
+    const state = resolveTestConfigState({ thinking: "xhigh" });
+    expect(state.openaiRequestOptionsOverride).toBeUndefined();
+    expect(state.cliReasoningEffortOverride).toBe("xhigh");
   });
 });

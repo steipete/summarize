@@ -73,4 +73,61 @@ describe("mergeRequestOptionsForProvider", () => {
       expect(merged, `provider ${provider}`).toBeUndefined();
     }
   });
+
+  it("forwards an explicit CLI --thinking override to the anthropic provider", () => {
+    const merged = mergeRequestOptionsForProvider({
+      provider: "anthropic",
+      openaiGlobalDefault,
+      attemptOptions: undefined,
+      openaiOverride,
+      cliReasoningEffortOverride: "xhigh",
+    });
+    expect(merged).toEqual({ reasoningEffort: "xhigh" });
+  });
+
+  it("does not leak a persisted openai.thinking config default into anthropic without a CLI override", () => {
+    const merged = mergeRequestOptionsForProvider({
+      provider: "anthropic",
+      openaiGlobalDefault: { reasoningEffort: "high" },
+      attemptOptions: undefined,
+      openaiOverride: undefined,
+      cliReasoningEffortOverride: undefined,
+    });
+    expect(merged).toBeUndefined();
+  });
+
+  it("respects persisted openai.thinking for openai when no CLI override is set", () => {
+    const merged = mergeRequestOptionsForProvider({
+      provider: "openai",
+      openaiGlobalDefault: { reasoningEffort: "high" },
+      attemptOptions: undefined,
+      openaiOverride: undefined,
+      cliReasoningEffortOverride: undefined,
+    });
+    expect(merged).toEqual({ reasoningEffort: "high" });
+  });
+
+  it("lets a CLI --thinking override beat persisted openai.thinking for the openai provider", () => {
+    const merged = mergeRequestOptionsForProvider({
+      provider: "openai",
+      openaiGlobalDefault: { reasoningEffort: "high" },
+      attemptOptions: undefined,
+      openaiOverride: undefined,
+      cliReasoningEffortOverride: "xhigh",
+    });
+    expect(merged).toEqual({ reasoningEffort: "xhigh" });
+  });
+
+  it("forwards CLI --thinking to other non-openai providers (zai, google, xai, ...)", () => {
+    for (const provider of ["zai", "google", "xai", "nvidia", "ollama", "github-copilot"]) {
+      const merged = mergeRequestOptionsForProvider({
+        provider,
+        openaiGlobalDefault,
+        attemptOptions: undefined,
+        openaiOverride,
+        cliReasoningEffortOverride: "xhigh",
+      });
+      expect(merged, `provider ${provider}`).toEqual({ reasoningEffort: "xhigh" });
+    }
+  });
 });

@@ -1,7 +1,7 @@
 import { resolveGitHubModelsApiKey } from "../../../llm/github-models.js";
 import { createHtmlToMarkdownConverter } from "../../../llm/html-to-markdown.js";
 import { parseGatewayStyleModelId } from "../../../llm/model-id.js";
-import { mergeModelRequestOptions } from "../../../llm/model-options.js";
+import { mergeRequestOptionsForProvider } from "../../../llm/model-options.js";
 import {
   type ConvertTranscriptToMarkdown,
   createTranscriptToMarkdownConverter,
@@ -257,11 +257,13 @@ export function createMarkdownConverters(
           forceChatCompletions:
             markdownModel.forceChatCompletions ??
             (ctx.model.openaiUseChatCompletions && markdownProvider === "openai"),
-          requestOptions: mergeModelRequestOptions(
-            ctx.model.openaiRequestOptions,
-            markdownModel.requestOptions,
-            ctx.model.openaiRequestOptionsOverride,
-          ),
+          requestOptions: mergeRequestOptionsForProvider({
+            provider: markdownProvider,
+            openaiGlobalDefault: ctx.model.openaiRequestOptions,
+            attemptOptions: markdownModel.requestOptions,
+            openaiOverride: ctx.model.openaiRequestOptionsOverride,
+            cliReasoningEffortOverride: ctx.model.cliReasoningEffortOverride,
+          }),
           fetchImpl: ctx.io.fetch,
           retries: ctx.flags.retries,
           onRetry: createRetryLogger({
@@ -363,11 +365,13 @@ export function createMarkdownConverters(
           forceChatCompletions:
             markdownModel.forceChatCompletions ??
             (ctx.model.openaiUseChatCompletions && markdownProvider === "openai"),
-          requestOptions: mergeModelRequestOptions(
-            ctx.model.openaiRequestOptions,
-            markdownModel.requestOptions,
-            ctx.model.openaiRequestOptionsOverride,
-          ),
+          requestOptions: mergeRequestOptionsForProvider({
+            provider: markdownProvider,
+            openaiGlobalDefault: ctx.model.openaiRequestOptions,
+            attemptOptions: markdownModel.requestOptions,
+            openaiOverride: ctx.model.openaiRequestOptionsOverride,
+            cliReasoningEffortOverride: ctx.model.cliReasoningEffortOverride,
+          }),
           fetchImpl: ctx.io.fetch,
           retries: ctx.flags.retries,
           onRetry: createRetryLogger({

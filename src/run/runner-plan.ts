@@ -145,6 +145,7 @@ export async function createRunnerPlan(options: {
     openaiUseChatCompletions,
     openaiRequestOptions,
     openaiRequestOptionsOverride,
+    cliReasoningEffortOverride,
     configModelLabel,
     apiKey,
     openrouterApiKey,
@@ -340,6 +341,7 @@ export async function createRunnerPlan(options: {
     openaiUseChatCompletions,
     openaiRequestOptions,
     openaiRequestOptionsOverride,
+    cliReasoningEffortOverride,
     cliConfigForRun: cliConfigForRun ?? null,
     cliAvailability,
     trackedFetch,
@@ -452,6 +454,7 @@ export async function createRunnerPlan(options: {
       openaiUseChatCompletions,
       openaiRequestOptions,
       openaiRequestOptionsOverride,
+      cliReasoningEffortOverride,
       openaiWhisperUsdPerMinute,
       apiStatus: {
         xaiApiKey,

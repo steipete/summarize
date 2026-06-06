@@ -80,29 +80,43 @@ export function mergeModelRequestOptions(
 }
 
 /**
- * Merge request options for a specific provider. The OpenAI-scoped global
- * default (`openaiRequestOptions`) and CLI override (`openaiRequestOptionsOverride`)
- * are sourced from `openai.*` config and `--thinking`/`--fast`/`--service-tier`
- * flags that documentation/CLI help describe as OpenAI-only. Those entries are
- * only applied for the `openai` provider; for every other provider only the
- * per-attempt options (set via the model config or a provider-prefixed CLI
- * model id) flow through.
+ * Merge request options for a specific provider.
+ *
+ * - `openaiGlobalDefault` comes from the persisted `openai.*` config block — a
+ *   provider-scoped default that must NOT bleed into non-openai requests.
+ * - `openaiOverride` comes from `--fast` / `--service-tier`, which are
+ *   documented as OpenAI-only knobs. Also only for the openai provider.
+ * - `cliReasoningEffortOverride` comes from the explicit `--thinking` CLI flag,
+ *   which is cross-provider (the user opted in for this run). It is forwarded
+ *   to whichever provider is dispatched.
+ * - `attemptOptions` is the per-attempt options bag (from the model config or
+ *   provider-prefixed CLI id) and applies to every provider.
  */
 export function mergeRequestOptionsForProvider({
   provider,
   openaiGlobalDefault,
   attemptOptions,
   openaiOverride,
+  cliReasoningEffortOverride,
 }: {
   provider: string;
   openaiGlobalDefault: ModelRequestOptionsInput | null | undefined;
   attemptOptions: ModelRequestOptionsInput | null | undefined;
   openaiOverride: ModelRequestOptionsInput | null | undefined;
+  cliReasoningEffortOverride?: OpenAiReasoningEffort | undefined;
 }): ModelRequestOptions | undefined {
+  const cliReasoningEntry: ModelRequestOptionsInput | undefined = cliReasoningEffortOverride
+    ? { reasoningEffort: cliReasoningEffortOverride }
+    : undefined;
   if (provider === "openai") {
-    return mergeModelRequestOptions(openaiGlobalDefault, attemptOptions, openaiOverride);
+    return mergeModelRequestOptions(
+      openaiGlobalDefault,
+      attemptOptions,
+      openaiOverride,
+      cliReasoningEntry,
+    );
   }
-  return mergeModelRequestOptions(attemptOptions);
+  return mergeModelRequestOptions(attemptOptions, cliReasoningEntry);
 }
 
 export function toOpenAiServiceTierParam(serviceTier: string | undefined): string | undefined {
