@@ -5,7 +5,7 @@ import { isCliDisabled, runCliModel } from "../llm/cli.js";
 import { streamTextWithModelId } from "../llm/generate-text.js";
 import { resolveGitHubModelsApiKey } from "../llm/github-models.js";
 import { parseGatewayStyleModelId } from "../llm/model-id.js";
-import { mergeModelRequestOptions } from "../llm/model-options.js";
+import { mergeRequestOptionsForProvider } from "../llm/model-options.js";
 import type { ModelRequestOptions } from "../llm/model-options.js";
 import type { Prompt } from "../llm/prompt.js";
 import { formatCompactCount } from "../tty/format.js";
@@ -322,11 +322,12 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
       );
     }
     const parsedModelEffective = parseGatewayStyleModelId(modelResolution.modelId);
-    const requestOptions = mergeModelRequestOptions(
-      deps.openaiRequestOptions,
-      attempt.requestOptions,
-      deps.openaiRequestOptionsOverride,
-    );
+    const requestOptions = mergeRequestOptionsForProvider({
+      provider: parsedModelEffective.provider,
+      openaiGlobalDefault: deps.openaiRequestOptions,
+      attemptOptions: attempt.requestOptions,
+      openaiOverride: deps.openaiRequestOptionsOverride,
+    });
     const streamingEnabledForCall =
       allowStreaming &&
       deps.streamingEnabled &&

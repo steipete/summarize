@@ -79,6 +79,32 @@ export function mergeModelRequestOptions(
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
+/**
+ * Merge request options for a specific provider. The OpenAI-scoped global
+ * default (`openaiRequestOptions`) and CLI override (`openaiRequestOptionsOverride`)
+ * are sourced from `openai.*` config and `--thinking`/`--fast`/`--service-tier`
+ * flags that documentation/CLI help describe as OpenAI-only. Those entries are
+ * only applied for the `openai` provider; for every other provider only the
+ * per-attempt options (set via the model config or a provider-prefixed CLI
+ * model id) flow through.
+ */
+export function mergeRequestOptionsForProvider({
+  provider,
+  openaiGlobalDefault,
+  attemptOptions,
+  openaiOverride,
+}: {
+  provider: string;
+  openaiGlobalDefault: ModelRequestOptionsInput | null | undefined;
+  attemptOptions: ModelRequestOptionsInput | null | undefined;
+  openaiOverride: ModelRequestOptionsInput | null | undefined;
+}): ModelRequestOptions | undefined {
+  if (provider === "openai") {
+    return mergeModelRequestOptions(openaiGlobalDefault, attemptOptions, openaiOverride);
+  }
+  return mergeModelRequestOptions(attemptOptions);
+}
+
 export function toOpenAiServiceTierParam(serviceTier: string | undefined): string | undefined {
   const normalized = serviceTier?.trim();
   if (!normalized) return undefined;
