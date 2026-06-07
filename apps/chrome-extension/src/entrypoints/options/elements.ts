@@ -34,6 +34,7 @@ export function getOptionsElements() {
     hoverSummariesToggleRoot: byId<HTMLDivElement>("hoverSummariesToggle"),
     summaryTimestampsToggleRoot: byId<HTMLDivElement>("summaryTimestampsToggle"),
     slidesParallelToggleRoot: byId<HTMLDivElement>("slidesParallelToggle"),
+    slideRuntimeModeRoot: byId<HTMLDivElement>("slideRuntimeMode"),
     slidesOcrToggleRoot: byId<HTMLDivElement>("slidesOcrToggle"),
     extendedLoggingToggleRoot: byId<HTMLDivElement>("extendedLoggingToggle"),
     autoCliFallbackToggleRoot: byId<HTMLDivElement>("autoCliFallbackToggle"),

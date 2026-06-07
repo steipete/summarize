@@ -1,4 +1,4 @@
-import { shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
+import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import type { PanelCachePayload } from "./panel-cache";
 import {
   resolvePanelNavigationDecision,
@@ -61,6 +61,7 @@ type UiStateRuntimeOpts = {
   ) => void | Promise<void>;
   maybeStartPendingSummaryRunForUrl: (url: string | null) => boolean;
   maybeStartPendingSlidesForUrl: (url: string | null) => void;
+  requestSlidesCapture: () => void;
   resolveActiveSlidesRunId: () => string | null;
   applyPanelCache: (payload: PanelCachePayload, opts?: { preserveChat?: boolean }) => void;
   resetSummaryView: (opts?: { preserveChat?: boolean }) => void;
@@ -125,6 +126,7 @@ function applyCachedOrReset(
     | "panelState"
     | "panelCacheController"
     | "applyPanelCache"
+    | "requestSlidesCapture"
     | "resetSummaryView"
     | "setCurrentRunTabId"
   >,
@@ -136,6 +138,14 @@ function applyCachedOrReset(
     const cached = opts.panelCacheController.resolve(tabId, url);
     if (cached) {
       opts.applyPanelCache(cached, { preserveChat });
+      if (
+        cached.summaryMarkdown &&
+        !cached.slides?.slides.length &&
+        cached.url &&
+        isYouTubeVideoUrl(cached.url)
+      ) {
+        opts.requestSlidesCapture();
+      }
     } else {
       opts.panelState.currentSource = null;
       opts.setCurrentRunTabId(null);

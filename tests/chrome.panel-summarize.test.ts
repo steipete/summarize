@@ -41,6 +41,7 @@ function createHarness() {
           autoSummarize: true,
           slidesEnabled: true,
           slidesParallel: true,
+          slideRuntime: "daemon",
           summaryTimestamps: true,
         })),
         emitState: vi.fn(),
@@ -128,6 +129,7 @@ describe("chrome panel summarize", () => {
         autoSummarize: true,
         slidesEnabled,
         slidesParallel: true,
+        slideRuntime: "daemon",
         summaryTimestamps: true,
       })),
     });
@@ -140,6 +142,7 @@ describe("chrome panel summarize", () => {
         autoSummarize: true,
         slidesEnabled,
         slidesParallel: true,
+        slideRuntime: "daemon",
         summaryTimestamps: true,
       })),
     });
@@ -191,5 +194,203 @@ describe("chrome panel summarize", () => {
     });
     expect(body.mode).toBeUndefined();
     expect(body.videoMode).toBeUndefined();
+  });
+
+  it("uses a local browser summary snapshot without a daemon token in browser runtime", async () => {
+    const harness = createHarness();
+    const url = "https://example.com/article";
+    const emitState = vi.fn();
+    const sendStatus = vi.fn();
+
+    await harness.summarize({
+      reason: "manual",
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      emitState,
+      sendStatus,
+      getActiveTab: vi.fn(async () => ({
+        id: 7,
+        windowId: 1,
+        url,
+        title: "Browser Article",
+      })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url,
+          title: "Browser Article",
+          text: "First sentence. Second sentence. Third sentence.",
+          truncated: false,
+          media: null,
+        },
+      })),
+    });
+
+    expect(emitState).not.toHaveBeenCalledWith(expect.anything(), "Setup required (missing token)");
+    expect(harness.fetchImpl).not.toHaveBeenCalled();
+    expect(harness.sent).toHaveLength(1);
+    expect(harness.sent[0]).toMatchObject({
+      type: "run:snapshot",
+      run: {
+        url,
+        title: "Browser Article",
+        model: "Browser",
+        reason: "manual",
+        slides: false,
+      },
+      markdown: expect.stringContaining("First sentence\\."),
+    });
+    expect(harness.session.lastSummarizedUrl).toBe(url);
+    expect(sendStatus).toHaveBeenLastCalledWith("");
+  });
+
+  it("keeps daemon summaries when browser runtime has a daemon token", async () => {
+    const harness = createHarness();
+    const url = "https://example.com/article";
+
+    await harness.summarize({
+      reason: "manual",
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "token",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      getActiveTab: vi.fn(async () => ({
+        id: 7,
+        windowId: 1,
+        url,
+        title: "Browser Article",
+      })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url,
+          title: "Browser Article",
+          text: "First sentence. Second sentence.",
+          truncated: false,
+          media: null,
+        },
+      })),
+    });
+
+    expect(harness.fetchImpl).toHaveBeenCalledOnce();
+    expect(harness.sent).toEqual([
+      {
+        type: "run:start",
+        run: {
+          id: "summary",
+          url,
+          title: "Browser Article",
+          model: defaultSettings.model,
+          reason: "manual",
+          slides: false,
+        },
+      },
+    ]);
+  });
+
+  it("falls back to a browser summary snapshot when the configured daemon is unreachable", async () => {
+    const harness = createHarness();
+    const url = "https://example.com/article";
+    const sendStatus = vi.fn();
+
+    await harness.summarize({
+      reason: "manual",
+      sendStatus,
+      fetchImpl: vi.fn(async () => {
+        throw new Error("Failed to fetch");
+      }) as unknown as typeof fetch,
+      isDaemonUnreachableError: () => true,
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "token",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      getActiveTab: vi.fn(async () => ({
+        id: 7,
+        windowId: 1,
+        url,
+        title: "Browser Article",
+      })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url,
+          title: "Browser Article",
+          text: "First sentence. Second sentence.",
+          truncated: false,
+          media: null,
+        },
+      })),
+    });
+
+    expect(harness.sent).toHaveLength(1);
+    expect(harness.sent[0]).toMatchObject({
+      type: "run:snapshot",
+      run: { url, model: "Browser", slides: false },
+      markdown: expect.stringContaining("First sentence\\."),
+    });
+    expect(harness.session.daemonRecovery.recordFailure).toHaveBeenCalledWith(url);
+    expect(sendStatus).toHaveBeenLastCalledWith("");
+  });
+
+  it("falls back to a browser summary snapshot when a saved daemon token is stale", async () => {
+    const harness = createHarness();
+    const url = "https://example.com/article";
+
+    await harness.summarize({
+      reason: "manual",
+      fetchImpl: vi.fn(async () => ({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        json: async () => ({ ok: false, error: "Unauthorized" }),
+      })) as unknown as typeof fetch,
+      isDaemonUnreachableError: () => false,
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "stale-token",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      getActiveTab: vi.fn(async () => ({
+        id: 7,
+        windowId: 1,
+        url,
+        title: "Browser Article",
+      })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url,
+          title: "Browser Article",
+          text: "First sentence. Second sentence.",
+          truncated: false,
+          media: null,
+        },
+      })),
+    });
+
+    expect(harness.sent).toHaveLength(1);
+    expect(harness.sent[0]).toMatchObject({
+      type: "run:snapshot",
+      run: { url, model: "Browser", slides: false },
+      markdown: expect.stringContaining("First sentence\\."),
+    });
+    expect(harness.session.daemonRecovery.recordFailure).not.toHaveBeenCalled();
   });
 });

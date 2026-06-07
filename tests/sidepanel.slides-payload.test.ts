@@ -119,6 +119,35 @@ describe("sidepanel slides payload policy", () => {
     );
   });
 
+  it("preserves explicit slide runtime metadata", () => {
+    const browserPayload = normalizeSlidesPayload({
+      ...buildSlidesPayload({ count: 1, withImages: true }),
+      slideRuntime: "browser",
+    });
+    const daemonPayload = normalizeSlidesPayload({
+      ...buildSlidesPayload({ count: 1, withImages: true }),
+      slideRuntime: "daemon",
+    });
+    const invalidPayload = normalizeSlidesPayload({
+      ...buildSlidesPayload({ count: 1, withImages: true }),
+      slideRuntime: "native",
+    });
+
+    expect(browserPayload?.slideRuntime).toBe("browser");
+    expect(daemonPayload?.slideRuntime).toBe("daemon");
+    expect(invalidPayload).not.toHaveProperty("slideRuntime");
+  });
+
+  it("tracks slide runtime changes while treating missing runtime as daemon", () => {
+    const payload = buildSlidesPayload({ count: 1, withImages: true });
+    const browserPayload = { ...payload, slideRuntime: "browser" as const };
+    const daemonPayload = { ...payload, slideRuntime: "daemon" as const };
+
+    expect(slidesPayloadChanged(payload, browserPayload)).toBe(true);
+    expect(slidesPayloadChanged(payload, daemonPayload)).toBe(false);
+    expect(slidesPayloadChanged(daemonPayload, payload)).toBe(false);
+  });
+
   it("treats repeated malformed timestamps as unchanged after normalization", () => {
     const normalized = normalizeSlidesPayload({
       sourceUrl: "https://example.com",

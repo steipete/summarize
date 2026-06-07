@@ -445,16 +445,18 @@ export function coerceSummaryWithSlides({
   slides,
   transcriptTimedText,
   lengthArg,
+  reserveIntro = true,
 }: {
   markdown: string;
   slides: SlideTimelineEntry[];
   transcriptTimedText?: string | null;
   lengthArg: { kind: "preset"; preset: SummaryLength } | { kind: "chars"; maxCharacters: number };
+  reserveIntro?: boolean;
 }): string {
   if (!markdown.trim() || slides.length === 0) return markdown;
   const ordered = slides.slice().sort((a, b) => a.index - b.index);
   const { summary, slidesSection } = splitSummaryFromSlides(markdown);
-  const intro = pickIntroParagraph(summary);
+  const intro = reserveIntro ? pickIntroParagraph(summary) : "";
   const slideSummaries = slidesSection ? parseSlideSummariesFromMarkdown(markdown) : new Map();
   const interludeSlideIndexes = new Set(
     Array.from(slideSummaries.entries())
@@ -474,8 +476,52 @@ export function coerceSummaryWithSlides({
   if (slideSummaries.size > 0 && !titleOnlySlideSummaries) {
     const parts: string[] = [];
     if (intro) parts.push(intro);
+    const paragraphs = splitMarkdownParagraphs(summary);
+    const introParagraph = reserveIntro ? intro || paragraphs[0] || "" : "";
+    const introIndex = introParagraph ? paragraphs.indexOf(introParagraph) : -1;
+    const remaining = reserveIntro
+      ? introIndex >= 0
+        ? paragraphs.filter((_, index) => index !== introIndex)
+        : paragraphs.slice(1)
+      : paragraphs;
+    const distributedSummaries = new Map<number, string>();
+    if (remaining.length > 0) {
+      const distributableSlides = ordered.filter(
+        (slide) => !interludeSlideIndexes.has(slide.index),
+      );
+      const distributionSlides = distributableSlides.length > 0 ? distributableSlides : ordered;
+      const total = distributionSlides.length;
+      let distributionIndex = 0;
+      for (const slide of ordered) {
+        if (interludeSlideIndexes.has(slide.index) && distributableSlides.length > 0) continue;
+        const segmentIndex = distributionIndex;
+        const start = Math.round((segmentIndex * remaining.length) / total);
+        const end = Math.round(((segmentIndex + 1) * remaining.length) / total);
+        distributionIndex += 1;
+        const segment =
+          remaining.slice(start, end).join("\n\n").trim() ||
+          remaining[
+            Math.min(remaining.length - 1, Math.floor((segmentIndex * remaining.length) / total))
+          ]?.trim() ||
+          "";
+        if (segment) distributedSummaries.set(slide.index, segment);
+      }
+    }
     for (const slide of ordered) {
-      const text = slideSummaries.get(slide.index) ?? fallbackSummaries.get(slide.index) ?? "";
+      const directText = slideSummaries.get(slide.index);
+      const directBody = directText
+        ? splitSlideTitleFromText({
+            text: directText,
+            slideIndex: slide.index,
+            total: ordered.length,
+          }).body.trim()
+        : "";
+      const distributedText = distributedSummaries.get(slide.index) ?? "";
+      const fallbackText = slideSummaries.has(slide.index)
+        ? ""
+        : (fallbackSummaries.get(slide.index) ?? "");
+      const directOutput = directBody || isInterludeSlideText(directText ?? "") ? directText : "";
+      const text = directOutput || distributedText || fallbackText;
       const withTitle = text ? ensureSlideTitleLine({ text, slide, total: ordered.length }) : "";
       parts.push(withTitle ? `[slide:${slide.index}]\n${withTitle}` : `[slide:${slide.index}]`);
     }
@@ -494,10 +540,13 @@ export function coerceSummaryWithSlides({
     }
     return parts.join("\n\n");
   }
-  const introParagraph = intro || paragraphs[0] || "";
-  const introIndex = paragraphs.indexOf(introParagraph);
-  const remaining =
-    introIndex >= 0 ? paragraphs.filter((_, index) => index !== introIndex) : paragraphs.slice(1);
+  const introParagraph = reserveIntro ? intro || paragraphs[0] || "" : "";
+  const introIndex = introParagraph ? paragraphs.indexOf(introParagraph) : -1;
+  const remaining = reserveIntro
+    ? introIndex >= 0
+      ? paragraphs.filter((_, index) => index !== introIndex)
+      : paragraphs.slice(1)
+    : paragraphs;
   if (introParagraph) parts.push(introParagraph.trim());
   if (remaining.length === 0) {
     for (const slide of ordered) {
@@ -524,10 +573,16 @@ export function coerceSummaryWithSlides({
       parts.push(`[slide:${slideIndex}]\n## Interlude`);
       continue;
     }
-    const start = Math.round((distributionIndex * remaining.length) / total);
-    const end = Math.round(((distributionIndex + 1) * remaining.length) / total);
+    const segmentIndex = distributionIndex;
+    const start = Math.round((segmentIndex * remaining.length) / total);
+    const end = Math.round(((segmentIndex + 1) * remaining.length) / total);
     distributionIndex += 1;
-    const segment = remaining.slice(start, end).join("\n\n").trim();
+    const segment =
+      remaining.slice(start, end).join("\n\n").trim() ||
+      remaining[
+        Math.min(remaining.length - 1, Math.floor((segmentIndex * remaining.length) / total))
+      ]?.trim() ||
+      "";
     const fallback = fallbackSummaries.get(slideIndex) ?? "";
     const text = segment || fallback;
     const withTitle = text ? ensureSlideTitleLine({ text, slide, total: slideTotal }) : "";

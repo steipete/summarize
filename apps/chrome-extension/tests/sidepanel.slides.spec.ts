@@ -17,6 +17,7 @@ import {
   getPanelSlideDescriptions,
   getPanelSlideSummaryEntries,
   getPanelSlideTitleEntries,
+  getPanelSummaryMarkdown,
   getPanelSlidesTimeline,
   waitForApplySlidesHook,
   waitForSlidesRuntimeHooks,
@@ -343,7 +344,7 @@ test("sidepanel does not reseed planned slides over resolved direct video slides
   }
 });
 
-test("sidepanel shows intro before gallery cards and hides gallery heading in slide mode", async ({
+test("sidepanel shows gallery before intro and hides gallery heading in slide mode", async ({
   browserName: _browserName,
 }, testInfo) => {
   const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
@@ -447,7 +448,7 @@ test("sidepanel shows intro before gallery cards and hides gallery heading in sl
     const renderOrder = await page
       .locator("#render")
       .evaluate((el) => Array.from(el.children).map((child) => child.className));
-    expect(renderOrder).toEqual(["render__markdownHost", "render__slidesHost"]);
+    expect(renderOrder).toEqual(["render__slidesHost", "render__markdownHost"]);
 
     await expect(
       page.locator(
@@ -559,6 +560,146 @@ test("sidepanel replaces partial slide-stream fragments with the final slide sum
     expect(slides[0]?.[1] ?? "").not.toBe("##");
     expect(slides.some(([, text]) => text.includes("Raw transcript"))).toBe(false);
     expect(slides[1]?.[1] ?? "").toContain("remaining guardian");
+
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
+test("sidepanel applies existing summary text when local slides arrive after the summary", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, {
+      token: "test-token",
+      autoSummarize: false,
+      slidesEnabled: true,
+      slidesParallel: true,
+      slidesOcrEnabled: true,
+      slidesLayout: "gallery",
+    });
+    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+    await waitForPanelPort(page);
+    await waitForSettingsHydratedHook(page);
+    await waitForSlidesRuntimeHooks(page);
+    await waitForTranscriptTimedTextHook(page);
+    await routePlaceholderSlideImages(page);
+
+    const targetUrl = "https://www.youtube.com/watch?v=localrace123";
+    await sendBgMessage(harness, {
+      type: "ui:state",
+      state: buildUiState({
+        tab: {
+          id: 1,
+          url: targetUrl,
+          title: "Local Race Video",
+        },
+        media: { hasVideo: true, hasAudio: true, hasCaptions: true },
+        settings: {
+          autoSummarize: false,
+          slidesEnabled: true,
+          slidesParallel: true,
+          slidesOcrEnabled: true,
+          slidesLayout: "gallery",
+          tokenPresent: true,
+        },
+      }),
+    });
+
+    await page.evaluate((markdown) => {
+      const hooks = (
+        window as typeof globalThis & {
+          __summarizeTestHooks?: {
+            applySummaryMarkdown?: (value: string) => void;
+            setTranscriptTimedText?: (value: string | null) => void;
+          };
+        }
+      ).__summarizeTestHooks;
+      hooks?.setTranscriptTimedText?.(
+        [
+          "[00:00] raw transcript one should not become the slide card copy.",
+          "[01:03] raw transcript two should not become the slide card copy.",
+          "[02:07] raw transcript three should not become the slide card copy.",
+          "[03:05] raw transcript four should not become the slide card copy.",
+          "[04:12] raw transcript five should not become the slide card copy.",
+          "[05:01] raw transcript six should not become the slide card copy.",
+        ].join("\n"),
+      );
+      hooks?.applySummaryMarkdown?.(markdown);
+    }, ["This scene contrasts the family's chaotic defensiveness with Dr. Wong's calm patience.", "", "Rick arrives transformed and uses the spectacle to dodge emotional accountability.", "", "Dr. Wong reframes the room as a place for boring, repetitive repair rather than heroics."].join("\n"));
+
+    await page.route("http://127.0.0.1:8787/v1/summarize/localrace-run/events", async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+        body: ["event: done", "data: {}", ""].join("\n"),
+      });
+    });
+    await sendBgMessage(harness, {
+      type: "run:start",
+      run: {
+        id: "localrace-run",
+        url: targetUrl,
+        title: "Local Race Video",
+        model: "auto",
+        reason: "manual",
+        slides: false,
+      },
+    });
+    await expect.poll(async () => await getPanelSummaryMarkdown(page)).toBe("");
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const hooks = (
+            window as typeof globalThis & {
+              __summarizeTestHooks?: { getRetainedSlideSummaryMarkdown?: () => string };
+            }
+          ).__summarizeTestHooks;
+          return hooks?.getRetainedSlideSummaryMarkdown?.() ?? "";
+        }),
+      )
+      .toContain("transformed and uses the spectacle");
+
+    await applySlidesPayload(page, {
+      sourceUrl: targetUrl,
+      sourceId: "youtube-localrace123",
+      sourceKind: "youtube",
+      ocrAvailable: false,
+      transcriptTimedText: [
+        "[00:00] raw transcript one should not become the slide card copy.",
+        "[01:03] raw transcript two should not become the slide card copy.",
+        "[02:07] raw transcript three should not become the slide card copy.",
+        "[03:05] raw transcript four should not become the slide card copy.",
+        "[04:12] raw transcript five should not become the slide card copy.",
+        "[05:01] raw transcript six should not become the slide card copy.",
+      ].join("\n"),
+      slides: [
+        { index: 1, timestamp: 0, imageUrl: "", ocrText: null },
+        { index: 2, timestamp: 63, imageUrl: "", ocrText: null },
+        { index: 3, timestamp: 127, imageUrl: "", ocrText: null },
+        { index: 4, timestamp: 185, imageUrl: "", ocrText: null },
+        { index: 5, timestamp: 252, imageUrl: "", ocrText: null },
+        { index: 6, timestamp: 301, imageUrl: "", ocrText: null },
+      ],
+    });
+
+    await expect
+      .poll(
+        async () => (await getPanelSlideDescriptions(page)).map(([, text]) => text).join("\n"),
+        { timeout: 10_000 },
+      )
+      .toContain("transformed and uses the spectacle");
+
+    const slides = await getPanelSlideDescriptions(page);
+    expect(slides).toHaveLength(6);
+    expect(slides.some(([, text]) => text.includes("raw transcript"))).toBe(false);
+    expect(slides[0]?.[1] ?? "").toContain("chaotic defensiveness");
+    expect(slides[1]?.[1] ?? "").toContain("chaotic defensiveness");
+    expect(slides[2]?.[1] ?? "").toContain("transformed and uses the spectacle");
+    expect(slides[4]?.[1] ?? "").toContain("boring, repetitive repair");
 
     assertNoErrors(harness);
   } finally {

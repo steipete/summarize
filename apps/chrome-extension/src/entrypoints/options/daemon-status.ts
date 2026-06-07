@@ -14,10 +14,12 @@ export function createDaemonStatusChecker({
   statusEl,
   fetchImpl = fetch,
   getExtensionVersion,
+  isDaemonMode = () => true,
 }: {
   statusEl: HTMLDivElement;
   fetchImpl?: typeof fetch;
   getExtensionVersion: () => string;
+  isDaemonMode?: () => boolean;
 }) {
   const setDaemonStatus = (text: string, state?: "ok" | "warn" | "error") => {
     const textEl = statusEl.querySelector<HTMLElement>(".daemonStatus__text");
@@ -34,6 +36,11 @@ export function createDaemonStatusChecker({
   };
 
   let daemonCheckId = 0;
+
+  const setBrowserStatus = () => {
+    daemonCheckId += 1;
+    setDaemonStatus("Browser mode active", "ok");
+  };
 
   const fetchWithRetry = async (url: string, options: RequestInit = {}) => {
     for (let attempt = 0; attempt < DAEMON_STATUS_MAX_ATTEMPTS; attempt += 1) {
@@ -56,6 +63,10 @@ export function createDaemonStatusChecker({
   };
 
   const checkDaemonStatus = async (token: string) => {
+    if (!isDaemonMode()) {
+      setBrowserStatus();
+      return;
+    }
     daemonCheckId += 1;
     const checkId = daemonCheckId;
     const trimmedToken = token.trim();
@@ -117,5 +128,5 @@ export function createDaemonStatusChecker({
     }
   };
 
-  return { checkDaemonStatus, setDaemonStatus };
+  return { checkDaemonStatus, setBrowserStatus, setDaemonStatus };
 }

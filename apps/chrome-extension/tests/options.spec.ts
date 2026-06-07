@@ -176,6 +176,46 @@ test("options persists automation toggle without save", async ({
   }
 });
 
+test("options exposes runtime slide backend radios", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, { slideRuntime: "browser" });
+    const page = await openExtensionPage(harness, "options.html", "#tabs");
+
+    await expect(page.locator("#daemonStatus")).toContainText("Browser mode active");
+    await expect(page.locator("#panel-general")).not.toContainText("Token");
+
+    await page.click("#tab-runtime");
+    await expect(page.locator("#panel-runtime")).toBeVisible();
+    await expect(page.locator("#panel-runtime")).toContainText("Browser");
+    await expect(page.locator("#panel-runtime")).toContainText("Daemon");
+    await expect(page.locator("#panel-runtime")).toContainText("Daemon token");
+    await expect(page.locator("#panel-runtime")).not.toContainText("Show summary first");
+
+    const mode = page.locator("#slideRuntimeMode");
+    await expect(mode.locator('input[value="browser"]')).toBeChecked();
+    await mode.locator('input[value="daemon"]').click();
+    await expect(page.locator("#daemonStatus")).toContainText("Add token to verify daemon");
+
+    await expect
+      .poll(async () => {
+        const settings = await getSettings(harness);
+        return settings.slideRuntime;
+      })
+      .toBe("daemon");
+
+    await page.click("#tab-advanced");
+    await expect(page.locator("#panel-advanced")).toContainText("Show summary first");
+
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
 test("options disables automation permissions button when granted", async ({
   browserName: _browserName,
 }, testInfo) => {

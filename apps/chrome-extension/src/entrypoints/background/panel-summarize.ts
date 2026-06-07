@@ -1,9 +1,11 @@
 import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import type { RunStart } from "../../lib/panel-contracts";
 import type { Settings } from "../../lib/settings";
+import { buildBrowserSummaryMarkdown } from "./browser-summary";
 import type { ExtractResponse } from "./content-script-bridge";
 import type { CachedExtract } from "./extract-cache";
 import { routeExtract, type ExtractorContext, type ExtractorResult } from "./extractors/router";
+import { extractYouTubeTranscriptInTab } from "./youtube-transcript";
 
 type DaemonRecoveryLike = {
   recordFailure: (url: string) => void;
@@ -39,7 +41,10 @@ type StoreLike = {
 };
 
 type SendFn = (
-  msg: { type: "run:error"; message: string } | { type: "run:start"; run: RunStart },
+  msg:
+    | { type: "run:error"; message: string }
+    | { type: "run:start"; run: RunStart }
+    | { type: "run:snapshot"; run: RunStart; markdown: string },
 ) => void;
 
 export async function summarizeActiveTab({
@@ -98,7 +103,8 @@ export async function summarizeActiveTab({
   const settings = await loadSettings();
   const isManual = reason === "manual" || reason === "refresh" || reason === "length-change";
   if (!isManual && !settings.autoSummarize) return;
-  if (!settings.token.trim()) {
+  const useBrowserSummary = settings.slideRuntime === "browser" && !settings.token.trim();
+  if (!useBrowserSummary && !settings.token.trim()) {
     await emitState(session, "Setup required (missing token)");
     return;
   }
@@ -167,6 +173,12 @@ export async function summarizeActiveTab({
     slides: requestedWantsSlides,
   };
   const isSuperseded = () => controller.signal.aborted || session.runController !== controller;
+  const clearCurrentRun = () => {
+    if (session.runController !== controller) return;
+    session.runController = null;
+    session.inflightUrl = null;
+    session.inflightRequest = null;
+  };
 
   const prefersUrlMode = Boolean(tab.url && shouldPreferUrlMode(tab.url));
   const wantsUrlDirectPath =
@@ -174,19 +186,76 @@ export async function summarizeActiveTab({
 
   let extracted: ExtractResponse & { ok: true };
   let routedResult: Pick<ExtractorResult, "source" | "diagnostics"> | null = null;
+  let browserTranscriptTimedText: string | null = null;
   if (wantsUrlDirectPath) {
     logPanel("extractor.route.start", { tabId: tab.id, preferUrl: prefersUrlMode });
     logPanel("extractor.route.preferUrlHardSwitch", { tabId: tab.id });
     sendStatus(`Preparing video… (${reason})`);
     logPanel("extract:url-direct", { reason, tabId: tab.id });
-    extracted = {
-      ok: true,
-      url: tab.url,
-      title: tab.title ?? null,
-      text: "",
-      truncated: false,
-      media: { hasVideo: true, hasAudio: true, hasCaptions: true },
-    };
+    const browserTranscript = await extractYouTubeTranscriptInTab(tab.id, settings.maxChars);
+    if (browserTranscript.ok && !urlsMatch(browserTranscript.url, tabUrl)) {
+      logPanel("extract:url-direct:browser-transcript-stale", {
+        expectedUrl: tabUrl,
+        actualUrl: browserTranscript.url,
+      });
+      clearCurrentRun();
+      sendStatus("");
+      return;
+    }
+    browserTranscriptTimedText = browserTranscript.ok
+      ? browserTranscript.transcriptTimedText
+      : null;
+    if (isSuperseded()) return;
+    const extractedAttempt =
+      browserTranscript.ok && browserTranscript.text.trim().length > 0
+        ? null
+        : await extractFromTab(tab.id, settings.maxChars, {
+            timeoutMs: 8_000,
+            inputMode: "video",
+            log: (event, detail) => {
+              logPanel(event, detail);
+            },
+          });
+    if (isSuperseded()) return;
+    extracted =
+      browserTranscript.ok && browserTranscript.text.trim().length > 0
+        ? {
+            ok: true,
+            url: browserTranscript.url,
+            title: tab.title ?? null,
+            text: browserTranscript.text,
+            truncated: browserTranscript.truncated,
+            mediaDurationSeconds: browserTranscript.durationSeconds,
+            media: { hasVideo: true, hasAudio: true, hasCaptions: true },
+          }
+        : extractedAttempt?.ok && extractedAttempt.data.text.trim().length > 0
+          ? {
+              ...extractedAttempt.data,
+              media: extractedAttempt.data.media ?? {
+                hasVideo: true,
+                hasAudio: true,
+                hasCaptions: true,
+              },
+            }
+          : {
+              ok: true,
+              url: tab.url,
+              title: tab.title ?? null,
+              text: "",
+              truncated: false,
+              media: { hasVideo: true, hasAudio: true, hasCaptions: true },
+            };
+    logPanel("extract:url-direct:browser-transcript", {
+      ok: browserTranscript.ok,
+      textLength: extracted.text.length,
+      source:
+        browserTranscript.ok && browserTranscript.text.trim().length > 0
+          ? "browser"
+          : extracted.text.length > 0
+            ? "content-script"
+            : "empty-fallback",
+      error: browserTranscript.ok ? undefined : browserTranscript.error,
+    });
   } else {
     sendStatus(`Extracting… (${reason})`);
     logPanel("extract:start", { reason, tabId: tab.id, maxChars: settings.maxChars });
@@ -209,6 +278,7 @@ export async function summarizeActiveTab({
       logPanel("extractor.route.preferUrlHardSwitch", { tabId: tab.id });
       const extractedAttempt = await extractFromTab(tab.id, settings.maxChars, {
         timeoutMs: 8_000,
+        inputMode: requestedInputMode ?? "video",
         log: (event, detail) => {
           statusFromExtractEvent(event);
           logPanel(event, detail);
@@ -277,6 +347,7 @@ export async function summarizeActiveTab({
     logPanel("extract:retry", { tabId: tab.id, maxChars: settings.maxChars });
     const retry = await extractFromTab(tab.id, settings.maxChars, {
       timeoutMs: 8_000,
+      inputMode: requestedInputMode ?? undefined,
       log: (event, detail) => logPanel(event, detail),
     });
     if (isSuperseded()) return;
@@ -324,6 +395,7 @@ export async function summarizeActiveTab({
     (effectiveInputMode === "video" ||
       resolvedPayload.media?.hasVideo === true ||
       shouldPreferUrlMode(resolvedPayload.url));
+  const wantsDaemonSlides = wantsSlides && settings.slideRuntime === "daemon";
   const summaryTimestamps = wantsSummaryTimestamps || wantsSlides;
 
   logPanel("summarize:start", {
@@ -332,6 +404,8 @@ export async function summarizeActiveTab({
     inputMode: effectiveInputMode ?? null,
     wantsSummaryTimestamps: summaryTimestamps,
     wantsSlides,
+    wantsDaemonSlides,
+    slideRuntime: settings.slideRuntime,
     wantsParallelSlides: false,
   });
 
@@ -349,15 +423,54 @@ export async function summarizeActiveTab({
     transcriptCharacters: null,
     transcriptWordCount: null,
     transcriptLines: null,
-    transcriptTimedText: null,
+    transcriptTimedText: browserTranscriptTimedText,
     mediaDurationSeconds: resolvedPayload.mediaDurationSeconds ?? null,
     slides: null,
     diagnostics: routedResult?.diagnostics ?? null,
   });
 
+  const sendBrowserSummarySnapshot = () => {
+    const random =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const run: RunStart = {
+      id: `browser-summary-${random}`,
+      url: resolvedPayload.url,
+      title: resolvedTitle,
+      model: "Browser",
+      reason,
+      slides: wantsSlides,
+    };
+    session.activeSummaryRun = {
+      run,
+      startedAt: Date.now(),
+      inputMode: requestedInputMode,
+      slides: requestedWantsSlides,
+    };
+    session.inflightRequest = null;
+    session.lastSummarizedUrl = resolvedPayload.url;
+    clearCurrentRun();
+    send({
+      type: "run:snapshot",
+      run,
+      markdown: buildBrowserSummaryMarkdown({
+        title: resolvedTitle,
+        text: resolvedPayload.text,
+        transcriptTimedText: browserTranscriptTimedText,
+      }),
+    });
+    sendStatus("");
+  };
+
+  if (useBrowserSummary) {
+    sendBrowserSummarySnapshot();
+    return;
+  }
+
   sendStatus("Connecting…");
   session.inflightUrl = resolvedPayload.url;
-  const slidesConfig = wantsSlides
+  const slidesConfig = wantsDaemonSlides
     ? {
         enabled: true as const,
         ocr: settings.slidesOcrEnabled,
@@ -369,17 +482,22 @@ export async function summarizeActiveTab({
 
   let id: string;
   try {
+    const requestInputMode =
+      browserTranscriptTimedText && resolvedPayload.text.trim().length > 0
+        ? "page"
+        : effectiveInputMode;
     const body = buildSummarizeRequestBody({
       extracted: resolvedPayload,
       settings,
       noCache: Boolean(opts?.refresh),
-      inputMode: effectiveInputMode,
+      inputMode: requestInputMode,
       timestamps: summaryTimestamps,
       slides: summarySlides,
     });
     logPanel("summarize:request", {
       url: resolvedPayload.url,
-      slides: wantsSlides,
+      slides: wantsDaemonSlides,
+      slideRuntime: settings.slideRuntime,
       slidesParallel: false,
       timestamps: summaryTimestamps,
     });
@@ -401,6 +519,13 @@ export async function summarizeActiveTab({
     id = json.id;
   } catch (err) {
     if (isSuperseded()) return;
+    if (settings.slideRuntime === "browser") {
+      if (isDaemonUnreachableError(err)) {
+        session.daemonRecovery.recordFailure(resolvedPayload.url);
+      }
+      sendBrowserSummarySnapshot();
+      return;
+    }
     const message = friendlyFetchError(err, "Daemon request failed");
     send({ type: "run:error", message });
     sendStatus(`Error: ${message}`);
@@ -418,7 +543,7 @@ export async function summarizeActiveTab({
     title: resolvedTitle,
     model: settings.model,
     reason,
-    slides: wantsSlides,
+    slides: wantsDaemonSlides,
   };
   session.activeSummaryRun = {
     run,

@@ -1,3 +1,4 @@
+import { logExtensionEvent } from "../../lib/extension-logs";
 import type { SseSlidesData } from "../../lib/runtime-contracts";
 import { parseTranscriptTimedText } from "../../lib/slides-text";
 import {
@@ -23,6 +24,7 @@ export function createSlidesTextController(options: {
   let slideSummaryByIndex = new Map<number, string>();
   let slideTitleByIndex = new Map<number, string>();
   let slideSummarySource: SlideSummarySource = null;
+  let lastDescriptionLogKey = "";
 
   const getSlides = () => options.getSlides() ?? [];
 
@@ -39,7 +41,30 @@ export function createSlidesTextController(options: {
       slidesOcrEnabled: options.getSlidesOcrEnabled(),
       slidesOcrAvailable,
       slidesTranscriptAvailable,
+      allowTranscriptFallback:
+        slideSummarySource !== "summary" || slideSummaryByIndex.size < slides.length,
     });
+    const detail = {
+      slides: slides.length,
+      descriptions: slideDescriptions.size,
+      summaries: slideSummaryByIndex.size,
+      titles: slideTitleByIndex.size,
+      transcriptAvailable: slidesTranscriptAvailable,
+      ocrAvailable: slidesOcrAvailable,
+      textMode: slidesTextMode,
+      source: slideSummarySource ?? (slidesTranscriptAvailable ? "transcript" : "none"),
+    };
+    const logKey = JSON.stringify(detail);
+    if (logKey === lastDescriptionLogKey) return;
+    lastDescriptionLogKey = logKey;
+    if (globalThis.chrome?.storage) {
+      logExtensionEvent({
+        event: "slides:text:rebuilt",
+        scope: "slides:panel",
+        level: "verbose",
+        detail,
+      });
+    }
   };
 
   return {
@@ -53,6 +78,7 @@ export function createSlidesTextController(options: {
       slideSummaryByIndex = new Map();
       slideTitleByIndex = new Map();
       slideSummarySource = null;
+      lastDescriptionLogKey = "";
     },
     clearSummarySource() {
       slideSummarySource = null;
@@ -101,8 +127,8 @@ export function createSlidesTextController(options: {
         slideTitleByIndex = new Map();
         if (source === "slides") {
           slideSummarySource = null;
-        } else if (!slideSummarySource) {
-          slideSummarySource = "summary";
+        } else if (slideSummarySource === source) {
+          slideSummarySource = null;
         }
         rebuildDescriptions();
         return true;

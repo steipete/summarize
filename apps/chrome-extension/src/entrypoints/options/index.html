@@ -44,6 +44,17 @@
             UI
           </button>
           <button
+            id="tab-runtime"
+            class="tabButton"
+            type="button"
+            role="tab"
+            data-tab="runtime"
+            aria-controls="panel-runtime"
+            aria-selected="false"
+          >
+            Runtime
+          </button>
+          <button
             id="tab-model"
             class="tabButton"
             type="button"
@@ -130,9 +141,59 @@
             </div>
             <div id="userScriptsNotice" class="notice" hidden></div>
           </section>
+        </div>
+
+        <div
+          id="panel-runtime"
+          class="tabPanel"
+          role="tabpanel"
+          data-tab-panel="runtime"
+          aria-labelledby="tab-runtime"
+          hidden
+        >
+          <section class="section runtimeSection">
+            <header class="advancedHead">
+              <h2>Runtime</h2>
+              <div class="hint">
+                Browser mode is the default. Switch to daemon mode only when you want the local
+                helper for heavier slide extraction.
+              </div>
+            </header>
+            <div class="advancedFields">
+              <div class="subgroup">
+                <div class="subgroupHead">
+                  <span class="subgroupTitle">Slide extraction backend</span>
+                </div>
+                <div class="subgroupBody">
+                  <div
+                    id="slideRuntimeMode"
+                    class="runtimeModeGrid"
+                    role="radiogroup"
+                    aria-label="Slide extraction backend"
+                  >
+                    <label class="runtimeModeCard">
+                      <input type="radio" name="slideRuntimeMode" value="browser" />
+                      <div class="runtimeModeTitle">Browser</div>
+                      <div class="runtimeModeText">
+                        Runs inside Chrome. Uses browser transcript and frame capture without
+                        requiring the Summarize daemon.
+                      </div>
+                    </label>
+                    <label class="runtimeModeCard">
+                      <input type="radio" name="slideRuntimeMode" value="daemon" />
+                      <div class="runtimeModeTitle">Daemon</div>
+                      <div class="runtimeModeText">
+                        Sends slide extraction to the local daemon for long or expensive videos.
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
           <section class="section">
-            <h2>Token setup</h2>
+            <h2>Daemon token</h2>
             <label>
               <span>Token</span>
               <div class="inputRow">
@@ -155,6 +216,9 @@
                 </button>
               </div>
             </label>
+            <div class="hint">
+              Used only for daemon mode and daemon-backed tools. Browser mode works without it.
+            </div>
           </section>
         </div>
 

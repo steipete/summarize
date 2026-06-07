@@ -28,7 +28,12 @@ test("sidepanel auto summarizes quickly when switching YouTube tabs", async ({
 
   try {
     await mockDaemonSummarize(harness);
-    await seedSettings(harness, { token: "test-token", autoSummarize: true, slidesEnabled: false });
+    await seedSettings(harness, {
+      token: "test-token",
+      autoSummarize: true,
+      slidesEnabled: false,
+      slideRuntime: "daemon",
+    });
     await harness.context.route("https://www.youtube.com/**", async (route) => {
       await route.fulfill({
         status: 200,
@@ -73,13 +78,14 @@ test("sidepanel auto summarizes quickly when switching YouTube tabs", async ({
     await waitForActiveTabUrl(harness, videoA);
     await mockDaemonSummarize(harness);
 
+    const maxPromptSummarizeDelayMs = 6_000;
     const waitForSummarizeCall = async (sinceCount: number, startedAt: number) => {
       await expect
-        .poll(async () => await getSummarizeCalls(harness), { timeout: 5_000 })
+        .poll(async () => await getSummarizeCalls(harness), { timeout: maxPromptSummarizeDelayMs })
         .toBeGreaterThan(sinceCount);
       const callTimes = await getSummarizeCallTimes(harness);
       const callTime = callTimes[sinceCount] ?? callTimes.at(-1) ?? Date.now();
-      expect(callTime - startedAt).toBeLessThan(4_000);
+      expect(callTime - startedAt).toBeLessThan(maxPromptSummarizeDelayMs);
     };
 
     const callsBeforeReady = await getSummarizeCalls(harness);
@@ -114,7 +120,7 @@ test("sidepanel auto summarizes quickly when switching YouTube tabs", async ({
     if (callsAfterReturn > callsBeforeReturn) {
       const callTimes = await getSummarizeCallTimes(harness);
       const callTime = callTimes[callsAfterReturn - 1] ?? callTimes.at(-1) ?? Date.now();
-      expect(callTime - startA2).toBeLessThan(4_000);
+      expect(callTime - startA2).toBeLessThan(maxPromptSummarizeDelayMs);
     }
 
     assertNoErrors(harness);

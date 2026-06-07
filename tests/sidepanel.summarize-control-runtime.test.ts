@@ -60,7 +60,9 @@ function buildRuntime(
   overrides: {
     state?: Partial<ReturnType<typeof baseState>>;
     resolveActiveSlidesRunId?: () => string | null;
+    isActiveSlidesRunLocal?: (runId: string) => boolean;
     slidesTextSetResult?: boolean;
+    settings?: Pick<Settings, "slideRuntime" | "token">;
   } = {},
 ) {
   currentProps = null;
@@ -69,7 +71,9 @@ function buildRuntime(
   const state = buildState(overrides.state);
   const calls = {
     patchSettings: vi.fn(async (_patch: Partial<Settings>) => {}),
-    loadSettings: vi.fn(async () => ({ token: "token" })),
+    loadSettings: vi.fn(
+      async () => overrides.settings ?? { slideRuntime: "browser" as const, token: "token" },
+    ),
     showSlideNotice: vi.fn(),
     hideSlideNotice: vi.fn(),
     setSlidesBusy: vi.fn((value: boolean) => {
@@ -128,6 +132,7 @@ function buildRuntime(
     maybeStartPendingSlidesForUrl: calls.maybeStartPendingSlidesForUrl,
     sendSummarize: calls.sendSummarize,
     resolveActiveSlidesRunId: overrides.resolveActiveSlidesRunId ?? (() => null),
+    isActiveSlidesRunLocal: overrides.isActiveSlidesRunLocal,
     startSlidesStreamForRunId: calls.startSlidesStreamForRunId,
     startSlidesSummaryStreamForRunId: calls.startSlidesSummaryStreamForRunId,
     renderMarkdownDisplay: calls.renderMarkdownDisplay,
@@ -167,7 +172,9 @@ describe("sidepanel summarize control runtime", () => {
         },
       }),
     } as Response);
-    const { state, calls } = buildRuntime();
+    const { state, calls } = buildRuntime({
+      settings: { slideRuntime: "daemon", token: "token" },
+    });
 
     await currentProps?.onChange({ mode: "video", slides: true });
 
@@ -177,6 +184,21 @@ describe("sidepanel summarize control runtime", () => {
     );
     expect(calls.patchSettings).not.toHaveBeenCalled();
     expect(state.slidesEnabled).toBe(false);
+  });
+
+  it("enables browser runtime slides without daemon tool checks", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const { state, calls } = buildRuntime({
+      settings: { slideRuntime: "browser", token: "" },
+    });
+
+    await currentProps?.onChange({ mode: "video", slides: true });
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(calls.showSlideNotice).not.toHaveBeenCalled();
+    expect(calls.hideSlideNotice).toHaveBeenCalledOnce();
+    expect(calls.patchSettings).toHaveBeenCalledWith({ slidesEnabled: true });
+    expect(state.slidesEnabled).toBe(true);
   });
 
   it("disabling slides stops active work and persists the setting", async () => {
@@ -214,6 +236,20 @@ describe("sidepanel summarize control runtime", () => {
       "slides-run-1",
       "https://example.com/current",
     );
+    expect(calls.sendSummarize).not.toHaveBeenCalled();
+  });
+
+  it("retries local browser slide streams without daemon summary streaming", () => {
+    const { calls, runtime } = buildRuntime({
+      state: { slidesEnabled: true, currentSourceUrl: "https://example.com/current" },
+      resolveActiveSlidesRunId: () => "browser-slides-run",
+      isActiveSlidesRunLocal: (runId) => runId === "browser-slides-run",
+    });
+
+    runtime.retrySlidesStream();
+
+    expect(calls.startSlidesStreamForRunId).toHaveBeenCalledWith("browser-slides-run");
+    expect(calls.startSlidesSummaryStreamForRunId).not.toHaveBeenCalled();
     expect(calls.sendSummarize).not.toHaveBeenCalled();
   });
 

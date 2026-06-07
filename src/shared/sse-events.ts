@@ -11,6 +11,7 @@ export type SseSlidesData = {
   sourceUrl: string;
   sourceId: string;
   sourceKind: string;
+  slideRuntime?: "browser" | "daemon";
   ocrAvailable: boolean;
   transcriptTimedText?: string | null;
   slides: Array<{

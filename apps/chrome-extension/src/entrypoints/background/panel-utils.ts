@@ -1,13 +1,23 @@
+import type { SummaryLength } from "../../lib/runtime-contracts";
+import {
+  buildSlideTextFallback,
+  parseTranscriptTimedText,
+  resolveSlideTextBudget,
+  type SlideTimelineEntry,
+} from "../../lib/slides-text";
+
 const optionsWindowSize = { width: 940, height: 680 };
 const optionsWindowMin = { width: 820, height: 560 };
 const optionsWindowMargin = 20;
 const MAX_SLIDE_OCR_CHARS = 8000;
+const SUMMARY_LENGTHS = new Set(["short", "medium", "long", "xl", "xxl"]);
 
 export type SlidesPayload = {
   sourceUrl: string;
   sourceId: string;
   sourceKind: string;
   ocrAvailable: boolean;
+  transcriptTimedText?: string | null;
   slides: Array<{
     index: number;
     timestamp: number;
@@ -26,15 +36,51 @@ export function formatSlideTimestamp(seconds: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
 }
 
+function resolveLengthArg(
+  length: string | null | undefined,
+): { kind: "preset"; preset: SummaryLength } | { kind: "chars"; maxCharacters: number } {
+  const normalized = (length ?? "").trim().toLowerCase();
+  if (SUMMARY_LENGTHS.has(normalized)) {
+    return { kind: "preset", preset: normalized as SummaryLength };
+  }
+  const custom = normalized.match(/^(\d+(?:\.\d+)?)(k|m)?$/);
+  if (!custom) return { kind: "preset", preset: "medium" };
+  const value = Number(custom[1]);
+  if (!Number.isFinite(value) || value <= 0) return { kind: "preset", preset: "medium" };
+  const unit = custom[2] ?? "";
+  const multiplier = unit === "m" ? 1_000_000 : unit === "k" ? 1_000 : 1;
+  return { kind: "chars", maxCharacters: Math.round(value * multiplier) };
+}
+
+function buildTranscriptSlidesText(
+  slides: SlidesPayload,
+  length: string | null | undefined,
+): Map<number, string> {
+  if (parseTranscriptTimedText(slides.transcriptTimedText).length === 0) return new Map();
+  const timeline: SlideTimelineEntry[] = slides.slides.map((slide) => ({
+    index: slide.index,
+    timestamp: Number.isFinite(slide.timestamp) ? slide.timestamp : Number.NaN,
+  }));
+  const lengthArg = resolveLengthArg(length);
+  return buildSlideTextFallback({
+    slides: timeline,
+    transcriptTimedText: slides.transcriptTimedText ?? null,
+    lengthArg,
+  });
+}
+
 export function buildSlidesText(
   slides: SlidesPayload | null,
   allowOcr: boolean,
+  length?: string | null,
 ): { count: number; text: string } | null {
-  if (!allowOcr || !slides || slides.slides.length === 0) return null;
+  if (!slides || slides.slides.length === 0) return null;
   let remaining = MAX_SLIDE_OCR_CHARS;
   const lines: string[] = [];
+  const transcriptTextBySlide = buildTranscriptSlidesText(slides, length);
   for (const slide of slides.slides) {
-    const text = slide.ocrText?.trim();
+    const text =
+      (allowOcr ? slide.ocrText?.trim() : "") || transcriptTextBySlide.get(slide.index)?.trim();
     if (!text) continue;
     const timestamp = Number.isFinite(slide.timestamp)
       ? formatSlideTimestamp(slide.timestamp)
@@ -46,7 +92,8 @@ export function buildSlidesText(
     remaining -= entry.length;
     if (remaining <= 0) break;
   }
-  return lines.length > 0 ? { count: slides.slides.length, text: lines.join("\n\n") } : null;
+  if (lines.length > 0) return { count: slides.slides.length, text: lines.join("\n\n") };
+  return null;
 }
 
 export function resolveOptionsUrl(): string {

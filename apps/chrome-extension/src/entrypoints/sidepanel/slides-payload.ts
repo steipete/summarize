@@ -53,6 +53,9 @@ export function normalizeSlidesPayload(data: unknown): SlidesPayload | null {
     sourceUrl: typeof payload.sourceUrl === "string" ? payload.sourceUrl : "",
     sourceId,
     sourceKind: typeof payload.sourceKind === "string" ? payload.sourceKind : "unknown",
+    ...(payload.slideRuntime === "browser" || payload.slideRuntime === "daemon"
+      ? { slideRuntime: payload.slideRuntime }
+      : {}),
     ocrAvailable: payload.ocrAvailable === true,
     ...(transcriptTimedText ? { transcriptTimedText } : {}),
     slides: Array.from(slidesByIndex.values()).sort((a, b) => a.index - b.index),
@@ -90,6 +93,7 @@ export function slidesPayloadChanged(prev: SlidesPayload | null, next: SlidesPay
   }
   if (next.ocrAvailable !== prev.ocrAvailable) return true;
   if ((next.transcriptTimedText ?? null) !== (prev.transcriptTimedText ?? null)) return true;
+  if ((next.slideRuntime ?? "daemon") !== (prev.slideRuntime ?? "daemon")) return true;
   return false;
 }
 

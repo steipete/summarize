@@ -180,6 +180,11 @@ const panelState: PanelState = {
   chatStreaming: false,
 };
 
+let retainedSlideSummary: {
+  markdown: string;
+  url: string | null;
+} | null = null;
+
 const panelPortRuntime = createPanelPortRuntime<BgToPanel>({
   onMessage: (msg) => {
     handleBgMessage(msg);
@@ -193,6 +198,34 @@ async function send(message: PanelToBg) {
     lastAction = "chat";
   }
   await panelPortRuntime.send(message);
+}
+
+const pendingLocalSlidesRequests = new Map<
+  string,
+  {
+    resolve: (slides: SseSlidesData | null) => void;
+    timer: ReturnType<typeof setTimeout>;
+  }
+>();
+
+async function resolveLocalSlides(runId: string): Promise<SseSlidesData | null> {
+  const requestId = `local-slides-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return await new Promise<SseSlidesData | null>((resolve) => {
+    const timer = window.setTimeout(() => {
+      pendingLocalSlidesRequests.delete(requestId);
+      resolve(null);
+    }, 2500);
+    pendingLocalSlidesRequests.set(requestId, { resolve, timer });
+    void send({ type: "panel:slides-local", requestId, runId });
+  });
+}
+
+function handleLocalSlidesResponse(message: Extract<BgToPanel, { type: "slides:local" }>) {
+  const pending = pendingLocalSlidesRequests.get(message.requestId);
+  if (!pending) return;
+  window.clearTimeout(pending.timer);
+  pendingLocalSlidesRequests.delete(message.requestId);
+  pending.resolve(message.ok ? (message.slides ?? null) : null);
 }
 
 let autoValue = false;
@@ -239,8 +272,16 @@ const slidesSession = createSlidesSessionStore({
   slidesLayout: defaultSettings.slidesLayout,
 });
 const slidesState = slidesSession.state;
-const pendingSummaryRunsByUrl = new Map<string, RunStart>();
-const pendingSlidesRunsByUrl = new Map<string, { runId: string; url: string }>();
+type PendingSummaryResult =
+  | { type: "run"; run: RunStart }
+  | { type: "snapshot"; run: RunStart; markdown: string };
+
+const pendingSummaryRunsByUrl = new Map<string, PendingSummaryResult>();
+const pendingSlidesRunsByUrl = new Map<
+  string,
+  { runId: string; url: string | null; local?: boolean }
+>();
+let activeSlidesRunMeta: { runId: string; url: string | null; local: boolean } | null = null;
 let lastPlannedSlidesRun: RunStart | null = null;
 const slidesTextController = createSlidesTextController({
   getSlides: () => panelState.slides?.slides ?? null,
@@ -294,6 +335,7 @@ function hideSlideNotice() {
 }
 
 function stopSlidesStream() {
+  activeSlidesRunMeta = null;
   slidesHydrator.stop();
   setSlidesBusy(false);
   panelState.slidesRunId = null;
@@ -321,7 +363,11 @@ function maybeStartPendingSummaryRunForUrl(url: string | null) {
   if (!pending) return false;
   if (streamController.isStreaming()) return false;
   pendingSummaryRunsByUrl.delete(key);
-  attachSummaryRun(pending);
+  if (pending.type === "snapshot") {
+    applySummarySnapshot({ run: pending.run, markdown: pending.markdown });
+  } else {
+    attachSummaryRun(pending.run);
+  }
   return true;
 }
 
@@ -336,12 +382,47 @@ function maybeStartPendingSlidesForUrl(url: string | null) {
   if (slidesHydrator.isStreaming()) return;
   pendingSlidesRunsByUrl.delete(key);
   if (hasResolvedSlidesPayload(panelState.slides, slidesState.slidesSeededSourceId)) return;
-  startSlidesStreamForRunId(pending.runId);
-  startSlidesSummaryStreamForRunId(pending.runId, pending.url);
+  startSlidesStreamForRunId(pending.runId, { url: pending.url, local: Boolean(pending.local) });
+  if (!pending.local) {
+    startSlidesSummaryStreamForRunId(pending.runId, pending.url);
+  }
+}
+
+function getSummaryScopeUrl() {
+  return panelState.currentSource?.url ?? activeTabUrl ?? null;
+}
+
+function rememberSlideSummaryMarkdown(markdown: string) {
+  const trimmed = markdown.trim();
+  if (!trimmed) return;
+  retainedSlideSummary = {
+    markdown,
+    url: getSummaryScopeUrl(),
+  };
+}
+
+function getRetainedSlideSummaryMarkdown() {
+  if (!retainedSlideSummary) return null;
+  const currentUrl = getSummaryScopeUrl();
+  if (
+    retainedSlideSummary.url &&
+    currentUrl &&
+    !panelUrlsMatch(retainedSlideSummary.url, currentUrl)
+  ) {
+    return null;
+  }
+  return retainedSlideSummary.markdown;
 }
 
 function attachSummaryRun(run: RunStart) {
-  stopSlidesStream();
+  const preserveActiveLocalSlideRun = Boolean(
+    activeSlidesRunMeta?.local &&
+    activeSlidesRunMeta.url &&
+    panelUrlsMatch(activeSlidesRunMeta.url, run.url),
+  );
+  if (!preserveActiveLocalSlideRun) {
+    stopSlidesStream();
+  }
   setPhase("connecting");
   lastAction = "summarize";
   window.clearTimeout(autoKickTimer);
@@ -362,7 +443,11 @@ function attachSummaryRun(run: RunStart) {
       slidesState.slidesEnabled &&
       (slidesSession.resolveInputMode() === "video" || slidesState.mediaAvailable));
   panelState.runId = run.id;
-  panelState.slidesRunId = runRequestsSlides ? run.id : null;
+  panelState.slidesRunId = runRequestsSlides
+    ? run.id
+    : preserveActiveLocalSlideRun
+      ? (activeSlidesRunMeta?.runId ?? null)
+      : null;
   panelState.currentSource = { url: run.url, title: run.title };
   currentRunTabId = activeTabId;
   headerController.setBaseTitle(run.title || run.url || "Summarize");
@@ -385,6 +470,45 @@ function attachSummaryRun(run: RunStart) {
     renderMarkdownDisplay();
   }
   void streamController.start(run);
+}
+
+function applySummarySnapshot(payload: { run: RunStart; markdown: string }) {
+  const preserveActiveSlideRun =
+    payload.run.slides === true &&
+    (slidesHydrator.getActiveRunId() === payload.run.id ||
+      Boolean(
+        activeSlidesRunMeta?.local &&
+        activeSlidesRunMeta.url &&
+        panelUrlsMatch(activeSlidesRunMeta.url, payload.run.url),
+      ));
+  const preservedSlides =
+    payload.run.slides &&
+    panelState.slides &&
+    panelState.slides.sourceUrl &&
+    panelUrlsMatch(panelState.slides.sourceUrl, payload.run.url)
+      ? panelState.slides
+      : null;
+  resetSummaryView({
+    preserveChat: false,
+    clearRunId: false,
+    stopSlides: !preserveActiveSlideRun,
+  });
+  panelState.runId = payload.run.id;
+  panelState.slidesRunId =
+    preservedSlides?.sourceId ??
+    (preserveActiveSlideRun ? (activeSlidesRunMeta?.runId ?? null) : null);
+  panelState.currentSource = { url: payload.run.url, title: payload.run.title };
+  currentRunTabId = activeTabId;
+  headerController.setBaseTitle(payload.run.title || payload.run.url || "Summarize");
+  headerController.setBaseSubtitle("");
+  if (preservedSlides) {
+    panelState.slides = preservedSlides;
+    setSlidesTranscriptTimedText(preservedSlides.transcriptTimedText ?? null);
+    updateSlidesTextState();
+  }
+  renderMarkdown(payload.markdown);
+  if (preservedSlides) queueSlidesRender();
+  setPhase("idle");
 }
 
 function maybeSeedPlannedSlidesForPendingRun() {
@@ -707,6 +831,7 @@ async function migrateChatHistory(
 const syncWithActiveTab = () => navigationRuntime.syncWithActiveTab();
 
 async function clearCurrentView() {
+  retainedSlideSummary = null;
   if (panelState.chatStreaming) {
     requestAgentAbort("Cleared");
   }
@@ -788,6 +913,9 @@ const summaryViewRuntime = createSummaryViewRuntime({
   },
   updateSlidesTextState,
   requestSlidesContext,
+  requestSlidesCapture: () => {
+    void send({ type: "panel:slides-capture" });
+  },
   updateSlideSummaryFromMarkdown,
   renderMarkdown,
   renderMarkdownDisplay,
@@ -832,6 +960,7 @@ function renderMarkdownDisplay() {
 }
 
 function renderMarkdown(markdown: string) {
+  rememberSlideSummaryMarkdown(markdown);
   slidesViewRuntime?.renderMarkdown(markdown);
 }
 
@@ -908,6 +1037,7 @@ slidesViewRuntime = createSlidesViewRuntime({
   setSlidesExpanded: (value) => {
     slidesState.slidesExpanded = value;
   },
+  getFallbackSummaryMarkdown: getRetainedSlideSummaryMarkdown,
 });
 
 slidesRenderer = slidesViewRuntime.slidesRenderer;
@@ -920,6 +1050,7 @@ registerSidepanelTestHooks({
   applySlidesPayload,
   getRunId: () => panelState.runId,
   getSummaryMarkdown: () => panelState.summaryMarkdown ?? "",
+  getRetainedSlideSummaryMarkdown: () => getRetainedSlideSummaryMarkdown() ?? "",
   getSlideDescriptions: () => slidesTextController.getDescriptionEntries(),
   getSlideSummaryEntries: () => slidesTextController.getSummaryEntries(),
   getSlideTitleEntries: () => Array.from(slidesTextController.getTitles().entries()),
@@ -964,15 +1095,7 @@ registerSidepanelTestHooks({
     handleBgMessage(message);
   },
   applySummarySnapshot: (payload) => {
-    resetSummaryView({ preserveChat: false, clearRunId: false, stopSlides: false });
-    panelState.runId = payload.run.id;
-    panelState.slidesRunId = payload.run.slides ? payload.run.id : null;
-    panelState.currentSource = { url: payload.run.url, title: payload.run.title };
-    currentRunTabId = activeTabId;
-    headerController.setBaseTitle(payload.run.title || payload.run.url || "Summarize");
-    headerController.setBaseSubtitle("");
-    renderMarkdown(payload.markdown);
-    setPhase("idle");
+    applySummarySnapshot(payload);
   },
   applySummaryMarkdown: (markdown) => {
     renderMarkdown(markdown);
@@ -1133,6 +1256,7 @@ const slidesRuntime = createSidepanelSlidesRuntime({
   getPanelState: () => panelState,
   getSlidesEnabled: () => slidesState.slidesEnabled,
   getToken: async () => (await loadSettings()).token,
+  resolveLocalSlides,
   getTranscriptTimedText: () => slidesTextController.getTranscriptTimedText(),
   getUiState: () => panelState.ui,
   headerSetStatus: (text) => {
@@ -1171,10 +1295,25 @@ const {
   slidesHydrator: activeSlidesHydrator,
   slidesSummaryController,
   startSlidesStream,
-  startSlidesStreamForRunId,
-  startSlidesSummaryStreamForRunId,
+  startSlidesStreamForRunId: startSlidesStreamForRunIdBase,
+  startSlidesSummaryStreamForRunId: startSlidesSummaryStreamForRunIdBase,
 } = slidesRuntime;
 slidesHydrator = activeSlidesHydrator;
+
+function startSlidesStreamForRunId(runId: string, meta?: { url?: string | null; local?: boolean }) {
+  const existing = activeSlidesRunMeta?.runId === runId ? activeSlidesRunMeta : null;
+  activeSlidesRunMeta = {
+    runId,
+    url: meta?.url ?? existing?.url ?? panelState.currentSource?.url ?? activeTabUrl ?? null,
+    local: meta?.local ?? existing?.local ?? false,
+  };
+  startSlidesStreamForRunIdBase(runId, { local: activeSlidesRunMeta.local });
+}
+
+function startSlidesSummaryStreamForRunId(runId: string, url?: string | null) {
+  if (activeSlidesRunMeta?.runId === runId && activeSlidesRunMeta.local) return;
+  startSlidesSummaryStreamForRunIdBase(runId, url ?? null);
+}
 
 const summaryStreamRuntime = createSummaryStreamRuntime({
   friendlyFetchError,
@@ -1250,6 +1389,9 @@ const uiStateRuntime = createUiStateRuntime({
   migrateChatHistory,
   maybeStartPendingSummaryRunForUrl,
   maybeStartPendingSlidesForUrl,
+  requestSlidesCapture: () => {
+    void send({ type: "panel:slides-capture" });
+  },
   resolveActiveSlidesRunId,
   applyPanelCache,
   resetSummaryView,
@@ -1365,12 +1507,14 @@ const bgMessageRuntime = createSidepanelBgMessageRuntime({
   showSlideNotice,
   getActiveTabUrl: () => activeTabUrl,
   rememberPendingSlidesRun: (value) => {
+    if (!value.url) return;
     pendingSlidesRunsByUrl.set(normalizePanelUrl(value.url), value);
   },
   startSlidesStreamForRunId,
   startSlidesSummaryStreamForRunId: (runId, url) => {
     startSlidesSummaryStreamForRunId(runId, url ?? null);
   },
+  handleSlidesLocal: handleLocalSlidesResponse,
   getSlidesContextRequestId: () => slidesState.slidesContextRequestId,
   setSlidesContextPending: (value) => {
     slidesState.slidesContextPending = value;
@@ -1394,9 +1538,19 @@ const bgMessageRuntime = createSidepanelBgMessageRuntime({
     applyPanelCache(cache as PanelCachePayload, opts);
   },
   rememberPendingSummaryRun: (run) => {
-    pendingSummaryRunsByUrl.set(normalizePanelUrl(run.url), run);
+    pendingSummaryRunsByUrl.set(normalizePanelUrl(run.url), { type: "run", run });
+  },
+  rememberPendingSummarySnapshot: (payload) => {
+    pendingSummaryRunsByUrl.set(normalizePanelUrl(payload.run.url), {
+      type: "snapshot",
+      run: payload.run,
+      markdown: payload.markdown,
+    });
   },
   attachSummaryRun,
+  applySummarySnapshot: (payload) => {
+    applySummarySnapshot(payload);
+  },
   handleChatHistory: (chatHistory) => {
     chatSession.handleChatHistoryResponse(chatHistory as never);
   },
@@ -1520,6 +1674,8 @@ summarizeControlRuntime = createSummarizeControlRuntime({
     sendSummarize(opts);
   },
   resolveActiveSlidesRunId,
+  isActiveSlidesRunLocal: (runId) =>
+    activeSlidesRunMeta?.runId === runId && activeSlidesRunMeta.local,
   startSlidesStreamForRunId,
   startSlidesSummaryStreamForRunId: (runId, url) => {
     startSlidesSummaryStreamForRunId(runId, url ?? null);

@@ -47,6 +47,7 @@ type CachedExtractStore = {
 type LoadSettingsResult = {
   extendedLogging: boolean;
   maxChars: number;
+  slideRuntime: "browser" | "daemon";
   slidesEnabled: boolean;
   token: string;
 };
@@ -160,7 +161,8 @@ export async function ensureChatExtract({
     }
   }
 
-  const wantsSlides = settings.slidesEnabled && shouldPreferUrlMode(tab.url);
+  const wantsSlides =
+    settings.slidesEnabled && settings.slideRuntime === "daemon" && shouldPreferUrlMode(tab.url);
   sendStatus(
     wantsSlides
       ? "Extracting video + thumbnails…"

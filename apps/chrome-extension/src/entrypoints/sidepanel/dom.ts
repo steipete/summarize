@@ -24,7 +24,7 @@ export function createSidepanelDom() {
   renderSlidesHostEl.className = "render__slidesHost";
   const renderMarkdownHostEl = document.createElement("div");
   renderMarkdownHostEl.className = "render__markdownHost";
-  renderEl.append(renderMarkdownHostEl, renderSlidesHostEl);
+  renderEl.append(renderSlidesHostEl, renderMarkdownHostEl);
   const mainEl = document.querySelector("main") as HTMLElement | null;
   if (!mainEl) throw new Error("Missing <main>");
   const metricsEl = byId<HTMLDivElement>("metrics");

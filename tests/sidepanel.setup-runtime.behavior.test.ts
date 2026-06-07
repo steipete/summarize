@@ -55,6 +55,7 @@ function makeUiState(overrides?: Partial<UiState>): UiState {
       slidesParallel: false,
       slidesOcrEnabled: false,
       slidesLayout: "strip",
+      slideRuntime: "browser",
       fontSize: 15,
       lineHeight: 1.6,
       model: "auto",
@@ -115,7 +116,7 @@ describe("sidepanel setup runtime behavior", () => {
     expect(
       runtime.maybeShowSetup(
         makeUiState({
-          settings: { ...makeUiState().settings, tokenPresent: false },
+          settings: { ...makeUiState().settings, slideRuntime: "daemon", tokenPresent: false },
         }),
       ),
     ).toBe(true);
@@ -157,6 +158,7 @@ describe("sidepanel setup runtime behavior", () => {
       runtime.maybeShowSetup(
         makeUiState({
           daemon: { ok: false, authed: false },
+          settings: { ...makeUiState().settings, slideRuntime: "daemon" },
         }),
       ),
     ).toBe(true);
@@ -191,5 +193,67 @@ describe("sidepanel setup runtime behavior", () => {
 
     expect(runtime.maybeShowSetup(makeUiState())).toBe(false);
     expect(setupEl.classList.add).toHaveBeenCalledWith("hidden");
+  });
+
+  it("hides setup in browser runtime even when chat is enabled", async () => {
+    const setupEl = makeSetupEl();
+    const ensureToken = vi.fn(async () => "fresh-token");
+    const loadToken = vi.fn(async () => "unused-token");
+
+    const runtime = createSetupRuntime({
+      setupEl,
+      ensureToken,
+      loadToken,
+      patchSettings: vi.fn() as never,
+      generateToken: vi.fn() as never,
+      headerSetStatus: vi.fn(),
+      getStatusResetText: vi.fn(() => "Ready"),
+    });
+
+    expect(
+      runtime.maybeShowSetup(
+        makeUiState({
+          daemon: { ok: false, authed: false },
+          settings: { ...makeUiState().settings, slideRuntime: "browser", tokenPresent: false },
+        }),
+      ),
+    ).toBe(false);
+    await flushPromises();
+    expect(setupEl.classList.add).toHaveBeenCalledWith("hidden");
+    expect(ensureToken).not.toHaveBeenCalled();
+    expect(loadToken).not.toHaveBeenCalled();
+  });
+
+  it("hides setup in browser runtime when daemon-backed chat is disabled", () => {
+    const setupEl = makeSetupEl();
+    const ensureToken = vi.fn(async () => "unused-token");
+    const loadToken = vi.fn(async () => "unused-token");
+
+    const runtime = createSetupRuntime({
+      setupEl,
+      ensureToken,
+      loadToken,
+      patchSettings: vi.fn() as never,
+      generateToken: vi.fn() as never,
+      headerSetStatus: vi.fn(),
+      getStatusResetText: vi.fn(() => "Ready"),
+    });
+
+    expect(
+      runtime.maybeShowSetup(
+        makeUiState({
+          daemon: { ok: false, authed: false },
+          settings: {
+            ...makeUiState().settings,
+            chatEnabled: false,
+            slideRuntime: "browser",
+            tokenPresent: false,
+          },
+        }),
+      ),
+    ).toBe(false);
+    expect(setupEl.classList.add).toHaveBeenCalledWith("hidden");
+    expect(ensureToken).not.toHaveBeenCalled();
+    expect(loadToken).not.toHaveBeenCalled();
   });
 });

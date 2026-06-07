@@ -9,6 +9,7 @@ type SidepanelTestHooks = {
   applySlidesPayload?: (payload: SseSlidesData) => void;
   getRunId?: () => string | null;
   getSummaryMarkdown?: () => string;
+  getRetainedSlideSummaryMarkdown?: () => string;
   getSlideDescriptions?: () => Array<[number, string]>;
   getSlideSummaryEntries?: () => Array<[number, string]>;
   getSlideTitleEntries?: () => Array<[number, string]>;
@@ -41,6 +42,7 @@ export function registerSidepanelTestHooks(options: {
   applySlidesPayload: (payload: SseSlidesData) => void;
   getRunId: () => string | null;
   getSummaryMarkdown: () => string;
+  getRetainedSlideSummaryMarkdown: () => string;
   getSlideDescriptions: () => Array<[number, string]>;
   getSlideSummaryEntries: () => Array<[number, string]>;
   getSlideTitleEntries: () => Array<[number, string]>;
@@ -78,6 +80,7 @@ export function registerSidepanelTestHooks(options: {
   hooks.applySlidesPayload = options.applySlidesPayload;
   hooks.getRunId = options.getRunId;
   hooks.getSummaryMarkdown = options.getSummaryMarkdown;
+  hooks.getRetainedSlideSummaryMarkdown = options.getRetainedSlideSummaryMarkdown;
   hooks.getSlideDescriptions = options.getSlideDescriptions;
   hooks.getSlideSummaryEntries = options.getSlideSummaryEntries;
   hooks.getSlideTitleEntries = options.getSlideTitleEntries;

@@ -1,5 +1,21 @@
-export type ExtractRequest = { type: "extract"; maxChars: number };
+export type ExtractRequest = { type: "extract"; maxChars: number; inputMode?: "page" | "video" };
 export type SeekRequest = { type: "seek"; seconds: number };
+export type SlideFrameRestoreSnapshot = {
+  currentTime: number;
+  paused: boolean;
+  scrollX: number;
+  scrollY: number;
+  pageUrl?: string;
+  mediaSrc?: string;
+};
+export type BeginSlideFrameCaptureRequest = {
+  type: "begin-slide-frame-capture";
+  state: SlideFrameRestoreSnapshot | null;
+};
+export type PrepareSlideFrameRequest = { type: "prepare-slide-frame"; seconds: number };
+export type PrepareCurrentSlideFrameRequest = { type: "prepare-current-slide-frame" };
+export type RestoreSlideFrameRequest = { type: "restore-slide-frame" };
+type RestoreSlideFrameResponse = { ok: true; restored?: boolean } | { ok: false; error: string };
 
 export type ExtractResponse =
   | {
@@ -14,6 +30,17 @@ export type ExtractResponse =
   | { ok: false; error: string };
 
 export type SeekResponse = { ok: true } | { ok: false; error: string };
+export type SlideFrameResponse =
+  | {
+      ok: true;
+      url: string;
+      title: string | null;
+      durationSeconds: number | null;
+      currentTimeSeconds?: number | null;
+      rect: { x: number; y: number; width: number; height: number };
+      devicePixelRatio: number;
+    }
+  | { ok: false; error: string };
 
 function contentAccessError(message: string) {
   return (
@@ -60,10 +87,15 @@ export async function extractFromTab(
   maxChars: number,
   opts?: {
     timeoutMs?: number;
+    inputMode?: "page" | "video" | null;
     log?: (event: string, detail?: Record<string, unknown>) => void;
   },
 ): Promise<{ ok: true; data: ExtractResponse & { ok: true } } | { ok: false; error: string }> {
-  const req = { type: "extract", maxChars } satisfies ExtractRequest;
+  const req = {
+    type: "extract",
+    maxChars,
+    inputMode: opts?.inputMode ?? undefined,
+  } satisfies ExtractRequest;
   const timeoutMs = opts?.timeoutMs ?? 6_000;
 
   const sendMessageWithTimeout = async (): Promise<ExtractResponse> => {
@@ -169,4 +201,207 @@ export async function seekInTab(
   }
 
   return { ok: false, error: "Content script not ready" };
+}
+
+export async function prepareSlideFrameInTab(
+  tabId: number,
+  seconds: number,
+): Promise<{ ok: true; data: SlideFrameResponse & { ok: true } } | { ok: false; error: string }> {
+  const req = { type: "prepare-slide-frame", seconds } satisfies PrepareSlideFrameRequest;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = (await chrome.tabs.sendMessage(tabId, req)) as SlideFrameResponse;
+      if (!res.ok) return { ok: false, error: res.error };
+      return { ok: true, data: res };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const noReceiver =
+        message.includes("Receiving end does not exist") ||
+        message.includes("Could not establish connection");
+      if (noReceiver) {
+        const injected = await injectExtractScript(tabId);
+        if (!injected.ok) return injected;
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        continue;
+      }
+
+      if (attempt === 2) {
+        return {
+          ok: false,
+          error: noReceiver
+            ? "Content script not ready. Check extension “Site access” → “On all sites”, then reload the tab."
+            : message,
+        };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
+  }
+
+  return { ok: false, error: "Content script not ready" };
+}
+
+export async function prepareCurrentSlideFrameInTab(
+  tabId: number,
+): Promise<{ ok: true; data: SlideFrameResponse & { ok: true } } | { ok: false; error: string }> {
+  const req = { type: "prepare-current-slide-frame" } satisfies PrepareCurrentSlideFrameRequest;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = (await chrome.tabs.sendMessage(tabId, req)) as SlideFrameResponse;
+      if (!res.ok) return { ok: false, error: res.error };
+      return { ok: true, data: res };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const noReceiver =
+        message.includes("Receiving end does not exist") ||
+        message.includes("Could not establish connection");
+      if (noReceiver) {
+        const injected = await injectExtractScript(tabId);
+        if (!injected.ok) return injected;
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        continue;
+      }
+
+      if (attempt === 2) {
+        return {
+          ok: false,
+          error: noReceiver
+            ? "Content script not ready. Check extension “Site access” → “On all sites”, then reload the tab."
+            : message,
+        };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
+  }
+
+  return { ok: false, error: "Content script not ready" };
+}
+
+export async function beginSlideFrameCaptureInTab(
+  tabId: number,
+): Promise<{ ok: true; state: SlideFrameRestoreSnapshot | null } | { ok: false; error: string }> {
+  let stateResult: chrome.scripting.InjectionResult<SlideFrameRestoreSnapshot | null> | undefined;
+  try {
+    [stateResult] = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: (): SlideFrameRestoreSnapshot | null => {
+        const best = Array.from(document.querySelectorAll("video")).reduce<{
+          video: HTMLVideoElement;
+          area: number;
+        } | null>((current, video) => {
+          const rect = video.getBoundingClientRect();
+          const area = Math.max(0, rect.width) * Math.max(0, rect.height);
+          if (area <= 0) return current;
+          if (!current || area > current.area) return { video, area };
+          return current;
+        }, null);
+        if (!best) return null;
+        return {
+          currentTime: best.video.currentTime,
+          paused: best.video.paused,
+          scrollX: window.scrollX,
+          scrollY: window.scrollY,
+          pageUrl: location.href,
+          mediaSrc: best.video.currentSrc || best.video.src || "",
+        };
+      },
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+  const req = {
+    type: "begin-slide-frame-capture",
+    state: stateResult?.result ?? null,
+  } satisfies BeginSlideFrameCaptureRequest;
+
+  try {
+    const res = (await chrome.tabs.sendMessage(tabId, req)) as SeekResponse;
+    if (!res.ok) return { ok: false, error: res.error };
+    return { ok: true, state: req.state };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const noReceiver =
+      message.includes("Receiving end does not exist") ||
+      message.includes("Could not establish connection");
+    if (!noReceiver) return { ok: false, error: message };
+    const injected = await injectExtractScript(tabId);
+    if (!injected.ok) return injected;
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    const res = (await chrome.tabs.sendMessage(tabId, req)) as SeekResponse;
+    if (!res.ok) return { ok: false, error: res.error };
+    return { ok: true, state: req.state };
+  }
+}
+
+export async function restoreSlideFrameInTab(
+  tabId: number,
+  state?: SlideFrameRestoreSnapshot | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const req = { type: "restore-slide-frame" } satisfies RestoreSlideFrameRequest;
+
+  try {
+    const res = (await chrome.tabs.sendMessage(tabId, req)) as RestoreSlideFrameResponse;
+    if (!res.ok) return { ok: false, error: res.error };
+    if (state && res.restored !== true) {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        world: "MAIN",
+        args: [state],
+        func: async (snapshot: SlideFrameRestoreSnapshot) => {
+          const best = Array.from(document.querySelectorAll("video")).reduce<{
+            video: HTMLVideoElement;
+            area: number;
+          } | null>((current, video) => {
+            const rect = video.getBoundingClientRect();
+            const area = Math.max(0, rect.width) * Math.max(0, rect.height);
+            if (area <= 0) return current;
+            if (!current || area > current.area) return { video, area };
+            return current;
+          }, null);
+          if (!best) return;
+          const video = best.video;
+          const currentMediaSrc = video.currentSrc || video.src || "";
+          if (
+            (snapshot.pageUrl && location.href !== snapshot.pageUrl) ||
+            (snapshot.mediaSrc && currentMediaSrc !== snapshot.mediaSrc)
+          ) {
+            return;
+          }
+          video.pause();
+          if (
+            Number.isFinite(snapshot.currentTime) &&
+            Math.abs(video.currentTime - snapshot.currentTime) > 0.05
+          ) {
+            await new Promise<void>((resolve) => {
+              const timer = window.setTimeout(resolve, 1800);
+              video.addEventListener(
+                "seeked",
+                () => {
+                  window.clearTimeout(timer);
+                  resolve();
+                },
+                { once: true },
+              );
+              video.currentTime = Math.max(0, snapshot.currentTime);
+            });
+          }
+          if (snapshot.paused) {
+            video.pause();
+          } else {
+            await video.play().catch(() => undefined);
+          }
+          window.scrollTo(snapshot.scrollX, snapshot.scrollY);
+        },
+      });
+    }
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
+  }
 }

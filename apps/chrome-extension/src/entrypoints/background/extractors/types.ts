@@ -18,6 +18,7 @@ export type ExtractorContext = {
     maxCharacters: number,
     opts?: {
       timeoutMs?: number;
+      inputMode?: "page" | "video" | null;
       log?: ExtractLog;
     },
   ) => Promise<{ ok: true; data: ExtractResponse & { ok: true } } | { ok: false; error: string }>;

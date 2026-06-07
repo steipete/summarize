@@ -14,6 +14,26 @@ const createDeferred = <T>() => {
 };
 
 describe("options daemon status", () => {
+  it("shows browser mode without probing the daemon", async () => {
+    const statusEl = document.createElement("div");
+    let fetchCalls = 0;
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl: async () => {
+        fetchCalls += 1;
+        throw new Error("should not fetch");
+      },
+      getExtensionVersion: () => "0.17.0",
+      isDaemonMode: () => false,
+    });
+
+    await checker.checkDaemonStatus("token");
+
+    expect(statusEl.textContent).toBe("Browser mode active");
+    expect(statusEl.dataset.state).toBe("ok");
+    expect(fetchCalls).toBe(0);
+  });
+
   it("keeps an empty-token warning from being overwritten by an older check", async () => {
     const statusEl = document.createElement("div");
     const health = createDeferred<Response>();
@@ -36,5 +56,32 @@ describe("options daemon status", () => {
 
     expect(statusEl.textContent).toBe("Add token to verify daemon connection");
     expect(statusEl.dataset.state).toBe("warn");
+  });
+
+  it("keeps browser mode from being overwritten by an older daemon check", async () => {
+    const statusEl = document.createElement("div");
+    const health = createDeferred<Response>();
+    let daemonMode = true;
+    const fetchImpl = async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      if (url.pathname === "/health") return health.promise;
+      if (url.pathname === "/v1/ping") return jsonResponse({ ok: true });
+      throw new Error(`unexpected request: ${url.pathname}`);
+    };
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl,
+      getExtensionVersion: () => "0.17.0",
+      isDaemonMode: () => daemonMode,
+    });
+
+    const staleCheck = checker.checkDaemonStatus("token");
+    daemonMode = false;
+    await checker.checkDaemonStatus("token");
+    health.resolve(jsonResponse({ version: "0.17.0" }));
+    await staleCheck;
+
+    expect(statusEl.textContent).toBe("Browser mode active");
+    expect(statusEl.dataset.state).toBe("ok");
   });
 });

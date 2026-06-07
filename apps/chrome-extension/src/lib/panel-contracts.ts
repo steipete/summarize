@@ -16,6 +16,7 @@ export type UiState = {
     slidesParallel: boolean;
     slidesOcrEnabled: boolean;
     slidesLayout: "strip" | "gallery";
+    slideRuntime: "browser" | "daemon";
     fontSize: number;
     lineHeight: number;
     model: string;
@@ -78,6 +79,8 @@ export type PanelToBg =
   | { type: "panel:setAuto"; value: boolean }
   | { type: "panel:setLength"; value: string }
   | { type: "panel:slides-context"; requestId: string; url?: string }
+  | { type: "panel:slides-local"; requestId: string; runId: string }
+  | { type: "panel:slides-capture"; manual?: boolean }
   | { type: "panel:cache"; cache: PanelCachePayload }
   | { type: "panel:get-cache"; requestId: string; tabId: number; url: string }
   | { type: "panel:openOptions" };
@@ -86,8 +89,23 @@ export type BgToPanel =
   | { type: "ui:state"; state: UiState }
   | { type: "ui:status"; status: string }
   | { type: "run:start"; run: RunStart }
+  | { type: "run:snapshot"; run: RunStart; markdown: string }
   | { type: "run:error"; message: string }
-  | { type: "slides:run"; ok: boolean; runId?: string; url?: string; error?: string }
+  | {
+      type: "slides:run";
+      ok: boolean;
+      runId?: string;
+      url?: string;
+      local?: boolean;
+      error?: string;
+    }
+  | {
+      type: "slides:local";
+      requestId: string;
+      ok: boolean;
+      slides?: SseSlidesData;
+      error?: string;
+    }
   | { type: "chat:history"; requestId: string; ok: boolean; messages?: Message[]; error?: string }
   | { type: "agent:chunk"; requestId: string; text: string }
   | {

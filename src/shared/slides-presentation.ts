@@ -36,6 +36,7 @@ export function buildSlidePresentation({
   transcriptTimedText,
   lengthArg,
   coerce = true,
+  coerceReserveIntro = true,
   includeTranscriptFallback = true,
 }: {
   markdown: string;
@@ -43,6 +44,7 @@ export function buildSlidePresentation({
   transcriptTimedText?: string | null;
   lengthArg: SlidePresentationLength;
   coerce?: boolean;
+  coerceReserveIntro?: boolean;
   includeTranscriptFallback?: boolean;
 }): SlidePresentation {
   const ordered = slides.slice().sort((a, b) => a.index - b.index);
@@ -51,8 +53,9 @@ export function buildSlidePresentation({
       ? coerceSummaryWithSlides({
           markdown,
           slides: ordered,
-          transcriptTimedText,
+          transcriptTimedText: includeTranscriptFallback ? transcriptTimedText : null,
           lengthArg,
+          reserveIntro: coerceReserveIntro,
         })
       : markdown;
   const parsed = parseSlideSummariesFromMarkdown(normalizedMarkdown);

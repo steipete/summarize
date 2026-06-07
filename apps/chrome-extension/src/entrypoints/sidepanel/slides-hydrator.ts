@@ -6,9 +6,10 @@ import {
 } from "./slides-stream-controller";
 
 export type SlidesHydrator = {
-  start: (runId: string, opts?: { silent?: boolean }) => Promise<void>;
+  start: (runId: string, opts?: { silent?: boolean; local?: boolean }) => Promise<void>;
   stop: () => void;
   isStreaming: () => boolean;
+  getActiveRunId: () => string | null;
   handlePayload: (payload: SseSlidesData) => void;
   handleSummaryFromCache: (value: boolean | null | undefined) => void;
   syncFromCache: (args: {
@@ -26,6 +27,7 @@ export type SlidesHydratorOptions = {
   onDone?: (() => void) | null;
   onError?: ((error: unknown) => string) | null;
   onSnapshotError?: ((error: unknown) => void) | null;
+  resolveLocalSlides?: ((runId: string) => Promise<SseSlidesData | null>) | null;
   streamFetchImpl?: typeof fetch;
   snapshotFetchImpl?: typeof fetch;
 };
@@ -40,6 +42,7 @@ export function createSlidesHydrator(options: SlidesHydratorOptions): SlidesHydr
     onDone,
     onError,
     onSnapshotError,
+    resolveLocalSlides,
     streamFetchImpl,
     snapshotFetchImpl,
   } = options;
@@ -73,6 +76,11 @@ export function createSlidesHydrator(options: SlidesHydratorOptions): SlidesHydr
     const requestId = ++snapshotRequestId;
     snapshotInFlight = true;
     try {
+      const localSlides = (await resolveLocalSlides?.(runId)) ?? null;
+      if (localSlides && activeRunId === runId && snapshotRequestId === requestId) {
+        handlePayload(localSlides);
+        return;
+      }
       const token = (await getToken()).trim();
       if (!token) return;
       const res = await (snapshotFetchImpl ?? fetch)(
@@ -110,12 +118,23 @@ export function createSlidesHydrator(options: SlidesHydratorOptions): SlidesHydr
     fetchImpl: streamFetchImpl,
   });
 
-  const start = async (runId: string, opts?: { silent?: boolean }) => {
+  const start = async (runId: string, opts?: { silent?: boolean; local?: boolean }) => {
     const requestId = activeStartRequestId + 1;
     activeStartRequestId = requestId;
     setActiveRunId(runId);
     suppressStreamErrors = Boolean(opts?.silent);
     try {
+      const localSlides = (await resolveLocalSlides?.(runId)) ?? null;
+      if (activeStartRequestId !== requestId) return;
+      if (localSlides && activeStartRequestId === requestId) {
+        handlePayload(localSlides);
+        onDone?.();
+        return;
+      }
+      if (opts?.local) {
+        onDone?.();
+        return;
+      }
       await stream.start(runId);
     } finally {
       if (activeStartRequestId === requestId) {
@@ -167,6 +186,7 @@ export function createSlidesHydrator(options: SlidesHydratorOptions): SlidesHydr
     start,
     stop,
     isStreaming: () => stream.isStreaming(),
+    getActiveRunId: () => activeRunId,
     handlePayload,
     handleSummaryFromCache,
     syncFromCache,

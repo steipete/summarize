@@ -14,6 +14,7 @@ export type Settings = {
   chatEnabled: boolean;
   automationEnabled: boolean;
   slidesEnabled: boolean;
+  slideRuntime: SlideRuntime;
   slidesParallel: boolean;
   slidesOcrEnabled: boolean;
   slidesLayout: SlidesLayout;
@@ -44,6 +45,7 @@ export type Settings = {
 };
 
 export type SlidesLayout = "strip" | "gallery";
+export type SlideRuntime = "browser" | "daemon";
 
 const storageKey = "settings";
 const fallbackStorageKey = "summarize.settings";
@@ -185,6 +187,18 @@ function normalizeSlidesLayout(value: unknown): SlidesLayout {
   return defaultSettings.slidesLayout;
 }
 
+function normalizeSlideRuntime(value: unknown, raw?: Record<string, unknown>): SlideRuntime {
+  if (typeof value === "string") {
+    const trimmed = value.trim().toLowerCase();
+    if (trimmed === "browser" || trimmed === "daemon") return trimmed;
+  }
+  const legacyDaemonlessSlides = raw?.daemonlessSlides;
+  if (typeof legacyDaemonlessSlides === "boolean") {
+    return legacyDaemonlessSlides ? "browser" : "daemon";
+  }
+  return defaultSettings.slideRuntime;
+}
+
 function normalizeFirecrawlMode(value: unknown): string {
   if (typeof value !== "string") return defaultSettings.firecrawlMode;
   const trimmed = value.trim().toLowerCase();
@@ -306,6 +320,7 @@ export const defaultSettings: Settings = {
   chatEnabled: true,
   automationEnabled: false,
   slidesEnabled: true,
+  slideRuntime: "browser",
   slidesParallel: true,
   slidesOcrEnabled: false,
   slidesLayout: "gallery",
@@ -355,7 +370,7 @@ export async function loadSettings(): Promise<Settings> {
         }
       })
     : { [storageKey]: loadFallbackSettings() };
-  const raw = (res[storageKey] ?? {}) as Partial<Settings>;
+  const raw = (res[storageKey] ?? {}) as Partial<Settings> & Record<string, unknown>;
   return {
     ...defaultSettings,
     ...raw,
@@ -376,6 +391,7 @@ export async function loadSettings(): Promise<Settings> {
         : defaultSettings.automationEnabled,
     slidesEnabled:
       typeof raw.slidesEnabled === "boolean" ? raw.slidesEnabled : defaultSettings.slidesEnabled,
+    slideRuntime: normalizeSlideRuntime(raw.slideRuntime, raw),
     slidesParallel:
       typeof raw.slidesParallel === "boolean" ? raw.slidesParallel : defaultSettings.slidesParallel,
     slidesOcrEnabled:

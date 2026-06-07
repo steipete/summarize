@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSlideDescriptions,
+  deriveSlideSummaries,
   formatSlideTimestamp,
   resolveSlidesLengthArg,
   resolveSlidesTextState,
@@ -106,6 +107,81 @@ describe("sidepanel slides state", () => {
       slidesTranscriptAvailable: false,
     });
     expect(descriptions.get(1)).toContain("Clear OCR paragraph");
+  });
+
+  it("coerces partial slide summaries so every slide gets summary text", () => {
+    const slides = Array.from({ length: 6 }, (_, index) => ({
+      index: index + 1,
+      timestamp: index * 60,
+      imageUrl: `slide-${index + 1}.png`,
+      ocrText: "",
+    }));
+    const derived = deriveSlideSummaries({
+      markdown: [
+        "Paragraph one summary.",
+        "",
+        "Paragraph two summary.",
+        "",
+        "Paragraph three summary.",
+        "",
+        "### Slides",
+        "[slide:1]",
+        "Direct slide one.",
+        "",
+        "[slide:2]",
+        "Direct slide two.",
+        "",
+        "[slide:3]",
+        "Direct slide three.",
+        "",
+        "[slide:4]",
+        "Direct slide four.",
+        "",
+        "[slide:5]",
+        "Direct slide five.",
+        "",
+        "[slide:6]",
+      ].join("\n"),
+      slides,
+      transcriptTimedText: "[05:00] raw transcript that should not be used",
+      lengthValue: "short",
+    });
+
+    expect(derived?.summaries.get(6)).toBe("Paragraph three summary.");
+    expect(
+      Array.from(derived?.summaries.values() ?? []).some((value) =>
+        value.includes("raw transcript"),
+      ),
+    ).toBe(false);
+  });
+
+  it("uses browser summary paragraphs for local slide card text", () => {
+    const derived = deriveSlideSummaries({
+      markdown: [
+        "## Video title",
+        "",
+        "This browser-generated summary explains the main story in one compact paragraph.",
+        "",
+        "## Key moments",
+        "",
+        "- 0:00 Opening context.",
+        "- 1:00 Middle context.",
+      ].join("\n"),
+      slides: [
+        { index: 1, timestamp: 0, imageUrl: "slide-1.png", ocrText: "" },
+        { index: 2, timestamp: 60, imageUrl: "slide-2.png", ocrText: "" },
+      ],
+      transcriptTimedText: "[00:00] raw transcript text should not win",
+      lengthValue: "short",
+    });
+
+    expect(derived?.summaries.get(1)).toContain("browser-generated summary");
+    expect(derived?.summaries.get(2)).toContain("Opening context");
+    expect(
+      Array.from(derived?.summaries.values() ?? []).some((value) =>
+        value.includes("raw transcript"),
+      ),
+    ).toBe(false);
   });
 
   it("drops gibberish ocr and keeps transcript mode when ocr is not significant", () => {

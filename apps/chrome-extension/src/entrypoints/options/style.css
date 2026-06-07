@@ -482,6 +482,10 @@ form {
   gap: 14px;
 }
 
+.runtimeSection {
+  gap: 14px;
+}
+
 .advancedHead {
   display: grid;
   gap: 4px;
@@ -540,6 +544,58 @@ form {
 }
 
 .toggleField .toggleHint {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.runtimeModeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.runtimeModeCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px;
+  padding: 10px 12px;
+  min-height: 74px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 65%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.runtimeModeCard[data-selected] {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.runtimeModeCard input {
+  grid-row: 1 / span 2;
+  width: 16px;
+  height: 16px;
+  margin: 1px 4px 0 0;
+  accent-color: var(--accent);
+}
+
+.runtimeModeCard:has(input:focus-visible) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.runtimeModeTitle {
+  grid-column: 2;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.runtimeModeText {
   grid-column: 2;
   color: var(--muted);
   font-size: 11px;
@@ -1034,7 +1090,8 @@ form {
 
 @media (max-width: 760px) {
   .subgroupBody.advancedGrid,
-  .subgroupBody.advancedGrid--thirds {
+  .subgroupBody.advancedGrid--thirds,
+  .runtimeModeGrid {
     grid-template-columns: minmax(0, 1fr);
   }
 

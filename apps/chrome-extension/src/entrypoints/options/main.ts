@@ -50,6 +50,7 @@ const {
   hoverSummariesToggleRoot,
   summaryTimestampsToggleRoot,
   slidesParallelToggleRoot,
+  slideRuntimeModeRoot,
   slidesOcrToggleRoot,
   extendedLoggingToggleRoot,
   autoCliFallbackToggleRoot,
@@ -207,6 +208,7 @@ const { resolveActiveTab } = createOptionsTabs({
 });
 
 let booleanSettings: ReturnType<typeof createBooleanSettingsRuntime> | null = null;
+let refreshRuntimeStatus = (_token = tokenEl.value) => {};
 const settingsElements = {
   tokenEl,
   languagePresetEl,
@@ -247,6 +249,7 @@ const { saveNow, scheduleAutoSave } = createOptionsSaveRuntime({
           hoverSummaries: defaultSettings.hoverSummaries,
           summaryTimestamps: defaultSettings.summaryTimestamps,
           slidesParallel: defaultSettings.slidesParallel,
+          slideRuntime: defaultSettings.slideRuntime,
           slidesOcrEnabled: defaultSettings.slidesOcrEnabled,
           extendedLogging: defaultSettings.extendedLogging,
           autoCliFallback: defaultSettings.autoCliFallback,
@@ -267,6 +270,7 @@ booleanSettings = createBooleanSettingsRuntime({
     hoverSummariesToggleRoot,
     summaryTimestampsToggleRoot,
     slidesParallelToggleRoot,
+    slideRuntimeModeRoot,
     slidesOcrToggleRoot,
     extendedLoggingToggleRoot,
     autoCliFallbackToggleRoot,
@@ -274,6 +278,9 @@ booleanSettings = createBooleanSettingsRuntime({
   scheduleAutoSave,
   onAutomationChanged: () => {
     void automationPermissions.updateUi();
+  },
+  onDaemonSlidesModeChanged: () => {
+    refreshRuntimeStatus();
   },
 });
 
@@ -286,7 +293,12 @@ const resolveExtensionVersion = () => {
 const { checkDaemonStatus } = createDaemonStatusChecker({
   statusEl: daemonStatusEl,
   getExtensionVersion: resolveExtensionVersion,
+  isDaemonMode: () => (booleanSettings?.getState().slideRuntime ?? "browser") === "daemon",
 });
+
+refreshRuntimeStatus = (token = tokenEl.value) => {
+  void checkDaemonStatus(token);
+};
 
 const modelPresets = createModelPresetsController({
   presetEl: modelPresetEl,
@@ -329,7 +341,6 @@ automationPermissionsBtn.addEventListener("click", () => {
 
 async function load() {
   const s = await loadSettings();
-  void checkDaemonStatus(s.token);
   await modelPresets.refreshPresets(s.token);
   modelPresets.setValue(s.model);
   const loadedState = applyLoadedOptionsSettings({
@@ -340,6 +351,7 @@ async function load() {
   });
   booleanSettings.setState(loadedState.booleans);
   booleanSettings.render();
+  refreshRuntimeStatus(s.token);
   currentScheme = loadedState.colorScheme;
   currentMode = loadedState.colorMode;
   pickers.update({ scheme: currentScheme, mode: currentMode, ...pickerHandlers });
@@ -393,7 +405,7 @@ bindOptionsInputs({
   },
   scheduleAutoSave,
   saveNow,
-  checkDaemonStatus,
+  checkDaemonStatus: refreshRuntimeStatus,
   modelPresets,
   logsViewer,
   processesViewer,

@@ -6,6 +6,7 @@ import {
   buildAgentStream,
   buildUiState,
   closeExtension,
+  getActiveTabId,
   getBackground,
   getBrowserFromProject,
   injectContentScript,
@@ -87,6 +88,103 @@ test("sidepanel chat queue sends next message after stream completes", async ({
 
     await expect.poll(() => agentRequestCount).toBe(2);
     await expect(page.locator("#chatMessages")).toContainText("Second question");
+
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
+test("sidepanel chat sends mixed OCR and transcript slide text to the bot", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, {
+      token: "test-token",
+      autoSummarize: false,
+      chatEnabled: true,
+      slidesOcrEnabled: true,
+      length: "xl",
+    });
+    const contentPage = await harness.context.newPage();
+    await contentPage.goto("https://example.com/slides", { waitUntil: "domcontentloaded" });
+    await contentPage.evaluate(() => {
+      document.body.innerHTML = `<article><p>${"Deck context ".repeat(40)}</p></article>`;
+    });
+    await maybeBringToFront(contentPage);
+    await activateTabByUrl(harness, "https://example.com/slides");
+    await waitForActiveTabUrl(harness, "https://example.com/slides");
+    await injectContentScript(harness, "content-scripts/extract.js", "https://example.com/slides");
+    await waitForExtractReady(harness, "https://example.com/slides");
+    const activeTabId = await getActiveTabId(harness);
+
+    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+    const transcriptTimedText = [
+      "[0:00] First slide transcript context.",
+      "[0:30] More first slide detail.",
+      "[0:42] Second slide transcript should be replaced by OCR.",
+      "[1:28] Lead-in near the third slide.",
+      "[1:32] Third slide transcript context.",
+    ].join("\n");
+    await sendPanelMessage(page, {
+      type: "panel:cache",
+      cache: {
+        tabId: activeTabId,
+        url: "https://example.com/slides",
+        title: "Slides",
+        runId: "summary-run",
+        slidesRunId: "slides-run",
+        summaryMarkdown: "Summary text.",
+        summaryFromCache: false,
+        slidesSummaryMarkdown: null,
+        slidesSummaryComplete: null,
+        slidesSummaryModel: null,
+        lastMeta: { inputSummary: null, model: "test", modelLabel: "Test" },
+        transcriptTimedText,
+        slides: {
+          sourceUrl: "https://example.com/slides",
+          sourceId: "local-slides",
+          sourceKind: "browser-capture",
+          ocrAvailable: false,
+          transcriptTimedText,
+          slides: [
+            { index: 1, timestamp: 1, imageUrl: "", ocrText: null, ocrConfidence: null },
+            {
+              index: 2,
+              timestamp: 40,
+              imageUrl: "",
+              ocrText: "Second slide visual OCR.",
+              ocrConfidence: null,
+            },
+            { index: 3, timestamp: 90, imageUrl: "", ocrText: null, ocrConfidence: null },
+          ],
+        },
+      },
+    });
+
+    let agentPageContent = "";
+    await harness.context.route("http://127.0.0.1:8787/v1/agent", async (route) => {
+      const body = route.request().postDataJSON() as { pageContent?: string };
+      agentPageContent = body.pageContent ?? "";
+      await route.fulfill({
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+        body: buildAgentStream("Slide-aware reply"),
+      });
+    });
+
+    await page.locator("#chatInput").fill("What is on each slide?");
+    await page.locator("#chatSend").click();
+
+    await expect.poll(() => agentPageContent).toContain("Slide timeline:");
+    expect(agentPageContent).toContain("Slide 1 @ 0:01");
+    expect(agentPageContent).toContain("First slide transcript context.");
+    expect(agentPageContent).toContain("Slide 2 @ 0:40");
+    expect(agentPageContent).toContain("Second slide visual OCR.");
+    expect(agentPageContent).toContain("Slide 3 @ 1:30");
+    expect(agentPageContent).toContain("Third slide transcript context.");
 
     assertNoErrors(harness);
   } finally {
@@ -269,7 +367,11 @@ test("auto summarize reruns after panel reopen", async ({
       },
     );
 
-    await seedSettings(harness, { token: "test-token", autoSummarize: true });
+    await seedSettings(harness, {
+      token: "test-token",
+      autoSummarize: true,
+      slideRuntime: "daemon",
+    });
 
     const contentPage = await harness.context.newPage();
     await contentPage.goto("https://example.com", { waitUntil: "domcontentloaded" });

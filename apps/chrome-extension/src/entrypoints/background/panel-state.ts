@@ -40,6 +40,7 @@ type SettingsLike = {
   slidesParallel: boolean;
   slidesOcrEnabled: boolean;
   slidesLayout: "strip" | "gallery";
+  slideRuntime: "browser" | "daemon";
   fontSize: number;
   lineHeight: number;
   model: string;
@@ -127,6 +128,7 @@ export async function resolvePanelState({
         slidesParallel: settings.slidesParallel,
         slidesOcrEnabled: settings.slidesOcrEnabled,
         slidesLayout: settings.slidesLayout,
+        slideRuntime: settings.slideRuntime,
         fontSize: settings.fontSize,
         lineHeight: settings.lineHeight,
         model: settings.model,

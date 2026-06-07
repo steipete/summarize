@@ -137,6 +137,35 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("Second slide text.");
   });
 
+  it("reuses summary paragraphs instead of transcript filler when slides outnumber paragraphs", () => {
+    const coerced = coerceSummaryWithSlides({
+      markdown: [
+        "The first summary paragraph explains the setup.",
+        "",
+        "The second summary paragraph explains the conflict.",
+        "",
+        "The third summary paragraph explains the resolution.",
+      ].join("\n"),
+      slides: [
+        { index: 1, timestamp: 0 },
+        { index: 2, timestamp: 60 },
+        { index: 3, timestamp: 120 },
+        { index: 4, timestamp: 180 },
+        { index: 5, timestamp: 240 },
+        { index: 6, timestamp: 300 },
+      ],
+      transcriptTimedText:
+        "[00:00] raw transcript one\n[01:00] raw transcript two\n[02:00] raw transcript three",
+      lengthArg: { kind: "preset", preset: "short" },
+      reserveIntro: false,
+    });
+
+    expect(coerced).not.toContain("raw transcript");
+    expect(coerced).toContain("[slide:2]\nThe first summary paragraph explains the setup.");
+    expect(coerced).toContain("[slide:4]\nThe second summary paragraph explains the conflict.");
+    expect(coerced).toContain("[slide:6]\nThe third summary paragraph explains the resolution.");
+  });
+
   it("does not invent slide title lines", () => {
     const slides = [{ index: 1, timestamp: 4 }];
     const coerced = coerceSummaryWithSlides({
@@ -451,6 +480,112 @@ describe("slides text helpers", () => {
     expect(coerced).toContain("[slide:2]");
     expect(coerced).toContain("First body paragraph.");
     expect(coerced).toContain("Second body paragraph.");
+  });
+
+  it("keeps mixed interlude markers when partial slide summaries are present", () => {
+    const slides = [
+      { index: 1, timestamp: 10 },
+      { index: 2, timestamp: 20 },
+    ];
+    const markdown = ["[slide:1]", "Normal slide body.", "", "[slide:2]", "## Interlude"].join(
+      "\n",
+    );
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[00:20] transcript fallback should not replace the interlude",
+      lengthArg: { kind: "preset", preset: "short" },
+    });
+
+    expect(coerced).toContain("[slide:1]\nNormal slide body.");
+    expect(coerced).toContain("[slide:2]\n## Interlude");
+    expect(coerced).not.toContain("[slide:2]\n[slide:2]");
+  });
+
+  it("fills missing partial slide sections from summary paragraphs", () => {
+    const slides = Array.from({ length: 6 }, (_, index) => ({
+      index: index + 1,
+      timestamp: index * 60,
+    }));
+    const markdown = [
+      "Paragraph one summary.",
+      "",
+      "Paragraph two summary.",
+      "",
+      "Paragraph three summary.",
+      "",
+      "### Slides",
+      "[slide:1]",
+      "Direct slide one.",
+      "",
+      "[slide:2]",
+      "Direct slide two.",
+      "",
+      "[slide:3]",
+      "Direct slide three.",
+      "",
+      "[slide:4]",
+      "Direct slide four.",
+      "",
+      "[slide:5]",
+      "Direct slide five.",
+      "",
+      "[slide:6]",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[05:00] raw transcript that should not be used",
+      lengthArg: { kind: "preset", preset: "short" },
+      reserveIntro: false,
+    });
+
+    expect(coerced).toContain("[slide:6]\nParagraph three summary.");
+    expect(coerced).not.toContain("raw transcript");
+  });
+
+  it("replaces title-only partial slide sections with summary paragraphs", () => {
+    const slides = Array.from({ length: 6 }, (_, index) => ({
+      index: index + 1,
+      timestamp: index * 60,
+    }));
+    const markdown = [
+      "Paragraph one summary.",
+      "",
+      "Paragraph two summary.",
+      "",
+      "Paragraph three summary.",
+      "",
+      "### Slides",
+      "[slide:1]",
+      "Direct slide one.",
+      "",
+      "[slide:2]",
+      "Direct slide two.",
+      "",
+      "[slide:3]",
+      "Direct slide three.",
+      "",
+      "[slide:4]",
+      "Direct slide four.",
+      "",
+      "[slide:5]",
+      "Direct slide five.",
+      "",
+      "[slide:6]",
+      "Slide 6/6 · 5:17",
+    ].join("\n");
+    const coerced = coerceSummaryWithSlides({
+      markdown,
+      slides,
+      transcriptTimedText: "[05:00] raw transcript that should not be used",
+      lengthArg: { kind: "preset", preset: "short" },
+      reserveIntro: false,
+    });
+
+    expect(coerced).toContain("[slide:6]\nParagraph three summary.");
+    expect(coerced).not.toContain("raw transcript");
+    expect(coerced).not.toContain("Slide 6/6 · 5:17");
   });
 
   it("parses transcript timed text and sorts by timestamp", () => {

@@ -162,6 +162,33 @@ describe("sidepanel slides text controller", () => {
     expect(controller.getDescriptions().get(2)).toContain("second slide");
   });
 
+  it("keeps transcript fallback for slides not covered by partial summary markdown", () => {
+    const slides = [
+      { index: 1, timestamp: 0, imageUrl: "x", ocrText: null },
+      { index: 2, timestamp: 30, imageUrl: "y", ocrText: null },
+    ];
+    const controller = createSlidesTextController({
+      getSlides: () => slides,
+      getLengthValue: () => "short",
+      getSlidesOcrEnabled: () => true,
+    });
+
+    controller.setTranscriptTimedText(
+      "[00:00] Transcript line for first slide.\n[00:30] Transcript line for second slide.",
+    );
+    controller.syncTextState();
+
+    expect(
+      controller.updateSummaryFromMarkdown(
+        ["[slide:1]", "## First title", "Summary body for the first slide."].join("\n"),
+        { source: "summary" },
+      ),
+    ).toBe(true);
+
+    expect(controller.getDescriptions().get(1)).toBe("Summary body for the first slide.");
+    expect(controller.getDescriptions().get(2)).toContain("Transcript line for second slide");
+  });
+
   it("allows main summary to replace equal-coverage streamed drafts even when shorter", () => {
     const slides = [
       { index: 1, timestamp: 0, imageUrl: "x", ocrText: null },
@@ -247,6 +274,47 @@ describe("sidepanel slides text controller", () => {
     expect(controller.getDescriptions().get(2)).toContain(
       "Refa learns the drink is only lethal once both parts are combined.",
     );
+  });
+
+  it("keeps transcript fallback when a plain summary arrives before local slides", () => {
+    let slides: Array<{
+      index: number;
+      timestamp: number;
+      imageUrl: string;
+      ocrText: string | null;
+    }> = [];
+    const controller = createSlidesTextController({
+      getSlides: () => slides,
+      getLengthValue: () => "short",
+      getSlidesOcrEnabled: () => true,
+    });
+
+    expect(
+      controller.updateSummaryFromMarkdown("A plain video summary without slide markers.", {
+        source: "summary",
+      }),
+    ).toBe(true);
+
+    slides = [
+      { index: 1, timestamp: 0, imageUrl: "x", ocrText: null },
+      { index: 2, timestamp: 30, imageUrl: "y", ocrText: null },
+    ];
+    controller.setTranscriptTimedText(
+      "[00:00] Local slide one transcript text.\n[00:30] Local slide two transcript text.",
+    );
+    controller.syncTextState();
+
+    expect(controller.getDescriptions().get(1)).toContain("Local slide one transcript text");
+    expect(controller.getDescriptions().get(2)).toContain("Local slide two transcript text");
+
+    expect(
+      controller.updateSummaryFromMarkdown("A plain video summary without slide markers.", {
+        source: "summary",
+        preserveIfEmpty: true,
+      }),
+    ).toBe(false);
+    expect(controller.getDescriptions().get(1)).toContain("Local slide one transcript text");
+    expect(controller.getDescriptions().get(2)).toContain("Local slide two transcript text");
   });
 
   it("keeps explicit OCR mode authoritative even after slide summaries arrive", () => {

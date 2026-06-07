@@ -36,6 +36,7 @@ export type UiState = {
     slidesParallel: boolean;
     slidesOcrEnabled: boolean;
     slidesLayout?: "strip" | "gallery";
+    slideRuntime?: "browser" | "daemon";
     model: string;
     length: string;
     tokenPresent: boolean;
@@ -58,6 +59,7 @@ const defaultUiState: UiState = {
     slidesParallel: true,
     slidesOcrEnabled: false,
     slidesLayout: "strip",
+    slideRuntime: "browser",
     model: "auto",
     length: "xl",
     tokenPresent: true,

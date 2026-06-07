@@ -14,6 +14,7 @@ export function createSidepanelSlidesRuntime({
   getPanelState,
   getSlidesEnabled,
   getToken,
+  resolveLocalSlides,
   getTranscriptTimedText,
   getUiState,
   headerSetStatus,
@@ -48,6 +49,13 @@ export function createSidepanelSlidesRuntime({
   getPanelState: Parameters<typeof createSlidesSummaryController>[0]["getPanelState"];
   getSlidesEnabled: () => boolean;
   getToken: () => Promise<string>;
+  resolveLocalSlides?: (
+    runId: string,
+  ) => Promise<
+    Parameters<typeof createSlidesHydrator>[0]["onSlides"] extends (value: infer T) => void
+      ? T | null
+      : null
+  >;
   getTranscriptTimedText: () => string | null;
   getUiState: Parameters<typeof createSlidesSummaryController>[0]["getUiState"];
   headerSetStatus: (text: string) => void;
@@ -97,6 +105,7 @@ export function createSidepanelSlidesRuntime({
 
   const slidesHydrator = createSlidesHydrator({
     getToken,
+    resolveLocalSlides,
     onSlides: (data) => {
       applySlidesPayload(data);
       slidesSummaryController.maybeApplyPending();
@@ -146,8 +155,8 @@ export function createSidepanelSlidesRuntime({
     hideSlideNotice,
     setSlidesBusy,
     schedulePanelCacheSync,
-    startSlidesHydrator: (runId) => {
-      void slidesHydrator.start(runId);
+    startSlidesHydrator: (runId, opts) => {
+      void slidesHydrator.start(runId, opts);
     },
     startSlidesSummaryController: (payload) => {
       void slidesSummaryController.start(payload);

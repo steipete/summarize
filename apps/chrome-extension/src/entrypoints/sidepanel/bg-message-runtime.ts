@@ -12,9 +12,11 @@ export function handleSidepanelBgMessage(options: {
   isStreaming: () => boolean;
   handleRunError: (message: string) => void;
   handleSlidesRun: (msg: Extract<BgToPanel, { type: "slides:run" }>) => void;
+  handleSlidesLocal: (msg: Extract<BgToPanel, { type: "slides:local" }>) => void;
   handleSlidesContext: (msg: Extract<BgToPanel, { type: "slides:context" }>) => void;
   handleUiCache: (msg: Extract<BgToPanel, { type: "ui:cache" }>) => void;
   handleRunStart: (run: RunStart) => void;
+  handleRunSnapshot: (payload: Extract<BgToPanel, { type: "run:snapshot" }>) => void;
   handleChatHistory: (msg: Extract<BgToPanel, { type: "chat:history" }>) => void;
   handleAgentChunk: (msg: Extract<BgToPanel, { type: "agent:chunk" }>) => void;
   handleAgentResponse: (msg: Extract<BgToPanel, { type: "agent:response" }>) => void;
@@ -33,6 +35,9 @@ export function handleSidepanelBgMessage(options: {
     case "slides:run":
       options.handleSlidesRun(msg);
       return;
+    case "slides:local":
+      options.handleSlidesLocal(msg);
+      return;
     case "slides:context":
       options.handleSlidesContext(msg);
       return;
@@ -41,6 +46,9 @@ export function handleSidepanelBgMessage(options: {
       return;
     case "run:start":
       options.handleRunStart(msg.run);
+      return;
+    case "run:snapshot":
+      options.handleRunSnapshot(msg);
       return;
     case "chat:history":
       options.handleChatHistory(msg);
@@ -55,6 +63,7 @@ export function handleSidepanelBgMessage(options: {
 }
 
 type SlidesContextMessage = Extract<BgToPanel, { type: "slides:context" }>;
+type SlidesLocalMessage = Extract<BgToPanel, { type: "slides:local" }>;
 type SlidesRunMessage = Extract<BgToPanel, { type: "slides:run" }>;
 type UiCacheMessage = Extract<BgToPanel, { type: "ui:cache" }>;
 
@@ -75,9 +84,13 @@ export function createSidepanelBgMessageRuntime(options: {
   setSlidesBusy: (busy: boolean) => void;
   showSlideNotice: (message: string, opts?: { allowRetry?: boolean }) => void;
   getActiveTabUrl: () => string | null;
-  rememberPendingSlidesRun: (value: { runId: string; url: string | null }) => void;
-  startSlidesStreamForRunId: (runId: string) => void;
+  rememberPendingSlidesRun: (value: { runId: string; url: string | null; local?: boolean }) => void;
+  startSlidesStreamForRunId: (
+    runId: string,
+    meta?: { url?: string | null; local?: boolean },
+  ) => void;
   startSlidesSummaryStreamForRunId: (runId: string, url: string | null) => void;
+  handleSlidesLocal: (msg: SlidesLocalMessage) => void;
   getSlidesContextRequestId: () => number;
   setSlidesContextPending: (value: boolean) => void;
   setSlidesTranscriptTimedText: (value: string | null) => void;
@@ -104,7 +117,9 @@ export function createSidepanelBgMessageRuntime(options: {
   getActiveTabId: () => number | null;
   applyPanelCache: (cache: unknown, opts: { preserveChat?: boolean }) => void;
   rememberPendingSummaryRun: (run: RunStart) => void;
+  rememberPendingSummarySnapshot: (payload: { run: RunStart; markdown: string }) => void;
   attachSummaryRun: (run: RunStart) => void;
+  applySummarySnapshot: (payload: { run: RunStart; markdown: string }) => void;
   handleChatHistory: (msg: Extract<BgMessage, { type: "chat:history" }>) => void;
   handleAgentChunk: (msg: Extract<BgMessage, { type: "agent:chunk" }>) => void;
   handleAgentResponse: (msg: Extract<BgMessage, { type: "agent:response" }>) => void;
@@ -147,12 +162,19 @@ export function createSidepanelBgMessageRuntime(options: {
             options.rememberPendingSlidesRun({
               runId: slidesRun.runId,
               url: targetUrl,
+              local: Boolean(slidesRun.local),
             });
             return;
           }
-          options.startSlidesStreamForRunId(slidesRun.runId);
-          options.startSlidesSummaryStreamForRunId(slidesRun.runId, targetUrl);
+          options.startSlidesStreamForRunId(slidesRun.runId, {
+            url: targetUrl,
+            local: Boolean(slidesRun.local),
+          });
+          if (!slidesRun.local) {
+            options.startSlidesSummaryStreamForRunId(slidesRun.runId, targetUrl);
+          }
         },
+        handleSlidesLocal: options.handleSlidesLocal,
         handleSlidesContext: (slidesContext: SlidesContextMessage) => {
           if (!options.panelState.slides) return;
           const expectedId = `slides-${options.getSlidesContextRequestId()}`;
@@ -204,6 +226,22 @@ export function createSidepanelBgMessageRuntime(options: {
             return;
           }
           options.attachSummaryRun(run);
+        },
+        handleRunSnapshot: (snapshot) => {
+          if (
+            !shouldAcceptRunForCurrentPage({
+              runUrl: snapshot.run.url,
+              activeTabUrl: options.getActiveTabUrl(),
+              currentSourceUrl: options.panelState.currentSource?.url ?? null,
+            })
+          ) {
+            options.rememberPendingSummarySnapshot({
+              run: snapshot.run,
+              markdown: snapshot.markdown,
+            });
+            return;
+          }
+          options.applySummarySnapshot({ run: snapshot.run, markdown: snapshot.markdown });
         },
         handleChatHistory: options.handleChatHistory,
         handleAgentChunk: options.handleAgentChunk,

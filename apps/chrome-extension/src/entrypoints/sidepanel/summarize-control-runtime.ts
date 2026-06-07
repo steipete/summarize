@@ -38,7 +38,7 @@ type SummarizeControlRuntimeOptions = {
   setSlidesEnabled: (value: boolean) => void;
   setSlidesLayoutValue: (value: SlidesLayout) => void;
   patchSettings: (patch: Partial<Settings>) => Promise<void>;
-  loadSettings: () => Promise<Pick<Settings, "token">>;
+  loadSettings: () => Promise<Pick<Settings, "slideRuntime" | "token">>;
   showSlideNotice: (message: string) => void;
   hideSlideNotice: () => void;
   setSlidesBusy: (value: boolean) => void;
@@ -47,6 +47,7 @@ type SummarizeControlRuntimeOptions = {
   maybeStartPendingSlidesForUrl: (url: string | null) => void;
   sendSummarize: (opts?: { refresh?: boolean }) => void;
   resolveActiveSlidesRunId: () => string | null;
+  isActiveSlidesRunLocal?: (runId: string) => boolean;
   startSlidesStreamForRunId: (runId: string) => void;
   startSlidesSummaryStreamForRunId: (runId: string, url: string | null) => void;
   renderMarkdownDisplay: () => void;
@@ -58,10 +59,10 @@ type SummarizeControlRuntimeOptions = {
 type SummarizeControlPayload = { mode: "page" | "video"; slides: boolean };
 
 async function fetchSlideTools(
-  loadSettings: SummarizeControlRuntimeOptions["loadSettings"],
+  tokenValue: string,
   requireOcr: boolean,
 ): Promise<{ ok: boolean; missing: string[] }> {
-  const token = (await loadSettings()).token.trim();
+  const token = tokenValue.trim();
   if (!token) return { ok: false, missing: ["daemon token"] };
   const res = await fetch("http://127.0.0.1:8787/v1/tools", {
     headers: { Authorization: `Bearer ${token}` },
@@ -104,13 +105,16 @@ export function createSummarizeControlRuntime(options: SummarizeControlRuntimeOp
     const prevSlides = state.slidesEnabled;
     const prevMode = state.inputMode;
     if (value.slides && !state.slidesEnabled) {
-      const tools = await fetchSlideTools(options.loadSettings, state.slidesOcrEnabled);
-      if (!tools.ok) {
-        options.showSlideNotice(
-          `Slide extraction requires ${tools.missing.join(", ")}. Install and restart the daemon.`,
-        );
-        refreshSummarizeControl();
-        return;
+      const settings = await options.loadSettings();
+      if (settings.slideRuntime === "daemon") {
+        const tools = await fetchSlideTools(settings.token, state.slidesOcrEnabled);
+        if (!tools.ok) {
+          options.showSlideNotice(
+            `Slide extraction requires ${tools.missing.join(", ")}. Install and restart the daemon.`,
+          );
+          refreshSummarizeControl();
+          return;
+        }
       }
       options.hideSlideNotice();
     } else if (!value.slides) {
@@ -141,8 +145,11 @@ export function createSummarizeControlRuntime(options: SummarizeControlRuntimeOp
     const runId = options.resolveActiveSlidesRunId();
     const targetUrl = state.currentSourceUrl ?? state.activeTabUrl ?? null;
     if (runId) {
+      const isLocalRun = options.isActiveSlidesRunLocal?.(runId) === true;
       options.startSlidesStreamForRunId(runId);
-      options.startSlidesSummaryStreamForRunId(runId, targetUrl);
+      if (!isLocalRun) {
+        options.startSlidesSummaryStreamForRunId(runId, targetUrl);
+      }
       return;
     }
     options.sendSummarize({ refresh: true });

@@ -1,5 +1,6 @@
 import { shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import type MarkdownIt from "markdown-it";
+import { logExtensionEvent } from "../../lib/extension-logs";
 import type { SseSlidesData } from "../../lib/runtime-contracts";
 import type { SlidesLayout } from "../../lib/settings";
 import { createSlideImageLoader, normalizeSlideImageUrl } from "./slide-images";
@@ -41,6 +42,7 @@ export function createSlidesViewRuntime({
   resolveActiveSlidesRunId,
   nextSlidesContextRequestId,
   setSlidesExpanded,
+  getFallbackSummaryMarkdown,
 }: {
   renderMarkdownHostEl: HTMLElement;
   renderSlidesHostEl: HTMLElement;
@@ -95,6 +97,7 @@ export function createSlidesViewRuntime({
   resolveActiveSlidesRunId: () => string | null;
   nextSlidesContextRequestId: () => number;
   setSlidesExpanded: (value: boolean) => void;
+  getFallbackSummaryMarkdown?: () => string | null;
 }) {
   const slideImageLoader = createSlideImageLoader();
 
@@ -286,6 +289,20 @@ export function createSlidesViewRuntime({
         imageUrl: normalizeSlideImageUrl(slide.imageUrl, safePayload.sourceId, slide.index),
       })),
     };
+    if (globalThis.chrome?.storage) {
+      logExtensionEvent({
+        event: "slides:payload:applied",
+        scope: "slides:panel",
+        level: "verbose",
+        detail: {
+          slides: normalized.slides.length,
+          sourceKind: normalized.sourceKind,
+          slideRuntime: normalized.slideRuntime ?? "daemon",
+          transcriptAvailable: Boolean(normalized.transcriptTimedText?.trim()),
+          ocrAvailable: normalized.ocrAvailable,
+        },
+      });
+    }
     const shouldReplaceSeeded = getSlidesSeededSourceId() === safePayload.sourceId;
     const merged = resolveSlidesPayload(state.panelState.slides, normalized, {
       seededSourceId: getSlidesSeededSourceId(),
@@ -322,7 +339,12 @@ export function createSlidesViewRuntime({
       setSlidesContextPending(false);
     }
     updateSlidesTextState();
-    if (state.panelState.summaryMarkdown) {
+    const summaryMarkdown = state.panelState.summaryMarkdown || getFallbackSummaryMarkdown?.();
+    if (summaryMarkdown) {
+      updateSlideSummaryFromMarkdown(summaryMarkdown, {
+        preserveIfEmpty: true,
+        source: "summary",
+      });
       renderInlineSlides(renderMarkdownHostEl, { fallback: true });
     }
     hideSlideNotice();

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createSlidesHydrator } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-hydrator.js";
 import { encodeSseEvent, type SseEvent, type SseSlidesData } from "../src/shared/sse-events.js";
 
@@ -23,6 +23,31 @@ async function waitFor(check: () => boolean, attempts = 20) {
 }
 
 describe("sidepanel slides hydrator", () => {
+  it("reports and clears the active run id", async () => {
+    let releaseStream: (() => void) | null = null;
+    const streamReleased = new Promise<void>((resolve) => {
+      releaseStream = resolve;
+    });
+    const hydrator = createSlidesHydrator({
+      getToken: async () => "",
+      onSlides: () => {},
+      streamFetchImpl: async () => {
+        await streamReleased;
+        return new Response(streamFromEvents([{ event: "done", data: {} }]), { status: 200 });
+      },
+      snapshotFetchImpl: async () => new Response(JSON.stringify({ ok: false }), { status: 200 }),
+    });
+
+    const startPromise = hydrator.start("run-active");
+    await waitFor(() => hydrator.getActiveRunId() === "run-active");
+
+    expect(hydrator.getActiveRunId()).toBe("run-active");
+    hydrator.stop();
+    expect(hydrator.getActiveRunId()).toBeNull();
+    releaseStream?.();
+    await startPromise;
+  });
+
   it("hydrates snapshot when the stream finishes without slides", async () => {
     const payload: SseSlidesData = {
       sourceUrl: "https://example.com",
@@ -125,6 +150,49 @@ describe("sidepanel slides hydrator", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(received).toEqual([livePayload]);
+  });
+
+  it("does not start a stale stream after a superseded local lookup misses", async () => {
+    let resolveLocal: ((value: SseSlidesData | null) => void) | null = null;
+    const localPromise = new Promise<SseSlidesData | null>((resolve) => {
+      resolveLocal = resolve;
+    });
+    const streamFetchImpl = vi.fn(async () => {
+      return new Response(streamFromEvents([{ event: "done", data: {} }]), { status: 200 });
+    });
+    const hydrator = createSlidesHydrator({
+      getToken: async () => "",
+      onSlides: () => {},
+      resolveLocalSlides: async (runId) => (runId === "run-1" ? await localPromise : null),
+      streamFetchImpl,
+    });
+
+    const staleStart = hydrator.start("run-1");
+    await waitFor(() => hydrator.getActiveRunId() === "run-1");
+    hydrator.stop();
+    resolveLocal?.(null);
+    await staleStart;
+
+    expect(streamFetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("finishes local runs when the in-memory browser payload is missing", async () => {
+    const streamFetchImpl = vi.fn(async () => {
+      return new Response(streamFromEvents([{ event: "done", data: {} }]), { status: 200 });
+    });
+    const onDone = vi.fn();
+    const hydrator = createSlidesHydrator({
+      getToken: async () => "token",
+      onSlides: () => {},
+      onDone,
+      resolveLocalSlides: async () => null,
+      streamFetchImpl,
+    });
+
+    await hydrator.start("browser-run", { local: true });
+
+    expect(streamFetchImpl).not.toHaveBeenCalled();
+    expect(onDone).toHaveBeenCalledOnce();
   });
 
   it("hydrates snapshot when cache is loaded without slides", async () => {

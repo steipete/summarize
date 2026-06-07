@@ -85,6 +85,7 @@ export function createSlideImageLoader(
 
   const resolveSlideImageUrl = async (imageUrl: string): Promise<string | null> => {
     if (!imageUrl) return null;
+    if (imageUrl.startsWith("data:") || imageUrl.startsWith("blob:")) return imageUrl;
     const cached = slideImageCache.get(imageUrl);
     if (cached) {
       recordCacheUse(imageUrl, cached.objectUrl);

@@ -1,4 +1,4 @@
-import { shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
+import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import { buildIdleSubtitle } from "../../lib/header";
 import type { PanelCachePayload } from "./panel-cache";
 import { normalizeSlideImageUrl } from "./slide-images";
@@ -70,6 +70,7 @@ type SummaryViewRuntimeOpts = {
   clearSlidesSummaryError: () => void;
   updateSlidesTextState: () => void;
   requestSlidesContext: () => void | Promise<void>;
+  requestSlidesCapture: () => void;
   updateSlideSummaryFromMarkdown: (
     markdown: string,
     opts?: { preserveIfEmpty?: boolean; source?: "summary" | "slides" },
@@ -91,26 +92,28 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     stopSlides?: boolean;
   } = {}) {
     opts.setCurrentRunTabId(null);
-    opts.renderEl.replaceChildren(opts.renderMarkdownHostEl, opts.renderSlidesHostEl);
+    opts.renderEl.replaceChildren(opts.renderSlidesHostEl, opts.renderMarkdownHostEl);
     opts.renderMarkdownHostEl.innerHTML = "";
     clearSummaryCopyButton(opts.summaryCopyBtn);
-    opts.getSlidesRenderer().clear();
     opts.metricsController.clearForMode("summary");
     opts.panelState.summaryMarkdown = null;
     opts.panelState.summaryFromCache = null;
-    opts.panelState.slides = null;
     if (clearRunId) {
       opts.panelState.runId = null;
-      opts.panelState.slidesRunId = null;
     }
     opts.setSlidesExpanded(true);
-    opts.setSlidesContextPending(false);
-    opts.setSlidesContextUrl(null);
-    opts.setSlidesTranscriptTimedText(null);
-    opts.slidesTextController.reset();
-    opts.setSlidesSeededSourceId(null);
-    opts.setSlidesAppliedRunId(null);
     if (stopSlides) {
+      opts.getSlidesRenderer().clear();
+      opts.panelState.slides = null;
+      if (clearRunId) {
+        opts.panelState.slidesRunId = null;
+      }
+      opts.setSlidesContextPending(false);
+      opts.setSlidesContextUrl(null);
+      opts.setSlidesTranscriptTimedText(null);
+      opts.slidesTextController.reset();
+      opts.setSlidesSeededSourceId(null);
+      opts.setSlidesAppliedRunId(null);
       opts.stopSlidesStream();
     }
     opts.refreshSummarizeControl();
@@ -206,6 +209,9 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
       opts.setSlidesContextUrl(null);
       opts.updateSlidesTextState();
       opts.setSlidesAppliedRunId(null);
+      if (payload.summaryMarkdown && payload.url && isYouTubeVideoUrl(payload.url)) {
+        opts.requestSlidesCapture();
+      }
     }
     opts.getSlidesHydrator().syncFromCache({
       runId: opts.panelState.slidesRunId ?? null,

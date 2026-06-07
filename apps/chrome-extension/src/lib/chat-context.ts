@@ -144,7 +144,7 @@ export function buildChatPageContent({
   const cleanTranscript = transcript.trim();
   const metadataBlock = buildMetadataBlock(metadata);
   const slidesText = slides?.text?.trim() ?? "";
-  const slidesBlock = slidesText.length > 0 ? `Slides (OCR):\n${slidesText}\n\n` : "";
+  const slidesBlock = slidesText.length > 0 ? `Slide timeline:\n${slidesText}\n\n` : "";
 
   if (!cleanSummary) {
     return `${metadataBlock}${slidesBlock}Full transcript:\n${cleanTranscript}`.trim();

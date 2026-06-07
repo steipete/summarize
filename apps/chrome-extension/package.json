@@ -1,6 +1,6 @@
 {
   "name": "@steipete/summarize-chrome-extension",
-  "version": "0.8.0",
+  "version": "0.17.0",
   "private": true,
   "type": "module",
   "scripts": {

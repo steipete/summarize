@@ -87,6 +87,7 @@ describe("summary view runtime", () => {
       clearSlidesSummaryError: vi.fn(),
       updateSlidesTextState: vi.fn(),
       requestSlidesContext: vi.fn(),
+      requestSlidesCapture: vi.fn(),
       updateSlideSummaryFromMarkdown: vi.fn(),
       renderMarkdown: vi.fn(),
       renderMarkdownDisplay: vi.fn(),
@@ -160,6 +161,7 @@ describe("summary view runtime", () => {
       clearSlidesSummaryError: vi.fn(),
       updateSlidesTextState: vi.fn(),
       requestSlidesContext,
+      requestSlidesCapture: vi.fn(),
       updateSlideSummaryFromMarkdown: vi.fn(),
       renderMarkdown: vi.fn(),
       renderMarkdownDisplay: vi.fn(),
@@ -188,6 +190,69 @@ describe("summary view runtime", () => {
 
     expect(setSlidesContextUrl).toHaveBeenCalledWith(null);
     expect(requestSlidesContext).not.toHaveBeenCalled();
+  });
+
+  it("does not request browser slide capture for cached non-YouTube URL-mode pages", () => {
+    const panelState = createPanelState();
+    const requestSlidesCapture = vi.fn();
+    const runtime = createSummaryViewRuntime({
+      panelState,
+      renderEl: document.createElement("div"),
+      renderSlidesHostEl: document.createElement("div"),
+      renderMarkdownHostEl: document.createElement("div"),
+      summaryCopyBtn: document.createElement("button"),
+      getSlidesRenderer: () => ({ clear: vi.fn() }),
+      metricsController: { clearForMode: vi.fn() },
+      headerController: { setBaseTitle: vi.fn(), setBaseSubtitle: vi.fn() },
+      slidesTextController: {
+        reset: vi.fn(),
+        getTranscriptTimedText: vi.fn(() => null),
+        getTranscriptAvailable: vi.fn(() => false),
+      },
+      getSlidesHydrator: () => ({ syncFromCache: vi.fn() }),
+      stopSlidesStream: vi.fn(),
+      refreshSummarizeControl: vi.fn(),
+      resetChatState: vi.fn(),
+      setSlidesTranscriptTimedText: vi.fn(),
+      getSlidesParallelValue: vi.fn(() => true),
+      getCurrentRunTabId: vi.fn(() => null),
+      getActiveTabId: vi.fn(() => 1),
+      getActiveTabUrl: vi.fn(() => "https://x.com/example/status/123"),
+      setCurrentRunTabId: vi.fn(),
+      setSlidesContextPending: vi.fn(),
+      setSlidesContextUrl: vi.fn(),
+      setSlidesSeededSourceId: vi.fn(),
+      setSlidesAppliedRunId: vi.fn(),
+      setSlidesExpanded: vi.fn(),
+      resolveActiveSlidesRunId: vi.fn(() => null),
+      getSlidesSummaryState: vi.fn(() => ({
+        runId: null,
+        markdown: "",
+        complete: false,
+        model: null,
+      })),
+      setSlidesSummaryState: vi.fn(),
+      clearSlidesSummaryPending: vi.fn(),
+      clearSlidesSummaryError: vi.fn(),
+      updateSlidesTextState: vi.fn(),
+      requestSlidesContext: vi.fn(),
+      requestSlidesCapture,
+      updateSlideSummaryFromMarkdown: vi.fn(),
+      renderMarkdown: vi.fn(),
+      renderMarkdownDisplay: vi.fn(),
+      queueSlidesRender: vi.fn(),
+      setPhase: vi.fn(),
+    });
+
+    runtime.applyPanelCache(
+      createCachePayload({
+        url: "https://x.com/example/status/123",
+        summaryMarkdown: "Cached summary",
+        slides: null,
+      }),
+    );
+
+    expect(requestSlidesCapture).not.toHaveBeenCalled();
   });
 
   it("hides the persistent header copy action when resetting the summary view", () => {
@@ -238,6 +303,7 @@ describe("summary view runtime", () => {
       clearSlidesSummaryError: vi.fn(),
       updateSlidesTextState: vi.fn(),
       requestSlidesContext: vi.fn(),
+      requestSlidesCapture: vi.fn(),
       updateSlideSummaryFromMarkdown: vi.fn(),
       renderMarkdown: vi.fn(),
       renderMarkdownDisplay: vi.fn(),

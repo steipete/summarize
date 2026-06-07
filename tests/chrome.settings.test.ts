@@ -54,6 +54,25 @@ describe("chrome/settings", () => {
     expect(loaded.slidesOcrEnabled).toBe(true);
   });
 
+  it("normalizes slide runtime preferences", async () => {
+    await patchSettings({ slideRuntime: "daemon" });
+    expect((await loadSettings()).slideRuntime).toBe("daemon");
+
+    storage.settings = { slideRuntime: "browser" };
+    expect((await loadSettings()).slideRuntime).toBe("browser");
+
+    storage.settings = { slideRuntime: "native" };
+    expect((await loadSettings()).slideRuntime).toBe(defaultSettings.slideRuntime);
+  });
+
+  it("migrates the legacy daemonless slide preference", async () => {
+    storage.settings = { daemonlessSlides: false };
+    expect((await loadSettings()).slideRuntime).toBe("daemon");
+
+    storage.settings = { daemonlessSlides: true };
+    expect((await loadSettings()).slideRuntime).toBe("browser");
+  });
+
   it("normalizes advanced overrides on save", async () => {
     await saveSettings({
       ...defaultSettings,

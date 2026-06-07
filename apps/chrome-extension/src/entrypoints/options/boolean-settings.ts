@@ -1,4 +1,4 @@
-import type { defaultSettings } from "../../lib/settings";
+import type { defaultSettings, SlideRuntime } from "../../lib/settings";
 import { createBooleanToggleController } from "./toggles";
 
 type BooleanSettingsState = {
@@ -8,6 +8,7 @@ type BooleanSettingsState = {
   hoverSummaries: boolean;
   summaryTimestamps: boolean;
   slidesParallel: boolean;
+  slideRuntime: SlideRuntime;
   slidesOcrEnabled: boolean;
   extendedLogging: boolean;
   autoCliFallback: boolean;
@@ -16,6 +17,44 @@ type BooleanSettingsState = {
 type ToggleController = {
   render: () => void;
 };
+
+function createSlideRuntimeController({
+  root,
+  getValue,
+  setValue,
+  scheduleAutoSave,
+  afterChange,
+}: {
+  root: HTMLElement;
+  getValue: () => SlideRuntime;
+  setValue: (value: SlideRuntime) => void;
+  scheduleAutoSave: (delay?: number) => void;
+  afterChange?: () => void | Promise<void>;
+}): ToggleController {
+  const inputs = Array.from(
+    root.querySelectorAll<HTMLInputElement>('input[name="slideRuntimeMode"]'),
+  );
+
+  for (const input of inputs) {
+    input.addEventListener("change", () => {
+      if (!input.checked) return;
+      setValue(input.value === "daemon" ? "daemon" : "browser");
+      render();
+      scheduleAutoSave(0);
+      void afterChange?.();
+    });
+  }
+
+  function render() {
+    const value = getValue();
+    for (const input of inputs) {
+      input.checked = input.value === value;
+      input.closest(".runtimeModeCard")?.toggleAttribute("data-selected", input.checked);
+    }
+  }
+
+  return { render };
+}
 
 export function createBooleanSettingsRuntime(options: {
   defaults: typeof defaultSettings;
@@ -26,12 +65,14 @@ export function createBooleanSettingsRuntime(options: {
     hoverSummariesToggleRoot: HTMLElement;
     summaryTimestampsToggleRoot: HTMLElement;
     slidesParallelToggleRoot: HTMLElement;
+    slideRuntimeModeRoot: HTMLElement;
     slidesOcrToggleRoot: HTMLElement;
     extendedLoggingToggleRoot: HTMLElement;
     autoCliFallbackToggleRoot: HTMLElement;
   };
   scheduleAutoSave: (delayMs?: number) => void;
   onAutomationChanged?: () => void;
+  onDaemonSlidesModeChanged?: () => void;
 }) {
   const state: BooleanSettingsState = {
     autoSummarize: options.defaults.autoSummarize,
@@ -40,6 +81,7 @@ export function createBooleanSettingsRuntime(options: {
     hoverSummaries: options.defaults.hoverSummaries,
     summaryTimestamps: options.defaults.summaryTimestamps,
     slidesParallel: options.defaults.slidesParallel,
+    slideRuntime: options.defaults.slideRuntime,
     slidesOcrEnabled: options.defaults.slidesOcrEnabled,
     extendedLogging: options.defaults.extendedLogging,
     autoCliFallback: options.defaults.autoCliFallback,
@@ -106,6 +148,15 @@ export function createBooleanSettingsRuntime(options: {
         state.slidesParallel = checked;
       },
       scheduleAutoSave: options.scheduleAutoSave,
+    }),
+    createSlideRuntimeController({
+      root: options.roots.slideRuntimeModeRoot,
+      getValue: () => state.slideRuntime,
+      setValue: (value) => {
+        state.slideRuntime = value;
+      },
+      scheduleAutoSave: options.scheduleAutoSave,
+      afterChange: options.onDaemonSlidesModeChanged,
     }),
     createBooleanToggleController({
       root: options.roots.slidesOcrToggleRoot,

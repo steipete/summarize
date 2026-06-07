@@ -1,6 +1,6 @@
 import { SUMMARY_LENGTH_SPECS } from "@steipete/summarize-core/prompts";
 import type { SummaryLength, SseSlidesData } from "../../lib/runtime-contracts";
-import { buildSlidePresentation } from "../../lib/slides-presentation";
+import { buildSlidePresentation, type SlidePresentationCard } from "../../lib/slides-presentation";
 import {
   buildSlideTextFallback,
   resolveSlideTextBudget,
@@ -23,6 +23,12 @@ const SLIDE_CUSTOM_LENGTH_PATTERN = /^(?<value>\d+(?:\.\d+)?)(?<unit>k|m)?$/i;
 export type SlideTextMode = "transcript" | "ocr";
 
 type SlideLike = SseSlidesData["slides"][number];
+
+export type SlideSummaryDerivation = {
+  cards: SlidePresentationCard[];
+  summaries: Map<number, string>;
+  titles: Map<number, string>;
+};
 
 export function splitSlidesMarkdown(markdown: string): { summary: string; slides: string | null } {
   const { summary, slidesSection } = splitSummaryFromSlides(markdown);
@@ -178,6 +184,15 @@ function createTimeline(slides: SlideLike[]): SlideTimelineEntry[] {
   }));
 }
 
+function countSummaryParagraphs(markdown: string): number {
+  const { summary } = splitSlidesMarkdown(markdown);
+  return summary
+    .split(/\n\s*\n+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => !/^#{1,6}\s+\S/.test(part)).length;
+}
+
 export function deriveSlideSummaries({
   markdown,
   slides,
@@ -188,7 +203,7 @@ export function deriveSlideSummaries({
   slides: SlideLike[];
   transcriptTimedText: string | null;
   lengthValue: string;
-}): { summaries: Map<number, string>; titles: Map<number, string> } | null {
+}): SlideSummaryDerivation | null {
   const lengthArg = resolveSlidesLengthArg(lengthValue);
   const directPresentation = buildSlidePresentation({
     markdown,
@@ -198,17 +213,23 @@ export function deriveSlideSummaries({
     coerce: false,
     includeTranscriptFallback: false,
   });
-  const presentation =
-    directPresentation.cards.length > 0
-      ? directPresentation
-      : buildSlidePresentation({
-          markdown,
-          slides: createTimeline(slides),
-          transcriptTimedText,
-          lengthArg,
-          coerce: true,
-          includeTranscriptFallback: false,
-        });
+  const directHasEverySlideBody =
+    slides.length > 0 && slides.every((slide) => directPresentation.summaries.has(slide.index));
+  const summaryParagraphCount = countSummaryParagraphs(markdown);
+  const shouldCoerce =
+    summaryParagraphCount >= 2 &&
+    (directPresentation.cards.length === 0 || !directHasEverySlideBody);
+  const presentation = shouldCoerce
+    ? buildSlidePresentation({
+        markdown,
+        slides: createTimeline(slides),
+        transcriptTimedText,
+        lengthArg,
+        coerce: true,
+        coerceReserveIntro: false,
+        includeTranscriptFallback: false,
+      })
+    : directPresentation;
   const summaries = new Map<number, string>();
   const titles = new Map<number, string>();
   for (const card of presentation.cards) {
@@ -218,7 +239,7 @@ export function deriveSlideSummaries({
     if (hasMeaningfulSlideSummaryText(title)) titles.set(card.index, title);
   }
   if (summaries.size === 0 && titles.size === 0) return null;
-  return { summaries, titles };
+  return { cards: presentation.cards, summaries, titles };
 }
 
 export function buildSlideDescriptions({
@@ -230,6 +251,7 @@ export function buildSlideDescriptions({
   slidesOcrEnabled,
   slidesOcrAvailable,
   slidesTranscriptAvailable,
+  allowTranscriptFallback = true,
 }: {
   slides: SlideLike[];
   slideSummaries?: ReadonlyMap<number, string>;
@@ -239,15 +261,18 @@ export function buildSlideDescriptions({
   slidesOcrEnabled: boolean;
   slidesOcrAvailable: boolean;
   slidesTranscriptAvailable: boolean;
+  allowTranscriptFallback?: boolean;
 }): Map<number, string> {
   const descriptions = new Map<number, string>();
   const lengthArg = resolveSlidesLengthArg(lengthValue);
   const timeline = createTimeline(slides);
-  const fallbackSummaries = buildSlideTextFallback({
-    slides: timeline,
-    transcriptTimedText,
-    lengthArg,
-  });
+  const fallbackSummaries = allowTranscriptFallback
+    ? buildSlideTextFallback({
+        slides: timeline,
+        transcriptTimedText,
+        lengthArg,
+      })
+    : new Map<number, string>();
   const budget = resolveSlideTextBudget({ lengthArg, slideCount: timeline.length });
   const allowOcrFallback = slidesOcrEnabled && slidesOcrAvailable && !slidesTranscriptAvailable;
   for (const slide of slides) {

@@ -1,5 +1,5 @@
 import { readPresetOrCustomValue, resolvePresetOrCustom } from "../../lib/combo";
-import type { Settings } from "../../lib/settings";
+import type { Settings, SlideRuntime } from "../../lib/settings";
 import type { ColorMode, ColorScheme } from "../../lib/theme";
 import type { createModelPresetsController } from "./model-presets";
 
@@ -30,6 +30,7 @@ type BooleanFormState = {
   chatEnabled: boolean;
   automationEnabled: boolean;
   slidesParallel: boolean;
+  slideRuntime: SlideRuntime;
   slidesOcrEnabled: boolean;
   summaryTimestamps: boolean;
   extendedLogging: boolean;
@@ -69,6 +70,7 @@ export function buildSavedOptionsSettings({
     chatEnabled: booleans.chatEnabled,
     automationEnabled: booleans.automationEnabled,
     slidesEnabled: current.slidesEnabled,
+    slideRuntime: booleans.slideRuntime,
     slidesParallel: booleans.slidesParallel,
     slidesOcrEnabled: booleans.slidesOcrEnabled,
     slidesLayout: current.slidesLayout,
@@ -143,6 +145,7 @@ export function applyLoadedOptionsSettings({
       chatEnabled: settings.chatEnabled,
       automationEnabled: settings.automationEnabled,
       slidesParallel: settings.slidesParallel,
+      slideRuntime: settings.slideRuntime,
       slidesOcrEnabled: settings.slidesOcrEnabled,
       summaryTimestamps: settings.summaryTimestamps,
       extendedLogging: settings.extendedLogging,

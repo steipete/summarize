@@ -56,6 +56,10 @@ export function createSetupRuntime(options: {
   };
 
   const maybeShowSetup = (state: UiState) => {
+    if (state.settings.slideRuntime === "browser") {
+      options.setupEl.classList.add("hidden");
+      return false;
+    }
     if (!state.settings.tokenPresent) {
       void options.ensureToken().then((token) => {
         renderSetup(token);

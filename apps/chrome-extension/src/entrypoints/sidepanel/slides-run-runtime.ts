@@ -16,7 +16,7 @@ export function createSlidesRunRuntime(options: {
   hideSlideNotice: () => void;
   setSlidesBusy: (value: boolean) => void;
   schedulePanelCacheSync: () => void;
-  startSlidesHydrator: (runId: string) => void;
+  startSlidesHydrator: (runId: string, opts?: { local?: boolean }) => void;
   startSlidesSummaryController: (payload: {
     id: string;
     url: string;
@@ -49,7 +49,7 @@ export function createSlidesRunRuntime(options: {
     options.headerSetStatus(trimmed);
   };
 
-  const startSlidesStreamForRunId = (runId: string) => {
+  const startSlidesStreamForRunId = (runId: string, opts?: { local?: boolean }) => {
     const ui = options.getUiState();
     const slidesAllowed = options.getSlidesEnabled() || ui?.settings.slidesEnabled;
     if (!slidesAllowed) {
@@ -61,7 +61,7 @@ export function createSlidesRunRuntime(options: {
     options.setSlidesBusy(true);
     options.setSlidesRunId(runId);
     options.schedulePanelCacheSync();
-    options.startSlidesHydrator(runId);
+    options.startSlidesHydrator(runId, opts);
   };
 
   const startSlidesStream = (run: RunStart) => {
