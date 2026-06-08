@@ -99,6 +99,33 @@ describe("runCliModel regressions", () => {
     expect(result.text).toBe("Hello world");
   });
 
+  it("passes Codex image args after exec so -i does not consume the subcommand", async () => {
+    let seenArgs: string[] = [];
+
+    const result = await runCliModel({
+      provider: "codex",
+      prompt: "summarize this image",
+      model: "gpt-5.2",
+      allowTools: true,
+      timeoutMs: 1000,
+      env: {},
+      config: null,
+      extraArgs: ["-i", "/tmp/image.jpg"],
+      execFileImpl: (_cmd, args, _opts, cb) => {
+        seenArgs = [...args];
+        const outputIndex = args.indexOf("--output-last-message");
+        const outputPath = outputIndex >= 0 ? args[outputIndex + 1] : null;
+        if (!outputPath) throw new Error("missing output path");
+        writeFileSync(outputPath, "ok", "utf8");
+        cb(null, "", "");
+        return { stdin: { write() {}, end() {} } } as unknown as ChildProcess;
+      },
+    });
+
+    expect(result.text).toBe("ok");
+    expect(seenArgs.indexOf("exec")).toBeLessThan(seenArgs.indexOf("-i"));
+  });
+
   it("codex does not leak lifecycle JSONL when no assistant text was produced", async () => {
     await expect(
       runCliModel({
