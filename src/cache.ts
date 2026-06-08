@@ -362,20 +362,17 @@ export async function createCacheStore({
     typeof transcriptNamespace === "string" && transcriptNamespace.trim().length > 0
       ? transcriptNamespace.trim()
       : null;
-  const getTranscriptKey = (url: string): string =>
+  const getTranscriptKey = (url: string, fileMtime?: number | null): string =>
     buildTranscriptCacheKey({
       url,
       namespace: normalizedTranscriptNamespace,
+      fileMtime,
     });
 
   const transcriptCache: TranscriptCache = {
     get: async ({ url, fileMtime }) => {
       const now = Date.now();
-      const key = buildTranscriptCacheKey({
-        url,
-        namespace: normalizedTranscriptNamespace,
-        fileMtime,
-      });
+      const key = getTranscriptKey(url, fileMtime);
       const row = readEntry("transcript", key, now);
       if (!row) return null;
       const expired = typeof row.expires_at === "number" && row.expires_at <= now;
@@ -400,8 +397,8 @@ export async function createCacheStore({
         metadata: (payload?.metadata as Record<string, unknown> | null | undefined) ?? null,
       };
     },
-    set: async ({ url, content, source, ttlMs, metadata, service, resourceKey }) => {
-      const key = getTranscriptKey(url);
+    set: async ({ url, content, source, ttlMs, metadata, service, resourceKey, fileMtime }) => {
+      const key = getTranscriptKey(url, fileMtime);
       setJson(
         "transcript",
         key,
