@@ -155,8 +155,8 @@ importers:
         specifier: ^2.17.4
         version: 2.17.4
       undici:
-        specifier: 8.3.0
-        version: 8.3.0
+        specifier: 8.4.1
+        version: 8.4.1
     devDependencies:
       '@types/jsdom':
         specifier: ^28.0.3
