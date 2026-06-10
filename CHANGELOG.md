@@ -10,6 +10,7 @@
 
 ### Fixes
 
+- CLI cache: include local media `fileMtime` when writing transcript cache entries so repeated unchanged audio/video extraction can hit cache (#240, #241, thanks @alfozan).
 - CLI: pass Codex image attachments to `codex exec` so local image summaries no longer fail before starting (#242, #243, thanks @alfozan).
 - Chrome extension: abort stale side-panel summary streams on tab changes so delayed output from a closed or replaced tab cannot render under the new page title.
 - Core: extract video IDs from YouTube `/live/` URLs so live and premiere links no longer abort summarization (#232, thanks @devYRPauli).
