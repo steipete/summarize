@@ -45,6 +45,22 @@ describe("openai provider helpers", () => {
       useChatCompletions: true,
       isOpenRouter: true,
     });
+
+    expect(
+      resolveOpenAiClientConfig({
+        apiKeys: {
+          openaiApiKey: "oa-key",
+          openrouterApiKey: null,
+        },
+        forceOpenRouter: true,
+        forceChatCompletions: false,
+      }),
+    ).toEqual({
+      apiKey: "oa-key",
+      baseURL: "https://openrouter.ai/api/v1",
+      useChatCompletions: true,
+      isOpenRouter: true,
+    });
   });
 
   it("handles custom and invalid base URLs", () => {

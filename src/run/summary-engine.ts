@@ -339,9 +339,11 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     const forceChatCompletions =
       typeof attempt.forceChatCompletions === "boolean"
         ? attempt.forceChatCompletions
-        : parsedModelEffective.provider === "openai"
-          ? deps.openaiUseChatCompletions
-          : undefined;
+        : attempt.transport === "openrouter"
+          ? undefined
+          : parsedModelEffective.provider === "openai"
+            ? deps.openaiUseChatCompletions
+            : undefined;
 
     const maxOutputTokensForCall = await deps.resolveMaxOutputTokensForCall(
       parsedModelEffective.canonical,

@@ -184,7 +184,7 @@ export async function streamChatResponse({
           transport: "native" as const,
           openaiApiKeyOverride: null,
           openaiBaseUrlOverride: null,
-          forceChatCompletions: false,
+          forceChatCompletions: undefined,
         };
       }
       return {
@@ -318,7 +318,12 @@ export async function streamChatResponse({
     timeoutMs: 30_000,
     fetchImpl,
     forceOpenRouter: attempt.forceOpenRouter,
-    forceChatCompletions: attempt.requiredEnv === "OPENAI_API_KEY" && openaiUseChatCompletions,
+    forceChatCompletions:
+      attempt.transport === "openrouter"
+        ? undefined
+        : attempt.requiredEnv === "OPENAI_API_KEY"
+          ? openaiUseChatCompletions
+          : undefined,
     requestOptions: mergeModelRequestOptions(openaiRequestOptions, attempt.requestOptions),
   });
   for await (const chunk of result.textStream) {

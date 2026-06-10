@@ -293,9 +293,14 @@ describe("daemon/chat", () => {
     });
 
     const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
-    const args = calls[calls.length - 1]?.[0] as { modelId: string; forceOpenRouter?: boolean };
+    const args = calls[calls.length - 1]?.[0] as {
+      modelId: string;
+      forceOpenRouter?: boolean;
+      forceChatCompletions?: boolean;
+    };
     expect(args.modelId).toBe("openai/anthropic/claude-sonnet-4-5");
     expect(args.forceOpenRouter).toBe(true);
+    expect(args.forceChatCompletions).toBeUndefined();
     expect(meta[0]?.model).toBe("openrouter/anthropic/claude-sonnet-4-5");
   });
 
@@ -416,9 +421,14 @@ describe("daemon/chat", () => {
     });
 
     const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
-    const args = calls[calls.length - 1]?.[0] as { modelId: string; forceOpenRouter?: boolean };
+    const args = calls[calls.length - 1]?.[0] as {
+      modelId: string;
+      forceOpenRouter?: boolean;
+      forceChatCompletions?: boolean;
+    };
     expect(args.modelId).toBe("openai/openai/gpt-5-mini");
     expect(args.forceOpenRouter).toBe(true);
+    expect(args.forceChatCompletions).toBeUndefined();
     expect(meta[0]?.model).toBe("openrouter/openai/gpt-5-mini");
   });
 
