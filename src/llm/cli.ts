@@ -432,7 +432,7 @@ export async function runCliModel({
       if (!allowTools) {
         piArgs.push("--no-tools");
       }
-      piArgs.push("--no-context-files", "--no-extensions", "--no-skills", "--no-session");
+      piArgs.push("--no-context-files", "--no-extensions", "--no-skills", "--no-session", "--thinking", "off");
       if (systemPrompt) {
         piArgs.push("--system-prompt", systemPrompt);
       }
