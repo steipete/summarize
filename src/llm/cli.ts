@@ -304,8 +304,7 @@ export async function runCliModel({
       if (isolatedCodexHome) {
         await copyCodexAuthFiles(effectiveEnv.CODEX_HOME, isolatedCodexHome);
       }
-      args.push("exec");
-      args.push(...codexExtraArgs);
+      args.push("exec", ...codexExtraArgs);
       if (shouldIsolateCodex) {
         args.push("--ephemeral", "--ignore-user-config", "--ignore-rules");
         if (isolatedCwd) args.push("-C", isolatedCwd);
