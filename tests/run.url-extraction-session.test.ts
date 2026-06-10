@@ -50,6 +50,7 @@ function createCtx() {
         falApiKey: null,
         groqApiKey: null,
         assemblyaiApiKey: null,
+        elevenlabsApiKey: null,
         openaiApiKey: null,
         googleApiKey: null,
       },
@@ -115,6 +116,29 @@ describe("createUrlExtractionSession", () => {
         },
       },
     });
+  });
+
+  it("forwards ElevenLabs transcription credentials", () => {
+    const ctx = createCtx();
+    ctx.model.apiStatus.elevenlabsApiKey = "elevenlabs-key";
+
+    createUrlExtractionSession({
+      ctx: ctx as never,
+      markdown: {
+        convertHtmlToMarkdown: vi.fn(),
+        effectiveMarkdownMode: "off",
+        markdownRequested: false,
+      },
+      onProgress: null,
+    });
+
+    expect(createLinkPreviewClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transcription: expect.objectContaining({
+          elevenlabsApiKey: "elevenlabs-key",
+        }),
+      }),
+    );
   });
 
   it("bypasses extract-cache reuse for local file URLs and forwards file mtime", async () => {

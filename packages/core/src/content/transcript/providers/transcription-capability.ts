@@ -1,3 +1,8 @@
+import {
+  buildMissingDiarizationProviderMessage,
+  resolveDiarizationProviderOrder,
+  type DiarizationPreference,
+} from "../../../transcription/whisper.js";
 import { buildMissingTranscriptionProviderNote } from "../../../transcription/whisper/provider-setup.js";
 import type { TranscriptionConfig } from "../transcription-config.js";
 import type { ProviderResult, TranscriptSource } from "../types.js";
@@ -16,16 +21,28 @@ export type TranscriptProviderCapabilities = {
 export async function resolveTranscriptProviderCapabilities({
   transcription,
   ytDlpPath,
+  diarization = null,
 }: {
   transcription: TranscriptionConfig;
   ytDlpPath?: string | null;
+  diarization?: DiarizationPreference | null;
 }): Promise<TranscriptProviderCapabilities> {
   const availability = await resolveTranscriptionAvailability({ transcription });
+  const diarizationProviders = diarization
+    ? resolveDiarizationProviderOrder({
+        preference: diarization,
+        elevenlabsApiKey: transcription.elevenlabsApiKey,
+        openaiApiKey: transcription.openaiApiKey,
+      })
+    : [];
+  const canTranscribe = diarization ? diarizationProviders.length > 0 : availability.hasAnyProvider;
   return {
     availability,
-    canTranscribe: availability.hasAnyProvider,
-    canRunYtDlp: Boolean(ytDlpPath && availability.hasAnyProvider),
-    missingProviderNote: buildMissingTranscriptionProviderNote(),
+    canTranscribe,
+    canRunYtDlp: Boolean(ytDlpPath && canTranscribe),
+    missingProviderNote: diarization
+      ? buildMissingDiarizationProviderMessage(diarization)
+      : buildMissingTranscriptionProviderNote(),
   };
 }
 

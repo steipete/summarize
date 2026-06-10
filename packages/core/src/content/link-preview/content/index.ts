@@ -78,6 +78,7 @@ export async function fetchLinkContent(
   const youtubeTranscriptMode = options?.youtubeTranscript ?? "auto";
   const mediaTranscriptMode = options?.mediaTranscript ?? "auto";
   const transcriptTimestamps = options?.transcriptTimestamps ?? false;
+  const transcriptDiarization = options?.transcriptDiarization ?? null;
   const firecrawlMode = resolveFirecrawlMode(options);
   const markdownRequested = (options?.format ?? "text") === "markdown";
   const markdownMode: MarkdownMode = options?.markdownMode ?? "auto";
@@ -101,6 +102,7 @@ export async function fetchLinkContent(
       youtubeTranscriptMode,
       mediaTranscriptMode,
       transcriptTimestamps,
+      transcriptDiarization,
       cacheMode,
       fileMtime,
     });
@@ -164,6 +166,7 @@ export async function fetchLinkContent(
       youtubeTranscriptMode,
       mediaTranscriptMode,
       transcriptTimestamps,
+      transcriptDiarization,
       cacheMode,
       fileMtime,
     });
@@ -218,6 +221,7 @@ export async function fetchLinkContent(
       youtubeTranscriptMode,
       mediaTranscriptMode: broadcastTranscriptMode,
       transcriptTimestamps,
+      transcriptDiarization,
       cacheMode,
       fileMtime,
     });
@@ -271,6 +275,7 @@ export async function fetchLinkContent(
       youtubeTranscriptMode,
       mediaTranscriptMode,
       transcriptTimestamps,
+      transcriptDiarization,
       cacheMode,
       fileMtime,
     });
@@ -369,6 +374,7 @@ export async function fetchLinkContent(
       youtubeTranscriptMode,
       mediaTranscriptMode,
       transcriptTimestamps,
+      transcriptDiarization,
       firecrawlDiagnostics,
       markdownRequested,
       deps,
@@ -429,6 +435,7 @@ export async function fetchLinkContent(
             mediaTranscriptMode: mediaTranscriptModeForTweet,
             mediaKindHint: media?.kind ?? null,
             transcriptTimestamps,
+            transcriptDiarization,
             cacheMode,
             fileMtime,
           });
@@ -534,6 +541,7 @@ export async function fetchLinkContent(
       youtubeTranscriptMode,
       mediaTranscriptMode,
       transcriptTimestamps,
+      transcriptDiarization,
       firecrawlDiagnostics,
       markdownRequested,
       markdownMode,
@@ -618,6 +626,7 @@ export async function fetchLinkContent(
     youtubeTranscriptMode,
     mediaTranscriptMode,
     transcriptTimestamps,
+    transcriptDiarization,
     firecrawlDiagnostics,
     markdownRequested,
     markdownMode,

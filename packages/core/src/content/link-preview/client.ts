@@ -29,6 +29,7 @@ export interface LinkPreviewClientOptions {
   falApiKey?: string | null;
   groqApiKey?: string | null;
   assemblyaiApiKey?: string | null;
+  elevenlabsApiKey?: string | null;
   geminiApiKey?: string | null;
   openaiApiKey?: string | null;
   convertHtmlToMarkdown?: ConvertHtmlToMarkdown | null;
@@ -51,6 +52,8 @@ export function createLinkPreviewClient(options: LinkPreviewClientOptions = {}):
   const groqApiKey = typeof options.groqApiKey === "string" ? options.groqApiKey : null;
   const assemblyaiApiKey =
     typeof options.assemblyaiApiKey === "string" ? options.assemblyaiApiKey : null;
+  const elevenlabsApiKey =
+    typeof options.elevenlabsApiKey === "string" ? options.elevenlabsApiKey : null;
   const geminiApiKey = typeof options.geminiApiKey === "string" ? options.geminiApiKey : null;
   const openaiApiKey = typeof options.openaiApiKey === "string" ? options.openaiApiKey : null;
   const transcription = resolveTranscriptionConfig({
@@ -59,6 +62,7 @@ export function createLinkPreviewClient(options: LinkPreviewClientOptions = {}):
     falApiKey,
     groqApiKey,
     assemblyaiApiKey,
+    elevenlabsApiKey,
     geminiApiKey,
     openaiApiKey,
   });
@@ -83,6 +87,7 @@ export function createLinkPreviewClient(options: LinkPreviewClientOptions = {}):
         falApiKey,
         groqApiKey,
         assemblyaiApiKey,
+        elevenlabsApiKey,
         geminiApiKey,
         openaiApiKey,
         convertHtmlToMarkdown,

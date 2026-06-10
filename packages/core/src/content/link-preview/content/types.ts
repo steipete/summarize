@@ -1,3 +1,4 @@
+import type { DiarizationPreference } from "../../../transcription/whisper/types.js";
 import type {
   CacheMode,
   ContentFetchDiagnostics,
@@ -22,6 +23,7 @@ export interface FetchLinkContentOptions {
   youtubeTranscript?: YoutubeTranscriptMode;
   mediaTranscript?: MediaTranscriptMode;
   transcriptTimestamps?: boolean;
+  transcriptDiarization?: DiarizationPreference | null;
   firecrawl?: FirecrawlMode;
   format?: ContentFormat;
   markdownMode?: MarkdownMode;

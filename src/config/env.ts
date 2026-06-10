@@ -13,6 +13,7 @@ const LEGACY_API_KEY_ENV_MAP = {
   fal: "FAL_KEY",
   groq: "GROQ_API_KEY",
   assemblyai: "ASSEMBLYAI_API_KEY",
+  elevenlabs: "ELEVENLABS_API_KEY",
 } as const satisfies Record<keyof ApiKeysConfig, string>;
 
 function resolveLegacyApiKeysEnv(apiKeys: ApiKeysConfig | undefined): EnvConfig {

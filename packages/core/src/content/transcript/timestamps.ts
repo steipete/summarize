@@ -73,7 +73,8 @@ export function formatTranscriptSegments(segments: TranscriptSegment[]): string 
     .map((segment) => {
       const text = segment.text.replace(/\s+/g, " ").trim();
       if (!text) return null;
-      return `[${formatTimestampMs(segment.startMs)}] ${text}`;
+      const speaker = segment.speaker?.trim();
+      return `[${formatTimestampMs(segment.startMs)}] ${speaker ? `${speaker}: ` : ""}${text}`;
     })
     .filter((line): line is string => Boolean(line));
   if (lines.length === 0) return null;

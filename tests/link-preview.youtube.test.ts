@@ -124,7 +124,13 @@ describe("link preview extraction (YouTube)", () => {
         return Promise.resolve(
           new Response(
             JSON.stringify({
-              events: [{ segs: [{ utf8: "Hello from captions" }] }],
+              events: [
+                {
+                  tStartMs: 0,
+                  dDurationMs: 1000,
+                  segs: [{ utf8: "Hello from captions" }],
+                },
+              ],
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           ),
@@ -139,9 +145,10 @@ describe("link preview extraction (YouTube)", () => {
     const client = createLinkPreviewClient({ fetch: fetchMock as unknown as typeof fetch });
     const result = await client.fetchLinkContent("https://www.youtube.com/watch?v=abcdefghijk", {
       youtubeTranscript: "web",
+      transcriptTimestamps: true,
     });
 
-    expect(result.content).toBe("Transcript:\nHello from captions");
+    expect(result.content).toBe("Transcript:\n[0:00] Hello from captions");
     expect(result.transcriptSource).toBe("captionTracks");
   });
 

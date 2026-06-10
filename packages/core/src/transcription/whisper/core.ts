@@ -5,6 +5,10 @@ import { basename, join } from "node:path";
 import { transcribeWithOnnxCli, transcribeWithOnnxCliFile } from "../onnx-cli.js";
 import { transcribeChunkedFile } from "./chunking.js";
 import { DEFAULT_SEGMENT_SECONDS, MAX_OPENAI_UPLOAD_BYTES } from "./constants.js";
+import {
+  transcribeMediaBytesWithDiarization,
+  transcribeMediaFileWithDiarization,
+} from "./diarization.js";
 import { isFfmpegAvailable, transcodeBytesToMp3 } from "./ffmpeg.js";
 import { shouldRetryGroqViaFfmpeg, transcribeWithGroq } from "./groq.js";
 import { resolveOnnxModelPreference } from "./preferences.js";
@@ -13,7 +17,11 @@ import {
   transcribeFileWithRemoteFallbacks,
   transcribeOversizedBytesViaTempFile,
 } from "./remote.js";
-import type { WhisperProgressEvent, WhisperTranscriptionResult } from "./types.js";
+import type {
+  DiarizationPreference,
+  WhisperProgressEvent,
+  WhisperTranscriptionResult,
+} from "./types.js";
 import { ensureWhisperFilenameExtension, formatBytes, wrapError } from "./utils.js";
 import { isWhisperCppReady, transcribeWithWhisperCppFile } from "./whisper-cpp.js";
 
@@ -22,9 +30,11 @@ type Env = Record<string, string | undefined>;
 type MediaRequest = {
   groqApiKey: string | null;
   assemblyaiApiKey?: string | null;
+  elevenlabsApiKey?: string | null;
   geminiApiKey?: string | null;
   openaiApiKey: string | null;
   falApiKey: string | null;
+  diarization?: DiarizationPreference | null;
   totalDurationSeconds?: number | null;
   onProgress?: ((event: WhisperProgressEvent) => void) | null;
   env?: Env;
@@ -37,9 +47,11 @@ export async function transcribeMediaWithWhisper({
   groqApiKey,
   skipGroq = false,
   assemblyaiApiKey = null,
+  elevenlabsApiKey = null,
   geminiApiKey = null,
   openaiApiKey,
   falApiKey,
+  diarization = null,
   totalDurationSeconds = null,
   onProgress,
   env = process.env,
@@ -49,6 +61,20 @@ export async function transcribeMediaWithWhisper({
   filename: string | null;
   skipGroq?: boolean;
 } & MediaRequest): Promise<WhisperTranscriptionResult> {
+  if (diarization) {
+    return await transcribeMediaBytesWithDiarization({
+      bytes,
+      mediaType,
+      filename,
+      preference: diarization,
+      elevenlabsApiKey,
+      openaiApiKey,
+      env,
+      totalDurationSeconds,
+      onProgress,
+    });
+  }
+
   const notes: string[] = [];
 
   let groqError: Error | null = null;
@@ -140,9 +166,11 @@ export async function transcribeMediaFileWithWhisper({
   filename,
   groqApiKey,
   assemblyaiApiKey = null,
+  elevenlabsApiKey = null,
   geminiApiKey = null,
   openaiApiKey,
   falApiKey,
+  diarization = null,
   segmentSeconds = DEFAULT_SEGMENT_SECONDS,
   totalDurationSeconds = null,
   onProgress = null,
@@ -153,6 +181,20 @@ export async function transcribeMediaFileWithWhisper({
   filename: string | null;
   segmentSeconds?: number;
 } & MediaRequest): Promise<WhisperTranscriptionResult> {
+  if (diarization) {
+    return await transcribeMediaFileWithDiarization({
+      filePath,
+      mediaType,
+      filename,
+      preference: diarization,
+      elevenlabsApiKey,
+      openaiApiKey,
+      env,
+      totalDurationSeconds,
+      onProgress,
+    });
+  }
+
   const notes: string[] = [];
 
   let skipGroqInNestedCalls = false;

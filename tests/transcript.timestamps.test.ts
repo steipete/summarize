@@ -67,4 +67,11 @@ describe("transcript timestamp helpers", () => {
     const text = formatTranscriptSegments([{ startMs: 1000, endMs: 2000, text: "Hello" }]);
     expect(text).toBe("[0:01] Hello");
   });
+
+  it("includes speaker labels in timed transcript lines", () => {
+    const text = formatTranscriptSegments([
+      { startMs: 1000, endMs: 2000, text: "Hello", speaker: "Speaker 1" },
+    ]);
+    expect(text).toBe("[0:01] Speaker 1: Hello");
+  });
 });

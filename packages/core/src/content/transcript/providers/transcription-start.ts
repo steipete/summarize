@@ -1,7 +1,10 @@
 import { isOnnxCliConfigured, resolvePreferredOnnxModel } from "../../../transcription/onnx-cli.js";
 import {
+  buildDiarizationModelChain,
   isWhisperCppReady,
+  resolveDiarizationProviderOrder,
   resolveWhisperCppModelNameForDisplay,
+  type DiarizationPreference,
 } from "../../../transcription/whisper.js";
 import {
   buildCloudModelIdChain,
@@ -19,6 +22,7 @@ export type TranscriptionAvailability = {
   hasLocalWhisper: boolean;
   hasGroq: boolean;
   hasAssemblyAi: boolean;
+  hasElevenLabs: boolean;
   hasGemini: boolean;
   hasOpenai: boolean;
   hasFal: boolean;
@@ -62,6 +66,7 @@ export async function resolveTranscriptionAvailability({
   const hasLocalWhisper = await isWhisperCppReady(effectiveEnv);
   const hasGroq = Boolean(effective.groqApiKey);
   const hasAssemblyAi = Boolean(effective.assemblyaiApiKey);
+  const hasElevenLabs = Boolean(effective.elevenlabsApiKey);
   const hasGemini = Boolean(effective.geminiApiKey);
   const hasOpenai = Boolean(effective.openaiApiKey);
   const hasFal = Boolean(effective.falApiKey);
@@ -74,6 +79,7 @@ export async function resolveTranscriptionAvailability({
     hasLocalWhisper,
     hasGroq,
     hasAssemblyAi,
+    hasElevenLabs,
     hasGemini,
     hasOpenai,
     hasFal,
@@ -91,6 +97,7 @@ export async function resolveTranscriptionStartInfo({
   geminiApiKey,
   openaiApiKey,
   falApiKey,
+  diarization = null,
 }: {
   env?: Env;
   transcription?: Partial<TranscriptionConfig> | null;
@@ -99,6 +106,7 @@ export async function resolveTranscriptionStartInfo({
   geminiApiKey?: string | null;
   openaiApiKey?: string | null;
   falApiKey?: string | null;
+  diarization?: DiarizationPreference | null;
 }): Promise<{
   availability: TranscriptionAvailability;
   providerHint: TranscriptionProviderHint;
@@ -113,6 +121,22 @@ export async function resolveTranscriptionStartInfo({
     openaiApiKey,
     falApiKey,
   });
+
+  if (diarization) {
+    const providers = resolveDiarizationProviderOrder({
+      preference: diarization,
+      elevenlabsApiKey: availability.hasElevenLabs ? "1" : null,
+      openaiApiKey: availability.hasOpenai ? "1" : null,
+    });
+    return {
+      availability,
+      providerHint:
+        providers.length > 0
+          ? (providers.join("->") as TranscriptionProviderHint)
+          : ("unknown" as const),
+      modelId: buildDiarizationModelChain(providers),
+    };
+  }
 
   const providerHint: TranscriptionProviderHint = availability.onnxReady
     ? "onnx"

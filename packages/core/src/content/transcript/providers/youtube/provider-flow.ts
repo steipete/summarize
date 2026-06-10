@@ -242,9 +242,11 @@ export async function tryYtDlpTranscript(args: {
     transcription: flow.transcription,
     groqApiKey: flow.options.groqApiKey,
     assemblyaiApiKey: flow.options.assemblyaiApiKey,
+    elevenlabsApiKey: flow.options.elevenlabsApiKey,
     geminiApiKey: flow.options.geminiApiKey,
     openaiApiKey: flow.options.openaiApiKey,
     falApiKey: flow.options.falApiKey,
+    diarization: flow.options.transcriptDiarization ?? null,
     mediaCache: flow.options.mediaCache ?? null,
     url: flow.context.url,
     onProgress: flow.options.onProgress ?? null,
@@ -258,9 +260,16 @@ export async function tryYtDlpTranscript(args: {
     return {
       text: normalizeTranscriptText(ytdlpResult.text),
       source: "yt-dlp",
+      segments: ytdlpResult.segments ?? null,
       metadata: {
         provider: "yt-dlp",
         transcriptionProvider: ytdlpResult.provider,
+        ...(flow.options.transcriptDiarization
+          ? {
+              speakerLabels: true,
+              diarizationProvider: ytdlpResult.provider,
+            }
+          : {}),
         ...(flow.durationMetadata ?? {}),
       },
       attemptedProviders: flow.attemptedProviders,

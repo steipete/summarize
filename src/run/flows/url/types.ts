@@ -43,6 +43,7 @@ export type UrlFlowFlags = {
   firecrawlMode: "off" | "auto" | "always";
   videoMode: "auto" | "transcript" | "understand";
   transcriptTimestamps: boolean;
+  transcriptDiarization: "auto" | "elevenlabs" | "openai" | null;
   outputLanguage: OutputLanguage;
   lengthArg: { kind: "preset"; preset: SummaryLength } | { kind: "chars"; maxCharacters: number };
   forceSummary: boolean;
@@ -118,6 +119,7 @@ export type UrlFlowModel = {
     falApiKey: string | null;
     groqApiKey: string | null;
     assemblyaiApiKey: string | null;
+    elevenlabsApiKey: string | null;
     openaiApiKey: string | null;
   };
   summaryEngine: ReturnType<typeof createSummaryEngine>;

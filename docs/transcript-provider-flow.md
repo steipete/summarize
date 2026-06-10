@@ -53,6 +53,9 @@ Goal: keep provider entrypoints thin; keep provider policy explicit.
   Order loop only.
   Fallback notes.
   OpenAI chunk/delegate policy.
+- `packages/core/src/transcription/whisper/diarization.ts`
+  Explicit speaker-label requests only.
+  ElevenLabs Scribe v2 first in auto mode, then OpenAI `gpt-4o-transcribe-diarize`.
 
 ## Current order
 
@@ -62,6 +65,9 @@ Goal: keep provider entrypoints thin; keep provider policy explicit.
   - Gemini
   - OpenAI
   - FAL
+- speaker diarization (`--diarize`):
+  - ElevenLabs
+  - OpenAI
 
 ## Rules
 

@@ -7,7 +7,7 @@ export function prepareRunEnvironment(
   argv: string[],
   inputEnv: Record<string, string | undefined>,
 ) {
-  const normalizedArgv = argv.filter((arg) => arg !== "--");
+  const normalizedArgv = normalizeDiarizeArgv(argv.filter((arg) => arg !== "--"));
   const noColorFlag = normalizedArgv.includes("--no-color");
   let envForRun: Record<string, string | undefined> = noColorFlag
     ? { ...inputEnv, NO_COLOR: "1", FORCE_COLOR: "0" }
@@ -15,6 +15,14 @@ export function prepareRunEnvironment(
   const { config: bootstrapConfig } = loadSummarizeConfig({ env: envForRun });
   envForRun = mergeConfigEnv({ env: envForRun, config: bootstrapConfig });
   return { normalizedArgv, envForRun };
+}
+
+export function normalizeDiarizeArgv(argv: string[]): string[] {
+  return argv.map((arg, index) => {
+    if (arg !== "--diarize") return arg;
+    const next = argv[index + 1];
+    return next && /^[a-z][a-z\d+.-]*:\/\//i.test(next) ? "--diarize=auto" : arg;
+  });
 }
 
 export function handleVersionFlag({

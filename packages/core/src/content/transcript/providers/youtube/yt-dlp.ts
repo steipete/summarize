@@ -5,6 +5,8 @@ import { basename, join } from "node:path";
 import { spawnTracked } from "../../../../processes.js";
 import {
   probeMediaDurationSecondsWithFfprobe,
+  type DiarizationPreference,
+  type TranscriptionSegment,
   type TranscriptionProvider,
   transcribeMediaFileWithWhisper,
 } from "../../../../transcription/whisper.js";
@@ -29,6 +31,7 @@ type YtDlpTranscriptResult = {
   provider: TranscriptionProvider | null;
   error: Error | null;
   notes: string[];
+  segments?: TranscriptionSegment[] | null;
 };
 
 type YtDlpRequest = {
@@ -37,9 +40,11 @@ type YtDlpRequest = {
   env?: Record<string, string | undefined>;
   groqApiKey?: string | null;
   assemblyaiApiKey?: string | null;
+  elevenlabsApiKey?: string | null;
   geminiApiKey?: string | null;
   openaiApiKey?: string | null;
   falApiKey?: string | null;
+  diarization?: DiarizationPreference | null;
   url: string;
   onProgress?: ((event: LinkPreviewProgressEvent) => void) | null;
   service?: "youtube" | "podcast" | "generic";
@@ -59,9 +64,11 @@ export const fetchTranscriptWithYtDlp = async ({
   env,
   groqApiKey,
   assemblyaiApiKey,
+  elevenlabsApiKey,
   geminiApiKey,
   openaiApiKey,
   falApiKey,
+  diarization = null,
   url,
   onProgress,
   service = "youtube",
@@ -75,6 +82,7 @@ export const fetchTranscriptWithYtDlp = async ({
     transcription,
     groqApiKey,
     assemblyaiApiKey,
+    elevenlabsApiKey,
     geminiApiKey,
     openaiApiKey,
     falApiKey,
@@ -91,13 +99,21 @@ export const fetchTranscriptWithYtDlp = async ({
   const effectiveEnv = effectiveTranscription.env ?? process.env;
   const startInfo = await resolveTranscriptionStartInfo({
     transcription: effectiveTranscription,
+    diarization,
   });
 
-  if (!startInfo.availability.hasAnyProvider) {
+  if (
+    (diarization && startInfo.providerHint === "unknown") ||
+    (!diarization && !startInfo.availability.hasAnyProvider)
+  ) {
     return {
       text: null,
       provider: null,
-      error: new Error(buildMissingTranscriptionProviderMessage()),
+      error: new Error(
+        diarization
+          ? "Speaker diarization requires ELEVENLABS_API_KEY or OPENAI_API_KEY"
+          : buildMissingTranscriptionProviderMessage(),
+      ),
       notes,
     };
   }
@@ -206,9 +222,11 @@ export const fetchTranscriptWithYtDlp = async ({
       filename,
       groqApiKey: effectiveTranscription.groqApiKey,
       assemblyaiApiKey: effectiveTranscription.assemblyaiApiKey,
+      elevenlabsApiKey: effectiveTranscription.elevenlabsApiKey,
       geminiApiKey: effectiveTranscription.geminiApiKey,
       openaiApiKey: effectiveTranscription.openaiApiKey,
       falApiKey: effectiveTranscription.falApiKey,
+      diarization,
       totalDurationSeconds: probedDurationSeconds,
       env: effectiveEnv,
       onProgress: (event) => {
@@ -224,7 +242,13 @@ export const fetchTranscriptWithYtDlp = async ({
       },
     });
     if (result.notes.length > 0) notes.push(...result.notes);
-    return { text: result.text, provider: result.provider, error: result.error, notes };
+    return {
+      text: result.text,
+      provider: result.provider,
+      error: result.error,
+      notes,
+      segments: result.segments ?? null,
+    };
   } catch (error) {
     if (
       error instanceof Error &&

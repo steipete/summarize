@@ -88,6 +88,7 @@ describe("config env", () => {
           fal: "fal-key",
           groq: "groq-key",
           assemblyai: "aai-key",
+          elevenlabs: "elevenlabs-key",
         },
       },
     });
@@ -99,6 +100,7 @@ describe("config env", () => {
     expect(merged.FAL_KEY).toBe("fal-key");
     expect(merged.GROQ_API_KEY).toBe("groq-key");
     expect(merged.ASSEMBLYAI_API_KEY).toBe("aai-key");
+    expect(merged.ELEVENLABS_API_KEY).toBe("elevenlabs-key");
   });
 
   it("prefers explicit env map over legacy apiKeys", () => {

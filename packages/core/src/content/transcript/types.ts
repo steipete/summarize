@@ -1,3 +1,4 @@
+import type { DiarizationPreference } from "../../transcription/whisper/types.js";
 import type { MediaCache } from "../cache/types.js";
 import type { MediaTranscriptMode, YoutubeTranscriptMode } from "../link-preview/content/types.js";
 import type {
@@ -25,6 +26,7 @@ export interface ProviderFetchOptions {
   mediaTranscriptMode: MediaTranscriptMode;
   mediaKindHint?: "video" | "audio" | null;
   transcriptTimestamps?: boolean;
+  transcriptDiarization?: DiarizationPreference | null;
   ytDlpPath: string | null;
   transcription?: TranscriptionConfig;
   falApiKey?: string | null;
@@ -32,6 +34,7 @@ export interface ProviderFetchOptions {
   geminiApiKey?: string | null;
   openaiApiKey?: string | null;
   assemblyaiApiKey?: string | null;
+  elevenlabsApiKey?: string | null;
   mediaCache?: MediaCache | null;
   resolveTwitterCookies?: ResolveTwitterCookies | null;
   onProgress?: ((event: LinkPreviewProgressEvent) => void) | null;

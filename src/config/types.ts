@@ -117,6 +117,7 @@ export type ApiKeysConfig = {
   fal?: string;
   groq?: string;
   assemblyai?: string;
+  elevenlabs?: string;
 };
 
 export type EnvConfig = Record<string, string>;

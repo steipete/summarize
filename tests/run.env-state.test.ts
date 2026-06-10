@@ -10,6 +10,7 @@ describe("resolveEnvState", () => {
       GEMINI_API_KEY: "sk-gemini",
       GROQ_API_KEY: "sk-groq",
       ASSEMBLYAI_API_KEY: "sk-assemblyai",
+      ELEVENLABS_API_KEY: "sk-elevenlabs",
       XAI_API_KEY: "sk-xai",
       ZAI_API_KEY: "sk-zai",
       NVIDIA_API_KEY: "sk-nvidia",
@@ -31,6 +32,7 @@ describe("resolveEnvState", () => {
     expect(state.googleApiKey).toBe("sk-gemini");
     expect(state.groqApiKey).toBe("sk-groq");
     expect(state.assemblyaiApiKey).toBe("sk-assemblyai");
+    expect(state.elevenlabsApiKey).toBe("sk-elevenlabs");
     expect(state.xaiApiKey).toBe("sk-xai");
     expect(state.zaiApiKey).toBe("sk-zai");
     expect(state.nvidiaApiKey).toBe("sk-nvidia");

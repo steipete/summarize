@@ -136,6 +136,7 @@ export async function parseSummarizeRequest({
     youtube: obj.youtube,
     videoMode: obj.videoMode,
     timestamps: obj.timestamps,
+    diarize: obj.diarize,
     forceSummary: obj.forceSummary,
     timeout: obj.timeout,
     retries: obj.retries,

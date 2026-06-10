@@ -113,9 +113,11 @@ export async function runFfmpegSegment({
 export async function runFfmpegTranscodeToMp3({
   inputPath,
   outputPath,
+  bitrateKbps = 64,
 }: {
   inputPath: string;
   outputPath: string;
+  bitrateKbps?: number;
 }): Promise<void> {
   await runFfmpegTranscode({
     inputPath,
@@ -133,7 +135,7 @@ export async function runFfmpegTranscodeToMp3({
       "-ar",
       "16000",
       "-b:a",
-      "64k",
+      `${bitrateKbps}k`,
       outputPath,
     ],
   });

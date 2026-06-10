@@ -103,6 +103,32 @@ describe("transcript cache helpers", () => {
     ]);
   });
 
+  it("does not enable timestamps from cached diarization segments", async () => {
+    const transcriptCache: TranscriptCache = {
+      get: vi.fn(async () => ({
+        content: "Speaker 1: Hello",
+        source: "yt-dlp",
+        expired: false,
+        metadata: {
+          diarizationProvider: "elevenlabs",
+          speakerLabels: true,
+          segments: [{ startMs: 1000, endMs: 2000, text: "Hello", speaker: "Speaker 1" }],
+        },
+      })),
+      set: vi.fn(async () => {}),
+    };
+
+    const outcome = await readTranscriptCache({
+      url: "https://example.com",
+      cacheMode: "default",
+      transcriptCache,
+      transcriptDiarization: "auto",
+    });
+
+    expect(outcome.resolution?.text).toBe("Speaker 1: Hello");
+    expect(outcome.resolution?.segments).toBeNull();
+  });
+
   it("skips cache reads when bypass requested", async () => {
     const transcriptCache: TranscriptCache = {
       get: vi.fn(async () => ({
@@ -182,5 +208,38 @@ describe("transcript cache integration", () => {
     expect(result.source).toBe("captionTracks");
     expect(result.diagnostics?.cacheStatus).toBe("fallback");
     expect(result.diagnostics?.notes).toContain("Falling back");
+  });
+
+  it("does not fall back to a cache entry incompatible with requested diarization", async () => {
+    const transcriptCache: TranscriptCache = {
+      get: vi.fn(async () => ({
+        content: "plain cached transcript",
+        source: "html",
+        expired: true,
+        metadata: null,
+      })),
+      set: vi.fn(async () => {}),
+    };
+
+    const result = await resolveTranscriptForLink(
+      "https://example.com/article",
+      "<html></html>",
+      {
+        fetch,
+        apifyApiToken: null,
+        ytDlpPath: null,
+        groqApiKey: null,
+        falApiKey: null,
+        openaiApiKey: null,
+        scrapeWithFirecrawl: null,
+        convertHtmlToMarkdown: null,
+        transcriptCache,
+        readTweetWithBird: null,
+      },
+      { cacheMode: "default", transcriptDiarization: "openai" },
+    );
+
+    expect(result.text).toBeNull();
+    expect(result.diagnostics?.cacheStatus).toBe("expired");
   });
 });

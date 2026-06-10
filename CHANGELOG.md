@@ -7,6 +7,7 @@
 - Add Antigravity CLI (`agy`) as a supported CLI provider. (#231, thanks @yetmike)
 - Chrome extension: add Browser slide runtime so YouTube slide summaries can run without the daemon, while keeping Daemon as an optional faster runtime.
 - Chrome extension: persist Browser-mode summaries, slide text, transcripts, and thumbnails in Chrome storage for 30 days, with Runtime settings showing cache status and a clear button.
+- Add `--diarize [auto|elevenlabs|openai]` for speaker-labelled YouTube transcripts using ElevenLabs Scribe v2 or OpenAI `gpt-4o-transcribe-diarize`.
 
 ### Fixes
 

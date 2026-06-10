@@ -74,6 +74,7 @@ export function createUrlExtractionSession({
       falApiKey: model.apiStatus.falApiKey,
       groqApiKey: model.apiStatus.groqApiKey,
       assemblyaiApiKey: model.apiStatus.assemblyaiApiKey,
+      elevenlabsApiKey: model.apiStatus.elevenlabsApiKey,
       openaiApiKey: model.apiStatus.openaiApiKey,
       geminiApiKey: model.apiStatus.googleApiKey,
     },
@@ -115,6 +116,7 @@ export function createUrlExtractionSession({
               format: options.format,
               markdownMode: options.markdownMode ?? null,
               transcriptTimestamps: options.transcriptTimestamps ?? false,
+              transcriptDiarization: options.transcriptDiarization ?? null,
               throwOnAssetLikeHtmlError: options.throwOnAssetLikeHtmlError ?? false,
               ...(typeof options.maxCharacters === "number"
                 ? { maxCharacters: options.maxCharacters }

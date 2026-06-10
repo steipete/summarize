@@ -1,3 +1,4 @@
+import type { DiarizationPreference } from "../../transcription/whisper/types.js";
 import type { TranscriptCache } from "../cache/types.js";
 import type {
   CacheMode,
@@ -19,6 +20,7 @@ export interface CacheReadArguments {
   cacheMode: CacheMode;
   transcriptCache: TranscriptCache | null;
   transcriptTimestamps?: boolean;
+  transcriptDiarization?: DiarizationPreference | null;
   fileMtime?: number | null;
 }
 
@@ -33,6 +35,7 @@ export const readTranscriptCache = async ({
   cacheMode,
   transcriptCache,
   transcriptTimestamps = false,
+  transcriptDiarization = null,
   fileMtime,
 }: CacheReadArguments): Promise<TranscriptCacheLookup> => {
   const cached = transcriptCache
@@ -86,6 +89,15 @@ export const readTranscriptCache = async ({
   if (transcriptTimestamps && timestampsFlag === false) {
     diagnostics.notes = appendNote(diagnostics.notes, "Transcript timestamps unavailable");
   }
+  if (transcriptDiarization) {
+    if (!isCachedDiarizationCompatible(cached.metadata, transcriptDiarization)) {
+      diagnostics.notes = appendNote(
+        diagnostics.notes,
+        "Cached transcript missing requested speaker labels; fetching fresh copy",
+      );
+      return { cached, resolution: null, diagnostics };
+    }
+  }
 
   const resolution: TranscriptResolution = {
     text: cached.content,
@@ -95,6 +107,16 @@ export const readTranscriptCache = async ({
   };
   return { cached, resolution, diagnostics };
 };
+
+export function isCachedDiarizationCompatible(
+  metadata: Record<string, unknown> | null | undefined,
+  preference: DiarizationPreference | null,
+): boolean {
+  if (!preference) return true;
+  const provider = metadata?.diarizationProvider;
+  const hasSpeakerLabels = metadata?.speakerLabels === true;
+  return hasSpeakerLabels && (preference === "auto" || provider === preference);
+}
 
 const buildBaseDiagnostics = (cacheMode: CacheMode): CacheDiagnostics => ({
   cacheMode,

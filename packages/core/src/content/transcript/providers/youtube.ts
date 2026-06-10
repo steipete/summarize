@@ -26,10 +26,12 @@ export const fetchTranscript = async (
   const { url } = context;
   const html = await loadYoutubeHtml(context, options);
   const mode = options.youtubeTranscriptMode;
+  const diarization = options.transcriptDiarization ?? null;
   const progress = typeof options.onProgress === "function" ? options.onProgress : null;
   const transcriptionCapabilities = await resolveTranscriptProviderCapabilities({
     transcription,
     ytDlpPath: options.ytDlpPath,
+    diarization,
   });
   const canRunYtDlp = transcriptionCapabilities.canRunYtDlp;
   const pushHint = (hint: string) => {
@@ -45,6 +47,14 @@ export const fetchTranscript = async (
     throw new Error(
       "Missing transcription provider for --youtube yt-dlp (install whisper-cpp or set GROQ_API_KEY/ASSEMBLYAI_API_KEY/GEMINI_API_KEY/OPENAI_API_KEY/FAL_KEY)",
     );
+  }
+  if (diarization && !options.ytDlpPath) {
+    throw new Error(
+      "Speaker diarization for YouTube requires yt-dlp (set YT_DLP_PATH or install yt-dlp)",
+    );
+  }
+  if (diarization && !transcriptionCapabilities.canTranscribe) {
+    throw new Error(transcriptionCapabilities.missingProviderNote);
   }
 
   // In explicit apify mode we can continue without HTML.
@@ -75,6 +85,12 @@ export const fetchTranscript = async (
     canRunYtDlp,
     pushHint,
   };
+
+  if (diarization) {
+    const transcript = await tryYtDlpTranscript({ flow, mode: "yt-dlp" });
+    if (transcript) return transcript;
+    throw new Error("Speaker diarization returned no transcript");
+  }
 
   // Try no-auto mode (skip auto-generated captions, fall back to yt-dlp)
   if (mode === "no-auto") {

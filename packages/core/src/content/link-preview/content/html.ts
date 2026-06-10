@@ -54,6 +54,7 @@ export async function buildResultFromHtmlDocument({
   youtubeTranscriptMode,
   mediaTranscriptMode,
   transcriptTimestamps,
+  transcriptDiarization,
   firecrawlDiagnostics,
   markdownRequested,
   markdownMode,
@@ -68,6 +69,7 @@ export async function buildResultFromHtmlDocument({
   youtubeTranscriptMode: FetchLinkContentOptions["youtubeTranscript"];
   mediaTranscriptMode: FetchLinkContentOptions["mediaTranscript"];
   transcriptTimestamps?: FetchLinkContentOptions["transcriptTimestamps"];
+  transcriptDiarization?: FetchLinkContentOptions["transcriptDiarization"];
   firecrawlDiagnostics: FirecrawlDiagnostics;
   markdownRequested: boolean;
   markdownMode: MarkdownMode;
@@ -124,6 +126,7 @@ export async function buildResultFromHtmlDocument({
     youtubeTranscriptMode,
     mediaTranscriptMode,
     transcriptTimestamps,
+    transcriptDiarization,
     cacheMode,
   });
 
@@ -133,7 +136,11 @@ export async function buildResultFromHtmlDocument({
     ? normalizeForPrompt(youtubeDescription)
     : effectiveNormalizedWithDescription;
 
-  let baseContent = selectBaseContent(baseCandidate, transcriptResolution.text);
+  let baseContent = selectBaseContent(
+    baseCandidate,
+    transcriptResolution.text,
+    transcriptResolution.segments,
+  );
   if (baseContent === normalizedSegments) {
     baseContent = stripLeadingTitle(baseContent, mergedTitle ?? title);
   }

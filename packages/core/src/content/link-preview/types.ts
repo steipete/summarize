@@ -14,6 +14,7 @@ export type TranscriptSegment = {
   startMs: number;
   endMs?: number | null;
   text: string;
+  speaker?: string | null;
 };
 
 export const CACHE_MODES = ["default", "bypass"] as const;

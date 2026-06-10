@@ -8,6 +8,7 @@ type UrlFetchFlags = {
   youtubeMode: "auto" | "web" | "apify" | "yt-dlp" | "no-auto";
   videoMode: "auto" | "transcript" | "understand";
   transcriptTimestamps: boolean;
+  transcriptDiarization: "auto" | "elevenlabs" | "openai" | null;
   firecrawlMode: "off" | "auto" | "always";
   slides: object | null;
   throwOnAssetLikeHtmlError?: boolean;
@@ -57,6 +58,7 @@ export function resolveUrlFetchOptions({
       ? "prefer"
       : "auto",
     transcriptTimestamps: flags.transcriptTimestamps,
+    transcriptDiarization: flags.transcriptDiarization,
     firecrawl: flags.firecrawlMode,
     format: markdown.markdownRequested ? "markdown" : "text",
     markdownMode: markdown.markdownRequested ? markdown.effectiveMarkdownMode : undefined,

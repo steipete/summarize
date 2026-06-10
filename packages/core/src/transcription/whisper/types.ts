@@ -1,6 +1,7 @@
 export type TranscriptionProvider =
   | "groq"
   | "assemblyai"
+  | "elevenlabs"
   | "gemini"
   | "openai"
   | "fal"
@@ -8,11 +9,22 @@ export type TranscriptionProvider =
   | "onnx-parakeet"
   | "onnx-canary";
 
+export type DiarizationProvider = "elevenlabs" | "openai";
+export type DiarizationPreference = "auto" | DiarizationProvider;
+
+export type TranscriptionSegment = {
+  startMs: number;
+  endMs?: number | null;
+  text: string;
+  speaker?: string | null;
+};
+
 export type WhisperTranscriptionResult = {
   text: string | null;
   provider: TranscriptionProvider | null;
   error: Error | null;
   notes: string[];
+  segments?: TranscriptionSegment[] | null;
 };
 
 export type WhisperProgressEvent = {

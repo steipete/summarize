@@ -28,7 +28,13 @@ export const ProgressKind = {
   BirdDone: "bird-done",
 } as const;
 
-export type CloudTranscriptionProviderHint = "groq" | "assemblyai" | "gemini" | "openai" | "fal";
+export type CloudTranscriptionProviderHint =
+  | "groq"
+  | "assemblyai"
+  | "elevenlabs"
+  | "gemini"
+  | "openai"
+  | "fal";
 
 export type TranscriptionProviderHint =
   | "cpp"
@@ -186,6 +192,7 @@ export interface LinkPreviewDeps {
   falApiKey?: string | null;
   groqApiKey?: string | null;
   assemblyaiApiKey?: string | null;
+  elevenlabsApiKey?: string | null;
   geminiApiKey?: string | null;
   openaiApiKey?: string | null;
   convertHtmlToMarkdown: ConvertHtmlToMarkdown | null;

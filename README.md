@@ -134,6 +134,7 @@ Install these if you want media-heavy features:
 - Optional cloud transcription providers:
   - `GROQ_API_KEY`
   - `ASSEMBLYAI_API_KEY`
+  - `ELEVENLABS_API_KEY` (speaker diarization)
   - `GEMINI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` / `GOOGLE_API_KEY`
   - `OPENAI_API_KEY`
   - `FAL_KEY`
@@ -477,6 +478,18 @@ Environment variables for yt-dlp mode:
 
 Apify costs money but tends to be more reliable when captions exist.
 
+Speaker-labelled transcript (forces `yt-dlp` audio transcription instead of caption reuse):
+
+```bash
+summarize "https://www.youtube.com/watch?v=..." --extract --diarize
+summarize "https://www.youtube.com/watch?v=..." --extract --diarize elevenlabs
+summarize "https://www.youtube.com/watch?v=..." --extract --diarize openai --timestamps
+```
+
+Bare `--diarize` prefers ElevenLabs Scribe v2 (`ELEVENLABS_API_KEY`) and falls back to OpenAI
+`gpt-4o-transcribe-diarize` (`OPENAI_API_KEY`). Speaker changes are emitted as `Speaker <label>: ...`;
+combine with `--timestamps` for `[mm:ss] Speaker <label>: ...`.
+
 ### Slide extraction (YouTube + direct video URLs + local video files)
 
 Extract slide screenshots (scene detection via `ffmpeg`) and optional OCR:
@@ -735,6 +748,7 @@ Optional services:
 - `YT_DLP_PATH` (path to yt-dlp binary for audio extraction)
 - `GROQ_API_KEY` (Groq Whisper transcription)
 - `ASSEMBLYAI_API_KEY` (AssemblyAI transcription)
+- `ELEVENLABS_API_KEY` (ElevenLabs Scribe v2 speaker diarization)
 - `GEMINI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` / `GOOGLE_API_KEY` (Gemini transcription)
 - `OPENAI_API_KEY` / `OPENAI_WHISPER_BASE_URL` (OpenAI Whisper transcription)
 - `FAL_KEY` (FAL AI API key for audio transcription via Whisper)

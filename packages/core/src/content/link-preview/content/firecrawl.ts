@@ -46,6 +46,7 @@ export async function buildResultFromFirecrawl({
   youtubeTranscriptMode,
   mediaTranscriptMode,
   transcriptTimestamps,
+  transcriptDiarization,
   firecrawlDiagnostics,
   markdownRequested,
   deps,
@@ -57,6 +58,7 @@ export async function buildResultFromFirecrawl({
   youtubeTranscriptMode: FetchLinkContentOptions["youtubeTranscript"];
   mediaTranscriptMode: FetchLinkContentOptions["mediaTranscript"];
   transcriptTimestamps?: FetchLinkContentOptions["transcriptTimestamps"];
+  transcriptDiarization?: FetchLinkContentOptions["transcriptDiarization"];
   firecrawlDiagnostics: FirecrawlDiagnostics;
   markdownRequested: boolean;
   deps: LinkPreviewDeps;
@@ -77,6 +79,7 @@ export async function buildResultFromFirecrawl({
     youtubeTranscriptMode,
     mediaTranscriptMode,
     transcriptTimestamps,
+    transcriptDiarization,
     cacheMode,
   });
   const htmlMetadata = payload.html
@@ -100,7 +103,11 @@ export async function buildResultFromFirecrawl({
       normalizedMarkdown.length < MIN_HTML_CONTENT_CHARACTERS ||
       descriptionCandidate.length >= normalizedMarkdown.length * READABILITY_RELATIVE_THRESHOLD);
   const baseCandidate = preferDescription ? descriptionCandidate : normalizedMarkdown;
-  const baseContent = selectBaseContent(baseCandidate, transcriptResolution.text);
+  const baseContent = selectBaseContent(
+    baseCandidate,
+    transcriptResolution.text,
+    transcriptResolution.segments,
+  );
   if (baseContent.length === 0) {
     firecrawlDiagnostics.notes = appendNote(
       firecrawlDiagnostics.notes,

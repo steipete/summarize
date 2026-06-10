@@ -5,6 +5,7 @@ import type {
   ExtractedLinkContent,
   LinkPreviewProgressEvent,
   MediaCache,
+  TranscriptCache,
 } from "../content/index.js";
 import type { ExecFileFn } from "../markitdown.js";
 import type { FixedModelSpec } from "../model-spec.js";
@@ -65,6 +66,26 @@ function applyAutoCliFallbackOverrides(
           : {}),
         ...(Array.isArray(overrides.autoCliOrder) ? { order: overrides.autoCliOrder } : {}),
       },
+    },
+  };
+}
+
+function scopeTranscriptCacheForDiarization(
+  cache: CacheState,
+  diarization: "auto" | "elevenlabs" | "openai" | null,
+): CacheState {
+  if (!cache.store || !diarization) return cache;
+  const base = cache.store.transcriptCache;
+  const scopeUrl = (url: string) => `summarize-diarize:${diarization}:${url}`;
+  const transcriptCache: TranscriptCache = {
+    get: (args) => base.get({ ...args, url: scopeUrl(args.url) }),
+    set: (args) => base.set({ ...args, url: scopeUrl(args.url) }),
+  };
+  return {
+    ...cache,
+    store: {
+      ...cache.store,
+      transcriptCache,
     },
   };
 }
@@ -143,6 +164,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     youtubeMode: null,
     videoMode: null,
     transcriptTimestamps: null,
+    transcriptDiarization: null,
     forceSummary: null,
     timeoutMs: null,
     retries: null,
@@ -172,6 +194,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     openrouterConfigured,
     groqApiKey,
     assemblyaiApiKey,
+    elevenlabsApiKey,
     openaiApiKey,
     xaiApiKey,
     googleApiKey,
@@ -373,6 +396,10 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
     },
   });
 
+  const urlCache = scopeTranscriptCacheForDiarization(
+    cache,
+    resolvedOverrides.transcriptDiarization ?? null,
+  );
   const ctx: UrlFlowContext = createUrlFlowContext({
     io: {
       env: envForRun,
@@ -394,6 +421,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
       firecrawlMode,
       videoMode,
       transcriptTimestamps: resolvedOverrides.transcriptTimestamps ?? false,
+      transcriptDiarization: resolvedOverrides.transcriptDiarization ?? null,
       outputLanguage,
       lengthArg,
       forceSummary: resolvedOverrides.forceSummary ?? false,
@@ -459,13 +487,14 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
         falApiKey,
         groqApiKey,
         assemblyaiApiKey,
+        elevenlabsApiKey,
         openaiApiKey,
       },
       summaryEngine,
       getLiteLlmCatalog: metrics.getLiteLlmCatalog,
       llmCalls: metrics.llmCalls,
     },
-    cache,
+    cache: urlCache,
     mediaCache,
     runtimeHooks: {
       setTranscriptionCost: metrics.setTranscriptionCost,

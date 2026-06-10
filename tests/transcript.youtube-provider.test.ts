@@ -585,6 +585,54 @@ describe("YouTube transcript provider module", () => {
     expect(result.segments).toEqual([{ startMs: 1000, endMs: 2000, text: "Hello" }]);
   });
 
+  it("forces yt-dlp diarization and skips caption providers", async () => {
+    ytdlp.fetchTranscriptWithYtDlp.mockResolvedValue({
+      text: "Speaker 1: Hello\nSpeaker 2: Hi",
+      provider: "elevenlabs",
+      error: null,
+      notes: [],
+      segments: [
+        { startMs: 0, endMs: 500, text: "Hello", speaker: "Speaker 1" },
+        { startMs: 700, endMs: 1000, text: "Hi", speaker: "Speaker 2" },
+      ],
+    });
+
+    const result = await fetchTranscript(
+      {
+        url: "https://www.youtube.com/watch?v=abcdefghijk",
+        html: "<html></html>",
+        resourceKey: null,
+      },
+      {
+        ...baseOptions,
+        ytDlpPath: "/usr/bin/yt-dlp",
+        elevenlabsApiKey: "ELEVEN",
+        transcriptDiarization: "auto",
+      },
+    );
+
+    expect(result.text).toBe("Speaker 1: Hello\nSpeaker 2: Hi");
+    expect(result.segments).toEqual([
+      { startMs: 0, endMs: 500, text: "Hello", speaker: "Speaker 1" },
+      { startMs: 700, endMs: 1000, text: "Hi", speaker: "Speaker 2" },
+    ]);
+    expect(result.metadata).toEqual(
+      expect.objectContaining({
+        transcriptionProvider: "elevenlabs",
+        diarizationProvider: "elevenlabs",
+        speakerLabels: true,
+      }),
+    );
+    expect(ytdlp.fetchTranscriptWithYtDlp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        diarization: "auto",
+        elevenlabsApiKey: "ELEVEN",
+      }),
+    );
+    expect(api.fetchTranscriptFromTranscriptEndpoint).not.toHaveBeenCalled();
+    expect(captions.fetchTranscriptFromCaptionTracks).not.toHaveBeenCalled();
+  });
+
   it("errors in no-auto mode when yt-dlp fallback is not available", async () => {
     await expect(
       fetchTranscript(

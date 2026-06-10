@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseDiarizationMode,
   parseDurationMs,
   parseExtractFormat,
   parseFirecrawlMode,
@@ -13,8 +14,28 @@ import {
   parseStreamMode,
   parseYoutubeMode,
 } from "../src/flags.js";
+import { buildProgram } from "../src/run/help.js";
+import { normalizeDiarizeArgv } from "../src/run/runner-setup.js";
 
 describe("cli flag parsing", () => {
+  it("parses --diarize", () => {
+    expect(parseDiarizationMode("auto")).toBe("auto");
+    expect(parseDiarizationMode("elevenlabs")).toBe("elevenlabs");
+    expect(parseDiarizationMode("openai")).toBe("openai");
+    expect(() => parseDiarizationMode("nope")).toThrow(/Unsupported --diarize/);
+  });
+
+  it("treats a URL after bare --diarize as the positional input", () => {
+    const url = "https://www.youtube.com/watch?v=abcdefghijk";
+    const argv = normalizeDiarizeArgv(["--diarize", url]);
+    const program = buildProgram();
+    program.parse(argv, { from: "user" });
+
+    expect(argv).toEqual(["--diarize=auto", url]);
+    expect(program.opts().diarize).toBe("auto");
+    expect(program.args).toEqual([url]);
+  });
+
   it("parses --youtube", () => {
     expect(parseYoutubeMode("auto")).toBe("auto");
     expect(parseYoutubeMode("web")).toBe("web");

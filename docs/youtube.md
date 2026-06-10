@@ -45,6 +45,20 @@ YouTube URLs use transcript-first extraction.
 pnpm summarize -- --extract "https://www.youtube.com/watch?v=I845O57ZSy4&t=11s"
 ```
 
+## Speaker labels
+
+`--diarize [auto|elevenlabs|openai]` forces audio transcription so the output can identify speaker changes:
+
+```bash
+summarize "https://www.youtube.com/watch?v=..." --extract --diarize
+summarize "https://www.youtube.com/watch?v=..." --extract --diarize openai --timestamps
+```
+
+- `auto`: ElevenLabs Scribe v2 first, then OpenAI `gpt-4o-transcribe-diarize`.
+- `elevenlabs`: requires `ELEVENLABS_API_KEY`.
+- `openai`: requires `OPENAI_API_KEY`.
+- All modes require `yt-dlp`; OpenAI uses `ffmpeg` to compress uploads above its size limit when available.
+
 ## Slides
 
 Use `--slides` to extract slide screenshots for YouTube videos (requires `ffmpeg` and `yt-dlp`).

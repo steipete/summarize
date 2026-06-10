@@ -88,6 +88,7 @@ export async function createRunnerPlan(options: {
     streamMode,
     plain,
     verbose,
+    diarizationMode,
     maxExtractCharacters,
     isYoutubeUrl,
     format,
@@ -113,6 +114,9 @@ export async function createRunnerPlan(options: {
 
   if (extractMode && lengthExplicitlySet && !json && isRichTty(stderr)) {
     stderr.write("Warning: --length is ignored with --extract (no summary is generated).\n");
+  }
+  if (diarizationMode && !isYoutubeUrl) {
+    throw new Error("--diarize currently supports YouTube URLs");
   }
 
   const modelArg = typeof programOpts.model === "string" ? programOpts.model : null;
@@ -146,6 +150,7 @@ export async function createRunnerPlan(options: {
     openrouterConfigured,
     groqApiKey,
     assemblyaiApiKey,
+    elevenlabsApiKey,
     openaiApiKey,
     xaiApiKey,
     googleApiKey,
@@ -204,7 +209,7 @@ export async function createRunnerPlan(options: {
       ? `Output should be ${outputLanguage.label}.`
       : null;
 
-  const transcriptNamespace = `yt:${youtubeMode}`;
+  const transcriptNamespace = `yt:${youtubeMode}:diarize:${diarizationMode ?? "off"}`;
   const cacheState = await createCacheStateFromConfig({
     envForRun,
     config,
@@ -400,6 +405,7 @@ export async function createRunnerPlan(options: {
       firecrawlMode: requestedFirecrawlMode,
       videoMode,
       transcriptTimestamps,
+      transcriptDiarization: diarizationMode,
       outputLanguage,
       lengthArg,
       forceSummary,
@@ -468,6 +474,7 @@ export async function createRunnerPlan(options: {
         falApiKey,
         groqApiKey,
         assemblyaiApiKey,
+        elevenlabsApiKey,
         openaiApiKey,
       },
       summaryEngine,

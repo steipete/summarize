@@ -26,6 +26,14 @@ export function buildProgram() {
     )
     .addOption(
       new Option(
+        "--diarize [provider]",
+        "Add speaker labels to a YouTube transcript: auto (ElevenLabs then OpenAI), elevenlabs, openai.",
+      )
+        .choices(["auto", "elevenlabs", "openai"])
+        .preset("auto"),
+    )
+    .addOption(
+      new Option(
         "--video-mode <mode>",
         "Video handling: auto (prefer video understanding if supported), transcript, understand.",
       )
@@ -256,6 +264,7 @@ ${heading("Examples")}
   ${cmd('summarize "https://example.com" --extract --format md --markdown-mode llm')} ${dim("# extracted markdown via LLM")}
   ${cmd('summarize "https://www.youtube.com/watch?v=..." --extract --format md --markdown-mode llm')} ${dim("# transcript as formatted markdown")}
   ${cmd('summarize "https://www.youtube.com/watch?v=I845O57ZSy4&t=11s" --extract --youtube web')}
+  ${cmd('summarize "https://www.youtube.com/watch?v=..." --extract --diarize')} ${dim("# speaker-labelled transcript")}
   ${cmd('summarize "https://www.youtube.com/watch?v=..." --slides')} ${dim("# summary + inline slides")}
   ${cmd('summarize "https://www.youtube.com/watch?v=..." --slides --slides-ocr')} ${dim("# slides + OCR extraction")}
   ${cmd('summarize "https://www.youtube.com/watch?v=..." --slides --extract')} ${dim("# full transcript + inline slides")}
@@ -302,6 +311,7 @@ ${heading("Env Vars")}
   SUMMARIZE_NO_TRUECOLOR optional (disable 24-bit color)
   FIRECRAWL_API_KEY     optional website extraction fallback (Markdown)
   APIFY_API_TOKEN       optional YouTube transcript fallback
+  ELEVENLABS_API_KEY    optional ElevenLabs Scribe v2 speaker diarization
   SUMMARIZE_TRANSCRIBER optional (auto, whisper, parakeet, canary)
   SUMMARIZE_ONNX_PARAKEET_CMD optional (command to run Parakeet ONNX transcription; use {input} placeholder)
   SUMMARIZE_ONNX_CANARY_CMD optional (command to run Canary ONNX transcription; use {input} placeholder)

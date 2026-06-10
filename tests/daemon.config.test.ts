@@ -146,6 +146,7 @@ describe("daemon config", () => {
         port: 2222.2,
         env: buildEnvSnapshotFromEnv({
           OPENAI_API_KEY: " k ",
+          ELEVENLABS_API_KEY: " elevenlabs-key ",
           OPENAI_WHISPER_BASE_URL: " http://127.0.0.1:8080/v1 ",
           COPILOT_PATH: " /opt/copilot ",
           AGY_PATH: " /opt/agy ",
@@ -169,6 +170,7 @@ describe("daemon config", () => {
     expect(parsed.installedAt).toBe("2025-12-27T00:00:00.000Z");
     expect(parsed.env).toEqual({
       OPENAI_API_KEY: "k",
+      ELEVENLABS_API_KEY: "elevenlabs-key",
       OPENAI_WHISPER_BASE_URL: "http://127.0.0.1:8080/v1",
       COPILOT_PATH: "/opt/copilot",
       AGY_PATH: "/opt/agy",

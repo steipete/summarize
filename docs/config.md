@@ -138,6 +138,7 @@ Legacy shortcut (still supported):
     "openai": "sk-...",
     "groq": "gsk-...",
     "assemblyai": "...",
+    "elevenlabs": "...",
     "anthropic": "sk-ant-...",
     "google": "...",
     "openrouter": "sk-or-...",

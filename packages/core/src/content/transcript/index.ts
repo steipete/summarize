@@ -4,7 +4,12 @@ import type {
   TranscriptDiagnostics,
   TranscriptResolution,
 } from "../link-preview/types.js";
-import { mapCachedSource, readTranscriptCache, writeTranscriptCache } from "./cache.js";
+import {
+  isCachedDiarizationCompatible,
+  mapCachedSource,
+  readTranscriptCache,
+  writeTranscriptCache,
+} from "./cache.js";
 import {
   canHandle as canHandleGeneric,
   fetchTranscript as fetchGeneric,
@@ -35,6 +40,7 @@ interface ResolveTranscriptOptions {
   mediaTranscriptMode?: ProviderFetchOptions["mediaTranscriptMode"];
   mediaKindHint?: ProviderFetchOptions["mediaKindHint"];
   transcriptTimestamps?: ProviderFetchOptions["transcriptTimestamps"];
+  transcriptDiarization?: ProviderFetchOptions["transcriptDiarization"];
   cacheMode?: CacheMode;
   fileMtime?: number | null;
 }
@@ -55,6 +61,7 @@ export const resolveTranscriptForLink = async (
     mediaTranscriptMode,
     mediaKindHint,
     transcriptTimestamps,
+    transcriptDiarization,
     cacheMode: providedCacheMode,
     fileMtime,
   }: ResolveTranscriptOptions = {},
@@ -75,6 +82,7 @@ export const resolveTranscriptForLink = async (
     cacheMode,
     transcriptCache: deps.transcriptCache,
     transcriptTimestamps: Boolean(transcriptTimestamps),
+    transcriptDiarization: transcriptDiarization ?? null,
     fileMtime: fileMtime ?? null,
   });
 
@@ -112,6 +120,7 @@ export const resolveTranscriptForLink = async (
     transcription: deps.transcription ?? null,
     falApiKey: deps.falApiKey,
     groqApiKey: deps.groqApiKey,
+    elevenlabsApiKey: deps.elevenlabsApiKey,
     geminiApiKey: deps.geminiApiKey,
     openaiApiKey: deps.openaiApiKey,
   });
@@ -125,6 +134,7 @@ export const resolveTranscriptForLink = async (
     transcription,
     falApiKey: transcription.falApiKey,
     groqApiKey: transcription.groqApiKey,
+    elevenlabsApiKey: transcription.elevenlabsApiKey,
     geminiApiKey: transcription.geminiApiKey,
     openaiApiKey: transcription.openaiApiKey,
     mediaCache: deps.mediaCache ?? null,
@@ -134,6 +144,7 @@ export const resolveTranscriptForLink = async (
     mediaTranscriptMode: mediaTranscriptMode ?? "auto",
     mediaKindHint: mediaKindHint ?? null,
     transcriptTimestamps: transcriptTimestamps ?? false,
+    transcriptDiarization: transcriptDiarization ?? null,
   });
 
   if (shouldReportProgress) {
@@ -155,12 +166,12 @@ export const resolveTranscriptForLink = async (
   }
 
   if (providerResult.source !== null || providerResult.text !== null) {
-    if (transcriptTimestamps) {
+    if (transcriptTimestamps || transcriptDiarization) {
       const nextMeta = { ...(providerResult.metadata ?? {}) };
       if (providerResult.segments && providerResult.segments.length > 0) {
-        nextMeta.timestamps = true;
+        if (transcriptTimestamps) nextMeta.timestamps = true;
         nextMeta.segments = providerResult.segments;
-      } else if (nextMeta.timestamps == null) {
+      } else if (transcriptTimestamps && nextMeta.timestamps == null) {
         nextMeta.timestamps = false;
       }
       providerResult.metadata = nextMeta;
@@ -180,7 +191,12 @@ export const resolveTranscriptForLink = async (
     });
   }
 
-  if (!providerResult.text && cacheOutcome.cached?.content && cacheMode !== "bypass") {
+  if (
+    !providerResult.text &&
+    cacheOutcome.cached?.content &&
+    cacheMode !== "bypass" &&
+    isCachedDiarizationCompatible(cacheOutcome.cached.metadata, transcriptDiarization ?? null)
+  ) {
     diagnostics.cacheStatus = "fallback";
     diagnostics.provider = mapCachedSource(cacheOutcome.cached.source);
     diagnostics.textProvided = Boolean(

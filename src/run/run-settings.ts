@@ -1,5 +1,6 @@
 import type { CliProvider } from "../config.js";
 import type {
+  DiarizationMode,
   FirecrawlMode,
   LengthArg,
   MarkdownMode,
@@ -8,6 +9,7 @@ import type {
   YoutubeMode,
 } from "../flags.js";
 import {
+  parseDiarizationMode,
   parseDurationMs,
   parseFirecrawlMode,
   parseLengthArg,
@@ -46,6 +48,7 @@ export type RunOverrides = {
   youtubeMode: YoutubeMode | null;
   videoMode: VideoMode | null;
   transcriptTimestamps: boolean | null;
+  transcriptDiarization: DiarizationMode | null;
   forceSummary: boolean | null;
   timeoutMs: number | null;
   retries: number | null;
@@ -62,6 +65,7 @@ export type RunOverridesInput = {
   youtube?: unknown;
   videoMode?: unknown;
   timestamps?: unknown;
+  diarize?: unknown;
   forceSummary?: unknown;
   timeout?: unknown;
   retries?: unknown;
@@ -171,6 +175,7 @@ export function resolveRunOverrides(
     youtube,
     videoMode,
     timestamps,
+    diarize,
     forceSummary,
     timeout,
     retries,
@@ -292,6 +297,7 @@ export function resolveRunOverrides(
     youtubeMode: parseOptionalSetting(youtube, parseYoutubeMode, strict),
     videoMode: parseOptionalSetting(videoMode, parseVideoMode, strict),
     transcriptTimestamps: parseOptionalBoolean(timestamps, strict, "--timestamps"),
+    transcriptDiarization: parseOptionalSetting(diarize, parseDiarizationMode, strict),
     forceSummary: forceSummaryResolved,
     timeoutMs,
     retries: retriesResolved,

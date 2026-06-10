@@ -60,7 +60,7 @@ export async function runUrlFlow({
       flags.lengthArg.kind === "preset"
         ? flags.lengthArg.preset
         : `${flags.lengthArg.maxCharacters} chars`
-    } maxOutputTokens=${formatOptionalNumber(flags.maxOutputTokensArg)} retries=${flags.retries} json=${flags.json} extract=${flags.extractMode} format=${flags.format} preprocess=${flags.preprocessMode} markdownMode=${flags.markdownMode} model=${model.requestedModelLabel} videoMode=${flags.videoMode} timestamps=${flags.transcriptTimestamps ? "on" : "off"} stream=${flags.streamingEnabled ? "on" : "off"} plain=${flags.plain}`,
+    } maxOutputTokens=${formatOptionalNumber(flags.maxOutputTokensArg)} retries=${flags.retries} json=${flags.json} extract=${flags.extractMode} format=${flags.format} preprocess=${flags.preprocessMode} markdownMode=${flags.markdownMode} model=${model.requestedModelLabel} videoMode=${flags.videoMode} timestamps=${flags.transcriptTimestamps ? "on" : "off"} diarize=${flags.transcriptDiarization ?? "off"} stream=${flags.streamingEnabled ? "on" : "off"} plain=${flags.plain}`,
     flags.verboseColor,
     io.envForRun,
   );

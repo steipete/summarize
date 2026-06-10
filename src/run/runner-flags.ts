@@ -1,9 +1,11 @@
 import {
   type FirecrawlMode,
+  type DiarizationMode,
   type LengthArg,
   type MarkdownMode,
   type PreprocessMode,
   parseExtractFormat,
+  parseDiarizationMode,
   parseMaxExtractCharactersArg,
   parseMetricsMode,
   parseStreamMode,
@@ -28,6 +30,7 @@ export type RunnerFlagResolution = {
   debug: boolean;
   verbose: boolean;
   transcriber: Transcriber;
+  diarizationMode: DiarizationMode | null;
   maxExtractCharacters: ReturnType<typeof parseMaxExtractCharactersArg>;
   isYoutubeUrl: boolean;
   format: ReturnType<typeof parseExtractFormat>;
@@ -95,6 +98,10 @@ export function resolveRunnerFlags({
     normalizeTranscriber(transcriberExplicitlySet ? programOpts.transcriber : envTranscriber) ??
     "auto";
   envForRun.SUMMARIZE_TRANSCRIBER = transcriber;
+  const diarizationExplicitlySet = hasFlag(normalizedArgv, "--diarize");
+  const diarizationMode = diarizationExplicitlySet
+    ? parseDiarizationMode(typeof programOpts.diarize === "string" ? programOpts.diarize : "auto")
+    : null;
 
   const maxExtractCharacters = parseMaxExtractCharactersArg(
     typeof programOpts.maxExtractCharacters === "string"
@@ -152,6 +159,7 @@ export function resolveRunnerFlags({
     debug,
     verbose,
     transcriber,
+    diarizationMode,
     maxExtractCharacters,
     isYoutubeUrl,
     format,

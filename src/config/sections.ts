@@ -602,6 +602,7 @@ export function parseApiKeysConfig(
     "fal",
     "groq",
     "assemblyai",
+    "elevenlabs",
   ];
   for (const [key, val] of Object.entries(value)) {
     const normalizedKey = key.trim().toLowerCase();

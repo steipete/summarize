@@ -60,6 +60,19 @@ export function resolveAssemblyAiApiKey({
   return normalizeApiKey(source.ASSEMBLYAI_API_KEY);
 }
 
+export function resolveElevenLabsApiKey({
+  env,
+  elevenlabsApiKey,
+}: {
+  env?: Env;
+  elevenlabsApiKey?: string | null;
+}): string | null {
+  const explicit = normalizeApiKey(elevenlabsApiKey);
+  if (explicit) return explicit;
+  const source = env ?? process.env;
+  return normalizeApiKey(source.ELEVENLABS_API_KEY);
+}
+
 export function resolveOpenAiTranscriptionApiKey({
   env,
   openaiApiKey,
