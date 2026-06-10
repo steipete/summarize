@@ -91,6 +91,7 @@ export type BgToPanel =
   | { type: "run:start"; run: RunStart }
   | { type: "run:snapshot"; run: RunStart; markdown: string }
   | { type: "run:error"; message: string }
+  | { type: "ui:cache-cleared" }
   | {
       type: "slides:run";
       ok: boolean;

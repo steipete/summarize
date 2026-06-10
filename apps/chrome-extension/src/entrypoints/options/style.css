@@ -938,6 +938,21 @@ form {
   color: var(--text);
 }
 
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.cacheStatus {
+  min-height: 20px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+
 .labelRow {
   display: flex;
   align-items: center;

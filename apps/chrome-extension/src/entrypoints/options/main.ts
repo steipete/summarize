@@ -1,3 +1,4 @@
+import type { CacheStats } from "../../../../../src/shared/cache-store";
 import { defaultSettings, loadSettings, saveSettings } from "../../lib/settings";
 import { applyTheme, type ColorMode, type ColorScheme } from "../../lib/theme";
 import { bindOptionsInputs } from "./bindings";
@@ -69,6 +70,8 @@ const {
   fontSizeEl,
   buildInfoEl,
   daemonStatusEl,
+  browserCacheStatusEl,
+  browserCacheClearBtn,
   logsSourceEl,
   logsTailEl,
   logsRefreshBtn,
@@ -183,6 +186,8 @@ const processesViewer = createProcessesViewer({
   isActive: () => resolveActiveTab() === "processes",
 });
 
+let refreshBrowserCacheStatus = () => {};
+
 const { resolveActiveTab } = createOptionsTabs({
   root: tabsRoot,
   buttons: tabButtons,
@@ -190,6 +195,7 @@ const { resolveActiveTab } = createOptionsTabs({
   storageKey: optionsTabStorageKey,
   onTabActivated: (tabId) => {
     if (tabId === "skills") loadSkillsTab();
+    if (tabId === "runtime") refreshBrowserCacheStatus();
   },
   onLogsActiveChange: (active) => {
     if (active) {
@@ -300,6 +306,70 @@ refreshRuntimeStatus = (token = tokenEl.value) => {
   void checkDaemonStatus(token);
 };
 
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const precision = value >= 10 || unitIndex === 0 ? 0 : 1;
+  return `${value.toFixed(precision)} ${units[unitIndex]}`;
+}
+
+async function sendBrowserCacheMessage(type: "browser-cache:stats" | "browser-cache:clear") {
+  return (await chrome.runtime.sendMessage({ type })) as {
+    ok?: boolean;
+    stats?: CacheStats | null;
+  };
+}
+
+function renderBrowserCacheStatus(stats: CacheStats | null | undefined) {
+  if (!stats) {
+    browserCacheStatusEl.textContent = "Unavailable";
+    return;
+  }
+  const entryLabel = stats.totalEntries === 1 ? "entry" : "entries";
+  browserCacheStatusEl.textContent = `${stats.totalEntries} ${entryLabel} · ${formatBytes(
+    stats.sizeBytes,
+  )} · expires after 30 days`;
+}
+
+refreshBrowserCacheStatus = () => {
+  browserCacheStatusEl.textContent = "Loading...";
+  void sendBrowserCacheMessage("browser-cache:stats")
+    .then((response) => {
+      renderBrowserCacheStatus(response.ok ? response.stats : null);
+    })
+    .catch(() => {
+      browserCacheStatusEl.textContent = "Unavailable";
+    });
+};
+
+browserCacheClearBtn.addEventListener("click", () => {
+  browserCacheClearBtn.disabled = true;
+  browserCacheStatusEl.textContent = "Clearing...";
+  void sendBrowserCacheMessage("browser-cache:clear")
+    .then((response) => {
+      if (!response.ok) {
+        renderBrowserCacheStatus(null);
+        setStatus("Failed to clear browser cache");
+        return;
+      }
+      renderBrowserCacheStatus(response.stats);
+      flashStatus("Browser cache cleared");
+    })
+    .catch(() => {
+      browserCacheStatusEl.textContent = "Clear failed";
+      setStatus("Failed to clear browser cache");
+    })
+    .finally(() => {
+      browserCacheClearBtn.disabled = false;
+    });
+});
+
 const modelPresets = createModelPresetsController({
   presetEl: modelPresetEl,
   customEl: modelCustomEl,
@@ -352,6 +422,7 @@ async function load() {
   booleanSettings.setState(loadedState.booleans);
   booleanSettings.render();
   refreshRuntimeStatus(s.token);
+  refreshBrowserCacheStatus();
   currentScheme = loadedState.colorScheme;
   currentMode = loadedState.colorMode;
   pickers.update({ scheme: currentScheme, mode: currentMode, ...pickerHandlers });

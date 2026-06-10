@@ -30,6 +30,13 @@ export type PanelSession<Recovery, Status> = {
   daemonStatus: Status;
 };
 
+type PersistentPanelCache<PanelCachePayload> = {
+  getPanel: (url: string) => Promise<PanelCachePayload | null>;
+  setPanel: (payload: PanelCachePayload) => Promise<void>;
+  clear: () => Promise<unknown>;
+  stats: () => Promise<unknown>;
+};
+
 export function createPanelSessionStore<
   CachedExtract extends { url: string },
   PanelCachePayload extends { tabId: number; url: string },
@@ -38,14 +45,32 @@ export function createPanelSessionStore<
 >({
   createDaemonRecovery,
   createDaemonStatus,
+  persistentPanelCache,
+  shouldUsePersistentPanelCache,
 }: {
   createDaemonRecovery: () => Recovery;
   createDaemonStatus: () => Status;
+  persistentPanelCache?: PersistentPanelCache<PanelCachePayload> | null;
+  shouldUsePersistentPanelCache?:
+    | ((payload: Pick<PanelCachePayload, "tabId" | "url">) => Promise<boolean>)
+    | ((payload: Pick<PanelCachePayload, "tabId" | "url">) => boolean);
 }) {
   const panelSessions = new Map<number, PanelSession<Recovery, Status>>();
   const lastMediaProbeByTab = new Map<number, string>();
   const cachedExtracts = new Map<number, CachedExtract>();
   const panelCacheByTabId = new Map<number, PanelCachePayload>();
+  const panelCacheWriteGenerationByUrl = new Map<string, number>();
+  const panelCacheGenerationByTabId = new Map<number, number>();
+  let panelCacheWriteGeneration = 0;
+  let panelCacheGeneration = 0;
+  let persistentCacheEpoch = 0;
+
+  const getPanelCache = (tabId: number, url?: string | null) => {
+    const cached = panelCacheByTabId.get(tabId) ?? null;
+    if (!cached) return null;
+    if (url && cached.url !== url) return null;
+    return cached;
+  };
 
   const getPanelPortMap = () => {
     const global = globalThis as typeof globalThis & {
@@ -119,12 +144,49 @@ export function createPanelSessionStore<
     },
     storePanelCache(payload: PanelCachePayload) {
       panelCacheByTabId.set(payload.tabId, payload);
+      panelCacheGeneration += 1;
+      panelCacheGenerationByTabId.set(payload.tabId, panelCacheGeneration);
+      const cacheKey = payload.url;
+      panelCacheWriteGeneration += 1;
+      const writeGeneration = panelCacheWriteGeneration;
+      panelCacheWriteGenerationByUrl.set(cacheKey, writeGeneration);
+      void (async () => {
+        const epoch = persistentCacheEpoch;
+        if (shouldUsePersistentPanelCache && !(await shouldUsePersistentPanelCache(payload)))
+          return;
+        if (epoch !== persistentCacheEpoch) return;
+        if (panelCacheWriteGenerationByUrl.get(cacheKey) !== writeGeneration) return;
+        await persistentPanelCache?.setPanel(payload);
+      })().catch(() => null);
     },
     getPanelCache(tabId: number, url?: string | null) {
-      const cached = panelCacheByTabId.get(tabId) ?? null;
-      if (!cached) return null;
-      if (url && cached.url !== url) return null;
-      return cached;
+      return getPanelCache(tabId, url);
+    },
+    async getPanelCacheAsync(tabId: number, url?: string | null) {
+      const cached = getPanelCache(tabId, url);
+      if (cached || !url) return cached;
+      const epoch = persistentCacheEpoch;
+      const tabGeneration = panelCacheGenerationByTabId.get(tabId) ?? 0;
+      if (shouldUsePersistentPanelCache && !(await shouldUsePersistentPanelCache({ tabId, url })))
+        return null;
+      const persistent = (await persistentPanelCache?.getPanel(url).catch(() => null)) ?? null;
+      if (epoch !== persistentCacheEpoch) return null;
+      if (!persistent) return null;
+      const freshCached = getPanelCache(tabId, url);
+      if (freshCached) return freshCached;
+      if ((panelCacheGenerationByTabId.get(tabId) ?? 0) !== tabGeneration) return null;
+      panelCacheByTabId.set(tabId, { ...persistent, tabId });
+      return panelCacheByTabId.get(tabId) ?? null;
+    },
+    async getPersistentPanelCacheStats() {
+      return (await persistentPanelCache?.stats().catch(() => null)) ?? null;
+    },
+    async clearPersistentPanelCache() {
+      persistentCacheEpoch += 1;
+      panelCacheByTabId.clear();
+      panelCacheWriteGenerationByUrl.clear();
+      panelCacheGenerationByTabId.clear();
+      return (await persistentPanelCache?.clear().catch(() => null)) ?? null;
     },
     async clearCachedExtractsForWindow(windowId: number) {
       try {
@@ -142,6 +204,8 @@ export function createPanelSessionStore<
       cachedExtracts.delete(tabId);
       lastMediaProbeByTab.delete(tabId);
       panelCacheByTabId.delete(tabId);
+      panelCacheGeneration += 1;
+      panelCacheGenerationByTabId.set(tabId, panelCacheGeneration);
     },
   };
 }

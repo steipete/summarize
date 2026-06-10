@@ -14,6 +14,16 @@ import {
   normalizeContentForHash,
   extractTaggedBlock,
 } from "./cache-keys.js";
+import {
+  CACHE_FORMAT_VERSION,
+  DEFAULT_CACHE_MAX_MB,
+  DEFAULT_CACHE_TTL_DAYS,
+  buildPortableCacheRow,
+  createEmptyCacheCounts,
+  parseCacheJson,
+  type CacheKind,
+  type CacheStats,
+} from "./shared/cache-store.js";
 export {
   buildExtractCacheKeyValue,
   buildLanguageKey,
@@ -28,10 +38,15 @@ export {
   normalizeContentForHash,
   extractTaggedBlock,
 } from "./cache-keys.js";
+export {
+  CACHE_FORMAT_VERSION,
+  DEFAULT_CACHE_MAX_MB,
+  DEFAULT_CACHE_TTL_DAYS,
+  type CacheKind,
+  type CacheStats,
+} from "./shared/cache-store.js";
 import { cleanupSlidesPayload, collectSlidesPayloadArtifactPaths } from "./cache-slides-cleanup.js";
 import type { TranscriptCache, TranscriptSource } from "./content/index.js";
-
-export type CacheKind = "extract" | "summary" | "transcript" | "chat" | "slides";
 
 export type CacheConfig = {
   enabled?: boolean;
@@ -39,10 +54,6 @@ export type CacheConfig = {
   ttlDays?: number;
   path?: string;
 };
-
-export const CACHE_FORMAT_VERSION = 2;
-export const DEFAULT_CACHE_MAX_MB = 512;
-export const DEFAULT_CACHE_TTL_DAYS = 30;
 
 type SqliteStatement = {
   get: (...args: unknown[]) => unknown;
@@ -98,13 +109,6 @@ export type CacheState = {
   ttlMs: number;
   maxBytes: number;
   path: string | null;
-};
-
-export type CacheStats = {
-  path: string;
-  sizeBytes: number;
-  totalEntries: number;
-  counts: Record<CacheKind, number>;
 };
 
 const isBun = typeof (globalThis as { Bun?: unknown }).Bun !== "undefined";
@@ -313,21 +317,22 @@ export async function createCacheStore({
   };
 
   const getJson = <T>(kind: CacheKind, key: string): T | null => {
-    const text = getText(kind, key);
-    if (!text) return null;
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      return null;
-    }
+    return parseCacheJson<T>(getText(kind, key));
   };
 
   const setText = (kind: CacheKind, key: string, value: string, ttlMs: number | null) => {
     const now = Date.now();
     sweepExpired(now);
-    const expiresAt = typeof ttlMs === "number" ? now + ttlMs : null;
-    const sizeBytes = Buffer.byteLength(value, "utf8");
-    stmtUpsert.run(kind, key, value, sizeBytes, now, now, expiresAt);
+    const row = buildPortableCacheRow({ kind, key, value, ttlMs, now });
+    stmtUpsert.run(
+      row.kind,
+      row.key,
+      row.value,
+      row.sizeBytes,
+      row.createdAt,
+      row.lastAccessedAt,
+      row.expiresAt,
+    );
     enforceSize();
   };
 
@@ -508,13 +513,7 @@ export async function readCacheStats(path: string): Promise<CacheStats | null> {
   } catch {
     // ignore
   }
-  const counts: Record<CacheKind, number> = {
-    extract: 0,
-    summary: 0,
-    transcript: 0,
-    chat: 0,
-    slides: 0,
-  };
+  const counts = createEmptyCacheCounts();
   const rows = db.prepare("SELECT kind, COUNT(*) AS count FROM cache_entries GROUP BY kind").all();
   for (const row of rows as Array<{ kind?: string; count?: number }>) {
     if (row?.kind && typeof row.count === "number" && row.kind in counts) {

@@ -27,6 +27,7 @@ export type PanelCacheController = {
   syncNow: () => void;
   request: (tabId: number, url: string, preserveChat: boolean) => PanelCacheRequest;
   consumeResponse: (response: PanelCacheResponse) => PanelCacheResult | null;
+  clear: () => void;
 };
 
 export type PanelCacheControllerOptions = {
@@ -110,5 +111,14 @@ export function createPanelCacheController(
     };
   };
 
-  return { resolve, scheduleSync, syncNow, request, consumeResponse };
+  const clear = () => {
+    cacheByKey.clear();
+    pendingRequest = null;
+    if (syncTimer) {
+      globalThis.clearTimeout(syncTimer);
+      syncTimer = 0;
+    }
+  };
+
+  return { resolve, scheduleSync, syncNow, request, consumeResponse, clear };
 }

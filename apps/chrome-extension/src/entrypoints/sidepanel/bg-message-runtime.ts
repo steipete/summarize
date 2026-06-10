@@ -15,6 +15,7 @@ export function handleSidepanelBgMessage(options: {
   handleSlidesLocal: (msg: Extract<BgToPanel, { type: "slides:local" }>) => void;
   handleSlidesContext: (msg: Extract<BgToPanel, { type: "slides:context" }>) => void;
   handleUiCache: (msg: Extract<BgToPanel, { type: "ui:cache" }>) => void;
+  handleCacheCleared: () => void;
   handleRunStart: (run: RunStart) => void;
   handleRunSnapshot: (payload: Extract<BgToPanel, { type: "run:snapshot" }>) => void;
   handleChatHistory: (msg: Extract<BgToPanel, { type: "chat:history" }>) => void;
@@ -43,6 +44,9 @@ export function handleSidepanelBgMessage(options: {
       return;
     case "ui:cache":
       options.handleUiCache(msg);
+      return;
+    case "ui:cache-cleared":
+      options.handleCacheCleared();
       return;
     case "run:start":
       options.handleRunStart(msg.run);
@@ -114,6 +118,7 @@ export function createSidepanelBgMessageRuntime(options: {
     cache: unknown;
     preserveChat: boolean;
   } | null;
+  clearPanelCache: () => void;
   getActiveTabId: () => number | null;
   applyPanelCache: (cache: unknown, opts: { preserveChat?: boolean }) => void;
   rememberPendingSummaryRun: (run: RunStart) => void;
@@ -214,6 +219,7 @@ export function createSidepanelBgMessageRuntime(options: {
           if (!result.cache) return;
           options.applyPanelCache(result.cache, { preserveChat: result.preserveChat });
         },
+        handleCacheCleared: options.clearPanelCache,
         handleRunStart: (run: RunStart) => {
           if (
             !shouldAcceptRunForCurrentPage({

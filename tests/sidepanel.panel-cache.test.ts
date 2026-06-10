@@ -134,4 +134,28 @@ describe("panel cache controller", () => {
 
     expect(result).toBeNull();
   });
+
+  it("clears local snapshots, pending requests, and scheduled syncs", () => {
+    vi.useFakeTimers();
+    const sendCache = vi.fn();
+    const sendRequest = vi.fn();
+    const payload = samplePayload();
+    const controller = createPanelCacheController({
+      getSnapshot: () => payload,
+      sendCache,
+      sendRequest,
+    });
+
+    controller.scheduleSync(10);
+    const request = controller.request(2, "https://example.com/2", false);
+    controller.clear();
+    vi.runAllTimers();
+
+    expect(sendCache).not.toHaveBeenCalled();
+    expect(controller.resolve(1, "https://example.com")).toBeNull();
+    expect(
+      controller.consumeResponse({ requestId: request.requestId, ok: true, cache: payload }),
+    ).toBeNull();
+    vi.useRealTimers();
+  });
 });

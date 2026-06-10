@@ -35,6 +35,7 @@ function createRuntime(
     renderInlineSlidesFallback: vi.fn(),
     schedulePanelCacheSync: vi.fn(),
     consumeUiCache: vi.fn(() => null),
+    clearPanelCache: vi.fn(),
     getActiveTabId: vi.fn(() => 1),
     applyPanelCache: vi.fn(),
     rememberPendingSummaryRun: vi.fn(),
@@ -259,5 +260,13 @@ describe("sidepanel background message runtime", () => {
     expect(options.handleChatHistory).toHaveBeenCalled();
     expect(options.handleAgentChunk).toHaveBeenCalled();
     expect(options.handleAgentResponse).toHaveBeenCalled();
+  });
+
+  it("clears local panel cache when background broadcasts cache invalidation", () => {
+    const { runtime, options } = createRuntime({ clearPanelCache: vi.fn() });
+
+    runtime.handle({ type: "ui:cache-cleared" });
+
+    expect(options.clearPanelCache).toHaveBeenCalled();
   });
 });

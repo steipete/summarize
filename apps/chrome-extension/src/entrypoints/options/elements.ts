@@ -53,6 +53,8 @@ export function getOptionsElements() {
     fontSizeEl: byId<HTMLInputElement>("fontSize"),
     buildInfoEl: document.getElementById("buildInfo"),
     daemonStatusEl: byId<HTMLDivElement>("daemonStatus"),
+    browserCacheStatusEl: byId<HTMLDivElement>("browserCacheStatus"),
+    browserCacheClearBtn: byId<HTMLButtonElement>("browserCacheClear"),
     logsSourceEl: byId<HTMLSelectElement>("logsSource"),
     logsTailEl: byId<HTMLInputElement>("logsTail"),
     logsRefreshBtn: byId<HTMLButtonElement>("logsRefresh"),

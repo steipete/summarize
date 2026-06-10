@@ -192,8 +192,12 @@ test("options exposes runtime slide backend radios", async ({
     await expect(page.locator("#panel-runtime")).toBeVisible();
     await expect(page.locator("#panel-runtime")).toContainText("Browser");
     await expect(page.locator("#panel-runtime")).toContainText("Daemon");
+    await expect(page.locator("#panel-runtime")).toContainText("Browser cache");
     await expect(page.locator("#panel-runtime")).toContainText("Daemon token");
     await expect(page.locator("#panel-runtime")).not.toContainText("Show summary first");
+    await expect(page.locator("#browserCacheStatus")).toContainText(/entries? · /);
+    await page.locator("#browserCacheClear").click();
+    await expect(page.locator("#browserCacheStatus")).toContainText("0 entries");
 
     const mode = page.locator("#slideRuntimeMode");
     await expect(mode.locator('input[value="browser"]')).toBeChecked();

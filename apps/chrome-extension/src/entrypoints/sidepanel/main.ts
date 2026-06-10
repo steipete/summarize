@@ -1533,6 +1533,9 @@ const bgMessageRuntime = createSidepanelBgMessageRuntime({
     panelCacheController.scheduleSync();
   },
   consumeUiCache: (cacheMessage) => panelCacheController.consumeResponse(cacheMessage),
+  clearPanelCache: () => {
+    panelCacheController.clear();
+  },
   getActiveTabId: () => activeTabId,
   applyPanelCache: (cache, opts) => {
     applyPanelCache(cache as PanelCachePayload, opts);
