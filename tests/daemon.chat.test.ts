@@ -126,8 +126,12 @@ describe("daemon/chat", () => {
     });
 
     const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
-    const args = calls[0]?.[0] as { forceChatCompletions?: boolean };
+    const args = calls[0]?.[0] as {
+      forceChatCompletions?: boolean;
+      openaiBaseUrlOverride?: string | null;
+    };
     expect(args.forceChatCompletions).toBe(false);
+    expect(args.openaiBaseUrlOverride).toBe("https://gateway.example/v1");
   });
 
   it("routes github-copilot overrides through the GitHub Models gateway", async () => {
@@ -380,6 +384,52 @@ describe("daemon/chat", () => {
     const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
     const args = calls[calls.length - 1]?.[0] as { forceChatCompletions?: boolean };
     expect(args.forceChatCompletions).toBe(true);
+  });
+
+  it("passes configured OpenAI base URL for auto-selected sidepanel chat models", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-auto-openai-base-"));
+
+    vi.mocked(buildAutoModelAttempts).mockReturnValue([
+      {
+        transport: "native" as const,
+        userModelId: "openai/gpt-5-mini",
+        llmModelId: "openai/gpt-5-mini",
+        openrouterProviders: null,
+        forceOpenRouter: false,
+        requiredEnv: "OPENAI_API_KEY" as const,
+        debug: "test",
+      },
+    ]);
+
+    await streamChatResponse({
+      env: { HOME: home, OPENAI_API_KEY: "sk-openai" },
+      fetchImpl: fetch,
+      configForCli: {
+        openai: {
+          baseUrl: "https://gateway.example/v1",
+          useChatCompletions: false,
+        },
+      },
+      session: {
+        id: "s-auto-openai-base",
+        lastMeta: { model: null, modelLabel: null, inputSummary: null, summaryFromCache: null },
+      },
+      pageUrl: "https://example.com",
+      pageTitle: null,
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: null,
+      pushToSession: () => {},
+      emitMeta: () => {},
+    });
+
+    const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const args = calls[calls.length - 1]?.[0] as {
+      forceChatCompletions?: boolean;
+      openaiBaseUrlOverride?: string | null;
+    };
+    expect(args.forceChatCompletions).toBe(false);
+    expect(args.openaiBaseUrlOverride).toBe("https://gateway.example/v1");
   });
 
   it("accepts legacy OpenRouter env mapping for auto attempts", async () => {

@@ -207,7 +207,9 @@ export async function streamChatResponse({
               ? envState.nvidiaBaseUrl
               : requested.requiredEnv === "OLLAMA_BASE_URL"
                 ? envState.ollamaBaseUrl
-                : (requested.openaiBaseUrlOverride ?? null),
+                : requested.provider === "openai"
+                  ? (requested.openaiBaseUrlOverride ?? envState.providerBaseUrls.openai)
+                  : (requested.openaiBaseUrlOverride ?? null),
         forceChatCompletions:
           typeof requested.forceChatCompletions === "boolean"
             ? requested.forceChatCompletions
@@ -318,6 +320,12 @@ export async function streamChatResponse({
     timeoutMs: 30_000,
     fetchImpl,
     forceOpenRouter: attempt.forceOpenRouter,
+    openaiBaseUrlOverride:
+      attempt.transport === "openrouter"
+        ? undefined
+        : attempt.requiredEnv === "OPENAI_API_KEY"
+          ? envState.providerBaseUrls.openai
+          : undefined,
     forceChatCompletions:
       attempt.transport === "openrouter"
         ? undefined
