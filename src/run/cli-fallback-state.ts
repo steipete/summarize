@@ -19,7 +19,8 @@ function parseCliProvider(value: unknown): CliProvider | null {
     value === "openclaw" ||
     value === "opencode" ||
     value === "copilot" ||
-    value === "agy"
+    value === "agy" ||
+    value === "pi"
   ) {
     return value;
   }

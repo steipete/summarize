@@ -8,7 +8,8 @@ export type CliProvider =
   | "openclaw"
   | "opencode"
   | "copilot"
-  | "agy";
+  | "agy"
+  | "pi";
 export type OpenAiReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh";
 export type OpenAiTextVerbosity = "low" | "medium" | "high";
 export type ModelRequestOptions = {
@@ -38,6 +39,7 @@ export type CliConfig = {
   opencode?: CliProviderConfig;
   copilot?: CliProviderConfig;
   agy?: CliProviderConfig;
+  pi?: CliProviderConfig;
   autoFallback?: CliAutoFallbackConfig;
   magicAuto?: CliAutoFallbackConfig;
   promptOverride?: string;

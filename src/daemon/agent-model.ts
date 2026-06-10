@@ -215,6 +215,7 @@ function buildNoAgentModelAvailableError({
           if (attempt.requiredEnv === "CLI_OPENCODE") return "opencode";
           if (attempt.requiredEnv === "CLI_COPILOT") return "copilot";
           if (attempt.requiredEnv === "CLI_AGY") return "agy";
+          if (attempt.requiredEnv === "CLI_PI") return "pi";
           return "unknown";
         })
         .filter((provider) => !cliAvailability[provider as keyof typeof cliAvailability]),

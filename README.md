@@ -332,7 +332,7 @@ Use `summarize --help` or `summarize help` for the full help text.
 - `--length short|medium|long|xl|xxl|s|m|l|<chars>`
 - `--language, --lang <language>`: output language (`auto` = match source)
 - `--max-output-tokens <count>`: hard cap for LLM output tokens
-- `--cli [provider]`: use a CLI provider (`--model cli/<provider>`). Supports `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`, `agy`. If omitted, uses auto selection with CLI enabled.
+- `--cli [provider]`: use a CLI provider (`--model cli/<provider>`). Supports `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`, `agy`, `pi`. If omitted, uses auto selection with CLI enabled.
 - `--stream auto|on|off`: stream LLM output (`auto` = TTY only; disabled in `--json` mode)
 - `--plain`: keep raw output (no ANSI/OSC Markdown rendering)
 - `--no-color`: disable ANSI colors
@@ -365,6 +365,7 @@ Summarize can use common coding CLIs as local model backends:
 - `openclaw` -> `--cli openclaw` / `--model cli/openclaw/<model>` or `--model openclaw/<model>`
 - `opencode` -> `--cli opencode` / `--model cli/opencode/<model>` (`--model cli/opencode` uses the OpenCode runtime default)
 - `agy` (Antigravity CLI) -> `--cli agy` / `--model cli/agy` (uses agy's active session model; per-call model selection is not supported by agy print mode)
+- `pi` (Pi Coding Agent) -> `--cli pi` / `--model cli/pi` or `--model cli/pi/<model>`
 
 Built-in preset:
 
@@ -372,8 +373,8 @@ Built-in preset:
 
 Requirements:
 
-- Binary installed and on `PATH` (or set `CODEX_PATH`, `CLAUDE_PATH`, `GEMINI_PATH`, `AGENT_PATH`, `OPENCLAW_PATH`, `OPENCODE_PATH`, `AGY_PATH`)
-- Provider authenticated (`codex login`, `claude auth`, `gemini` login flow, `agent login` or `CURSOR_API_KEY`, `opencode auth login`, `agy` login flow or `ANTIGRAVITY_API_KEY`)
+- Binary installed and on `PATH` (or set `CODEX_PATH`, `CLAUDE_PATH`, `GEMINI_PATH`, `AGENT_PATH`, `OPENCLAW_PATH`, `OPENCODE_PATH`, `AGY_PATH`, `PI_PATH`)
+- Provider authenticated (`codex login`, `claude auth`, `gemini` login flow, `agent login` or `CURSOR_API_KEY`, `opencode auth login`, `agy` login flow or `ANTIGRAVITY_API_KEY`, `pi` uses configured provider API keys)
 
 Quick smoke test:
 
@@ -387,13 +388,14 @@ summarize --cli agent --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli openclaw --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli opencode --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli agy --plain --timeout 2m /tmp/summarize-cli-smoke.txt
+summarize --cli pi --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 ```
 
 Set explicit CLI allowlist/order:
 
 ```json
 {
-  "cli": { "enabled": ["codex", "claude", "gemini", "agent", "openclaw", "opencode", "agy"] }
+  "cli": { "enabled": ["codex", "claude", "gemini", "agent", "openclaw", "opencode", "agy", "pi"] }
 }
 ```
 

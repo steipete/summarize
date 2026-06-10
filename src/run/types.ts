@@ -19,7 +19,8 @@ export type ModelAttemptRequiredEnv =
   | "CLI_OPENCLAW"
   | "CLI_OPENCODE"
   | "CLI_COPILOT"
-  | "CLI_AGY";
+  | "CLI_AGY"
+  | "CLI_PI";
 
 export type ModelAttempt = {
   transport: "native" | "openrouter" | "cli";

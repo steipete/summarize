@@ -55,7 +55,8 @@ export type FixedModelSpec =
         | "CLI_OPENCLAW"
         | "CLI_OPENCODE"
         | "CLI_COPILOT"
-        | "CLI_AGY";
+        | "CLI_AGY"
+        | "CLI_PI";
       cliProvider: CliProvider;
       cliModel: string | null;
     };
@@ -193,7 +194,8 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       providerRaw !== "openclaw" &&
       providerRaw !== "opencode" &&
       providerRaw !== "copilot" &&
-      providerRaw !== "agy"
+      providerRaw !== "agy" &&
+      providerRaw !== "pi"
     ) {
       throw new Error(`Invalid CLI model id "${trimmed}". Expected cli/<provider>/<model>.`);
     }
@@ -215,6 +217,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       | "CLI_OPENCODE"
       | "CLI_COPILOT"
       | "CLI_AGY"
+      | "CLI_PI"
     >;
     const userModelId = cliModel ? `cli/${cliProvider}/${cliModel}` : `cli/${cliProvider}`;
     return {

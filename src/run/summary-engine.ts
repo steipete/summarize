@@ -167,6 +167,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     if (requiredEnv === "CLI_AGY") {
       return Boolean(deps.cliAvailability.agy);
     }
+    if (requiredEnv === "CLI_PI") {
+      return Boolean(deps.cliAvailability.pi);
+    }
     if (requiredEnv === "GEMINI_API_KEY") {
       return deps.keyFlags.googleConfigured;
     }
@@ -218,6 +221,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     }
     if (attempt.requiredEnv === "CLI_AGY") {
       return `Antigravity CLI not found for model ${attempt.userModelId}. Install agy or set AGY_PATH.`;
+    }
+    if (attempt.requiredEnv === "CLI_PI") {
+      return `pi CLI not found for model ${attempt.userModelId}. Install pi or set PI_PATH.`;
     }
     return `Missing ${attempt.requiredEnv} for model ${attempt.userModelId}. Set the env var or choose a different --model.`;
   };
@@ -275,6 +281,7 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         config: deps.cliConfigForRun ?? null,
         cwd: cli?.cwd,
         extraArgs: cli?.extraArgsByProvider?.[attempt.cliProvider],
+        systemPrompt: prompt.system ?? null,
       });
       const summary = result.text.trim();
       if (!summary) throw new Error("CLI returned an empty summary");

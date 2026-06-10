@@ -47,7 +47,9 @@ function resolveConfiguredCliModel(
                 ? cli?.opencode?.model
                 : provider === "agy"
                   ? null
-                  : cli?.copilot?.model;
+                  : provider === "pi"
+                    ? cli?.pi?.model
+                    : cli?.copilot?.model;
   return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
 }
 

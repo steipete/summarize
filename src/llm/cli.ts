@@ -11,6 +11,7 @@ import {
   parseCodexUsageFromJsonl,
   parseOpenCodeOutputFromJsonl,
   parseJsonProviderOutput,
+  parsePiOutputFromJsonl,
   type JsonCliProvider,
 } from "./cli-provider-output.js";
 import type { LlmTokenUsage } from "./generate-text.js";
@@ -24,6 +25,7 @@ const DEFAULT_BINARIES: Record<CliProvider, string> = {
   opencode: "opencode",
   copilot: "copilot",
   agy: "agy",
+  pi: "pi",
 };
 
 const CLI_MAX_MESSAGE_ARG_BYTES = 120 * 1024;
@@ -39,6 +41,7 @@ const PROVIDER_PATH_ENV: Record<CliProvider, string> = {
   opencode: "OPENCODE_PATH",
   copilot: "COPILOT_PATH",
   agy: "AGY_PATH",
+  pi: "PI_PATH",
 };
 
 type RunCliModelOptions = {
@@ -52,6 +55,7 @@ type RunCliModelOptions = {
   config: CliConfig | null;
   cwd?: string;
   extraArgs?: string[];
+  systemPrompt?: string | null;
 };
 
 type CliRunResult = {
@@ -75,6 +79,7 @@ function getCliProviderConfig(
   if (provider === "openclaw") return config.openclaw;
   if (provider === "opencode") return config.opencode;
   if (provider === "agy") return config.agy;
+  if (provider === "pi") return config.pi;
   return config.copilot;
 }
 
@@ -193,6 +198,7 @@ export async function runCliModel({
   config,
   cwd,
   extraArgs,
+  systemPrompt,
 }: RunCliModelOptions): Promise<CliRunResult> {
   const execFileFn = execFileImpl ?? execFile;
   const binary = resolveCliBinary(provider, config, env);
@@ -411,6 +417,39 @@ export async function runCliModel({
       const text = stdout.trim();
       if (!text) throw new Error("CLI returned empty output");
       return { text, usage: null, costUsd: null };
+    } finally {
+      if (isolatedCwd) {
+        await fs.rm(isolatedCwd, { recursive: true, force: true }).catch(() => {});
+      }
+    }
+  }
+
+  if (provider === "pi") {
+    const isolatedCwd = !allowTools ? await fs.mkdtemp(path.join(tmpdir(), "summarize-pi-")) : null;
+    try {
+      const piArgs: string[] = [...providerExtraArgs];
+      piArgs.push("--print", "--mode", "json");
+      if (!allowTools) {
+        piArgs.push("--no-tools");
+      }
+      piArgs.push("--no-context-files", "--no-extensions", "--no-skills", "--no-session");
+      if (systemPrompt) {
+        piArgs.push("--system-prompt", systemPrompt);
+      }
+      if (requestedModel) {
+        piArgs.push("--model", requestedModel);
+      }
+      piArgs.push(prompt);
+      const { stdout } = await execCliWithInput({
+        execFileImpl: execFileFn,
+        cmd: binary,
+        args: piArgs,
+        input: "",
+        timeoutMs,
+        env: effectiveEnv,
+        cwd: isolatedCwd ?? cwd,
+      });
+      return parsePiOutputFromJsonl(stdout);
     } finally {
       if (isolatedCwd) {
         await fs.rm(isolatedCwd, { recursive: true, force: true }).catch(() => {});

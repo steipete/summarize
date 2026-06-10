@@ -3,7 +3,7 @@ import type { LlmTokenUsage } from "./generate-text.js";
 
 export type JsonCliProvider = Exclude<
   CliProvider,
-  "codex" | "openclaw" | "opencode" | "copilot" | "agy"
+  "codex" | "openclaw" | "opencode" | "copilot" | "agy" | "pi"
 >;
 
 const JSON_RESULT_FIELDS = ["result", "response", "output", "message", "text"] as const;
@@ -14,7 +14,8 @@ export function isJsonCliProvider(provider: CliProvider): provider is JsonCliPro
     provider !== "openclaw" &&
     provider !== "opencode" &&
     provider !== "copilot" &&
-    provider !== "agy"
+    provider !== "agy" &&
+    provider !== "pi"
   );
 }
 
@@ -453,6 +454,107 @@ export function parseJsonProviderOutput(args: { provider: JsonCliProvider; stdou
         };
       }
     }
+  }
+  return { text: trimmed, usage: null, costUsd: null };
+}
+
+// ── pi CLI parser (JSONL) ────────────────────────────────────────────────
+
+function parsePiUsage(usage: unknown): LlmTokenUsage | null {
+  if (!usage || typeof usage !== "object") return null;
+  const record = usage as Record<string, unknown>;
+  const promptTokens = toNumber(record.input);
+  const completionTokens = toNumber(record.output);
+  const totalTokens = toNumber(record.totalTokens);
+  if (promptTokens === null && completionTokens === null && totalTokens === null) return null;
+  return { promptTokens, completionTokens, totalTokens };
+}
+
+function parsePiCost(usage: unknown): number | null {
+  if (!usage || typeof usage !== "object") return null;
+  const record = usage as Record<string, unknown>;
+  const cost = record.cost;
+  if (!cost || typeof cost !== "object") return null;
+  return toNumber((cost as Record<string, unknown>).total);
+}
+
+function extractPiTextContent(content: unknown): string {
+  if (!Array.isArray(content)) return "";
+  return content
+    .filter(
+      (block): block is { type: string; text: string } =>
+        block && typeof block === "object" && (block as Record<string, unknown>).type === "text",
+    )
+    .map((block) => block.text)
+    .filter((text) => typeof text === "string" && text.trim().length > 0)
+    .join("")
+    .trim();
+}
+
+export function parsePiOutputFromJsonl(output: string): {
+  text: string;
+  usage: LlmTokenUsage | null;
+  costUsd: number | null;
+} {
+  const trimmed = output.trim();
+  if (!trimmed) {
+    throw new Error("CLI returned empty output");
+  }
+
+  const lines = trimmed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const textDeltaParts: string[] = [];
+  let fullText: string | null = null;
+  let usage: LlmTokenUsage | null = null;
+  let costUsd: number | null = null;
+  let sawStructuredEvent = false;
+
+  for (const line of lines) {
+    if (!line.startsWith("{")) continue;
+    try {
+      const parsed = JSON.parse(line) as Record<string, unknown>;
+      sawStructuredEvent = true;
+
+      // Collect text deltas from streaming events.
+      if (parsed.type === "message_update") {
+        const event = parsed.assistantMessageEvent as Record<string, unknown> | undefined;
+        if (
+          event?.type === "text_delta" &&
+          typeof event.delta === "string" &&
+          event.delta.length > 0
+        ) {
+          textDeltaParts.push(event.delta);
+        }
+        continue;
+      }
+
+      // Extract full text and usage from the final message events.
+      if (parsed.type === "message_end" || parsed.type === "turn_end") {
+        const message = parsed.message as Record<string, unknown> | undefined;
+        if (message) {
+          const extracted = extractPiTextContent(message.content);
+          if (extracted) fullText = extracted;
+          const parsedUsage = parsePiUsage(message.usage);
+          if (parsedUsage) usage = parsedUsage;
+          const parsedCost = parsePiCost(message.usage);
+          if (parsedCost !== null) costUsd = parsedCost;
+        }
+      }
+    } catch {
+      // ignore malformed JSON lines
+    }
+  }
+
+  const deltaText = textDeltaParts.join("").trim();
+  const text = fullText ?? deltaText;
+  if (text) {
+    return { text, usage, costUsd };
+  }
+  if (sawStructuredEvent) {
+    throw new Error("CLI returned empty output");
   }
   return { text: trimmed, usage: null, costUsd: null };
 }

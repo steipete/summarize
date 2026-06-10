@@ -149,7 +149,7 @@ export function buildProgram() {
     .addOption(
       new Option(
         "--cli [provider]",
-        "Use a CLI provider: claude, gemini, codex, agent, openclaw, opencode, copilot, agy (equivalent to --model cli/<provider>). If omitted, use auto selection with CLI enabled.",
+        "Use a CLI provider: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi (equivalent to --model cli/<provider>). If omitted, use auto selection with CLI enabled.",
       ),
     )
     .option("--extract", "Print extracted content and exit (no LLM summary)", false)

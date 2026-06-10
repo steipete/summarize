@@ -362,7 +362,7 @@ Examples:
 ```json
 {
   "cli": {
-    "enabled": ["gemini", "agent", "openclaw", "opencode", "copilot", "agy"],
+    "enabled": ["gemini", "agent", "openclaw", "opencode", "copilot", "agy", "pi"],
     "autoFallback": {
       "enabled": true,
       "onlyWhenNoApiKeys": true,
@@ -374,7 +374,8 @@ Examples:
     "openclaw": { "binary": "/usr/local/bin/openclaw", "model": "main" },
     "opencode": { "binary": "/usr/local/bin/opencode", "model": "openai/gpt-5.4" },
     "copilot": { "binary": "/usr/local/bin/copilot", "model": "gpt-5.2" },
-    "agy": { "binary": "/usr/local/bin/agy" }
+    "agy": { "binary": "/usr/local/bin/agy" },
+    "pi": { "binary": "/usr/local/bin/pi" }
   }
 }
 ```
@@ -388,6 +389,7 @@ Notes:
 - `cli.<provider>.binary` overrides CLI binary discovery.
 - `cli.<provider>.extraArgs` appends extra CLI args.
 - Antigravity CLI uses the active agy session model; `cli.agy.model` is ignored by runtime selection.
+- pi CLI runs `pi --print --mode json` with system prompt; use `PI_PATH` to override binary.
 - `cli.codex.isolated` defaults to `true` for normal summaries, adding Codex ephemeral/no-user-config/no-rules flags, a temporary cwd, and a sanitized temporary `CODEX_HOME` that carries auth only. Set it to `false` only when local Codex config/rules are intentional.
 
 ## OpenAI config
