@@ -116,6 +116,32 @@ describe("run model selection", () => {
     }
   });
 
+  it("resolves provider-default pi CLI ids through summarize config", () => {
+    const config = {
+      cli: {
+        pi: {
+          model: "anthropic/claude-sonnet-4-5",
+        },
+      },
+    };
+
+    const result = resolveModelSelection({
+      config,
+      configForCli: config,
+      configPath: null,
+      envForRun: {},
+      explicitModelArg: "cli/pi",
+    });
+
+    expect(result.requestedModel.kind).toBe("fixed");
+    expect(result.requestedModel.userModelId).toBe("cli/pi/anthropic/claude-sonnet-4-5");
+    expect(result.requestedModelLabel).toBe("cli/pi/anthropic/claude-sonnet-4-5");
+    if (result.requestedModel.kind === "fixed" && result.requestedModel.transport === "cli") {
+      expect(result.requestedModel.cliProvider).toBe("pi");
+      expect(result.requestedModel.cliModel).toBe("anthropic/claude-sonnet-4-5");
+    }
+  });
+
   it("keeps bare OpenCode ids when no configured model is available", () => {
     const result = resolveModelSelection({
       config: { cli: { opencode: { model: "   " } } },
@@ -156,6 +182,32 @@ describe("run model selection", () => {
     expect(result.requestedModelLabel).toBe("cli/opencode/openai/gpt-5.4");
     if (result.requestedModel.kind === "fixed" && result.requestedModel.transport === "cli") {
       expect(result.requestedModel.cliProvider).toBe("opencode");
+      expect(result.requestedModel.cliModel).toBe("openai/gpt-5.4");
+    }
+  });
+
+  it("does not override explicit pi model ids from config defaults", () => {
+    const config = {
+      cli: {
+        pi: {
+          model: "anthropic/claude-sonnet-4-5",
+        },
+      },
+    };
+
+    const result = resolveModelSelection({
+      config,
+      configForCli: config,
+      configPath: null,
+      envForRun: {},
+      explicitModelArg: "cli/pi/openai/gpt-5.4",
+    });
+
+    expect(result.requestedModel.kind).toBe("fixed");
+    expect(result.requestedModel.userModelId).toBe("cli/pi/openai/gpt-5.4");
+    expect(result.requestedModelLabel).toBe("cli/pi/openai/gpt-5.4");
+    if (result.requestedModel.kind === "fixed" && result.requestedModel.transport === "cli") {
+      expect(result.requestedModel.cliProvider).toBe("pi");
       expect(result.requestedModel.cliModel).toBe("openai/gpt-5.4");
     }
   });

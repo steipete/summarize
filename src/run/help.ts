@@ -305,6 +305,7 @@ ${heading("Env Vars")}
   OPENCODE_PATH         optional (path to OpenCode CLI binary)
   COPILOT_PATH          optional (path to GitHub Copilot CLI binary)
   AGY_PATH              optional (path to Antigravity CLI binary)
+  PI_PATH               optional (path to pi CLI binary)
   SUMMARIZE_MODEL       optional (overrides default model selection)
   SUMMARIZE_THEME       optional (${CLI_THEME_NAMES.join(", ")})
   SUMMARIZE_TRUECOLOR   optional (force 24-bit color)

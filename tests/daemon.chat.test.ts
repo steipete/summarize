@@ -276,6 +276,42 @@ describe("daemon/chat", () => {
     expect(meta[0]?.model).toBe("cli/agy");
   });
 
+  it("resolves configured pi models before emitting chat metadata", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-pi-fixed-"));
+    const meta: Array<{ model?: string | null }> = [];
+
+    await streamChatResponse({
+      env: { HOME: home },
+      fetchImpl: fetch,
+      configForCli: {
+        cli: {
+          pi: {
+            model: "anthropic/claude-sonnet-4-5",
+          },
+        },
+      },
+      session: {
+        id: "s-pi-fixed",
+        lastMeta: { model: null, modelLabel: null, inputSummary: null, summaryFromCache: null },
+      },
+      pageUrl: "https://example.com",
+      pageTitle: "Example",
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "cli/pi",
+      pushToSession: () => {},
+      emitMeta: (patch) => meta.push(patch),
+    });
+
+    expect(runCliModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "pi",
+        model: "anthropic/claude-sonnet-4-5",
+      }),
+    );
+    expect(meta[0]?.model).toBe("cli/pi/anthropic/claude-sonnet-4-5");
+  });
+
   it("routes openrouter overrides through openrouter transport", async () => {
     const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-openrouter-"));
     const meta: Array<{ model?: string | null }> = [];

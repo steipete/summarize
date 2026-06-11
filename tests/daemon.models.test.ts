@@ -52,12 +52,15 @@ describe("daemon /v1/models", () => {
     const claudePath = path.join(binDir, "claude");
     const opencodePath = path.join(binDir, "opencode");
     const copilotPath = path.join(binDir, "copilot");
+    const piPath = path.join(binDir, "pi");
     writeFileSync(claudePath, "#!/bin/sh\nexit 0\n", "utf8");
     writeFileSync(opencodePath, "#!/bin/sh\nexit 0\n", "utf8");
     writeFileSync(copilotPath, "#!/bin/sh\nexit 0\n", "utf8");
+    writeFileSync(piPath, "#!/bin/sh\nexit 0\n", "utf8");
     chmodSync(claudePath, 0o755);
     chmodSync(opencodePath, 0o755);
     chmodSync(copilotPath, 0o755);
+    chmodSync(piPath, 0o755);
 
     const result = await buildModelPickerOptions({
       env: {},
@@ -70,9 +73,11 @@ describe("daemon /v1/models", () => {
     expect(result.providers.cliClaude).toBe(true);
     expect(result.providers.cliOpencode).toBe(true);
     expect(result.providers.cliCopilot).toBe(true);
+    expect(result.providers.cliPi).toBe(true);
     expect(result.options.some((o) => o.id === "cli/claude")).toBe(true);
     expect(result.options.some((o) => o.id === "cli/opencode")).toBe(true);
     expect(result.options.some((o) => o.id === "cli/copilot")).toBe(true);
+    expect(result.options.some((o) => o.id === "cli/pi")).toBe(true);
   });
 
   it("includes Ollama models when OLLAMA_BASE_URL is set", async () => {

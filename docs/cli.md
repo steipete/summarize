@@ -27,7 +27,7 @@ Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw,
 - `cli/pi` (use pi's configured default model)
 
 Use `--cli [provider]` (case-insensitive) for the provider default, or `--model cli/<provider>/<model>` to pin a model.
-Antigravity does not support per-call model selection in print mode, so use `cli/agy` without a model suffix.
+Antigravity does not support per-call model selection in print mode, so use `cli/agy` without a model suffix. pi supports `cli/pi/<model>` or a configured `cli.pi.model`.
 If `--cli` is provided without a provider, auto selection is used with CLI enabled.
 
 Codex GPT Fast:
@@ -46,6 +46,7 @@ Auto mode can prepend CLI attempts in two ways:
   - Applies only to **implicit** auto (when no model is set via flag/env/config).
   - Default behavior: only when no API key is configured.
   - Default order: `claude, gemini, codex, agent, openclaw, opencode, copilot`.
+  - Antigravity and pi are opt-in unless added to `cli.autoFallback.order`.
   - Remembers + prioritizes the last successful CLI provider (`~/.summarize/cli-state.json`).
 
 Gemini CLI performance: summarize sets `GEMINI_CLI_NO_RELAUNCH=true` for Gemini CLI runs to avoid a costly self-relaunch (can be overridden by setting it yourself).
@@ -105,14 +106,24 @@ path-based prompt and enables the required tool flags:
 - OpenCode: `opencode run --format json ... --file <path>` when a file/image path is required
 - Copilot: `copilot -p <prompt>`; passes `--model <model>` when one is configured
 - Antigravity: `agy --print`; does not auto-approve tools for attachment prompts
-- pi: `pi --print --mode json`; passes `--system-prompt` and `--no-tools` for isolated summaries
+- pi: `pi --print --mode json`; passes `--system-prompt`, sends prompt over stdin, and uses `--no-tools` for isolated summaries
 
 ## Config
 
 ```json
 {
   "cli": {
-    "enabled": ["claude", "gemini", "codex", "agent", "openclaw", "opencode", "copilot", "agy", "pi"],
+    "enabled": [
+      "claude",
+      "gemini",
+      "codex",
+      "agent",
+      "openclaw",
+      "opencode",
+      "copilot",
+      "agy",
+      "pi"
+    ],
     "autoFallback": {
       "enabled": true,
       "onlyWhenNoApiKeys": true,
@@ -156,7 +167,7 @@ Notes:
 - Cursor Agent CLI uses the `agent` binary and relies on Cursor CLI auth (login or `CURSOR_API_KEY`).
 - Antigravity CLI uses the active agy session model; `cli.agy.model` is ignored by runtime selection.
 - Antigravity normal text summaries run `agy --print` with no prompt argument in a temporary cwd with `--sandbox`, streaming the prompt over stdin so extracted content is not exposed in argv. Attachment prompts keep the caller cwd so agy can inspect the requested path but do not auto-approve tools.
-- pi runs in JSON mode (`--print --mode json`) with `--no-tools`, `--no-context-files`, `--no-extensions`, `--no-skills`, `--no-session` for isolated summarization. It receives the summarize system prompt via `--system-prompt` and reports usage/cost via JSONL events. Use `PI_PATH` to override the binary path.
+- pi runs in JSON mode (`--print --mode json`) with `--no-tools`, `--no-context-files`, `--no-extensions`, `--no-skills`, `--no-session` for isolated summarization. It receives the summarize system prompt via `--system-prompt`, the summarize prompt over stdin, and reports usage/cost via JSONL events. Use `PI_PATH` to override the binary path.
 - Codex CLI normal text summaries run isolated by default: `codex exec --ephemeral --ignore-user-config --ignore-rules -C <temp-dir> ...` with a sanitized temporary `CODEX_HOME` that carries auth only. Set `cli.codex.isolated` to `false` only when you intentionally need Codex to inherit local config/rules.
 - Gemini CLI is invoked in headless mode with `--prompt` for compatibility with current Gemini CLI releases.
 - OpenClaw uses `openclaw agent --agent <model> --message <prompt> --json` because current OpenClaw requires `-m/--message`; very large extracted inputs are rejected before launch to avoid argv limits.

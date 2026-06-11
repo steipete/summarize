@@ -432,19 +432,25 @@ export async function runCliModel({
       if (!allowTools) {
         piArgs.push("--no-tools");
       }
-      piArgs.push("--no-context-files", "--no-extensions", "--no-skills", "--no-session", "--thinking", "off");
+      piArgs.push(
+        "--no-context-files",
+        "--no-extensions",
+        "--no-skills",
+        "--no-session",
+        "--thinking",
+        "off",
+      );
       if (systemPrompt) {
         piArgs.push("--system-prompt", systemPrompt);
       }
       if (requestedModel) {
         piArgs.push("--model", requestedModel);
       }
-      piArgs.push(prompt);
       const { stdout } = await execCliWithInput({
         execFileImpl: execFileFn,
         cmd: binary,
         args: piArgs,
-        input: "",
+        input: prompt,
         timeoutMs,
         env: effectiveEnv,
         cwd: isolatedCwd ?? cwd,

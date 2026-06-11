@@ -16,7 +16,7 @@ Fast summaries from URLs, files, and media. Works in the terminal, a Chrome Side
 - URLs, files, and media: web pages, PDFs, images, audio/video, YouTube, podcasts, RSS.
 - Slide extraction for video sources (YouTube, direct video URLs, local video files) with OCR + timestamped cards.
 - Transcript-first media flow: published transcripts when available, then Groq/ONNX/whisper.cpp/AssemblyAI/Gemini/OpenAI/FAL transcription fallback when not.
-- Coding CLI providers: Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode.
+- Coding CLI providers: Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, GitHub Copilot, Antigravity, pi.
 - Streaming output with Markdown rendering, metrics, and cache-aware status.
 - Local, paid, and free models: OpenAI‑compatible local endpoints, paid providers, plus an OpenRouter free preset.
 - Output modes: Markdown/text, JSON diagnostics, extract-only, metrics, timing, and cost estimates.
@@ -332,7 +332,7 @@ Use `summarize --help` or `summarize help` for the full help text.
 - `--length short|medium|long|xl|xxl|s|m|l|<chars>`
 - `--language, --lang <language>`: output language (`auto` = match source)
 - `--max-output-tokens <count>`: hard cap for LLM output tokens
-- `--cli [provider]`: use a CLI provider (`--model cli/<provider>`). Supports `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`, `agy`, `pi`. If omitted, uses auto selection with CLI enabled.
+- `--cli [provider]`: use a CLI provider (`--model cli/<provider>`). Supports `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`, `copilot`, `agy`, `pi`. If omitted, uses auto selection with CLI enabled.
 - `--stream auto|on|off`: stream LLM output (`auto` = TTY only; disabled in `--json` mode)
 - `--plain`: keep raw output (no ANSI/OSC Markdown rendering)
 - `--no-color`: disable ANSI colors
@@ -354,7 +354,7 @@ Use `summarize --help` or `summarize help` for the full help text.
 - `--verbose`: debug/diagnostics on stderr
 - `--metrics off|on|detailed`: metrics output (default `on`)
 
-### Coding CLIs (Codex, Claude, Gemini, Agent, OpenClaw, OpenCode, Antigravity)
+### Coding CLIs (Codex, Claude, Gemini, Agent, OpenClaw, OpenCode, Copilot, Antigravity, pi)
 
 Summarize can use common coding CLIs as local model backends:
 
@@ -423,7 +423,7 @@ CLI attempts are prepended when:
 - `cli.enabled` is set (explicit allowlist/order), or
 - implicit auto selection is active and `cli.autoFallback` is enabled.
 
-Default fallback behavior: only when no API keys are configured, order `claude, gemini, codex, agent, openclaw, opencode`, and remember/prioritize last successful provider (`~/.summarize/cli-state.json`).
+Default fallback behavior: only when no API keys are configured, order `claude, gemini, codex, agent, openclaw, opencode, copilot`, and remember/prioritize last successful provider (`~/.summarize/cli-state.json`). Antigravity and pi are opt-in unless you add them to `cli.autoFallback.order`.
 
 Set explicit CLI attempts:
 

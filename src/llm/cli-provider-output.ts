@@ -511,9 +511,14 @@ export function parsePiOutputFromJsonl(output: string): {
   let usage: LlmTokenUsage | null = null;
   let costUsd: number | null = null;
   let sawStructuredEvent = false;
+  const errorMessages: string[] = [];
+  const plainLines: string[] = [];
 
   for (const line of lines) {
-    if (!line.startsWith("{")) continue;
+    if (!line.startsWith("{")) {
+      plainLines.push(line);
+      continue;
+    }
     try {
       const parsed = JSON.parse(line) as Record<string, unknown>;
       sawStructuredEvent = true;
@@ -535,6 +540,11 @@ export function parsePiOutputFromJsonl(output: string): {
       if (parsed.type === "message_end" || parsed.type === "turn_end") {
         const message = parsed.message as Record<string, unknown> | undefined;
         if (message) {
+          if (message.role !== "assistant") continue;
+          if (typeof message.errorMessage === "string" && message.errorMessage.trim().length > 0) {
+            const errorMessage = message.errorMessage.trim();
+            if (!errorMessages.includes(errorMessage)) errorMessages.push(errorMessage);
+          }
           const extracted = extractPiTextContent(message.content);
           if (extracted) fullText = extracted;
           const parsedUsage = parsePiUsage(message.usage);
@@ -552,6 +562,12 @@ export function parsePiOutputFromJsonl(output: string): {
   const text = fullText ?? deltaText;
   if (text) {
     return { text, usage, costUsd };
+  }
+  if (errorMessages.length > 0) {
+    throw new Error(errorMessages.join("\n"));
+  }
+  if (sawStructuredEvent && plainLines.length > 0) {
+    throw new Error(plainLines.join("\n"));
   }
   if (sawStructuredEvent) {
     throw new Error("CLI returned empty output");

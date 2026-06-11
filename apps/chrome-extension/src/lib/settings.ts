@@ -328,7 +328,7 @@ export const defaultSettings: Settings = {
   summaryTimestamps: true,
   extendedLogging: false,
   autoCliFallback: true,
-  autoCliOrder: "claude,gemini,codex,agent,openclaw,opencode,copilot,pi",
+  autoCliOrder: "claude,gemini,codex,agent,openclaw,opencode,copilot",
   hoverPrompt:
     "Plain text only (no Markdown). Summarize the linked page concisely in 1-2 sentences; aim for 100-200 characters.",
   transcriber: "",

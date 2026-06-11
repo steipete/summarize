@@ -550,6 +550,53 @@ describe("auto model selection", () => {
     expect(attempts[0]?.userModelId).toBe("cli/opencode/openai/gpt-5.4");
   });
 
+  it("keeps pi out of the default auto CLI fallback order", () => {
+    const attempts = buildAutoModelAttempts({
+      kind: "text",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: {},
+      config: null,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+      cliAvailability: { pi: true },
+      isImplicitAutoSelection: true,
+    });
+
+    expect(attempts.some((attempt) => attempt.userModelId.startsWith("cli/pi"))).toBe(false);
+  });
+
+  it("uses configured pi models when pi is explicitly enabled for CLI fallback", () => {
+    const config: SummarizeConfig = {
+      model: { mode: "auto", rules: [{ candidates: ["openai/gpt-5-mini"] }] },
+      cli: {
+        autoFallback: {
+          enabled: true,
+          onlyWhenNoApiKeys: false,
+          order: ["pi"],
+        },
+        pi: {
+          model: "anthropic/claude-sonnet-4-5",
+        },
+      },
+    };
+    const attempts = buildAutoModelAttempts({
+      kind: "text",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: {},
+      config,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+      cliAvailability: { pi: true },
+      isImplicitAutoSelection: true,
+    });
+
+    expect(attempts[0]?.userModelId).toBe("cli/pi/anthropic/claude-sonnet-4-5");
+  });
+
   it("dedupes configured CLI auto-fallback order", () => {
     const config: SummarizeConfig = {
       cli: {

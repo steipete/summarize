@@ -71,9 +71,19 @@ describe("run/env", () => {
       provider: "opencode",
       model: "openai/gpt-5.4",
     });
+    expect(parseCliUserModelId("cli/agy")).toEqual({
+      provider: "agy",
+      model: null,
+    });
+    expect(parseCliUserModelId("cli/pi/openai/gpt-5.4")).toEqual({
+      provider: "pi",
+      model: "openai/gpt-5.4",
+    });
     expect(parseCliProviderArg("  AGENT ")).toBe("agent");
     expect(parseCliProviderArg(" openclaw ")).toBe("openclaw");
     expect(parseCliProviderArg(" opencode ")).toBe("opencode");
+    expect(parseCliProviderArg(" agy ")).toBe("agy");
+    expect(parseCliProviderArg(" pi ")).toBe("pi");
   });
 
   it("detects OpenCode availability from PATH and respects cli.enabled", () => {

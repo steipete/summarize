@@ -28,16 +28,22 @@ describe("llm provider capabilities", () => {
     expect(DEFAULT_CLI_MODELS.openclaw).toBe("main");
     expect(DEFAULT_CLI_MODELS.opencode).toBeNull();
     expect(DEFAULT_CLI_MODELS.copilot).toBeNull();
+    expect(DEFAULT_CLI_MODELS.agy).toBeNull();
+    expect(DEFAULT_CLI_MODELS.pi).toBeNull();
     expect(parseCliProviderName(" GeMiNi ")).toBe("gemini");
     expect(parseCliProviderName(" openclaw ")).toBe("openclaw");
     expect(parseCliProviderName(" opencode ")).toBe("opencode");
     expect(parseCliProviderName(" OpenCode ")).toBe("opencode");
     expect(parseCliProviderName(" Copilot ")).toBe("copilot");
+    expect(parseCliProviderName(" Agy ")).toBe("agy");
+    expect(parseCliProviderName(" Pi ")).toBe("pi");
     expect(parseCliProviderName("nope")).toBeNull();
     expect(requiredEnvForCliProvider("agent")).toBe("CLI_AGENT");
     expect(requiredEnvForCliProvider("openclaw")).toBe("CLI_OPENCLAW");
     expect(requiredEnvForCliProvider("opencode")).toBe("CLI_OPENCODE");
     expect(requiredEnvForCliProvider("copilot")).toBe("CLI_COPILOT");
+    expect(requiredEnvForCliProvider("agy")).toBe("CLI_AGY");
+    expect(requiredEnvForCliProvider("pi")).toBe("CLI_PI");
   });
 
   it("tracks native provider capabilities centrally", () => {
@@ -71,6 +77,9 @@ describe("llm provider capabilities", () => {
     expect(resolveRequiredEnvForModelId("openclaw/main")).toBe("CLI_OPENCLAW");
     expect(resolveRequiredEnvForModelId("cli/opencode")).toBe("CLI_OPENCODE");
     expect(resolveRequiredEnvForModelId("cli/opencode/openai/gpt-5.4")).toBe("CLI_OPENCODE");
+    expect(resolveRequiredEnvForModelId("cli/agy")).toBe("CLI_AGY");
+    expect(resolveRequiredEnvForModelId("cli/pi")).toBe("CLI_PI");
+    expect(resolveRequiredEnvForModelId("cli/pi/openai/gpt-5.4")).toBe("CLI_PI");
     expect(resolveRequiredEnvForModelId("cli/nope/test")).toBe("CLI_CLAUDE");
     expect(resolveRequiredEnvForModelId("openrouter/openai/gpt-5-mini")).toBe("OPENROUTER_API_KEY");
     expect(resolveRequiredEnvForModelId("nvidia/meta/llama-3.1-8b-instruct")).toBe(

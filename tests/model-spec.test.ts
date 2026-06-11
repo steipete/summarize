@@ -87,6 +87,24 @@ describe("model spec parsing", () => {
     );
   });
 
+  it("uses the pi runtime default model and accepts model suffixes", () => {
+    const runtimeDefault = parseRequestedModelId("cli/pi");
+    expect(runtimeDefault.kind).toBe("fixed");
+    expect(runtimeDefault.transport).toBe("cli");
+    expect(runtimeDefault.userModelId).toBe("cli/pi");
+    expect(runtimeDefault.cliProvider).toBe("pi");
+    expect(runtimeDefault.cliModel).toBeNull();
+    expect(runtimeDefault.requiredEnv).toBe("CLI_PI");
+
+    const explicitModel = parseRequestedModelId("cli/pi/openai/gpt-5.4");
+    expect(explicitModel.kind).toBe("fixed");
+    expect(explicitModel.transport).toBe("cli");
+    expect(explicitModel.userModelId).toBe("cli/pi/openai/gpt-5.4");
+    expect(explicitModel.cliProvider).toBe("pi");
+    expect(explicitModel.cliModel).toBe("openai/gpt-5.4");
+    expect(explicitModel.requiredEnv).toBe("CLI_PI");
+  });
+
   it("rejects invalid cli providers", () => {
     expect(() => parseRequestedModelId("cli/unknown/model")).toThrow(/Invalid CLI model id/);
   });
