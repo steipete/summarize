@@ -57,14 +57,19 @@ export const fetchTranscript = async (
     throw new Error(transcriptionCapabilities.missingProviderNote);
   }
 
-  // In explicit apify mode we can continue without HTML.
-  if (!html && mode !== "apify") {
+  const effectiveVideoId = resolveEffectiveVideoId(context);
+  const canProceedWithoutWebContext =
+    mode === "apify" ||
+    (mode === "auto" && Boolean(options.apifyApiToken)) ||
+    (canRunYtDlp &&
+      (Boolean(diarization) || mode === "yt-dlp" || mode === "no-auto" || mode === "auto"));
+
+  // yt-dlp and Apify fallbacks can run from the URL alone; web caption providers cannot.
+  if (!html && !canProceedWithoutWebContext) {
     return { text: null, source: null, attemptedProviders };
   }
-  const effectiveVideoId = resolveEffectiveVideoId(context);
   const htmlText = html ?? "";
-  // In explicit apify mode we can continue without a parsed video id.
-  if (!effectiveVideoId && mode !== "apify") {
+  if (!effectiveVideoId && !canProceedWithoutWebContext) {
     return { text: null, source: null, attemptedProviders };
   }
   const durationMetadata = await resolveDurationMetadata({

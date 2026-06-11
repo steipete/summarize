@@ -71,6 +71,36 @@ describe("YouTube transcript provider module", () => {
     ).toEqual({ text: null, source: null, attemptedProviders: [] });
   });
 
+  it("uses yt-dlp mode even when HTML is unavailable", async () => {
+    ytdlp.fetchTranscriptWithYtDlp.mockResolvedValue({
+      text: "Audio transcript",
+      provider: "openai",
+      error: null,
+      notes: [],
+      segments: null,
+    });
+
+    const result = await fetchTranscript(
+      {
+        url: "https://www.youtube.com/watch?v=abcdefghijk",
+        html: null,
+        resourceKey: null,
+      },
+      {
+        ...baseOptions,
+        youtubeTranscriptMode: "yt-dlp",
+        ytDlpPath: "/usr/bin/yt-dlp",
+        openaiApiKey: "OPENAI",
+      },
+    );
+
+    expect(result.text).toBe("Audio transcript");
+    expect(result.source).toBe("yt-dlp");
+    expect(result.attemptedProviders).toEqual(["yt-dlp"]);
+    expect(api.fetchTranscriptFromTranscriptEndpoint).not.toHaveBeenCalled();
+    expect(captions.fetchTranscriptFromCaptionTracks).not.toHaveBeenCalled();
+  });
+
   it("uses apify mode even when HTML is null (fixes #51)", async () => {
     apify.fetchTranscriptWithApify.mockResolvedValue("Hello from apify");
 
@@ -627,6 +657,46 @@ describe("YouTube transcript provider module", () => {
       expect.objectContaining({
         diarization: "auto",
         elevenlabsApiKey: "ELEVEN",
+      }),
+    );
+    expect(api.fetchTranscriptFromTranscriptEndpoint).not.toHaveBeenCalled();
+    expect(captions.fetchTranscriptFromCaptionTracks).not.toHaveBeenCalled();
+  });
+
+  it("forces yt-dlp diarization even when HTML is unavailable", async () => {
+    ytdlp.fetchTranscriptWithYtDlp.mockResolvedValue({
+      text: "Speaker 1: Hello\nSpeaker 2: Hi",
+      provider: "elevenlabs",
+      error: null,
+      notes: [],
+      segments: [
+        { startMs: 0, endMs: 500, text: "Hello", speaker: "Speaker 1" },
+        { startMs: 700, endMs: 1000, text: "Hi", speaker: "Speaker 2" },
+      ],
+    });
+
+    const result = await fetchTranscript(
+      {
+        url: "https://www.youtube.com/watch?v=abcdefghijk",
+        html: null,
+        resourceKey: null,
+      },
+      {
+        ...baseOptions,
+        ytDlpPath: "/usr/bin/yt-dlp",
+        elevenlabsApiKey: "ELEVEN",
+        transcriptDiarization: "auto",
+      },
+    );
+
+    expect(result.text).toBe("Speaker 1: Hello\nSpeaker 2: Hi");
+    expect(result.source).toBe("yt-dlp");
+    expect(result.attemptedProviders).toEqual(["yt-dlp"]);
+    expect(result.metadata).toEqual(
+      expect.objectContaining({
+        transcriptionProvider: "elevenlabs",
+        diarizationProvider: "elevenlabs",
+        speakerLabels: true,
       }),
     );
     expect(api.fetchTranscriptFromTranscriptEndpoint).not.toHaveBeenCalled();
