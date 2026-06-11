@@ -129,6 +129,31 @@ describe("transcript cache helpers", () => {
     expect(outcome.resolution?.segments).toBeNull();
   });
 
+  it("does not reuse cached speaker-labelled transcripts when diarization was not requested", async () => {
+    const transcriptCache: TranscriptCache = {
+      get: vi.fn(async () => ({
+        content: "Speaker A: Hello",
+        source: "yt-dlp",
+        expired: false,
+        metadata: {
+          diarizationProvider: "openai",
+          speakerLabels: true,
+          segments: [{ startMs: 1000, endMs: 2000, text: "Hello", speaker: "Speaker A" }],
+        },
+      })),
+      set: vi.fn(async () => {}),
+    };
+
+    const outcome = await readTranscriptCache({
+      url: "https://example.com",
+      cacheMode: "default",
+      transcriptCache,
+    });
+
+    expect(outcome.resolution).toBeNull();
+    expect(outcome.diagnostics.notes).toContain("speaker labels");
+  });
+
   it("skips cache reads when bypass requested", async () => {
     const transcriptCache: TranscriptCache = {
       get: vi.fn(async () => ({

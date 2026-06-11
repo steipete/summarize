@@ -74,6 +74,14 @@ export const readTranscriptCache = async ({
 
   const cachedSegments = extractSegments(cached.metadata);
   const hasSegments = Boolean(cachedSegments && cachedSegments.length > 0);
+  const hasSpeakerLabels = cached.metadata?.speakerLabels === true;
+  if (!transcriptDiarization && hasSpeakerLabels) {
+    diagnostics.notes = appendNote(
+      diagnostics.notes,
+      "Cached transcript includes speaker labels; fetching fresh copy",
+    );
+    return { cached, resolution: null, diagnostics };
+  }
   const timestampsFlag = cached.metadata?.timestamps;
   if (
     transcriptTimestamps &&
