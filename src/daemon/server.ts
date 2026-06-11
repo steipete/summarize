@@ -108,23 +108,45 @@ export function resolveDaemonMaxActiveSummaries(env: Record<string, string | und
   return clampNumber(Math.floor(parsed), 1, DAEMON_MAX_ACTIVE_SUMMARIES_LIMIT);
 }
 
-async function waitForActiveTasks(
-  activeTasks: Set<Promise<void>>,
-  timeoutMs: number,
-): Promise<void> {
-  if (activeTasks.size === 0) return;
+async function drainActiveTasks(activeTasks: Set<Promise<void>>): Promise<void> {
+  while (activeTasks.size > 0) {
+    const tasks = [...activeTasks];
+    await Promise.allSettled(tasks);
+    for (const task of tasks) {
+      activeTasks.delete(task);
+    }
+  }
+}
+
+export async function closeAfterActiveTasks({
+  activeTasks,
+  timeoutMs,
+  close,
+}: {
+  activeTasks: Set<Promise<void>>;
+  timeoutMs: number;
+  close: () => void;
+}): Promise<boolean> {
+  const drainPromise = drainActiveTasks(activeTasks);
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let drained = false;
   try {
-    await Promise.race([
-      Promise.allSettled([...activeTasks]).then(() => undefined),
-      new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, timeoutMs);
+    drained = await Promise.race([
+      drainPromise.then(() => true),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(false), timeoutMs);
         timer.unref?.();
       }),
     ]);
   } finally {
     if (timer) clearTimeout(timer);
   }
+  if (drained) {
+    close();
+  } else {
+    void drainPromise.then(close).catch(() => {});
+  }
+  return drained;
 }
 
 export function resolveDaemonListenHost(env: Record<string, string | undefined>): string {
@@ -641,7 +663,10 @@ export async function runDaemonServer({
       }
     });
   } finally {
-    await waitForActiveTasks(activeTasks, DAEMON_SHUTDOWN_ACTIVE_SESSION_GRACE_MS);
-    cacheState.store?.close();
+    await closeAfterActiveTasks({
+      activeTasks,
+      timeoutMs: DAEMON_SHUTDOWN_ACTIVE_SESSION_GRACE_MS,
+      close: () => cacheState.store?.close(),
+    });
   }
 }
