@@ -98,7 +98,7 @@ test("transcribes a captionless YouTube video through the extension runtime", as
         const lines = Array.isArray(stored["summarize:extension-logs"])
           ? (stored["summarize:extension-logs"] as string[])
           : [];
-        return lines
+        const entry = lines
           .toReversed()
           .map((line) => {
             try {
@@ -111,7 +111,8 @@ test("transcribes a captionless YouTube video through the extension runtime", as
               return null;
             }
           })
-          .find((entry) => entry?.event === "extract:url-direct:local-transcript");
+          .find((candidate) => candidate?.event === "extract:url-direct:local-transcript");
+        return entry ?? null;
       });
     await expect.poll(readLocalTranscriptLog, { timeout: 10_000 }).not.toBeNull();
     const localTranscriptLog = await readLocalTranscriptLog();

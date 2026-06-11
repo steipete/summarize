@@ -14,6 +14,7 @@
 - Daemon: defer cache shutdown until in-flight summary work drains, preventing late writes through finalized SQLite statements.
 - Dependencies: replace Ora, tslog, and the FAL SDK with focused local implementations while retaining spinner, daemon logging, retry, multipart upload, and FAL transcription behavior.
 - Chrome extension: replace the bundled browser FFmpeg WebAssembly runtime with MediaBunny and native WebCodecs, adding AV1 frame extraction while reducing the packaged extension size.
+- Chrome extension: avoid throttled offscreen canvas blob callbacks so MediaBunny slide JPEGs encode in milliseconds instead of roughly one second per frame.
 
 ## 0.17.1 - 2026-06-11
 

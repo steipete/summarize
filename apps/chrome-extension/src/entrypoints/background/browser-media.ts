@@ -94,7 +94,7 @@ export async function extractBrowserMediaFramesInDocument({
       index += 1;
       if (!wrapped) continue;
       frames.push({
-        imageUrl: await canvasToDataUrl(wrapped),
+        imageUrl: await browserMediaCanvasToDataUrl(wrapped),
         timestamp,
       });
     }
@@ -234,17 +234,15 @@ function createMediaInput(bytes: Uint8Array, mimeType: string | null): Input {
   });
 }
 
-async function canvasToDataUrl({ canvas }: WrappedCanvas): Promise<string> {
-  const blob =
-    typeof OffscreenCanvas !== "undefined" && canvas instanceof OffscreenCanvas
-      ? await canvas.convertToBlob({ type: FRAME_IMAGE_TYPE, quality: FRAME_IMAGE_QUALITY })
-      : await new Promise<Blob>((resolve, reject) =>
-          canvas.toBlob(
-            (value) => (value ? resolve(value) : reject(new Error("Canvas encoding failed."))),
-            FRAME_IMAGE_TYPE,
-            FRAME_IMAGE_QUALITY,
-          ),
-        );
+export async function browserMediaCanvasToDataUrl({ canvas }: WrappedCanvas): Promise<string> {
+  if (!(typeof OffscreenCanvas !== "undefined" && canvas instanceof OffscreenCanvas)) {
+    // Chrome throttles HTMLCanvasElement.toBlob() to roughly one callback per second in offscreen documents.
+    return canvas.toDataURL(FRAME_IMAGE_TYPE, FRAME_IMAGE_QUALITY);
+  }
+  const blob = await canvas.convertToBlob({
+    type: FRAME_IMAGE_TYPE,
+    quality: FRAME_IMAGE_QUALITY,
+  });
   return await bytesToDataUrl(new Uint8Array(await blob.arrayBuffer()), blob.type);
 }
 

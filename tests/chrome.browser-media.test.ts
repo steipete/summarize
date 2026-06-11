@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  browserMediaCanvasToDataUrl,
   extractBrowserMediaFrames,
   extractBrowserMediaFramesInDocument,
   isBrowserMediaUrl,
@@ -129,6 +130,20 @@ describe("chrome browser media decoding", () => {
         ),
       }),
     ).rejects.toThrow("too large");
+  });
+
+  it("encodes offscreen-document HTML canvases without the throttled blob callback", async () => {
+    const toDataURL = vi.fn(() => "data:image/jpeg;base64,AQID");
+    const canvas = { toDataURL } as unknown as HTMLCanvasElement;
+
+    await expect(
+      browserMediaCanvasToDataUrl({
+        canvas,
+        duration: 1,
+        timestamp: 0,
+      }),
+    ).resolves.toBe("data:image/jpeg;base64,AQID");
+    expect(toDataURL).toHaveBeenCalledWith("image/jpeg", 0.82);
   });
 
   it("incrementally downmixes and resamples timestamped PCM", () => {
