@@ -18,6 +18,15 @@ export {
   type ExtractedLinkContent,
   type FetchLinkContentOptions,
 } from "./link-preview/content/types.js";
+export {
+  attachDnsPinnedAddresses,
+  isNativeOrBoundGlobalFetch,
+  markFetchAsDnsPinned,
+  readDnsPinnedAddresses,
+  resolveDnsPinnedFetch,
+  supportsDnsPinnedFetch,
+  type DnsPinnedAddress,
+} from "./fetch-capabilities.js";
 export type {
   ConvertHtmlToMarkdown,
   FirecrawlScrapeResult,

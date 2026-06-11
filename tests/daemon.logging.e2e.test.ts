@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runDaemonServer } from "../src/daemon/server.js";
 
+const PUBLIC_TEST_URL = "http://93.184.216.34/article";
+
 const findFreePort = async (): Promise<number> =>
   await new Promise((resolve, reject) => {
     const server = createServer();
@@ -140,7 +142,7 @@ describe("daemon logging", () => {
             "content-type": "application/json",
           },
           body: JSON.stringify({
-            url: "https://example.com/article",
+            url: PUBLIC_TEST_URL,
             title: "Example",
             model: "cli/codex",
             length: "short",
@@ -191,7 +193,7 @@ describe("daemon logging", () => {
 
       expect(doneExtended).toBeTruthy();
       expect(doneMinimal).toBeTruthy();
-      expect(doneExtended?.summary).toContain("https://example.com/article");
+      expect(doneExtended?.summary).toContain(PUBLIC_TEST_URL);
       expect(doneExtended?.extracted).toBeTruthy();
       expect(doneMinimal?.summary).toBeUndefined();
       expect(doneMinimal?.extracted).toBeUndefined();

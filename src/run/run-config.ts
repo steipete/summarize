@@ -14,7 +14,7 @@ export type ConfigState = {
   videoMode: ReturnType<typeof parseVideoMode>;
   cliConfigForRun: SummarizeConfig["cli"] | undefined;
   configForCli: SummarizeConfig | null;
-  openaiUseChatCompletions: boolean;
+  openaiUseChatCompletions: boolean | undefined;
   openaiRequestOptions: ModelRequestOptions | undefined;
   openaiRequestOptionsOverride: ModelRequestOptions | undefined;
   configModelLabel: string | null;
@@ -79,7 +79,7 @@ export function resolveConfigState({
     );
     if (envValue !== null) return envValue;
     const configValue = config?.openai?.useChatCompletions;
-    return typeof configValue === "boolean" ? configValue : false;
+    return typeof configValue === "boolean" ? configValue : undefined;
   })();
 
   const openaiRequestOptions: ModelRequestOptions | undefined = (() => {

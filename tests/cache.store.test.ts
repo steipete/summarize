@@ -182,6 +182,34 @@ describe("cache store", () => {
     otherStore.close();
   });
 
+  it("keys local transcript cache writes by file mtime", async () => {
+    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const path = join(root, "cache.sqlite");
+    const store = await createCacheStore({ path, maxBytes: 1024 * 1024 });
+    const url = "file:///tmp/audio.opus";
+
+    await store.transcriptCache.set({
+      url,
+      service: "generic",
+      resourceKey: null,
+      ttlMs: 1000,
+      content: "cached transcript",
+      source: "yt-dlp",
+      metadata: null,
+      fileMtime: 1234,
+    });
+
+    const hit = await store.transcriptCache.get({ url, fileMtime: 1234 });
+    const staleFile = await store.transcriptCache.get({ url, fileMtime: 5678 });
+    const noMtime = await store.transcriptCache.get({ url });
+
+    expect(hit?.content).toBe("cached transcript");
+    expect(staleFile).toBeNull();
+    expect(noMtime).toBeNull();
+
+    store.close();
+  });
+
   it("transcript cache normalizes unknown sources and handles bad payloads", async () => {
     const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
     const path = join(root, "cache.sqlite");

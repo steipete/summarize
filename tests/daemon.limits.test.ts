@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { runDaemonServer } from "../src/daemon/server.js";
 
+const PUBLIC_TEST_URL = "http://93.184.216.34/article";
+
 const findFreePort = async (): Promise<number> =>
   await new Promise((resolve, reject) => {
     const server = createServer();
@@ -22,14 +24,14 @@ const findFreePort = async (): Promise<number> =>
 
 const summarizeBody = () =>
   JSON.stringify({
-    url: "https://example.com/article",
+    url: PUBLIC_TEST_URL,
     mode: "url",
     extractOnly: true,
   });
 
 const summaryBody = () =>
   JSON.stringify({
-    url: "https://example.com/article",
+    url: PUBLIC_TEST_URL,
     mode: "url",
     text: "",
     title: "Article",

@@ -111,10 +111,12 @@ function resolveOpenAiUseChatCompletions({
 }: {
   env: Record<string, string | undefined>;
   configForCli: SummarizeConfig | null;
-}): boolean {
+}): boolean | undefined {
   const envValue = parseBooleanEnv(env.OPENAI_USE_CHAT_COMPLETIONS);
   if (envValue !== null) return envValue;
-  return configForCli?.openai?.useChatCompletions === true;
+  return typeof configForCli?.openai?.useChatCompletions === "boolean"
+    ? configForCli.openai.useChatCompletions
+    : undefined;
 }
 
 export async function streamChatResponse({
@@ -182,7 +184,7 @@ export async function streamChatResponse({
           transport: "native" as const,
           openaiApiKeyOverride: null,
           openaiBaseUrlOverride: null,
-          forceChatCompletions: false,
+          forceChatCompletions: undefined,
         };
       }
       return {
@@ -205,11 +207,17 @@ export async function streamChatResponse({
               ? envState.nvidiaBaseUrl
               : requested.requiredEnv === "OLLAMA_BASE_URL"
                 ? envState.ollamaBaseUrl
-                : (requested.openaiBaseUrlOverride ?? null),
+                : requested.provider === "openai"
+                  ? (requested.openaiBaseUrlOverride ?? envState.providerBaseUrls.openai)
+                  : (requested.openaiBaseUrlOverride ?? null),
         forceChatCompletions:
-          Boolean(requested.forceChatCompletions) ||
-          requested.requiredEnv === "OLLAMA_BASE_URL" ||
-          (requested.provider === "openai" && openaiUseChatCompletions),
+          typeof requested.forceChatCompletions === "boolean"
+            ? requested.forceChatCompletions
+            : requested.requiredEnv === "OLLAMA_BASE_URL"
+              ? true
+              : requested.provider === "openai"
+                ? openaiUseChatCompletions
+                : undefined,
         requestOptions: requested.requestOptions,
       };
     }
@@ -312,7 +320,18 @@ export async function streamChatResponse({
     timeoutMs: 30_000,
     fetchImpl,
     forceOpenRouter: attempt.forceOpenRouter,
-    forceChatCompletions: attempt.requiredEnv === "OPENAI_API_KEY" && openaiUseChatCompletions,
+    openaiBaseUrlOverride:
+      attempt.transport === "openrouter"
+        ? undefined
+        : attempt.requiredEnv === "OPENAI_API_KEY"
+          ? envState.providerBaseUrls.openai
+          : undefined,
+    forceChatCompletions:
+      attempt.transport === "openrouter"
+        ? undefined
+        : attempt.requiredEnv === "OPENAI_API_KEY"
+          ? openaiUseChatCompletions
+          : undefined,
     requestOptions: mergeModelRequestOptions(openaiRequestOptions, attempt.requestOptions),
   });
   for await (const chunk of result.textStream) {

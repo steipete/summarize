@@ -38,7 +38,7 @@ describe("podcast transcript provider: RSS <podcast:transcript>", () => {
   it("uses JSON transcript from RSS without requiring transcription providers", async () => {
     const { fetchTranscript } = await importPodcastProviderWithoutTranscription();
 
-    const transcriptUrl = "https://example.com/transcript.json";
+    const transcriptUrl = "http://93.184.216.34/transcript.json";
     const feedXml = `<?xml version="1.0" encoding="UTF-8"?>
       <rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0">
         <channel>
@@ -79,7 +79,7 @@ describe("podcast transcript provider: RSS <podcast:transcript>", () => {
     const showId = "1794526548";
     const episodeId = "1000741457032";
     const feedUrl = "https://example.com/feed.xml";
-    const transcriptUrl = "https://example.com/transcript.vtt";
+    const transcriptUrl = "http://93.184.216.34/transcript.vtt";
 
     const lookupResponse = JSON.stringify({
       resultCount: 2,

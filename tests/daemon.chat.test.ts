@@ -100,6 +100,40 @@ describe("daemon/chat", () => {
     expect(args.forceChatCompletions).toBe(true);
   });
 
+  it("passes through openai.useChatCompletions=false for fixed sidepanel chat models", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-openai-responses-"));
+
+    await streamChatResponse({
+      env: { HOME: home, OPENAI_API_KEY: "sk-openai" },
+      fetchImpl: fetch,
+      configForCli: {
+        openai: {
+          baseUrl: "https://gateway.example/v1",
+          useChatCompletions: false,
+        },
+      },
+      session: {
+        id: "s-openai-responses",
+        lastMeta: { model: null, modelLabel: null, inputSummary: null, summaryFromCache: null },
+      },
+      pageUrl: "https://example.com",
+      pageTitle: "Example",
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "openai/gpt-5.4",
+      pushToSession: () => {},
+      emitMeta: () => {},
+    });
+
+    const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const args = calls[0]?.[0] as {
+      forceChatCompletions?: boolean;
+      openaiBaseUrlOverride?: string | null;
+    };
+    expect(args.forceChatCompletions).toBe(false);
+    expect(args.openaiBaseUrlOverride).toBe("https://gateway.example/v1");
+  });
+
   it("routes github-copilot overrides through the GitHub Models gateway", async () => {
     const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-github-models-"));
     const meta: Array<{ model?: string | null }> = [];
@@ -263,9 +297,14 @@ describe("daemon/chat", () => {
     });
 
     const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
-    const args = calls[calls.length - 1]?.[0] as { modelId: string; forceOpenRouter?: boolean };
+    const args = calls[calls.length - 1]?.[0] as {
+      modelId: string;
+      forceOpenRouter?: boolean;
+      forceChatCompletions?: boolean;
+    };
     expect(args.modelId).toBe("openai/anthropic/claude-sonnet-4-5");
     expect(args.forceOpenRouter).toBe(true);
+    expect(args.forceChatCompletions).toBeUndefined();
     expect(meta[0]?.model).toBe("openrouter/anthropic/claude-sonnet-4-5");
   });
 
@@ -347,6 +386,52 @@ describe("daemon/chat", () => {
     expect(args.forceChatCompletions).toBe(true);
   });
 
+  it("passes configured OpenAI base URL for auto-selected sidepanel chat models", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-auto-openai-base-"));
+
+    vi.mocked(buildAutoModelAttempts).mockReturnValue([
+      {
+        transport: "native" as const,
+        userModelId: "openai/gpt-5-mini",
+        llmModelId: "openai/gpt-5-mini",
+        openrouterProviders: null,
+        forceOpenRouter: false,
+        requiredEnv: "OPENAI_API_KEY" as const,
+        debug: "test",
+      },
+    ]);
+
+    await streamChatResponse({
+      env: { HOME: home, OPENAI_API_KEY: "sk-openai" },
+      fetchImpl: fetch,
+      configForCli: {
+        openai: {
+          baseUrl: "https://gateway.example/v1",
+          useChatCompletions: false,
+        },
+      },
+      session: {
+        id: "s-auto-openai-base",
+        lastMeta: { model: null, modelLabel: null, inputSummary: null, summaryFromCache: null },
+      },
+      pageUrl: "https://example.com",
+      pageTitle: null,
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: null,
+      pushToSession: () => {},
+      emitMeta: () => {},
+    });
+
+    const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const args = calls[calls.length - 1]?.[0] as {
+      forceChatCompletions?: boolean;
+      openaiBaseUrlOverride?: string | null;
+    };
+    expect(args.forceChatCompletions).toBe(false);
+    expect(args.openaiBaseUrlOverride).toBe("https://gateway.example/v1");
+  });
+
   it("accepts legacy OpenRouter env mapping for auto attempts", async () => {
     const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-auto-openrouter-"));
     const meta: Array<{ model?: string | null }> = [];
@@ -386,9 +471,14 @@ describe("daemon/chat", () => {
     });
 
     const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
-    const args = calls[calls.length - 1]?.[0] as { modelId: string; forceOpenRouter?: boolean };
+    const args = calls[calls.length - 1]?.[0] as {
+      modelId: string;
+      forceOpenRouter?: boolean;
+      forceChatCompletions?: boolean;
+    };
     expect(args.modelId).toBe("openai/openai/gpt-5-mini");
     expect(args.forceOpenRouter).toBe(true);
+    expect(args.forceChatCompletions).toBeUndefined();
     expect(meta[0]?.model).toBe("openrouter/openai/gpt-5-mini");
   });
 

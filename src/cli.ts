@@ -4,7 +4,7 @@ import { runCliMain } from "./cli-main.js";
 void runCliMain({
   argv: process.argv.slice(2),
   env: process.env,
-  fetch: globalThis.fetch.bind(globalThis),
+  fetch: globalThis.fetch,
   stdout: process.stdout,
   stderr: process.stderr,
   exit: (code) => process.exit(code),

@@ -42,8 +42,7 @@ export interface LinkPreviewClientOptions {
 
 /** Public factory for a link preview client with injectable dependencies. */
 export function createLinkPreviewClient(options: LinkPreviewClientOptions = {}): LinkPreviewClient {
-  const fetchImpl: typeof fetch =
-    options.fetch ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
+  const fetchImpl: typeof fetch = options.fetch ?? globalThis.fetch;
   const env = typeof options.env === "object" && options.env ? options.env : undefined;
   const scrape: ScrapeWithFirecrawl | null = options.scrapeWithFirecrawl ?? null;
   const apifyApiToken = typeof options.apifyApiToken === "string" ? options.apifyApiToken : null;

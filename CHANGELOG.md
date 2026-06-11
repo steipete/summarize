@@ -12,6 +12,10 @@
 ### Fixes
 
 - YouTube transcripts: let `--diarize auto` and matching explicit provider requests reuse the same compatible cached speaker-labelled transcript instead of re-transcribing the same video.
+- CLI cache: include local media `fileMtime` when writing transcript cache entries so repeated unchanged audio/video extraction can hit cache (#240, #241, thanks @alfozan).
+- CLI: pass Codex image attachments to `codex exec` so local image summaries no longer fail before starting (#242, #243, thanks @alfozan).
+- OpenAI-compatible gateways: honor `OPENAI_USE_CHAT_COMPLETIONS=false` and `openai.useChatCompletions=false` so custom base URLs can use the Responses API (#235, #236, thanks @mzbgf).
+- RSS transcripts: block feed-controlled transcript URLs that target loopback, private, link-local, reserved, or redirected local-network addresses (#239, thanks @Hinotoi-agent).
 - Chrome extension: abort stale side-panel summary streams on tab changes so delayed output from a closed or replaced tab cannot render under the new page title.
 - Core: extract video IDs from YouTube `/live/` URLs so live and premiere links no longer abort summarization (#232, thanks @devYRPauli).
 - Chrome extension: keep YouTube slide cards on the shared slide-summary path so local browser thumbnails receive the same summary text shape as CLI `--slides`.

@@ -1,4 +1,5 @@
 import { normalizeTokenUsage, tallyCosts } from "tokentally";
+import { fetch as undiciFetch } from "undici";
 import type { LlmCall, RunMetricsReport } from "../costs.js";
 import { buildRunMetricsReport } from "../costs.js";
 import {
@@ -8,6 +9,13 @@ import {
   resolveLiteLlmMaxOutputTokensForModelId,
   resolveLiteLlmPricingForModelId,
 } from "../pricing/litellm.js";
+import { fetchWithDnsPinnedAddresses } from "../shared/dns-pinned-fetch.js";
+import {
+  isNativeOrBoundGlobalFetch,
+  markFetchAsDnsPinned,
+  resolveDnsPinnedFetch,
+  supportsDnsPinnedFetch,
+} from "../shared/fetch-capabilities.js";
 
 export type RunMetrics = {
   llmCalls: LlmCall[];
@@ -152,7 +160,7 @@ export function createRunMetrics({
     return buildRunMetricsReport({ llmCalls, firecrawlRequests, apifyRequests });
   };
 
-  const trackedFetch: typeof fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  const recordFetch = (input: RequestInfo | URL): void => {
     const url =
       typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     let hostname: string | null = null;
@@ -166,8 +174,36 @@ export function createRunMetrics({
     } else if (hostname === "api.apify.com") {
       apifyRequests += 1;
     }
-    return fetchImpl(input as RequestInfo, init);
   };
+  const fetchAndTrack = async (
+    targetFetch: typeof fetch,
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    recordFetch(input);
+    return await targetFetch(input as RequestInfo, init);
+  };
+  const trackedFetch: typeof fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    return await fetchAndTrack(fetchImpl, input, init);
+  };
+  const isBunRuntime = typeof (process.versions as { bun?: string }).bun === "string";
+  const isNativeFetch = isNativeOrBoundGlobalFetch(fetchImpl);
+  const pinnedFetchImpl =
+    resolveDnsPinnedFetch(fetchImpl) ??
+    (isNativeFetch
+      ? isBunRuntime
+        ? fetchWithDnsPinnedAddresses
+        : (undiciFetch as unknown as typeof fetch)
+      : null);
+  if ((isNativeFetch || supportsDnsPinnedFetch(fetchImpl)) && pinnedFetchImpl) {
+    const trackedPinnedFetch: typeof fetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      return await fetchAndTrack(pinnedFetchImpl, input, init);
+    };
+    markFetchAsDnsPinned(trackedFetch, trackedPinnedFetch);
+  }
 
   return {
     llmCalls,

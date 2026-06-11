@@ -1,6 +1,14 @@
 import { lookup as dnsLookup } from "node:dns/promises";
 import { createRequire } from "node:module";
 import { isIP } from "node:net";
+import { fetchWithDnsPinnedAddresses } from "../shared/dns-pinned-fetch.js";
+import {
+  attachDnsPinnedAddresses,
+  isNativeOrBoundGlobalFetch,
+  markFetchAsDnsPinned,
+  resolveDnsPinnedFetch,
+  supportsDnsPinnedFetch,
+} from "../shared/fetch-capabilities.js";
 
 type LookupAddress = { address: string; family?: number };
 type LookupFn = (hostname: string) => Promise<LookupAddress[]>;
@@ -79,7 +87,7 @@ function expandIpv6(address: string): number[] | null {
 function isBlockedIpv6(address: string): boolean {
   const parts = expandIpv6(address);
   if (!parts) return true;
-  const [first, second, , , , fifth, sixth, eighth] = parts;
+  const [first, second, third, fourth, , fifth, sixth, eighth] = parts;
   const allZero = parts.every((part) => part === 0);
   const loopback = parts.slice(0, 7).every((part) => part === 0) && eighth === 1;
   const mappedIpv4 = parts.slice(0, 5).every((part) => part === 0) && fifth === 0xffff;
@@ -88,13 +96,25 @@ function isBlockedIpv6(address: string): boolean {
     const ipv4 = `${((sixth ?? 0) >> 8) & 0xff}.${(sixth ?? 0) & 0xff}.${((eighth ?? 0) >> 8) & 0xff}.${(eighth ?? 0) & 0xff}`;
     return isBlockedIpv4(ipv4);
   }
+  const wellKnownNat64 =
+    first === 0x64 && second === 0xff9b && parts.slice(2, 6).every((part) => part === 0);
+  if (wellKnownNat64) {
+    const ipv4 = `${((sixth ?? 0) >> 8) & 0xff}.${(sixth ?? 0) & 0xff}.${((eighth ?? 0) >> 8) & 0xff}.${(eighth ?? 0) & 0xff}`;
+    return isBlockedIpv4(ipv4);
+  }
   return (
     allZero ||
     loopback ||
+    (first === 0x64 && second === 0xff9b && third === 1) ||
+    (first === 0x100 && second === 0 && third === 0 && fourth === 0) ||
     ((first ?? 0) & 0xfe00) === 0xfc00 ||
     ((first ?? 0) & 0xffc0) === 0xfe80 ||
     ((first ?? 0) & 0xff00) === 0xff00 ||
-    (first === 0x2001 && second === 0xdb8)
+    (first === 0x2001 && (second ?? 0) <= 0x01ff) ||
+    (first === 0x2001 && second === 0xdb8) ||
+    first === 0x2002 ||
+    (first === 0x3fff && (second ?? 0) <= 0x0fff) ||
+    first === 0x5f00
   );
 }
 
@@ -180,12 +200,19 @@ function getRedirectMode(
 }
 
 function isNativeFetchImpl(fetchImpl: typeof fetch): boolean {
-  return fetchImpl === globalThis.fetch || fetchImpl.name === "bound fetch";
+  return isNativeOrBoundGlobalFetch(fetchImpl);
+}
+
+function isBunRuntime(): boolean {
+  return typeof (process.versions as { bun?: string }).bun === "string";
 }
 
 export function createDaemonUrlFetchGuard(
   fetchImpl: typeof fetch,
-  { lookup = defaultLookup }: { lookup?: LookupFn } = {},
+  {
+    lookup = defaultLookup,
+    pinnedFetchImpl,
+  }: { lookup?: LookupFn; pinnedFetchImpl?: typeof fetch } = {},
 ): typeof fetch {
   const loadUndici = (): UndiciModule => require("undici") as UndiciModule;
   const createPinnedDispatcher = (addresses: LookupAddress[]) => {
@@ -218,19 +245,29 @@ export function createDaemonUrlFetchGuard(
     const url = getInputUrl(input);
     const target = await resolveDaemonUrlFetchTarget(url, { lookup });
     const redirectMode = getRedirectMode(input, init);
-    const pinnedInit =
-      target.addresses.length > 0
-        ? ({
+    const requiresPinnedDns = target.addresses.length > 0;
+    const isNativeFetch = isNativeFetchImpl(fetchImpl);
+    if (requiresPinnedDns && !isNativeFetch && !supportsDnsPinnedFetch(fetchImpl)) {
+      throw new Error("URL fetch target requires native fetch for DNS pinning");
+    }
+    const pinnedInit = requiresPinnedDns
+      ? attachDnsPinnedAddresses(
+          {
             ...init,
             dispatcher: createPinnedDispatcher(target.addresses),
-          } as Parameters<typeof fetch>[1] & { dispatcher: unknown })
-        : init;
-    const pinnedFetchImpl =
-      target.addresses.length > 0 && isNativeFetchImpl(fetchImpl) ? loadUndici().fetch : fetchImpl;
+          } as Parameters<typeof fetch>[1] & { dispatcher: unknown },
+          target.addresses,
+        )
+      : init;
+    const fetchForPinnedDns = requiresPinnedDns
+      ? isNativeFetch
+        ? (pinnedFetchImpl ?? (isBunRuntime() ? fetchWithDnsPinnedAddresses : loadUndici().fetch))
+        : (resolveDnsPinnedFetch(fetchImpl) ?? fetchImpl)
+      : fetchImpl;
     if (redirectMode !== "follow") {
-      return await pinnedFetchImpl(input, pinnedInit);
+      return await fetchForPinnedDns(input, pinnedInit);
     }
-    const response = await pinnedFetchImpl(input, { ...pinnedInit, redirect: "manual" });
+    const response = await fetchForPinnedDns(input, { ...pinnedInit, redirect: "manual" });
     if (![301, 302, 303, 307, 308].includes(response.status)) {
       return response;
     }
@@ -246,5 +283,5 @@ export function createDaemonUrlFetchGuard(
     const nextUrl = new URL(location, response.url || url).href;
     return await guardedFetch(nextUrl, { ...init, body: null, method }, redirectCount + 1);
   };
-  return guardedFetch as typeof fetch;
+  return markFetchAsDnsPinned(guardedFetch as typeof fetch);
 }
