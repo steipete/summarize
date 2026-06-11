@@ -35,6 +35,14 @@ describe("MiniMax provider", () => {
         output: 2.4,
         cacheRead: 0.12,
       },
+      compat: {
+        supportsStore: false,
+        supportsDeveloperRole: false,
+        supportsReasoningEffort: false,
+        maxTokensField: "max_completion_tokens",
+        supportsStrictMode: false,
+        supportsLongCacheRetention: false,
+      },
     });
   });
 });

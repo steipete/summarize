@@ -110,6 +110,15 @@ export function resolveMinimaxModel({
     baseUrl,
     reasoning: base?.reasoning ?? true,
     input: base?.input ?? fallback.input,
+    // The catalog entry is Anthropic-native; constrain the OpenAI transport to MiniMax-documented fields.
+    compat: {
+      supportsStore: false,
+      supportsDeveloperRole: false,
+      supportsReasoningEffort: false,
+      maxTokensField: "max_completion_tokens",
+      supportsStrictMode: false,
+      supportsLongCacheRetention: false,
+    },
     ...(modelId.toLowerCase() === "minimax-m3" ? { contextWindow: 1_000_000 } : {}),
   };
 }
