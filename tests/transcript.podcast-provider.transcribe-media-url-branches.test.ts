@@ -173,6 +173,52 @@ describe("podcast provider - transcribeMediaUrl branch coverage", () => {
     expect(result.notes).toContain("Remote media too large");
   });
 
+  it("honors smaller configured remote media caps on in-memory downloads", async () => {
+    const { fetchTranscript } = await importPodcastProvider({ spawnPlan: "ffmpeg-missing" });
+    const enclosureUrl = "https://example.com/episode.mp3";
+    const xml = `<rss><channel><item><enclosure url="${enclosureUrl}" type="audio/mpeg"/></item></channel></rss>`;
+    const maxBytes = 64 * 1024;
+    let chunkIndex = 0;
+
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (method === "HEAD") {
+        throw new Error("no head");
+      }
+      expect(init?.headers).toBeUndefined();
+      return new Response(
+        new ReadableStream<Uint8Array>({
+          pull(controller) {
+            chunkIndex += 1;
+            if (chunkIndex === 1) {
+              controller.enqueue(new Uint8Array(maxBytes));
+              return;
+            }
+            if (chunkIndex === 2) {
+              controller.enqueue(new Uint8Array(1));
+              return;
+            }
+            controller.close();
+          },
+        }),
+        { status: 200, headers: { "content-type": "audio/mpeg" } },
+      );
+    });
+
+    const result = await fetchTranscript(
+      { url: "https://example.com/feed.xml", html: xml, resourceKey: null },
+      {
+        ...baseOptions,
+        fetch: fetchImpl as unknown as typeof fetch,
+        transcription: { remoteMediaMaxBytes: maxBytes },
+      },
+    );
+
+    expect(result.text).toBeNull();
+    expect(result.source).toBeNull();
+    expect(result.notes).toContain("Remote media too large");
+  });
+
   it("handles capped downloads even when Response.body is null", async () => {
     const { fetchTranscript } = await importPodcastProvider({ spawnPlan: "ffmpeg-missing" });
     const enclosureUrl = "https://example.com/episode.mp3";

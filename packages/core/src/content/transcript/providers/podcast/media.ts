@@ -98,8 +98,7 @@ export async function transcribeMediaUrl({
     totalBytes,
   });
   if (!canChunk) {
-    const bytes = await downloadCappedBytes(fetchImpl, url, MAX_OPENAI_UPLOAD_BYTES, {
-      totalBytes,
+    const bytes = await downloadCappedMediaBytes(fetchImpl, url, remoteMediaMaxBytes, totalBytes, {
       onProgress: (downloadedBytes) =>
         progress?.onProgress?.({
           kind: "transcript-media-download-progress",
@@ -156,8 +155,7 @@ export async function transcribeMediaUrl({
   }
 
   if (head.contentLength !== null && head.contentLength <= MAX_OPENAI_UPLOAD_BYTES) {
-    const bytes = await downloadCappedBytes(fetchImpl, url, MAX_OPENAI_UPLOAD_BYTES, {
-      totalBytes,
+    const bytes = await downloadCappedMediaBytes(fetchImpl, url, remoteMediaMaxBytes, totalBytes, {
       onProgress: (downloadedBytes) =>
         progress?.onProgress?.({
           kind: "transcript-media-download-progress",
@@ -301,19 +299,31 @@ export async function downloadCappedBytes(
   fetchImpl: typeof fetch,
   url: string,
   maxBytes: number,
-  options?: { totalBytes: number | null; onProgress?: ((downloadedBytes: number) => void) | null },
+  options?: {
+    rejectOnOverflow?: boolean;
+    totalBytes: number | null;
+    onProgress?: ((downloadedBytes: number) => void) | null;
+  } | null,
 ): Promise<Uint8Array> {
+  const rejectOnOverflow = options?.rejectOnOverflow === true;
   const res = await fetchImpl(url, {
     redirect: "follow",
-    headers: { Range: `bytes=0-${maxBytes - 1}` },
+    headers: rejectOnOverflow ? undefined : { Range: `bytes=0-${maxBytes - 1}` },
     signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
   });
   if (!res.ok) {
     throw new Error(`Download failed (${res.status})`);
   }
+  const contentLength = parseContentLength(res.headers.get("content-length"));
+  if (rejectOnOverflow && contentLength !== null && contentLength > maxBytes) {
+    throw remoteMediaTooLargeError(contentLength, maxBytes);
+  }
   const body = res.body;
   if (!body) {
     const arrayBuffer = await res.arrayBuffer();
+    if (options?.rejectOnOverflow && arrayBuffer.byteLength > maxBytes) {
+      throw remoteMediaTooLargeError(arrayBuffer.byteLength, maxBytes);
+    }
     return new Uint8Array(arrayBuffer.slice(0, maxBytes));
   }
 
@@ -322,11 +332,17 @@ export async function downloadCappedBytes(
   let total = 0;
   let lastReported = 0;
   try {
-    while (total < maxBytes) {
+    while (total < maxBytes || rejectOnOverflow) {
       const { value, done } = await reader.read();
       if (done) break;
-      if (!value) continue;
+      if (!value || value.byteLength === 0) continue;
       const remaining = maxBytes - total;
+      if (remaining <= 0) {
+        throw remoteMediaTooLargeError(total + value.byteLength, maxBytes);
+      }
+      if (rejectOnOverflow && value.byteLength > remaining) {
+        throw remoteMediaTooLargeError(total + value.byteLength, maxBytes);
+      }
       const next = value.byteLength > remaining ? value.slice(0, remaining) : value;
       chunks.push(next);
       total += next.byteLength;
@@ -334,7 +350,7 @@ export async function downloadCappedBytes(
         lastReported = total;
         options?.onProgress?.(total);
       }
-      if (total >= maxBytes) break;
+      if (total >= maxBytes && !rejectOnOverflow) break;
     }
   } finally {
     await reader.cancel().catch(() => {});
@@ -348,6 +364,21 @@ export async function downloadCappedBytes(
     offset += chunk.byteLength;
   }
   return out;
+}
+
+async function downloadCappedMediaBytes(
+  fetchImpl: typeof fetch,
+  url: string,
+  remoteMediaMaxBytes: number,
+  totalBytes: number | null,
+  options?: { onProgress?: ((downloadedBytes: number) => void) | null },
+): Promise<Uint8Array> {
+  const maxBytes = Math.min(MAX_OPENAI_UPLOAD_BYTES, remoteMediaMaxBytes);
+  return await downloadCappedBytes(fetchImpl, url, maxBytes, {
+    rejectOnOverflow: remoteMediaMaxBytes <= MAX_OPENAI_UPLOAD_BYTES,
+    totalBytes,
+    onProgress: options?.onProgress,
+  });
 }
 
 export async function downloadToFile(

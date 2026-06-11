@@ -2,7 +2,10 @@ import { mkdtemp, readFile, rm, stat, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { downloadToFile } from "../packages/core/src/content/transcript/providers/podcast/media.js";
+import {
+  downloadCappedBytes,
+  downloadToFile,
+} from "../packages/core/src/content/transcript/providers/podcast/media.js";
 import {
   REMOTE_MEDIA_MAX_BYTES_ENV,
   normalizeRemoteMediaMaxBytes,
@@ -81,6 +84,29 @@ describe("remote media temp-file download cap", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+
+  it("rejects capped in-memory streams that continue after the configured byte limit", async () => {
+    const maxBytes = 64 * 1024;
+    const fetchImpl = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(init?.headers).toBeUndefined();
+      return new Response(oversizedStream({ firstChunkBytes: maxBytes, secondChunkBytes: 1 }), {
+        status: 200,
+        headers: { "content-type": "audio/mpeg" },
+      });
+    };
+
+    await expect(
+      downloadCappedBytes(
+        fetchImpl as unknown as typeof fetch,
+        "https://example.com/episode.mp3",
+        maxBytes,
+        {
+          rejectOnOverflow: true,
+          totalBytes: null,
+        },
+      ),
+    ).rejects.toThrow("Remote media too large");
   });
 
   it("rejects streaming downloads before writing past the configured byte limit", async () => {
