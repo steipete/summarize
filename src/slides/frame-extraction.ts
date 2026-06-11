@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { resolveExecutableInPath } from "../run/env.js";
-import { runProcess, runWithConcurrency } from "./process.js";
+import { runProcess, runWithConcurrency, type ProcessCommand } from "./process.js";
 import {
   buildSegments,
   calibrateSceneThreshold,
@@ -29,8 +29,8 @@ export async function detectSlideTimestamps({
   logSlides,
   logSlidesTiming,
 }: {
-  ffmpegPath: string;
-  ffprobePath: string | null;
+  ffmpegPath: ProcessCommand;
+  ffprobePath: ProcessCommand | null;
   inputPath: string;
   sceneThreshold: number;
   autoTuneThreshold: boolean;
@@ -147,7 +147,7 @@ export async function extractFramesAtTimestamps({
   logSlides,
   logSlidesTiming,
 }: {
-  ffmpegPath: string;
+  ffmpegPath: ProcessCommand;
   inputPath: string;
   outputDir: string;
   timestamps: number[];

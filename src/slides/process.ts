@@ -1,6 +1,22 @@
 import type { ProcessHandle } from "../processes.js";
 import { spawnTracked } from "../processes.js";
 
+export type ProcessCommand =
+  | string
+  | {
+      command: string;
+      argsPrefix?: string[];
+      source?: "wasm";
+    };
+
+function resolveProcessCommand(command: ProcessCommand, args: string[]) {
+  if (typeof command === "string") return { command, args };
+  return {
+    command: command.command,
+    args: [...(command.argsPrefix ?? []), ...args],
+  };
+}
+
 export async function runProcess({
   command,
   args,
@@ -9,7 +25,7 @@ export async function runProcess({
   onStderrLine,
   onStdoutLine,
 }: {
-  command: string;
+  command: ProcessCommand;
   args: string[];
   timeoutMs: number;
   errorLabel: string;
@@ -17,7 +33,8 @@ export async function runProcess({
   onStdoutLine?: (line: string, handle: ProcessHandle | null) => void;
 }): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    const { proc, handle } = spawnTracked(command, args, {
+    const resolved = resolveProcessCommand(command, args);
+    const { proc, handle } = spawnTracked(resolved.command, resolved.args, {
       stdio: ["ignore", "pipe", "pipe"],
       label: errorLabel,
       kind: errorLabel,
@@ -99,13 +116,14 @@ export async function runProcessCapture({
   timeoutMs,
   errorLabel,
 }: {
-  command: string;
+  command: ProcessCommand;
   args: string[];
   timeoutMs: number;
   errorLabel: string;
 }): Promise<string> {
   return new Promise((resolve, reject) => {
-    const { proc, handle } = spawnTracked(command, args, {
+    const resolved = resolveProcessCommand(command, args);
+    const { proc, handle } = spawnTracked(resolved.command, resolved.args, {
       stdio: ["ignore", "pipe", "pipe"],
       label: errorLabel,
       kind: errorLabel,
@@ -172,13 +190,14 @@ export async function runProcessCaptureBuffer({
   timeoutMs,
   errorLabel,
 }: {
-  command: string;
+  command: ProcessCommand;
   args: string[];
   timeoutMs: number;
   errorLabel: string;
 }): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const { proc, handle } = spawnTracked(command, args, {
+    const resolved = resolveProcessCommand(command, args);
+    const { proc, handle } = spawnTracked(resolved.command, resolved.args, {
       stdio: ["ignore", "pipe", "pipe"],
       label: errorLabel,
       kind: errorLabel,

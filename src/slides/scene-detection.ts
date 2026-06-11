@@ -1,4 +1,9 @@
-import { runProcess, runProcessCapture, runProcessCaptureBuffer } from "./process.js";
+import {
+  runProcess,
+  runProcessCapture,
+  runProcessCaptureBuffer,
+  type ProcessCommand,
+} from "./process.js";
 import type { SlideImage } from "./types.js";
 
 const FFMPEG_TIMEOUT_FALLBACK_MS = 300_000;
@@ -109,7 +114,7 @@ async function hashFrameAtTimestamp({
   timestamp,
   timeoutMs,
 }: {
-  ffmpegPath: string;
+  ffmpegPath: ProcessCommand;
   inputPath: string;
   timestamp: number;
   timeoutMs: number;
@@ -151,7 +156,7 @@ export async function calibrateSceneThreshold({
   timeoutMs,
   logSlides,
 }: {
-  ffmpegPath: string;
+  ffmpegPath: ProcessCommand;
   inputPath: string;
   durationSeconds: number | null;
   sampleCount: number;
@@ -220,7 +225,7 @@ export async function detectSceneTimestamps({
   onSegmentProgress,
   runWithConcurrency,
 }: {
-  ffmpegPath: string;
+  ffmpegPath: ProcessCommand;
   inputPath: string;
   threshold: number;
   timeoutMs: number;
@@ -455,7 +460,7 @@ export async function probeVideoInfo({
   inputPath,
   timeoutMs,
 }: {
-  ffprobePath: string;
+  ffprobePath: ProcessCommand;
   inputPath: string;
   timeoutMs: number;
 }): Promise<{ durationSeconds: number | null; width: number | null; height: number | null }> {

@@ -2,14 +2,17 @@ import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { resolveBundledFfmpegCommand } from "../../ffmpeg-wasm/runtime.js";
 import { spawnTracked } from "../../processes.js";
 
-export async function isFfmpegAvailable(): Promise<boolean> {
+type MediaTool = "ffmpeg" | "ffprobe";
+
+async function isNativeToolAvailable(tool: MediaTool): Promise<boolean> {
   return new Promise((resolve) => {
-    const { proc } = spawnTracked("ffmpeg", ["-version"], {
+    const { proc } = spawnTracked(tool, ["-version"], {
       stdio: ["ignore", "ignore", "ignore"],
-      label: "ffmpeg",
-      kind: "ffmpeg",
+      label: tool,
+      kind: tool,
       captureOutput: false,
     });
     proc.on("error", () => resolve(false));
@@ -17,26 +20,40 @@ export async function isFfmpegAvailable(): Promise<boolean> {
   });
 }
 
+async function resolvePreferredTool(tool: MediaTool, args: string[]) {
+  if (await isNativeToolAvailable(tool)) return { command: tool, args };
+  const bundled = resolveBundledFfmpegCommand(tool);
+  if (!bundled) return { command: tool, args };
+  return {
+    command: bundled.command,
+    args: [...bundled.argsPrefix, ...args],
+  };
+}
+
+export async function isFfmpegAvailable(): Promise<boolean> {
+  return (await isNativeToolAvailable("ffmpeg")) || resolveBundledFfmpegCommand("ffmpeg") !== null;
+}
+
 export async function probeMediaDurationSecondsWithFfprobe(
   filePath: string,
 ): Promise<number | null> {
   // ffprobe is part of the ffmpeg suite. We keep this optional (best-effort) so environments
   // without ffmpeg still work; it only powers nicer progress output.
+  const resolved = await resolvePreferredTool("ffprobe", [
+    "-v",
+    "error",
+    "-show_entries",
+    "format=duration",
+    "-of",
+    "default=noprint_wrappers=1:nokey=1",
+    filePath,
+  ]);
+  const { proc } = spawnTracked(resolved.command, resolved.args, {
+    stdio: ["ignore", "pipe", "ignore"],
+    label: "ffprobe",
+    kind: "ffprobe",
+  });
   return new Promise((resolve) => {
-    const args = [
-      "-v",
-      "error",
-      "-show_entries",
-      "format=duration",
-      "-of",
-      "default=noprint_wrappers=1:nokey=1",
-      filePath,
-    ];
-    const { proc } = spawnTracked("ffprobe", args, {
-      stdio: ["ignore", "pipe", "ignore"],
-      label: "ffprobe",
-      kind: "ffprobe",
-    });
     let stdout = "";
     proc.stdout?.setEncoding("utf8");
     proc.stdout?.on("data", (chunk: string) => {
@@ -65,33 +82,33 @@ export async function runFfmpegSegment({
   outputPattern: string;
   segmentSeconds: number;
 }): Promise<void> {
+  const resolved = await resolvePreferredTool("ffmpeg", [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-i",
+    inputPath,
+    "-vn",
+    "-ac",
+    "1",
+    "-ar",
+    "16000",
+    "-b:a",
+    "32k",
+    "-f",
+    "segment",
+    "-segment_time",
+    String(segmentSeconds),
+    "-reset_timestamps",
+    "1",
+    outputPattern,
+  ]);
+  const { proc } = spawnTracked(resolved.command, resolved.args, {
+    stdio: ["ignore", "ignore", "pipe"],
+    label: "ffmpeg",
+    kind: "ffmpeg",
+  });
   await new Promise<void>((resolve, reject) => {
-    const args = [
-      "-hide_banner",
-      "-loglevel",
-      "error",
-      "-i",
-      inputPath,
-      "-vn",
-      "-ac",
-      "1",
-      "-ar",
-      "16000",
-      "-b:a",
-      "32k",
-      "-f",
-      "segment",
-      "-segment_time",
-      String(segmentSeconds),
-      "-reset_timestamps",
-      "1",
-      outputPattern,
-    ];
-    const { proc } = spawnTracked("ffmpeg", args, {
-      stdio: ["ignore", "ignore", "pipe"],
-      label: "ffmpeg",
-      kind: "ffmpeg",
-    });
     let stderr = "";
     proc.stderr?.setEncoding("utf8");
     proc.stderr?.on("data", (chunk: string) => {
@@ -235,12 +252,13 @@ async function runFfmpegTranscode({
   mode: "strict" | "lenient";
   args: string[];
 }): Promise<void> {
+  const resolved = await resolvePreferredTool("ffmpeg", args);
+  const { proc } = spawnTracked(resolved.command, resolved.args, {
+    stdio: ["ignore", "ignore", "pipe"],
+    label: "ffmpeg",
+    kind: "ffmpeg",
+  });
   await new Promise<void>((resolve, reject) => {
-    const { proc } = spawnTracked("ffmpeg", args, {
-      stdio: ["ignore", "ignore", "pipe"],
-      label: "ffmpeg",
-      kind: "ffmpeg",
-    });
     let stderr = "";
     proc.stderr?.setEncoding("utf8");
     proc.stderr?.on("data", (chunk: string) => {

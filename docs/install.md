@@ -6,13 +6,13 @@ summary: "Install the summarize CLI and optional media dependencies."
 
 # Install
 
-`summarize` ships as a single npm package and a Homebrew formula. The CLI works on its own; the Chrome Side Panel needs the local daemon (covered in [Chrome extension](chrome-extension.md)).
+`summarize` ships as a single npm package and a Homebrew formula. The CLI works on its own. Chrome Browser mode also works without the local daemon; the daemon adds faster and broader media support.
 
 ## Requirements
 
 - Node **24 or newer**.
 - macOS, Linux, or Windows. Containers work too — see [Notes](#notes-windows-containers) below.
-- Optional: `ffmpeg`, `yt-dlp`, `tesseract` for media-heavy features.
+- Optional: native `ffmpeg`, `yt-dlp`, `tesseract` for expanded media support.
 
 ## CLI
 
@@ -54,12 +54,12 @@ import { createLinkPreviewClient } from "@steipete/summarize-core/content";
 
 These unlock media features but are not required for plain web pages.
 
-| Tool                           | Required for                                                             |
-| ------------------------------ | ------------------------------------------------------------------------ |
-| `ffmpeg`                       | `--slides` extraction; many local media + transcription flows            |
-| `yt-dlp`                       | YouTube slide extraction and some remote media flows                     |
-| `tesseract`                    | OCR text on extracted slides via `--slides-ocr`                          |
-| `whisper.cpp` (binary on PATH) | Local audio transcription fallback (preferred over cloud when available) |
+| Tool                           | Required for                                                              |
+| ------------------------------ | ------------------------------------------------------------------------- |
+| `ffmpeg`                       | Faster extraction/transcoding and broader codecs than bundled WebAssembly |
+| `yt-dlp`                       | YouTube slide extraction and some remote media flows                      |
+| `tesseract`                    | OCR text on extracted slides via `--slides-ocr`                           |
+| `whisper.cpp` (binary on PATH) | Local audio transcription fallback (preferred over cloud when available)  |
 
 ### macOS
 
@@ -88,7 +88,9 @@ export OPENAI_API_KEY=...
 export FAL_KEY=...
 ```
 
-If `--slides` is enabled and `ffmpeg`/`yt-dlp` are missing, summarize logs a warning and continues without slides — it never fails the run.
+If native `ffmpeg`/`ffprobe` are missing, summarize falls back to its bundled LGPL FFmpeg WebAssembly build. Native ffmpeg remains recommended for speed and broader codec/filter support. YouTube downloads still require `yt-dlp`.
+
+Set `SUMMARIZE_DISABLE_FFMPEG_WASM=1` to disable the bundled fallback.
 
 ## Provider keys
 

@@ -142,14 +142,13 @@ phase_build() {
 phase_bun() {
   banner "Bun artifacts"
   require_lockstep_versions
-  run pnpm -C packages/core build
   run pnpm build:bun:test
 }
 
 phase_verify_pack() {
   banner "Verify pack"
   require_lockstep_versions
-  local version tmp_dir tarball core_tarball install_dir
+  local version tmp_dir tarball core_tarball install_dir node_path slides_dir fixture
   version="$(node -p 'require("./package.json").version')"
   tmp_dir="$(mktemp -d)"
   core_tarball="${tmp_dir}/steipete-summarize-core-${version}.tgz"
@@ -170,6 +169,17 @@ phase_verify_pack() {
   run mkdir -p "${install_dir}"
   run npm install --prefix "${install_dir}" "${core_tarball}" "${tarball}"
   run node "${install_dir}/node_modules/@steipete/summarize/dist/cli.js" --help >/dev/null
+  node_path="$(command -v node)"
+  slides_dir="${tmp_dir}/slides"
+  fixture="$(pwd)/apps/chrome-extension/tests/fixtures/ffmpeg-wasm-sample.mp4"
+  run mkdir -p "${tmp_dir}/empty-bin"
+  run env PATH="${tmp_dir}/empty-bin" "${node_path}" \
+    "${install_dir}/node_modules/@steipete/summarize/dist/cli.js" \
+    slides "${fixture}" --slides-dir "${slides_dir}" --slides-max 1 --render none
+  if ! find "${slides_dir}" -name '*.png' -type f -size +0c | grep -q .; then
+    echo "Installed package FFmpeg WebAssembly fallback produced no slides."
+    exit 1
+  fi
   echo "ok"
 }
 

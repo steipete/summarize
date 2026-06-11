@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import http from "node:http";
+import { hasBundledFfmpegWasm } from "@steipete/summarize-core/ffmpeg";
 import type { SummarizeConfig } from "../config.js";
 import type { DaemonLogger } from "../logging/daemon.js";
 import { buildModelPickerOptions } from "./models.js";
@@ -191,6 +192,11 @@ export async function handleAdminRoutes({
   if (req.method === "GET" && pathname === "/v1/tools") {
     const ytDlpPath = resolveToolPath("yt-dlp", env, "YT_DLP_PATH");
     const ffmpegPath = resolveToolPath("ffmpeg", env, "FFMPEG_PATH");
+    const ffmpegFallback = ffmpegPath
+      ? null
+      : hasBundledFfmpegWasm()
+        ? "bundled:ffmpeg-wasm"
+        : null;
     const tesseractPath = resolveToolPath("tesseract", env, "TESSERACT_PATH");
     json(
       res,
@@ -199,7 +205,10 @@ export async function handleAdminRoutes({
         ok: true,
         tools: {
           ytDlp: { available: Boolean(ytDlpPath), path: ytDlpPath },
-          ffmpeg: { available: Boolean(ffmpegPath), path: ffmpegPath },
+          ffmpeg: {
+            available: Boolean(ffmpegPath || ffmpegFallback),
+            path: ffmpegPath ?? ffmpegFallback,
+          },
           tesseract: { available: Boolean(tesseractPath), path: tesseractPath },
         },
       },

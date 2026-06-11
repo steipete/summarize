@@ -12,12 +12,13 @@ Goal: Chrome **Side Panel** (“real sidebar”) summarizes **what you see** on 
 
 Quickstart:
 
-- Install summarize (choose one):
+- Build/load extension: `apps/chrome-extension/README.md`
+- Chrome Browser mode works immediately without a daemon for page summaries and fetchable video slides.
+- Optional: install summarize for daemon-backed media support:
   - `npm i -g @steipete/summarize`
   - `brew install summarize` (macOS, Linux)
-- Build/load extension: `apps/chrome-extension/README.md`
 - Firefox sidebar build: `pnpm -C apps/chrome-extension build:firefox` (load via `about:debugging` → temporary add-on)
-- Open side panel → copy token install command → run:
+- Open side panel → copy token install command → run for daemon mode:
   - `summarize daemon install --token <TOKEN>` (macOS: LaunchAgent, Linux: systemd user, Windows: Scheduled Task)
 - Verify:
   - `summarize daemon status`
@@ -80,6 +81,7 @@ Dev (repo checkout):
 - **Extension (MV3, WXT)**
   - Side Panel UI: length + typography controls (font family + size), auto/manual toggle.
   - Background service worker: tab + navigation tracking, content extraction, starts summarize runs.
+  - Chrome offscreen page: runs bundled FFmpeg WebAssembly workers for daemonless video slides.
   - Content script: extract readable article text from the **rendered DOM** via Readability; also detect SPA URL changes.
   - Panel page streams SSE directly (MV3 service workers can be flaky for long-lived streams).
 - **Daemon (local, autostart service)**
@@ -118,7 +120,7 @@ See `docs/media.md` for detection and transcript rules.
 ## Slides (Side Panel)
 
 - The slides toggle lights up on media-friendly URLs (YouTube/watch|shorts, youtu.be, direct media) or when the page reports video/audio. Defaults to Video on those pages.
-- Turning slides **on** refreshes the current summary and requests slide extraction (`yt-dlp`, `ffmpeg`). OCR text is opt-in (Advanced setting) and requires `tesseract`. Missing tools surface a footer notice with install instructions; restart the daemon after installing.
+- Turning slides **on** refreshes the current summary and requests slide extraction. Chrome Browser mode uses bundled FFmpeg WebAssembly for fetchable videos up to 128 MB and falls back to visible-tab capture. Daemon mode adds `yt-dlp`, native ffmpeg, and optional `tesseract` OCR.
 - Active slide mode is slide-first:
   - vertical image/text cards
   - transcript-first text; OCR fallback

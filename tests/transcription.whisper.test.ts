@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const falMocks = vi.hoisted(() => ({
   createFalClient: vi.fn(),
@@ -14,6 +14,10 @@ vi.mock("@fal-ai/client", () => ({
 }));
 
 describe("transcription/whisper", () => {
+  beforeEach(() => {
+    vi.stubEnv("SUMMARIZE_DISABLE_FFMPEG_WASM", "1");
+  });
+
   const resetModules = () => {
     vi.resetModules();
     vi.doMock("@fal-ai/client", () => ({

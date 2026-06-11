@@ -2,9 +2,13 @@ import { EventEmitter } from "node:events";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("transcription/whisper local whisper.cpp", () => {
+  beforeEach(() => {
+    vi.stubEnv("SUMMARIZE_DISABLE_FFMPEG_WASM", "1");
+  });
+
   it("derives a compact whisper.cpp model name for display", async () => {
     const root = await mkdtemp(join(tmpdir(), "summarize-whisper-cpp-model-name-"));
     const baseEn = join(root, "ggml-base.en.bin");

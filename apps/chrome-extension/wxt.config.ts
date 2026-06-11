@@ -60,6 +60,7 @@ export default defineConfig({
         "tabs",
         "activeTab",
         "storage",
+        ...(browser === "firefox" ? [] : ["offscreen" as const]),
         ...(browser === "firefox" ? [] : ["sidePanel" as const]),
         "webNavigation",
         "scripting",
@@ -71,6 +72,9 @@ export default defineConfig({
       background: {
         type: "module",
         service_worker: "background.js",
+      },
+      content_security_policy: {
+        extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
       },
       action: {
         default_title: "Summarize",

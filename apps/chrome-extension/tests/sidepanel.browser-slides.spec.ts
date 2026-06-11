@@ -3,7 +3,6 @@ import { createServer as createHttpServer } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { createSampleVideo, hasFfmpeg } from "./helpers/daemon-fixtures";
 import {
   activateTabByUrl,
   assertNoErrors,
@@ -30,13 +29,9 @@ test("sidepanel captures local video slides in browser runtime", async ({
   if (testInfo.project.name === "firefox") {
     test.skip(true, "Browser slide capture is validated in Chromium.");
   }
-  if (!hasFfmpeg()) {
-    test.skip(true, "ffmpeg is required to generate the local video fixture.");
-  }
-
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "summarize-browser-slides-"));
   const videoPath = path.join(tmpDir, "sample.mp4");
-  createSampleVideo(videoPath);
+  fs.copyFileSync(path.join(import.meta.dirname, "fixtures", "ffmpeg-wasm-sample.mp4"), videoPath);
 
   const html = `<!doctype html>
 <html>
@@ -174,7 +169,7 @@ test("sidepanel captures local video slides in browser runtime", async ({
           await background.evaluate(() =>
             JSON.stringify(globalThis.__summarizeBrowserSlidesLastResult ?? null),
           ),
-        { timeout: 10_000 },
+        { timeout: 120_000 },
       )
       .not.toBe("null");
     const browserSlidesResult = await background.evaluate(
@@ -187,9 +182,17 @@ test("sidepanel captures local video slides in browser runtime", async ({
     ) {
       throw new Error(`Browser slides failed: ${JSON.stringify(browserSlidesResult)}`);
     }
+    const slideSourceKind = (browserSlidesResult as { slides?: { sourceKind?: string } }).slides
+      ?.sourceKind;
+    if (slideSourceKind !== "browser-ffmpeg-wasm") {
+      const fallback = await background.evaluate(
+        () => globalThis.__summarizeBrowserFfmpegFallback ?? null,
+      );
+      throw new Error(`Expected FFmpeg WebAssembly slides, got ${slideSourceKind}: ${fallback}`);
+    }
 
     await expect
-      .poll(async () => (await getPanelSlidesTimeline(panel)).length, { timeout: 30_000 })
+      .poll(async () => (await getPanelSlidesTimeline(panel)).length, { timeout: 120_000 })
       .toBeGreaterThan(0);
     await expect
       .poll(

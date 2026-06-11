@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type SpawnPlan = "ffmpeg-missing" | "ffmpeg-ok";
 
@@ -60,6 +60,10 @@ const baseOptions = {
 };
 
 describe("podcast provider - transcribeMediaUrl branch coverage", () => {
+  beforeEach(() => {
+    vi.stubEnv("SUMMARIZE_DISABLE_FFMPEG_WASM", "1");
+  });
+
   it("handles ffmpeg missing by downloading capped bytes and noting the limitation", async () => {
     const { fetchTranscript } = await importPodcastProvider({ spawnPlan: "ffmpeg-missing" });
     const enclosureUrl = "https://example.com/episode.mp3";

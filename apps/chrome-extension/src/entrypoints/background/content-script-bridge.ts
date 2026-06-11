@@ -42,6 +42,17 @@ export type SlideFrameResponse =
     }
   | { ok: false; error: string };
 
+export type PrimaryMediaInfo =
+  | {
+      ok: true;
+      currentTimeSeconds: number | null;
+      durationSeconds: number | null;
+      mediaSrc: string;
+      title: string | null;
+      url: string;
+    }
+  | { ok: false; error: string };
+
 function contentAccessError(message: string) {
   return (
     message.toLowerCase().includes("cannot access") || message.toLowerCase().includes("denied")
@@ -335,6 +346,40 @@ export async function beginSlideFrameCaptureInTab(
     const res = (await chrome.tabs.sendMessage(tabId, req)) as SeekResponse;
     if (!res.ok) return { ok: false, error: res.error };
     return { ok: true, state: req.state };
+  }
+}
+
+export async function getPrimaryMediaInfoInTab(tabId: number): Promise<PrimaryMediaInfo> {
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: (): PrimaryMediaInfo => {
+        const best = Array.from(document.querySelectorAll("video")).reduce<{
+          video: HTMLVideoElement;
+          area: number;
+        } | null>((current, video) => {
+          const rect = video.getBoundingClientRect();
+          const area = Math.max(0, rect.width) * Math.max(0, rect.height);
+          if (area <= 0) return current;
+          return !current || area > current.area ? { video, area } : current;
+        }, null);
+        if (!best) return { ok: false, error: "No video element found." };
+        const duration = best.video.duration;
+        const currentTime = best.video.currentTime;
+        return {
+          ok: true,
+          currentTimeSeconds: Number.isFinite(currentTime) ? currentTime : null,
+          durationSeconds: Number.isFinite(duration) && duration > 0 ? duration : null,
+          mediaSrc: best.video.currentSrc || best.video.src || "",
+          title: document.title || null,
+          url: location.href,
+        };
+      },
+    });
+    return result?.result ?? { ok: false, error: "Could not inspect the active video." };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 

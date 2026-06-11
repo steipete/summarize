@@ -11,7 +11,7 @@ summary: "Extract scene-change keyframes from a video URL into PNG files."
 summarize slides <url> [flags]
 ```
 
-Extracts slide-shaped keyframes from a YouTube or direct video URL using `ffmpeg` scene detection. Output is a directory of PNGs (and optional OCR text). This is the standalone form of the `--slides` flag on the main command — useful when you only want the slides without a summary.
+Extracts slide-shaped keyframes from a YouTube or direct video URL using FFmpeg scene detection. Native ffmpeg is preferred; bundled FFmpeg WebAssembly is used when native `ffmpeg`/`ffprobe` are unavailable. Output is a directory of PNGs (and optional OCR text). This is the standalone form of the `--slides` flag on the main command — useful when you only want the slides without a summary.
 
 ## Synopsis
 
@@ -24,11 +24,11 @@ summarize slides "https://example.com/lecture.mp4" --slides-max 12
 
 ## Requirements
 
-- `ffmpeg` on PATH (scene detection + frame extraction).
+- Bundled FFmpeg WebAssembly, or native `ffmpeg` on PATH for faster extraction and broader codec support.
 - `yt-dlp` on PATH for YouTube URLs.
 - `tesseract` on PATH for `--slides-ocr`.
 
-If a tool is missing, summarize prints a clear warning and exits non-zero.
+If a required tool is missing, summarize prints a clear warning and exits non-zero.
 
 ## Flags
 

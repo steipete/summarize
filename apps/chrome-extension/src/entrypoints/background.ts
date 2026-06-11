@@ -13,6 +13,7 @@ import {
   beginSlideFrameCaptureInTab,
   canSummarizeUrl,
   extractFromTab,
+  getPrimaryMediaInfoInTab,
   prepareCurrentSlideFrameInTab,
   prepareSlideFrameInTab,
   restoreSlideFrameInTab,
@@ -200,6 +201,11 @@ export default defineBackground(() => {
       userInitiated: isUserInitiatedCapture,
     });
     sendStatus(session, "Capturing slides in browser...");
+    delete (
+      globalThis as typeof globalThis & {
+        __summarizeBrowserFfmpegFallback?: string;
+      }
+    ).__summarizeBrowserFfmpegFallback;
     const result = await (async () => {
       try {
         const transcript =
@@ -213,8 +219,24 @@ export default defineBackground(() => {
           prepareFrame: prepareSlideFrameInTab,
           prepareCurrentFrame: prepareCurrentSlideFrameInTab,
           restoreFrame: restoreSlideFrameInTab,
+          getMediaInfo: getPrimaryMediaInfoInTab,
           transcriptTimedText: transcript?.ok ? transcript.transcriptTimedText : null,
           captureMode: isUserInitiatedCapture ? "seek" : "current",
+          onStatus: (status) => sendStatus(session, status),
+          onFfmpegFallback: (error) => {
+            (
+              globalThis as typeof globalThis & {
+                __summarizeBrowserFfmpegFallback?: string;
+              }
+            ).__summarizeBrowserFfmpegFallback = error;
+            logExtensionEvent({
+              event: "slides.browser-ffmpeg.fallback",
+              detail: { error, url: tabUrl },
+              scope: "slides",
+              level: "verbose",
+            });
+            sendStatus(session, "Capturing slides in browser...");
+          },
         });
       } catch (err) {
         return {

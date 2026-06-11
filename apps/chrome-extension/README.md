@@ -57,12 +57,12 @@ Step-by-step:
 
 **Note**: Temporary add-ons are removed when Firefox restarts. For permanent installation, the extension needs to be signed via AMO (Firefox Add-ons).
 
-## Install the Daemon (Pairing)
+## Optional Daemon (Pairing)
 
-The extension talks to a tiny local daemon that runs on your machine. This process is identical for both Chrome and Firefox.
+Chrome Browser mode works without a CLI install or daemon. It can summarize pages and use bundled FFmpeg WebAssembly for fetchable video slides up to 128 MB. Install the daemon for faster extraction, `yt-dlp`, native ffmpeg, OCR, transcription, and Firefox media support.
 
 1. Install `summarize` (choose one):
-   - `npm i -g @steipete/summarize` (requires Node.js 22+)
+   - `npm i -g @steipete/summarize` (requires Node.js 24+)
    - `brew install summarize` (macOS, Linux)
 2. Open the Side Panel (Chrome) or Sidebar (Firefox). You'll see a **Setup** screen with a token and an install command.
 3. Open Terminal:

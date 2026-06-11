@@ -6,13 +6,16 @@
 
 // Don't use Bun shell ($) as it breaks bytecode compilation.
 import { spawn, spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, statSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const projectRoot = join(import.meta.dir, "..");
 const distDir = join(projectRoot, "dist-bun");
+const ffmpegWasmAssetsDir = join(projectRoot, "packages/core/vendor/ffmpeg-wasm/node");
+const ffmpegWasmRunnerEntry = join(projectRoot, "packages/core/src/ffmpeg-wasm/run-generated.ts");
+const ffmpegWasmRunnerPath = join(distDir, "ffmpeg-wasm-run-generated.js");
 const require = createRequire(import.meta.url);
 const MAC_TARGETS = [
   { arch: "arm64", target: "bun-darwin-arm64", outName: "summarize" },
@@ -111,22 +114,41 @@ function buildOne({ target, outName, version, gitSha }) {
   return outPath;
 }
 
+function buildFfmpegWasmRunner() {
+  console.log("\n🔨 Building FFmpeg WebAssembly Node runner…");
+  run("bun", [
+    "build",
+    ffmpegWasmRunnerEntry,
+    "--minify",
+    "--target",
+    "node",
+    "--outfile",
+    ffmpegWasmRunnerPath,
+  ]);
+}
+
 function packageTarball({ binaryPath, version, arch }) {
   const stageDir = mkdtempSync(join(tmpdir(), `summarize-bun-${arch}-`));
   const stagedBinary = join(stageDir, "summarize");
+  const stagedRunner = join(stageDir, "ffmpeg-wasm", "run-generated.js");
+  const stagedAssets = join(stageDir, "ffmpeg-wasm", "node");
   copyFileSync(binaryPath, stagedBinary);
+  mkdirSync(join(stageDir, "ffmpeg-wasm"), { recursive: true });
+  copyFileSync(ffmpegWasmRunnerPath, stagedRunner);
+  cpSync(ffmpegWasmAssetsDir, stagedAssets, { recursive: true });
   chmodX(stagedBinary);
 
   const tarName = `summarize-macos-${arch}-v${version}.tar.gz`;
   const tarPath = join(distDir, tarName);
   console.log(`\n📦 Packaging tarball (${arch})…`);
-  run("tar", ["-czf", tarPath, "-C", stageDir, "summarize"]);
+  run("tar", ["-czf", tarPath, "-C", stageDir, "summarize", "ffmpeg-wasm"]);
   return tarPath;
 }
 
 function buildMacosTargets({ version }) {
   const gitSha = readGitSha();
   const builds = {};
+  buildFfmpegWasmRunner();
 
   for (const { arch, target, outName } of MAC_TARGETS) {
     const binary = buildOne({ target, outName, version, gitSha });
@@ -190,10 +212,41 @@ async function runE2E(binary) {
   }
 }
 
+function runFfmpegWasmE2E(build) {
+  const extractDir = mkdtempSync(join(tmpdir(), "summarize-bun-ffmpeg-wasm-"));
+  run("tar", ["-xzf", build.tarPath, "-C", extractDir]);
+  const nodePath = spawnSync("which", ["node"], { encoding: "utf8" }).stdout.trim();
+  if (!nodePath) throw new Error("Node is required to smoke the FFmpeg WebAssembly fallback.");
+  const runner = join(extractDir, "ffmpeg-wasm", "run-generated.js");
+  const assetsDir = join(extractDir, "ffmpeg-wasm", "node");
+  const slidesDir = join(extractDir, "slides");
+  const fixture = join(
+    projectRoot,
+    "apps",
+    "chrome-extension",
+    "tests",
+    "fixtures",
+    "ffmpeg-wasm-sample.mp4",
+  );
+  run(nodePath, [runner, "ffprobe", assetsDir, "-version"]);
+  run(
+    join(extractDir, "summarize"),
+    ["slides", fixture, "--slides-dir", slidesDir, "--slides-max", "1", "--render", "none"],
+    {
+      env: {
+        ...process.env,
+        PATH: "/usr/bin:/bin",
+        SUMMARIZE_NODE_PATH: nodePath,
+      },
+    },
+  );
+  console.log("✅ Bun FFmpeg WebAssembly fallback ok");
+}
+
 function pickHostBinary(builds) {
-  if (process.arch === "arm64" && builds.arm64) return builds.arm64.binary;
-  if (process.arch === "x64" && builds.x64) return builds.x64.binary;
-  return builds.arm64?.binary ?? builds.x64?.binary;
+  if (process.arch === "arm64" && builds.arm64) return builds.arm64;
+  if (process.arch === "x64" && builds.x64) return builds.x64;
+  return builds.arm64 ?? builds.x64;
 }
 
 async function main() {
@@ -209,14 +262,15 @@ async function main() {
   const builds = buildMacosTargets({ version });
 
   if (process.argv.includes("--test")) {
-    const hostBinary = pickHostBinary(builds);
-    if (!hostBinary) {
+    const hostBuild = pickHostBinary(builds);
+    if (!hostBuild) {
       throw new Error("No compatible binary available for smoke tests.");
     }
     console.log(`\n🧪 Smoke (${process.arch})…`);
-    run(hostBinary, ["--version"]);
-    run(hostBinary, ["--help"]);
-    await runE2E(hostBinary);
+    run(hostBuild.binary, ["--version"]);
+    run(hostBuild.binary, ["--help"]);
+    await runE2E(hostBuild.binary);
+    runFfmpegWasmE2E(hostBuild);
   }
 
   console.log(`\n✨ Done. dist: ${distDir}`);

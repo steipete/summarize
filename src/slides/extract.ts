@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { resolveBundledFfmpegCommand } from "@steipete/summarize-core/ffmpeg";
 import type { MediaCache } from "../content/index.js";
 import { canSpawnCommand, resolveExecutableInPath } from "../run/env.js";
 import {
@@ -21,6 +22,7 @@ import {
 import { detectSlideTimestamps, extractFramesAtTimestamps } from "./frame-extraction.js";
 import { prepareSlidesInput } from "./ingest.js";
 import { runOcrOnSlides } from "./ocr.js";
+import type { ProcessCommand } from "./process.js";
 import {
   adjustTimestampWithinSegment,
   applyMaxSlidesFilter,
@@ -117,17 +119,23 @@ function resolveToolPath(
   return resolveExecutableInPath(binary, env);
 }
 
+type ResolveRunnableToolArgs = {
+  binary: string;
+  env: Record<string, string | undefined>;
+  explicitEnvKey?: string;
+  probeArgs: string[];
+};
+
+function resolveRunnableTool(
+  args: ResolveRunnableToolArgs & { binary: "ffmpeg" | "ffprobe" },
+): Promise<ProcessCommand | null>;
+function resolveRunnableTool(args: ResolveRunnableToolArgs): Promise<string | null>;
 async function resolveRunnableTool({
   binary,
   env,
   explicitEnvKey,
   probeArgs,
-}: {
-  binary: string;
-  env: Record<string, string | undefined>;
-  explicitEnvKey?: string;
-  probeArgs: string[];
-}): Promise<string | null> {
+}: ResolveRunnableToolArgs): Promise<ProcessCommand | null> {
   const explicit =
     explicitEnvKey && typeof env[explicitEnvKey] === "string" ? env[explicitEnvKey]?.trim() : "";
   if (explicit) {
@@ -135,7 +143,11 @@ async function resolveRunnableTool({
   }
   const resolved = resolveToolPath(binary, env, explicitEnvKey);
   if (resolved) return resolved;
-  return (await canSpawnCommand({ command: binary, args: probeArgs, env })) ? binary : null;
+  if (await canSpawnCommand({ command: binary, args: probeArgs, env })) return binary;
+  if (binary === "ffmpeg" || binary === "ffprobe") {
+    return resolveBundledFfmpegCommand(binary);
+  }
+  return null;
 }
 
 type ExtractSlidesArgs = {
@@ -216,12 +228,7 @@ export async function extractSlidesForSource({
       })();
 
       const warnings: string[] = [];
-      const workers = resolveSlidesWorkers(env);
       const totalStartedAt = Date.now();
-      logSlides(
-        `pipeline=ingest(sequential)->scene-detect(parallel:${workers})->extract-frames(parallel:${workers})->ocr(parallel:${workers})`,
-      );
-
       const ffmpegBinary =
         ffmpegPath ??
         (await resolveRunnableTool({
@@ -233,6 +240,13 @@ export async function extractSlidesForSource({
       if (!ffmpegBinary) {
         throw new Error("Missing ffmpeg (install ffmpeg or add it to PATH).");
       }
+      const workers =
+        typeof ffmpegBinary === "object" && ffmpegBinary.source === "wasm"
+          ? 1
+          : resolveSlidesWorkers(env);
+      logSlides(
+        `pipeline=ingest(sequential)->scene-detect(parallel:${workers})->extract-frames(parallel:${workers})->ocr(parallel:${workers})`,
+      );
       const ffprobeBinary = await resolveRunnableTool({
         binary: "ffprobe",
         env,
