@@ -167,7 +167,7 @@ function resolveAutoOpenAiCompatibleOverrides({
   }
   if (requiredEnv === "OLLAMA_BASE_URL") {
     return {
-      openaiApiKey: undefined,
+      openaiApiKey: null,
       openaiBaseUrl: envState.ollamaBaseUrl,
       forceChatCompletions: true,
     };

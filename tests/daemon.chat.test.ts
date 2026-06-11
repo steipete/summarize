@@ -468,6 +468,52 @@ describe("daemon/chat", () => {
     expect(args.openaiBaseUrlOverride).toBe("https://gateway.example/v1");
   });
 
+  it("does not forward the OpenAI key to auto-selected Ollama chat models", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-auto-ollama-"));
+
+    vi.mocked(buildAutoModelAttempts).mockReturnValue([
+      {
+        transport: "native" as const,
+        userModelId: "ollama/qwen3:8b",
+        llmModelId: "ollama/qwen3:8b",
+        openrouterProviders: null,
+        forceOpenRouter: false,
+        requiredEnv: "OLLAMA_BASE_URL" as const,
+        debug: "test",
+      },
+    ]);
+
+    await streamChatResponse({
+      env: {
+        HOME: home,
+        OPENAI_API_KEY: "sk-openai",
+        OLLAMA_BASE_URL: "http://ollama-box:11434/v1",
+      },
+      fetchImpl: fetch,
+      session: {
+        id: "s-auto-ollama",
+        lastMeta: { model: null, modelLabel: null, inputSummary: null, summaryFromCache: null },
+      },
+      pageUrl: "https://example.com",
+      pageTitle: null,
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: null,
+      pushToSession: () => {},
+      emitMeta: () => {},
+    });
+
+    const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const args = calls[calls.length - 1]?.[0] as {
+      apiKeys?: { openaiApiKey?: string | null };
+      forceChatCompletions?: boolean;
+      openaiBaseUrlOverride?: string | null;
+    };
+    expect(args.apiKeys?.openaiApiKey).toBeNull();
+    expect(args.openaiBaseUrlOverride).toBe("http://ollama-box:11434/v1");
+    expect(args.forceChatCompletions).toBe(true);
+  });
+
   it("uses the MiniMax key and base URL for auto-selected sidepanel chat models", async () => {
     const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-auto-minimax-"));
 
