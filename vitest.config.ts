@@ -44,6 +44,14 @@ export function createVitestConfig({
           replacement: resolve(rootDir, "packages/core/src/language.ts"),
         },
         {
+          find: /^@steipete\/summarize-core\/ffmpeg$/,
+          replacement: resolve(rootDir, "packages/core/src/ffmpeg.ts"),
+        },
+        {
+          find: /^@steipete\/summarize-core\/processes$/,
+          replacement: resolve(rootDir, "packages/core/src/processes.ts"),
+        },
+        {
           find: /^@steipete\/summarize-core$/,
           replacement: resolve(rootDir, "packages/core/src/index.ts"),
         },

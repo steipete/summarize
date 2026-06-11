@@ -107,6 +107,52 @@ describe("chrome browser slide capture", () => {
     expect(restoreFrame).not.toHaveBeenCalled();
   });
 
+  it("prefers ffmpeg wasm for a fetchable video", async () => {
+    const query = vi.fn(async () => [{ id: 7, url: "https://example.com/video" }]);
+    const captureVisibleTab = vi.fn();
+    Object.defineProperty(globalThis, "chrome", {
+      configurable: true,
+      value: {
+        tabs: { query, captureVisibleTab },
+      },
+    });
+    const extractFramesWithFfmpeg = vi.fn(async () => [
+      { imageUrl: "data:image/png;base64,AQID", timestamp: 0.4 },
+      { imageUrl: "data:image/png;base64,BAUG", timestamp: 2.4 },
+    ]);
+    const beginFrameCapture = vi.fn();
+
+    const result = await runBrowserSlidesForTab({
+      tab: { id: 7, url: "https://example.com/video" },
+      windowId: 1,
+      beginFrameCapture,
+      prepareFrame: vi.fn(),
+      getMediaInfo: vi.fn(async () => ({
+        ok: true as const,
+        currentTimeSeconds: 1,
+        durationSeconds: 4,
+        mediaSrc: "https://cdn.example.com/video.mp4",
+        title: "Video",
+        url: "https://example.com/video",
+      })),
+      extractFramesWithFfmpeg,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.slides.sourceKind).toBe("browser-ffmpeg-wasm");
+      expect(result.slides.slides).toHaveLength(2);
+    }
+    expect(extractFramesWithFfmpeg).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mediaUrl: "https://cdn.example.com/video.mp4",
+        timestamps: [0.4, 2.4],
+      }),
+    );
+    expect(beginFrameCapture).not.toHaveBeenCalled();
+    expect(captureVisibleTab).not.toHaveBeenCalled();
+  });
+
   it("cancels before visible-tab capture when the active tab changes and restores the video", async () => {
     const query = vi
       .fn()

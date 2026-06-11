@@ -91,7 +91,7 @@ See [Config](config.md#speaker-identification) for reusable profiles.
 
 ## Slides
 
-Use `--slides` to extract slide screenshots for YouTube videos (requires `ffmpeg` and `yt-dlp`).
+Use `--slides` to extract slide screenshots for YouTube videos (`yt-dlp` required; native ffmpeg preferred, bundled WebAssembly fallback included).
 Scene detection auto-tunes the threshold using sampled frame hashes:
 
 ```bash

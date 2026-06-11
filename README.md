@@ -45,7 +45,8 @@ YouTube slide screenshots (from the browser):
 
 Why a daemon/service?
 
-- The extension can’t run heavy extraction inside the browser. It talks to a local background service on `127.0.0.1` for fast streaming and media tools (yt‑dlp, ffmpeg, OCR, transcription).
+- Browser mode works without the daemon for page summaries and can extract fetchable video slides with bundled FFmpeg WebAssembly.
+- The optional daemon on `127.0.0.1` is faster and adds `yt-dlp`, native ffmpeg, OCR, transcription, and broader media support.
 - The service autostarts (launchd/systemd/Scheduled Task) so the Side Panel is always ready.
 
 If you only want the **CLI**, you can skip the daemon install entirely.
@@ -70,7 +71,8 @@ More:
 - Select **Video + Slides** in the Summarize picker.
 - Slides render at the top; expand to full‑width cards with timestamps.
 - Click a slide to seek the video; toggle **Transcript/OCR** when OCR is significant.
-- Requirements: `yt-dlp` + `ffmpeg` for extraction; `tesseract` for OCR. Missing tools show an in‑panel notice.
+- Browser mode uses bundled FFmpeg WebAssembly for fetchable videos up to 128 MB, then falls back to visible-tab capture.
+- Daemon mode adds `yt-dlp`, native ffmpeg, and optional `tesseract` OCR.
 
 ### Advanced (unpacked / dev)
 
@@ -128,7 +130,7 @@ If Homebrew is unavailable in your environment, use the npm global install above
 
 Install these if you want media-heavy features:
 
-- `ffmpeg`: required for `--slides` and many local media/transcription flows
+- `ffmpeg`: optional native accelerator with broader codec support; bundled WebAssembly is the fallback
 - `yt-dlp`: required for YouTube slide extraction and some remote media flows
 - `tesseract`: optional OCR for `--slides-ocr`
 - Optional cloud transcription providers:
@@ -146,12 +148,13 @@ brew install ffmpeg yt-dlp
 brew install tesseract # optional, for --slides-ocr
 ```
 
-If `--slides` is enabled and these tools are missing, Summarize warns and continues without slides.
+If native `ffmpeg`/`ffprobe` are unavailable, Summarize uses the bundled WebAssembly build. Native ffmpeg remains recommended for speed and broader codec/filter support.
 
 ### CLI vs extension
 
 - **CLI only:** just install via npm/Homebrew and run `summarize ...` (no daemon needed).
-- **Chrome/Firefox extension:** install the CLI **and** run `summarize daemon install --token <TOKEN>` so the Side Panel can stream results and use local tools.
+- **Chrome extension:** Browser mode works without the CLI or daemon; install the daemon for faster and broader media support.
+- **Firefox extension:** install the CLI and daemon for media extraction.
 
 ### Quickstart
 
@@ -508,7 +511,7 @@ Extract slide screenshots (scene detection via `ffmpeg`) and optional OCR:
 
 Requirements:
 
-- `ffmpeg` for scene detection and frame extraction
+- bundled FFmpeg WebAssembly, or native `ffmpeg` for faster extraction and broader codec support
 - `yt-dlp` for YouTube video download/stream resolution
 - `tesseract` only when using `--slides-ocr`
 

@@ -9,6 +9,7 @@
   "ignorePatterns": [
     ".clawpatch/",
     "apps/chrome-extension/dist/",
+    "apps/chrome-extension/public/ffmpeg-wasm/",
     "coverage/",
     "dist/",
     "docs/_layouts/",

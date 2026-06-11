@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_OPENAI_UPLOAD_BYTES } from "../packages/core/src/transcription/whisper.js";
 
 type SpawnPlan = "ffmpeg-ok" | "ffmpeg-missing";
@@ -53,6 +53,10 @@ const baseOptions = {
 };
 
 describe("podcast transcript provider - streaming download branches", () => {
+  beforeEach(() => {
+    vi.stubEnv("SUMMARIZE_DISABLE_FFMPEG_WASM", "1");
+  });
+
   it("handles downloadCappedBytes stream edge cases (undefined chunks, slice, cancel errors)", async () => {
     const { fetchTranscript } = await importPodcastProviderWithFfmpeg("ffmpeg-missing");
     const enclosureUrl = "https://example.com/episode.mp3";

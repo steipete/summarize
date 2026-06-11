@@ -69,6 +69,9 @@ jobs:
           tar -tf "$CORE_TARBALL" | grep -E '^package/dist/esm/index\.js$'
           tar -tf "$CORE_TARBALL" | grep -E '^package/dist/esm/content/index\.js$'
           tar -tf "$CORE_TARBALL" | grep -E '^package/dist/esm/prompts/index\.js$'
+          tar -tf "$CORE_TARBALL" | grep -E '^package/dist/ffmpeg-wasm/node/ffmpeg_g\.wasm$'
+          tar -tf "$CORE_TARBALL" | grep -E '^package/dist/ffmpeg-wasm/node/ffprobe_g\.wasm$'
+          tar -tf "$CORE_TARBALL" | grep -E '^package/dist/ffmpeg-wasm/node/COPYING\.LGPLv2\.1$'
 
   extension-e2e:
     runs-on: ubuntu-latest

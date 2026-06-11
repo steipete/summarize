@@ -38,10 +38,14 @@
     "./language": {
       "types": "./dist/types/language.d.ts",
       "import": "./dist/esm/language.js"
+    },
+    "./ffmpeg": {
+      "types": "./dist/types/ffmpeg.d.ts",
+      "import": "./dist/esm/ffmpeg.js"
     }
   },
   "scripts": {
-    "build": "pnpm clean && tsgo -p tsconfig.build.json",
+    "build": "pnpm clean && tsgo -p tsconfig.build.json && node scripts/package-ffmpeg-wasm.mjs",
     "clean": "rimraf dist",
     "prepublishOnly": "node ../../scripts/require-pnpm-publish.mjs",
     "typecheck": "tsgo -p tsconfig.build.json --noEmit"

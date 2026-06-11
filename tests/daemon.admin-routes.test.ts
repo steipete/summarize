@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -89,9 +89,6 @@ describe("daemon admin routes", () => {
     const token = "test-token-admin-tools";
     const binDir = join(home, "bin");
     mkdirSync(binDir, { recursive: true });
-    const ffmpegPath = join(binDir, "ffmpeg");
-    writeFileSync(ffmpegPath, "#!/bin/sh\nexit 0\n", "utf8");
-    chmodSync(ffmpegPath, 0o755);
 
     const abortController = new AbortController();
     let resolveReady: (() => void) | null = null;
@@ -100,7 +97,7 @@ describe("daemon admin routes", () => {
     });
 
     const serverPromise = runDaemonServer({
-      env: { HOME: home, PATH: binDir, FFMPEG_PATH: ffmpegPath },
+      env: { HOME: home, PATH: binDir },
       fetchImpl: fetch,
       config: { token, port, version: 1, installedAt: new Date().toISOString() },
       port,
@@ -123,7 +120,10 @@ describe("daemon admin routes", () => {
         };
       };
       expect(toolsResponse.ok).toBe(true);
-      expect(toolsPayload.tools.ffmpeg).toEqual({ available: true, path: ffmpegPath });
+      expect(toolsPayload.tools.ffmpeg).toEqual({
+        available: true,
+        path: "bundled:ffmpeg-wasm",
+      });
       expect(toolsPayload.tools.ytDlp.available).toBe(false);
       expect(toolsPayload.tools.tesseract.available).toBe(false);
 

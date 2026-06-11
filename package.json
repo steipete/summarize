@@ -33,8 +33,8 @@
   },
   "scripts": {
     "build": "pnpm clean && pnpm -C packages/core build && pnpm build:lib && pnpm build:cli",
-    "build:bun": "bun scripts/build-bun.js",
-    "build:bun:test": "bun scripts/build-bun.js --test",
+    "build:bun": "pnpm -C packages/core build && bun scripts/build-bun.js",
+    "build:bun:test": "pnpm -C packages/core build && bun scripts/build-bun.js --test",
     "build:cli": "node scripts/build-cli.mjs",
     "build:lib": "tsgo -p tsconfig.build.json",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:coverage",

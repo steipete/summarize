@@ -1,5 +1,9 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "ignorePatterns": [
+    "apps/chrome-extension/public/ffmpeg-wasm/**",
+    "packages/core/vendor/ffmpeg-wasm/**"
+  ],
   "plugins": ["typescript"],
   "categories": {
     "correctness": "off",

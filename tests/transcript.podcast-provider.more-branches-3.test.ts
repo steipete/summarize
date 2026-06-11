@@ -44,6 +44,7 @@ const baseOptions = {
 describe("podcast transcript provider - more branches 3", () => {
   beforeEach(() => {
     stubMissingTranscriptionEnv();
+    vi.stubEnv("SUMMARIZE_DISABLE_FFMPEG_WASM", "1");
   });
 
   it("returns a helpful message when transcription keys are missing", async () => {

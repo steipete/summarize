@@ -6,7 +6,7 @@
   "scripts": {
     "build": "wxt build",
     "build:all": "pnpm build && pnpm build:firefox",
-    "build:firefox": "BROWSER=firefox wxt build",
+    "build:firefox": "BROWSER=firefox wxt build && node scripts/remove-firefox-ffmpeg-wasm.mjs",
     "dev": "wxt dev",
     "dev:firefox": "BROWSER=firefox wxt dev",
     "lint": "wxt lint",
