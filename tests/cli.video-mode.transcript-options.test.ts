@@ -172,6 +172,49 @@ describe("cli --video-mode transcript", () => {
     }
   });
 
+  it("forwards ElevenLabs diarization and timestamps for local media without yt-dlp", async () => {
+    const root = mkdtempSync(join(tmpdir(), "summarize-cli-elevenlabs-diarize-"));
+    const mediaPath = join(root, "interview.mp3");
+    writeFileSync(mediaPath, Buffer.from([0xff, 0xfb, 0x10, 0x00]));
+    const stdout = collectStream({ isTTY: false });
+    const stderr = collectStream({ isTTY: true });
+
+    try {
+      await runCli(
+        ["--extract", "--metrics", "off", "--timestamps", "--diarize", "elevenlabs", mediaPath],
+        {
+          env: {
+            ELEVENLABS_API_KEY: "test-elevenlabs",
+            PATH: "/nonexistent",
+          },
+          fetch: vi.fn() as unknown as typeof fetch,
+          stdout: stdout.stream,
+          stderr: stderr.stream,
+        },
+      );
+
+      const clientOptions = mocks.createLinkPreviewClient.mock.calls.at(-1)?.[0] as
+        | {
+            transcription?: { elevenlabsApiKey?: string | null };
+            ytDlpPath?: string | null;
+          }
+        | undefined;
+      const fetchOptions = mocks.fetchLinkContent.mock.calls.at(-1)?.[1] as
+        | Record<string, unknown>
+        | undefined;
+      expect(clientOptions?.transcription?.elevenlabsApiKey).toBe("test-elevenlabs");
+      expect(clientOptions?.ytDlpPath).toBeNull();
+      expect(fetchOptions).toMatchObject({
+        mediaTranscript: "prefer",
+        transcriptDiarization: "elevenlabs",
+        transcriptTimestamps: true,
+      });
+      expect(stdout.getText()).toContain("Transcript: hello");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it.each(["mp3", "mp4"])(
     "diarizes a direct %s URL through the media asset flow",
     async (extension) => {
