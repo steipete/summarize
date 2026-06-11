@@ -185,7 +185,7 @@ describe("podcast provider - transcribeMediaUrl branch coverage", () => {
       if (method === "HEAD") {
         throw new Error("no head");
       }
-      expect(init?.headers).toBeUndefined();
+      expect(init?.headers).toMatchObject({ Range: `bytes=0-${maxBytes - 1}` });
       return new Response(
         new ReadableStream<Uint8Array>({
           pull(controller) {

@@ -15,6 +15,11 @@ describe("podcast transcript provider - helper branches", () => {
     expect(__test__.parseContentLength("12.3")).toBe(12);
     expect(__test__.parseContentLength("123")).toBe(123);
     expect(__test__.parseContentLength("NaN")).toBeNull();
+
+    expect(__test__.parseContentRangeTotal(null)).toBeNull();
+    expect(__test__.parseContentRangeTotal("bytes 0-2/6")).toBe(6);
+    expect(__test__.parseContentRangeTotal("bytes 0-2/*")).toBeNull();
+    expect(__test__.parseContentRangeTotal("items 0-2/6")).toBeNull();
   });
 
   it("extracts filenames from URLs (including invalid URLs)", () => {
