@@ -11,6 +11,7 @@
 
 ### Fixes
 
+- YouTube transcripts: let `--diarize auto` and matching explicit provider requests reuse the same compatible cached speaker-labelled transcript instead of re-transcribing the same video.
 - Chrome extension: abort stale side-panel summary streams on tab changes so delayed output from a closed or replaced tab cannot render under the new page title.
 - Core: extract video IDs from YouTube `/live/` URLs so live and premiere links no longer abort summarization (#232, thanks @devYRPauli).
 - Chrome extension: keep YouTube slide cards on the shared slide-summary path so local browser thumbnails receive the same summary text shape as CLI `--slides`.

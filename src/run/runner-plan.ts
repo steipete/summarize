@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { type CacheState } from "../cache.js";
 import type { ExecFileFn } from "../markitdown.js";
 import type { FixedModelSpec } from "../model-spec.js";
+import { scopeTranscriptCacheForDiarization } from "../shared/transcript-diarization-cache-scope.js";
 import {
   createThemeRenderer,
   resolveThemeNameFromSources,
@@ -209,13 +210,16 @@ export async function createRunnerPlan(options: {
       ? `Output should be ${outputLanguage.label}.`
       : null;
 
-  const transcriptNamespace = `yt:${youtubeMode}:diarize:${diarizationMode ?? "off"}`;
-  const cacheState = await createCacheStateFromConfig({
+  const transcriptNamespace = diarizationMode
+    ? `yt:${youtubeMode}`
+    : `yt:${youtubeMode}:diarize:off`;
+  let cacheState = await createCacheStateFromConfig({
     envForRun,
     config,
     noCacheFlag,
     transcriptNamespace,
   });
+  cacheState = scopeTranscriptCacheForDiarization(cacheState, diarizationMode);
   const mediaCache = await createMediaCacheFromConfig({
     envForRun,
     config,

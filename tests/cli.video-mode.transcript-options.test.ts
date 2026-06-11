@@ -81,9 +81,56 @@ describe("cli --video-mode transcript", () => {
       },
     );
 
-    const options = mocks.fetchLinkContent.mock.calls[0]?.[1] as
+    const options = mocks.fetchLinkContent.mock.calls.at(-1)?.[1] as
       | Record<string, unknown>
       | undefined;
     expect(options?.mediaTranscript).toBe("prefer");
+  });
+
+  it("passes bare --diarize through as auto for YouTube extracts", async () => {
+    const stdout = collectStream({ isTTY: false });
+    const stderr = collectStream({ isTTY: true });
+
+    await runCli(
+      ["--extract", "--metrics", "off", "--diarize", "https://www.youtube.com/watch?v=abcdefghijk"],
+      {
+        env: {},
+        fetch: vi.fn() as unknown as typeof fetch,
+        stdout: stdout.stream,
+        stderr: stderr.stream,
+      },
+    );
+
+    const options = mocks.fetchLinkContent.mock.calls.at(-1)?.[1] as
+      | Record<string, unknown>
+      | undefined;
+    expect(options?.transcriptDiarization).toBe("auto");
+  });
+
+  it("passes explicit diarization providers through to the extractor", async () => {
+    const stdout = collectStream({ isTTY: false });
+    const stderr = collectStream({ isTTY: true });
+
+    await runCli(
+      [
+        "--extract",
+        "--metrics",
+        "off",
+        "--diarize",
+        "openai",
+        "https://www.youtube.com/watch?v=abcdefghijk",
+      ],
+      {
+        env: {},
+        fetch: vi.fn() as unknown as typeof fetch,
+        stdout: stdout.stream,
+        stderr: stderr.stream,
+      },
+    );
+
+    const options = mocks.fetchLinkContent.mock.calls.at(-1)?.[1] as
+      | Record<string, unknown>
+      | undefined;
+    expect(options?.transcriptDiarization).toBe("openai");
   });
 });

@@ -5,7 +5,6 @@ import type {
   ExtractedLinkContent,
   LinkPreviewProgressEvent,
   MediaCache,
-  TranscriptCache,
 } from "../content/index.js";
 import type { ExecFileFn } from "../markitdown.js";
 import type { FixedModelSpec } from "../model-spec.js";
@@ -27,6 +26,7 @@ import {
   resolveSummaryLength,
 } from "../run/run-settings.js";
 import { createSummaryEngine } from "../run/summary-engine.js";
+import { scopeTranscriptCacheForDiarization } from "../shared/transcript-diarization-cache-scope.js";
 import type { SlideImage, SlideSettings, SlideSourceKind } from "../slides/index.js";
 
 type TextSink = {
@@ -66,26 +66,6 @@ function applyAutoCliFallbackOverrides(
           : {}),
         ...(Array.isArray(overrides.autoCliOrder) ? { order: overrides.autoCliOrder } : {}),
       },
-    },
-  };
-}
-
-function scopeTranscriptCacheForDiarization(
-  cache: CacheState,
-  diarization: "auto" | "elevenlabs" | "openai" | null,
-): CacheState {
-  if (!cache.store || !diarization) return cache;
-  const base = cache.store.transcriptCache;
-  const scopeUrl = (url: string) => `summarize-diarize:${diarization}:${url}`;
-  const transcriptCache: TranscriptCache = {
-    get: (args) => base.get({ ...args, url: scopeUrl(args.url) }),
-    set: (args) => base.set({ ...args, url: scopeUrl(args.url) }),
-  };
-  return {
-    ...cache,
-    store: {
-      ...cache.store,
-      transcriptCache,
     },
   };
 }

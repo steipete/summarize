@@ -203,7 +203,12 @@ describe("daemon/flow-context (overrides)", () => {
 
   it("scopes the shared transcript cache by diarization mode", async () => {
     const home = makeTempHome();
-    const get = vi.fn(async () => null);
+    const get = vi.fn(async () => ({
+      content: "Speaker A: cached openai",
+      source: "yt-dlp",
+      expired: false,
+      metadata: { diarizationProvider: "openai", speakerLabels: true },
+    }));
     const set = vi.fn(async () => {});
     const store: CacheStore = {
       getText: () => null,
@@ -254,6 +259,46 @@ describe("daemon/flow-context (overrides)", () => {
     expect(get).toHaveBeenCalledWith({
       url: "summarize-diarize:openai:https://example.com/video",
     });
+  });
+
+  it("leaves cache wiring unchanged when no shared cache store exists", () => {
+    const home = makeTempHome();
+    const ctx = createDaemonUrlFlowContext({
+      env: { HOME: home },
+      fetchImpl: fetch,
+      cache: {
+        mode: "default",
+        store: null,
+        ttlMs: 0,
+        maxBytes: 0,
+        path: null,
+      },
+      modelOverride: null,
+      promptOverride: null,
+      lengthRaw: "xl",
+      languageRaw: "auto",
+      maxExtractCharacters: null,
+      overrides: {
+        firecrawlMode: null,
+        markdownMode: null,
+        preprocessMode: null,
+        youtubeMode: null,
+        videoMode: null,
+        transcriptTimestamps: null,
+        transcriptDiarization: "openai",
+        forceSummary: null,
+        timeoutMs: null,
+        retries: null,
+        maxOutputTokensArg: null,
+        transcriber: null,
+        autoCliFallbackEnabled: null,
+        autoCliOrder: null,
+      },
+      runStartedAtMs: Date.now(),
+      stdoutSink: { writeChunk: () => {} },
+    });
+
+    expect(ctx.cache.store).toBeNull();
   });
 
   it("defaults markdownMode to readability when format=markdown", () => {
