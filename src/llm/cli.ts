@@ -426,7 +426,12 @@ export async function runCliModel({
 
   if (provider === "pi") {
     const isolatedCwd = !allowTools ? await fs.mkdtemp(path.join(tmpdir(), "summarize-pi-")) : null;
+    let promptDir: string | null = null;
     try {
+      promptDir = await fs.mkdtemp(path.join(tmpdir(), "summarize-pi-prompt-"));
+      const promptPath = path.join(promptDir, "prompt.txt");
+      await fs.writeFile(promptPath, prompt, { mode: 0o600 });
+
       const piArgs: string[] = [...providerExtraArgs];
       piArgs.push("--print", "--mode", "json");
       if (!allowTools) {
@@ -446,17 +451,21 @@ export async function runCliModel({
       if (requestedModel) {
         piArgs.push("--model", requestedModel);
       }
+      piArgs.push(`@${promptPath}`);
       const { stdout } = await execCliWithInput({
         execFileImpl: execFileFn,
         cmd: binary,
         args: piArgs,
-        input: prompt,
+        input: "",
         timeoutMs,
         env: effectiveEnv,
         cwd: isolatedCwd ?? cwd,
       });
       return parsePiOutputFromJsonl(stdout);
     } finally {
+      if (promptDir) {
+        await fs.rm(promptDir, { recursive: true, force: true }).catch(() => {});
+      }
       if (isolatedCwd) {
         await fs.rm(isolatedCwd, { recursive: true, force: true }).catch(() => {});
       }

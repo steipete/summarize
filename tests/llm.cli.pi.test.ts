@@ -1,14 +1,18 @@
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parsePiOutputFromJsonl } from "../src/llm/cli-provider-output.js";
 import { resolveCliBinary, runCliModel } from "../src/llm/cli.js";
 import type { ExecFileFn } from "../src/markitdown.js";
 
 describe("runCliModel - pi provider", () => {
-  it("invokes pi in JSON print mode and passes prompts over stdin", async () => {
+  it("invokes pi in JSON print mode with a private prompt attachment", async () => {
     const prompt = "Summarize a short local proof document.";
     let seenCmd = "";
     let seenCwd = "";
     let seenInput = "";
+    let seenPromptPath = "";
+    let seenPrompt = "";
+    let seenPromptMode = 0;
     const seenArgs: string[][] = [];
     const stdout = [
       JSON.stringify({
@@ -35,6 +39,9 @@ describe("runCliModel - pi provider", () => {
       seenCmd = String(cmd);
       seenArgs.push(args);
       seenCwd = typeof options?.cwd === "string" ? options.cwd : "";
+      seenPromptPath = args.find((arg) => arg.startsWith("@"))?.slice(1) ?? "";
+      seenPrompt = readFileSync(seenPromptPath, "utf8");
+      seenPromptMode = statSync(seenPromptPath).mode & 0o777;
       cb?.(null, stdout, "");
       return {
         stdin: {
@@ -92,7 +99,11 @@ describe("runCliModel - pi provider", () => {
       ]),
     );
     expect(seenArgs[0]).not.toContain(prompt);
-    expect(seenInput).toBe(prompt);
+    expect(seenPromptPath).toContain("summarize-pi-prompt-");
+    expect(seenPrompt).toBe(prompt);
+    expect(seenPromptMode).toBe(0o600);
+    expect(existsSync(seenPromptPath)).toBe(false);
+    expect(seenInput).toBe("");
     expect(seenCwd).toContain("summarize-pi-");
     expect(seenCwd).not.toBe("/tmp/pi-original-cwd");
   });
@@ -100,10 +111,14 @@ describe("runCliModel - pi provider", () => {
   it("keeps tools enabled when requested while still isolating pi context flags", async () => {
     let seenInput = "";
     let seenCwd = "";
+    let seenPromptPath = "";
+    let seenPrompt = "";
     const seenArgs: string[][] = [];
     const execFileImpl: ExecFileFn = ((_cmd, args, options, cb) => {
       seenArgs.push(args);
       seenCwd = typeof options?.cwd === "string" ? options.cwd : "";
+      seenPromptPath = args.find((arg) => arg.startsWith("@"))?.slice(1) ?? "";
+      seenPrompt = readFileSync(seenPromptPath, "utf8");
       cb?.(
         null,
         JSON.stringify({
@@ -149,7 +164,9 @@ describe("runCliModel - pi provider", () => {
         "openai/gpt-5.4",
       ]),
     );
-    expect(seenInput).toBe("Prompt from stdin");
+    expect(seenPrompt).toBe("Prompt from stdin");
+    expect(existsSync(seenPromptPath)).toBe(false);
+    expect(seenInput).toBe("");
     expect(seenCwd).toBe("/tmp/pi-tools-cwd");
   });
 

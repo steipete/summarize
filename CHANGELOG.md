@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Pi CLI: pass summary prompts through private temporary file attachments because current Pi print mode does not read stdin.
 - Dependencies: update Markdansi to 0.3.1 and refresh the dependency lockfile.
 - Release: allow exact-version smoke tests to bypass the minimum release age for freshly published packages.
 
