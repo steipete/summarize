@@ -46,6 +46,10 @@ import {
   type ArtifactsRequest,
   type NativeInputRequest,
 } from "./background/runtime-actions";
+import {
+  startYoutubeLocalTranscriptionRuntime,
+  transcribeYoutubeAudioInTab,
+} from "./background/youtube-local-transcript";
 import { extractYouTubeTranscriptInTab } from "./background/youtube-transcript";
 
 type BackgroundPanelSession = PanelSession<
@@ -53,6 +57,9 @@ type BackgroundPanelSession = PanelSession<
   ReturnType<typeof createDaemonStatusTracker>
 >;
 export default defineBackground(() => {
+  if (import.meta.env.BROWSER === "chrome") {
+    startYoutubeLocalTranscriptionRuntime();
+  }
   const panelSessionStore = createPanelSessionStore<
     CachedExtract,
     PanelCachePayload,
@@ -129,6 +136,8 @@ export default defineBackground(() => {
       isDaemonUnreachableError,
       fetchImpl: (...args) => fetch(...args),
       resolveLogLevel,
+      transcribeYouTubeLocally:
+        import.meta.env.BROWSER === "chrome" ? transcribeYoutubeAudioInTab : undefined,
     });
 
   async function maybeStartBrowserSlides(

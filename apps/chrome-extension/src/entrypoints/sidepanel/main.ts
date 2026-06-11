@@ -498,6 +498,11 @@ function applySummarySnapshot(payload: { run: RunStart; markdown: string }) {
     preservedSlides?.sourceId ??
     (preserveActiveSlideRun ? (activeSlidesRunMeta?.runId ?? null) : null);
   panelState.currentSource = { url: payload.run.url, title: payload.run.title };
+  panelState.lastMeta = {
+    inputSummary: null,
+    model: payload.run.model,
+    modelLabel: payload.run.model,
+  };
   currentRunTabId = activeTabId;
   headerController.setBaseTitle(payload.run.title || payload.run.url || "Summarize");
   headerController.setBaseSubtitle("");

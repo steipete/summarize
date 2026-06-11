@@ -2,6 +2,8 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { defineConfig } from "wxt";
 
+const targetBrowser = process.env.BROWSER === "firefox" ? "firefox" : "chrome";
+
 const extensionVersion = (() => {
   try {
     const raw = readFileSync(new URL("../../package.json", import.meta.url), "utf8");
@@ -28,12 +30,43 @@ export default defineConfig({
   srcDir: "src",
   // Support multi-browser builds via BROWSER env var
   // Both Chrome and Firefox use MV3 (Firefox 109+)
-  browser: process.env.BROWSER === "firefox" ? "firefox" : "chrome",
+  browser: targetBrowser,
   manifestVersion: 3,
   vite: () => ({
     define: {
       __SUMMARIZE_VERSION__: JSON.stringify(extensionVersion),
       __SUMMARIZE_GIT_HASH__: JSON.stringify(gitHash),
+    },
+    plugins:
+      targetBrowser === "chrome"
+        ? [
+            {
+              name: "bundle-transformers-onnx-runtime",
+              generateBundle() {
+                const filename = "ort-wasm-simd-threaded.jsep.mjs";
+                this.emitFile({
+                  type: "asset",
+                  fileName: `assets/${filename}`,
+                  source: readFileSync(
+                    new URL(
+                      `./node_modules/@huggingface/transformers/dist/${filename}`,
+                      import.meta.url,
+                    ),
+                  ),
+                });
+              },
+            },
+          ]
+        : [],
+    build: {
+      rollupOptions: {
+        output: {
+          assetFileNames: (asset) =>
+            asset.names.some((name) => name === "ort-wasm-simd-threaded.jsep.wasm")
+              ? "assets/[name][extname]"
+              : "assets/[name]-[hash][extname]",
+        },
+      },
     },
     resolve: {
       alias: {
@@ -63,6 +96,7 @@ export default defineConfig({
         ...(browser === "firefox" ? [] : ["offscreen" as const]),
         ...(browser === "firefox" ? [] : ["sidePanel" as const]),
         "webNavigation",
+        ...(browser === "firefox" ? [] : ["webRequest" as const]),
         "scripting",
         "windows",
         ...(browser === "firefox" ? [] : ["debugger" as const]),

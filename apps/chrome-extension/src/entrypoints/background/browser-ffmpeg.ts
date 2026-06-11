@@ -112,9 +112,69 @@ export async function extractBrowserFfmpegFramesInDocument({
   );
 }
 
+export async function transcodeBrowserAudioBytesInDocument({
+  inputBytes,
+  mimeType,
+}: {
+  inputBytes: Uint8Array;
+  mimeType: string;
+}): Promise<Float32Array> {
+  if (inputBytes.byteLength === 0) throw new Error("The resolved audio stream is empty.");
+  if (inputBytes.byteLength > MAX_BROWSER_MEDIA_BYTES) {
+    throw new Error("Audio is too large for in-browser FFmpeg.");
+  }
+  const inputPath = `/input${mediaExtension("https://local.invalid/audio", mimeType)}`;
+  const outputPath = "/audio.f32";
+  const [output] = await runBrowserFfmpeg({
+    args: [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-y",
+      "-i",
+      inputPath,
+      "-vn",
+      "-ac",
+      "1",
+      "-ar",
+      "16000",
+      "-f",
+      "f32le",
+      outputPath,
+    ],
+    inputBytes,
+    inputPath,
+    outputPaths: [outputPath],
+  });
+  if (!output || output.buffer.byteLength === 0 || output.buffer.byteLength % 4 !== 0) {
+    throw new Error("FFmpeg WebAssembly produced invalid PCM audio.");
+  }
+  return new Float32Array(output.buffer.slice(0));
+}
+
+export async function decodeBrowserAudioBytesInDocument(
+  inputBytes: Uint8Array,
+): Promise<Float32Array> {
+  if (inputBytes.byteLength === 0) throw new Error("The resolved audio stream is empty.");
+  if (inputBytes.byteLength > MAX_BROWSER_MEDIA_BYTES) {
+    throw new Error("Audio is too large for in-browser decoding.");
+  }
+
+  const context = new OfflineAudioContext(1, 1, 16_000);
+  const decoded = await context.decodeAudioData(exactArrayBuffer(inputBytes));
+  const output = new Float32Array(decoded.length);
+  for (let channelIndex = 0; channelIndex < decoded.numberOfChannels; channelIndex += 1) {
+    const channel = decoded.getChannelData(channelIndex);
+    for (let index = 0; index < channel.length; index += 1) {
+      output[index] = (output[index] ?? 0) + channel[index] / decoded.numberOfChannels;
+    }
+  }
+  return output;
+}
+
 let creatingOffscreenDocument: Promise<void> | null = null;
 
-async function ensureOffscreenDocument(): Promise<void> {
+export async function ensureOffscreenDocument(): Promise<void> {
   if (!chrome.offscreen?.createDocument) {
     throw new Error("Chrome offscreen documents are unavailable.");
   }

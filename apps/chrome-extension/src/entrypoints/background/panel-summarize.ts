@@ -5,7 +5,8 @@ import { buildBrowserSummaryMarkdown } from "./browser-summary";
 import type { ExtractResponse } from "./content-script-bridge";
 import type { CachedExtract } from "./extract-cache";
 import { routeExtract, type ExtractorContext, type ExtractorResult } from "./extractors/router";
-import { extractYouTubeTranscriptInTab } from "./youtube-transcript";
+import type { BrowserYoutubeLocalTranscript } from "./youtube-local-transcript";
+import { extractYouTubeTranscriptInTab, hasYouTubeCaptionTracksInTab } from "./youtube-transcript";
 
 type DaemonRecoveryLike = {
   recordFailure: (url: string) => void;
@@ -65,6 +66,12 @@ export async function summarizeActiveTab({
   friendlyFetchError,
   isDaemonUnreachableError,
   logPanel,
+  transcribeYouTubeLocally = async () => ({
+    ok: false,
+    error: "Local YouTube transcription is unavailable in this browser.",
+  }),
+  extractYouTubeTranscript = extractYouTubeTranscriptInTab,
+  youtubeTranscriptTimeoutMs = 12_000,
 }: {
   session: BackgroundSummarizeSession;
   reason: string;
@@ -97,6 +104,13 @@ export async function summarizeActiveTab({
   friendlyFetchError: (error: unknown, fallback: string) => string;
   isDaemonUnreachableError: (error: unknown) => boolean;
   logPanel: (event: string, detail?: Record<string, unknown>) => void;
+  transcribeYouTubeLocally?: (args: {
+    tabId: number;
+    maxChars: number;
+    onStatus?: ((status: string) => void) | null;
+  }) => Promise<BrowserYoutubeLocalTranscript>;
+  extractYouTubeTranscript?: typeof extractYouTubeTranscriptInTab;
+  youtubeTranscriptTimeoutMs?: number;
 }) {
   if (!panelSessionStore.isPanelOpen(session)) return;
 
@@ -192,7 +206,15 @@ export async function summarizeActiveTab({
     logPanel("extractor.route.preferUrlHardSwitch", { tabId: tab.id });
     sendStatus(`Preparing video… (${reason})`);
     logPanel("extract:url-direct", { reason, tabId: tab.id });
-    const browserTranscript = await extractYouTubeTranscriptInTab(tab.id, settings.maxChars);
+    const shouldProbeBrowserTranscript =
+      !useBrowserSummary || (await hasYouTubeCaptionTracksInTab(tab.id));
+    const browserTranscript = shouldProbeBrowserTranscript
+      ? await withTimeout(
+          extractYouTubeTranscript(tab.id, settings.maxChars),
+          youtubeTranscriptTimeoutMs,
+          { ok: false as const, error: "YouTube caption lookup timed out." },
+        )
+      : { ok: false as const, error: "YouTube player has no caption tracks." };
     if (browserTranscript.ok && !urlsMatch(browserTranscript.url, tabUrl)) {
       logPanel("extract:url-direct:browser-transcript-stale", {
         expectedUrl: tabUrl,
@@ -372,7 +394,41 @@ export async function summarizeActiveTab({
 
   if (isSuperseded()) return;
   const resolvedTitle = tab.title?.trim() || resolvedExtracted.title || null;
-  const resolvedPayload = { ...resolvedExtracted, title: resolvedTitle };
+  let resolvedPayload = { ...resolvedExtracted, title: resolvedTitle };
+  const ensureLocalYoutubeTranscript = async () => {
+    if (!tab.id || !isYouTubeVideoUrl(resolvedPayload.url) || browserTranscriptTimedText?.trim()) {
+      return false;
+    }
+    const localTranscript = await transcribeYouTubeLocally({
+      tabId: tab.id,
+      maxChars: settings.maxChars,
+      onStatus: sendStatus,
+    });
+    if (!localTranscript.ok) {
+      logPanel("extract:url-direct:local-transcript-failed", {
+        error: localTranscript.error,
+      });
+      return false;
+    }
+    if (!urlsMatch(localTranscript.url, tabUrl)) return false;
+    browserTranscriptTimedText = localTranscript.transcriptTimedText;
+    resolvedPayload = {
+      ...resolvedPayload,
+      text: localTranscript.text,
+      truncated: localTranscript.truncated,
+      mediaDurationSeconds: localTranscript.durationSeconds,
+      media: { hasVideo: true, hasAudio: true, hasCaptions: false },
+    };
+    logPanel("extract:url-direct:local-transcript", {
+      textLength: localTranscript.text.length,
+      mediaSource: localTranscript.mediaSource,
+    });
+    return true;
+  };
+  if (useBrowserSummary) {
+    await ensureLocalYoutubeTranscript();
+    if (isSuperseded()) return;
+  }
   const effectiveInputMode =
     opts?.inputMode ??
     (resolvedPayload.media?.hasVideo === true ||
@@ -381,8 +437,6 @@ export async function summarizeActiveTab({
     (resolvedPayload.url && isYouTubeVideoUrl(resolvedPayload.url))
       ? "video"
       : undefined);
-  const wordCount =
-    resolvedPayload.text.length > 0 ? resolvedPayload.text.split(/\s+/).filter(Boolean).length : 0;
   const wantsSummaryTimestamps =
     settings.summaryTimestamps &&
     (effectiveInputMode === "video" ||
@@ -409,25 +463,34 @@ export async function summarizeActiveTab({
     wantsParallelSlides: false,
   });
 
-  panelSessionStore.setCachedExtract(tab.id, {
-    url: resolvedPayload.url,
-    title: resolvedTitle,
-    text: resolvedPayload.text,
-    source: routedResult?.source ?? "page",
-    truncated: resolvedPayload.truncated,
-    totalCharacters: resolvedPayload.text.length,
-    wordCount,
-    media: resolvedPayload.media ?? null,
-    transcriptSource: null,
-    transcriptionProvider: null,
-    transcriptCharacters: null,
-    transcriptWordCount: null,
-    transcriptLines: null,
-    transcriptTimedText: browserTranscriptTimedText,
-    mediaDurationSeconds: resolvedPayload.mediaDurationSeconds ?? null,
-    slides: null,
-    diagnostics: routedResult?.diagnostics ?? null,
-  });
+  const cacheResolvedPayload = () => {
+    const wordCount =
+      resolvedPayload.text.length > 0
+        ? resolvedPayload.text.split(/\s+/).filter(Boolean).length
+        : 0;
+    panelSessionStore.setCachedExtract(tab.id, {
+      url: resolvedPayload.url,
+      title: resolvedTitle,
+      text: resolvedPayload.text,
+      source: routedResult?.source ?? "page",
+      truncated: resolvedPayload.truncated,
+      totalCharacters: resolvedPayload.text.length,
+      wordCount,
+      media: resolvedPayload.media ?? null,
+      transcriptSource: browserTranscriptTimedText ? "browser" : null,
+      transcriptionProvider: browserTranscriptTimedText ? "browser" : null,
+      transcriptCharacters: browserTranscriptTimedText ? resolvedPayload.text.length : null,
+      transcriptWordCount: browserTranscriptTimedText ? wordCount : null,
+      transcriptLines: browserTranscriptTimedText
+        ? browserTranscriptTimedText.split("\n").filter(Boolean).length
+        : null,
+      transcriptTimedText: browserTranscriptTimedText,
+      mediaDurationSeconds: resolvedPayload.mediaDurationSeconds ?? null,
+      slides: null,
+      diagnostics: routedResult?.diagnostics ?? null,
+    });
+  };
+  cacheResolvedPayload();
 
   const sendBrowserSummarySnapshot = () => {
     const random =
@@ -523,6 +586,9 @@ export async function summarizeActiveTab({
       if (isDaemonUnreachableError(err)) {
         session.daemonRecovery.recordFailure(resolvedPayload.url);
       }
+      await ensureLocalYoutubeTranscript();
+      if (isSuperseded()) return;
+      cacheResolvedPayload();
       sendBrowserSummarySnapshot();
       return;
     }
@@ -553,4 +619,18 @@ export async function summarizeActiveTab({
   };
   session.inflightRequest = null;
   send({ type: "run:start", run });
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }

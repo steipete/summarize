@@ -45,8 +45,8 @@ YouTube slide screenshots (from the browser):
 
 Why a daemon/service?
 
-- Browser mode works without the daemon for page summaries and can extract fetchable video slides with bundled FFmpeg WebAssembly.
-- The optional daemon on `127.0.0.1` is faster and adds `yt-dlp`, native ffmpeg, OCR, transcription, and broader media support.
+- Browser mode works without the daemon for page summaries, fetchable video slides, and captionless YouTube transcription through bundled FFmpeg WebAssembly plus browser-cached Whisper.
+- The optional daemon on `127.0.0.1` is faster and adds native ffmpeg, configurable transcription providers, OCR, and broader media support.
 - The service autostarts (launchd/systemd/Scheduled Task) so the Side Panel is always ready.
 
 If you only want the **CLI**, you can skip the daemon install entirely.
@@ -464,10 +464,11 @@ Non-YouTube URLs go through a fetch -> extract pipeline. When direct fetch/extra
 
 `--youtube auto` tries best-effort web transcript endpoints first. When captions are not available, it falls back to:
 
-1. Apify (if `APIFY_API_TOKEN` is set): uses a scraping actor (`faVsWy9VTSNVIhWpR`)
-2. yt-dlp + Whisper (if `yt-dlp` is available): downloads audio, then transcribes with local `whisper.cpp` when installed
+1. yt-dlp + Whisper (if `yt-dlp` is available): downloads audio, then transcribes with local `whisper.cpp` when installed
    (preferred), otherwise falls back to Groq (`GROQ_API_KEY`), AssemblyAI (`ASSEMBLYAI_API_KEY`), Gemini
    (`GEMINI_API_KEY` / Google aliases), OpenAI (`OPENAI_API_KEY`), then FAL (`FAL_KEY`)
+2. Android VR direct audio + the same configured transcription chain when `yt-dlp` is unavailable or fails
+3. Apify (if `APIFY_API_TOKEN` is set): uses a scraping actor (`faVsWy9VTSNVIhWpR`)
 
 Environment variables for yt-dlp mode:
 
@@ -577,7 +578,7 @@ When the input is audio/video, the CLI needs a transcript first. The transcript 
    - YouTube: uses `youtubei` / `captionTracks` when available.
    - Podcasts: uses Podcasting 2.0 RSS `<podcast:transcript>` (JSON/VTT) when the feed publishes it.
 2. Whisper transcription (fallback)
-   - YouTube: falls back to yt-dlp (audio download) + Whisper transcription when configured; Apify is a last resort.
+   - YouTube: prefers yt-dlp audio download, then Android VR direct audio, plus Whisper transcription when configured; Apify is a last resort.
    - Prefers local `whisper.cpp` when installed + model available.
    - Otherwise uses cloud transcription in this order: Groq (`GROQ_API_KEY`) → AssemblyAI (`ASSEMBLYAI_API_KEY`) → Gemini (`GEMINI_API_KEY` / Google aliases) → OpenAI (`OPENAI_API_KEY`) → FAL (`FAL_KEY`).
 

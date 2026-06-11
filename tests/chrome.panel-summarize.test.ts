@@ -250,6 +250,97 @@ describe("chrome panel summarize", () => {
     expect(sendStatus).toHaveBeenLastCalledWith("");
   });
 
+  it("transcribes a captionless YouTube tab locally without a daemon token", async () => {
+    const harness = createHarness();
+    const transcribeYouTubeLocally = vi.fn(async () => ({
+      ok: true as const,
+      url: youtubeUrl,
+      text: "Local Whisper transcript.",
+      transcriptTimedText: "[0:00] Local Whisper transcript.",
+      truncated: false,
+      durationSeconds: 42,
+      mediaSource: "sabr" as const,
+    }));
+
+    await harness.summarize({
+      reason: "manual",
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url: youtubeUrl,
+          title: "YouTube",
+          text: "Video description without captions.",
+          truncated: false,
+          media: { hasVideo: true, hasAudio: true, hasCaptions: false },
+        },
+      })),
+      transcribeYouTubeLocally,
+    });
+
+    expect(transcribeYouTubeLocally).toHaveBeenCalledWith({
+      tabId: 7,
+      maxChars: defaultSettings.maxChars,
+      onStatus: expect.any(Function),
+    });
+    expect(harness.fetchImpl).not.toHaveBeenCalled();
+    expect(harness.sent[0]).toMatchObject({
+      type: "run:snapshot",
+      markdown: expect.stringContaining("Local Whisper transcript"),
+    });
+  });
+
+  it("falls through to local transcription when the YouTube caption probe stalls", async () => {
+    const harness = createHarness();
+    const transcribeYouTubeLocally = vi.fn(async () => ({
+      ok: true as const,
+      url: youtubeUrl,
+      text: "Timed fallback transcript.",
+      transcriptTimedText: "[0:00] Timed fallback transcript.",
+      truncated: false,
+      durationSeconds: 42,
+      mediaSource: "android-vr" as const,
+    }));
+
+    await harness.summarize({
+      reason: "manual",
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      extractYouTubeTranscript: vi.fn(async () => await new Promise(() => {})),
+      youtubeTranscriptTimeoutMs: 1,
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url: youtubeUrl,
+          title: "YouTube",
+          text: "Description only.",
+          truncated: false,
+          media: { hasVideo: true, hasAudio: true, hasCaptions: false },
+        },
+      })),
+      transcribeYouTubeLocally,
+    });
+
+    expect(transcribeYouTubeLocally).toHaveBeenCalledOnce();
+    expect(harness.sent[0]).toMatchObject({
+      type: "run:snapshot",
+      markdown: expect.stringContaining("Timed fallback transcript"),
+    });
+  });
+
   it("keeps daemon summaries when browser runtime has a daemon token", async () => {
     const harness = createHarness();
     const url = "https://example.com/article";

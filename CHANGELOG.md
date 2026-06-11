@@ -2,6 +2,11 @@
 
 ## 0.17.2 - Unreleased
 
+### Features
+
+- YouTube transcripts: fall back to Android VR direct audio resolution and configured transcription when `yt-dlp` is missing or fails, while preserving explicit `--youtube yt-dlp` and diarization requirements.
+- Chrome extension: transcribe captionless YouTube videos without the daemon using same-origin Android VR audio, captured SABR fallback, native browser decoding with FFmpeg WebAssembly fallback, and browser-cached multilingual Whisper Tiny.
+
 ### Fixes
 
 - Dependencies: replace Ora, tslog, and the FAL SDK with focused local implementations while retaining spinner, daemon logging, retry, multipart upload, and FAL transcription behavior.

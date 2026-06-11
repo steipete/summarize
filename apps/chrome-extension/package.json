@@ -17,8 +17,10 @@
     "test:firefox:force": "env -u NO_COLOR ALLOW_FIREFOX_EXTENSION_TESTS=1 pnpm build:firefox && env -u NO_COLOR ALLOW_FIREFOX_EXTENSION_TESTS=1 playwright test -c playwright.config.ts --project=firefox"
   },
   "dependencies": {
+    "@huggingface/transformers": "3.8.1",
     "@mozilla/readability": "0.6.0",
     "@steipete/summarize-core": "workspace:*",
+    "googlevideo": "4.0.4",
     "markdown-it": "^14.2.0",
     "preact": "10.29.2"
   },

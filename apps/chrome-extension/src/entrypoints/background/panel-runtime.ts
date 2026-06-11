@@ -26,6 +26,7 @@ export function createBackgroundPanelRuntime<
   isDaemonUnreachableError: typeof import("../../lib/daemon-recovery").isDaemonUnreachableError;
   fetchImpl: typeof fetch;
   resolveLogLevel: (event: string) => "verbose" | "warn" | "error";
+  transcribeYouTubeLocally?: Parameters<typeof runPanelSummarize>[0]["transcribeYouTubeLocally"];
 }) {
   const {
     panelSessionStore,
@@ -42,6 +43,7 @@ export function createBackgroundPanelRuntime<
     isDaemonUnreachableError,
     fetchImpl,
     resolveLogLevel,
+    transcribeYouTubeLocally,
   } = options;
 
   const send = (session: Session, msg: unknown) => {
@@ -123,6 +125,7 @@ export function createBackgroundPanelRuntime<
       buildSummarizeRequestBody,
       friendlyFetchError,
       isDaemonUnreachableError,
+      transcribeYouTubeLocally,
       logPanel: (event, detail) => {
         void (async () => {
           const settings = await loadSettings();

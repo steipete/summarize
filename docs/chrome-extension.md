@@ -13,7 +13,7 @@ Goal: Chrome **Side Panel** (“real sidebar”) summarizes **what you see** on 
 Quickstart:
 
 - Build/load extension: `apps/chrome-extension/README.md`
-- Chrome Browser mode works immediately without a daemon for page summaries and fetchable video slides.
+- Chrome Browser mode works immediately without a daemon for page summaries, fetchable video slides, and captionless YouTube transcription.
 - Optional: install summarize for daemon-backed media support:
   - `npm i -g @steipete/summarize`
   - `brew install summarize` (macOS, Linux)
@@ -59,6 +59,10 @@ Dev (repo checkout):
 - “Need extension-side traces”:
   - Options → Logs → `extension.log` (panel/background events).
   - Enable “Extended logging” in Advanced settings for full pipeline traces.
+- Captionless YouTube transcription is slow on first use:
+  - Chrome downloads and caches the multilingual Whisper Tiny model on demand.
+  - WebGPU is preferred; a slower WASM/CPU path is used when WebGPU is unavailable.
+  - Offline model bundling and subscription/download workflows are not currently provided.
 - “Stream ended unexpectedly” / empty chat response:
   - The daemon likely stopped mid-stream. Restart it, then click “Try again”.
   - `summarize daemon restart`
@@ -81,7 +85,7 @@ Dev (repo checkout):
 - **Extension (MV3, WXT)**
   - Side Panel UI: length + typography controls (font family + size), auto/manual toggle.
   - Background service worker: tab + navigation tracking, content extraction, starts summarize runs.
-  - Chrome offscreen page: runs bundled FFmpeg WebAssembly workers for daemonless video slides.
+  - Chrome offscreen page: runs bundled FFmpeg WebAssembly workers for daemonless video slides and YouTube audio preparation, plus local Whisper transcription.
   - Content script: extract readable article text from the **rendered DOM** via Readability; also detect SPA URL changes.
   - Panel page streams SSE directly (MV3 service workers can be flaky for long-lived streams).
 - **Daemon (local, autostart service)**
@@ -94,8 +98,9 @@ Dev (repo checkout):
 1. User opens side panel (click extension icon).
 2. Panel sends a “ready” message to the background (plus periodic “ping” heartbeats while open).
 3. On nav/tab change (and auto enabled): background asks the content script to extract `{ url, title, text }` (best-effort).
-4. Background `POST`s payload to daemon `/v1/summarize` with `Authorization: Bearer <token>`.
-5. Panel opens `/v1/summarize/<id>/events` (SSE) and renders streamed Markdown.
+4. In Chrome Browser mode, captionless YouTube audio is resolved through same-origin Android VR media with captured SABR fallback, decoded natively or through FFmpeg WebAssembly, and transcribed locally.
+5. In Daemon mode, background `POST`s payload to `/v1/summarize` with `Authorization: Bearer <token>`.
+6. Panel opens `/v1/summarize/<id>/events` (SSE) and renders streamed Markdown.
 
 ## Auto Mode (URL + Page Text)
 
