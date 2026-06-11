@@ -244,7 +244,9 @@ describe("transcript cache integration", () => {
         metadata: {
           diarizationProvider: "openai",
           speakerLabels: true,
-          segments: [{ startMs: 1000, endMs: 2000, text: "cached transcript", speaker: "Speaker A" }],
+          segments: [
+            { startMs: 1000, endMs: 2000, text: "cached transcript", speaker: "Speaker A" },
+          ],
         },
       })),
       set: vi.fn(async () => {}),
