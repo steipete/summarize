@@ -34,11 +34,12 @@ describe("podcast transcript provider module", () => {
   });
 
   it("extracts Podcasting 2.0 transcript from RSS (JSON) without needing Whisper", async () => {
-    const xml = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0"><channel><item><title>Episode 1</title><podcast:transcript url="https://example.com/transcript.json" type="application/json"/></item></channel></rss>`;
+    const transcriptUrl = "http://93.184.216.34/transcript.json";
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0"><channel><item><title>Episode 1</title><podcast:transcript url="${transcriptUrl}" type="application/json"/></item></channel></rss>`;
 
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
-      if (url === "https://example.com/transcript.json") {
+      if (url === transcriptUrl) {
         return new Response(JSON.stringify([{ text: "Hello" }, { text: "world" }]), {
           status: 200,
           headers: { "content-type": "application/json" },
@@ -65,7 +66,7 @@ describe("podcast transcript provider module", () => {
   it("resolves Apple Podcasts iTunes lookup → RSS transcript (VTT) and avoids preview audio", async () => {
     const appleUrl = "https://podcasts.apple.com/us/podcast/x/id123?i=456";
     const feedUrl = "https://example.com/feed.xml";
-    const transcriptUrl = "https://example.com/transcript.vtt";
+    const transcriptUrl = "http://93.184.216.34/transcript.vtt";
 
     const itunesPayload = {
       resultCount: 2,

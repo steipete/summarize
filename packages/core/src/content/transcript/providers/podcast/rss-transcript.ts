@@ -1,6 +1,13 @@
 import { lookup as dnsLookup } from "node:dns/promises";
 import { createRequire } from "node:module";
 import { isIP } from "node:net";
+import { fetchWithDnsPinnedAddresses } from "../../../dns-pinned-fetch.js";
+import {
+  attachDnsPinnedAddresses,
+  isNativeOrBoundGlobalFetch,
+  resolveDnsPinnedFetch,
+  supportsDnsPinnedFetch,
+} from "../../../fetch-capabilities.js";
 import type { TranscriptSegment } from "../../../link-preview/types.js";
 import {
   jsonTranscriptToPlainText,
@@ -137,8 +144,11 @@ function isBlockedIpv4(address: string): boolean {
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
     (a === 192 && b === 168) ||
-    (a === 192 && b === 0) ||
+    (a === 192 && b === 0 && octets[2] === 0) ||
+    (a === 192 && b === 0 && octets[2] === 2) ||
     (a === 198 && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && octets[2] === 100) ||
+    (a === 203 && b === 0 && octets[2] === 113) ||
     a >= 224
   );
 }
@@ -172,7 +182,7 @@ function expandIpv6(address: string): number[] | null {
 function isBlockedIpv6(address: string): boolean {
   const parts = expandIpv6(address);
   if (!parts) return true;
-  const [first, second, , , , fifth, sixth, eighth] = parts;
+  const [first, second, third, fourth, , fifth, sixth, eighth] = parts;
   const allZero = parts.every((part) => part === 0);
   const loopback = parts.slice(0, 7).every((part) => part === 0) && eighth === 1;
   const mappedIpv4 = parts.slice(0, 5).every((part) => part === 0) && fifth === 0xffff;
@@ -181,13 +191,25 @@ function isBlockedIpv6(address: string): boolean {
     const ipv4 = `${((sixth ?? 0) >> 8) & 0xff}.${(sixth ?? 0) & 0xff}.${((eighth ?? 0) >> 8) & 0xff}.${(eighth ?? 0) & 0xff}`;
     return isBlockedIpv4(ipv4);
   }
+  const wellKnownNat64 =
+    first === 0x64 && second === 0xff9b && parts.slice(2, 6).every((part) => part === 0);
+  if (wellKnownNat64) {
+    const ipv4 = `${((sixth ?? 0) >> 8) & 0xff}.${(sixth ?? 0) & 0xff}.${((eighth ?? 0) >> 8) & 0xff}.${(eighth ?? 0) & 0xff}`;
+    return isBlockedIpv4(ipv4);
+  }
   return (
     allZero ||
     loopback ||
+    (first === 0x64 && second === 0xff9b && third === 1) ||
+    (first === 0x100 && second === 0 && third === 0 && fourth === 0) ||
     ((first ?? 0) & 0xfe00) === 0xfc00 ||
     ((first ?? 0) & 0xffc0) === 0xfe80 ||
     ((first ?? 0) & 0xff00) === 0xff00 ||
-    (first === 0x2001 && second === 0xdb8)
+    (first === 0x2001 && (second ?? 0) <= 0x01ff) ||
+    (first === 0x2001 && second === 0xdb8) ||
+    first === 0x2002 ||
+    (first === 0x3fff && (second ?? 0) <= 0x0fff) ||
+    first === 0x5f00
   );
 }
 
@@ -243,7 +265,11 @@ async function resolveTranscriptFetchTarget(
 }
 
 function isNativeFetchImpl(fetchImpl: typeof fetch): boolean {
-  return fetchImpl === globalThis.fetch || fetchImpl.name === "bound fetch";
+  return isNativeOrBoundGlobalFetch(fetchImpl);
+}
+
+function isBunRuntime(): boolean {
+  return typeof (process.versions as { bun?: string }).bun === "string";
 }
 
 function loadUndici(): UndiciModule {
@@ -283,18 +309,29 @@ async function fetchTranscriptUrl(
   redirectCount = 0,
 ): Promise<Response> {
   const target = await resolveTranscriptFetchTarget(rawUrl, { lookup: options.lookup });
-  const pinnedInit =
-    target.addresses.length > 0
-      ? ({
-          headers: options.headers,
-          signal: options.signal,
-          redirect: "manual",
+  const requiresPinnedDns = target.addresses.length > 0;
+  const isNativeFetch = isNativeFetchImpl(fetchImpl);
+  if (requiresPinnedDns && !isNativeFetch && !supportsDnsPinnedFetch(fetchImpl)) {
+    throw new Error("RSS transcript URL requires native fetch for DNS pinning");
+  }
+  const pinnedInit = { headers: options.headers, signal: options.signal, redirect: "manual" };
+  const fetchInit = requiresPinnedDns
+    ? attachDnsPinnedAddresses(
+        {
+          ...pinnedInit,
           dispatcher: createPinnedDispatcher(target.addresses),
-        } as RequestInit & { dispatcher: unknown })
-      : ({ headers: options.headers, signal: options.signal, redirect: "manual" } as RequestInit);
-  const pinnedFetchImpl =
-    target.addresses.length > 0 && isNativeFetchImpl(fetchImpl) ? loadUndici().fetch : fetchImpl;
-  const response = await pinnedFetchImpl(target.url.href, pinnedInit);
+        } as RequestInit & { dispatcher: unknown },
+        target.addresses,
+      )
+    : (pinnedInit as RequestInit);
+  const pinnedFetchImpl = requiresPinnedDns
+    ? isNativeFetch
+      ? isBunRuntime()
+        ? fetchWithDnsPinnedAddresses
+        : loadUndici().fetch
+      : (resolveDnsPinnedFetch(fetchImpl) ?? fetchImpl)
+    : fetchImpl;
+  const response = await pinnedFetchImpl(target.url.href, fetchInit);
   if (![301, 302, 303, 307, 308].includes(response.status)) return response;
   const location = response.headers.get("location");
   if (!location) return response;
