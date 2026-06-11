@@ -236,7 +236,7 @@ export function createUrlExtractionSession({
       }
       return extracted;
     } catch (err) {
-      if (err instanceof SpeakerIdentificationError) throw err;
+      if (err instanceof SpeakerIdentificationError || flags.speakerIdentification) throw err;
       const errorMessage =
         err instanceof Error
           ? [err.message, err.cause instanceof Error ? err.cause.message : null]

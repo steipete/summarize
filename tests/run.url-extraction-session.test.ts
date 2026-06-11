@@ -222,6 +222,40 @@ describe("createUrlExtractionSession", () => {
     );
   });
 
+  it("does not hide diarization failures when speaker identification is enabled", async () => {
+    const ctx = createCtx();
+    ctx.flags.speakerIdentification = {
+      sourceKey: "youtube:abcdefghijk",
+      profileName: "modern-wisdom",
+      host: "Chris Williamson",
+      knownSpeakers: ["Chris Williamson"],
+      context: "Modern Wisdom podcast",
+      model: "openai/gpt-5.5",
+      minimumConfidence: 0.85,
+      anchors: [],
+      remembered: null,
+      remember: false,
+      explicit: true,
+    };
+    fetchLinkContentWithBirdTip.mockRejectedValueOnce(
+      new Error("ElevenLabs transcription failed (401): invalid API key"),
+    );
+
+    const session = createUrlExtractionSession({
+      ctx: ctx as never,
+      markdown: {
+        convertHtmlToMarkdown: vi.fn(),
+        effectiveMarkdownMode: "off",
+        markdownRequested: false,
+      },
+      onProgress: null,
+    });
+
+    await expect(
+      session.fetchWithCache("https://www.youtube.com/watch?v=abcdefghijk"),
+    ).rejects.toThrow(/ElevenLabs transcription failed/);
+  });
+
   it("bypasses extract-cache reuse for local file URLs and forwards file mtime", async () => {
     const filePath = path.join(tmpdir(), `summarize-local-slides-${Date.now().toString()}.webm`);
     await fs.writeFile(filePath, "video");
