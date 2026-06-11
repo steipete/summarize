@@ -17,7 +17,13 @@ describe("MiniMax provider", () => {
     const model = resolveMinimaxModel({
       modelId: "MiniMax-M3",
       context: {
-        messages: [{ role: "user", content: "Summarize this.", timestamp: Date.now() }],
+        messages: [
+          {
+            role: "user",
+            content: [{ type: "image", data: "aGVsbG8=", mimeType: "image/png" }],
+            timestamp: Date.now(),
+          },
+        ],
       },
       openaiBaseUrlOverride: "https://proxy.example.com/v1",
     });
@@ -28,7 +34,7 @@ describe("MiniMax provider", () => {
       api: "openai-completions",
       baseUrl: "https://proxy.example.com/v1",
       reasoning: true,
-      input: ["text", "image"],
+      input: ["text"],
       contextWindow: 1_000_000,
       cost: {
         input: 0.6,

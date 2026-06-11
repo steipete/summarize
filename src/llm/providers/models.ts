@@ -86,14 +86,12 @@ export function resolveNvidiaModel({
 
 export function resolveMinimaxModel({
   modelId,
-  context,
   openaiBaseUrlOverride,
 }: {
   modelId: string;
   context: Context;
   openaiBaseUrlOverride?: string | null;
 }): Model<Api> {
-  const allowImages = wantsImages(context);
   const base = tryGetModel("minimax", modelId);
   const api = "openai-completions";
   const baseUrl = openaiBaseUrlOverride ?? DEFAULT_MINIMAX_BASE_URL;
@@ -102,14 +100,14 @@ export function resolveMinimaxModel({
     modelId,
     api,
     baseUrl,
-    allowImages,
+    allowImages: false,
   });
   return {
     ...(base ?? fallback),
     api,
     baseUrl,
     reasoning: base?.reasoning ?? true,
-    input: base?.input ?? fallback.input,
+    input: ["text"],
     // The catalog entry is Anthropic-native; constrain the OpenAI transport to MiniMax-documented fields.
     compat: {
       supportsStore: false,
