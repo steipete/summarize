@@ -139,6 +139,26 @@ test("sidepanel extracts slides from local video via daemon", async ({
   const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "summarize-daemon-e2e-"));
   const abortController = new AbortController();
   let daemonPromise: Promise<void> | null = null;
+  const guardedServerUrl = serverUrl.replace("127.0.0.1", "203.0.113.1");
+  const localFixtureFetch: typeof fetch = async (input, init) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (url.startsWith(guardedServerUrl)) {
+      const localUrl = url.replace(guardedServerUrl, serverUrl);
+      const response = await fetch(localUrl, init);
+      if (new URL(url).pathname === "/index.html") {
+        const body = (await response.text())
+          .replace('src="/sample.mp4"', `src="${guardedServerUrl}/sample.mp4"`)
+          .replace('src="/sample.vtt"', `src="${guardedServerUrl}/sample.vtt"`);
+        return new Response(body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
+      }
+      return response;
+    }
+    return await fetch(input, init);
+  };
 
   let resolveReady: (() => void) | null = null;
   const ready = new Promise<void>((resolve) => {
@@ -156,7 +176,7 @@ test("sidepanel extracts slides from local video via daemon", async ({
 
   daemonPromise = runDaemonServer({
     env,
-    fetchImpl: fetch,
+    fetchImpl: localFixtureFetch,
     config: { token, port: DAEMON_PORT, version: 1, installedAt: new Date().toISOString() },
     port: DAEMON_PORT,
     signal: abortController.signal,
@@ -218,7 +238,7 @@ test("sidepanel extracts slides from local video via daemon", async ({
     await expect(summarizeButton).toBeEnabled();
     await summarizeButton.click();
 
-    const runId = await startDaemonSlidesRun(`${serverUrl}/index.html`, token);
+    const runId = await startDaemonSlidesRun(`${guardedServerUrl}/index.html`, token);
     const slidesSnapshot = await waitForSlidesSnapshot(runId, token);
     expect(slidesSnapshot.sourceKind).toBe("direct");
     expect(slidesSnapshot.sourceUrl).toContain("/sample.mp4");
