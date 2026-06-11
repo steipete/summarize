@@ -12,6 +12,7 @@
 
 ### Fixes
 
+- CLI cache: derive summary content hashes from binary attachment bytes so repeated local image summaries can hit the cache (#244, thanks @alfozan).
 - YouTube transcripts: let `--diarize auto` and matching explicit provider requests reuse the same compatible cached speaker-labelled transcript instead of re-transcribing the same video.
 - CLI cache: include local media `fileMtime` when writing transcript cache entries so repeated unchanged audio/video extraction can hit cache (#240, #241, thanks @alfozan).
 - CLI: pass Codex image attachments to `codex exec` so local image summaries no longer fail before starting (#242, #243, thanks @alfozan).

@@ -6,6 +6,10 @@ export function hashString(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
+export function hashBytes(value: Uint8Array): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
 export function hashJson(value: unknown): string {
   return hashString(JSON.stringify(value));
 }
@@ -52,6 +56,22 @@ export function buildPromptContentHash({
   const content = extractTaggedBlock(prompt, "content") ?? fallbackContent ?? null;
   if (!content || content.trim().length === 0) return null;
   return hashString(normalizeContentForHash(content));
+}
+
+export function buildAttachmentContentHash({
+  attachments,
+}: {
+  attachments: Array<{ kind: string; mediaType: string; bytes: Uint8Array }>;
+}): string | null {
+  if (attachments.length === 0) return null;
+  return hashJson({
+    attachments: attachments.map((attachment) => ({
+      kind: attachment.kind,
+      mediaType: attachment.mediaType.toLowerCase(),
+      byteLength: attachment.bytes.byteLength,
+      byteHash: hashBytes(attachment.bytes),
+    })),
+  });
 }
 
 export function buildLengthKey(lengthArg: LengthArg): string {

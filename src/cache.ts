@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve as resolvePath } from "node:path";
 import {
+  buildAttachmentContentHash,
   buildExtractCacheKeyValue,
   buildLanguageKey,
   buildLengthKey,
@@ -11,6 +12,7 @@ import {
   buildTranscriptCacheKeyValue,
   hashJson,
   hashString,
+  hashBytes,
   normalizeContentForHash,
   extractTaggedBlock,
 } from "./cache-keys.js";
@@ -25,6 +27,7 @@ import {
   type CacheStats,
 } from "./shared/cache-store.js";
 export {
+  buildAttachmentContentHash,
   buildExtractCacheKeyValue,
   buildLanguageKey,
   buildLengthKey,
@@ -35,6 +38,7 @@ export {
   buildTranscriptCacheKeyValue,
   hashJson,
   hashString,
+  hashBytes,
   normalizeContentForHash,
   extractTaggedBlock,
 } from "./cache-keys.js";

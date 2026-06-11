@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAttachmentContentHash,
   buildExtractCacheKey,
   buildPromptContentHash,
   buildPromptHash,
@@ -138,5 +139,26 @@ describe("cache keys and tags", () => {
     expect(base).not.toBeNull();
     expect(withSlides).not.toBeNull();
     expect(withSlides).not.toBe(base);
+  });
+
+  it("hashes attachment bytes as binary content identity", () => {
+    const base = buildAttachmentContentHash({
+      attachments: [{ kind: "image", mediaType: "image/png", bytes: new Uint8Array([1, 2, 3]) }],
+    });
+    const same = buildAttachmentContentHash({
+      attachments: [{ kind: "image", mediaType: "IMAGE/PNG", bytes: new Uint8Array([1, 2, 3]) }],
+    });
+    const differentBytes = buildAttachmentContentHash({
+      attachments: [{ kind: "image", mediaType: "image/png", bytes: new Uint8Array([1, 2, 4]) }],
+    });
+    const differentMediaType = buildAttachmentContentHash({
+      attachments: [{ kind: "image", mediaType: "image/jpeg", bytes: new Uint8Array([1, 2, 3]) }],
+    });
+
+    expect(base).not.toBeNull();
+    expect(same).toBe(base);
+    expect(differentBytes).not.toBe(base);
+    expect(differentMediaType).not.toBe(base);
+    expect(buildAttachmentContentHash({ attachments: [] })).toBeNull();
   });
 });

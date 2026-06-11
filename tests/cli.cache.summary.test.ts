@@ -12,6 +12,11 @@ const htmlResponse = (html: string, status = 200) =>
     headers: { "Content-Type": "text/html" },
   });
 
+const PNG_1X1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+  "base64",
+);
+
 function collectStream() {
   let text = "";
   const stream = new Writable({
@@ -138,6 +143,80 @@ describe("cli cache summary", () => {
 
     expect(mocks.streamSimple).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(stdout2.getText()).toBe(first);
+
+    globalFetchSpy.mockRestore();
+  }, 30_000);
+
+  it("reuses cached summaries for local images", async () => {
+    mocks.streamSimple.mockClear();
+
+    const root = mkdtempSync(join(tmpdir(), "summarize-cache-image-cli-"));
+    const summarizeDir = join(root, ".summarize");
+    const cacheDir = join(summarizeDir, "cache");
+    mkdirSync(cacheDir, { recursive: true });
+
+    writeFileSync(
+      join(summarizeDir, "config.json"),
+      JSON.stringify({ cache: { enabled: true, maxMb: 32, ttlDays: 30 } }),
+      "utf8",
+    );
+    writeFileSync(join(root, "fixture.png"), PNG_1X1);
+    writeFileSync(
+      join(cacheDir, "litellm-model_prices_and_context_window.json"),
+      JSON.stringify({ "gpt-5.2": { max_input_tokens: 999_999 } }),
+      "utf8",
+    );
+    writeFileSync(
+      join(cacheDir, "litellm-model_prices_and_context_window.meta.json"),
+      JSON.stringify({ fetchedAtMs: Date.now() }),
+      "utf8",
+    );
+
+    const globalFetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      throw new Error("unexpected LiteLLM catalog fetch");
+    });
+    const fetchMock = vi.fn(async () => {
+      throw new Error("unexpected fetch");
+    });
+    const input = join(root, "fixture.png");
+    const args = [
+      "--model",
+      "openai/gpt-5.2",
+      "--timeout",
+      "2s",
+      "--stream",
+      "on",
+      "--metrics",
+      "off",
+      input,
+    ];
+
+    const stdout1 = collectStream();
+    (stdout1.stream as unknown as { isTTY?: boolean }).isTTY = false;
+    const stderr1 = collectStream();
+    await runCli(args, {
+      env: { HOME: root, OPENAI_API_KEY: "test" },
+      fetch: fetchMock as unknown as typeof fetch,
+      stdout: stdout1.stream,
+      stderr: stderr1.stream,
+    });
+
+    expect(mocks.streamSimple).toHaveBeenCalledTimes(1);
+    const first = stdout1.getText();
+
+    const stdout2 = collectStream();
+    (stdout2.stream as unknown as { isTTY?: boolean }).isTTY = false;
+    const stderr2 = collectStream();
+    await runCli(args, {
+      env: { HOME: root, OPENAI_API_KEY: "test" },
+      fetch: fetchMock as unknown as typeof fetch,
+      stdout: stdout2.stream,
+      stderr: stderr2.stream,
+    });
+
+    expect(mocks.streamSimple).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(stdout2.getText()).toBe(first);
 
     globalFetchSpy.mockRestore();

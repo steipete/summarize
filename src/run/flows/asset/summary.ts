@@ -1,6 +1,7 @@
 import { countTokens } from "gpt-tokenizer";
 import { render as renderMarkdownAnsi } from "markdansi";
 import {
+  buildAttachmentContentHash,
   buildLanguageKey,
   buildLengthKey,
   buildPromptContentHash,
@@ -456,7 +457,10 @@ export async function summarizeAsset(ctx: AssetSummaryContext, args: SummarizeAs
 
   const cacheStore =
     ctx.cache.mode === "default" && !ctx.summaryCacheBypass ? ctx.cache.store : null;
-  const contentHash = cacheStore ? buildPromptContentHash({ prompt: promptText }) : null;
+  const contentHash = cacheStore
+    ? (buildPromptContentHash({ prompt: promptText }) ??
+      buildAttachmentContentHash({ attachments }))
+    : null;
   const promptHash = cacheStore ? buildPromptHash(promptText) : null;
   const lengthKey = buildLengthKey(ctx.lengthArg);
   const languageKey = buildLanguageKey(ctx.outputLanguage);
