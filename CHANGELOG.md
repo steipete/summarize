@@ -9,6 +9,9 @@
 
 ### Fixes
 
+- Chrome extension: cancel pending summary starts when switching tabs and recover from stalled WebGPU Whisper initialization with a bounded CPU fallback.
+- CLI: use the Codex runtime default model instead of pinning auto fallback to an obsolete model.
+- Daemon: defer cache shutdown until in-flight summary work drains, preventing late writes through finalized SQLite statements.
 - Dependencies: replace Ora, tslog, and the FAL SDK with focused local implementations while retaining spinner, daemon logging, retry, multipart upload, and FAL transcription behavior.
 
 ## 0.17.1 - 2026-06-11
