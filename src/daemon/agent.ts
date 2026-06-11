@@ -1,6 +1,7 @@
 import type { AssistantMessage, Tool } from "@earendil-works/pi-ai";
 import { completeSimple, streamSimple } from "@earendil-works/pi-ai";
 import { buildPromptHash } from "../cache.js";
+import { enableMinimaxReasoningSplit } from "../llm/providers/minimax.js";
 import { resolveAgentModel, resolveApiKeyForModel } from "./agent-model.js";
 import {
   buildSystemPrompt,
@@ -12,6 +13,10 @@ import {
 
 export function buildAgentPromptHash(automationEnabled: boolean): string {
   return buildPromptHash(getAgentPrompt(automationEnabled));
+}
+
+function resolveProviderPayloadOptions(provider: string) {
+  return provider === "minimax" ? { onPayload: enableMinimaxReasoningSplit } : {};
 }
 
 const TOOL_DEFINITIONS: Record<string, Tool> = {
@@ -334,6 +339,7 @@ export async function streamAgentResponse({
     },
     {
       maxTokens: maxOutputTokens,
+      ...resolveProviderPayloadOptions(provider),
       apiKey,
       signal,
     },
@@ -426,6 +432,7 @@ export async function completeAgentResponse({
     },
     {
       maxTokens: maxOutputTokens,
+      ...resolveProviderPayloadOptions(provider),
       apiKey,
     },
   );

@@ -3,13 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AssistantMessage, Tool } from "@earendil-works/pi-ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { completeAgentResponse } from "../src/daemon/agent.js";
+import { completeAgentResponse, streamAgentResponse } from "../src/daemon/agent.js";
 import { runCliModel } from "../src/llm/cli.js";
 import * as modelAuto from "../src/model-auto.js";
 
-const { mockCompleteSimple, mockGetModel } = vi.hoisted(() => ({
+const { mockCompleteSimple, mockGetModel, mockStreamSimple } = vi.hoisted(() => ({
   mockCompleteSimple: vi.fn(),
   mockGetModel: vi.fn(),
+  mockStreamSimple: vi.fn(),
 }));
 
 vi.mock("../src/llm/cli.js", async (importOriginal) => {
@@ -24,6 +25,7 @@ vi.mock("@earendil-works/pi-ai", () => {
   return {
     completeSimple: mockCompleteSimple,
     getModel: mockGetModel,
+    streamSimple: mockStreamSimple,
   };
 });
 
@@ -77,6 +79,7 @@ const makeFakeCliBin = (binary: string) => {
 beforeEach(() => {
   mockCompleteSimple.mockReset();
   mockGetModel.mockReset();
+  mockStreamSimple.mockReset();
   vi.mocked(runCliModel).mockReset();
   vi.mocked(runCliModel).mockResolvedValue({ text: "cli agent", usage: null, costUsd: null });
   mockGetModel.mockImplementation((provider: string, modelId: string) =>
@@ -85,6 +88,16 @@ beforeEach(() => {
   mockCompleteSimple.mockImplementation(async (model: { provider: string; id: string }) =>
     buildAssistant(model.provider, model.id),
   );
+  mockStreamSimple.mockImplementation((model: { provider: string; id: string }) => {
+    const assistant = buildAssistant(model.provider, model.id);
+    return {
+      async *[Symbol.asyncIterator]() {
+        yield { type: "text_delta", delta: "ok" };
+        yield { type: "done", message: assistant };
+      },
+      result: async () => assistant,
+    };
+  });
 });
 
 describe("daemon/agent", () => {
@@ -120,6 +133,38 @@ describe("daemon/agent", () => {
 
     const options = mockCompleteSimple.mock.calls[0]?.[2] as { apiKey?: string };
     expect(options.apiKey).toBe("sk-openai");
+  });
+
+  it("requests separated reasoning for MiniMax complete and stream calls", async () => {
+    const home = makeTempHome();
+    const args = {
+      env: { HOME: home, MINIMAX_API_KEY: "sk-minimax" },
+      pageUrl: "https://example.com",
+      pageTitle: null,
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "minimax/MiniMax-M3",
+      tools: [],
+      automationEnabled: false,
+    };
+
+    await completeAgentResponse(args);
+    await streamAgentResponse({
+      ...args,
+      onChunk: () => {},
+      onAssistant: () => {},
+    });
+
+    for (const options of [
+      mockCompleteSimple.mock.calls[0]?.[2],
+      mockStreamSimple.mock.calls[0]?.[2],
+    ] as Array<{ apiKey?: string; onPayload?: (payload: unknown) => unknown }>) {
+      expect(options.apiKey).toBe("sk-minimax");
+      expect(await Promise.resolve(options.onPayload?.({ stream: true }))).toEqual({
+        stream: true,
+        reasoning_split: true,
+      });
+    }
   });
 
   it("falls back to a synthetic model for unknown custom models when a base url is configured", async () => {
