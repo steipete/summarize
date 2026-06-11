@@ -63,6 +63,10 @@ function createTestSummaryEngine(openaiUseChatCompletions: boolean | undefined) 
       apiKey: null,
       baseUrl: "https://integrate.api.nvidia.com/v1",
     },
+    minimax: {
+      apiKey: "minimax-key",
+      baseUrl: "https://minimax.example.com/v1",
+    },
     ollama: {
       baseUrl: "http://localhost:11434/v1",
     },
@@ -144,5 +148,31 @@ describe("summary engine OpenAI chat-completions routing", () => {
     };
     expect(call.forceOpenRouter).toBe(true);
     expect(call.forceChatCompletions).toBeUndefined();
+  });
+
+  it("applies the dedicated MiniMax key and base URL", async () => {
+    const engine = createTestSummaryEngine(undefined);
+    const attempt = engine.applyOpenAiGatewayOverrides({
+      transport: "native",
+      userModelId: "minimax/MiniMax-M3",
+      llmModelId: "minimax/MiniMax-M3",
+      openrouterProviders: null,
+      forceOpenRouter: false,
+      requiredEnv: "MINIMAX_API_KEY",
+    });
+    await engine.runSummaryAttempt({
+      attempt,
+      prompt: { userText: "Summarize this." } as Prompt,
+      allowStreaming: false,
+    });
+
+    const call = mocks.summarizeWithModelId.mock.calls[0]?.[0] as {
+      apiKeys?: { openaiApiKey?: string | null };
+      forceChatCompletions?: boolean;
+      openaiBaseUrlOverride?: string | null;
+    };
+    expect(call.apiKeys?.openaiApiKey).toBe("minimax-key");
+    expect(call.openaiBaseUrlOverride).toBe("https://minimax.example.com/v1");
+    expect(call.forceChatCompletions).toBe(true);
   });
 });

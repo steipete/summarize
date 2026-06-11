@@ -8,7 +8,11 @@ import { runCli } from "../src/run.js";
 import { makeAssistantMessage } from "./helpers/pi-ai-mock.js";
 
 type MockModel = { provider: string; id: string; api: Api; baseUrl?: string };
-type MockOptions = { signal?: AbortSignal; apiKey?: string };
+type MockOptions = {
+  signal?: AbortSignal;
+  apiKey?: string;
+  onPayload?: (payload: unknown) => unknown;
+};
 
 const htmlResponse = (html: string, status = 200) =>
   new Response(html, {
@@ -161,6 +165,46 @@ describe("cli LLM provider selection (direct keys)", () => {
     expect(model.provider).toBe("openai");
     expect(options.apiKey).toBe("nvidia-test");
     expect(model.baseUrl).toBe("https://integrate.api.nvidia.com/v1");
+  });
+
+  it("uses MiniMax with separated reasoning when --model is minimax/...", async () => {
+    mocks.completeSimple.mockClear();
+
+    const html =
+      "<!doctype html><html><head><title>Hello</title></head>" +
+      "<body><article><p>Hi</p></article></body></html>";
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url === "https://example.com") return htmlResponse(html);
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+
+    const out = collectStdout();
+    await runCli(["--model", "minimax/MiniMax-M3", "--timeout", "2s", "https://example.com"], {
+      env: { MINIMAX_API_KEY: "minimax-test" },
+      fetch: fetchMock as unknown as typeof fetch,
+      stdout: out.stdout,
+      stderr: new Writable({
+        write(_c, _e, cb) {
+          cb();
+        },
+      }),
+    });
+
+    expect(out.getText().trim()).toBe("OK");
+    const model = mocks.completeSimple.mock.calls[0]?.[0] as MockModel;
+    const options = mocks.completeSimple.mock.calls[0]?.[2] as MockOptions;
+    expect(model).toMatchObject({
+      provider: "minimax",
+      api: "openai-completions",
+      baseUrl: "https://api.minimax.io/v1",
+    });
+    expect(options.apiKey).toBe("minimax-test");
+    expect(await Promise.resolve(options.onPayload?.({ stream: false }))).toEqual({
+      stream: false,
+      reasoning_split: true,
+    });
   });
 
   it("uses Google when --model is google/...", async () => {

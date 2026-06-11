@@ -133,6 +133,7 @@ Use `--model minimax/<model>` (e.g. `minimax/MiniMax-M3`). Requires `MINIMAX_API
 MiniMax’s OpenAI-compatible base URL (`https://api.minimax.io/v1`) and uses chat completions.
 Override the endpoint with `MINIMAX_BASE_URL` or `minimax.baseUrl` in config (e.g. the China
 endpoint). The model id is passed through verbatim, so use MiniMax’s exact casing (e.g. `MiniMax-M3`).
+Reasoning is requested through MiniMax’s separated response fields and omitted from summary text.
 
 ## Ollama
 

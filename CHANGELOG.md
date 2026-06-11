@@ -4,6 +4,7 @@
 
 ### Features
 
+- LLM providers: add native MiniMax models via the OpenAI-compatible API, keeping reasoning separate from summary text in streaming and non-streaming calls (#250, thanks @neeravmakwana).
 - CLI providers: add pi CLI as `--cli pi` / `--model cli/pi`, with JSON-mode parsing, stdin prompts, configurable binary/model, and daemon/Chrome model picker support (#247, thanks @Youpen-y).
 - Add Antigravity CLI (`agy`) as a supported CLI provider. (#231, thanks @yetmike)
 - Chrome extension: add Browser slide runtime so YouTube slide summaries can run without the daemon, while keeping Daemon as an optional faster runtime.

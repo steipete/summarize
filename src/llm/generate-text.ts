@@ -22,11 +22,12 @@ import {
   normalizeAnthropicModelAccessError,
 } from "./providers/anthropic.js";
 import { completeGoogleText } from "./providers/google.js";
+import { enableMinimaxReasoningSplit } from "./providers/minimax.js";
 import {
   resolveAnthropicModel,
   resolveGoogleModel,
-  resolveOpenAiModel,
   resolveMinimaxModel,
+  resolveOpenAiModel,
   resolveNvidiaModel,
   resolveOllamaModel,
   resolveXaiModel,
@@ -35,7 +36,6 @@ import {
 import { completeOpenAiText, resolveOpenAiClientConfig } from "./providers/openai.js";
 import { extractText } from "./providers/shared.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
-import { providerStripsReasoningTags, stripReasoningTags } from "./reasoning-tags.js";
 import type { LlmTokenUsage } from "./types.js";
 import { normalizeTokenUsage } from "./usage.js";
 export { streamTextWithContext } from "./generate-text-stream.js";
@@ -171,21 +171,21 @@ export async function generateTextWithModelId({
     model,
     apiKey,
     signal,
+    onPayload,
   }: {
     model: Parameters<typeof completeSimple>[0];
     apiKey: string;
     signal: AbortSignal;
+    onPayload?: (payload: unknown) => unknown;
   }): Promise<{ text: string; usage: LlmTokenUsage | null }> => {
     const result = await completeSimple(model, context, {
       ...(typeof effectiveTemperature === "number" ? { temperature: effectiveTemperature } : {}),
       ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),
+      ...(onPayload ? { onPayload } : {}),
       apiKey,
       signal,
     });
-    const rawText = extractText(result);
-    const text = providerStripsReasoningTags(parsed.provider)
-      ? stripReasoningTags(rawText)
-      : rawText;
+    const text = extractText(result);
     if (!text) throw new Error(`LLM returned an empty summary (model ${parsed.canonical}).`);
     return { text, usage: normalizeTokenUsage(result.usage) };
   };
@@ -336,6 +336,7 @@ export async function generateTextWithModelId({
           model,
           apiKey: openaiConfig.apiKey,
           signal: controller.signal,
+          onPayload: enableMinimaxReasoningSplit,
         });
         return {
           text: result.text,

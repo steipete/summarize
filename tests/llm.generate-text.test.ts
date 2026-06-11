@@ -1070,6 +1070,50 @@ describe("llm generate/stream", () => {
     expect(zaiModel.baseUrl).toBe("https://zai-proxy.example.com/v4");
   });
 
+  it("routes MiniMax generate and stream calls with separated reasoning", async () => {
+    mocks.completeSimple.mockClear();
+    mocks.streamSimple.mockClear();
+
+    const args = {
+      modelId: "minimax/MiniMax-M3",
+      apiKeys: {
+        openaiApiKey: "minimax-key",
+        openrouterApiKey: null,
+        xaiApiKey: null,
+        googleApiKey: null,
+        anthropicApiKey: null,
+      },
+      prompt: { userText: "hi" },
+      timeoutMs: 2000,
+      fetchImpl: globalThis.fetch.bind(globalThis),
+      openaiBaseUrlOverride: "https://minimax-proxy.example.com/v1",
+    } as const;
+
+    const result = await generateTextWithModelId(args);
+    const streamResult = await streamTextWithModelId(args);
+
+    expect(result.provider).toBe("minimax");
+    expect(streamResult.provider).toBe("minimax");
+
+    for (const call of [mocks.completeSimple.mock.calls[0], mocks.streamSimple.mock.calls[0]]) {
+      const model = call?.[0] as MockModel & { baseUrl?: string };
+      const options = (call?.[2] ?? {}) as {
+        apiKey?: string;
+        onPayload?: (payload: unknown) => unknown;
+      };
+      expect(model).toMatchObject({
+        provider: "minimax",
+        api: "openai-completions",
+        baseUrl: "https://minimax-proxy.example.com/v1",
+      });
+      expect(options.apiKey).toBe("minimax-key");
+      expect(await Promise.resolve(options.onPayload?.({ stream: true }))).toEqual({
+        stream: true,
+        reasoning_split: true,
+      });
+    }
+  });
+
   it("wraps anthropic model access errors with a helpful message", async () => {
     mocks.completeSimple.mockImplementationOnce(async () => {
       const error = Object.assign(new Error("model: claude-3-5-sonnet-latest"), {

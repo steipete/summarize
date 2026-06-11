@@ -1,5 +1,5 @@
 import type { Api, Context, Model } from "@earendil-works/pi-ai";
-import { DEFAULT_OLLAMA_BASE_URL } from "../provider-profile.js";
+import { DEFAULT_MINIMAX_BASE_URL, DEFAULT_OLLAMA_BASE_URL } from "../provider-profile.js";
 import {
   createSyntheticModel,
   resolveBaseUrlOverride,
@@ -94,15 +94,23 @@ export function resolveMinimaxModel({
   openaiBaseUrlOverride?: string | null;
 }): Model<Api> {
   const allowImages = wantsImages(context);
-  // The MiniMax API is OpenAI-compatible; treat it like an OpenAI gateway.
-  const base = tryGetModel("openai", modelId);
+  const base = tryGetModel("minimax", modelId);
   const api = "openai-completions";
-  const baseUrl = openaiBaseUrlOverride ?? base?.baseUrl ?? "https://api.minimax.io/v1";
-  return {
-    ...(base ?? createSyntheticModel({ provider: "openai", modelId, api, baseUrl, allowImages })),
+  const baseUrl = openaiBaseUrlOverride ?? DEFAULT_MINIMAX_BASE_URL;
+  const fallback = createSyntheticModel({
+    provider: "minimax",
+    modelId,
     api,
     baseUrl,
-    input: allowImages ? ["text", "image"] : ["text"],
+    allowImages,
+  });
+  return {
+    ...(base ?? fallback),
+    api,
+    baseUrl,
+    reasoning: base?.reasoning ?? true,
+    input: base?.input ?? fallback.input,
+    ...(modelId.toLowerCase() === "minimax-m3" ? { contextWindow: 1_000_000 } : {}),
   };
 }
 

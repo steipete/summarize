@@ -14,15 +14,16 @@ import {
   normalizeAnthropicModelAccessError,
   prepareAnthropicReasoning,
 } from "./providers/anthropic.js";
+import { enableMinimaxReasoningSplit } from "./providers/minimax.js";
 import {
   resolveAnthropicModel,
   resolveGoogleModel,
+  resolveMinimaxModel,
   resolveOpenAiModel,
   resolveXaiModel,
 } from "./providers/models.js";
 import { completeOpenAiText, streamOpenAiText } from "./providers/openai.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
-import { createReasoningTagFilter, providerStripsReasoningTags } from "./reasoning-tags.js";
 import type { LlmTokenUsage } from "./types.js";
 
 export type StreamTextWithContextArgs = {
@@ -189,20 +190,6 @@ function collectTextDeltas({
   };
 }
 
-function stripReasoningTagsFromStream(stream: AsyncIterable<string>): AsyncIterable<string> {
-  const filter = createReasoningTagFilter();
-  return {
-    async *[Symbol.asyncIterator]() {
-      for await (const delta of stream) {
-        const out = filter.push(delta);
-        if (out) yield out;
-      }
-      const tail = filter.flush();
-      if (tail) yield tail;
-    },
-  };
-}
-
 export async function streamTextWithContext({
   modelId,
   apiKeys,
@@ -263,9 +250,7 @@ export async function streamTextWithContext({
       });
       return {
         textStream: createTimedTextStream({
-          textStream: providerStripsReasoningTags(parsed.provider)
-            ? stripReasoningTagsFromStream(textDeltas)
-            : textDeltas,
+          textStream: textDeltas,
           timeoutMs,
           controller,
           setLastError,
@@ -303,9 +288,7 @@ export async function streamTextWithContext({
       });
       return {
         textStream: createTimedTextStream({
-          textStream: providerStripsReasoningTags(parsed.provider)
-            ? stripReasoningTagsFromStream(textDeltas)
-            : textDeltas,
+          textStream: textDeltas,
           timeoutMs,
           controller,
           setLastError,
@@ -440,10 +423,18 @@ export async function streamTextWithContext({
           lastError: () => lastError,
         };
       }
-      const model = resolveOpenAiModel({ modelId: parsed.model, context, openaiConfig });
+      const model =
+        parsed.provider === "minimax"
+          ? resolveMinimaxModel({
+              modelId: parsed.model,
+              context,
+              openaiBaseUrlOverride: openaiConfig.baseURL,
+            })
+          : resolveOpenAiModel({ modelId: parsed.model, context, openaiConfig });
       const stream = streamSimple(model, context, {
         ...(typeof effectiveTemperature === "number" ? { temperature: effectiveTemperature } : {}),
         ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),
+        ...(parsed.provider === "minimax" ? { onPayload: enableMinimaxReasoningSplit } : {}),
         apiKey: openaiConfig.apiKey,
         signal: controller.signal,
       });
@@ -455,9 +446,7 @@ export async function streamTextWithContext({
       });
       return {
         textStream: createTimedTextStream({
-          textStream: providerStripsReasoningTags(parsed.provider)
-            ? stripReasoningTagsFromStream(textDeltas)
-            : textDeltas,
+          textStream: textDeltas,
           timeoutMs,
           controller,
           setLastError,

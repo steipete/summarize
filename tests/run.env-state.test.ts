@@ -14,6 +14,7 @@ describe("resolveEnvState", () => {
       XAI_API_KEY: "sk-xai",
       ZAI_API_KEY: "sk-zai",
       NVIDIA_API_KEY: "sk-nvidia",
+      MINIMAX_API_KEY: "sk-minimax",
       FAL_KEY: "sk-fal",
       FIRECRAWL_API_KEY: "sk-firecrawl",
       APIFY_API_TOKEN: "sk-apify",
@@ -36,6 +37,8 @@ describe("resolveEnvState", () => {
     expect(state.xaiApiKey).toBe("sk-xai");
     expect(state.zaiApiKey).toBe("sk-zai");
     expect(state.nvidiaApiKey).toBe("sk-nvidia");
+    expect(state.minimaxApiKey).toBe("sk-minimax");
+    expect(state.minimaxBaseUrl).toBe("https://api.minimax.io/v1");
     expect(state.falApiKey).toBe("sk-fal");
     expect(state.firecrawlApiKey).toBe("sk-firecrawl");
     expect(state.apifyToken).toBe("sk-apify");
@@ -110,12 +113,14 @@ describe("resolveEnvState", () => {
       },
       configForCli: {
         nvidia: { baseUrl: "https://custom-nvidia.com" },
+        minimax: { baseUrl: "https://custom-minimax.com/v1" },
       } satisfies SummarizeConfig,
     });
 
     expect(state.providerBaseUrls.openai).toBe("https://custom-openai.com");
     expect(state.providerBaseUrls.google).toBe("https://custom-google.com");
     expect(state.nvidiaBaseUrl).toBe("https://custom-nvidia.com");
+    expect(state.minimaxBaseUrl).toBe("https://custom-minimax.com/v1");
   });
 
   it("trims whitespace from keys", () => {

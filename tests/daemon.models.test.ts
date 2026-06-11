@@ -166,4 +166,26 @@ describe("daemon /v1/models", () => {
     expect(result.providers.nvidia).toBe(true);
     expect(result.options.some((o) => o.id === "nvidia/z-ai/glm5")).toBe(true);
   });
+
+  it("discovers MiniMax models when MINIMAX_API_KEY is set", async () => {
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe("https://api.minimax.io/v1/models");
+      expect(init?.headers).toEqual({ authorization: "Bearer minimax-test" });
+      return {
+        ok: true,
+        json: async () => ({ data: [{ id: "MiniMax-M3" }] }),
+      } as Response;
+    }) as unknown as typeof fetch;
+
+    const result = await buildModelPickerOptions({
+      env: {},
+      envForRun: { MINIMAX_API_KEY: "minimax-test" },
+      configForCli: null,
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.providers.minimax).toBe(true);
+    expect(result.options.some((o) => o.id === "minimax/MiniMax-M3")).toBe(true);
+  });
 });

@@ -752,6 +752,7 @@ MiniMax (OpenAI-compatible):
 - Optional base URL override: `MINIMAX_BASE_URL=...` (default `https://api.minimax.io/v1`; use the
   China endpoint or a proxy if needed)
 - Pick a MiniMax model id (e.g. `MiniMax-M3`, `MiniMax-M2.5`) using MiniMax's exact casing
+- Reasoning is requested through MiniMax's separated response fields and omitted from summary text
 
 ```bash
 export MINIMAX_API_KEY="..."
