@@ -6,7 +6,8 @@
 
 - CLI media: allow `--diarize` and speaker identification for local and direct audio/video inputs, including MP3 and MP4, instead of limiting speaker-labelled transcription to YouTube.
 - YouTube transcripts: fall back to Android VR direct audio resolution and configured transcription when `yt-dlp` is missing or fails, while preserving explicit `--youtube yt-dlp` and diarization requirements.
-- Chrome extension: transcribe captionless YouTube videos without the daemon using same-origin Android VR audio, captured SABR fallback, WebAudio with MediaBunny fallback, and browser-cached multilingual Whisper Tiny.
+- Chrome extension: transcribe captionless YouTube videos without the daemon using active-player/watch-page or Android VR direct audio, captured SABR fallback, MediaBunny/WebCodecs, and browser-cached multilingual Whisper Tiny.
+- Chrome extension: transcribe fetchable direct and embedded media without the daemon using ranged MediaBunny/WebCodecs decoding, bounded audio chunks, and an idle-evictable browser Whisper runtime.
 
 ### Fixes
 
@@ -16,6 +17,8 @@
 - Dependencies: replace Ora, tslog, and the FAL SDK with focused local implementations while retaining spinner, daemon logging, retry, multipart upload, and FAL transcription behavior.
 - Chrome extension: replace the bundled browser FFmpeg WebAssembly runtime with MediaBunny and native WebCodecs, adding AV1 frame extraction while reducing the packaged extension size.
 - Chrome extension: avoid throttled offscreen canvas blob callbacks so MediaBunny slide JPEGs encode in milliseconds instead of roughly one second per frame.
+- YouTube media: prefer direct audio already exposed by the active player or watch page before requesting Android VR media, with resolver and browser decoder diagnostics in extension logs.
+- Extension tests: load the Firefox build through Mozilla `web-ext` in CI and run daily live YouTube resolver plus daemonless Chrome transcription checks.
 
 ## 0.17.1 - 2026-06-11
 

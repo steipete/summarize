@@ -10,19 +10,28 @@ const RANGE_ATTEMPTS = 3;
 export type DownloadedYoutubeAudio = {
   bytes: Uint8Array;
   mimeType: string;
-  mediaSource: "sabr" | "android-vr";
+  mediaSource: "sabr" | "player" | "android-vr";
+};
+
+export type ResolvedYoutubeDirectAudio = {
+  contentLength: number | null;
+  mediaSource: "player" | "android-vr";
+  mimeType: string;
+  url: string;
 };
 
 export async function downloadYoutubeAudio({
   context,
   capturedSabr,
+  ignoreContextDirect = false,
 }: {
   context: BrowserYoutubeMediaContext;
   capturedSabr: CapturedYoutubeSabrRequest | null;
+  ignoreContextDirect?: boolean;
 }): Promise<DownloadedYoutubeAudio> {
   let directError: unknown;
   try {
-    return await downloadViaAndroidVr(context);
+    return await downloadViaDirectAudio(context, ignoreContextDirect);
   } catch (error) {
     directError = error;
   }
@@ -37,18 +46,19 @@ export async function downloadYoutubeAudio({
     }
   }
 
-  throw directError;
+  throw directError ?? new Error("Captured YouTube SABR media is unavailable.");
 }
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function downloadViaAndroidVr(
+export async function resolveYoutubeDirectAudio(
   context: BrowserYoutubeMediaContext,
-): Promise<DownloadedYoutubeAudio> {
+  { ignoreContextDirect = false }: { ignoreContextDirect?: boolean } = {},
+): Promise<ResolvedYoutubeDirectAudio> {
   const media =
-    context.directAudio ??
+    (!ignoreContextDirect ? context.directAudio : null) ??
     (await resolveYoutubeAudioWithAndroidVr({
       fetchImpl: fetch,
       videoId: context.videoId,
@@ -57,6 +67,20 @@ async function downloadViaAndroidVr(
       originalUrl: context.url,
       preferredMimeTypes: ["audio/mp4", "audio/webm"],
     }));
+  return {
+    contentLength: media.contentLength,
+    mediaSource:
+      !ignoreContextDirect && context.directAudio ? context.directAudio.resolver : "android-vr",
+    mimeType: media.mimeType,
+    url: media.url,
+  };
+}
+
+async function downloadViaDirectAudio(
+  context: BrowserYoutubeMediaContext,
+  ignoreContextDirect: boolean,
+): Promise<DownloadedYoutubeAudio> {
+  const media = await resolveYoutubeDirectAudio(context, { ignoreContextDirect });
   let bytes: Uint8Array;
   if (media.contentLength && media.contentLength > 0) {
     bytes = await downloadYoutubeBytesWithRanges({
@@ -71,7 +95,7 @@ async function downloadViaAndroidVr(
   return {
     bytes,
     mimeType: media.mimeType,
-    mediaSource: "android-vr",
+    mediaSource: media.mediaSource,
   };
 }
 

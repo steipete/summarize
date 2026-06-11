@@ -1,6 +1,7 @@
 import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import type { RunStart } from "../../lib/panel-contracts";
 import type { Settings } from "../../lib/settings";
+import type { BrowserLocalMediaTranscript } from "./browser-local-transcript";
 import { buildBrowserSummaryMarkdown } from "./browser-summary";
 import type { ExtractResponse } from "./content-script-bridge";
 import type { CachedExtract } from "./extract-cache";
@@ -70,6 +71,10 @@ export async function summarizeActiveTab({
     ok: false,
     error: "Local YouTube transcription is unavailable in this browser.",
   }),
+  transcribeMediaLocally = async () => ({
+    ok: false,
+    error: "Local browser media transcription is unavailable in this browser.",
+  }),
   extractYouTubeTranscript = extractYouTubeTranscriptInTab,
   youtubeTranscriptTimeoutMs = 12_000,
 }: {
@@ -109,6 +114,12 @@ export async function summarizeActiveTab({
     maxChars: number;
     onStatus?: ((status: string) => void) | null;
   }) => Promise<BrowserYoutubeLocalTranscript>;
+  transcribeMediaLocally?: (args: {
+    maxChars: number;
+    onStatus?: ((status: string) => void) | null;
+    tabId: number;
+    tabUrl: string;
+  }) => Promise<BrowserLocalMediaTranscript>;
   extractYouTubeTranscript?: typeof extractYouTubeTranscriptInTab;
   youtubeTranscriptTimeoutMs?: number;
 }) {
@@ -395,19 +406,33 @@ export async function summarizeActiveTab({
   if (isSuperseded()) return;
   const resolvedTitle = tab.title?.trim() || resolvedExtracted.title || null;
   let resolvedPayload = { ...resolvedExtracted, title: resolvedTitle };
-  const ensureLocalYoutubeTranscript = async () => {
-    if (!tab.id || !isYouTubeVideoUrl(resolvedPayload.url) || browserTranscriptTimedText?.trim()) {
+  const ensureLocalBrowserTranscript = async () => {
+    if (!tab.id || browserTranscriptTimedText?.trim()) {
       return false;
     }
-    const localTranscript = await transcribeYouTubeLocally({
-      tabId: tab.id,
-      maxChars: settings.maxChars,
-      onStatus: sendStatus,
-    });
+    const isYoutube = isYouTubeVideoUrl(resolvedPayload.url);
+    if (!isYoutube && requestedInputMode !== "video" && !prefersUrlMode) return false;
+    const localTranscript = isYoutube
+      ? await transcribeYouTubeLocally({
+          tabId: tab.id,
+          maxChars: settings.maxChars,
+          onStatus: sendStatus,
+        })
+      : await transcribeMediaLocally({
+          tabId: tab.id,
+          tabUrl,
+          maxChars: settings.maxChars,
+          onStatus: sendStatus,
+        });
     if (!localTranscript.ok) {
-      logPanel("extract:url-direct:local-transcript-failed", {
-        error: localTranscript.error,
-      });
+      logPanel(
+        isYoutube
+          ? "extract:url-direct:local-transcript-failed"
+          : "extract:browser-media:local-transcript-failed",
+        {
+          error: localTranscript.error,
+        },
+      );
       return false;
     }
     if (!urlsMatch(localTranscript.url, tabUrl)) return false;
@@ -419,14 +444,26 @@ export async function summarizeActiveTab({
       mediaDurationSeconds: localTranscript.durationSeconds,
       media: { hasVideo: true, hasAudio: true, hasCaptions: false },
     };
-    logPanel("extract:url-direct:local-transcript", {
-      textLength: localTranscript.text.length,
-      mediaSource: localTranscript.mediaSource,
-    });
+    logPanel(
+      isYoutube ? "extract:url-direct:local-transcript" : "extract:browser-media:transcript",
+      {
+        textLength: localTranscript.text.length,
+        mediaSource:
+          "mediaSource" in localTranscript ? localTranscript.mediaSource : localTranscript.source,
+        decoder: localTranscript.diagnostics.decoder,
+        mediaChunksProcessed: localTranscript.diagnostics.chunksProcessed,
+        mediaChunksTotal: localTranscript.diagnostics.chunksTotal,
+        mediaCodec: localTranscript.diagnostics.codec,
+        mediaInput: localTranscript.diagnostics.input,
+        whisperDevice: localTranscript.diagnostics.whisper.device,
+        whisperLoadMs: Math.round(localTranscript.diagnostics.whisper.loadMs),
+        whisperReused: localTranscript.diagnostics.whisper.reused,
+      },
+    );
     return true;
   };
   if (useBrowserSummary) {
-    await ensureLocalYoutubeTranscript();
+    await ensureLocalBrowserTranscript();
     if (isSuperseded()) return;
   }
   const effectiveInputMode =
@@ -586,7 +623,7 @@ export async function summarizeActiveTab({
       if (isDaemonUnreachableError(err)) {
         session.daemonRecovery.recordFailure(resolvedPayload.url);
       }
-      await ensureLocalYoutubeTranscript();
+      await ensureLocalBrowserTranscript();
       if (isSuperseded()) return;
       cacheResolvedPayload();
       sendBrowserSummarySnapshot();

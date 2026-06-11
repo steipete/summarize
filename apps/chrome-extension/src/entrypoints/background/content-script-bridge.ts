@@ -355,23 +355,26 @@ export async function getPrimaryMediaInfoInTab(tabId: number): Promise<PrimaryMe
       target: { tabId },
       world: "MAIN",
       func: (): PrimaryMediaInfo => {
-        const best = Array.from(document.querySelectorAll("video")).reduce<{
-          video: HTMLVideoElement;
-          area: number;
+        const best = Array.from(
+          document.querySelectorAll<HTMLMediaElement>("video, audio"),
+        ).reduce<{
+          media: HTMLMediaElement;
+          score: number;
         } | null>((current, video) => {
           const rect = video.getBoundingClientRect();
           const area = Math.max(0, rect.width) * Math.max(0, rect.height);
-          if (area <= 0) return current;
-          return !current || area > current.area ? { video, area } : current;
+          const score = video instanceof HTMLVideoElement ? area : area || 1;
+          if (score <= 0 || !(video.currentSrc || video.src)) return current;
+          return !current || score > current.score ? { media: video, score } : current;
         }, null);
-        if (!best) return { ok: false, error: "No video element found." };
-        const duration = best.video.duration;
-        const currentTime = best.video.currentTime;
+        if (!best) return { ok: false, error: "No audio or video element found." };
+        const duration = best.media.duration;
+        const currentTime = best.media.currentTime;
         return {
           ok: true,
           currentTimeSeconds: Number.isFinite(currentTime) ? currentTime : null,
           durationSeconds: Number.isFinite(duration) && duration > 0 ? duration : null,
-          mediaSrc: best.video.currentSrc || best.video.src || "",
+          mediaSrc: best.media.currentSrc || best.media.src || "",
           title: document.title || null,
           url: location.href,
         };

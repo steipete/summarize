@@ -8,6 +8,7 @@ export class BrowserPcmAccumulator {
     durationSeconds: number,
     private readonly targetSampleRate: number,
     private readonly maxBytes: number,
+    private readonly startTimestamp = 0,
   ) {
     if (!Number.isFinite(durationSeconds) || durationSeconds < 0) {
       throw new Error("Decoded audio has an invalid duration.");
@@ -41,16 +42,17 @@ export class BrowserPcmAccumulator {
 
     const effectiveDuration =
       Number.isFinite(duration) && duration > 0 ? duration : numberOfFrames / sampleRate;
-    const outputStart = Math.max(0, Math.floor(timestamp * this.targetSampleRate));
+    const relativeTimestamp = timestamp - this.startTimestamp;
+    const outputStart = Math.max(0, Math.floor(relativeTimestamp * this.targetSampleRate));
     const outputEnd = Math.max(
       outputStart,
-      Math.ceil((timestamp + effectiveDuration) * this.targetSampleRate),
+      Math.ceil((relativeTimestamp + effectiveDuration) * this.targetSampleRate),
     );
     if (outputEnd === 0) return;
     this.ensureCapacity(outputEnd);
 
     for (let outputFrame = outputStart; outputFrame < outputEnd; outputFrame += 1) {
-      const sourcePosition = (outputFrame / this.targetSampleRate - timestamp) * sampleRate;
+      const sourcePosition = (outputFrame / this.targetSampleRate - relativeTimestamp) * sampleRate;
       const lowerFrame = Math.floor(sourcePosition);
       const upperFrame = Math.ceil(sourcePosition);
       const fraction = sourcePosition - lowerFrame;

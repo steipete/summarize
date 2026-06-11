@@ -1,3 +1,4 @@
+import type { BrowserMediaTranscriptionDiagnostics } from "../offscreen/media-transcription";
 import { ensureOffscreenDocument } from "./browser-media";
 import { getYoutubeMediaContextInTab } from "./youtube-media";
 import {
@@ -8,17 +9,18 @@ import {
 export type BrowserYoutubeLocalTranscript =
   | {
       ok: true;
+      diagnostics: BrowserMediaTranscriptionDiagnostics;
       url: string;
       text: string;
       transcriptTimedText: string;
       truncated: boolean;
       durationSeconds: number | null;
-      mediaSource: "sabr" | "android-vr";
+      mediaSource: "sabr" | "player" | "android-vr";
     }
   | { ok: false; error: string };
 
 const progressCallbacks = new Map<string, (status: string) => void>();
-const LOCAL_TRANSCRIPTION_TIMEOUT_MS = 180_000;
+const LOCAL_TRANSCRIPTION_TIMEOUT_MS = 15 * 60 * 1000;
 let progressListenerStarted = false;
 
 export function startYoutubeLocalTranscriptionRuntime(): void {

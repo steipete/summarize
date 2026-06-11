@@ -1,12 +1,8 @@
-import {
-  decodeBrowserAudioBytesWithMediaBunny,
-  decodeBrowserAudioBytesWithWebAudio,
-  extractBrowserMediaFramesInDocument,
-} from "../background/browser-media";
+import { extractBrowserMediaFramesInDocument } from "../background/browser-media";
 import type { BrowserYoutubeMediaContext } from "../background/youtube-media";
 import type { CapturedYoutubeSabrRequest } from "../background/youtube-sabr-capture";
-import { transcribePcmWithWhisper } from "./whisper";
-import { downloadYoutubeAudio } from "./youtube-audio";
+import { transcribeBrowserMediaBytes, transcribeBrowserMediaUrl } from "./media-transcription";
+import { downloadYoutubeAudio, resolveYoutubeDirectAudio } from "./youtube-audio";
 
 type BrowserMediaRequest = {
   target?: string;
@@ -17,6 +13,7 @@ type BrowserMediaRequest = {
   context?: BrowserYoutubeMediaContext;
   capturedSabr?: CapturedYoutubeSabrRequest | null;
   maxChars?: number;
+  credentials?: RequestCredentials;
 };
 
 chrome.runtime.onMessage.addListener((message: BrowserMediaRequest, _sender, sendResponse) => {
@@ -38,33 +35,78 @@ chrome.runtime.onMessage.addListener((message: BrowserMediaRequest, _sender, sen
       });
     };
     void (async () => {
-      report("Downloading YouTube audio...");
-      const downloaded = await downloadYoutubeAudio({
-        context: message.context as BrowserYoutubeMediaContext,
-        capturedSabr: message.capturedSabr ?? null,
-      });
-      report("Preparing audio in the browser...");
-      const audio = await decodeBrowserAudioBytesWithWebAudio(downloaded.bytes).catch(async () => {
-        report("Preparing audio with browser media decoder...");
-        return await decodeBrowserAudioBytesWithMediaBunny({
-          inputBytes: downloaded.bytes,
-          mimeType: downloaded.mimeType,
+      const context = message.context as BrowserYoutubeMediaContext;
+      let mediaSource: "sabr" | "player" | "android-vr";
+      let transcript;
+      try {
+        const direct = await resolveYoutubeDirectAudio(context);
+        mediaSource = direct.mediaSource;
+        transcript = await transcribeBrowserMediaUrl({
+          credentials: "omit",
+          maxChars: message.maxChars as number,
+          mediaUrl: direct.url,
+          onStatus: report,
         });
-      });
-      const transcript = await transcribePcmWithWhisper({
-        audio,
-        maxChars: message.maxChars as number,
-        onStatus: report,
-      });
+      } catch (directError) {
+        report("Direct audio streaming failed; downloading fallback audio...");
+        const downloaded = await downloadYoutubeAudio({
+          context,
+          capturedSabr: message.capturedSabr ?? null,
+          ignoreContextDirect: true,
+        });
+        mediaSource = downloaded.mediaSource;
+        transcript = await transcribeBrowserMediaBytes({
+          inputBytes: downloaded.bytes,
+          maxChars: message.maxChars as number,
+          mimeType: downloaded.mimeType,
+          onStatus: report,
+        }).catch((bufferedError) => {
+          const directMessage =
+            directError instanceof Error ? directError.message : String(directError);
+          const bufferedMessage =
+            bufferedError instanceof Error ? bufferedError.message : String(bufferedError);
+          throw new Error(
+            `Direct audio streaming failed: ${directMessage} Buffered fallback failed: ${bufferedMessage}`,
+          );
+        });
+      }
       return {
         ok: true as const,
-        url: (message.context as BrowserYoutubeMediaContext).url,
+        url: context.url,
         ...transcript,
-        durationSeconds: (message.context as BrowserYoutubeMediaContext).durationSeconds,
-        mediaSource: downloaded.mediaSource,
+        durationSeconds: context.durationSeconds ?? transcript.diagnostics.durationSeconds,
+        mediaSource,
       };
     })().then(
       (result) => sendResponse(result),
+      (error: unknown) =>
+        sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }),
+    );
+    return true;
+  }
+  if (message.type === "browser-media:transcribe") {
+    if (
+      typeof message.requestId !== "string" ||
+      typeof message.mediaUrl !== "string" ||
+      typeof message.maxChars !== "number"
+    ) {
+      sendResponse({ ok: false, error: "Invalid browser media transcription request." });
+      return;
+    }
+    const report = (status: string) => {
+      void chrome.runtime.sendMessage({
+        type: "browser-media:progress",
+        requestId: message.requestId,
+        status,
+      });
+    };
+    void transcribeBrowserMediaUrl({
+      credentials: message.credentials ?? "include",
+      maxChars: message.maxChars,
+      mediaUrl: message.mediaUrl,
+      onStatus: report,
+    }).then(
+      (transcript) => sendResponse({ ok: true, ...transcript }),
       (error: unknown) =>
         sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }),
     );

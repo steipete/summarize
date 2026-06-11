@@ -42,4 +42,36 @@ describe("Chrome local Whisper loader", () => {
 
     await rejection;
   });
+
+  it("disposes a WebGPU pipeline that resolves after the CPU fallback wins", async () => {
+    vi.useFakeTimers();
+    let resolveWebGpu:
+      | ((value: ReturnType<typeof vi.fn> & { dispose: ReturnType<typeof vi.fn> }) => void)
+      | null = null;
+    const lateWebGpu = Object.assign(vi.fn(), { dispose: vi.fn(async () => {}) });
+    const cpu = Object.assign(vi.fn(), { dispose: vi.fn(async () => {}) });
+    const createPipeline = vi
+      .fn()
+      .mockImplementationOnce(
+        async () =>
+          await new Promise<typeof lateWebGpu>((resolve) => {
+            resolveWebGpu = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(cpu);
+
+    const result = loadWhisperTranscriber({
+      hasWebGpu: true,
+      onStatus: vi.fn(),
+      createPipeline,
+      webGpuTimeoutMs: 100,
+      wasmTimeoutMs: 100,
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    await expect(result).resolves.toBe(cpu);
+
+    resolveWebGpu?.(lateWebGpu);
+    await vi.runAllTimersAsync();
+    expect(lateWebGpu.dispose).toHaveBeenCalledOnce();
+  });
 });

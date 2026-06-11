@@ -8,6 +8,7 @@ import { createDaemonStatusTracker } from "../lib/daemon-status";
 import { logExtensionEvent } from "../lib/extension-logs";
 import type { BgToPanel, PanelCachePayload, PanelToBg } from "../lib/panel-contracts";
 import { loadSettings, patchSettings } from "../lib/settings";
+import { transcribeBrowserMediaInTab } from "./background/browser-local-transcript";
 import { runBrowserSlidesForTab, takeBrowserSlidesPayload } from "./background/browser-slides";
 import {
   beginSlideFrameCaptureInTab,
@@ -136,6 +137,8 @@ export default defineBackground(() => {
       isDaemonUnreachableError,
       fetchImpl: (...args) => fetch(...args),
       resolveLogLevel,
+      transcribeMediaLocally:
+        import.meta.env.BROWSER === "chrome" ? transcribeBrowserMediaInTab : undefined,
       transcribeYouTubeLocally:
         import.meta.env.BROWSER === "chrome" ? transcribeYoutubeAudioInTab : undefined,
     });

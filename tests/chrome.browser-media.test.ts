@@ -3,6 +3,7 @@ import {
   browserMediaCanvasToDataUrl,
   extractBrowserMediaFrames,
   extractBrowserMediaFramesInDocument,
+  fetchBrowserMediaWithLimit,
   isBrowserMediaUrl,
 } from "../apps/chrome-extension/src/entrypoints/background/browser-media";
 import { BrowserPcmAccumulator } from "../apps/chrome-extension/src/entrypoints/background/browser-media-audio";
@@ -40,6 +41,71 @@ describe("chrome browser media decoding", () => {
         fetchImpl,
       }),
     ).rejects.toThrow("fetchable HTTP media URL");
+  });
+
+  it("preserves compliant ranged responses regardless of total media size", async () => {
+    const response = new Response(new Uint8Array([1, 2, 3]), {
+      status: 206,
+      headers: {
+        "content-length": "3",
+        "content-range": "bytes 0-2/999999999",
+      },
+    });
+    const fetchImpl = vi.fn(async () => response);
+
+    await expect(
+      fetchBrowserMediaWithLimit(
+        fetchImpl as unknown as typeof fetch,
+        "https://example.com/video.mp4",
+        { headers: { Range: "bytes=0-" } },
+        2,
+      ),
+    ).resolves.toBe(response);
+  });
+
+  it("rejects oversized full responses before MediaBunny sees them", async () => {
+    const cancel = vi.fn(async () => {});
+    const response = {
+      body: { cancel },
+      headers: new Headers({ "content-length": "4" }),
+      status: 200,
+    } as unknown as Response;
+    const fetchImpl = vi.fn(async () => response);
+
+    await expect(
+      fetchBrowserMediaWithLimit(
+        fetchImpl as unknown as typeof fetch,
+        "https://example.com/video.mp4",
+        undefined,
+        3,
+      ),
+    ).rejects.toThrow("without partial content");
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("bounds streamed full responses with missing or incorrect content lengths", async () => {
+    const response = new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array([1, 2]));
+          controller.enqueue(new Uint8Array([3, 4]));
+          controller.close();
+        },
+      }),
+      {
+        status: 200,
+        headers: { "content-length": "2" },
+      },
+    );
+    const fetchImpl = vi.fn(async () => response);
+    const guarded = await fetchBrowserMediaWithLimit(
+      fetchImpl as unknown as typeof fetch,
+      "https://example.com/video.mp4",
+      { headers: { Range: "bytes=0-" } },
+      3,
+    );
+
+    await expect(guarded.arrayBuffer()).rejects.toThrow("streamed more than 3 bytes");
   });
 
   it("creates the offscreen document and requests MediaBunny frames", async () => {
@@ -107,31 +173,6 @@ describe("chrome browser media decoding", () => {
     ).rejects.toThrow("decoder failed");
   });
 
-  it("rejects failed and oversized media downloads before decoding", async () => {
-    await expect(
-      extractBrowserMediaFramesInDocument({
-        mediaUrl: "https://example.com/video.mp4",
-        timestamps: [1],
-        fetchImpl: vi.fn(
-          async () => new Response("missing", { status: 404, statusText: "Not Found" }),
-        ),
-      }),
-    ).rejects.toThrow("404 Not Found");
-
-    await expect(
-      extractBrowserMediaFramesInDocument({
-        mediaUrl: "https://example.com/video.mp4",
-        timestamps: [1],
-        fetchImpl: vi.fn(
-          async () =>
-            new Response("video", {
-              headers: { "content-length": String(128 * 1024 * 1024 + 1) },
-            }),
-        ),
-      }),
-    ).rejects.toThrow("too large");
-  });
-
   it("encodes offscreen-document HTML canvases without the throttled blob callback", async () => {
     const toDataURL = vi.fn(() => "data:image/jpeg;base64,AQID");
     const canvas = { toDataURL } as unknown as HTMLCanvasElement;
@@ -173,5 +214,18 @@ describe("chrome browser media decoding", () => {
     expect(
       () => new BrowserPcmAccumulator(1, 8_000, Float32Array.BYTES_PER_ELEMENT * 7_999),
     ).toThrow("too long");
+  });
+
+  it("writes later media chunks relative to their own start time", () => {
+    const output = new BrowserPcmAccumulator(0.0005, 8_000, 1024, 900);
+    output.add({
+      duration: 0.0005,
+      interleaved: new Float32Array([1, 2, 3, 4]),
+      numberOfChannels: 1,
+      numberOfFrames: 4,
+      sampleRate: 8_000,
+      timestamp: 900,
+    });
+    expect(Array.from(output.finish())).toEqual([1, 2, 3, 4]);
   });
 });

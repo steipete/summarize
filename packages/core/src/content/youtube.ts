@@ -1,3 +1,5 @@
+import { extractInitialPlayerResponse } from "./transcript/providers/youtube/captions-player.js";
+
 const ANDROID_VR_CLIENT_NAME = "ANDROID_VR";
 const ANDROID_VR_CLIENT_ID = "28";
 const ANDROID_VR_CLIENT_VERSION = "1.65.10";
@@ -12,6 +14,10 @@ export type YoutubeAudioFormat = {
   contentLength: number | null;
   durationSeconds: number | null;
   filename: string;
+};
+
+export type ResolvedYoutubeAudioFormat = YoutubeAudioFormat & {
+  resolver: "watch-page" | "android-vr";
 };
 
 export type YoutubePlayerBootstrap = {
@@ -102,6 +108,60 @@ export async function resolveYoutubeAudioWithAndroidVr({
     );
   }
 
+  const selected = selectAudioFormat(payload, preferredMimeTypes);
+  if (!selected) {
+    throw new Error("YouTube Android VR returned no direct audio format");
+  }
+  return selected;
+}
+
+export function extractYoutubeAudioFromWatchHtml(
+  html: string,
+  preferredMimeTypes: readonly string[] = [],
+): YoutubeAudioFormat | null {
+  const playerResponse = extractInitialPlayerResponse(html);
+  return playerResponse ? selectAudioFormat(playerResponse, preferredMimeTypes) : null;
+}
+
+export async function resolveYoutubeAudio({
+  fetchImpl,
+  videoId,
+  apiKey,
+  visitorData = null,
+  originalUrl = `https://www.youtube.com/watch?v=${videoId}`,
+  preferredMimeTypes = [],
+  watchHtml = null,
+}: {
+  fetchImpl: typeof fetch;
+  videoId: string;
+  apiKey: string;
+  visitorData?: string | null;
+  originalUrl?: string;
+  preferredMimeTypes?: readonly string[];
+  watchHtml?: string | null;
+}): Promise<ResolvedYoutubeAudioFormat> {
+  const embedded = watchHtml
+    ? extractYoutubeAudioFromWatchHtml(watchHtml, preferredMimeTypes)
+    : null;
+  if (embedded) return { ...embedded, resolver: "watch-page" };
+
+  return {
+    ...(await resolveYoutubeAudioWithAndroidVr({
+      fetchImpl,
+      videoId,
+      apiKey,
+      visitorData,
+      originalUrl,
+      preferredMimeTypes,
+    })),
+    resolver: "android-vr",
+  };
+}
+
+function selectAudioFormat(
+  payload: RecordLike,
+  preferredMimeTypes: readonly string[],
+): YoutubeAudioFormat | null {
   const streamingData = isRecord(payload.streamingData) ? payload.streamingData : null;
   const adaptiveFormats = Array.isArray(streamingData?.adaptiveFormats)
     ? streamingData.adaptiveFormats
@@ -116,11 +176,7 @@ export async function resolveYoutubeAudioWithAndroidVr({
         mimePreferenceIndex(right.mimeType, preferredMimeTypes);
       return mimePreference || (right.bitrate ?? 0) - (left.bitrate ?? 0);
     });
-  const selected = candidates[0];
-  if (!selected) {
-    throw new Error("YouTube Android VR returned no direct audio format");
-  }
-  return selected;
+  return candidates[0] ?? null;
 }
 
 function mimePreferenceIndex(mimeType: string, preferredMimeTypes: readonly string[]): number {

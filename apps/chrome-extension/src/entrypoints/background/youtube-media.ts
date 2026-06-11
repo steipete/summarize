@@ -22,6 +22,7 @@ export type BrowserYoutubeMediaContext = {
     url: string;
     mimeType: string;
     contentLength: number | null;
+    resolver: "player" | "android-vr";
   } | null;
   sabr: {
     serverAbrStreamingUrl: string;
@@ -117,6 +118,29 @@ export async function getYoutubeMediaContextInTab(
       const adaptiveFormats = Array.isArray(streamingData?.adaptiveFormats)
         ? streamingData.adaptiveFormats
         : [];
+      const directAudioCandidates = adaptiveFormats.filter(isRecord).flatMap((format) => {
+        const url = stringValue(format.url);
+        const mimeType = stringValue(format.mimeType);
+        if (!url || !mimeType?.toLowerCase().startsWith("audio/")) return [];
+        return [
+          {
+            url,
+            mimeType,
+            bitrate: numberValue(format.bitrate) ?? 0,
+            contentLength: numberValue(format.contentLength),
+          },
+        ];
+      });
+      directAudioCandidates.sort((left, right) => {
+        const mimeRank = (mimeType: string) =>
+          mimeType.toLowerCase().startsWith("audio/mp4")
+            ? 0
+            : mimeType.toLowerCase().startsWith("audio/webm")
+              ? 1
+              : 2;
+        return mimeRank(left.mimeType) - mimeRank(right.mimeType) || right.bitrate - left.bitrate;
+      });
+      const directAudio = directAudioCandidates[0] ?? null;
       const formats = adaptiveFormats.filter(isRecord).flatMap((format) => {
         const itag = numberValue(format.itag);
         const mimeType = stringValue(format.mimeType);
@@ -159,7 +183,14 @@ export async function getYoutubeMediaContextInTab(
         durationSeconds,
         apiKey,
         visitorData,
-        directAudio: null,
+        directAudio: directAudio
+          ? {
+              url: directAudio.url,
+              mimeType: directAudio.mimeType,
+              contentLength: directAudio.contentLength,
+              resolver: "player",
+            }
+          : null,
         sabr:
           serverAbrStreamingUrl && videoPlaybackUstreamerConfig && formats.length > 0
             ? {
@@ -175,7 +206,8 @@ export async function getYoutubeMediaContextInTab(
   });
   const context = result?.result ?? null;
   if (!context) return null;
-  const directAudio = await resolveYoutubeDirectAudioInTab(tabId, context).catch(() => null);
+  const directAudio =
+    context.directAudio ?? (await resolveYoutubeDirectAudioInTab(tabId, context).catch(() => null));
   return { ...context, directAudio };
 }
 
@@ -279,6 +311,7 @@ async function resolveYoutubeDirectAudioInTab(
         mimeType: selected.mimeType,
         contentLength:
           Number.isSafeInteger(contentLength) && contentLength > 0 ? contentLength : null,
+        resolver: "android-vr" as const,
       };
     },
   });

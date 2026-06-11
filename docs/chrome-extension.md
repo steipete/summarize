@@ -13,7 +13,7 @@ Goal: Chrome **Side Panel** (“real sidebar”) summarizes **what you see** on 
 Quickstart:
 
 - Build/load extension: `apps/chrome-extension/README.md`
-- Chrome Browser mode works immediately without a daemon for page summaries, fetchable video slides, and captionless YouTube transcription.
+- Chrome Browser mode works immediately without a daemon for page summaries, fetchable video slides, and fetchable YouTube/direct/embedded media transcription.
 - Optional: install summarize for daemon-backed media support:
   - `npm i -g @steipete/summarize`
   - `brew install summarize` (macOS, Linux)
@@ -27,7 +27,7 @@ Quickstart:
 Firefox notes:
 
 - Sidebar UX differs from Chrome’s side panel (persistent sidebar instead of slide-in panel).
-- Firefox testing is limited in Playwright; see `apps/chrome-extension/tests/README-firefox.md`.
+- Firefox loading is smoke-tested with Mozilla `web-ext`; Playwright page-level Firefox tests remain diagnostic-only. See `apps/chrome-extension/tests/README-firefox.md`.
 - Compatibility details: `apps/chrome-extension/docs/firefox.md`.
 
 Dev (repo checkout):
@@ -85,7 +85,7 @@ Dev (repo checkout):
 - **Extension (MV3, WXT)**
   - Side Panel UI: length + typography controls (font family + size), auto/manual toggle.
   - Background service worker: tab + navigation tracking, content extraction, starts summarize runs.
-  - Chrome offscreen page: runs MediaBunny with native WebCodecs for daemonless video slides and YouTube audio preparation, plus local Whisper transcription.
+  - Chrome offscreen page: runs MediaBunny with native WebCodecs for ranged video slides and chunked local media transcription, plus an idle-evictable Whisper runtime.
   - Content script: extract readable article text from the **rendered DOM** via Readability; also detect SPA URL changes.
   - Panel page streams SSE directly (MV3 service workers can be flaky for long-lived streams).
 - **Daemon (local, autostart service)**
@@ -98,7 +98,7 @@ Dev (repo checkout):
 1. User opens side panel (click extension icon).
 2. Panel sends a “ready” message to the background (plus periodic “ping” heartbeats while open).
 3. On nav/tab change (and auto enabled): background asks the content script to extract `{ url, title, text }` (best-effort).
-4. In Chrome Browser mode, captionless YouTube audio is resolved through same-origin Android VR media with captured SABR fallback, decoded through WebAudio or MediaBunny/WebCodecs, and transcribed locally.
+4. In Chrome Browser mode, fetchable audio is decoded in bounded chunks through MediaBunny/WebCodecs and transcribed locally. YouTube prefers active-player/watch-page direct audio, then Android VR, buffered direct audio, and captured SABR.
 5. In Daemon mode, background `POST`s payload to `/v1/summarize` with `Authorization: Bearer <token>`.
 6. Panel opens `/v1/summarize/<id>/events` (SSE) and renders streamed Markdown.
 
@@ -125,7 +125,7 @@ See `docs/media.md` for detection and transcript rules.
 ## Slides (Side Panel)
 
 - The slides toggle lights up on media-friendly URLs (YouTube/watch|shorts, youtu.be, direct media) or when the page reports video/audio. Defaults to Video on those pages.
-- Turning slides **on** refreshes the current summary and requests slide extraction. Chrome Browser mode uses MediaBunny with native WebCodecs for fetchable videos up to 128 MB and falls back to visible-tab capture. Daemon mode adds `yt-dlp`, native ffmpeg, and optional `tesseract` OCR.
+- Turning slides **on** refreshes the current summary and requests slide extraction. Chrome Browser mode uses MediaBunny with native WebCodecs and ranged reads for fetchable videos, then falls back to visible-tab capture. Daemon mode adds `yt-dlp`, native ffmpeg, and optional `tesseract` OCR.
 - Active slide mode is slide-first:
   - vertical image/text cards
   - transcript-first text; OCR fallback

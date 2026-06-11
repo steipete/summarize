@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  extractYoutubeAudioFromWatchHtml,
   extractYoutubePlayerBootstrap,
+  resolveYoutubeAudio,
   resolveYoutubeAudioWithAndroidVr,
 } from "../packages/core/src/content/youtube.js";
 
@@ -123,5 +125,75 @@ describe("YouTube Android VR media resolver", () => {
     });
 
     expect(result.url).toBe("https://media.example/aac");
+  });
+
+  it("prefers a direct audio URL embedded in the watch page", async () => {
+    const fetchImpl = vi.fn();
+    const watchHtml = `<script>var ytInitialPlayerResponse = ${JSON.stringify({
+      streamingData: {
+        adaptiveFormats: [
+          {
+            itag: 140,
+            url: "https://media.example/watch-audio",
+            mimeType: 'audio/mp4; codecs="mp4a.40.2"',
+            bitrate: 129_000,
+            contentLength: "321",
+            approxDurationMs: "45000",
+          },
+        ],
+      },
+    })};</script>`;
+
+    expect(extractYoutubeAudioFromWatchHtml(watchHtml)).toMatchObject({
+      url: "https://media.example/watch-audio",
+      filename: "youtube-140.m4a",
+    });
+    await expect(
+      resolveYoutubeAudio({
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        videoId: "abcdefghijk",
+        apiKey: "KEY",
+        watchHtml,
+      }),
+    ).resolves.toMatchObject({
+      url: "https://media.example/watch-audio",
+      resolver: "watch-page",
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("falls back to Android VR when the watch page has no direct media", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            playabilityStatus: { status: "OK" },
+            streamingData: {
+              adaptiveFormats: [
+                {
+                  itag: 251,
+                  url: "https://media.example/fallback",
+                  mimeType: 'audio/webm; codecs="opus"',
+                  bitrate: 128_000,
+                },
+              ],
+            },
+          }),
+          { status: 200 },
+        ),
+    );
+
+    await expect(
+      resolveYoutubeAudio({
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        videoId: "abcdefghijk",
+        apiKey: "KEY",
+        watchHtml: "<html></html>",
+      }),
+    ).resolves.toMatchObject({
+      url: "https://media.example/fallback",
+      resolver: "android-vr",
+    });
+    expect(fetchImpl).toHaveBeenCalledOnce();
   });
 });

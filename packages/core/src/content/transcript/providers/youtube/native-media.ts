@@ -1,7 +1,4 @@
-import {
-  extractYoutubePlayerBootstrap,
-  resolveYoutubeAudioWithAndroidVr,
-} from "../../../youtube.js";
+import { extractYoutubePlayerBootstrap, resolveYoutubeAudio } from "../../../youtube.js";
 import { normalizeTranscriptText } from "../../normalize.js";
 import type { ProviderResult } from "../../types.js";
 import { transcribeMediaUrl } from "../podcast/media.js";
@@ -21,12 +18,13 @@ export async function tryNativeYoutubeMediaTranscript(
   flow.pushHint("YouTube: resolving audio without yt-dlp");
   flow.attemptedProviders.push("youtube-media");
   try {
-    const media = await resolveYoutubeAudioWithAndroidVr({
+    const media = await resolveYoutubeAudio({
       fetchImpl: flow.options.fetch,
       videoId: flow.effectiveVideoId,
       apiKey: bootstrap.apiKey,
       visitorData: bootstrap.visitorData,
       originalUrl: flow.context.url,
+      watchHtml: flow.htmlText,
     });
     const result = await transcribeMediaUrl({
       fetchImpl: flow.options.fetch,
@@ -51,7 +49,7 @@ export async function tryNativeYoutubeMediaTranscript(
       source: "youtube-media",
       metadata: {
         provider: "youtube-media",
-        resolver: "android-vr",
+        resolver: media.resolver,
         transcriptionProvider: result.provider,
         ...(flow.durationMetadata ??
           (media.durationSeconds ? { durationSeconds: media.durationSeconds } : {})),

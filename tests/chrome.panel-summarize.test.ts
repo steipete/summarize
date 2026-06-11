@@ -4,6 +4,15 @@ import { buildSummarizeRequestBody } from "../apps/chrome-extension/src/lib/daem
 import { defaultSettings } from "../apps/chrome-extension/src/lib/settings.js";
 
 const youtubeUrl = "https://www.youtube.com/watch?v=KnUFH5GX_fI";
+const browserMediaDiagnostics = {
+  chunksProcessed: 1,
+  chunksTotal: 1,
+  codec: "opus",
+  decoder: "mediabunny-webcodecs" as const,
+  durationSeconds: 42,
+  input: "url-range" as const,
+  whisper: { device: "wasm" as const, loadMs: 10, reused: false },
+};
 
 function createHarness() {
   const session = {
@@ -260,6 +269,7 @@ describe("chrome panel summarize", () => {
       truncated: false,
       durationSeconds: 42,
       mediaSource: "sabr" as const,
+      diagnostics: browserMediaDiagnostics,
     }));
 
     await harness.summarize({
@@ -307,6 +317,7 @@ describe("chrome panel summarize", () => {
       truncated: false,
       durationSeconds: 42,
       mediaSource: "android-vr" as const,
+      diagnostics: browserMediaDiagnostics,
     }));
 
     await harness.summarize({
@@ -338,6 +349,61 @@ describe("chrome panel summarize", () => {
     expect(harness.sent[0]).toMatchObject({
       type: "run:snapshot",
       markdown: expect.stringContaining("Timed fallback transcript"),
+    });
+  });
+
+  it("transcribes direct media locally in browser runtime", async () => {
+    const harness = createHarness();
+    const url = "https://media.example/episode.mp3";
+    const transcribeMediaLocally = vi.fn(async () => ({
+      ok: true as const,
+      url,
+      text: "Direct media transcript.",
+      transcriptTimedText: "[0:00] Direct media transcript.",
+      truncated: false,
+      durationSeconds: 42,
+      source: "direct" as const,
+      diagnostics: browserMediaDiagnostics,
+    }));
+
+    await harness.summarize({
+      reason: "manual",
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      getActiveTab: vi.fn(async () => ({
+        id: 7,
+        windowId: 1,
+        url,
+        title: "Episode",
+      })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url,
+          title: "Episode",
+          text: "",
+          truncated: false,
+          media: { hasVideo: false, hasAudio: true, hasCaptions: false },
+        },
+      })),
+      transcribeMediaLocally,
+    });
+
+    expect(transcribeMediaLocally).toHaveBeenCalledWith({
+      tabId: 7,
+      tabUrl: url,
+      maxChars: defaultSettings.maxChars,
+      onStatus: expect.any(Function),
+    });
+    expect(harness.sent[0]).toMatchObject({
+      type: "run:snapshot",
+      markdown: expect.stringContaining("Direct media transcript"),
     });
   });
 
