@@ -319,7 +319,9 @@ export async function downloadCappedBytes(
   const contentRangeTotal = contentRange?.total ?? null;
   const contentLength =
     res.status === 206 ? null : parseContentLength(res.headers.get("content-length"));
-  const boundedTotalBytes = contentRangeTotal ?? contentLength ?? options?.totalBytes ?? null;
+  const getBoundedTotalBytes = contentRangeTotal ?? contentLength ?? null;
+  const declaredTotalBytes = options?.totalBytes ?? null;
+  const boundedTotalBytes = getBoundedTotalBytes ?? declaredTotalBytes;
   if (
     rejectAboveBytes !== null &&
     boundedTotalBytes !== null &&
@@ -333,6 +335,10 @@ export async function downloadCappedBytes(
     rejectAboveBytes !== null &&
     (boundedTotalBytes === null ||
       (declaredBodyBytes !== null && declaredBodyBytes <= retainBytes) ||
+      (contentLength !== null && contentLength <= retainBytes) ||
+      (getBoundedTotalBytes === null &&
+        declaredTotalBytes !== null &&
+        declaredTotalBytes <= retainBytes) ||
       (rejectAboveBytes <= maxBytes && boundedTotalBytes <= rejectAboveBytes));
   const body = res.body;
   if (!body) {

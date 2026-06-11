@@ -156,6 +156,50 @@ describe("remote media temp-file download cap", () => {
     ).rejects.toThrow("range response exceeded declared length");
   });
 
+  it("rejects under-reported in-memory streams that exceed the configured byte limit", async () => {
+    const fetchImpl = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(init?.headers).toMatchObject({ Range: "bytes=0-2" });
+      return new Response(oversizedStream({ firstChunkBytes: 3, secondChunkBytes: 3 }), {
+        status: 200,
+        headers: { "content-type": "audio/mpeg", "content-length": "3" },
+      });
+    };
+
+    await expect(
+      downloadCappedBytes(
+        fetchImpl as unknown as typeof fetch,
+        "https://example.com/episode.mp3",
+        3,
+        {
+          rejectAboveBytes: 5,
+          totalBytes: null,
+        },
+      ),
+    ).rejects.toThrow("Remote media too large");
+  });
+
+  it("does not read past the retained prefix for declared safe larger bodies", async () => {
+    const fetchImpl = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(init?.headers).toMatchObject({ Range: "bytes=0-2" });
+      return new Response(oversizedStream({ firstChunkBytes: 3, secondChunkBytes: 3 }), {
+        status: 200,
+        headers: { "content-type": "audio/mpeg", "content-length": "4" },
+      });
+    };
+
+    const bytes = await downloadCappedBytes(
+      fetchImpl as unknown as typeof fetch,
+      "https://example.com/episode.mp3",
+      3,
+      {
+        rejectAboveBytes: 5,
+        totalBytes: 3,
+      },
+    );
+
+    expect(bytes.byteLength).toBe(3);
+  });
+
   it("checks unknown in-memory response sizes by reading beyond the retained prefix", async () => {
     const maxBytes = 64 * 1024;
     const fetchImpl = async (_input: RequestInfo | URL, init?: RequestInit) => {
