@@ -16,7 +16,9 @@ Goal: keep provider entrypoints thin; keep provider policy explicit.
 - `packages/core/src/content/transcript/providers/youtube.ts`
   YouTube orchestration only.
   Web captions first.
-  `yt-dlp` or Apify fallback next.
+  `yt-dlp`, Android VR direct media, then Apify fallback.
+- `packages/core/src/content/transcript/providers/youtube/native-media.ts`
+  Android VR direct-audio resolution + shared media transcription only.
 - `packages/core/src/content/transcript/providers/podcast.ts`
   Podcast orchestration only.
   Feed/Spotify/Apple/enclosure/`yt-dlp` chain.

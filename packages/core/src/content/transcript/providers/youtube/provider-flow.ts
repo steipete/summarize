@@ -50,6 +50,7 @@ export type YouTubeProviderFlow = {
   notes: string[];
   effectiveVideoId: string | null;
   durationMetadata: DurationMetadata;
+  canTranscribe: boolean;
   canRunYtDlp: boolean;
   pushHint: (hint: string) => void;
 };
@@ -221,12 +222,6 @@ export async function tryYtDlpTranscript(args: {
   mode: ProviderFetchOptions["youtubeTranscriptMode"];
 }): Promise<ProviderResult | null> {
   const { flow, mode } = args;
-
-  if (mode === "no-auto" && !flow.canRunYtDlp) {
-    throw new Error(
-      "--youtube no-auto requires yt-dlp and a transcription provider (whisper-cpp, GROQ_API_KEY, ASSEMBLYAI_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, or FAL_KEY) for fallback",
-    );
-  }
 
   if (mode === "auto") {
     flow.pushHint("YouTube: captions unavailable; falling back to yt-dlp audio");

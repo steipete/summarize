@@ -13,7 +13,7 @@ import {
   resolveTranscriptionConfig,
   type TranscriptionConfig,
 } from "../../transcription-config.js";
-import type { ProviderFetchOptions } from "../../types.js";
+import type { ProviderFetchOptions, TranscriptService } from "../../types.js";
 import { resolveTranscriptionStartInfo } from "../transcription-start.js";
 import { MAX_REMOTE_MEDIA_BYTES, TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
 
@@ -58,7 +58,7 @@ export async function transcribeMediaUrl({
   notes: string[];
   progress: {
     url: string;
-    service: "podcast";
+    service: TranscriptService;
     onProgress: ProviderFetchOptions["onProgress"] | null;
   } | null;
 }): Promise<TranscriptionResult> {

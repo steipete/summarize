@@ -17,13 +17,14 @@ read_when:
 
 1. Embedded captions (VTT/JSON) when available.
 2. yt-dlp download + transcription (Groq first; then ONNX/local whisper.cpp; then AssemblyAI/Gemini/OpenAI/FAL fallback).
+3. YouTube only: Android VR direct audio + the same transcription chain when yt-dlp is missing or fails.
 
 ## CLI behavior
 
 - `--video-mode transcript` prefers transcript-first media handling even when a page has text.
 - Direct media URLs (mp4/webm/m4a/etc) skip HTML and transcribe.
 - Local audio/video files are routed through the same transcript-first pipeline.
-- YouTube still uses the YouTube transcript pipeline (captions → yt-dlp fallback).
+- YouTube still uses the YouTube transcript pipeline (captions → yt-dlp → Android VR direct audio fallback).
 - X/Twitter status URLs with detected video auto-switch to transcript-first (yt-dlp), even in auto mode.
 - X broadcasts (`/i/broadcasts/...`) are treated as media-only and go transcript-first by default.
 - Local media files are capped at 2 GB. Remote podcast/media transcription downloads are capped at 512 MB by default and fail closed with `Remote media too large` even when the server omits or under-reports `Content-Length`; other remote media URLs are best-effort via yt-dlp.
@@ -42,6 +43,7 @@ read_when:
 - When media is detected on a page, the Summarize button gains a dropdown caret (Page/Video or Page/Audio).
 - Selecting Video/Audio forces URL mode + transcript-first extraction for that run only.
 - Selection is not stored.
+- Chrome Browser mode resolves captionless YouTube audio through same-origin Android VR media with captured SABR fallback, decodes it natively or with bundled FFmpeg WebAssembly, and transcribes with browser-cached multilingual Whisper Tiny.
 
 ## Known limits
 

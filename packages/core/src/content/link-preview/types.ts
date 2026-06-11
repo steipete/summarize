@@ -3,6 +3,7 @@ export type TranscriptSource =
   | "captionTracks"
   | "embedded"
   | "yt-dlp"
+  | "youtube-media"
   | "podcastTranscript"
   | "whisper"
   | "apify"

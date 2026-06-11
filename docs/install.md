@@ -88,7 +88,7 @@ export OPENAI_API_KEY=...
 export FAL_KEY=...
 ```
 
-If native `ffmpeg`/`ffprobe` are missing, summarize falls back to its bundled LGPL FFmpeg WebAssembly build. Native ffmpeg remains recommended for speed and broader codec/filter support. YouTube downloads still require `yt-dlp`.
+If native `ffmpeg`/`ffprobe` are missing, summarize falls back to its bundled LGPL FFmpeg WebAssembly build. Native ffmpeg remains recommended for speed and broader codec/filter support. Automatic YouTube transcription can resolve Android VR direct audio without `yt-dlp`; explicit `--youtube yt-dlp`, diarization, and some slide/media flows still require it.
 
 Set `SUMMARIZE_DISABLE_FFMPEG_WASM=1` to disable the bundled fallback.
 

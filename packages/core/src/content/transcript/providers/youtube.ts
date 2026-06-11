@@ -1,6 +1,7 @@
 import { resolveTranscriptionConfig } from "../transcription-config.js";
 import type { ProviderContext, ProviderFetchOptions, ProviderResult } from "../types.js";
 import { resolveTranscriptProviderCapabilities } from "./transcription-capability.js";
+import { tryNativeYoutubeMediaTranscript } from "./youtube/native-media.js";
 import {
   buildUnavailableResult,
   loadYoutubeHtml,
@@ -34,6 +35,7 @@ export const fetchTranscript = async (
     diarization,
   });
   const canRunYtDlp = transcriptionCapabilities.canRunYtDlp;
+  const canTranscribe = transcriptionCapabilities.canTranscribe;
   const pushHint = (hint: string) => {
     progress?.({ kind: "transcript-start", url, service: "youtube", hint });
   };
@@ -87,6 +89,7 @@ export const fetchTranscript = async (
     notes,
     effectiveVideoId,
     durationMetadata,
+    canTranscribe,
     canRunYtDlp,
     pushHint,
   };
@@ -101,7 +104,7 @@ export const fetchTranscript = async (
   if (mode === "no-auto") {
     const manualTranscript = await tryManualCaptionTranscript(flow);
     if (manualTranscript) return manualTranscript;
-    notes.push("No creator captions found, using yt-dlp transcription");
+    notes.push("No creator captions found, using audio transcription");
   }
 
   // Try web methods (youtubei, captionTracks) if mode is 'auto' or 'web'
@@ -111,18 +114,25 @@ export const fetchTranscript = async (
   }
 
   // Try yt-dlp (audio download + Groq/AssemblyAI/Gemini/OpenAI/FAL transcription) if mode is 'auto', 'no-auto', or 'yt-dlp'
-  if (mode === "yt-dlp" || mode === "no-auto" || (mode === "auto" && canRunYtDlp)) {
+  if (mode === "yt-dlp" || ((mode === "no-auto" || mode === "auto") && canRunYtDlp)) {
     const transcript = await tryYtDlpTranscript({ flow, mode });
     if (transcript) return transcript;
+  }
 
-    // Auto mode: only try Apify after yt-dlp fails (last resort).
-    if (mode === "auto") {
-      const apifyResult = await tryApifyTranscript(
-        flow,
-        "YouTube: yt-dlp transcription failed; trying Apify",
-      );
-      if (apifyResult) return apifyResult;
-    }
+  if ((mode === "auto" || mode === "no-auto") && canTranscribe) {
+    const nativeResult = await tryNativeYoutubeMediaTranscript(flow);
+    if (nativeResult) return nativeResult;
+  }
+
+  // Auto mode: only try Apify after local audio fallbacks fail (last resort).
+  if (mode === "auto") {
+    const apifyResult = await tryApifyTranscript(
+      flow,
+      canRunYtDlp
+        ? "YouTube: audio transcription failed; trying Apify"
+        : "YouTube: captions unavailable; trying Apify",
+    );
+    if (apifyResult) return apifyResult;
   }
 
   // Explicit apify mode: allow forcing it, but require a token.
@@ -131,15 +141,6 @@ export const fetchTranscript = async (
       throw new Error("Missing APIFY_API_TOKEN for --youtube apify");
     }
     const apifyResult = await tryApifyTranscript(flow, "YouTube: fetching transcript (Apify)");
-    if (apifyResult) return apifyResult;
-  }
-
-  // Auto mode: if yt-dlp cannot run (no binary/credentials), fall back to Apify last-last.
-  if (mode === "auto" && !canRunYtDlp) {
-    const apifyResult = await tryApifyTranscript(
-      flow,
-      "YouTube: captions unavailable; trying Apify",
-    );
     if (apifyResult) return apifyResult;
   }
 

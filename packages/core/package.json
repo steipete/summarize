@@ -27,6 +27,10 @@
       "types": "./dist/types/content/local-file.d.ts",
       "import": "./dist/esm/content/local-file.js"
     },
+    "./content/youtube": {
+      "types": "./dist/types/content/youtube.d.ts",
+      "import": "./dist/esm/content/youtube.js"
+    },
     "./prompts": {
       "types": "./dist/types/prompts/index.d.ts",
       "import": "./dist/esm/prompts/index.js"
