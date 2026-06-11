@@ -235,6 +235,46 @@ describe("transcript cache integration", () => {
     expect(result.diagnostics?.notes).toContain("Falling back");
   });
 
+  it("does not fall back to cached speaker-labelled content when diarization was not requested", async () => {
+    const transcriptCache: TranscriptCache = {
+      get: vi.fn(async () => ({
+        content: "Speaker A: cached transcript",
+        source: "yt-dlp",
+        expired: true,
+        metadata: {
+          diarizationProvider: "openai",
+          speakerLabels: true,
+          segments: [{ startMs: 1000, endMs: 2000, text: "cached transcript", speaker: "Speaker A" }],
+        },
+      })),
+      set: vi.fn(async () => {}),
+    };
+
+    const fetchMock = vi.fn(async () => new Response("nope", { status: 500 }));
+
+    const result = await resolveTranscriptForLink(
+      "https://www.youtube.com/watch?v=abcdefghijk",
+      "<html></html>",
+      {
+        fetch: fetchMock as unknown as typeof fetch,
+        apifyApiToken: null,
+        ytDlpPath: null,
+        groqApiKey: null,
+        falApiKey: null,
+        openaiApiKey: null,
+        scrapeWithFirecrawl: null,
+        convertHtmlToMarkdown: null,
+        transcriptCache,
+        readTweetWithBird: null,
+      },
+      { youtubeTranscriptMode: "web", cacheMode: "default" },
+    );
+
+    expect(result.text).toBeNull();
+    expect(result.diagnostics?.cacheStatus).toBe("expired");
+    expect(result.diagnostics?.notes).not.toContain("Falling back");
+  });
+
   it("does not fall back to a cache entry incompatible with requested diarization", async () => {
     const transcriptCache: TranscriptCache = {
       get: vi.fn(async () => ({

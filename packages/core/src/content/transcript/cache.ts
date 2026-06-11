@@ -120,9 +120,9 @@ export function isCachedDiarizationCompatible(
   metadata: Record<string, unknown> | null | undefined,
   preference: DiarizationPreference | null,
 ): boolean {
-  if (!preference) return true;
-  const provider = metadata?.diarizationProvider;
   const hasSpeakerLabels = metadata?.speakerLabels === true;
+  if (!preference) return !hasSpeakerLabels;
+  const provider = metadata?.diarizationProvider;
   return hasSpeakerLabels && (preference === "auto" || provider === preference);
 }
 
