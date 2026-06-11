@@ -1,6 +1,7 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { getModel } from "@earendil-works/pi-ai";
 import { isOpenRouterBaseUrl } from "@steipete/summarize-core";
+import { resolveMinimaxModel } from "../llm/providers/models.js";
 import { createSyntheticModel } from "../llm/providers/shared.js";
 import { buildAutoModelAttempts, envHasKey } from "../model-auto.js";
 import { parseCliUserModelId } from "../run/env.js";
@@ -313,12 +314,21 @@ export async function resolveAgentModel({
 
   const applyBaseUrlOverride = (provider: string, modelId: string) => {
     const baseUrl = providerBaseUrlMap[provider] ?? null;
-    const providerForPiAi =
-      provider === "nvidia" || provider === "minimax" || provider === "ollama"
-        ? "openai"
-        : provider;
+    if (provider === "minimax") {
+      return {
+        provider,
+        model: resolveMinimaxModel({
+          modelId,
+          context: {
+            messages: [{ role: "user", content: pageContent, timestamp: Date.now() }],
+          },
+          openaiBaseUrlOverride: baseUrl,
+        }),
+      };
+    }
+    const providerForPiAi = provider === "nvidia" || provider === "ollama" ? "openai" : provider;
     const forceOpenAiChatCompletions =
-      provider === "nvidia" || provider === "minimax" || provider === "ollama"
+      provider === "nvidia" || provider === "ollama"
         ? true
         : provider === "openai"
           ? openaiUseChatCompletions

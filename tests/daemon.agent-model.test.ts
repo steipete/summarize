@@ -12,6 +12,7 @@ const emptyApiKeys = {
   xaiApiKey: null,
   zaiApiKey: null,
   nvidiaApiKey: null,
+  minimaxApiKey: null,
 };
 
 describe("daemon agent model resolution", () => {
@@ -82,6 +83,34 @@ describe("daemon agent model resolution", () => {
     expect(resolved.provider).toBe("nvidia");
     expect(resolved.model?.api).toBe("openai-completions");
     expect(resolved.model?.baseUrl).toBe("https://integrate.api.nvidia.com/v1");
+  });
+
+  it("keeps MiniMax agent metadata and compatibility settings", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-agent-minimax-"));
+
+    const resolved = await resolveAgentModel({
+      env: {
+        HOME: home,
+        MINIMAX_API_KEY: "sk-minimax",
+        MINIMAX_BASE_URL: "https://minimax.example.com/v1",
+      },
+      pageContent: "Hello",
+      modelOverride: "minimax/MiniMax-M3",
+    });
+
+    expect(resolved.provider).toBe("minimax");
+    expect(resolved.model).toMatchObject({
+      provider: "minimax",
+      api: "openai-completions",
+      baseUrl: "https://minimax.example.com/v1",
+      compat: {
+        supportsStore: false,
+        supportsDeveloperRole: false,
+        supportsReasoningEffort: false,
+        maxTokensField: "max_completion_tokens",
+        supportsStrictMode: false,
+      },
+    });
   });
 
   it("keeps Ollama agent models on chat completions", async () => {
