@@ -111,7 +111,7 @@ export const DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 
 export const DEFAULT_CLI_MODELS: Record<CliProvider, string | null> = {
   claude: "sonnet",
-  codex: "gpt-5.2",
+  codex: null,
   gemini: "flash",
   agent: "auto",
   openclaw: "main",

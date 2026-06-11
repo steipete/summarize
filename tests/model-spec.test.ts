@@ -19,12 +19,13 @@ describe("model spec parsing", () => {
     expect(parsed.cliModel).toBe("sonnet");
   });
 
-  it("defaults cli models when missing", () => {
+  it("uses the Codex runtime default model when missing", () => {
     const parsed = parseRequestedModelId("cli/codex");
     expect(parsed.kind).toBe("fixed");
     expect(parsed.transport).toBe("cli");
+    expect(parsed.userModelId).toBe("cli/codex");
     expect(parsed.cliProvider).toBe("codex");
-    expect(parsed.cliModel).toBe("gpt-5.2");
+    expect(parsed.cliModel).toBeNull();
     expect(parsed.requiredEnv).toBe("CLI_CODEX");
   });
 

@@ -35,7 +35,6 @@ import {
   getPanelSlideDescriptions,
   getPanelSlidesSummaryComplete,
   getPanelSlidesSummaryMarkdown,
-  getPanelSlidesSummaryModel,
   getPanelSlidesTimeline,
   getPanelSummaryMarkdown,
   getPanelTranscriptTimedText,
@@ -141,7 +140,6 @@ test.describe("youtube e2e", () => {
 
         await expect.poll(async () => await getPanelPhase(page), { timeout: 420_000 }).toBe("idle");
 
-        const model = (await getPanelModel(page))?.trim() || "auto";
         const cliSummary = runCliSummary(url, [
           "--json",
           "--length",
@@ -149,7 +147,7 @@ test.describe("youtube e2e", () => {
           "--language",
           "auto",
           "--model",
-          model,
+          "auto",
           "--video-mode",
           "transcript",
           "--timestamps",
@@ -253,7 +251,6 @@ test.describe("youtube e2e", () => {
         await expect
           .poll(async () => (await getPanelModel(page)) ?? "", { timeout: 120_000 })
           .not.toBe("");
-        const model = (await getPanelModel(page)) ?? "auto";
 
         await expect
           .poll(async () => (await getPanelSlidesTimeline(page)).length, { timeout: 600_000 })
@@ -294,7 +291,6 @@ test.describe("youtube e2e", () => {
           path: testInfo.outputPath(`youtube-slides-${videoId}.png`),
           fullPage: true,
         });
-        const slidesModel = (await getPanelSlidesSummaryModel(page))?.trim() || model;
         const slidesSummaryMarkdown = await getPanelSlidesSummaryMarkdown(page);
         const cliSummary = runCliSummary(url, [
           "--slides",
@@ -307,7 +303,7 @@ test.describe("youtube e2e", () => {
           "--language",
           "auto",
           "--model",
-          slidesModel,
+          "auto",
           "--video-mode",
           "transcript",
           "--timestamps",

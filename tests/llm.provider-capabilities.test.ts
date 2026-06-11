@@ -24,6 +24,7 @@ describe("llm provider capabilities", () => {
       "opencode",
       "copilot",
     ]);
+    expect(DEFAULT_CLI_MODELS.codex).toBeNull();
     expect(DEFAULT_CLI_MODELS.gemini).toBe("flash");
     expect(DEFAULT_CLI_MODELS.openclaw).toBe("main");
     expect(DEFAULT_CLI_MODELS.opencode).toBeNull();
