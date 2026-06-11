@@ -212,9 +212,9 @@ export default defineBackground(() => {
     sendStatus(session, "Capturing slides in browser...");
     delete (
       globalThis as typeof globalThis & {
-        __summarizeBrowserFfmpegFallback?: string;
+        __summarizeBrowserMediaFallback?: string;
       }
-    ).__summarizeBrowserFfmpegFallback;
+    ).__summarizeBrowserMediaFallback;
     const result = await (async () => {
       try {
         const transcript =
@@ -232,14 +232,14 @@ export default defineBackground(() => {
           transcriptTimedText: transcript?.ok ? transcript.transcriptTimedText : null,
           captureMode: isUserInitiatedCapture ? "seek" : "current",
           onStatus: (status) => sendStatus(session, status),
-          onFfmpegFallback: (error) => {
+          onMediaDecoderFallback: (error) => {
             (
               globalThis as typeof globalThis & {
-                __summarizeBrowserFfmpegFallback?: string;
+                __summarizeBrowserMediaFallback?: string;
               }
-            ).__summarizeBrowserFfmpegFallback = error;
+            ).__summarizeBrowserMediaFallback = error;
             logExtensionEvent({
-              event: "slides.browser-ffmpeg.fallback",
+              event: "slides.browser-media.fallback",
               detail: { error, url: tabUrl },
               scope: "slides",
               level: "verbose",

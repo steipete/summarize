@@ -6,7 +6,7 @@
   "scripts": {
     "build": "wxt build",
     "build:all": "pnpm build && pnpm build:firefox",
-    "build:firefox": "BROWSER=firefox wxt build && node scripts/remove-firefox-ffmpeg-wasm.mjs",
+    "build:firefox": "BROWSER=firefox wxt build",
     "dev": "wxt dev",
     "dev:firefox": "BROWSER=firefox wxt dev",
     "lint": "wxt lint",
@@ -22,6 +22,7 @@
     "@steipete/summarize-core": "workspace:*",
     "googlevideo": "4.0.4",
     "markdown-it": "^14.2.0",
+    "mediabunny": "1.46.0",
     "preact": "10.29.2"
   },
   "devDependencies": {

@@ -5,7 +5,7 @@
 ### Features
 
 - YouTube transcripts: fall back to Android VR direct audio resolution and configured transcription when `yt-dlp` is missing or fails, while preserving explicit `--youtube yt-dlp` and diarization requirements.
-- Chrome extension: transcribe captionless YouTube videos without the daemon using same-origin Android VR audio, captured SABR fallback, native browser decoding with FFmpeg WebAssembly fallback, and browser-cached multilingual Whisper Tiny.
+- Chrome extension: transcribe captionless YouTube videos without the daemon using same-origin Android VR audio, captured SABR fallback, WebAudio with MediaBunny fallback, and browser-cached multilingual Whisper Tiny.
 
 ### Fixes
 
@@ -13,6 +13,7 @@
 - CLI: use the Codex runtime default model instead of pinning auto fallback to an obsolete model.
 - Daemon: defer cache shutdown until in-flight summary work drains, preventing late writes through finalized SQLite statements.
 - Dependencies: replace Ora, tslog, and the FAL SDK with focused local implementations while retaining spinner, daemon logging, retry, multipart upload, and FAL transcription behavior.
+- Chrome extension: replace the bundled browser FFmpeg WebAssembly runtime with MediaBunny and native WebCodecs, adding AV1 frame extraction while reducing the packaged extension size.
 
 ## 0.17.1 - 2026-06-11
 

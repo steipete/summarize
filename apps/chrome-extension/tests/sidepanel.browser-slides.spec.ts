@@ -3,6 +3,7 @@ import { createServer as createHttpServer } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
+import { createSampleVideo, hasFfmpeg } from "./helpers/daemon-fixtures";
 import {
   activateTabByUrl,
   assertNoErrors,
@@ -29,9 +30,10 @@ test("sidepanel captures local video slides in browser runtime", async ({
   if (testInfo.project.name === "firefox") {
     test.skip(true, "Browser slide capture is validated in Chromium.");
   }
+  test.skip(!hasFfmpeg(), "FFmpeg is required to generate the H.264 browser fixture.");
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "summarize-browser-slides-"));
   const videoPath = path.join(tmpDir, "sample.mp4");
-  fs.copyFileSync(path.join(import.meta.dirname, "fixtures", "ffmpeg-wasm-sample.mp4"), videoPath);
+  createSampleVideo(videoPath);
 
   const html = `<!doctype html>
 <html>
@@ -184,11 +186,11 @@ test("sidepanel captures local video slides in browser runtime", async ({
     }
     const slideSourceKind = (browserSlidesResult as { slides?: { sourceKind?: string } }).slides
       ?.sourceKind;
-    if (slideSourceKind !== "browser-ffmpeg-wasm") {
+    if (slideSourceKind !== "browser-mediabunny") {
       const fallback = await background.evaluate(
-        () => globalThis.__summarizeBrowserFfmpegFallback ?? null,
+        () => globalThis.__summarizeBrowserMediaFallback ?? null,
       );
-      throw new Error(`Expected FFmpeg WebAssembly slides, got ${slideSourceKind}: ${fallback}`);
+      throw new Error(`Expected MediaBunny slides, got ${slideSourceKind}: ${fallback}`);
     }
 
     await expect

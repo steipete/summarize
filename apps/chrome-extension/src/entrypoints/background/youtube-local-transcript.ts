@@ -1,4 +1,4 @@
-import { ensureOffscreenDocument } from "./browser-ffmpeg";
+import { ensureOffscreenDocument } from "./browser-media";
 import { getYoutubeMediaContextInTab } from "./youtube-media";
 import {
   getCapturedYoutubeSabrRequest,

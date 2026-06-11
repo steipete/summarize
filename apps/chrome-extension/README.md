@@ -59,7 +59,7 @@ Step-by-step:
 
 ## Optional Daemon (Pairing)
 
-Chrome Browser mode works without a CLI install or daemon. It can summarize pages, use bundled FFmpeg WebAssembly for fetchable video slides up to 128 MB, and transcribe captionless YouTube videos with local multilingual Whisper. YouTube audio prefers a same-origin Android VR direct-media URL, with the active tab's captured SABR session as fallback. Chrome's native audio decoder is preferred; bundled FFmpeg WebAssembly handles unsupported streams. The Whisper model downloads on first use and is cached by Chrome; offline model bundling is not currently provided. Install the daemon for faster extraction, native tools, configurable transcription providers, OCR, and Firefox media support.
+Chrome Browser mode works without a CLI install or daemon. It can summarize pages, use MediaBunny with native WebCodecs for fetchable video slides up to 128 MB, and transcribe captionless YouTube videos with local multilingual Whisper. YouTube audio prefers a same-origin Android VR direct-media URL, with the active tab's captured SABR session as fallback. Chrome's native audio decoder is preferred; MediaBunny handles supported streams that WebAudio rejects. The Whisper model downloads on first use and is cached by Chrome; offline model bundling is not currently provided. Install the daemon for faster extraction, native tools, configurable transcription providers, OCR, and Firefox media support.
 
 1. Install `summarize` (choose one):
    - `npm i -g @steipete/summarize` (requires Node.js 24+)

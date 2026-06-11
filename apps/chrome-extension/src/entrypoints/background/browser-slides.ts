@@ -1,9 +1,9 @@
 import type { SseSlidesData } from "../../lib/runtime-contracts";
 import {
-  extractBrowserFfmpegFrames,
-  isBrowserFfmpegMediaUrl,
-  type BrowserFfmpegFrame,
-} from "./browser-ffmpeg";
+  extractBrowserMediaFrames,
+  isBrowserMediaUrl,
+  type BrowserMediaFrame,
+} from "./browser-media";
 import type { SlideFrameRestoreSnapshot, SlideFrameResponse } from "./content-script-bridge";
 import type { PrimaryMediaInfo } from "./content-script-bridge";
 
@@ -125,9 +125,9 @@ export async function runBrowserSlidesForTab(args: {
   maxSlides?: number;
   captureMode?: "seek" | "current";
   getMediaInfo?: (tabId: number) => Promise<PrimaryMediaInfo>;
-  extractFramesWithFfmpeg?: typeof extractBrowserFfmpegFrames;
+  extractFramesWithMediaBunny?: typeof extractBrowserMediaFrames;
   onStatus?: ((status: string) => void) | null;
-  onFfmpegFallback?: ((error: string) => void) | null;
+  onMediaDecoderFallback?: ((error: string) => void) | null;
 }): Promise<{ ok: true; runId: string; slides: SseSlidesData } | { ok: false; error: string }> {
   const tabId = args.tab.id;
   if (typeof tabId !== "number") return { ok: false, error: "No active tab to capture." };
@@ -144,10 +144,10 @@ export async function runBrowserSlidesForTab(args: {
   const captureMode = args.captureMode ?? "seek";
   if (captureMode === "seek" && args.getMediaInfo) {
     const media = await args.getMediaInfo(tabId);
-    if (media.ok && isBrowserFfmpegMediaUrl(media.mediaSrc)) {
+    if (media.ok && isBrowserMediaUrl(media.mediaSrc)) {
       const timestamps = chooseTimestamps(media.durationSeconds, args.maxSlides);
       try {
-        const frames = await (args.extractFramesWithFfmpeg ?? extractBrowserFfmpegFrames)({
+        const frames = await (args.extractFramesWithMediaBunny ?? extractBrowserMediaFrames)({
           mediaUrl: media.mediaSrc,
           timestamps,
           onStatus: args.onStatus,
@@ -155,13 +155,13 @@ export async function runBrowserSlidesForTab(args: {
         if (frames.length > 0) {
           return storeBrowserSlides({
             sourceUrl: media.url || args.tab.url || "",
-            sourceKind: "browser-ffmpeg-wasm",
+            sourceKind: "browser-mediabunny",
             transcriptTimedText: args.transcriptTimedText,
-            slides: await ffmpegFramesToSlides(frames),
+            slides: mediaFramesToSlides(frames),
           });
         }
       } catch (error) {
-        args.onFfmpegFallback?.(error instanceof Error ? error.message : String(error));
+        args.onMediaDecoderFallback?.(error instanceof Error ? error.message : String(error));
       }
     }
   }
@@ -238,9 +238,7 @@ export async function runBrowserSlidesForTab(args: {
   }
 }
 
-async function ffmpegFramesToSlides(
-  frames: BrowserFfmpegFrame[],
-): Promise<SseSlidesData["slides"]> {
+function mediaFramesToSlides(frames: BrowserMediaFrame[]): SseSlidesData["slides"] {
   return frames.map((frame, index) => ({
     index: index + 1,
     timestamp: frame.timestamp,

@@ -43,7 +43,7 @@ read_when:
 - When media is detected on a page, the Summarize button gains a dropdown caret (Page/Video or Page/Audio).
 - Selecting Video/Audio forces URL mode + transcript-first extraction for that run only.
 - Selection is not stored.
-- Chrome Browser mode resolves captionless YouTube audio through same-origin Android VR media with captured SABR fallback, decodes it natively or with bundled FFmpeg WebAssembly, and transcribes with browser-cached multilingual Whisper Tiny.
+- Chrome Browser mode resolves captionless YouTube audio through same-origin Android VR media with captured SABR fallback, decodes it through WebAudio or MediaBunny/WebCodecs, and transcribes with browser-cached multilingual Whisper Tiny.
 
 ## Known limits
 

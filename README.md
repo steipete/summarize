@@ -45,7 +45,7 @@ YouTube slide screenshots (from the browser):
 
 Why a daemon/service?
 
-- Browser mode works without the daemon for page summaries, fetchable video slides, and captionless YouTube transcription through bundled FFmpeg WebAssembly plus browser-cached Whisper.
+- Browser mode works without the daemon for page summaries, fetchable video slides through MediaBunny/WebCodecs, and captionless YouTube transcription through WebAudio or MediaBunny plus browser-cached Whisper.
 - The optional daemon on `127.0.0.1` is faster and adds native ffmpeg, configurable transcription providers, OCR, and broader media support.
 - The service autostarts (launchd/systemd/Scheduled Task) so the Side Panel is always ready.
 
@@ -71,7 +71,7 @@ More:
 - Select **Video + Slides** in the Summarize picker.
 - Slides render at the top; expand to full‑width cards with timestamps.
 - Click a slide to seek the video; toggle **Transcript/OCR** when OCR is significant.
-- Browser mode uses bundled FFmpeg WebAssembly for fetchable videos up to 128 MB, then falls back to visible-tab capture.
+- Browser mode uses MediaBunny with native WebCodecs for fetchable videos up to 128 MB, then falls back to visible-tab capture.
 - Daemon mode adds `yt-dlp`, native ffmpeg, and optional `tesseract` OCR.
 
 ### Advanced (unpacked / dev)
