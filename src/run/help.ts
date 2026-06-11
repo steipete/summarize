@@ -118,7 +118,7 @@ export function buildProgram() {
     .option("--retries <count>", "LLM retry attempts on timeout (default: 1).", "1")
     .option(
       "--model <model>",
-      "LLM model id: auto, <name>, cli/<provider>/<model>, xai/..., openai/..., nvidia/..., google/..., anthropic/..., zai/... or openrouter/<author>/<slug> (default: auto)",
+      "LLM model id: auto, <name>, cli/<provider>/<model>, xai/..., openai/..., nvidia/..., minimax/..., google/..., anthropic/..., zai/... or openrouter/<author>/<slug> (default: auto)",
       undefined,
     )
     .option(
@@ -289,6 +289,8 @@ ${heading("Env Vars")}
   NVIDIA_API_KEY        optional (required for nvidia/... models)
   NGC_API_KEY           optional (alias for NVIDIA_API_KEY)
   NVIDIA_BASE_URL       optional (override NVIDIA OpenAI-compatible API endpoint)
+  MINIMAX_API_KEY       optional (required for minimax/... models)
+  MINIMAX_BASE_URL      optional (override MiniMax OpenAI-compatible API endpoint)
   OPENROUTER_API_KEY    optional (routes openai/... models through OpenRouter)
   GITHUB_TOKEN          optional (required for github-copilot/... models; GH_TOKEN also works)
   Z_AI_API_KEY          optional (required for zai/... models)

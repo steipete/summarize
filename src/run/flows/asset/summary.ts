@@ -257,6 +257,7 @@ export type AssetSummaryContext = {
     xaiApiKey: string | null;
     apiKey: string | null;
     nvidiaApiKey: string | null;
+    minimaxApiKey: string | null;
     openrouterApiKey: string | null;
     apifyToken: string | null;
     firecrawlConfigured: boolean;
@@ -272,6 +273,7 @@ export type AssetSummaryContext = {
     zaiApiKey: string | null;
     zaiBaseUrl: string;
     nvidiaBaseUrl: string;
+    minimaxBaseUrl: string;
     ollamaBaseUrl: string;
     assemblyaiApiKey: string | null;
     openaiApiKey: string | null;

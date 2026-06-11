@@ -200,19 +200,23 @@ export async function streamChatResponse({
             ? envState.zaiApiKey
             : requested.requiredEnv === "NVIDIA_API_KEY"
               ? envState.nvidiaApiKey
-              : requested.requiredEnv === "GITHUB_TOKEN"
-                ? resolveGitHubModelsApiKey(env)
-                : null,
+              : requested.requiredEnv === "MINIMAX_API_KEY"
+                ? envState.minimaxApiKey
+                : requested.requiredEnv === "GITHUB_TOKEN"
+                  ? resolveGitHubModelsApiKey(env)
+                  : null,
         openaiBaseUrlOverride:
           requested.requiredEnv === "Z_AI_API_KEY"
             ? envState.zaiBaseUrl
             : requested.requiredEnv === "NVIDIA_API_KEY"
               ? envState.nvidiaBaseUrl
-              : requested.requiredEnv === "OLLAMA_BASE_URL"
-                ? envState.ollamaBaseUrl
-                : requested.provider === "openai"
-                  ? (requested.openaiBaseUrlOverride ?? envState.providerBaseUrls.openai)
-                  : (requested.openaiBaseUrlOverride ?? null),
+              : requested.requiredEnv === "MINIMAX_API_KEY"
+                ? envState.minimaxBaseUrl
+                : requested.requiredEnv === "OLLAMA_BASE_URL"
+                  ? envState.ollamaBaseUrl
+                  : requested.provider === "openai"
+                    ? (requested.openaiBaseUrlOverride ?? envState.providerBaseUrls.openai)
+                    : (requested.openaiBaseUrlOverride ?? null),
         forceChatCompletions:
           typeof requested.forceChatCompletions === "boolean"
             ? requested.forceChatCompletions

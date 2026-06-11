@@ -77,18 +77,24 @@ export async function buildAssetModelAttempts({
             openaiBaseUrlOverride: ctx.apiStatus.nvidiaBaseUrl,
             forceChatCompletions: true,
           }
-        : ctx.fixedModelSpec.requiredEnv === "OLLAMA_BASE_URL"
+        : ctx.fixedModelSpec.requiredEnv === "MINIMAX_API_KEY"
           ? {
-              openaiBaseUrlOverride: ctx.apiStatus.ollamaBaseUrl,
+              openaiApiKeyOverride: ctx.apiStatus.minimaxApiKey,
+              openaiBaseUrlOverride: ctx.apiStatus.minimaxBaseUrl,
               forceChatCompletions: true,
             }
-          : ctx.fixedModelSpec.requiredEnv === "GITHUB_TOKEN"
+          : ctx.fixedModelSpec.requiredEnv === "OLLAMA_BASE_URL"
             ? {
-                openaiApiKeyOverride: resolveGitHubModelsApiKey(ctx.env),
-                openaiBaseUrlOverride: ctx.fixedModelSpec.openaiBaseUrlOverride ?? null,
+                openaiBaseUrlOverride: ctx.apiStatus.ollamaBaseUrl,
                 forceChatCompletions: true,
               }
-            : {};
+            : ctx.fixedModelSpec.requiredEnv === "GITHUB_TOKEN"
+              ? {
+                  openaiApiKeyOverride: resolveGitHubModelsApiKey(ctx.env),
+                  openaiBaseUrlOverride: ctx.fixedModelSpec.openaiBaseUrlOverride ?? null,
+                  forceChatCompletions: true,
+                }
+              : {};
   return [
     {
       transport: ctx.fixedModelSpec.transport === "openrouter" ? "openrouter" : "native",

@@ -26,6 +26,7 @@ import {
   resolveAnthropicModel,
   resolveGoogleModel,
   resolveOpenAiModel,
+  resolveMinimaxModel,
   resolveNvidiaModel,
   resolveOllamaModel,
   resolveXaiModel,
@@ -34,6 +35,7 @@ import {
 import { completeOpenAiText, resolveOpenAiClientConfig } from "./providers/openai.js";
 import { extractText } from "./providers/shared.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
+import { providerStripsReasoningTags, stripReasoningTags } from "./reasoning-tags.js";
 import type { LlmTokenUsage } from "./types.js";
 import { normalizeTokenUsage } from "./usage.js";
 export { streamTextWithContext } from "./generate-text-stream.js";
@@ -180,7 +182,10 @@ export async function generateTextWithModelId({
       apiKey,
       signal,
     });
-    const text = extractText(result);
+    const rawText = extractText(result);
+    const text = providerStripsReasoningTags(parsed.provider)
+      ? stripReasoningTags(rawText)
+      : rawText;
     if (!text) throw new Error(`LLM returned an empty summary (model ${parsed.canonical}).`);
     return { text, usage: normalizeTokenUsage(result.usage) };
   };
@@ -297,6 +302,32 @@ export async function generateTextWithModelId({
           requestOptions,
         });
         const model = resolveNvidiaModel({
+          modelId: parsed.model,
+          context,
+          openaiBaseUrlOverride: openaiConfig.baseURL,
+        });
+        const result = await completeSimpleText({
+          model,
+          apiKey: openaiConfig.apiKey,
+          signal: controller.signal,
+        });
+        return {
+          text: result.text,
+          canonicalModelId: parsed.canonical,
+          provider: parsed.provider,
+          usage: result.usage,
+        };
+      }
+
+      if (parsed.provider === "minimax") {
+        const openaiConfig = resolveOpenAiCompatibleClientConfigForProvider({
+          provider: "minimax",
+          openaiApiKey: apiKeys.openaiApiKey,
+          openrouterApiKey: apiKeys.openrouterApiKey,
+          openaiBaseUrlOverride,
+          requestOptions,
+        });
+        const model = resolveMinimaxModel({
           modelId: parsed.model,
           context,
           openaiBaseUrlOverride: openaiConfig.baseURL,

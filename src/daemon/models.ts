@@ -130,6 +130,7 @@ export async function buildModelPickerOptions({
     xai: boolean;
     openai: boolean;
     nvidia: boolean;
+    minimax: boolean;
     google: boolean;
     anthropic: boolean;
     openrouter: boolean;
@@ -154,6 +155,7 @@ export async function buildModelPickerOptions({
     xai: Boolean(envState.xaiApiKey),
     openai: Boolean(envState.apiKey),
     nvidia: Boolean(envState.nvidiaApiKey),
+    minimax: Boolean(envState.minimaxApiKey),
     google: envState.googleConfigured,
     anthropic: envState.anthropicConfigured,
     openrouter: envState.openrouterConfigured,
@@ -281,6 +283,22 @@ export async function buildModelPickerOptions({
       });
       for (const id of discovered) {
         options.push({ id: `nvidia/${id}`, label: `NVIDIA (${baseUrlHost}): ${id}` });
+      }
+    }
+  }
+
+  if (providers.minimax) {
+    const baseUrl = envState.minimaxBaseUrl;
+    const baseUrlHost = describeBaseUrlHost(baseUrl);
+    if (baseUrlHost) {
+      const discovered = await discoverOpenAiCompatibleModelIds({
+        baseUrl,
+        apiKey: envState.minimaxApiKey,
+        fetchImpl,
+        timeoutMs: 1200,
+      });
+      for (const id of discovered) {
+        options.push({ id: `minimax/${id}`, label: `MiniMax (${baseUrlHost}): ${id}` });
       }
     }
   }

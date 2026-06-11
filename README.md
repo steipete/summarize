@@ -275,6 +275,7 @@ Examples:
 - `xai/grok-4-fast-non-reasoning`
 - `google/gemini-3-flash`
 - `zai/glm-4.7`
+- `minimax/MiniMax-M3`
 - `openrouter/openai/gpt-5-mini` (force OpenRouter)
 
 Note: some models/providers do not support streaming or certain file media types. When that happens, the CLI prints a friendly error (or auto-disables streaming for that model when supported by the provider).
@@ -661,6 +662,7 @@ Set the key matching your chosen `--model`:
 
 - `OPENAI_API_KEY` (for `openai/...`)
 - `NVIDIA_API_KEY` (for `nvidia/...`)
+- `MINIMAX_API_KEY` (for `minimax/...`)
 - `ANTHROPIC_API_KEY` (for `anthropic/...`)
 - `XAI_API_KEY` (for `xai/...`)
 - `Z_AI_API_KEY` (for `zai/...`; supports `ZAI_API_KEY` alias)
@@ -743,6 +745,18 @@ Z.AI (OpenAI-compatible):
 
 - `Z_AI_API_KEY=...` (or `ZAI_API_KEY=...`)
 - Optional base URL override: `Z_AI_BASE_URL=...`
+
+MiniMax (OpenAI-compatible):
+
+- Set `MINIMAX_API_KEY=...`
+- Optional base URL override: `MINIMAX_BASE_URL=...` (default `https://api.minimax.io/v1`; use the
+  China endpoint or a proxy if needed)
+- Pick a MiniMax model id (e.g. `MiniMax-M3`, `MiniMax-M2.5`) using MiniMax's exact casing
+
+```bash
+export MINIMAX_API_KEY="..."
+summarize "https://example.com" --model minimax/MiniMax-M3
+```
 
 Optional services:
 

@@ -10,6 +10,7 @@ export type ModelAttemptRequiredEnv =
   | "ANTHROPIC_API_KEY"
   | "OPENROUTER_API_KEY"
   | "Z_AI_API_KEY"
+  | "MINIMAX_API_KEY"
   | "GITHUB_TOKEN"
   | "OLLAMA_BASE_URL"
   | "CLI_CLAUDE"

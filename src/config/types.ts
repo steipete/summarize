@@ -109,6 +109,7 @@ export type NvidiaConfig = {
 export type ApiKeysConfig = {
   openai?: string;
   nvidia?: string;
+  minimax?: string;
   anthropic?: string;
   google?: string;
   xai?: string;
@@ -164,6 +165,17 @@ export type OllamaConfig = {
    * Default: http://localhost:11434/v1
    *
    * Prefer env `OLLAMA_BASE_URL` when you need per-run overrides.
+   */
+  baseUrl?: string;
+};
+
+export type MinimaxConfig = {
+  /**
+   * Override the MiniMax OpenAI-compatible API base URL.
+   *
+   * Default: https://api.minimax.io/v1
+   *
+   * Prefer env `MINIMAX_BASE_URL` when you need per-run overrides.
    */
   baseUrl?: string;
 };
@@ -272,6 +284,7 @@ export type SummarizeConfig = {
   cli?: CliConfig;
   openai?: OpenAiConfig;
   nvidia?: NvidiaConfig;
+  minimax?: MinimaxConfig;
   anthropic?: AnthropicConfig;
   google?: GoogleConfig;
   xai?: XaiConfig;

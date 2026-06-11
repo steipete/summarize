@@ -16,6 +16,7 @@ export type GatewayProvider =
   | "anthropic"
   | "zai"
   | "nvidia"
+  | "minimax"
   | "github-copilot"
   | "ollama";
 
@@ -27,6 +28,7 @@ export type RequiredModelEnv =
   | "ANTHROPIC_API_KEY"
   | "OPENROUTER_API_KEY"
   | "Z_AI_API_KEY"
+  | "MINIMAX_API_KEY"
   | "GITHUB_TOKEN"
   | "OLLAMA_BASE_URL"
   | "CLI_CLAUDE"
@@ -83,6 +85,12 @@ const GATEWAY_PROVIDER_PROFILES: Record<GatewayProvider, GatewayProviderProfile>
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
   },
+  minimax: {
+    requiredEnv: "MINIMAX_API_KEY",
+    supportsDocuments: false,
+    supportsStreaming: true,
+    supportsVideoUnderstanding: false,
+  },
   "github-copilot": {
     requiredEnv: "GITHUB_TOKEN",
     supportsDocuments: false,
@@ -98,6 +106,8 @@ const GATEWAY_PROVIDER_PROFILES: Record<GatewayProvider, GatewayProviderProfile>
 };
 
 export const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434/v1";
+
+export const DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 
 export const DEFAULT_CLI_MODELS: Record<CliProvider, string | null> = {
   claude: "sonnet",
@@ -232,7 +242,7 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
   forceChatCompletions,
   requestOptions,
 }: {
-  provider: "openai" | "zai" | "nvidia" | "github-copilot" | "ollama";
+  provider: "openai" | "zai" | "nvidia" | "minimax" | "github-copilot" | "ollama";
   openaiApiKey: string | null;
   openrouterApiKey: string | null;
   forceOpenRouter?: boolean;
@@ -280,15 +290,22 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
     throw new Error(
       provider === "zai"
         ? "Missing Z_AI_API_KEY for zai/... model"
-        : "Missing NVIDIA_API_KEY for nvidia/... model",
+        : provider === "minimax"
+          ? "Missing MINIMAX_API_KEY for minimax/... model"
+          : "Missing NVIDIA_API_KEY for nvidia/... model",
     );
   }
 
+  const defaultBaseUrl =
+    provider === "zai"
+      ? "https://api.z.ai/api/paas/v4"
+      : provider === "minimax"
+        ? DEFAULT_MINIMAX_BASE_URL
+        : "https://integrate.api.nvidia.com/v1";
+
   return {
     apiKey,
-    baseURL:
-      openaiBaseUrlOverride ??
-      (provider === "zai" ? "https://api.z.ai/api/paas/v4" : "https://integrate.api.nvidia.com/v1"),
+    baseURL: openaiBaseUrlOverride ?? defaultBaseUrl,
     useChatCompletions: true,
     isOpenRouter: false,
     ...(requestOptions ? { requestOptions } : {}),

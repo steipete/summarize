@@ -7,6 +7,7 @@ export type LlmProvider =
   | "anthropic"
   | "zai"
   | "nvidia"
+  | "minimax"
   | "github-copilot"
   | "ollama"
   | "cli";

@@ -173,6 +173,17 @@ describe("model spec parsing", () => {
     expect(nvidia.requiredEnv).toBe("NVIDIA_API_KEY");
     expect(nvidia.llmModelId).toBe("nvidia/z-ai/glm5");
 
+    const minimax = parseRequestedModelId("minimax/MiniMax-M3");
+    expect(minimax.kind).toBe("fixed");
+    expect(minimax.transport).toBe("native");
+    if (minimax.kind === "fixed" && minimax.transport === "native") {
+      expect(minimax.provider).toBe("minimax");
+      expect(minimax.requiredEnv).toBe("MINIMAX_API_KEY");
+      expect(minimax.llmModelId).toBe("minimax/MiniMax-M3");
+      expect(minimax.openaiBaseUrlOverride).toBe("https://api.minimax.io/v1");
+      expect(minimax.forceChatCompletions).toBe(true);
+    }
+
     const ollama = parseRequestedModelId("ollama/qwen3:14b");
     expect(ollama.kind).toBe("fixed");
     expect(ollama.transport).toBe("native");
@@ -201,6 +212,10 @@ describe("model spec parsing", () => {
 
   it("rejects empty nvidia model id", () => {
     expect(() => parseRequestedModelId("nvidia/")).toThrow(/missing the model id/);
+  });
+
+  it("rejects empty minimax model id", () => {
+    expect(() => parseRequestedModelId("minimax/")).toThrow(/missing the model id/);
   });
 
   it("rejects empty ollama model id", () => {

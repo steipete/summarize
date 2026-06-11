@@ -595,6 +595,7 @@ export function parseApiKeysConfig(
   const allowed = [
     "openai",
     "nvidia",
+    "minimax",
     "anthropic",
     "google",
     "xai",

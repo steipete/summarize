@@ -85,6 +85,7 @@ describe("llm provider capabilities", () => {
     expect(resolveRequiredEnvForModelId("nvidia/meta/llama-3.1-8b-instruct")).toBe(
       "NVIDIA_API_KEY",
     );
+    expect(resolveRequiredEnvForModelId("minimax/MiniMax-M3")).toBe("MINIMAX_API_KEY");
     expect(resolveRequiredEnvForModelId("github-copilot/gpt-4.1")).toBe("GITHUB_TOKEN");
     expect(resolveRequiredEnvForModelId("ollama/qwen3:14b")).toBe("OLLAMA_BASE_URL");
 
@@ -185,6 +186,14 @@ describe("llm provider capabilities", () => {
         openaiBaseUrlOverride: null,
       }),
     ).toThrow(/Missing NVIDIA_API_KEY/);
+    expect(() =>
+      resolveOpenAiCompatibleClientConfigForProvider({
+        provider: "minimax",
+        openaiApiKey: null,
+        openrouterApiKey: null,
+        openaiBaseUrlOverride: null,
+      }),
+    ).toThrow(/Missing MINIMAX_API_KEY/);
     expect(() =>
       resolveOpenAiCompatibleClientConfigForProvider({
         provider: "github-copilot",

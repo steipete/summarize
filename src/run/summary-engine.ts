@@ -53,6 +53,7 @@ export type SummaryEngineDeps = {
       | "anthropic"
       | "zai"
       | "nvidia"
+      | "minimax"
       | "github-copilot"
       | "ollama"
       | "cli";
@@ -80,6 +81,10 @@ export type SummaryEngineDeps = {
     baseUrl: string;
   };
   nvidia: {
+    apiKey: string | null;
+    baseUrl: string;
+  };
+  minimax: {
     apiKey: string | null;
     baseUrl: string;
   };
@@ -120,6 +125,14 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
         ...attempt,
         openaiApiKeyOverride: deps.nvidia.apiKey,
         openaiBaseUrlOverride: deps.nvidia.baseUrl,
+        forceChatCompletions: true,
+      };
+    }
+    if (modelIdLower.startsWith("minimax/")) {
+      return {
+        ...attempt,
+        openaiApiKeyOverride: deps.minimax.apiKey,
+        openaiBaseUrlOverride: deps.minimax.baseUrl,
         forceChatCompletions: true,
       };
     }
@@ -187,6 +200,9 @@ export function createSummaryEngine(deps: SummaryEngineDeps) {
     }
     if (requiredEnv === "Z_AI_API_KEY") {
       return Boolean(deps.zai.apiKey);
+    }
+    if (requiredEnv === "MINIMAX_API_KEY") {
+      return Boolean(deps.minimax.apiKey);
     }
     if (requiredEnv === "XAI_API_KEY") {
       return Boolean(deps.apiKeys.xaiApiKey);

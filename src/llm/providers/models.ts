@@ -84,6 +84,28 @@ export function resolveNvidiaModel({
   };
 }
 
+export function resolveMinimaxModel({
+  modelId,
+  context,
+  openaiBaseUrlOverride,
+}: {
+  modelId: string;
+  context: Context;
+  openaiBaseUrlOverride?: string | null;
+}): Model<Api> {
+  const allowImages = wantsImages(context);
+  // The MiniMax API is OpenAI-compatible; treat it like an OpenAI gateway.
+  const base = tryGetModel("openai", modelId);
+  const api = "openai-completions";
+  const baseUrl = openaiBaseUrlOverride ?? base?.baseUrl ?? "https://api.minimax.io/v1";
+  return {
+    ...(base ?? createSyntheticModel({ provider: "openai", modelId, api, baseUrl, allowImages })),
+    api,
+    baseUrl,
+    input: allowImages ? ["text", "image"] : ["text"],
+  };
+}
+
 export function resolveOllamaModel({
   modelId,
   context,

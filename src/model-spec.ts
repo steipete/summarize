@@ -25,6 +25,7 @@ export type FixedModelSpec =
         | "ANTHROPIC_API_KEY"
         | "Z_AI_API_KEY"
         | "NVIDIA_API_KEY"
+        | "MINIMAX_API_KEY"
         | "GITHUB_TOKEN"
         | "OLLAMA_BASE_URL";
       openaiBaseUrlOverride?: string | null;
@@ -136,6 +137,26 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       requiredEnv: "NVIDIA_API_KEY",
       // Default; can be overridden at runtime via NVIDIA_BASE_URL / config.nvidia.baseUrl.
       openaiBaseUrlOverride: "https://integrate.api.nvidia.com/v1",
+      forceChatCompletions: true,
+    };
+  }
+
+  if (lower.startsWith("minimax/")) {
+    const model = trimmed.slice("minimax/".length).trim();
+    if (model.length === 0) {
+      throw new Error("Invalid model id: minimax/… is missing the model id");
+    }
+    return {
+      kind: "fixed",
+      transport: "native",
+      userModelId: `minimax/${model}`,
+      llmModelId: `minimax/${model}`,
+      provider: "minimax",
+      openrouterProviders: null,
+      forceOpenRouter: false,
+      requiredEnv: "MINIMAX_API_KEY",
+      // Default; can be overridden at runtime via MINIMAX_BASE_URL / config.minimax.baseUrl.
+      openaiBaseUrlOverride: "https://api.minimax.io/v1",
       forceChatCompletions: true,
     };
   }
@@ -264,7 +285,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       };
     }
     throw new Error(
-      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., anthropic/..., xai/..., zai/..., openrouter/... or cli/....`,
+      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., anthropic/..., xai/..., zai/..., nvidia/..., minimax/..., openrouter/... or cli/....`,
     );
   }
 
@@ -280,6 +301,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     | "ANTHROPIC_API_KEY"
     | "Z_AI_API_KEY"
     | "NVIDIA_API_KEY"
+    | "MINIMAX_API_KEY"
     | "GITHUB_TOKEN"
     | "OLLAMA_BASE_URL"
   >;

@@ -35,6 +35,7 @@ export type MarkdownConverters = {
     | "anthropic"
     | "zai"
     | "nvidia"
+    | "minimax"
     | "github-copilot"
     | "ollama";
   markdownModel: MarkdownModel | null;
@@ -98,6 +99,17 @@ export function createMarkdownConverters(
           requiredEnv: ctx.model.fixedModelSpec.requiredEnv,
           openaiApiKeyOverride: ctx.model.apiStatus.nvidiaApiKey,
           openaiBaseUrlOverride: ctx.model.apiStatus.nvidiaBaseUrl,
+          forceChatCompletions: true,
+          requestOptions: ctx.model.requestedModel.requestOptions,
+        };
+      }
+      if (ctx.model.fixedModelSpec?.requiredEnv === "MINIMAX_API_KEY") {
+        return {
+          llmModelId: ctx.model.requestedModel.llmModelId,
+          forceOpenRouter: false,
+          requiredEnv: ctx.model.fixedModelSpec.requiredEnv,
+          openaiApiKeyOverride: ctx.model.apiStatus.minimaxApiKey,
+          openaiBaseUrlOverride: ctx.model.apiStatus.minimaxBaseUrl,
           forceChatCompletions: true,
           requestOptions: ctx.model.requestedModel.requestOptions,
         };
@@ -186,6 +198,8 @@ export function createMarkdownConverters(
     if (markdownModel.requiredEnv === "Z_AI_API_KEY") return Boolean(ctx.model.apiStatus.zaiApiKey);
     if (markdownModel.requiredEnv === "NVIDIA_API_KEY")
       return Boolean(ctx.model.apiStatus.nvidiaApiKey);
+    if (markdownModel.requiredEnv === "MINIMAX_API_KEY")
+      return Boolean(ctx.model.apiStatus.minimaxApiKey);
     if (markdownModel.requiredEnv === "GITHUB_TOKEN")
       return Boolean(resolveGitHubModelsApiKey(ctx.io.envForRun));
     if (markdownModel.requiredEnv === "OLLAMA_BASE_URL") return true;
@@ -201,7 +215,9 @@ export function createMarkdownConverters(
             ? Boolean(ctx.model.apiStatus.zaiApiKey)
             : parsed.provider === "nvidia"
               ? Boolean(ctx.model.apiStatus.nvidiaApiKey)
-              : Boolean(ctx.model.apiStatus.apiKey);
+              : parsed.provider === "minimax"
+                ? Boolean(ctx.model.apiStatus.minimaxApiKey)
+                : Boolean(ctx.model.apiStatus.apiKey);
   })();
 
   if (
@@ -213,6 +229,7 @@ export function createMarkdownConverters(
       if (markdownModel?.forceOpenRouter) return "OPENROUTER_API_KEY";
       if (markdownModel?.requiredEnv === "Z_AI_API_KEY") return "Z_AI_API_KEY";
       if (markdownModel?.requiredEnv === "NVIDIA_API_KEY") return "NVIDIA_API_KEY";
+      if (markdownModel?.requiredEnv === "MINIMAX_API_KEY") return "MINIMAX_API_KEY";
       if (markdownModel?.requiredEnv === "GITHUB_TOKEN") return "GITHUB_TOKEN (or GH_TOKEN)";
       if (markdownModel?.requiredEnv === "OLLAMA_BASE_URL") return "OLLAMA_BASE_URL";
       if (markdownModel) {
@@ -227,9 +244,11 @@ export function createMarkdownConverters(
                 ? "Z_AI_API_KEY"
                 : parsed.provider === "nvidia"
                   ? "NVIDIA_API_KEY"
-                  : parsed.provider === "github-copilot"
-                    ? "GITHUB_TOKEN (or GH_TOKEN)"
-                    : "OPENAI_API_KEY";
+                  : parsed.provider === "minimax"
+                    ? "MINIMAX_API_KEY"
+                    : parsed.provider === "github-copilot"
+                      ? "GITHUB_TOKEN (or GH_TOKEN)"
+                      : "OPENAI_API_KEY";
       }
       return "GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY)";
     })();

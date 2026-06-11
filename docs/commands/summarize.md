@@ -109,7 +109,7 @@ If `[input]` is omitted, summarize prints concise help and exits.
 ### Models
 
 `--model <model>`
-: Model id. `auto`, `<config-preset>`, `cli/<provider>/<model>`, `xai/...`, `openai/...`, `nvidia/...`, `google/...`, `anthropic/...`, `zai/...`, `github-copilot/...`, or `openrouter/<author>/<slug>`. Default `auto`. See [LLM overview](../llm.md).
+: Model id. `auto`, `<config-preset>`, `cli/<provider>/<model>`, `xai/...`, `openai/...`, `nvidia/...`, `minimax/...`, `google/...`, `anthropic/...`, `zai/...`, `github-copilot/...`, or `openrouter/<author>/<slug>`. Default `auto`. See [LLM overview](../llm.md).
 
 `--cli [provider]`
 : Use a logged-in CLI provider: `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`, `copilot`, `agy`, `pi`. Equivalent to `--model cli/<provider>`. Without a value: enable CLI providers in auto-selection.

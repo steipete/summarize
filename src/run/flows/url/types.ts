@@ -95,6 +95,7 @@ export type UrlFlowModel = {
     xaiApiKey: string | null;
     apiKey: string | null;
     nvidiaApiKey: string | null;
+    minimaxApiKey: string | null;
     openrouterApiKey: string | null;
     openrouterConfigured: boolean;
     googleApiKey: string | null;
@@ -111,6 +112,7 @@ export type UrlFlowModel = {
     zaiApiKey: string | null;
     zaiBaseUrl: string;
     nvidiaBaseUrl: string;
+    minimaxBaseUrl: string;
     ollamaBaseUrl: string;
     firecrawlConfigured: boolean;
     firecrawlApiKey: string | null;

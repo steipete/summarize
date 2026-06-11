@@ -22,6 +22,7 @@ import {
 } from "./providers/models.js";
 import { completeOpenAiText, streamOpenAiText } from "./providers/openai.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
+import { createReasoningTagFilter, providerStripsReasoningTags } from "./reasoning-tags.js";
 import type { LlmTokenUsage } from "./types.js";
 
 export type StreamTextWithContextArgs = {
@@ -188,6 +189,20 @@ function collectTextDeltas({
   };
 }
 
+function stripReasoningTagsFromStream(stream: AsyncIterable<string>): AsyncIterable<string> {
+  const filter = createReasoningTagFilter();
+  return {
+    async *[Symbol.asyncIterator]() {
+      for await (const delta of stream) {
+        const out = filter.push(delta);
+        if (out) yield out;
+      }
+      const tail = filter.flush();
+      if (tail) yield tail;
+    },
+  };
+}
+
 export async function streamTextWithContext({
   modelId,
   apiKeys,
@@ -240,14 +255,17 @@ export async function streamTextWithContext({
         apiKey,
         signal: controller.signal,
       });
+      const textDeltas = collectTextDeltas({
+        stream,
+        onError: (error) => {
+          lastError = error;
+        },
+      });
       return {
         textStream: createTimedTextStream({
-          textStream: collectTextDeltas({
-            stream,
-            onError: (error) => {
-              lastError = error;
-            },
-          }),
+          textStream: providerStripsReasoningTags(parsed.provider)
+            ? stripReasoningTagsFromStream(textDeltas)
+            : textDeltas,
           timeoutMs,
           controller,
           setLastError,
@@ -277,14 +295,17 @@ export async function streamTextWithContext({
         apiKey,
         signal: controller.signal,
       });
+      const textDeltas = collectTextDeltas({
+        stream,
+        onError: (error) => {
+          lastError = error;
+        },
+      });
       return {
         textStream: createTimedTextStream({
-          textStream: collectTextDeltas({
-            stream,
-            onError: (error) => {
-              lastError = error;
-            },
-          }),
+          textStream: providerStripsReasoningTags(parsed.provider)
+            ? stripReasoningTagsFromStream(textDeltas)
+            : textDeltas,
           timeoutMs,
           controller,
           setLastError,
@@ -339,6 +360,7 @@ export async function streamTextWithContext({
       parsed.provider === "openai" ||
       parsed.provider === "zai" ||
       parsed.provider === "nvidia" ||
+      parsed.provider === "minimax" ||
       parsed.provider === "github-copilot" ||
       parsed.provider === "ollama"
     ) {
@@ -425,14 +447,17 @@ export async function streamTextWithContext({
         apiKey: openaiConfig.apiKey,
         signal: controller.signal,
       });
+      const textDeltas = collectTextDeltas({
+        stream,
+        onError: (error) => {
+          lastError = error;
+        },
+      });
       return {
         textStream: createTimedTextStream({
-          textStream: collectTextDeltas({
-            stream,
-            onError: (error) => {
-              lastError = error;
-            },
-          }),
+          textStream: providerStripsReasoningTags(parsed.provider)
+            ? stripReasoningTagsFromStream(textDeltas)
+            : textDeltas,
           timeoutMs,
           controller,
           setLastError,

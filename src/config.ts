@@ -96,6 +96,11 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
     path,
     "nvidia",
   );
+  const minimax = parseProviderBaseUrlConfig(
+    (parsed as Record<string, unknown>).minimax,
+    path,
+    "minimax",
+  );
   const anthropic = parseProviderBaseUrlConfig(parsed.anthropic, path, "anthropic");
   const google = parseProviderBaseUrlConfig(parsed.google, path, "google");
   const xai = parseProviderBaseUrlConfig(parsed.xai, path, "xai");
@@ -123,6 +128,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       ...(cli ? { cli } : {}),
       ...(openai ? { openai } : {}),
       ...(nvidia ? { nvidia } : {}),
+      ...(minimax ? { minimax } : {}),
       ...(anthropic ? { anthropic } : {}),
       ...(google ? { google } : {}),
       ...(xai ? { xai } : {}),

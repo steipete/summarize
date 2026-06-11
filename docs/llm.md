@@ -28,6 +28,8 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
 - `OPENAI_USE_CHAT_COMPLETIONS` (optional; force OpenAI chat completions)
 - `NVIDIA_API_KEY` (required for `nvidia/...` models; alias: `NGC_API_KEY`)
 - `NVIDIA_BASE_URL` (optional; override NVIDIA OpenAI-compatible API endpoint; default: `https://integrate.api.nvidia.com/v1`)
+- `MINIMAX_API_KEY` (required for `minimax/...` models)
+- `MINIMAX_BASE_URL` (optional; override MiniMax OpenAI-compatible API endpoint; default: `https://api.minimax.io/v1`)
 - `OPENROUTER_API_KEY` (optional; required for `openrouter/...` models; also used when `OPENAI_BASE_URL` points to OpenRouter)
 - `GITHUB_TOKEN` / `GH_TOKEN` (required for `github-copilot/...` models via GitHub Models)
 - `Z_AI_API_KEY` (required for `zai/...` models; supports `ZAI_API_KEY` alias)
@@ -63,6 +65,7 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
     - `openai/gpt-5-nano`
     - `github-copilot/gpt-5.4`
     - `nvidia/z-ai/glm5`
+    - `minimax/MiniMax-M3`
     - `zai/glm-4.7`
     - `ollama/qwen3:14b`
     - `ollama/llama3.1:8b`
@@ -123,6 +126,13 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
 ## Z.AI
 
 Use `--model zai/<model>` (e.g. `zai/glm-4.7`). Defaults to Z.AI’s base URL and uses chat completions.
+
+## MiniMax
+
+Use `--model minimax/<model>` (e.g. `minimax/MiniMax-M3`). Requires `MINIMAX_API_KEY`. Defaults to
+MiniMax’s OpenAI-compatible base URL (`https://api.minimax.io/v1`) and uses chat completions.
+Override the endpoint with `MINIMAX_BASE_URL` or `minimax.baseUrl` in config (e.g. the China
+endpoint). The model id is passed through verbatim, so use MiniMax’s exact casing (e.g. `MiniMax-M3`).
 
 ## Ollama
 

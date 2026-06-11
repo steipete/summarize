@@ -154,18 +154,24 @@ export async function resolveUrlSummaryExecution({
               openaiBaseUrlOverride: model.apiStatus.nvidiaBaseUrl,
               forceChatCompletions: true,
             }
-          : model.fixedModelSpec.requiredEnv === "OLLAMA_BASE_URL"
+          : model.fixedModelSpec.requiredEnv === "MINIMAX_API_KEY"
             ? {
-                openaiBaseUrlOverride: model.apiStatus.ollamaBaseUrl,
+                openaiApiKeyOverride: model.apiStatus.minimaxApiKey,
+                openaiBaseUrlOverride: model.apiStatus.minimaxBaseUrl,
                 forceChatCompletions: true,
               }
-            : model.fixedModelSpec.requiredEnv === "GITHUB_TOKEN"
+            : model.fixedModelSpec.requiredEnv === "OLLAMA_BASE_URL"
               ? {
-                  openaiApiKeyOverride: resolveGitHubModelsApiKey(io.envForRun),
-                  openaiBaseUrlOverride: model.fixedModelSpec.openaiBaseUrlOverride ?? null,
+                  openaiBaseUrlOverride: model.apiStatus.ollamaBaseUrl,
                   forceChatCompletions: true,
                 }
-              : {};
+              : model.fixedModelSpec.requiredEnv === "GITHUB_TOKEN"
+                ? {
+                    openaiApiKeyOverride: resolveGitHubModelsApiKey(io.envForRun),
+                    openaiBaseUrlOverride: model.fixedModelSpec.openaiBaseUrlOverride ?? null,
+                    forceChatCompletions: true,
+                  }
+                : {};
     return [
       {
         transport: model.fixedModelSpec.transport === "openrouter" ? "openrouter" : "native",
