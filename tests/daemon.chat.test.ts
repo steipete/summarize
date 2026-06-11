@@ -468,6 +468,53 @@ describe("daemon/chat", () => {
     expect(args.openaiBaseUrlOverride).toBe("https://gateway.example/v1");
   });
 
+  it("uses the MiniMax key and base URL for auto-selected sidepanel chat models", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-auto-minimax-"));
+
+    vi.mocked(buildAutoModelAttempts).mockReturnValue([
+      {
+        transport: "native" as const,
+        userModelId: "minimax/MiniMax-M3",
+        llmModelId: "minimax/MiniMax-M3",
+        openrouterProviders: null,
+        forceOpenRouter: false,
+        requiredEnv: "MINIMAX_API_KEY" as const,
+        debug: "test",
+      },
+    ]);
+
+    await streamChatResponse({
+      env: {
+        HOME: home,
+        OPENAI_API_KEY: "sk-openai",
+        MINIMAX_API_KEY: "sk-minimax",
+        MINIMAX_BASE_URL: "https://minimax.example.com/v1",
+      },
+      fetchImpl: fetch,
+      session: {
+        id: "s-auto-minimax",
+        lastMeta: { model: null, modelLabel: null, inputSummary: null, summaryFromCache: null },
+      },
+      pageUrl: "https://example.com",
+      pageTitle: null,
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: null,
+      pushToSession: () => {},
+      emitMeta: () => {},
+    });
+
+    const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const args = calls[calls.length - 1]?.[0] as {
+      apiKeys?: { openaiApiKey?: string | null };
+      forceChatCompletions?: boolean;
+      openaiBaseUrlOverride?: string | null;
+    };
+    expect(args.apiKeys?.openaiApiKey).toBe("sk-minimax");
+    expect(args.openaiBaseUrlOverride).toBe("https://minimax.example.com/v1");
+    expect(args.forceChatCompletions).toBe(true);
+  });
+
   it("accepts legacy OpenRouter env mapping for auto attempts", async () => {
     const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-auto-openrouter-"));
     const meta: Array<{ model?: string | null }> = [];

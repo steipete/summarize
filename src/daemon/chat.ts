@@ -6,9 +6,9 @@ import { streamTextWithContext } from "../llm/generate-text.js";
 import { resolveGitHubModelsApiKey } from "../llm/github-models.js";
 import { parseGatewayStyleModelId } from "../llm/model-id.js";
 import { mergeModelRequestOptions, mergeRequestOptionsForProvider } from "../llm/model-options.js";
-import { buildAutoModelAttempts, envHasKey } from "../model-auto.js";
+import { buildAutoModelAttempts, envHasKey, type AutoModelAttempt } from "../model-auto.js";
 import { parseBooleanEnv, parseCliUserModelId } from "../run/env.js";
-import { resolveEnvState } from "../run/run-env.js";
+import { resolveEnvState, type EnvState } from "../run/run-env.js";
 import { resolveModelSelection } from "../run/run-models.js";
 
 type ChatSession = {
@@ -120,6 +120,70 @@ function resolveOpenAiUseChatCompletions({
   return typeof configForCli?.openai?.useChatCompletions === "boolean"
     ? configForCli.openai.useChatCompletions
     : undefined;
+}
+
+function resolveAutoOpenAiCompatibleOverrides({
+  requiredEnv,
+  env,
+  envState,
+  openaiUseChatCompletions,
+}: {
+  requiredEnv: AutoModelAttempt["requiredEnv"];
+  env: Record<string, string | undefined>;
+  envState: EnvState;
+  openaiUseChatCompletions: boolean | undefined;
+}): {
+  openaiApiKey: string | null | undefined;
+  openaiBaseUrl: string | null | undefined;
+  forceChatCompletions: boolean | undefined;
+} {
+  if (requiredEnv === "Z_AI_API_KEY") {
+    return {
+      openaiApiKey: envState.zaiApiKey,
+      openaiBaseUrl: envState.zaiBaseUrl,
+      forceChatCompletions: true,
+    };
+  }
+  if (requiredEnv === "NVIDIA_API_KEY") {
+    return {
+      openaiApiKey: envState.nvidiaApiKey,
+      openaiBaseUrl: envState.nvidiaBaseUrl,
+      forceChatCompletions: true,
+    };
+  }
+  if (requiredEnv === "MINIMAX_API_KEY") {
+    return {
+      openaiApiKey: envState.minimaxApiKey,
+      openaiBaseUrl: envState.minimaxBaseUrl,
+      forceChatCompletions: true,
+    };
+  }
+  if (requiredEnv === "GITHUB_TOKEN") {
+    return {
+      openaiApiKey: resolveGitHubModelsApiKey(env),
+      openaiBaseUrl: "https://models.github.ai/inference",
+      forceChatCompletions: true,
+    };
+  }
+  if (requiredEnv === "OLLAMA_BASE_URL") {
+    return {
+      openaiApiKey: undefined,
+      openaiBaseUrl: envState.ollamaBaseUrl,
+      forceChatCompletions: true,
+    };
+  }
+  if (requiredEnv === "OPENAI_API_KEY") {
+    return {
+      openaiApiKey: undefined,
+      openaiBaseUrl: envState.providerBaseUrls.openai,
+      forceChatCompletions: openaiUseChatCompletions,
+    };
+  }
+  return {
+    openaiApiKey: undefined,
+    openaiBaseUrl: undefined,
+    forceChatCompletions: undefined,
+  };
 }
 
 export async function streamChatResponse({
@@ -325,25 +389,26 @@ export async function streamChatResponse({
     return;
   }
 
+  const autoOverrides = resolveAutoOpenAiCompatibleOverrides({
+    requiredEnv: attempt.requiredEnv,
+    env,
+    envState,
+    openaiUseChatCompletions,
+  });
   const result = await streamTextWithContext({
     modelId: attempt.llmModelId!,
-    apiKeys,
+    apiKeys:
+      autoOverrides.openaiApiKey === undefined
+        ? apiKeys
+        : { ...apiKeys, openaiApiKey: autoOverrides.openaiApiKey },
     context,
     timeoutMs: 30_000,
     fetchImpl,
     forceOpenRouter: attempt.forceOpenRouter,
     openaiBaseUrlOverride:
-      attempt.transport === "openrouter"
-        ? undefined
-        : attempt.requiredEnv === "OPENAI_API_KEY"
-          ? envState.providerBaseUrls.openai
-          : undefined,
+      attempt.transport === "openrouter" ? undefined : autoOverrides.openaiBaseUrl,
     forceChatCompletions:
-      attempt.transport === "openrouter"
-        ? undefined
-        : attempt.requiredEnv === "OPENAI_API_KEY"
-          ? openaiUseChatCompletions
-          : undefined,
+      attempt.transport === "openrouter" ? undefined : autoOverrides.forceChatCompletions,
     requestOptions: mergeRequestOptionsForProvider({
       provider: parseGatewayStyleModelId(attempt.llmModelId!).provider,
       openaiGlobalDefault: openaiRequestOptions,
