@@ -60,7 +60,7 @@ export type SummaryEngineDeps = {
     model: string;
     usage: Awaited<ReturnType<typeof summarizeWithModelId>>["usage"] | null;
     costUsd?: number | null;
-    purpose: "summary" | "markdown";
+    purpose: "summary" | "markdown" | "speaker-identification";
   }>;
   clearProgressForStdout: () => void;
   restoreProgressAfterStdout?: (() => void) | null;

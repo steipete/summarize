@@ -31,6 +31,10 @@ export type RunnerFlagResolution = {
   verbose: boolean;
   transcriber: Transcriber;
   diarizationMode: DiarizationMode | null;
+  speakerProfileArg: string | null;
+  speakerAnchorArgs: string[];
+  speakerIdentificationOverride: boolean | null;
+  rememberSpeakers: boolean;
   maxExtractCharacters: ReturnType<typeof parseMaxExtractCharactersArg>;
   isYoutubeUrl: boolean;
   format: ReturnType<typeof parseExtractFormat>;
@@ -102,6 +106,24 @@ export function resolveRunnerFlags({
   const diarizationMode = diarizationExplicitlySet
     ? parseDiarizationMode(typeof programOpts.diarize === "string" ? programOpts.diarize : "auto")
     : null;
+  const identifySpeakersFlag = hasFlag(normalizedArgv, "--identify-speakers");
+  const noIdentifySpeakersFlag = hasFlag(normalizedArgv, "--no-identify-speakers");
+  if (identifySpeakersFlag && noIdentifySpeakersFlag) {
+    throw new Error("Use either --identify-speakers or --no-identify-speakers, not both.");
+  }
+  const speakerProfileArg =
+    typeof programOpts.speakerProfile === "string" && programOpts.speakerProfile.trim()
+      ? programOpts.speakerProfile.trim()
+      : null;
+  const speakerAnchorArgs = Array.isArray(programOpts.speakerAt)
+    ? programOpts.speakerAt.filter((value): value is string => typeof value === "string")
+    : [];
+  const speakerIdentificationOverride = identifySpeakersFlag
+    ? true
+    : noIdentifySpeakersFlag
+      ? false
+      : null;
+  const rememberSpeakers = Boolean(programOpts.rememberSpeakers);
 
   const maxExtractCharacters = parseMaxExtractCharactersArg(
     typeof programOpts.maxExtractCharacters === "string"
@@ -160,6 +182,10 @@ export function resolveRunnerFlags({
     verbose,
     transcriber,
     diarizationMode,
+    speakerProfileArg,
+    speakerAnchorArgs,
+    speakerIdentificationOverride,
+    rememberSpeakers,
     maxExtractCharacters,
     isYoutubeUrl,
     format,

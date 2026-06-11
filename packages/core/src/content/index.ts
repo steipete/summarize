@@ -18,6 +18,7 @@ export {
   type ExtractedLinkContent,
   type FetchLinkContentOptions,
 } from "./link-preview/content/types.js";
+export { applyContentBudget } from "./link-preview/content/cleaner.js";
 export {
   attachDnsPinnedAddresses,
   isNativeOrBoundGlobalFetch,
@@ -40,8 +41,10 @@ export {
   CACHE_MODES,
   type CacheMode,
   type CacheStatus,
+  type TranscriptSegment,
   type TranscriptSource,
 } from "./link-preview/types.js";
+export { formatTimestampMs, parseTimestampStringToMs } from "./transcript/timestamps.js";
 export {
   DIRECT_MEDIA_EXTENSIONS,
   extractYouTubeVideoId,

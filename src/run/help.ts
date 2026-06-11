@@ -8,6 +8,8 @@ import {
 import { SUPPORT_URL } from "./constants.js";
 import { supportsColor } from "./terminal.js";
 
+const collectOption = (value: string, previous: string[] = []): string[] => [...previous, value];
+
 export function buildProgram() {
   return new Command()
     .name("summarize")
@@ -31,6 +33,33 @@ export function buildProgram() {
       )
         .choices(["auto", "elevenlabs", "openai"])
         .preset("auto"),
+    )
+    .addOption(
+      new Option(
+        "--identify-speakers",
+        "Resolve diarization labels to real names using timestamp anchors and OpenAI context.",
+      ).default(undefined),
+    )
+    .addOption(
+      new Option(
+        "--no-identify-speakers",
+        "Keep generic diarization labels even when speaker identification is configured.",
+      ).default(undefined),
+    )
+    .option(
+      "--speaker-profile <name>",
+      "Speaker profile from ~/.summarize/config.json (implies --identify-speakers).",
+    )
+    .option(
+      "--speaker-at <timestamp=name>",
+      "Identify the speaker active at a timestamp; repeat for multiple speakers.",
+      collectOption,
+      [],
+    )
+    .option(
+      "--remember-speakers",
+      "Persist resolved mappings and anchors under the selected speaker profile.",
+      false,
     )
     .addOption(
       new Option(

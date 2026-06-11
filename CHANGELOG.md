@@ -10,6 +10,7 @@
 - Chrome extension: add Browser slide runtime so YouTube slide summaries can run without the daemon, while keeping Daemon as an optional faster runtime.
 - Chrome extension: persist Browser-mode summaries, slide text, transcripts, and thumbnails in Chrome storage for 30 days, with Runtime settings showing cache status and a clear button.
 - Add `--diarize [auto|elevenlabs|openai]` for speaker-labelled YouTube transcripts using ElevenLabs Scribe v2 or OpenAI `gpt-4o-transcribe-diarize`.
+- Add verified speaker naming for diarized YouTube transcripts with timestamp anchors, reusable profiles, transcript-hash-guarded mappings, GPT-5.5 context inference, and atomic `--remember-speakers` config updates.
 
 ### Fixes
 

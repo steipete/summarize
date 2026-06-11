@@ -206,6 +206,36 @@ Enable slides by default and tune extraction parameters:
 }
 ```
 
+## Speaker identification
+
+Define reusable names and context for diarized YouTube transcripts:
+
+```json
+{
+  "speakers": {
+    "defaultProfile": "modern-wisdom",
+    "autoIdentify": true,
+    "model": "openai/gpt-5.5",
+    "minimumConfidence": 0.85,
+    "profiles": {
+      "modern-wisdom": {
+        "host": "Chris Williamson",
+        "knownSpeakers": ["Chris Williamson"],
+        "context": "Modern Wisdom podcast. Chris Williamson is the host."
+      }
+    }
+  }
+}
+```
+
+Run with `--diarize`, then use `--speaker-profile`, repeatable `--speaker-at <timestamp=name>`, and
+`--remember-speakers` to verify and persist a video's label mapping. `autoIdentify` enables identity
+resolution whenever diarization is requested. `--no-identify-speakers` disables it for one run.
+
+Remembered mappings live under `speakers.sources["youtube:<video-id>"]`. They include a transcript hash
+and are ignored if provider output changes. Profile-level `model`, `minimumConfidence`, and `autoIdentify`
+override the corresponding top-level speaker settings.
+
 ## Logging (daemon)
 
 Enable JSON log files for the daemon:

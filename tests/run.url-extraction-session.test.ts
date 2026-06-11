@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const createLinkPreviewClient = vi.hoisted(() => vi.fn());
 const buildExtractCacheKey = vi.hoisted(() => vi.fn(() => "extract-key"));
 const fetchLinkContentWithBirdTip = vi.hoisted(() => vi.fn());
+const identifySpeakersInExtractedContent = vi.hoisted(() => vi.fn());
+const rememberSpeakerMappings = vi.hoisted(() => vi.fn());
 
 vi.mock("../src/content/index.js", () => ({
   createLinkPreviewClient,
@@ -18,6 +20,12 @@ vi.mock("../src/cache.js", () => ({
 
 vi.mock("../src/run/flows/url/extract.js", () => ({
   fetchLinkContentWithBirdTip,
+}));
+
+vi.mock("../src/speaker-identification/index.js", () => ({
+  identifySpeakersInExtractedContent,
+  rememberSpeakerMappings,
+  SpeakerIdentificationError: class SpeakerIdentificationError extends Error {},
 }));
 
 import { createUrlExtractionSession } from "../src/run/flows/url/extraction-session.js";
@@ -36,6 +44,8 @@ function createCtx() {
       youtubeMode: "auto",
       videoMode: "auto",
       transcriptTimestamps: false,
+      transcriptDiarization: null,
+      speakerIdentification: null,
       firecrawlMode: "off",
       verbose: false,
       verboseColor: false,
@@ -53,7 +63,9 @@ function createCtx() {
         elevenlabsApiKey: null,
         openaiApiKey: null,
         googleApiKey: null,
+        providerBaseUrls: { openai: null },
       },
+      llmCalls: [],
     },
     cache: {
       mode: "default",
@@ -116,6 +128,15 @@ describe("createUrlExtractionSession", () => {
         },
       },
     });
+    identifySpeakersInExtractedContent.mockImplementation(async ({ extracted }) => ({
+      extracted,
+      mappings: [],
+      transcriptHash: null,
+      usage: null,
+      warning: null,
+      cacheable: true,
+    }));
+    rememberSpeakerMappings.mockResolvedValue(undefined);
   });
 
   it("forwards ElevenLabs transcription credentials", () => {
@@ -137,6 +158,66 @@ describe("createUrlExtractionSession", () => {
         transcription: expect.objectContaining({
           elevenlabsApiKey: "elevenlabs-key",
         }),
+      }),
+    );
+  });
+
+  it("keeps remember-speakers out of earlier identity cache entries", async () => {
+    const ctx = createCtx();
+    ctx.flags.speakerIdentification = {
+      sourceKey: "youtube:abcdefghijk",
+      profileName: "modern-wisdom",
+      host: "Chris Williamson",
+      knownSpeakers: ["Chris Williamson"],
+      context: "Modern Wisdom podcast",
+      model: "openai/gpt-5.5",
+      minimumConfidence: 0.85,
+      anchors: [{ atMs: 0, name: "Chris Williamson" }],
+      remembered: null,
+      remember: true,
+      explicit: true,
+    };
+    Object.assign(ctx.flags, { configPath: "/tmp/summarize-config.json" });
+    ctx.model.apiStatus.openaiApiKey = "openai-key";
+    identifySpeakersInExtractedContent.mockImplementationOnce(async ({ extracted }) => ({
+      extracted,
+      mappings: [
+        {
+          speaker: "Speaker 1",
+          name: "Chris Williamson",
+          confidence: 1,
+          source: "anchor",
+        },
+      ],
+      transcriptHash: "a".repeat(64),
+      usage: null,
+      warning: null,
+      cacheable: true,
+    }));
+
+    const session = createUrlExtractionSession({
+      ctx: ctx as never,
+      markdown: {
+        convertHtmlToMarkdown: vi.fn(),
+        effectiveMarkdownMode: "off",
+        markdownRequested: false,
+      },
+      onProgress: null,
+    });
+    await session.fetchWithCache("https://www.youtube.com/watch?v=abcdefghijk");
+
+    expect(ctx.cache.store.getJson).not.toHaveBeenCalled();
+    expect(buildExtractCacheKey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          speakerIdentification: expect.objectContaining({ remember: true }),
+        }),
+      }),
+    );
+    expect(rememberSpeakerMappings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configPath: "/tmp/summarize-config.json",
+        transcriptHash: "a".repeat(64),
       }),
     );
   });

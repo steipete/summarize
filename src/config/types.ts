@@ -77,6 +77,36 @@ export type MediaCacheConfig = {
   verify?: MediaCacheVerifyMode;
 };
 
+export type SpeakerAnchorConfig = {
+  at: string;
+  name: string;
+};
+
+export type SpeakerProfileConfig = {
+  host?: string;
+  knownSpeakers?: string[];
+  context?: string;
+  model?: string;
+  minimumConfidence?: number;
+  autoIdentify?: boolean;
+};
+
+export type SpeakerSourceConfig = {
+  profile?: string;
+  anchors?: SpeakerAnchorConfig[];
+  transcriptHash?: string;
+  mappings?: Record<string, string>;
+};
+
+export type SpeakersConfig = {
+  defaultProfile?: string;
+  autoIdentify?: boolean;
+  model?: string;
+  minimumConfidence?: number;
+  profiles?: Record<string, SpeakerProfileConfig>;
+  sources?: Record<string, SpeakerSourceConfig>;
+};
+
 export type AnthropicConfig = {
   /**
    * Override the Anthropic API base URL (e.g. a proxy).
@@ -260,6 +290,7 @@ export type SummarizeConfig = {
     max?: number;
     minDuration?: number;
   };
+  speakers?: SpeakersConfig;
   output?: {
     /**
      * Output language for the summary (e.g. "auto", "en", "de", "English").

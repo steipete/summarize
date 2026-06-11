@@ -69,6 +69,21 @@ If `[input]` is omitted, summarize prints concise help and exits.
 `--timestamps`
 : Include timestamps in transcripts when available.
 
+`--diarize [provider]`
+: Force speaker-labelled YouTube audio transcription. Provider: `auto`, `elevenlabs`, or `openai`.
+
+`--identify-speakers` / `--no-identify-speakers`
+: Resolve generic diarization labels to names, or disable configured resolution for one run. Uses authoritative anchors and OpenAI GPT-5.5 context inference.
+
+`--speaker-profile <name>`
+: Select a reusable profile from `speakers.profiles` in the config file.
+
+`--speaker-at <timestamp=name>`
+: Name the speaker active at a timestamp. Repeat the flag for multiple speakers.
+
+`--remember-speakers`
+: Atomically persist resolved names, anchors, and a transcript-hash-guarded source mapping under the selected profile.
+
 ### Slides
 
 `--slides [value]`
@@ -194,6 +209,11 @@ summarize "https://example.com" --extract --format md
 # YouTube transcript as cleanly-formatted Markdown.
 summarize "https://www.youtube.com/watch?v=..." \
   --extract --format md --markdown-mode llm
+
+# ElevenLabs diarization with verified speaker names.
+summarize "https://www.youtube.com/watch?v=..." --extract \
+  --diarize elevenlabs --identify-speakers \
+  --speaker-profile my-podcast --speaker-at "0:12=Host Name" --remember-speakers
 
 # Inline slides + summary.
 summarize "https://www.youtube.com/watch?v=..." --slides

@@ -59,6 +59,36 @@ summarize "https://www.youtube.com/watch?v=..." --extract --diarize openai --tim
 - `openai`: requires `OPENAI_API_KEY`.
 - All modes require `yt-dlp`; OpenAI uses `ffmpeg` to compress uploads above its size limit when available.
 
+## Speaker identification
+
+Diarization detects speaker changes but providers return generic labels. Add `--identify-speakers` to
+resolve those labels to names:
+
+```bash
+summarize "https://www.youtube.com/watch?v=..." --extract \
+  --diarize elevenlabs --identify-speakers \
+  --speaker-profile modern-wisdom \
+  --speaker-at "0:12=Chris Williamson" \
+  --speaker-at "1:42=Guest Name" \
+  --remember-speakers
+```
+
+Resolution order:
+
+1. Repeatable `--speaker-at <timestamp=name>` anchors and source anchors from config.
+2. Remembered provider-label mappings, but only when the full diarized transcript SHA-256 still matches.
+3. OpenAI GPT-5.5 context inference using video metadata, profile context, known names, and representative transcript excerpts.
+
+Only mappings at or above `minimumConfidence` are applied. Uncertain speakers keep their generic labels.
+Anchors are authoritative. `--remember-speakers` atomically updates `~/.summarize/config.json` with the
+selected profile, anchors, names, transcript hash, and mapping. Raw provider transcript cache entries stay
+generic, so names from one run cannot contaminate another source.
+
+Use `--no-identify-speakers` to disable configured identification for one run. ElevenLabs diarization needs
+`ELEVENLABS_API_KEY`; GPT-5.5 identity inference for unresolved labels needs `OPENAI_API_KEY`.
+
+See [Config](config.md#speaker-identification) for reusable profiles.
+
 ## Slides
 
 Use `--slides` to extract slide screenshots for YouTube videos (requires `ffmpeg` and `yt-dlp`).

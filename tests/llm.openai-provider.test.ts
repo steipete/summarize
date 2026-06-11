@@ -457,6 +457,62 @@ describe("openai provider helpers", () => {
     expect(result.text).toBe("ok");
   });
 
+  it("requests strict structured output through the Responses API", async () => {
+    const schema = {
+      type: "object",
+      additionalProperties: false,
+      properties: { name: { type: "string" } },
+      required: ["name"],
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("https://api.openai.com/v1/responses");
+      const body = JSON.parse(String(init?.body)) as {
+        text?: {
+          verbosity?: string;
+          format?: {
+            type?: string;
+            name?: string;
+            strict?: boolean;
+            schema?: unknown;
+          };
+        };
+      };
+      expect(body.text).toEqual({
+        verbosity: "low",
+        format: {
+          type: "json_schema",
+          name: "person",
+          strict: true,
+          schema,
+        },
+      });
+      return new Response(JSON.stringify({ output_text: '{"name":"Chris Williamson"}' }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+
+    const result = await completeOpenAiText({
+      modelId: "gpt-5.5",
+      openaiConfig: {
+        apiKey: "oa-key",
+        baseURL: "https://api.openai.com/v1",
+        useChatCompletions: true,
+        isOpenRouter: false,
+        requestOptions: { textVerbosity: "low" },
+      },
+      context: {
+        systemPrompt: "Return a person.",
+        messages: [{ role: "user", content: "Who is speaking?" }],
+      },
+      signal: new AbortController().signal,
+      fetchImpl: fetchMock as typeof fetch,
+      structuredOutput: { name: "person", schema },
+    });
+
+    expect(result.text).toBe('{"name":"Chris Williamson"}');
+  });
+
   it("forwards OpenAI Chat Completions request options", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as {

@@ -33,6 +33,11 @@ type OpenAiTextStreamResult = {
   resolvedModelId?: string;
 };
 
+export type OpenAiStructuredOutput = {
+  name: string;
+  schema: Record<string, unknown>;
+};
+
 function isGitHubModelsBaseUrl(baseUrl: string | undefined): boolean {
   if (!baseUrl) return false;
   try {
@@ -158,15 +163,28 @@ function isOpenAiResponsesTextModelId(modelId: string): boolean {
 
 function buildOpenAiResponsesRequestOptions(
   requestOptions: ModelRequestOptions | undefined,
+  structuredOutput?: OpenAiStructuredOutput,
 ): Record<string, unknown> {
-  if (!requestOptions) return {};
-  const serviceTier = toOpenAiServiceTierParam(requestOptions.serviceTier);
+  const serviceTier = toOpenAiServiceTierParam(requestOptions?.serviceTier);
+  const text = {
+    ...(requestOptions?.textVerbosity ? { verbosity: requestOptions.textVerbosity } : {}),
+    ...(structuredOutput
+      ? {
+          format: {
+            type: "json_schema",
+            name: structuredOutput.name,
+            strict: true,
+            schema: structuredOutput.schema,
+          },
+        }
+      : {}),
+  };
   return {
     ...(serviceTier ? { service_tier: serviceTier } : {}),
-    ...(requestOptions.reasoningEffort
+    ...(requestOptions?.reasoningEffort
       ? { reasoning: { effort: requestOptions.reasoningEffort } }
       : {}),
-    ...(requestOptions.textVerbosity ? { text: { verbosity: requestOptions.textVerbosity } } : {}),
+    ...(Object.keys(text).length > 0 ? { text } : {}),
   };
 }
 
@@ -422,6 +440,7 @@ async function completeOpenAiResponsesText({
   maxOutputTokens,
   signal,
   fetchImpl,
+  structuredOutput,
 }: {
   modelId: string;
   openaiConfig: OpenAiClientConfig;
@@ -430,6 +449,7 @@ async function completeOpenAiResponsesText({
   maxOutputTokens?: number;
   signal: AbortSignal;
   fetchImpl: typeof fetch;
+  structuredOutput?: OpenAiStructuredOutput;
 }): Promise<OpenAiTextCompletionResult> {
   const baseUrl = openaiConfig.baseURL ?? "https://api.openai.com/v1";
   const response = await fetchImpl(String(resolveOpenAiResponsesUrl(baseUrl)), {
@@ -439,7 +459,7 @@ async function completeOpenAiResponsesText({
       model: modelId,
       input: contextToResponsesInput(context),
       ...(context.systemPrompt?.trim() ? { instructions: context.systemPrompt.trim() } : {}),
-      ...buildOpenAiResponsesRequestOptions(openaiConfig.requestOptions),
+      ...buildOpenAiResponsesRequestOptions(openaiConfig.requestOptions, structuredOutput),
       ...(typeof maxOutputTokens === "number" ? { max_output_tokens: maxOutputTokens } : {}),
       ...(typeof temperature === "number" ? { temperature } : {}),
     }),
@@ -662,6 +682,7 @@ export async function completeOpenAiText({
   maxOutputTokens,
   signal,
   fetchImpl = globalThis.fetch.bind(globalThis),
+  structuredOutput,
 }: {
   modelId: string;
   openaiConfig: OpenAiClientConfig;
@@ -670,7 +691,25 @@ export async function completeOpenAiText({
   maxOutputTokens?: number;
   signal: AbortSignal;
   fetchImpl?: typeof fetch;
+  structuredOutput?: OpenAiStructuredOutput;
 }): Promise<OpenAiTextCompletionResult> {
+  if (structuredOutput) {
+    if (openaiConfig.isOpenRouter || isGitHubModelsBaseUrl(openaiConfig.baseURL)) {
+      throw new Error(
+        "Structured OpenAI Responses output requires an OpenAI-compatible Responses endpoint.",
+      );
+    }
+    return completeOpenAiResponsesText({
+      modelId,
+      openaiConfig,
+      context,
+      temperature,
+      maxOutputTokens,
+      signal,
+      fetchImpl,
+      structuredOutput,
+    });
+  }
   if (isGitHubModelsBaseUrl(openaiConfig.baseURL)) {
     return completeGitHubModelsText({
       modelId,

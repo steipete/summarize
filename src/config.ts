@@ -13,6 +13,7 @@ import {
   parseSlidesConfig,
   parseUiConfig,
 } from "./config/sections.js";
+import { parseSpeakersConfig } from "./config/speakers.js";
 import type { SummarizeConfig } from "./config/types.js";
 
 export type {
@@ -36,6 +37,10 @@ export type {
   NvidiaConfig,
   OllamaConfig,
   OpenAiConfig,
+  SpeakerAnchorConfig,
+  SpeakerProfileConfig,
+  SpeakerSourceConfig,
+  SpeakersConfig,
   SummarizeConfig,
   VideoMode,
   XaiConfig,
@@ -85,6 +90,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
   const cache = parseCacheConfig(parsed, path);
   const media = parseMediaConfig(parsed);
   const slides = parseSlidesConfig(parsed, path);
+  const speakers = parseSpeakersConfig(parsed, path);
   const cli = parseCliConfig(parsed, path);
   const output = parseOutputConfig(parsed, path);
   const ui = parseUiConfig(parsed, path);
@@ -123,6 +129,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       ...(models ? { models } : {}),
       ...(media ? { media } : {}),
       ...(slides ? { slides } : {}),
+      ...(speakers ? { speakers } : {}),
       ...(output ? { output } : {}),
       ...(ui ? { ui } : {}),
       ...(cli ? { cli } : {}),

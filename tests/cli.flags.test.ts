@@ -49,6 +49,46 @@ describe("cli flag parsing", () => {
     expect(normalizeDiarizeArgv(["--diarize"])).toEqual(["--diarize"]);
   });
 
+  it("parses speaker identity profiles and repeatable timestamp anchors", () => {
+    const program = buildProgram();
+    program.parse(
+      [
+        "--diarize=elevenlabs",
+        "--identify-speakers",
+        "--speaker-profile",
+        "modern-wisdom",
+        "--speaker-at",
+        "0:12=Chris Williamson",
+        "--speaker-at",
+        "1:42=Joe Santagato",
+        "--remember-speakers",
+        "https://www.youtube.com/watch?v=abcdefghijk",
+      ],
+      { from: "user" },
+    );
+
+    expect(program.opts()).toMatchObject({
+      diarize: "elevenlabs",
+      identifySpeakers: true,
+      speakerProfile: "modern-wisdom",
+      speakerAt: ["0:12=Chris Williamson", "1:42=Joe Santagato"],
+      rememberSpeakers: true,
+    });
+  });
+
+  it("parses --no-identify-speakers without enabling identification by default", () => {
+    const defaultProgram = buildProgram();
+    defaultProgram.parse(["https://www.youtube.com/watch?v=abcdefghijk"], { from: "user" });
+    expect(defaultProgram.opts().identifySpeakers).toBeUndefined();
+
+    const disabledProgram = buildProgram();
+    disabledProgram.parse(
+      ["--no-identify-speakers", "https://www.youtube.com/watch?v=abcdefghijk"],
+      { from: "user" },
+    );
+    expect(disabledProgram.opts().identifySpeakers).toBe(false);
+  });
+
   it("parses --youtube", () => {
     expect(parseYoutubeMode("auto")).toBe("auto");
     expect(parseYoutubeMode("web")).toBe("web");

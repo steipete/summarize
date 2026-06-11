@@ -487,11 +487,20 @@ Speaker-labelled transcript (forces `yt-dlp` audio transcription instead of capt
 summarize "https://www.youtube.com/watch?v=..." --extract --diarize
 summarize "https://www.youtube.com/watch?v=..." --extract --diarize elevenlabs
 summarize "https://www.youtube.com/watch?v=..." --extract --diarize openai --timestamps
+summarize "https://www.youtube.com/watch?v=..." --extract --diarize elevenlabs \
+  --identify-speakers --speaker-profile my-podcast \
+  --speaker-at "0:12=Host Name" --remember-speakers
 ```
 
 Bare `--diarize` prefers ElevenLabs Scribe v2 (`ELEVENLABS_API_KEY`) and falls back to OpenAI
 `gpt-4o-transcribe-diarize` (`OPENAI_API_KEY`). Speaker changes are emitted as `Speaker <label>: ...`;
 combine with `--timestamps` for `[mm:ss] Speaker <label>: ...`.
+
+`--identify-speakers` replaces generic labels with names. Repeat `--speaker-at <timestamp=name>`
+for authoritative examples; unresolved labels are inferred with OpenAI GPT-5.5 and only accepted above
+the configured confidence threshold. `--remember-speakers` stores the profile, anchors, and a
+transcript-hash-guarded mapping in `~/.summarize/config.json` for later runs. See
+[YouTube speaker identification](docs/youtube.md#speaker-identification).
 
 ### Slide extraction (YouTube + direct video URLs + local video files)
 

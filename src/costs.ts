@@ -17,7 +17,7 @@ export type LlmCall = {
   model: string;
   usage: LlmTokenUsage | null;
   costUsd?: number | null;
-  purpose: "summary" | "markdown";
+  purpose: "summary" | "markdown" | "speaker-identification";
 };
 
 export type RunMetricsReport = {

@@ -56,6 +56,10 @@ Goal: keep provider entrypoints thin; keep provider policy explicit.
 - `packages/core/src/transcription/whisper/diarization.ts`
   Explicit speaker-label requests only.
   ElevenLabs Scribe v2 first in auto mode, then OpenAI `gpt-4o-transcribe-diarize`.
+- `src/speaker-identification/`
+  Optional post-processing for generic diarization labels.
+  Timestamp anchors first, exact-transcript remembered mappings second, OpenAI GPT-5.5 context inference last.
+  Named extracts have identity-aware cache keys; raw transcript cache entries remain provider-generic.
 
 ## Current order
 

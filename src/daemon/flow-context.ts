@@ -407,6 +407,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
       videoMode,
       transcriptTimestamps: resolvedOverrides.transcriptTimestamps ?? false,
       transcriptDiarization: resolvedOverrides.transcriptDiarization ?? null,
+      speakerIdentification: null,
       outputLanguage,
       lengthArg,
       forceSummary: resolvedOverrides.forceSummary ?? false,

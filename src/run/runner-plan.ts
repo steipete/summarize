@@ -3,6 +3,7 @@ import { type CacheState } from "../cache.js";
 import type { ExecFileFn } from "../markitdown.js";
 import type { FixedModelSpec } from "../model-spec.js";
 import { scopeTranscriptCacheForDiarization } from "../shared/transcript-diarization-cache-scope.js";
+import { resolveSpeakerIdentificationSettings } from "../speaker-identification/index.js";
 import {
   createThemeRenderer,
   resolveThemeNameFromSources,
@@ -90,6 +91,10 @@ export async function createRunnerPlan(options: {
     plain,
     verbose,
     diarizationMode,
+    speakerProfileArg,
+    speakerAnchorArgs,
+    speakerIdentificationOverride,
+    rememberSpeakers,
     maxExtractCharacters,
     isYoutubeUrl,
     format,
@@ -206,6 +211,15 @@ export async function createRunnerPlan(options: {
     inputTarget,
   });
   const transcriptTimestamps = Boolean(programOpts.timestamps) || Boolean(slidesSettings);
+  const speakerIdentification = resolveSpeakerIdentificationSettings({
+    config: config?.speakers,
+    sourceUrl: url ?? "",
+    diarization: diarizationMode,
+    profileArg: speakerProfileArg,
+    anchorArgs: speakerAnchorArgs,
+    identifyOverride: speakerIdentificationOverride,
+    remember: rememberSpeakers,
+  });
 
   const lengthInstruction = promptOverride ? buildPromptLengthInstruction(lengthArg) : null;
   const languageInstruction =
@@ -416,6 +430,7 @@ export async function createRunnerPlan(options: {
       videoMode,
       transcriptTimestamps,
       transcriptDiarization: diarizationMode,
+      speakerIdentification,
       outputLanguage,
       lengthArg,
       forceSummary,

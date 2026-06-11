@@ -18,6 +18,7 @@ import type {
   SlideSettings,
   SlideSourceKind,
 } from "../../../slides/index.js";
+import type { SpeakerIdentificationSettings } from "../../../speaker-identification/index.js";
 import type { PerfTrace } from "../../perf-trace.js";
 import type { createSummaryEngine } from "../../summary-engine.js";
 import type { SummarizeAssetArgs } from "../asset/summary.js";
@@ -44,6 +45,7 @@ export type UrlFlowFlags = {
   videoMode: "auto" | "transcript" | "understand";
   transcriptTimestamps: boolean;
   transcriptDiarization: "auto" | "elevenlabs" | "openai" | null;
+  speakerIdentification: SpeakerIdentificationSettings | null;
   outputLanguage: OutputLanguage;
   lengthArg: { kind: "preset"; preset: SummaryLength } | { kind: "chars"; maxCharacters: number };
   forceSummary: boolean;

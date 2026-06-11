@@ -8,6 +8,11 @@ import {
 } from "../../../content/index.js";
 import { createFirecrawlScraper } from "../../../firecrawl.js";
 import { resolveSlideSource } from "../../../slides/index.js";
+import {
+  identifySpeakersInExtractedContent,
+  rememberSpeakerMappings,
+  SpeakerIdentificationError,
+} from "../../../speaker-identification/index.js";
 import { readTweetWithPreferredClient } from "../../bird.js";
 import { resolveTwitterCookies } from "../../cookies/twitter.js";
 import { hasBirdCli, hasXurlCli } from "../../env.js";
@@ -117,6 +122,20 @@ export function createUrlExtractionSession({
               markdownMode: options.markdownMode ?? null,
               transcriptTimestamps: options.transcriptTimestamps ?? false,
               transcriptDiarization: options.transcriptDiarization ?? null,
+              speakerIdentification: flags.speakerIdentification
+                ? {
+                    sourceKey: flags.speakerIdentification.sourceKey,
+                    profileName: flags.speakerIdentification.profileName,
+                    host: flags.speakerIdentification.host,
+                    knownSpeakers: flags.speakerIdentification.knownSpeakers,
+                    context: flags.speakerIdentification.context,
+                    model: flags.speakerIdentification.model,
+                    minimumConfidence: flags.speakerIdentification.minimumConfidence,
+                    anchors: flags.speakerIdentification.anchors,
+                    remembered: flags.speakerIdentification.remembered,
+                    remember: flags.speakerIdentification.remember,
+                  }
+                : null,
               throwOnAssetLikeHtmlError: options.throwOnAssetLikeHtmlError ?? false,
               ...(typeof options.maxCharacters === "number"
                 ? { maxCharacters: options.maxCharacters }
@@ -124,7 +143,7 @@ export function createUrlExtractionSession({
             },
           })
         : null;
-    if (!bypassExtractCache && cacheKey && cacheStore) {
+    if (!bypassExtractCache && !flags.speakerIdentification?.remember && cacheKey && cacheStore) {
       const cached = cacheStore.getJson<ExtractedLinkContent>("extract", cacheKey);
       if (cached) {
         writeVerbose(
@@ -145,13 +164,65 @@ export function createUrlExtractionSession({
       );
     }
     try {
-      const extracted = await fetchLinkContentWithBirdTip({
+      let extracted = await fetchLinkContentWithBirdTip({
         client,
         url: targetUrl,
         options,
         env: io.env,
       });
-      if (cacheKey && cacheStore) {
+      let cacheable = true;
+      if (flags.speakerIdentification) {
+        const identified = await identifySpeakersInExtractedContent({
+          extracted,
+          sourceUrl: targetUrl,
+          settings: flags.speakerIdentification,
+          openaiApiKey: model.apiStatus.openaiApiKey,
+          openaiBaseUrl: model.apiStatus.providerBaseUrls.openai,
+          timeoutMs: flags.timeoutMs,
+          maxContentCharacters: options.maxCharacters ?? null,
+          fetchImpl: io.fetch,
+        });
+        extracted = identified.extracted;
+        cacheable = identified.cacheable;
+        if (identified.usage) {
+          model.llmCalls.push({
+            provider: "openai",
+            model: flags.speakerIdentification.model,
+            usage: identified.usage,
+            purpose: "speaker-identification",
+          });
+        }
+        if (identified.warning) {
+          writeVerbose(
+            io.stderr,
+            flags.verbose,
+            identified.warning,
+            flags.verboseColor,
+            io.envForRun,
+          );
+          io.stderr.write(`Warning: ${identified.warning}\n`);
+        }
+        if (flags.speakerIdentification.remember) {
+          if (!flags.configPath || !identified.transcriptHash) {
+            throw new SpeakerIdentificationError(
+              "Unable to resolve the config path or transcript hash for --remember-speakers.",
+            );
+          }
+          try {
+            await rememberSpeakerMappings({
+              configPath: flags.configPath,
+              settings: flags.speakerIdentification,
+              mappings: identified.mappings,
+              transcriptHash: identified.transcriptHash,
+            });
+          } catch (error) {
+            throw new SpeakerIdentificationError(
+              `Failed to remember speaker mappings: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+        }
+      }
+      if (cacheable && cacheKey && cacheStore) {
         const extractTtlMs =
           extracted.transcriptSource === "unavailable" ? NEGATIVE_TTL_MS : cacheState.ttlMs;
         cacheStore.setJson("extract", cacheKey, extracted, extractTtlMs);
@@ -165,6 +236,7 @@ export function createUrlExtractionSession({
       }
       return extracted;
     } catch (err) {
+      if (err instanceof SpeakerIdentificationError) throw err;
       const errorMessage =
         err instanceof Error
           ? [err.message, err.cause instanceof Error ? err.cause.message : null]
