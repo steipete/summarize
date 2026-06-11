@@ -646,19 +646,32 @@ test("sidepanel auto summarize toggle stays inline", async ({
 
     const label = page.locator("#autoToggle .checkboxRoot");
     await expect(label).toBeVisible();
-    const labelBox = await label.boundingBox();
-    const controlBox = await page.locator("#autoToggle .checkboxControl").boundingBox();
-    const textBox = await page.locator("#autoToggle .checkboxLabel").boundingBox();
+    const layout = await label.evaluate((element) => {
+      const control = element.querySelector(".checkboxControl");
+      const text = element.querySelector(".checkboxLabel");
+      if (!(control instanceof HTMLElement) || !(text instanceof HTMLElement)) return null;
+      const labelRect = element.getBoundingClientRect();
+      const controlRect = control.getBoundingClientRect();
+      const textRect = text.getBoundingClientRect();
+      return {
+        labelTop: labelRect.top,
+        labelBottom: labelRect.bottom,
+        controlTop: controlRect.top,
+        controlBottom: controlRect.bottom,
+        controlCenter: controlRect.top + controlRect.height / 2,
+        textTop: textRect.top,
+        textBottom: textRect.bottom,
+        textCenter: textRect.top + textRect.height / 2,
+      };
+    });
 
-    expect(labelBox).not.toBeNull();
-    expect(controlBox).not.toBeNull();
-    expect(textBox).not.toBeNull();
-
-    if (labelBox && controlBox && textBox) {
-      expect(controlBox.y).toBeGreaterThanOrEqual(labelBox.y - 1);
-      expect(controlBox.y).toBeLessThanOrEqual(labelBox.y + labelBox.height - 1);
-      expect(textBox.y).toBeGreaterThanOrEqual(labelBox.y - 1);
-      expect(textBox.y).toBeLessThanOrEqual(labelBox.y + labelBox.height - 1);
+    expect(layout).not.toBeNull();
+    if (layout) {
+      expect(layout.controlTop).toBeGreaterThanOrEqual(layout.labelTop - 1);
+      expect(layout.controlBottom).toBeLessThanOrEqual(layout.labelBottom + 1);
+      expect(layout.textTop).toBeGreaterThanOrEqual(layout.labelTop - 1);
+      expect(layout.textBottom).toBeLessThanOrEqual(layout.labelBottom + 1);
+      expect(Math.abs(layout.controlCenter - layout.textCenter)).toBeLessThanOrEqual(1);
     }
 
     assertNoErrors(harness);

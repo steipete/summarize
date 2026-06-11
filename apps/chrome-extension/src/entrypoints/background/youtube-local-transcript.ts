@@ -18,6 +18,7 @@ export type BrowserYoutubeLocalTranscript =
   | { ok: false; error: string };
 
 const progressCallbacks = new Map<string, (status: string) => void>();
+const LOCAL_TRANSCRIPTION_TIMEOUT_MS = 180_000;
 let progressListenerStarted = false;
 
 export function startYoutubeLocalTranscriptionRuntime(): void {
@@ -58,17 +59,27 @@ export async function transcribeYoutubeAudioInTab({
 
     const requestId = crypto.randomUUID();
     if (onStatus) progressCallbacks.set(requestId, onStatus);
+    let timeout: ReturnType<typeof setTimeout> | null = null;
     try {
-      const response = (await chrome.runtime.sendMessage({
-        target: "offscreen",
-        type: "youtube-local:transcribe",
-        requestId,
-        context,
-        capturedSabr: getCapturedYoutubeSabrRequest(tabId),
-        maxChars,
-      })) as BrowserYoutubeLocalTranscript | undefined;
+      const response = (await Promise.race([
+        chrome.runtime.sendMessage({
+          target: "offscreen",
+          type: "youtube-local:transcribe",
+          requestId,
+          context,
+          capturedSabr: getCapturedYoutubeSabrRequest(tabId),
+          maxChars,
+        }),
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(
+            () => reject(new Error("Local YouTube transcription timed out.")),
+            LOCAL_TRANSCRIPTION_TIMEOUT_MS,
+          );
+        }),
+      ])) as BrowserYoutubeLocalTranscript | undefined;
       return response ?? { ok: false, error: "Local YouTube transcription returned no result." };
     } finally {
+      if (timeout) clearTimeout(timeout);
       progressCallbacks.delete(requestId);
     }
   } catch (error) {

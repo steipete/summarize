@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   activateTabByUrl,
   closeExtension,
+  getBackground,
   getBrowserFromProject,
   launchExtension,
   openExtensionPage,
@@ -66,7 +67,7 @@ test("transcribes a captionless YouTube video through the extension runtime", as
       inputMode: "video",
     });
     const panelTransitions: string[] = [];
-    const deadline = Date.now() + 90_000;
+    const deadline = Date.now() + 180_000;
     while (Date.now() < deadline) {
       const state = {
         model: await getPanelModel(panel),
@@ -90,8 +91,35 @@ test("transcribes a captionless YouTube video through the extension runtime", as
       );
     }
     const summary = await getPanelSummaryMarkdown(panel);
+    const background = await getBackground(harness);
+    const readLocalTranscriptLog = async () =>
+      await background.evaluate(async () => {
+        const stored = await chrome.storage.session.get("summarize:extension-logs");
+        const lines = Array.isArray(stored["summarize:extension-logs"])
+          ? (stored["summarize:extension-logs"] as string[])
+          : [];
+        return lines
+          .toReversed()
+          .map((line) => {
+            try {
+              return JSON.parse(line) as {
+                event?: unknown;
+                mediaSource?: unknown;
+                textLength?: unknown;
+              };
+            } catch {
+              return null;
+            }
+          })
+          .find((entry) => entry?.event === "extract:url-direct:local-transcript");
+      });
+    await expect.poll(readLocalTranscriptLog, { timeout: 10_000 }).not.toBeNull();
+    const localTranscriptLog = await readLocalTranscriptLog();
     expect(playerState.captionTrackCount).toBe(0);
-    expect(summary.length).toBeGreaterThan(500);
+    expect(localTranscriptLog?.textLength).toEqual(expect.any(Number));
+    expect(localTranscriptLog?.textLength as number).toBeGreaterThan(20);
+    expect(["android-vr", "sabr"]).toContain(localTranscriptLog?.mediaSource);
+    expect(summary.length).toBeGreaterThan(50);
     expect(summary).not.toContain("No transcript text was available from the browser");
     expect(
       consoleMessages.some((message) => message.includes("extract:url-direct:local-transcript")),

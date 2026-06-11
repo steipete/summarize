@@ -72,6 +72,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
   let renderQueued = 0;
   let streamedAnyNonWhitespace = false;
   let rememberedUrl = false;
+  let starting = false;
   let streaming = false;
   let hadError = false;
   let sawDone = false;
@@ -110,29 +111,46 @@ export function createStreamController(options: StreamControllerOptions): Stream
     onRender?.(markdown);
   };
 
-  const abort = () => {
+  const abortActive = (settlePhase: boolean) => {
     activeGeneration += 1;
-    if (!controller) return;
-    if (activeAbortState) activeAbortState.reason = "manual";
-    controller.abort();
-    controller = null;
-    activeAbortState = null;
+    const wasActive = starting || streaming;
+    starting = false;
+    if (controller) {
+      if (activeAbortState) activeAbortState.reason = "manual";
+      controller.abort();
+      controller = null;
+      activeAbortState = null;
+    }
     clearQueuedRender();
-    if (streaming) {
-      streaming = false;
+    streaming = false;
+    if (wasActive && settlePhase) {
       onPhaseChange("idle");
     }
   };
 
+  const abort = () => abortActive(true);
+
   const start = async (run: RunStart) => {
-    const generation = activeGeneration + 1;
-    activeGeneration = generation;
-    abort();
-    activeGeneration = generation;
-    const token = (await getToken()).trim();
+    abortActive(false);
+    const generation = activeGeneration;
+    starting = true;
+    let token = "";
+    try {
+      token = (await getToken()).trim();
+    } catch (err) {
+      if (generation !== activeGeneration) return;
+      starting = false;
+      const message = onError ? onError(err) : err instanceof Error ? err.message : String(err);
+      onStatus(`Error: ${message}`);
+      onPhaseChange("error");
+      onDone?.();
+      return;
+    }
     if (generation !== activeGeneration) return;
+    starting = false;
     if (!token) {
       onStatus("Setup required (missing token)");
+      onPhaseChange("idle");
       return;
     }
 
@@ -281,6 +299,6 @@ export function createStreamController(options: StreamControllerOptions): Stream
   return {
     start,
     abort,
-    isStreaming: () => streaming,
+    isStreaming: () => starting || streaming,
   };
 }

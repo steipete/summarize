@@ -6,11 +6,18 @@ import {
 } from "@huggingface/transformers";
 
 const WHISPER_MODEL = "onnx-community/whisper-tiny";
+const WEBGPU_MODEL_LOAD_TIMEOUT_MS = 30_000;
+const WASM_MODEL_LOAD_TIMEOUT_MS = 90_000;
 const ORT_WASM_URL = new URL(
   "../../../node_modules/@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.wasm",
   import.meta.url,
 ).href;
 let transcriberPromise: Promise<AutomaticSpeechRecognitionPipelineType> | null = null;
+type WhisperDevice = "webgpu" | "wasm";
+type WhisperPipelineFactory = (
+  device: WhisperDevice,
+  onStatus: (status: string) => void,
+) => Promise<AutomaticSpeechRecognitionPipelineType>;
 
 export async function transcribePcmWithWhisper({
   audio,
@@ -49,26 +56,90 @@ async function getTranscriber(
       };
       env.backends.onnx.wasm.proxy = false;
     }
-    onStatus(hasWebGpu ? "Loading local Whisper model..." : "Loading local Whisper model (CPU)...");
-    transcriberPromise = pipeline("automatic-speech-recognition", WHISPER_MODEL, {
-      device: hasWebGpu ? "webgpu" : "wasm",
-      dtype: hasWebGpu
-        ? { encoder_model: "fp16", decoder_model_merged: "q4" }
-        : { encoder_model: "q8", decoder_model_merged: "q8" },
-      progress_callback: (progress: unknown) => {
-        if (!progress || typeof progress !== "object") return;
-        const value = (progress as { progress?: unknown }).progress;
-        if (typeof value !== "number" || !Number.isFinite(value)) return;
-        onStatus(
-          `Loading local Whisper model... ${Math.max(0, Math.min(100, Math.round(value)))}%`,
-        );
-      },
+    transcriberPromise = loadWhisperTranscriber({
+      hasWebGpu,
+      onStatus,
     }).catch((error) => {
       transcriberPromise = null;
       throw error;
     });
   }
   return await transcriberPromise;
+}
+
+export async function loadWhisperTranscriber({
+  hasWebGpu,
+  onStatus,
+  createPipeline = createWhisperPipeline,
+  webGpuTimeoutMs = WEBGPU_MODEL_LOAD_TIMEOUT_MS,
+  wasmTimeoutMs = WASM_MODEL_LOAD_TIMEOUT_MS,
+}: {
+  hasWebGpu: boolean;
+  onStatus: (status: string) => void;
+  createPipeline?: WhisperPipelineFactory;
+  webGpuTimeoutMs?: number;
+  wasmTimeoutMs?: number;
+}): Promise<AutomaticSpeechRecognitionPipelineType> {
+  let activeAttempt = 0;
+  const load = async (device: WhisperDevice, timeoutMs: number, timeoutMessage: string) => {
+    const attempt = ++activeAttempt;
+    return await withTimeout(
+      createPipeline(device, (status) => {
+        if (attempt === activeAttempt) onStatus(status);
+      }),
+      timeoutMs,
+      timeoutMessage,
+    );
+  };
+
+  if (hasWebGpu) {
+    onStatus("Loading local Whisper model...");
+    try {
+      return await load(
+        "webgpu",
+        webGpuTimeoutMs,
+        "WebGPU Whisper model initialization timed out.",
+      );
+    } catch {
+      onStatus("WebGPU model load stalled; retrying on CPU...");
+    }
+  }
+
+  onStatus("Loading local Whisper model (CPU)...");
+  return await load("wasm", wasmTimeoutMs, "CPU Whisper model initialization timed out.");
+}
+
+async function createWhisperPipeline(
+  device: WhisperDevice,
+  onStatus: (status: string) => void,
+): Promise<AutomaticSpeechRecognitionPipelineType> {
+  return await pipeline("automatic-speech-recognition", WHISPER_MODEL, {
+    device,
+    dtype:
+      device === "webgpu"
+        ? { encoder_model: "fp16", decoder_model_merged: "q4" }
+        : { encoder_model: "q8", decoder_model_merged: "q8" },
+    progress_callback: (progress: unknown) => {
+      if (!progress || typeof progress !== "object") return;
+      const value = (progress as { progress?: unknown }).progress;
+      if (typeof value !== "number" || !Number.isFinite(value)) return;
+      onStatus(`Loading local Whisper model... ${Math.max(0, Math.min(100, Math.round(value)))}%`);
+    },
+  });
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function formatWhisperOutput(

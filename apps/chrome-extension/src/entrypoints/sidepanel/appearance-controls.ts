@@ -89,6 +89,7 @@ export function createAppearanceControls(options: {
     getLengthValue: () => pickerSettings.length,
     getFontFamily: () => pickerSettings.fontFamily,
     setAutoValue: (checked: boolean) => {
+      if (autoValue === checked) return;
       autoValue = checked;
       updateAutoToggle();
     },

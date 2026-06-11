@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createStreamController } from "../apps/chrome-extension/src/entrypoints/sidepanel/stream-controller.js";
 import { encodeSseEvent, type SseEvent } from "../src/shared/sse-events.js";
 
@@ -43,6 +43,32 @@ const run = {
 };
 
 describe("sidepanel stream controller error handling", () => {
+  it("returns to idle when aborted during token lookup", async () => {
+    let releaseToken: ((value: string) => void) | null = null;
+    const token = new Promise<string>((resolve) => {
+      releaseToken = resolve;
+    });
+    const phases: string[] = [];
+    const fetchImpl = vi.fn();
+    const controller = createStreamController({
+      getToken: async () => await token,
+      onStatus: () => {},
+      onPhaseChange: (phase) => phases.push(phase),
+      onMeta: () => {},
+      fetchImpl,
+    });
+
+    const pendingStart = controller.start(run);
+    expect(controller.isStreaming()).toBe(true);
+    controller.abort();
+    expect(controller.isStreaming()).toBe(false);
+    expect(phases.at(-1)).toBe("idle");
+
+    releaseToken?.("token");
+    await pendingStart;
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("does not let stale starts cancel newer streams after token lookup races", async () => {
     let releaseFirstToken: ((value: string) => void) | null = null;
     const firstToken = new Promise<string>((resolve) => {

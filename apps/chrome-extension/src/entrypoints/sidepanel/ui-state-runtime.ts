@@ -166,6 +166,8 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       opts.clearInlineError();
     }
     opts.setLastPanelOpen(state.panelOpen);
+    opts.setAutoValue(state.settings.autoSummarize);
+    opts.appearanceControls.setAutoValue(state.settings.autoSummarize);
 
     const activeTabId = opts.getActiveTabId();
     const activeTabUrl = opts.getActiveTabUrl();
@@ -241,9 +243,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       if (navigation.resetInputModeOverride) {
         opts.setInputModeOverride(null);
       }
-      if (opts.isStreaming()) {
-        opts.abortSummaryStream();
-      }
+      opts.abortSummaryStream();
       if (!opts.maybeStartPendingSummaryRunForUrl(nextTabUrl)) {
         applyCachedOrReset(opts, nextTabId, nextTabUrl, navigation.preserveChat);
       }
@@ -255,9 +255,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
         void opts.clearChatHistoryForActiveTab();
         opts.resetChatState();
       }
-      if (opts.isStreaming()) {
-        opts.abortSummaryStream();
-      }
+      opts.abortSummaryStream();
       if (!opts.maybeStartPendingSummaryRunForUrl(nextTabUrl)) {
         applyCachedOrReset(opts, opts.getActiveTabId(), nextTabUrl, navigation.preserveChat);
       }
@@ -266,8 +264,6 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       }
     }
 
-    opts.setAutoValue(state.settings.autoSummarize);
-    opts.appearanceControls.setAutoValue(state.settings.autoSummarize);
     opts.setChatEnabledValue(state.settings.chatEnabled);
     opts.setAutomationEnabledValue(state.settings.automationEnabled);
     opts.setSlidesEnabledValue(state.settings.slidesEnabled);
