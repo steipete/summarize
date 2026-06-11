@@ -268,7 +268,9 @@ export async function streamChatResponse({
                 ? envState.minimaxApiKey
                 : requested.requiredEnv === "GITHUB_TOKEN"
                   ? resolveGitHubModelsApiKey(env)
-                  : null,
+                  : requested.requiredEnv === "OPENAI_API_KEY"
+                    ? undefined
+                    : null,
         openaiBaseUrlOverride:
           requested.requiredEnv === "Z_AI_API_KEY"
             ? envState.zaiBaseUrl
@@ -320,7 +322,10 @@ export async function streamChatResponse({
       modelId: resolved.modelId!,
       apiKeys: {
         ...apiKeys,
-        openaiApiKey: resolved.openaiApiKeyOverride ?? apiKeys.openaiApiKey,
+        openaiApiKey:
+          resolved.openaiApiKeyOverride === undefined
+            ? apiKeys.openaiApiKey
+            : resolved.openaiApiKeyOverride,
       },
       context,
       timeoutMs: 30_000,

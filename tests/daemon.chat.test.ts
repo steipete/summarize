@@ -68,11 +68,46 @@ describe("daemon/chat", () => {
 
     const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
     expect(calls.length).toBe(1);
-    const args = calls[0]?.[0] as { modelId: string; forceOpenRouter?: boolean };
+    const args = calls[0]?.[0] as {
+      modelId: string;
+      forceOpenRouter?: boolean;
+      apiKeys?: { openaiApiKey?: string | null };
+    };
     expect(args.modelId).toBe("openai/gpt-5-mini");
     expect(args.forceOpenRouter).toBe(false);
+    expect(args.apiKeys?.openaiApiKey).toBe("sk-openai");
     expect(meta[0]?.model).toBe("openai/gpt-5-mini");
     expect(events.some((evt) => evt.event === "metrics")).toBe(true);
+  });
+
+  it("does not forward the OpenAI key to fixed MiniMax chat models", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-daemon-chat-minimax-no-key-"));
+
+    await streamChatResponse({
+      env: { HOME: home, OPENAI_API_KEY: "sk-openai" },
+      fetchImpl: fetch,
+      session: {
+        id: "s-minimax-no-key",
+        lastMeta: { model: null, modelLabel: null, inputSummary: null, summaryFromCache: null },
+      },
+      pageUrl: "https://example.com",
+      pageTitle: "Example",
+      pageContent: "Hello world",
+      messages: [{ role: "user", content: "Hi" }],
+      modelOverride: "minimax/MiniMax-M3",
+      pushToSession: () => {},
+      emitMeta: () => {},
+    });
+
+    const calls = (streamTextWithContext as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const args = calls[0]?.[0] as {
+      modelId: string;
+      apiKeys?: { openaiApiKey?: string | null };
+      openaiBaseUrlOverride?: string | null;
+    };
+    expect(args.modelId).toBe("minimax/MiniMax-M3");
+    expect(args.apiKeys?.openaiApiKey).toBeNull();
+    expect(args.openaiBaseUrlOverride).toBe("https://api.minimax.io/v1");
   });
 
   it("honors openai.useChatCompletions for fixed sidepanel chat models", async () => {
