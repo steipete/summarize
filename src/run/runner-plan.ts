@@ -210,9 +210,7 @@ export async function createRunnerPlan(options: {
       ? `Output should be ${outputLanguage.label}.`
       : null;
 
-  const transcriptNamespace = diarizationMode
-    ? `yt:${youtubeMode}`
-    : `yt:${youtubeMode}:diarize:off`;
+  const transcriptNamespace = `yt:${youtubeMode}`;
   let cacheState = await createCacheStateFromConfig({
     envForRun,
     config,
