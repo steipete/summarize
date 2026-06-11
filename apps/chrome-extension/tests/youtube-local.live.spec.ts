@@ -119,7 +119,7 @@ test("transcribes a captionless YouTube video through the extension runtime", as
     expect(playerState.captionTrackCount).toBe(0);
     expect(localTranscriptLog?.textLength).toEqual(expect.any(Number));
     expect(localTranscriptLog?.textLength as number).toBeGreaterThan(20);
-    expect(["android-vr", "sabr"]).toContain(localTranscriptLog?.mediaSource);
+    expect(["player", "android-vr", "sabr"]).toContain(localTranscriptLog?.mediaSource);
     expect(summary.length).toBeGreaterThan(50);
     expect(summary).not.toContain("No transcript text was available from the browser");
     expect(

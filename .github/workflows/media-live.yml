@@ -1,0 +1,77 @@
+name: Media Live
+
+on:
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: media-live
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  youtube-resolver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.2 --activate
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Live YouTube resolver
+        env:
+          SUMMARIZE_LIVE_TESTS: "1"
+          VITEST_MAX_THREADS: "1"
+        run: |
+          pnpm exec vitest run \
+            tests/youtube.android-vr.live.test.ts \
+            tests/youtube.no-transcript.live.test.ts
+
+  chrome-daemonless-youtube:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.2 --activate
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm -C apps/chrome-extension exec playwright install --with-deps chromium
+
+      - name: Build extension
+        run: pnpm -C apps/chrome-extension build
+
+      - name: Live daemonless YouTube transcription
+        env:
+          SUMMARIZE_LIVE_TESTS: "1"
+        run: |
+          xvfb-run --auto-servernum --server-args='-screen 0 1280x720x24' \
+            pnpm -C apps/chrome-extension exec playwright test \
+              -c playwright.config.ts \
+              --project=chromium \
+              tests/youtube-local.live.spec.ts

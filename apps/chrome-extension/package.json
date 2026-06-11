@@ -13,8 +13,9 @@
     "test": "pnpm test:e2e",
     "test:chrome": "env -u NO_COLOR pnpm build && env -u NO_COLOR playwright test -c playwright.config.ts --project=chromium",
     "test:e2e": "env -u NO_COLOR pnpm build && env -u NO_COLOR playwright test -c playwright.config.ts --project=chromium",
-    "test:firefox": "env -u NO_COLOR pnpm build:firefox && env -u NO_COLOR playwright test -c playwright.config.ts --project=firefox",
-    "test:firefox:force": "env -u NO_COLOR ALLOW_FIREFOX_EXTENSION_TESTS=1 pnpm build:firefox && env -u NO_COLOR ALLOW_FIREFOX_EXTENSION_TESTS=1 playwright test -c playwright.config.ts --project=firefox"
+    "test:firefox": "env -u NO_COLOR pnpm build:firefox && env -u NO_COLOR node scripts/firefox-smoke.mjs",
+    "test:firefox:force": "env -u NO_COLOR ALLOW_FIREFOX_EXTENSION_TESTS=1 pnpm build:firefox && env -u NO_COLOR ALLOW_FIREFOX_EXTENSION_TESTS=1 playwright test -c playwright.config.ts --project=firefox",
+    "test:firefox:lint": "env -u NO_COLOR pnpm build:firefox && env -u NO_COLOR web-ext lint --source-dir .output/firefox-mv3 --self-hosted --boring"
   },
   "dependencies": {
     "@huggingface/transformers": "3.8.1",
@@ -29,6 +30,7 @@
     "@playwright/test": "1.60.0",
     "@types/chrome": "^0.1.43",
     "typescript": "^6.0.3",
+    "web-ext": "10.3.0",
     "wxt": "0.20.26"
   }
 }
