@@ -1,13 +1,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { isDirectMediaExtension, isDirectMediaUrl } from "@steipete/summarize-core/content/url";
 import {
-  classifyUrl,
-  type InputTarget,
-  loadLocalAsset,
-  loadRemoteAsset,
-  shouldProbeUnknownAssetUrl,
-} from "../../../content/asset.js";
+  type AcquiredAssetInput,
+  acquireLocalAssetInput,
+  acquireRemoteAssetInput,
+  createRemoteMediaInput,
+  isPdfAssetPath,
+  isTranscribableAssetPath,
+  resolveUrlAssetRoute,
+} from "../../../application/input-acquisition.js";
+import { type InputTarget } from "../../../content/asset.js";
 import { formatBytes } from "../../../tty/format.js";
 import { startOscProgress } from "../../../tty/osc-progress.js";
 import { startSpinner } from "../../../tty/spinner.js";
@@ -16,16 +18,7 @@ import {
   resolveThemeNameFromSources,
   resolveTrueColor,
 } from "../../../tty/theme.js";
-import { assertAssetMediaTypeSupported } from "../../attachments.js";
 import type { AssetSummaryResult, SummarizeAssetArgs } from "./types.js";
-
-/**
- * Check if a media type should route through transcription.
- */
-function isTranscribableMediaType(mediaType: string): boolean {
-  const normalized = mediaType.toLowerCase();
-  return normalized.startsWith("audio/") || normalized.startsWith("video/");
-}
 
 const createProgressTheme = (
   envForRun: Record<string, string | undefined> | undefined,
@@ -52,28 +45,8 @@ const renderStatusWithMeta = (
 const renderModelSuffix = (theme: ReturnType<typeof createProgressTheme>, modelId: string) =>
   `${theme.dim(" (model: ")}${theme.accent(modelId)}${theme.dim(")")}`;
 
-function normalizePathForExtension(value: string): string {
-  try {
-    return new URL(value).pathname;
-  } catch {
-    return value.split(/[?#]/, 1)[0];
-  }
-}
-
-/**
- * Check if a file extension indicates transcribable media.
- * Used to route large audio/video files directly to the media handler
- * which has a higher size limit (2GB vs 50MB).
- */
-export function isTranscribableExtension(filePath: string): boolean {
-  if (isDirectMediaUrl(filePath)) return true;
-  const ext = path.extname(normalizePathForExtension(filePath));
-  return isDirectMediaExtension(ext);
-}
-
-export function isPdfExtension(filePath: string): boolean {
-  return path.extname(normalizePathForExtension(filePath)).toLowerCase() === ".pdf";
-}
+export const isTranscribableExtension = isTranscribableAssetPath;
+export const isPdfExtension = isPdfAssetPath;
 
 function formatTranscriptionMeta({
   filename,
@@ -156,7 +129,7 @@ export type AssetInputContext = {
 };
 
 type UrlAssetHandler = (args: {
-  loaded: Awaited<ReturnType<typeof loadRemoteAsset>>;
+  loaded: Pick<AcquiredAssetInput, "attachment" | "sourceLabel">;
   spinner: ReturnType<typeof startSpinner>;
   clearProgressLine: () => void;
 }) => Promise<void>;
@@ -204,15 +177,13 @@ export async function handleFileInput(
   };
   ctx.setClearProgressBeforeStdout(pauseProgressLine);
   try {
-    // Check if file looks like transcribable media by extension.
-    // If so, route directly to the media handler, which has a higher size limit (2GB).
-    // This avoids the 50MB limit in loadLocalAsset for audio/video files.
-    if (isTranscribableExtension(inputTarget.filePath) && ctx.summarizeMediaFile) {
-      const filename = path.basename(inputTarget.filePath);
+    const acquired = await acquireLocalAssetInput({ filePath: inputTarget.filePath });
+    if (acquired.kind === "resolved-media" && ctx.summarizeMediaFile) {
+      const filename = acquired.attachment.filename ?? path.basename(inputTarget.filePath);
       await runMediaTranscription({
         ctx,
         sourceKind: "file",
-        sourceLabel: inputTarget.filePath,
+        sourceLabel: acquired.sourceLabel,
         filename,
         sizeLabel,
         spinner,
@@ -220,32 +191,24 @@ export async function handleFileInput(
       return true;
     }
 
-    const loaded = await loadLocalAsset({ filePath: inputTarget.filePath });
-    assertAssetMediaTypeSupported({ attachment: loaded.attachment, sizeLabel });
-
-    const isTranscribable = isTranscribableMediaType(loaded.attachment.mediaType);
-    const handler =
-      isTranscribable && ctx.summarizeMediaFile ? ctx.summarizeMediaFile : ctx.summarizeAsset;
-
     const dim = (value: string) => theme.dim(value);
 
     if (ctx.progressEnabled) {
-      const mt = loaded.attachment.mediaType;
-      const name = loaded.attachment.filename;
+      const mt = acquired.attachment.mediaType;
+      const name = acquired.attachment.filename;
       const details = sizeLabel ? `${mt}, ${sizeLabel}` : mt;
-      const action = isTranscribable ? "Transcribing" : "Summarizing";
       const meta = name ? `${name} ${dim("(")}${details}${dim(")")}` : details;
-      spinner.setText(renderStatusWithMeta(theme, action, meta));
+      spinner.setText(renderStatusWithMeta(theme, "Summarizing", meta));
     }
 
-    await handler({
+    await ctx.summarizeAsset({
       sourceKind: "file",
-      sourceLabel: loaded.sourceLabel,
-      attachment: loaded.attachment,
+      sourceLabel: acquired.sourceLabel,
+      attachment: acquired.attachment,
       onModelChosen: (modelId) => {
         if (!ctx.progressEnabled) return;
-        const mt = loaded.attachment.mediaType;
-        const name = loaded.attachment.filename;
+        const mt = acquired.attachment.mediaType;
+        const name = acquired.attachment.filename;
         const details = sizeLabel ? `${mt}, ${sizeLabel}` : mt;
         const meta = name ? `${name} ${dim("(")}${details}${dim(")")}` : details;
         const modelLabel = renderModelSuffix(theme, modelId);
@@ -268,17 +231,20 @@ export async function withUrlAsset(
 ): Promise<boolean> {
   if (!url || isYoutubeUrl) return false;
 
-  // For remote media URLs (by extension), route directly to the media handler.
-  // This avoids the 50MB limit in loadRemoteAsset - yt-dlp handles streaming download.
-  if (isTranscribableExtension(url) && ctx.summarizeMediaFile) {
+  const route = await resolveUrlAssetRoute({
+    url,
+    isYoutubeUrl,
+    fetchImpl: ctx.trackedFetch,
+    timeoutMs: ctx.timeoutMs,
+    detectUnknownAssetUrls: options.detectUnknownAssetUrls,
+    assumeAsset: options.assumeAsset,
+  });
+  if (route === "none") return false;
+
+  if (route === "media" && ctx.summarizeMediaFile) {
     const theme = createProgressTheme(ctx.envForRun, ctx.progressEnabled);
-    const filename = (() => {
-      try {
-        return path.basename(new URL(url).pathname) || "media";
-      } catch {
-        return "media";
-      }
-    })();
+    const mediaInput = createRemoteMediaInput(url);
+    const filename = mediaInput.attachment.filename ?? "media";
     const stopOscProgress = startOscProgress({
       label: "Transcribing media",
       indeterminate: true,
@@ -320,15 +286,6 @@ export async function withUrlAsset(
     }
   }
 
-  if (!options.assumeAsset) {
-    if (options.detectUnknownAssetUrls === false && !shouldProbeUnknownAssetUrl(url)) {
-      return false;
-    }
-
-    const kind = await classifyUrl({ url, fetchImpl: ctx.trackedFetch, timeoutMs: ctx.timeoutMs });
-    if (kind.kind !== "asset") return false;
-  }
-
   const theme = createProgressTheme(ctx.envForRun, ctx.progressEnabled);
   const stopOscProgress = startOscProgress({
     label: "Downloading file",
@@ -356,24 +313,20 @@ export async function withUrlAsset(
   };
   ctx.setClearProgressBeforeStdout(pauseProgressLine);
   try {
-    const loaded = await (async () => {
-      try {
-        return await loadRemoteAsset({
-          url,
-          fetchImpl: ctx.trackedFetch,
-          timeoutMs: ctx.timeoutMs,
-        });
-      } catch (error) {
-        if (error instanceof Error && /HTML/i.test(error.message)) {
-          return null;
-        }
-        throw error;
-      }
-    })();
-
-    if (!loaded) return false;
-    assertAssetMediaTypeSupported({ attachment: loaded.attachment, sizeLabel: null });
-    await handler({ loaded, spinner, clearProgressLine: pauseProgressLine });
+    const acquired = await acquireRemoteAssetInput({
+      url,
+      fetchImpl: ctx.trackedFetch,
+      timeoutMs: ctx.timeoutMs,
+    });
+    if (!acquired) return false;
+    await handler({
+      loaded: {
+        sourceLabel: acquired.sourceLabel,
+        attachment: acquired.attachment,
+      },
+      spinner,
+      clearProgressLine: pauseProgressLine,
+    });
     return true;
   } finally {
     ctx.clearProgressIfCurrent(pauseProgressLine);
