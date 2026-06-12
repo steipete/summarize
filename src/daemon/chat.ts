@@ -1,18 +1,17 @@
 import type { Context, Message } from "@earendil-works/pi-ai";
 import { resolveEnvState } from "../application/environment-state.js";
+import {
+  resolveModelAttempts,
+  selectPreferredInteractiveModelAttempt,
+} from "../application/model-attempts.js";
 import { resolveModelSelection } from "../application/model-selection.js";
 import { resolveProviderRuntimeBindings } from "../application/provider-runtime.js";
-import type { CliProvider, SummarizeConfig } from "../config.js";
-import { createFixedModelAttempt } from "../engine/fixed-model-attempt.js";
-import { resolveModelAttemptOpenAiOverrides } from "../engine/provider-attempt.js";
-import type { ModelAttempt } from "../engine/types.js";
+import type { SummarizeConfig } from "../config.js";
 import { runCliModel } from "../llm/cli.js";
 import type { LlmApiKeys } from "../llm/generate-text.js";
 import { streamTextWithContext } from "../llm/generate-text.js";
 import { parseGatewayStyleModelId } from "../llm/model-id.js";
 import { mergeModelRequestOptions, mergeRequestOptionsForProvider } from "../llm/model-options.js";
-import { buildAutoModelAttempts, envHasKey } from "../model-auto.js";
-import { parseCliUserModelId } from "../run/env.js";
 
 type ChatSession = {
   id: string;
@@ -29,32 +28,6 @@ type ChatEvent = { event: string; data?: unknown };
 const SYSTEM_PROMPT = `You are Summarize Chat.
 
 You answer questions about the current page content. Keep responses concise and grounded in the page.`;
-
-function resolveConfiguredCliModel(
-  provider: CliProvider,
-  configForCli: SummarizeConfig | null | undefined,
-): string | null {
-  const cli = configForCli?.cli;
-  const raw =
-    provider === "claude"
-      ? cli?.claude?.model
-      : provider === "codex"
-        ? cli?.codex?.model
-        : provider === "gemini"
-          ? cli?.gemini?.model
-          : provider === "agent"
-            ? cli?.agent?.model
-            : provider === "openclaw"
-              ? cli?.openclaw?.model
-              : provider === "opencode"
-                ? cli?.opencode?.model
-                : provider === "agy"
-                  ? null
-                  : provider === "pi"
-                    ? cli?.pi?.model
-                    : cli?.copilot?.model;
-  return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
-}
 
 function normalizeMessages(messages: Message[]): Message[] {
   return messages.map((message) => ({
@@ -142,107 +115,38 @@ export async function streamChatResponse({
   const openaiRequestOptions = mergeModelRequestOptions(configForCli?.openai);
   const context = buildContext({ pageUrl, pageTitle, pageContent, messages });
 
-  const resolveModel = (): ModelAttempt | null => {
-    if (modelOverride && modelOverride.trim().length > 0) {
-      const { requestedModel: requested } = resolveModelSelection({
-        config: configForCli ?? null,
-        configForCli: configForCli ?? null,
-        configPath: null,
-        envForRun: env,
-        explicitModelArg: modelOverride,
-      });
-      if (requested.kind === "auto") {
-        return null;
-      }
-      const attempt = createFixedModelAttempt(requested);
-      if (requested.transport === "cli") {
-        const cliModel =
-          requested.cliModel ?? resolveConfiguredCliModel(requested.cliProvider, configForCli);
-        return {
-          ...attempt,
-          userModelId: cliModel ? `cli/${requested.cliProvider}/${cliModel}` : attempt.userModelId,
-          cliModel,
-        };
-      }
-      return {
-        ...attempt,
-        ...resolveModelAttemptOpenAiOverrides(attempt, providerRuntime),
-      };
-    }
-    return null;
-  };
-
-  const resolved = resolveModel();
-  if (resolved) {
-    emitMeta({ model: resolved.userModelId });
-    if (resolved.transport === "cli") {
-      const prompt = flattenChatForCli({
-        systemPrompt: context.systemPrompt ?? "",
-        messages: context.messages,
-      });
-      const result = await runCliModel({
-        provider: resolved.cliProvider!,
-        prompt,
-        model: resolved.cliModel ?? null,
-        allowTools: false,
-        timeoutMs: 120_000,
-        env,
-        config: configForCli?.cli ?? null,
-      });
-      pushToSession({ event: "content", data: result.text });
-      pushToSession({ event: "metrics" });
-      return;
-    }
-    const result = await streamTextWithContext({
-      modelId: resolved.llmModelId!,
-      apiKeys: {
-        ...apiKeys,
-        openaiApiKey:
-          resolved.openaiApiKeyOverride === undefined
-            ? apiKeys.openaiApiKey
-            : resolved.openaiApiKeyOverride,
-      },
-      context,
-      timeoutMs: 30_000,
-      fetchImpl,
-      forceOpenRouter: resolved.forceOpenRouter,
-      openaiBaseUrlOverride:
-        resolved.transport === "openrouter" ? undefined : resolved.openaiBaseUrlOverride,
-      forceChatCompletions: resolved.forceChatCompletions,
-      requestOptions: mergeRequestOptionsForProvider({
-        provider: parseGatewayStyleModelId(resolved.llmModelId!).provider,
-        openaiGlobalDefault: openaiRequestOptions,
-        attemptOptions: resolved.requestOptions,
-        openaiOverride: undefined,
-      }),
-    });
-    for await (const chunk of result.textStream) {
-      pushToSession({ event: "content", data: chunk });
-    }
-    pushToSession({ event: "metrics" });
-    return;
-  }
-
-  const attempts = buildAutoModelAttempts({
+  const requestedModel =
+    modelOverride && modelOverride.trim().length > 0
+      ? resolveModelSelection({
+          config: configForCli ?? null,
+          configForCli: configForCli ?? null,
+          configPath: null,
+          envForRun: env,
+          explicitModelArg: modelOverride,
+        }).requestedModel
+      : ({ kind: "auto" } as const);
+  const attempts = resolveModelAttempts({
+    requestedModel,
     kind: "text",
     promptTokens: null,
     desiredOutputTokens: null,
     requiresVideoUnderstanding: false,
-    env: envState.envForAuto,
-    config: null,
+    envForAuto: envState.envForAuto,
+    configForModelSelection: null,
     catalog: null,
     openrouterProvidersFromEnv: null,
     cliAvailability: envState.cliAvailability,
+    providerRuntime,
   });
-
-  const apiAttempt = attempts.find(
-    (entry) =>
-      entry.transport !== "cli" &&
-      entry.llmModelId &&
-      envHasKey(envState.envForAuto, entry.requiredEnv),
-  );
-  const cliAttempt = !apiAttempt ? attempts.find((entry) => entry.transport === "cli") : null;
-  const attempt = apiAttempt ?? cliAttempt;
+  const attempt =
+    requestedModel.kind === "fixed"
+      ? (attempts[0] ?? null)
+      : selectPreferredInteractiveModelAttempt({
+          attempts,
+          envForAuto: envState.envForAuto,
+          cliAvailability: envState.cliAvailability,
+          requireCliAvailability: false,
+        });
   if (!attempt) {
     throw new Error("No model available for chat");
   }
@@ -250,15 +154,14 @@ export async function streamChatResponse({
   emitMeta({ model: attempt.userModelId });
 
   if (attempt.transport === "cli") {
-    const parsed = parseCliUserModelId(attempt.userModelId);
     const prompt = flattenChatForCli({
       systemPrompt: context.systemPrompt ?? "",
       messages: context.messages,
     });
     const result = await runCliModel({
-      provider: parsed.provider,
+      provider: attempt.cliProvider!,
       prompt,
-      model: parsed.model,
+      model: attempt.cliModel ?? null,
       allowTools: false,
       timeoutMs: 120_000,
       env,
@@ -270,30 +173,24 @@ export async function streamChatResponse({
     return;
   }
 
-  const resolvedAttempt = {
-    ...attempt,
-    ...resolveModelAttemptOpenAiOverrides(attempt, providerRuntime),
-  };
   const result = await streamTextWithContext({
-    modelId: resolvedAttempt.llmModelId!,
+    modelId: attempt.llmModelId!,
     apiKeys:
-      resolvedAttempt.openaiApiKeyOverride === undefined
+      attempt.openaiApiKeyOverride === undefined
         ? apiKeys
-        : { ...apiKeys, openaiApiKey: resolvedAttempt.openaiApiKeyOverride },
+        : { ...apiKeys, openaiApiKey: attempt.openaiApiKeyOverride },
     context,
     timeoutMs: 30_000,
     fetchImpl,
-    forceOpenRouter: resolvedAttempt.forceOpenRouter,
+    forceOpenRouter: attempt.forceOpenRouter,
     openaiBaseUrlOverride:
-      resolvedAttempt.transport === "openrouter"
-        ? undefined
-        : resolvedAttempt.openaiBaseUrlOverride,
+      attempt.transport === "openrouter" ? undefined : attempt.openaiBaseUrlOverride,
     forceChatCompletions:
-      resolvedAttempt.transport === "openrouter" ? undefined : resolvedAttempt.forceChatCompletions,
+      attempt.transport === "openrouter" ? undefined : attempt.forceChatCompletions,
     requestOptions: mergeRequestOptionsForProvider({
-      provider: parseGatewayStyleModelId(resolvedAttempt.llmModelId!).provider,
+      provider: parseGatewayStyleModelId(attempt.llmModelId!).provider,
       openaiGlobalDefault: openaiRequestOptions,
-      attemptOptions: resolvedAttempt.requestOptions,
+      attemptOptions: attempt.requestOptions,
       openaiOverride: undefined,
     }),
   });

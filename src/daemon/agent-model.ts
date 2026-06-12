@@ -3,12 +3,19 @@ import { getModel } from "@earendil-works/pi-ai";
 import { isOpenRouterBaseUrl } from "@steipete/summarize-core";
 import { createRunConfigInput } from "../application/config-state.js";
 import { resolveRunContextState } from "../application/context.js";
+import {
+  resolveModelAttempts,
+  selectPreferredInteractiveModelAttempt,
+} from "../application/model-attempts.js";
 import { resolveModelSelection } from "../application/model-selection.js";
+import { resolveProviderRuntimeBindings } from "../application/provider-runtime.js";
 import type { CliProvider } from "../config.js";
+import type { ModelAttempt } from "../engine/types.js";
 import { buildGitHubModelsHeaders, resolveGitHubModelsApiKey } from "../llm/github-models.js";
 import { parseGatewayStyleModelId } from "../llm/model-id.js";
 import {
   cliProviderForRequiredEnv,
+  envHasRequiredKey,
   getGatewayProviderProfile,
   isGatewayProvider,
   requiredEnvForGatewayProvider,
@@ -16,8 +23,7 @@ import {
 } from "../llm/provider-capabilities.js";
 import { resolveMinimaxModel } from "../llm/providers/models.js";
 import { createSyntheticModel } from "../llm/providers/shared.js";
-import { buildAutoModelAttempts, envHasKey, type AutoModelAttempt } from "../model-auto.js";
-import { parseCliUserModelId } from "../run/env.js";
+import type { AutoModelAttempt } from "../model-auto.js";
 import { resolveRunOverrides } from "../run/run-settings.js";
 
 type AgentApiKeys = {
@@ -173,7 +179,7 @@ function buildNoAgentModelAvailableError({
       attempts
         .filter((attempt) => attempt.transport !== "cli")
         .map((attempt) => attempt.requiredEnv)
-        .filter((requiredEnv) => !envHasKey(envForAuto, requiredEnv)),
+        .filter((requiredEnv) => !envHasRequiredKey(envForAuto, requiredEnv)),
     ),
   );
   const unavailableCli = Array.from(
@@ -208,6 +214,11 @@ export async function resolveAgentModel({
   pageContent: string;
   modelOverride: string | null;
 }) {
+  const context = resolveRunContextState({
+    env,
+    envForRun: env,
+    configInput: createRunConfigInput(),
+  });
   const {
     config,
     configPath,
@@ -218,21 +229,11 @@ export async function resolveAgentModel({
     googleApiKey,
     xaiApiKey,
     zaiApiKey,
-    providerBaseUrls,
-    zaiBaseUrl,
     nvidiaApiKey,
-    nvidiaBaseUrl,
     minimaxApiKey,
-    minimaxBaseUrl,
-    ollamaBaseUrl,
     envForAuto,
     cliAvailability,
-    openaiUseChatCompletions,
-  } = resolveRunContextState({
-    env,
-    envForRun: env,
-    configInput: createRunConfigInput(),
-  });
+  } = context;
 
   const apiKeys: AgentApiKeys = {
     openaiApiKey: apiKey,
@@ -257,29 +258,28 @@ export async function resolveAgentModel({
     explicitModelArg: modelOverride,
   });
 
-  const providerBaseUrlMap: Partial<Record<GatewayProvider, string | null>> = {
-    openai: providerBaseUrls.openai,
-    anthropic: providerBaseUrls.anthropic,
-    google: providerBaseUrls.google,
-    xai: providerBaseUrls.xai,
-    zai: zaiBaseUrl,
-    nvidia: nvidiaBaseUrl,
-    minimax: minimaxBaseUrl,
-    "github-copilot": getGatewayProviderProfile("github-copilot").defaultBaseUrl,
-    ollama: ollamaBaseUrl,
-  };
+  const providerRuntime = resolveProviderRuntimeBindings({ env, envState: context, configForCli });
 
-  const applyBaseUrlOverride = (provider: GatewayProvider | "openrouter", modelId: string) => {
-    const profile = provider === "openrouter" ? null : getGatewayProviderProfile(provider);
-    const baseUrl =
-      provider === "openrouter"
-        ? null
-        : (providerBaseUrlMap[provider] ?? profile?.defaultBaseUrl ?? null);
+  const resolveAttemptModel = (attempt: ModelAttempt) => {
+    const { provider, modelId } =
+      attempt.transport === "openrouter"
+        ? {
+            provider: "openrouter" as const,
+            modelId: attempt.userModelId.replace(/^openrouter\//i, ""),
+          }
+        : (() => {
+            if (!attempt.llmModelId) {
+              throw new Error(`Missing model id for ${attempt.userModelId}`);
+            }
+            const parsed = parseGatewayStyleModelId(attempt.llmModelId);
+            return { provider: parsed.provider, modelId: parsed.model };
+          })();
+    const baseUrl = provider === "openrouter" ? null : (attempt.openaiBaseUrlOverride ?? null);
     if (provider === "minimax") {
       return {
         provider,
         model: resolveMinimaxModel({
-          modelId,
+          modelId: modelId,
           context: {
             messages: [{ role: "user", content: pageContent, timestamp: Date.now() }],
           },
@@ -291,17 +291,11 @@ export async function resolveAgentModel({
       provider === "nvidia" || provider === "github-copilot" || provider === "ollama"
         ? "openai"
         : provider;
-    const forceOpenAiChatCompletions =
-      provider === "openai"
-        ? openaiUseChatCompletions
-        : provider === "openrouter"
-          ? undefined
-          : profile?.forceChatCompletions;
     const model = resolveModelWithFallback({
       provider: providerForPiAi,
       modelId,
       baseUrl,
-      forceOpenAiChatCompletions,
+      forceOpenAiChatCompletions: attempt.forceChatCompletions,
     });
     return {
       provider,
@@ -312,27 +306,39 @@ export async function resolveAgentModel({
     };
   };
 
+  const attempts = resolveModelAttempts({
+    requestedModel,
+    kind: "website",
+    promptTokens: Math.ceil(pageContent.length / 4),
+    desiredOutputTokens: maxOutputTokens,
+    requiresVideoUnderstanding: false,
+    envForAuto,
+    configForModelSelection,
+    catalog: null,
+    openrouterProvidersFromEnv: null,
+    cliAvailability,
+    providerRuntime,
+  });
+
   if (requestedModel.kind === "fixed") {
-    if (requestedModel.transport === "cli") {
+    const attempt = attempts[0];
+    if (!attempt) {
+      throw buildNoAgentModelAvailableError({ attempts, envForAuto, cliAvailability });
+    }
+    if (attempt.transport === "cli") {
       return {
         provider: "cli",
         model: null,
         maxOutputTokens,
         apiKeys,
         transport: "cli" as const,
-        cliProvider: requestedModel.cliProvider,
-        cliModel: requestedModel.cliModel,
-        userModelId: requestedModel.userModelId,
+        cliProvider: attempt.cliProvider!,
+        cliModel: attempt.cliModel ?? null,
+        userModelId: attempt.userModelId,
         cliConfig: configForCli?.cli ?? null,
       };
     }
-    if (requestedModel.transport === "openrouter") {
-      const resolved = applyBaseUrlOverride("openrouter", requestedModel.openrouterModelId);
-      return { ...resolved, maxOutputTokens, apiKeys };
-    }
-
-    const { provider, model } = parseGatewayStyleModelId(requestedModel.llmModelId);
-    const resolved = applyBaseUrlOverride(provider, model);
+    const resolved = resolveAttemptModel(attempt);
     return { ...resolved, maxOutputTokens, apiKeys };
   }
 
@@ -340,54 +346,28 @@ export async function resolveAgentModel({
     throw buildNoAgentModelAvailableError({ attempts: [], envForAuto, cliAvailability });
   }
 
-  const estimatedPromptTokens = Math.ceil(pageContent.length / 4);
-  const attempts = buildAutoModelAttempts({
-    kind: "website",
-    promptTokens: estimatedPromptTokens,
-    desiredOutputTokens: maxOutputTokens,
-    requiresVideoUnderstanding: false,
-    env: envForAuto,
-    config: configForModelSelection,
-    catalog: null,
-    openrouterProvidersFromEnv: null,
+  const attempt = selectPreferredInteractiveModelAttempt({
+    attempts,
+    envForAuto,
     cliAvailability,
   });
-
-  let cliAttempt: (typeof attempts)[number] | null = null;
-  for (const attempt of attempts) {
-    if (attempt.transport === "cli") {
-      if (!cliAttempt) cliAttempt = attempt;
-      continue;
-    }
-    if (!envHasKey(envForAuto, attempt.requiredEnv)) continue;
-    if (attempt.transport === "openrouter") {
-      const modelId = attempt.userModelId.replace(/^openrouter\//i, "");
-      const resolved = applyBaseUrlOverride("openrouter", modelId);
-      return { ...resolved, maxOutputTokens, apiKeys };
-    }
-    if (!attempt.llmModelId) continue;
-    const { provider, model } = parseGatewayStyleModelId(attempt.llmModelId);
-    const resolved = applyBaseUrlOverride(provider, model);
-    return { ...resolved, maxOutputTokens, apiKeys };
+  if (!attempt) {
+    throw buildNoAgentModelAvailableError({ attempts, envForAuto, cliAvailability });
   }
-
-  if (cliAttempt) {
-    const parsed = parseCliUserModelId(cliAttempt.userModelId);
-    if (!cliAvailability[parsed.provider]) {
-      throw buildNoAgentModelAvailableError({ attempts, envForAuto, cliAvailability });
-    }
+  if (attempt.transport === "cli") {
     return {
       provider: "cli",
       model: null,
       maxOutputTokens,
       apiKeys,
       transport: "cli" as const,
-      cliProvider: parsed.provider,
-      cliModel: parsed.model,
-      userModelId: cliAttempt.userModelId,
+      cliProvider: attempt.cliProvider!,
+      cliModel: attempt.cliModel ?? null,
+      userModelId: attempt.userModelId,
       cliConfig: configForCli?.cli ?? null,
     };
   }
 
-  throw buildNoAgentModelAvailableError({ attempts, envForAuto, cliAvailability });
+  const resolved = resolveAttemptModel(attempt);
+  return { ...resolved, maxOutputTokens, apiKeys };
 }
