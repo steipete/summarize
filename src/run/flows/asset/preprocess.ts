@@ -1,10 +1,10 @@
+import type { SummaryLength } from "@steipete/summarize-core";
 import type { OutputLanguage } from "../../../language.js";
 import type { Attachment } from "../../../llm/attachments.js";
 import { resolveOpenAiClientConfig } from "../../../llm/providers/openai.js";
 import { convertToMarkdownWithMarkitdown } from "../../../markitdown.js";
 import type { FixedModelSpec } from "../../../model-spec.js";
 import { buildFileSummaryPrompt, buildFileTextSummaryPrompt } from "../../../prompts/index.js";
-import type { SummaryLength } from "../../../shared/contracts.js";
 import { formatBytes } from "../../../tty/format.js";
 import {
   type AssetAttachment,

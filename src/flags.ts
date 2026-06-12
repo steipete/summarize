@@ -1,4 +1,4 @@
-import type { SummaryLength } from "./shared/contracts.js";
+import type { SummaryLength } from "@steipete/summarize-core";
 
 export type YoutubeMode = "auto" | "web" | "apify" | "yt-dlp" | "no-auto";
 export type FirecrawlMode = "off" | "auto" | "always";

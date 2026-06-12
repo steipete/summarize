@@ -1,6 +1,7 @@
 import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import { buildIdleSubtitle } from "../../lib/header";
 import type { PanelCachePayload } from "./panel-cache";
+import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
 import { normalizeSlideImageUrl } from "./slide-images";
 import { normalizeSlidesPayload } from "./slides-payload";
 import { clearSummaryCopyButton } from "./summary-renderer";
@@ -31,6 +32,7 @@ type HeaderControllerLike = {
 
 type SummaryViewRuntimeOpts = {
   panelState: PanelState;
+  dispatchPanelState?: (action: PanelStateAction) => void;
   renderEl: HTMLElement;
   renderSlidesHostEl: HTMLElement;
   renderMarkdownHostEl: HTMLElement;
@@ -82,6 +84,14 @@ type SummaryViewRuntimeOpts = {
 };
 
 export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
+  const dispatch = (action: PanelStateAction) => {
+    if (opts.dispatchPanelState) {
+      opts.dispatchPanelState(action);
+    } else {
+      applyPanelStateAction(opts.panelState, action);
+    }
+  };
+
   function resetSummaryView({
     preserveChat = false,
     clearRunId = true,
@@ -96,18 +106,10 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     opts.renderMarkdownHostEl.innerHTML = "";
     clearSummaryCopyButton(opts.summaryCopyBtn);
     opts.metricsController.clearForMode("summary");
-    opts.panelState.summaryMarkdown = null;
-    opts.panelState.summaryFromCache = null;
-    if (clearRunId) {
-      opts.panelState.runId = null;
-    }
+    dispatch({ type: "reset-summary", clearRunId, clearSlides: stopSlides });
     opts.setSlidesExpanded(true);
     if (stopSlides) {
       opts.getSlidesRenderer().clear();
-      opts.panelState.slides = null;
-      if (clearRunId) {
-        opts.panelState.slidesRunId = null;
-      }
       opts.setSlidesContextPending(false);
       opts.setSlidesContextUrl(null);
       opts.setSlidesTranscriptTimedText(null);
@@ -148,17 +150,21 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
   function applyPanelCache(payload: PanelCachePayload, applyOpts?: { preserveChat?: boolean }) {
     const preserveChat = applyOpts?.preserveChat ?? false;
     resetSummaryView({ preserveChat });
-    opts.panelState.runId = payload.runId ?? null;
-    opts.panelState.slidesRunId =
+    const slidesRunId =
       payload.slidesRunId ?? (opts.getSlidesParallelValue() ? null : (payload.runId ?? null));
     opts.setCurrentRunTabId(payload.tabId);
-    opts.panelState.currentSource = { url: payload.url, title: payload.title ?? null };
-    opts.panelState.lastMeta = payload.lastMeta ?? {
-      inputSummary: null,
-      model: null,
-      modelLabel: null,
-    };
-    opts.panelState.summaryFromCache = payload.summaryFromCache ?? null;
+    dispatch({
+      type: "restore-session",
+      runId: payload.runId ?? null,
+      slidesRunId,
+      source: { url: payload.url, title: payload.title ?? null },
+      meta: payload.lastMeta ?? {
+        inputSummary: null,
+        model: null,
+        modelLabel: null,
+      },
+      summaryFromCache: payload.summaryFromCache ?? null,
+    });
     opts.setSlidesSummaryState({
       markdown: payload.slidesSummaryMarkdown ?? "",
       complete:
@@ -183,13 +189,20 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     const normalizedSlides = normalizeSlidesPayload(payload.slides);
     const hasNormalizedSlides = Boolean(normalizedSlides && normalizedSlides.slides.length > 0);
     if (normalizedSlides && hasNormalizedSlides) {
-      opts.panelState.slides = {
-        ...normalizedSlides,
-        slides: normalizedSlides.slides.map((slide) => ({
-          ...slide,
-          imageUrl: normalizeSlideImageUrl(slide.imageUrl, normalizedSlides.sourceId, slide.index),
-        })),
-      };
+      dispatch({
+        type: "slides",
+        slides: {
+          ...normalizedSlides,
+          slides: normalizedSlides.slides.map((slide) => ({
+            ...slide,
+            imageUrl: normalizeSlideImageUrl(
+              slide.imageUrl,
+              normalizedSlides.sourceId,
+              slide.index,
+            ),
+          })),
+        },
+      });
       opts.setSlidesContextPending(false);
       opts.setSlidesContextUrl(
         opts.slidesTextController.getTranscriptAvailable() ? payload.url : null,
@@ -204,7 +217,7 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
       }
       opts.setSlidesAppliedRunId(opts.resolveActiveSlidesRunId());
     } else {
-      opts.panelState.slides = null;
+      dispatch({ type: "slides", slides: null });
       opts.setSlidesContextPending(false);
       opts.setSlidesContextUrl(null);
       opts.updateSlidesTextState();

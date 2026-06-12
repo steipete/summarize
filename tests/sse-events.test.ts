@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parseSseStream } from "../apps/chrome-extension/src/lib/sse.js";
-import { encodeSseEvent, parseSseEvent, type SseEvent } from "../src/shared/sse-events.js";
+import {
+  encodeSseEvent,
+  parseSseEvent,
+  type SseEvent,
+} from "../packages/core/src/runtime/sse-events.js";
 
 async function collectSse(input: string) {
   const encoder = new TextEncoder();

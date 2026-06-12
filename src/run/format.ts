@@ -1,4 +1,4 @@
-import type { SummaryLength } from "../shared/contracts.js";
+import type { SummaryLength } from "@steipete/summarize-core";
 
 export function formatOptionalString(value: string | null | undefined): string {
   if (typeof value === "string" && value.trim().length > 0) {

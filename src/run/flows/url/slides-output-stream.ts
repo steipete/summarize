@@ -1,5 +1,5 @@
+import { createSlidesPresentationStream } from "@steipete/summarize-core/slides";
 import { createMarkdownStreamer, render as renderMarkdownAnsi } from "markdansi";
-import { createSlidesPresentationStream } from "../../../shared/slides-presentation.js";
 import { prepareMarkdownForTerminalStreaming } from "../../markdown.js";
 import { createStreamOutputGate, type StreamOutputMode } from "../../stream-output.js";
 import type { SummaryStreamHandler } from "../../summary-engine.js";

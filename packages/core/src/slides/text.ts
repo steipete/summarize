@@ -1,4 +1,4 @@
-export type { SlideTimelineEntry, TranscriptSegment } from "./slides-text-types.js";
+export type { SlideTimelineEntry, TranscriptSegment } from "./text-types.js";
 
 export {
   buildSlideTextFallback,
@@ -10,7 +10,7 @@ export {
   parseSlideSummariesFromMarkdown,
   splitSlideTitleFromText,
   splitSummaryFromSlides,
-} from "./slides-text-markdown.js";
+} from "./text-markdown.js";
 
 export {
   buildTimestampUrl,
@@ -21,4 +21,4 @@ export {
   parseTranscriptTimedText,
   resolveSlideTextBudget,
   resolveSlideWindowSeconds,
-} from "./slides-text-transcript.js";
+} from "./text-transcript.js";

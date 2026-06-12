@@ -6,7 +6,7 @@ import {
   summarizePortableCacheRows,
   type CacheStats,
   type PortableCacheRow,
-} from "../../../../src/shared/cache-store";
+} from "@steipete/summarize-core/runtime";
 import type { PanelCachePayload } from "./panel-contracts";
 
 type StoredPanelCacheRow = PortableCacheRow & {

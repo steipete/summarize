@@ -1,4 +1,4 @@
-export type { SummaryLength } from "../../../../src/shared/contracts.js";
+export type { SummaryLength } from "@steipete/summarize-core";
 export {
   parseSseEvent,
   type RawSseMessage,
@@ -6,5 +6,5 @@ export {
   type SseMetaData,
   type SseMetricsData,
   type SseSlidesData,
-} from "../../../../src/shared/sse-events.js";
-export { mergeStreamingChunk } from "../../../../src/shared/streaming-merge.js";
+} from "@steipete/summarize-core/runtime";
+export { mergeStreamingChunk } from "@steipete/summarize-core/runtime";

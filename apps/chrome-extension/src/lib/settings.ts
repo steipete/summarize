@@ -1,3 +1,4 @@
+import type { SummarizeRequestOverrides } from "@steipete/summarize-core/runtime";
 import {
   type ColorMode,
   type ColorScheme,
@@ -6,6 +7,13 @@ import {
   normalizeColorMode,
   normalizeColorScheme,
 } from "./theme";
+
+type RequestModeSetting = "" | NonNullable<SummarizeRequestOverrides["mode"]>;
+type FirecrawlModeSetting = "" | NonNullable<SummarizeRequestOverrides["firecrawl"]>;
+type MarkdownModeSetting = "" | NonNullable<SummarizeRequestOverrides["markdownMode"]>;
+type PreprocessModeSetting = "" | NonNullable<SummarizeRequestOverrides["preprocess"]>;
+type YoutubeModeSetting = "" | NonNullable<SummarizeRequestOverrides["youtube"]>;
+type TranscriberSetting = "" | NonNullable<SummarizeRequestOverrides["transcriber"]>;
 
 export type Settings = {
   token: string;
@@ -23,17 +31,17 @@ export type Settings = {
   autoCliFallback: boolean;
   autoCliOrder: string;
   hoverPrompt: string;
-  transcriber: string;
+  transcriber: TranscriberSetting;
   model: string;
   length: string;
   language: string;
   promptOverride: string;
   maxChars: number;
-  requestMode: string;
-  firecrawlMode: string;
-  markdownMode: string;
-  preprocessMode: string;
-  youtubeMode: string;
+  requestMode: RequestModeSetting;
+  firecrawlMode: FirecrawlModeSetting;
+  markdownMode: MarkdownModeSetting;
+  preprocessMode: PreprocessModeSetting;
+  youtubeMode: YoutubeModeSetting;
   timeout: string;
   retries: number | null;
   maxOutputTokens: string;
@@ -164,7 +172,7 @@ function normalizeAutoCliOrder(value: unknown): string {
   return out.length > 0 ? out.join(",") : defaultSettings.autoCliOrder;
 }
 
-function normalizeTranscriber(value: unknown): string {
+function normalizeTranscriber(value: unknown): TranscriberSetting {
   if (typeof value !== "string") return defaultSettings.transcriber;
   const trimmed = value.trim().toLowerCase();
   if (!trimmed) return defaultSettings.transcriber;
@@ -172,7 +180,7 @@ function normalizeTranscriber(value: unknown): string {
   return defaultSettings.transcriber;
 }
 
-function normalizeRequestMode(value: unknown): string {
+function normalizeRequestMode(value: unknown): RequestModeSetting {
   if (typeof value !== "string") return defaultSettings.requestMode;
   const trimmed = value.trim().toLowerCase();
   if (!trimmed) return defaultSettings.requestMode;
@@ -200,7 +208,7 @@ function normalizeSlideRuntime(value: unknown, raw?: Record<string, unknown>): S
   return defaultSettings.slideRuntime;
 }
 
-function normalizeFirecrawlMode(value: unknown): string {
+function normalizeFirecrawlMode(value: unknown): FirecrawlModeSetting {
   if (typeof value !== "string") return defaultSettings.firecrawlMode;
   const trimmed = value.trim().toLowerCase();
   if (!trimmed) return defaultSettings.firecrawlMode;
@@ -208,7 +216,7 @@ function normalizeFirecrawlMode(value: unknown): string {
   return defaultSettings.firecrawlMode;
 }
 
-function normalizeMarkdownMode(value: unknown): string {
+function normalizeMarkdownMode(value: unknown): MarkdownModeSetting {
   if (typeof value !== "string") return defaultSettings.markdownMode;
   const trimmed = value.trim().toLowerCase();
   if (!trimmed) return defaultSettings.markdownMode;
@@ -218,7 +226,7 @@ function normalizeMarkdownMode(value: unknown): string {
   return defaultSettings.markdownMode;
 }
 
-function normalizePreprocessMode(value: unknown): string {
+function normalizePreprocessMode(value: unknown): PreprocessModeSetting {
   if (typeof value !== "string") return defaultSettings.preprocessMode;
   const trimmed = value.trim().toLowerCase();
   if (!trimmed) return defaultSettings.preprocessMode;
@@ -226,7 +234,7 @@ function normalizePreprocessMode(value: unknown): string {
   return defaultSettings.preprocessMode;
 }
 
-function normalizeYoutubeMode(value: unknown): string {
+function normalizeYoutubeMode(value: unknown): YoutubeModeSetting {
   if (typeof value !== "string") return defaultSettings.youtubeMode;
   const trimmed = value.trim().toLowerCase();
   if (!trimmed) return defaultSettings.youtubeMode;

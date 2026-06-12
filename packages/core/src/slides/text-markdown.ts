@@ -1,11 +1,11 @@
-import type { SummaryLength } from "../../../shared/contracts.js";
+import type { SummaryLength } from "../shared/contracts.js";
 import {
   getTranscriptTextForSlide,
   parseTranscriptTimedText,
   resolveSlideTextBudget,
   resolveSlideWindowSeconds,
-} from "./slides-text-transcript.js";
-import type { SlideTimelineEntry } from "./slides-text-types.js";
+} from "./text-transcript.js";
+import type { SlideTimelineEntry } from "./text-types.js";
 
 const SLIDE_TAG_PATTERN = /^\[[^\]]*slide[^\d\]]*(\d+)[^\]]*\]\s*(.*)$/i;
 const SLIDE_LABEL_PATTERN =

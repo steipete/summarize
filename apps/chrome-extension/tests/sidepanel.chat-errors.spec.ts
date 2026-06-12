@@ -4,6 +4,7 @@ import {
   assertNoErrors,
   buildUiState,
   closeExtension,
+  getActiveTabId,
   getBrowserFromProject,
   injectContentScript,
   launchExtension,
@@ -57,10 +58,11 @@ test("sidepanel shows an error when agent request fails", async ({
     await maybeBringToFront(contentPage);
     await activateTabByUrl(harness, "https://example.com");
     await waitForActiveTabUrl(harness, "https://example.com");
+    const activeTabId = await getActiveTabId(harness);
     await sendBgMessage(harness, {
       type: "ui:state",
       state: buildUiState({
-        tab: { id: 1, url: "https://example.com", title: "Example" },
+        tab: { id: activeTabId, url: "https://example.com", title: "Example" },
         settings: { chatEnabled: true, tokenPresent: true },
       }),
     });
@@ -77,9 +79,7 @@ test("sidepanel shows an error when agent request fails", async ({
 
     await expect.poll(() => agentCalls).toBe(1);
     await expect(page.locator("#inlineError")).toBeVisible();
-    await expect(page.locator("#inlineErrorMessage")).toContainText(
-      /Chat request failed: Boom|Tab changed/,
-    );
+    await expect(page.locator("#inlineErrorMessage")).toContainText("Chat request failed: Boom");
     await expect(page.locator(".chatMessage.assistant.streaming")).toHaveCount(0);
     assertNoErrors(harness);
   } finally {
@@ -169,10 +169,11 @@ test("sidepanel shows daemon upgrade hint when /v1/agent is missing", async ({
     await maybeBringToFront(contentPage);
     await activateTabByUrl(harness, "https://example.com");
     await waitForActiveTabUrl(harness, "https://example.com");
+    const activeTabId = await getActiveTabId(harness);
     await sendBgMessage(harness, {
       type: "ui:state",
       state: buildUiState({
-        tab: { id: 1, url: "https://example.com", title: "Example" },
+        tab: { id: activeTabId, url: "https://example.com", title: "Example" },
         settings: { chatEnabled: true, tokenPresent: true },
       }),
     });

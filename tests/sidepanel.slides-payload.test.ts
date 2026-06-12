@@ -5,7 +5,7 @@ import {
   resolveSlidesPayload,
   slidesPayloadChanged,
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-payload";
-import type { SseSlidesData } from "../src/shared/sse-events";
+import type { SseSlidesData } from "../packages/core/src/runtime/sse-events.js";
 
 function buildSlidesPayload({
   sourceId = "youtube-abc123",

@@ -1,7 +1,7 @@
 import type http from "node:http";
 import type { Message } from "@earendil-works/pi-ai";
+import { encodeSseEvent, type SseEvent } from "@steipete/summarize-core/runtime";
 import { runWithProcessContext } from "../processes.js";
-import { encodeSseEvent, type SseEvent } from "../shared/sse-events.js";
 import { completeAgentResponse, streamAgentResponse } from "./agent.js";
 import { json, readJsonBody, wantsJsonResponse } from "./server-http.js";
 

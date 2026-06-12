@@ -6,7 +6,7 @@ import {
 } from "./github-models.js";
 import { normalizeGatewayStyleModelId, parseGatewayStyleModelId } from "./model-id.js";
 import type { ModelRequestOptions } from "./model-options.js";
-import { resolveOpenAiClientConfig } from "./providers/openai.js";
+import { resolveOpenAiClientConfig } from "./openai-client-config.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
 
 export type GatewayProvider =
@@ -41,8 +41,16 @@ export type RequiredModelEnv =
   | "CLI_AGY"
   | "CLI_PI";
 
-type GatewayProviderProfile = {
+export type ProviderExecution =
+  | "simple"
+  | "google"
+  | "anthropic"
+  | "openai-http"
+  | "openai-compatible";
+
+export type GatewayProviderProfile = {
   requiredEnv: RequiredModelEnv;
+  execution: ProviderExecution;
   supportsDocuments: boolean;
   supportsStreaming: boolean;
   supportsVideoUnderstanding: boolean;
@@ -51,54 +59,63 @@ type GatewayProviderProfile = {
 const GATEWAY_PROVIDER_PROFILES: Record<GatewayProvider, GatewayProviderProfile> = {
   xai: {
     requiredEnv: "XAI_API_KEY",
+    execution: "simple",
     supportsDocuments: false,
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
   },
   openai: {
     requiredEnv: "OPENAI_API_KEY",
+    execution: "openai-http",
     supportsDocuments: true,
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
   },
   google: {
     requiredEnv: "GEMINI_API_KEY",
+    execution: "google",
     supportsDocuments: true,
     supportsStreaming: true,
     supportsVideoUnderstanding: true,
   },
   anthropic: {
     requiredEnv: "ANTHROPIC_API_KEY",
+    execution: "anthropic",
     supportsDocuments: true,
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
   },
   zai: {
     requiredEnv: "Z_AI_API_KEY",
+    execution: "openai-compatible",
     supportsDocuments: false,
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
   },
   nvidia: {
     requiredEnv: "NVIDIA_API_KEY",
+    execution: "openai-compatible",
     supportsDocuments: false,
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
   },
   minimax: {
     requiredEnv: "MINIMAX_API_KEY",
+    execution: "openai-compatible",
     supportsDocuments: false,
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
   },
   "github-copilot": {
     requiredEnv: "GITHUB_TOKEN",
+    execution: "openai-http",
     supportsDocuments: false,
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
   },
   ollama: {
     requiredEnv: "OLLAMA_BASE_URL",
+    execution: "openai-compatible",
     supportsDocuments: false,
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
@@ -182,6 +199,12 @@ export function supportsDocumentAttachments(provider: GatewayProvider): boolean 
 
 export function supportsStreaming(provider: GatewayProvider): boolean {
   return getGatewayProviderProfile(provider).supportsStreaming;
+}
+
+export function isOpenAiCompatibleProvider(
+  provider: GatewayProvider,
+): provider is "zai" | "nvidia" | "minimax" | "ollama" {
+  return getGatewayProviderProfile(provider).execution === "openai-compatible";
 }
 
 export function isVideoUnderstandingCapableProvider(provider: GatewayProvider): boolean {

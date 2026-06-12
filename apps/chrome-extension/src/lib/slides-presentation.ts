@@ -5,4 +5,4 @@ export {
   type SlidePresentationCard,
   type SlidePresentationLength,
   type SlidePresentationTextKind,
-} from "../../../../src/shared/slides-presentation.js";
+} from "@steipete/summarize-core/slides";

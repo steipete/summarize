@@ -4,7 +4,7 @@ import {
   isPortableCacheRowExpired,
   parseCacheJson,
   summarizePortableCacheRows,
-} from "../src/shared/cache-store.js";
+} from "../packages/core/src/runtime/cache-store.js";
 
 describe("shared cache store primitives", () => {
   it("builds rows with ttl, size, and stats usable by cache backends", () => {

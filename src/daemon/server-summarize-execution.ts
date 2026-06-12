@@ -1,9 +1,9 @@
 import type http from "node:http";
+import { encodeSseEvent, type SseSlidesData } from "@steipete/summarize-core/runtime";
 import type { CacheState } from "../cache.js";
 import type { MediaCache } from "../content/index.js";
 import { runWithProcessContext } from "../processes.js";
 import { formatModelLabelForDisplay } from "../run/finish-line.js";
-import { encodeSseEvent, type SseSlidesData } from "../shared/sse-events.js";
 import type { SlideExtractionResult, SlideSettings, SlideSourceKind } from "../slides/index.js";
 import { type DaemonRequestedMode, resolveAutoDaemonMode } from "./auto-mode.js";
 import {

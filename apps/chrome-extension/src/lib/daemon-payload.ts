@@ -1,3 +1,7 @@
+import type {
+  SummarizeRequestBody,
+  SummarizeRequestOverrides,
+} from "@steipete/summarize-core/runtime";
 import type { Settings } from "./settings";
 import { isYouTubeWatchUrl } from "./youtube-url";
 
@@ -18,11 +22,11 @@ export function buildDaemonRequestBody({
   extracted: ExtractedPage;
   settings: Settings;
   noCache?: boolean;
-}): Record<string, unknown> {
+}): SummarizeRequestBody {
   const promptOverride = settings.promptOverride?.trim();
   const maxOutputTokens = settings.maxOutputTokens?.trim();
   const timeout = settings.timeout?.trim();
-  const overrides: Record<string, unknown> = {};
+  const overrides: SummarizeRequestOverrides = {};
   if (settings.requestMode) overrides.mode = settings.requestMode;
   if (settings.firecrawlMode) overrides.firecrawl = settings.firecrawlMode;
   if (settings.markdownMode) overrides.markdownMode = settings.markdownMode;
@@ -73,7 +77,7 @@ export function buildSummarizeRequestBody({
     maxSlides?: number | null;
     minDurationSeconds?: number | null;
   };
-}): Record<string, unknown> {
+}): SummarizeRequestBody {
   const baseBody = buildDaemonRequestBody({ extracted, settings, noCache });
   const withTimestamps = timestamps ? { ...baseBody, timestamps: true } : baseBody;
   const slidesEnabled = Boolean(slides?.enabled);
@@ -93,8 +97,8 @@ export function buildSummarizeRequestBody({
     : {};
   if (inputMode === "video") {
     const videoOverrides = isYouTubeWatchUrl(extracted.url)
-      ? { mode: "url" }
-      : { mode: "url", videoMode: "transcript" };
+      ? ({ mode: "url" } as const)
+      : ({ mode: "url", videoMode: "transcript" } as const);
     return {
       ...withTimestamps,
       ...videoOverrides,

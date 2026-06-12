@@ -1,6 +1,6 @@
 import type { LlmProvider } from "../llm/model-id.js";
 
-export { mergeStreamingChunk } from "../shared/streaming-merge.js";
+export { mergeStreamingChunk } from "@steipete/summarize-core/runtime";
 
 export function isGoogleStreamingUnsupportedError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;

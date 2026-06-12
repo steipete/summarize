@@ -37,6 +37,7 @@ import { createMetricsController } from "./metrics-controller";
 import { createNavigationRuntime } from "./navigation-runtime";
 import { createPanelCacheController, type PanelCachePayload } from "./panel-cache";
 import { createPanelPortRuntime } from "./panel-port";
+import { createPanelStateStore } from "./panel-state-store";
 import {
   normalizePanelUrl,
   panelUrlsMatch,
@@ -57,7 +58,7 @@ import { createSummaryStreamRuntime } from "./summary-stream-runtime";
 import { createSummaryViewRuntime } from "./summary-view-runtime";
 import { registerSidepanelTestHooks } from "./test-hooks";
 import { parseTimestampHref } from "./timestamp-links";
-import type { ChatMessage, PanelPhase, PanelState, RunStart, UiState } from "./types";
+import type { ChatMessage, PanelPhase, RunStart, UiState } from "./types";
 import { createTypographyController } from "./typography-controller";
 import { createUiStateRuntime } from "./ui-state-runtime";
 
@@ -166,19 +167,8 @@ const slideTagPlugin = (markdown: MarkdownIt) => {
 
 md.use(slideTagPlugin);
 
-const panelState: PanelState = {
-  ui: null,
-  runId: null,
-  slidesRunId: null,
-  currentSource: null,
-  lastMeta: { inputSummary: null, model: null, modelLabel: null },
-  summaryMarkdown: null,
-  summaryFromCache: null,
-  slides: null,
-  phase: "idle",
-  error: null,
-  chatStreaming: false,
-};
+const panelStateStore = createPanelStateStore();
+const panelState = panelStateStore.state;
 
 let retainedSlideSummary: {
   markdown: string;
@@ -338,7 +328,7 @@ function stopSlidesStream() {
   activeSlidesRunMeta = null;
   slidesHydrator.stop();
   setSlidesBusy(false);
-  panelState.slidesRunId = null;
+  panelStateStore.dispatch({ type: "slides-run", runId: null });
   stopSlidesSummaryStream();
 }
 
@@ -442,24 +432,26 @@ function attachSummaryRun(run: RunStart) {
     (run.slides !== false &&
       slidesState.slidesEnabled &&
       (slidesSession.resolveInputMode() === "video" || slidesState.mediaAvailable));
-  panelState.runId = run.id;
-  panelState.slidesRunId = runRequestsSlides
+  const slidesRunId = runRequestsSlides
     ? run.id
     : preserveActiveLocalSlideRun
       ? (activeSlidesRunMeta?.runId ?? null)
       : null;
-  panelState.currentSource = { url: run.url, title: run.title };
   currentRunTabId = activeTabId;
   headerController.setBaseTitle(run.title || run.url || "Summarize");
   headerController.setBaseSubtitle("");
-  {
-    const fallbackModel = panelState.ui?.settings.model ?? null;
-    panelState.lastMeta = {
+  const fallbackModel = panelState.ui?.settings.model ?? null;
+  panelStateStore.dispatch({
+    type: "attach-run",
+    runId: run.id,
+    slidesRunId,
+    source: { url: run.url, title: run.title },
+    meta: {
       inputSummary: null,
       model: fallbackModel,
       modelLabel: fallbackModel,
-    };
-  }
+    },
+  });
   slidesState.pendingRunForPlannedSlides = runRequestsSlides ? run : null;
   lastPlannedSlidesRun = runRequestsSlides ? run : null;
   if (runRequestsSlides) {
@@ -493,21 +485,26 @@ function applySummarySnapshot(payload: { run: RunStart; markdown: string }) {
     clearRunId: false,
     stopSlides: !preserveActiveSlideRun,
   });
-  panelState.runId = payload.run.id;
-  panelState.slidesRunId =
+  const slidesRunId =
     preservedSlides?.sourceId ??
     (preserveActiveSlideRun ? (activeSlidesRunMeta?.runId ?? null) : null);
-  panelState.currentSource = { url: payload.run.url, title: payload.run.title };
-  panelState.lastMeta = {
-    inputSummary: null,
-    model: payload.run.model,
-    modelLabel: payload.run.model,
-  };
+  panelStateStore.dispatch({
+    type: "restore-session",
+    runId: payload.run.id,
+    slidesRunId,
+    source: { url: payload.run.url, title: payload.run.title },
+    meta: {
+      inputSummary: null,
+      model: payload.run.model,
+      modelLabel: payload.run.model,
+    },
+    summaryFromCache: null,
+    ...(preservedSlides ? { slides: preservedSlides } : {}),
+  });
   currentRunTabId = activeTabId;
   headerController.setBaseTitle(payload.run.title || payload.run.url || "Summarize");
   headerController.setBaseSubtitle("");
   if (preservedSlides) {
-    panelState.slides = preservedSlides;
     setSlidesTranscriptTimedText(preservedSlides.transcriptTimedText ?? null);
     updateSlidesTextState();
   }
@@ -769,8 +766,7 @@ slideNoticeRetryBtn.addEventListener("click", () => {
 });
 
 const setPhase = (phase: PanelPhase, opts?: { error?: string | null }) => {
-  panelState.phase = phase;
-  panelState.error = phase === "error" ? (opts?.error ?? panelState.error) : null;
+  panelStateStore.dispatch({ type: "phase", phase, error: opts?.error });
   if (phase === "error") {
     const message =
       panelState.error && panelState.error.trim().length > 0
@@ -809,7 +805,7 @@ chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {
 const navigationRuntime = createNavigationRuntime({
   getCurrentSource: () => panelState.currentSource,
   setCurrentSource: (source) => {
-    panelState.currentSource = source;
+    panelStateStore.dispatch({ type: "source", source });
   },
   resetForNavigation: (preserveChat) => {
     currentRunTabId = null;
@@ -851,6 +847,7 @@ async function clearCurrentView() {
 
 const summaryViewRuntime = createSummaryViewRuntime({
   panelState,
+  dispatchPanelState: panelStateStore.dispatch,
   renderEl,
   renderSlidesHostEl,
   renderMarkdownHostEl,
@@ -1017,6 +1014,7 @@ slidesViewRuntime = createSlidesViewRuntime({
     slidesExpanded: slidesState.slidesExpanded,
     mediaAvailable: slidesState.mediaAvailable,
   }),
+  dispatchPanelState: panelStateStore.dispatch,
   setSlidesBusyValue: (value) => {
     slidesState.slidesBusy = value;
   },
@@ -1093,7 +1091,7 @@ registerSidepanelTestHooks({
     queueSlidesRender();
   },
   applyUiState: (state) => {
-    panelState.ui = state;
+    panelStateStore.dispatch({ type: "ui", ui: state });
     updateControls(state);
   },
   applyBgMessage: (message) => {
@@ -1205,7 +1203,7 @@ chatUiRuntime = createChatUiRuntime({
   persistHistory: (tabId, chatEnabled) => chatHistoryRuntime.persist(tabId, chatEnabled),
   restoreHistory: (tabId, summaryMarkdown) => chatHistoryRuntime.restore(tabId, summaryMarkdown),
   resetChatController: () => {
-    panelState.chatStreaming = false;
+    panelStateStore.dispatch({ type: "chat-streaming", value: false });
     chatController.reset();
   },
   resetChatSession: () => {
@@ -1286,7 +1284,7 @@ const slidesRuntime = createSidepanelSlidesRuntime({
   },
   setSlidesBusy,
   setSlidesRunId: (value) => {
-    panelState.slidesRunId = value;
+    panelStateStore.dispatch({ type: "slides-run", runId: value });
   },
   showSlideNotice,
   stopSlidesStream,
@@ -1348,6 +1346,7 @@ const summaryStreamRuntime = createSummaryStreamRuntime({
   isStreaming,
   maybeApplyPendingSlidesSummary,
   panelState,
+  dispatchPanelState: panelStateStore.dispatch,
   queueSlidesRender,
   rebuildSlideDescriptions,
   refreshSummaryMetrics: (summary) => {
@@ -1379,6 +1378,7 @@ const { streamController } = summaryStreamRuntime;
 
 const uiStateRuntime = createUiStateRuntime({
   panelState,
+  dispatchPanelState: panelStateStore.dispatch,
   chatController,
   appearanceControls,
   typographyController,
@@ -1499,6 +1499,7 @@ function updateControls(state: UiState) {
 
 const bgMessageRuntime = createSidepanelBgMessageRuntime({
   panelState,
+  dispatchPanelState: panelStateStore.dispatch,
   applyUiState: updateControls,
   setStatus: (text) => {
     headerController.setStatus(text);
@@ -1770,13 +1771,16 @@ function seedPlannedSlidesForRun(run: RunStart) {
     return { index, timestamp, imageUrl: "" };
   });
 
-  panelState.slides = {
-    sourceUrl: run.url,
-    sourceId,
-    sourceKind,
-    ocrAvailable: false,
-    slides,
-  };
+  panelStateStore.dispatch({
+    type: "slides",
+    slides: {
+      sourceUrl: run.url,
+      sourceId,
+      sourceKind,
+      ocrAvailable: false,
+      slides,
+    },
+  });
   slidesState.slidesSeededSourceId = sourceId;
   updateSlidesTextState();
   queueSlidesRender();
@@ -1822,7 +1826,7 @@ const chatStreamRuntime = createChatStreamRuntime({
   chatEnabled: () => chatEnabledValue,
   isChatStreaming: () => panelState.chatStreaming,
   setChatStreaming: (value) => {
-    panelState.chatStreaming = value;
+    panelStateStore.dispatch({ type: "chat-streaming", value });
   },
   hasUserMessages: () => chatController.hasUserMessages(),
   addUserMessage: (text) => {

@@ -2,11 +2,13 @@ import { streamSimple } from "@earendil-works/pi-ai";
 import type { Context } from "@earendil-works/pi-ai";
 import { createUnsupportedFunctionalityError } from "./errors.js";
 import { resolveEffectiveTemperature, streamUsageWithTimeout } from "./generate-text-shared.js";
-import type { LlmApiKeys } from "./generate-text.js";
+import type { LlmApiKeys } from "./generate-text-types.js";
 import { parseGatewayStyleModelId } from "./model-id.js";
 import type { LlmProvider } from "./model-id.js";
 import type { ModelRequestOptions } from "./model-options.js";
 import {
+  getGatewayProviderProfile,
+  isOpenAiCompatibleProvider,
   resolveOpenAiCompatibleClientConfigForProvider,
   supportsStreaming,
 } from "./provider-capabilities.js";
@@ -18,8 +20,8 @@ import { enableMinimaxReasoningSplit } from "./providers/minimax.js";
 import {
   resolveAnthropicModel,
   resolveGoogleModel,
-  resolveMinimaxModel,
   resolveOpenAiModel,
+  resolveOpenAiCompatibleGatewayModel,
   resolveXaiModel,
 } from "./providers/models.js";
 import { completeOpenAiText, streamOpenAiText } from "./providers/openai.js";
@@ -208,6 +210,7 @@ export async function streamTextWithContext({
   requestOptions,
 }: StreamTextWithContextArgs): Promise<StreamTextResult> {
   const parsed = parseGatewayStyleModelId(modelId);
+  const providerProfile = getGatewayProviderProfile(parsed.provider);
   if (!supportsStreaming(parsed.provider)) {
     throw createUnsupportedFunctionalityError(
       `streaming is not supported for ${parsed.provider}/... models`,
@@ -228,7 +231,7 @@ export async function streamTextWithContext({
   };
 
   try {
-    if (parsed.provider === "xai") {
+    if (providerProfile.execution === "simple") {
       const apiKey = apiKeys.xaiApiKey;
       if (!apiKey) throw new Error("Missing XAI_API_KEY for xai/... model");
       const model = resolveXaiModel({
@@ -262,7 +265,7 @@ export async function streamTextWithContext({
       };
     }
 
-    if (parsed.provider === "google") {
+    if (providerProfile.execution === "google") {
       const apiKey = apiKeys.googleApiKey;
       if (!apiKey) {
         throw new Error(
@@ -300,7 +303,7 @@ export async function streamTextWithContext({
       };
     }
 
-    if (parsed.provider === "anthropic") {
+    if (providerProfile.execution === "anthropic") {
       const apiKey = apiKeys.anthropicApiKey;
       if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY for anthropic/... model");
       const baseModel = resolveAnthropicModel({
@@ -340,15 +343,18 @@ export async function streamTextWithContext({
     }
 
     if (
-      parsed.provider === "openai" ||
-      parsed.provider === "zai" ||
-      parsed.provider === "nvidia" ||
-      parsed.provider === "minimax" ||
-      parsed.provider === "github-copilot" ||
-      parsed.provider === "ollama"
+      providerProfile.execution === "openai-http" ||
+      isOpenAiCompatibleProvider(parsed.provider)
     ) {
+      const provider = parsed.provider as
+        | "openai"
+        | "zai"
+        | "nvidia"
+        | "minimax"
+        | "github-copilot"
+        | "ollama";
       const openaiConfig: OpenAiClientConfig = resolveOpenAiCompatibleClientConfigForProvider({
-        provider: parsed.provider,
+        provider,
         openaiApiKey: apiKeys.openaiApiKey,
         openrouterApiKey: apiKeys.openrouterApiKey,
         forceOpenRouter,
@@ -423,14 +429,14 @@ export async function streamTextWithContext({
           lastError: () => lastError,
         };
       }
-      const model =
-        parsed.provider === "minimax"
-          ? resolveMinimaxModel({
-              modelId: parsed.model,
-              context,
-              openaiBaseUrlOverride: openaiConfig.baseURL,
-            })
-          : resolveOpenAiModel({ modelId: parsed.model, context, openaiConfig });
+      const model = isOpenAiCompatibleProvider(parsed.provider)
+        ? resolveOpenAiCompatibleGatewayModel({
+            provider: parsed.provider,
+            modelId: parsed.model,
+            context,
+            openaiConfig,
+          })
+        : resolveOpenAiModel({ modelId: parsed.model, context, openaiConfig });
       const stream = streamSimple(model, context, {
         ...(typeof effectiveTemperature === "number" ? { temperature: effectiveTemperature } : {}),
         ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),

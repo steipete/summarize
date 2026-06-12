@@ -9,7 +9,7 @@
     "build:firefox": "BROWSER=firefox wxt build",
     "dev": "wxt dev",
     "dev:firefox": "BROWSER=firefox wxt dev",
-    "lint": "wxt lint",
+    "lint": "oxlint --type-aware --tsconfig tsconfig.json --config ../../.oxlintrc.json .",
     "test": "pnpm test:e2e",
     "test:chrome": "env -u NO_COLOR pnpm build && env -u NO_COLOR playwright test -c playwright.config.ts --project=chromium",
     "test:e2e": "env -u NO_COLOR pnpm build && env -u NO_COLOR playwright test -c playwright.config.ts --project=chromium",

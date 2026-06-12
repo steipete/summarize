@@ -12,11 +12,16 @@ import {
   sleep,
 } from "./generate-text-shared.js";
 import { streamTextWithContext } from "./generate-text-stream.js";
+import type { LlmApiKeys } from "./generate-text-types.js";
 import { parseGatewayStyleModelId } from "./model-id.js";
 import type { LlmProvider } from "./model-id.js";
 import type { ModelRequestOptions } from "./model-options.js";
 import type { Prompt } from "./prompt.js";
-import { resolveOpenAiCompatibleClientConfigForProvider } from "./provider-capabilities.js";
+import {
+  getGatewayProviderProfile,
+  isOpenAiCompatibleProvider,
+  resolveOpenAiCompatibleClientConfigForProvider,
+} from "./provider-capabilities.js";
 import {
   completeAnthropicText,
   normalizeAnthropicModelAccessError,
@@ -26,27 +31,17 @@ import { enableMinimaxReasoningSplit } from "./providers/minimax.js";
 import {
   resolveAnthropicModel,
   resolveGoogleModel,
-  resolveMinimaxModel,
-  resolveOpenAiModel,
-  resolveNvidiaModel,
-  resolveOllamaModel,
+  resolveOpenAiCompatibleGatewayModel,
   resolveXaiModel,
-  resolveZaiModel,
 } from "./providers/models.js";
-import { completeOpenAiText, resolveOpenAiClientConfig } from "./providers/openai.js";
+import { completeOpenAiText } from "./providers/openai.js";
 import { extractText } from "./providers/shared.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
 import type { LlmTokenUsage } from "./types.js";
 import { normalizeTokenUsage } from "./usage.js";
 export { streamTextWithContext } from "./generate-text-stream.js";
 
-export type LlmApiKeys = {
-  xaiApiKey: string | null;
-  openaiApiKey: string | null;
-  googleApiKey: string | null;
-  anthropicApiKey: string | null;
-  openrouterApiKey: string | null;
-};
+export type { LlmApiKeys } from "./generate-text-types.js";
 
 export type OpenRouterOptions = {
   providers: string[] | null;
@@ -106,6 +101,7 @@ export async function generateTextWithModelId({
   usage: LlmTokenUsage | null;
 }> {
   const parsed = parseGatewayStyleModelId(modelId);
+  const providerProfile = getGatewayProviderProfile(parsed.provider);
   const effectiveTemperature = resolveEffectiveTemperature({
     provider: parsed.provider,
     model: parsed.model,
@@ -197,7 +193,7 @@ export async function generateTextWithModelId({
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      if (parsed.provider === "xai") {
+      if (providerProfile.execution === "simple") {
         const apiKey = apiKeys.xaiApiKey;
         if (!apiKey) throw new Error("Missing XAI_API_KEY for xai/... model");
         const model = resolveXaiModel({
@@ -223,7 +219,7 @@ export async function generateTextWithModelId({
         };
       }
 
-      if (parsed.provider === "google") {
+      if (providerProfile.execution === "google") {
         const apiKey = apiKeys.googleApiKey;
         if (!apiKey)
           throw new Error(
@@ -246,7 +242,7 @@ export async function generateTextWithModelId({
         };
       }
 
-      if (parsed.provider === "anthropic") {
+      if (providerProfile.execution === "anthropic") {
         const apiKey = apiKeys.anthropicApiKey;
         if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY for anthropic/... model");
         const result = await completeAnthropicText({
@@ -267,23 +263,31 @@ export async function generateTextWithModelId({
         };
       }
 
-      if (parsed.provider === "zai") {
+      if (isOpenAiCompatibleProvider(parsed.provider)) {
+        const baseUrlOverride =
+          parsed.provider === "ollama"
+            ? (ollamaBaseUrlOverride ?? openaiBaseUrlOverride)
+            : parsed.provider === "zai"
+              ? (zaiBaseUrlOverride ?? openaiBaseUrlOverride)
+              : openaiBaseUrlOverride;
         const openaiConfig = resolveOpenAiCompatibleClientConfigForProvider({
-          provider: "zai",
+          provider: parsed.provider,
           openaiApiKey: apiKeys.openaiApiKey,
           openrouterApiKey: apiKeys.openrouterApiKey,
-          openaiBaseUrlOverride: zaiBaseUrlOverride ?? openaiBaseUrlOverride,
+          openaiBaseUrlOverride: baseUrlOverride,
           requestOptions,
         });
-        const model = resolveZaiModel({
+        const model = resolveOpenAiCompatibleGatewayModel({
+          provider: parsed.provider,
           modelId: parsed.model,
           context,
-          openaiBaseUrlOverride: openaiConfig.baseURL,
+          openaiConfig,
         });
         const result = await completeSimpleText({
           model,
           apiKey: openaiConfig.apiKey,
           signal: controller.signal,
+          ...(parsed.provider === "minimax" ? { onPayload: enableMinimaxReasoningSplit } : {}),
         });
         return {
           text: result.text,
@@ -293,87 +297,9 @@ export async function generateTextWithModelId({
         };
       }
 
-      if (parsed.provider === "nvidia") {
-        const openaiConfig = resolveOpenAiCompatibleClientConfigForProvider({
-          provider: "nvidia",
-          openaiApiKey: apiKeys.openaiApiKey,
-          openrouterApiKey: apiKeys.openrouterApiKey,
-          openaiBaseUrlOverride,
-          requestOptions,
-        });
-        const model = resolveNvidiaModel({
-          modelId: parsed.model,
-          context,
-          openaiBaseUrlOverride: openaiConfig.baseURL,
-        });
-        const result = await completeSimpleText({
-          model,
-          apiKey: openaiConfig.apiKey,
-          signal: controller.signal,
-        });
-        return {
-          text: result.text,
-          canonicalModelId: parsed.canonical,
-          provider: parsed.provider,
-          usage: result.usage,
-        };
-      }
-
-      if (parsed.provider === "minimax") {
-        const openaiConfig = resolveOpenAiCompatibleClientConfigForProvider({
-          provider: "minimax",
-          openaiApiKey: apiKeys.openaiApiKey,
-          openrouterApiKey: apiKeys.openrouterApiKey,
-          openaiBaseUrlOverride,
-          requestOptions,
-        });
-        const model = resolveMinimaxModel({
-          modelId: parsed.model,
-          context,
-          openaiBaseUrlOverride: openaiConfig.baseURL,
-        });
-        const result = await completeSimpleText({
-          model,
-          apiKey: openaiConfig.apiKey,
-          signal: controller.signal,
-          onPayload: enableMinimaxReasoningSplit,
-        });
-        return {
-          text: result.text,
-          canonicalModelId: parsed.canonical,
-          provider: parsed.provider,
-          usage: result.usage,
-        };
-      }
-
-      if (parsed.provider === "ollama") {
-        const openaiConfig = resolveOpenAiCompatibleClientConfigForProvider({
-          provider: "ollama",
-          openaiApiKey: apiKeys.openaiApiKey,
-          openrouterApiKey: apiKeys.openrouterApiKey,
-          openaiBaseUrlOverride: ollamaBaseUrlOverride ?? openaiBaseUrlOverride,
-          requestOptions,
-        });
-        const model = resolveOllamaModel({
-          modelId: parsed.model,
-          context,
-          ollamaBaseUrlOverride: openaiConfig.baseURL,
-        });
-        const result = await completeSimpleText({
-          model,
-          apiKey: openaiConfig.apiKey,
-          signal: controller.signal,
-        });
-        return {
-          text: result.text,
-          canonicalModelId: parsed.canonical,
-          provider: parsed.provider,
-          usage: result.usage,
-        };
-      }
-
-      if (parsed.provider === "openai" || parsed.provider === "github-copilot") {
-        const openaiConfig = resolveOpenAiConfig(parsed.provider);
+      if (providerProfile.execution === "openai-http") {
+        const provider = parsed.provider as "openai" | "github-copilot";
+        const openaiConfig = resolveOpenAiConfig(provider);
         const result = await completeOpenAiText({
           modelId: parsed.model,
           openaiConfig,
@@ -386,9 +312,9 @@ export async function generateTextWithModelId({
         return {
           text: result.text,
           canonicalModelId: result.resolvedModelId
-            ? `${parsed.provider}/${result.resolvedModelId}`
+            ? `${provider}/${result.resolvedModelId}`
             : parsed.canonical,
-          provider: parsed.provider,
+          provider,
           usage: result.usage,
         };
       }

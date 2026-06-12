@@ -5,6 +5,7 @@ export {
   getGatewayProviderProfile,
   isVideoUnderstandingCapableModelId,
   isVideoUnderstandingCapableProvider,
+  isOpenAiCompatibleProvider,
   parseCliProviderName,
   requiredEnvForCliProvider,
   requiredEnvForGatewayProvider,
@@ -14,4 +15,9 @@ export {
   supportsStreaming,
 } from "./provider-profile.js";
 
-export type { GatewayProvider, RequiredModelEnv } from "./provider-profile.js";
+export type {
+  GatewayProvider,
+  GatewayProviderProfile,
+  ProviderExecution,
+  RequiredModelEnv,
+} from "./provider-profile.js";

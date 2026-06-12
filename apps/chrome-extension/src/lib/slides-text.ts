@@ -7,4 +7,4 @@ export {
   splitSlideTitleFromText,
   splitSummaryFromSlides,
   type SlideTimelineEntry,
-} from "../../../../src/shared/slides-text.js";
+} from "@steipete/summarize-core/slides";

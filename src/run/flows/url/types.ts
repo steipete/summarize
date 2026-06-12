@@ -1,3 +1,4 @@
+import type { SummaryLength } from "@steipete/summarize-core";
 import type { CacheState } from "../../../cache.js";
 import type { CliProvider, SummarizeConfig } from "../../../config.js";
 import type {
@@ -11,7 +12,6 @@ import type { OutputLanguage } from "../../../language.js";
 import type { ModelRequestOptions, OpenAiReasoningEffort } from "../../../llm/model-options.js";
 import type { ExecFileFn } from "../../../markitdown.js";
 import type { FixedModelSpec, RequestedModel } from "../../../model-spec.js";
-import type { SummaryLength } from "../../../shared/contracts.js";
 import type {
   SlideExtractionResult,
   SlideImage,

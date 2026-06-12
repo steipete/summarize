@@ -143,6 +143,45 @@ export function resolveOllamaModel({
   });
 }
 
+export function resolveOpenAiCompatibleGatewayModel({
+  provider,
+  modelId,
+  context,
+  openaiConfig,
+}: {
+  provider: "zai" | "nvidia" | "minimax" | "ollama";
+  modelId: string;
+  context: Context;
+  openaiConfig: OpenAiClientConfig;
+}): Model<Api> {
+  switch (provider) {
+    case "zai":
+      return resolveZaiModel({
+        modelId,
+        context,
+        openaiBaseUrlOverride: openaiConfig.baseURL,
+      });
+    case "nvidia":
+      return resolveNvidiaModel({
+        modelId,
+        context,
+        openaiBaseUrlOverride: openaiConfig.baseURL,
+      });
+    case "minimax":
+      return resolveMinimaxModel({
+        modelId,
+        context,
+        openaiBaseUrlOverride: openaiConfig.baseURL,
+      });
+    case "ollama":
+      return resolveOllamaModel({
+        modelId,
+        context,
+        ollamaBaseUrlOverride: openaiConfig.baseURL,
+      });
+  }
+}
+
 export function resolveXaiModel({
   modelId,
   context,

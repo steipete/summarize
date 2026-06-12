@@ -1,5 +1,5 @@
+import type { SummaryLength } from "@steipete/summarize-core";
 import type { ExtractedLinkContent } from "../../../content/index.js";
-import type { SummaryLength } from "../../../shared/contracts.js";
 import type { SlideExtractionResult, SlideImage, SlideSourceKind } from "../../../slides/index.js";
 import {
   createThemeRenderer,
