@@ -29,6 +29,7 @@ describe("sidepanel panel state store", () => {
     const store = createPanelStateStore();
     store.dispatch({
       type: "attach-run",
+      tabId: 42,
       runId: "run-1",
       slidesRunId: "run-1",
       source: { url: "https://example.com", title: "Example" },
@@ -37,6 +38,7 @@ describe("sidepanel panel state store", () => {
 
     expect(store.state).toMatchObject({
       runId: "run-1",
+      activeRun: { tabId: 42 },
       slidesRunId: "run-1",
       currentSource: { url: "https://example.com", title: "Example" },
       lastMeta: { inputSummary: null, model: "auto", modelLabel: "auto" },
@@ -59,6 +61,7 @@ describe("sidepanel panel state store", () => {
 
     store.dispatch({
       type: "restore-session",
+      tabId: 42,
       runId: "run-1",
       slidesRunId: null,
       source: { url: "https://example.com", title: null },
@@ -67,6 +70,7 @@ describe("sidepanel panel state store", () => {
     });
 
     expect(store.state.summaryFromCache).toBe(true);
+    expect(store.state.activeRun.tabId).toBe(42);
     expect(store.state.slides).toBe(existingSlides);
   });
 
@@ -86,6 +90,7 @@ describe("sidepanel panel state store", () => {
     const store = createPanelStateStore();
     store.dispatch({
       type: "attach-run",
+      tabId: 42,
       runId: "run-1",
       slidesRunId: "run-1",
       source: { url: "https://example.com", title: null },
@@ -97,6 +102,7 @@ describe("sidepanel panel state store", () => {
 
     expect(store.state).toMatchObject({
       runId: null,
+      activeRun: { tabId: null },
       slidesRunId: null,
       summaryMarkdown: null,
       summaryFromCache: null,

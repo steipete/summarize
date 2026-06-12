@@ -47,10 +47,8 @@ type SummaryViewRuntimeOpts = {
   resetChatState: () => void;
   setSlidesTranscriptTimedText: (value: string | null) => void;
   getSlidesParallelValue: () => boolean;
-  getCurrentRunTabId: () => number | null;
   getActiveTabId: () => number | null;
   getActiveTabUrl: () => string | null;
-  setCurrentRunTabId: (value: number | null) => void;
   setSlidesContextPending: (value: boolean) => void;
   setSlidesContextUrl: (value: string | null) => void;
   setSlidesSeededSourceId: (value: string | null) => void;
@@ -101,7 +99,6 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     clearRunId?: boolean;
     stopSlides?: boolean;
   } = {}) {
-    opts.setCurrentRunTabId(null);
     opts.renderEl.replaceChildren(opts.renderSlidesHostEl, opts.renderMarkdownHostEl);
     opts.renderMarkdownHostEl.innerHTML = "";
     clearSummaryCopyButton(opts.summaryCopyBtn);
@@ -125,7 +122,7 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
   }
 
   function buildPanelCachePayload(): PanelCachePayload | null {
-    const tabId = opts.getCurrentRunTabId() ?? opts.getActiveTabId();
+    const tabId = opts.panelState.activeRun.tabId ?? opts.getActiveTabId();
     const url = opts.panelState.currentSource?.url ?? opts.getActiveTabUrl();
     if (!tabId || !url) return null;
     const slidesSummary = opts.getSlidesSummaryState();
@@ -152,9 +149,9 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     resetSummaryView({ preserveChat });
     const slidesRunId =
       payload.slidesRunId ?? (opts.getSlidesParallelValue() ? null : (payload.runId ?? null));
-    opts.setCurrentRunTabId(payload.tabId);
     dispatch({
       type: "restore-session",
+      tabId: payload.tabId,
       runId: payload.runId ?? null,
       slidesRunId,
       source: { url: payload.url, title: payload.title ?? null },

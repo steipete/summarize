@@ -87,8 +87,6 @@ type UiStateRuntimeOpts = {
   isRefreshFreeRunning: () => boolean;
   setModelRefreshDisabled: (value: boolean) => void;
   renderMarkdownHostEl: HTMLElement;
-  getCurrentRunTabId: () => number | null;
-  setCurrentRunTabId: (value: number | null) => void;
   getLastPanelOpen: () => boolean;
   setLastPanelOpen: (value: boolean) => void;
   getAutoValue: () => boolean;
@@ -138,7 +136,6 @@ function applyCachedOrReset(
     | "applyPanelCache"
     | "requestSlidesCapture"
     | "resetSummaryView"
-    | "setCurrentRunTabId"
   >,
   tabId: number | null,
   url: string | null,
@@ -158,7 +155,6 @@ function applyCachedOrReset(
       }
     } else {
       dispatchPanelState(opts, { type: "source", source: null });
-      opts.setCurrentRunTabId(null);
       opts.resetSummaryView({ preserveChat });
       opts.panelCacheController.request(tabId, url, preserveChat);
     }
@@ -166,7 +162,6 @@ function applyCachedOrReset(
   }
 
   dispatchPanelState(opts, { type: "source", source: null });
-  opts.setCurrentRunTabId(null);
   opts.resetSummaryView({ preserveChat });
 }
 
@@ -365,7 +360,6 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
           opts.navigationRuntime.notePreserveChatForUrl(nextTabUrl);
         }
         dispatchPanelState(opts, { type: "source", source: null });
-        opts.setCurrentRunTabId(null);
         if (opts.isStreaming()) {
           opts.abortSummaryStream();
         }

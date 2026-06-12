@@ -13,6 +13,9 @@ export type PanelState = {
     activeTabId: number | null;
     activeTabUrl: string | null;
   };
+  activeRun: {
+    tabId: number | null;
+  };
   runId: string | null;
   slidesRunId: string | null;
   currentSource: { url: string; title: string | null } | null;

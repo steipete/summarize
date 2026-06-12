@@ -7,6 +7,13 @@ import type { PanelState } from "../apps/chrome-extension/src/entrypoints/sidepa
 function createPanelState(): PanelState {
   return {
     ui: null,
+    navigation: {
+      activeTabId: null,
+      activeTabUrl: null,
+    },
+    activeRun: {
+      tabId: null,
+    },
     runId: null,
     slidesRunId: null,
     currentSource: null,
@@ -66,10 +73,8 @@ describe("summary view runtime", () => {
       resetChatState: vi.fn(),
       setSlidesTranscriptTimedText: vi.fn(),
       getSlidesParallelValue: vi.fn(() => true),
-      getCurrentRunTabId: vi.fn(() => null),
       getActiveTabId: vi.fn(() => 1),
       getActiveTabUrl: vi.fn(() => "https://example.com/watch?v=abc123"),
-      setCurrentRunTabId: vi.fn(),
       setSlidesContextPending: vi.fn(),
       setSlidesContextUrl: vi.fn(),
       setSlidesSeededSourceId: vi.fn(),
@@ -108,6 +113,7 @@ describe("summary view runtime", () => {
     );
 
     expect(panelState.slides).toBeNull();
+    expect(panelState.activeRun.tabId).toBe(1);
     expect(syncFromCache).toHaveBeenCalledWith({
       runId: "slides-1",
       summaryFromCache: true,
@@ -140,10 +146,8 @@ describe("summary view runtime", () => {
       resetChatState: vi.fn(),
       setSlidesTranscriptTimedText: vi.fn(),
       getSlidesParallelValue: vi.fn(() => true),
-      getCurrentRunTabId: vi.fn(() => null),
       getActiveTabId: vi.fn(() => 1),
       getActiveTabUrl: vi.fn(() => youtubeUrl),
-      setCurrentRunTabId: vi.fn(),
       setSlidesContextPending: vi.fn(),
       setSlidesContextUrl,
       setSlidesSeededSourceId: vi.fn(),
@@ -215,10 +219,8 @@ describe("summary view runtime", () => {
       resetChatState: vi.fn(),
       setSlidesTranscriptTimedText: vi.fn(),
       getSlidesParallelValue: vi.fn(() => true),
-      getCurrentRunTabId: vi.fn(() => null),
       getActiveTabId: vi.fn(() => 1),
       getActiveTabUrl: vi.fn(() => "https://x.com/example/status/123"),
-      setCurrentRunTabId: vi.fn(),
       setSlidesContextPending: vi.fn(),
       setSlidesContextUrl: vi.fn(),
       setSlidesSeededSourceId: vi.fn(),
@@ -257,6 +259,7 @@ describe("summary view runtime", () => {
 
   it("hides the persistent header copy action when resetting the summary view", () => {
     const panelState = createPanelState();
+    panelState.activeRun.tabId = 1;
     const summaryCopyBtn = document.createElement("button");
     summaryCopyBtn.className = "summaryCopy";
     summaryCopyBtn.disabled = false;
@@ -282,10 +285,8 @@ describe("summary view runtime", () => {
       resetChatState: vi.fn(),
       setSlidesTranscriptTimedText: vi.fn(),
       getSlidesParallelValue: vi.fn(() => true),
-      getCurrentRunTabId: vi.fn(() => null),
       getActiveTabId: vi.fn(() => 1),
       getActiveTabUrl: vi.fn(() => "https://example.com/watch?v=abc123"),
-      setCurrentRunTabId: vi.fn(),
       setSlidesContextPending: vi.fn(),
       setSlidesContextUrl: vi.fn(),
       setSlidesSeededSourceId: vi.fn(),
@@ -316,5 +317,6 @@ describe("summary view runtime", () => {
     expect(summaryCopyBtn.classList.contains("hidden")).toBe(true);
     expect(summaryCopyBtn.disabled).toBe(true);
     expect(summaryCopyBtn.onclick).toBeNull();
+    expect(panelState.activeRun.tabId).toBeNull();
   });
 });

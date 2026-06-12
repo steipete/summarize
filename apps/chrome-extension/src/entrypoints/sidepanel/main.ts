@@ -62,7 +62,6 @@ import type { ChatMessage, PanelPhase, RunStart, UiState } from "./types";
 import { createTypographyController } from "./typography-controller";
 import { createUiStateRuntime } from "./ui-state-runtime";
 
-let currentRunTabId: number | null = null;
 const {
   advancedBtn,
   advancedSettingsBodyEl,
@@ -437,12 +436,12 @@ function attachSummaryRun(run: RunStart) {
     : preserveActiveLocalSlideRun
       ? (activeSlidesRunMeta?.runId ?? null)
       : null;
-  currentRunTabId = getActiveTabId();
   headerController.setBaseTitle(run.title || run.url || "Summarize");
   headerController.setBaseSubtitle("");
   const fallbackModel = panelState.ui?.settings.model ?? null;
   panelStateStore.dispatch({
     type: "attach-run",
+    tabId: getActiveTabId(),
     runId: run.id,
     slidesRunId,
     source: { url: run.url, title: run.title },
@@ -490,6 +489,7 @@ function applySummarySnapshot(payload: { run: RunStart; markdown: string }) {
     (preserveActiveSlideRun ? (activeSlidesRunMeta?.runId ?? null) : null);
   panelStateStore.dispatch({
     type: "restore-session",
+    tabId: getActiveTabId(),
     runId: payload.run.id,
     slidesRunId,
     source: { url: payload.run.url, title: payload.run.title },
@@ -501,7 +501,6 @@ function applySummarySnapshot(payload: { run: RunStart; markdown: string }) {
     summaryFromCache: null,
     ...(preservedSlides ? { slides: preservedSlides } : {}),
   });
-  currentRunTabId = getActiveTabId();
   headerController.setBaseTitle(payload.run.title || payload.run.url || "Summarize");
   headerController.setBaseSubtitle("");
   if (preservedSlides) {
@@ -810,7 +809,6 @@ const navigationRuntime = createNavigationRuntime({
     panelStateStore.dispatch({ type: "source", source });
   },
   resetForNavigation: (preserveChat) => {
-    currentRunTabId = null;
     setPhase("idle");
     resetSummaryView({ preserveChat });
     headerController.setBaseSubtitle("");
@@ -878,12 +876,8 @@ const summaryViewRuntime = createSummaryViewRuntime({
   resetChatState,
   setSlidesTranscriptTimedText,
   getSlidesParallelValue: () => slidesState.slidesParallel,
-  getCurrentRunTabId: () => currentRunTabId,
   getActiveTabId,
   getActiveTabUrl,
-  setCurrentRunTabId: (value) => {
-    currentRunTabId = value;
-  },
   setSlidesContextPending: (value) => {
     slidesState.slidesContextPending = value;
   },
@@ -1428,10 +1422,6 @@ const uiStateRuntime = createUiStateRuntime({
     modelRefreshBtn.disabled = value;
   },
   renderMarkdownHostEl,
-  getCurrentRunTabId: () => currentRunTabId,
-  setCurrentRunTabId: (value) => {
-    currentRunTabId = value;
-  },
   getLastPanelOpen: () => lastPanelOpen,
   setLastPanelOpen: (value) => {
     lastPanelOpen = value;

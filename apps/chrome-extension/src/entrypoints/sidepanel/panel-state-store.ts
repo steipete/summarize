@@ -18,6 +18,7 @@ export type PanelStateAction =
   | { type: "chat-streaming"; value: boolean }
   | {
       type: "attach-run";
+      tabId: PanelState["activeRun"]["tabId"];
       runId: string;
       slidesRunId: string | null;
       source: NonNullable<PanelState["currentSource"]>;
@@ -25,6 +26,7 @@ export type PanelStateAction =
     }
   | {
       type: "restore-session";
+      tabId: PanelState["activeRun"]["tabId"];
       runId: string | null;
       slidesRunId: string | null;
       source: NonNullable<PanelState["currentSource"]>;
@@ -40,6 +42,9 @@ export function createInitialPanelState(): PanelState {
     navigation: {
       activeTabId: null,
       activeTabUrl: null,
+    },
+    activeRun: {
+      tabId: null,
     },
     runId: null,
     slidesRunId: null,
@@ -97,6 +102,7 @@ export function reducePanelState(state: PanelState, action: PanelStateAction): P
     case "attach-run":
       return {
         ...state,
+        activeRun: { tabId: action.tabId },
         runId: action.runId,
         slidesRunId: action.slidesRunId,
         currentSource: action.source,
@@ -105,6 +111,7 @@ export function reducePanelState(state: PanelState, action: PanelStateAction): P
     case "restore-session":
       return {
         ...state,
+        activeRun: { tabId: action.tabId },
         runId: action.runId,
         slidesRunId: action.slidesRunId,
         currentSource: action.source,
@@ -115,6 +122,7 @@ export function reducePanelState(state: PanelState, action: PanelStateAction): P
     case "reset-summary":
       return {
         ...state,
+        activeRun: { tabId: null },
         summaryMarkdown: null,
         summaryFromCache: null,
         ...(action.clearRunId ? { runId: null } : {}),
