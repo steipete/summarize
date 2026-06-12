@@ -46,6 +46,9 @@ describe("daemon URL fetch guard", () => {
     await expect(assertDaemonUrlFetchAllowed("https://[::1]/", { lookup })).rejects.toThrow(
       /blocked local network address/,
     );
+    await expect(
+      assertDaemonUrlFetchAllowed("https://[::ffff:0:c0a8:101]/", { lookup }),
+    ).rejects.toThrow(/blocked local network address/);
     expect(lookup).not.toHaveBeenCalled();
   });
 

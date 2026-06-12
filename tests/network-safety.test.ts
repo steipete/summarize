@@ -18,6 +18,8 @@ describe("network safety policy", () => {
       "203.0.113.1",
       "::1",
       "::ffff:127.0.0.1",
+      "::ffff:0:192.168.1.1",
+      "::ffff:0:a9fe:a9fe",
       "::7f00:1",
       "64:ff9b::a9fe:a9fe",
       "64:ff9b:1::808:808",
@@ -34,7 +36,13 @@ describe("network safety policy", () => {
   });
 
   it("allows public IPv4, IPv6, and NAT64 addresses", () => {
-    for (const address of ["192.0.8.1", "8.8.8.8", "64:ff9b::808:808", "[2606:4700:4700::1111]"]) {
+    for (const address of [
+      "192.0.8.1",
+      "8.8.8.8",
+      "::ffff:0:8.8.8.8",
+      "64:ff9b::808:808",
+      "[2606:4700:4700::1111]",
+    ]) {
       expect(isBlockedNetworkAddress(address), address).toBe(false);
     }
   });

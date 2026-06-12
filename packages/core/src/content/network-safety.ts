@@ -68,8 +68,10 @@ function isBlockedIpv6(address: string): boolean {
   const allZero = parts.every((part) => part === 0);
   const loopback = parts.slice(0, 7).every((part) => part === 0) && eighth === 1;
   const mappedIpv4 = parts.slice(0, 5).every((part) => part === 0) && sixth === 0xffff;
+  const translatedIpv4 =
+    parts.slice(0, 4).every((part) => part === 0) && parts[4] === 0xffff && parts[5] === 0;
   const compatibleIpv4 = parts.slice(0, 6).every((part) => part === 0) && !allZero && !loopback;
-  if (mappedIpv4 || compatibleIpv4) {
+  if (mappedIpv4 || translatedIpv4 || compatibleIpv4) {
     return isBlockedIpv4(embeddedIpv4(parts));
   }
   const wellKnownNat64 =
