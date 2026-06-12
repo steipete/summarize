@@ -25,6 +25,24 @@ function toPresentAssetSummaryArgs(input: AssetExecutionInput): PresentAssetSumm
   };
 }
 
+function toDelegatedAssetSummaryArgs(
+  result: Extract<SummarizeResult, { kind: "summary" }>,
+): PresentAssetSummaryArgs {
+  if (result.details.kind !== "delegated-asset") {
+    throw new Error("CLI delegated asset presentation requires delegated asset details");
+  }
+  const { extracted } = result.details.summary;
+  return {
+    sourceKind: "asset-url",
+    sourceLabel: extracted.source,
+    attachment: {
+      kind: extracted.mediaType.startsWith("image/") ? "image" : "file",
+      mediaType: extracted.mediaType,
+      filename: extracted.filename,
+    },
+  };
+}
+
 export function createCliSummarizeExecutor(options: {
   request: SummarizeRequest;
   runtime: SummarizeRuntime;
@@ -60,6 +78,14 @@ export function createCliSummarizeExecutor(options: {
     }
     if (result.kind === "asset-media") {
       await presentMediaFileResult(options.presentationContext, result.details);
+      return;
+    }
+    if (result.kind === "summary" && result.details.kind === "delegated-asset") {
+      await presentAssetSummary(
+        options.presentationContext,
+        toDelegatedAssetSummaryArgs(result),
+        result.details.summary,
+      );
       return;
     }
     await presentCliSummarizeResult({

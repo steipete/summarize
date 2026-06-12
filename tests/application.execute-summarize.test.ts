@@ -211,6 +211,18 @@ describe("executeSummarize", () => {
       summary: "Video summary.",
       usedModel: "google/gemini-2.5-pro",
       summaryFromCache: false,
+      details: {
+        kind: "delegated-asset",
+        summaryEmitted: false,
+        summary: {
+          summary: "Video summary.",
+          extracted: {
+            source: "https://cdn.example.com/video.mp4",
+            mediaType: "video/mp4",
+            filename: "video.mp4",
+          },
+        },
+      },
     });
     expect(events.map((event) => event.type)).toEqual([
       "run-started",

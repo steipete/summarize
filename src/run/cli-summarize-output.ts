@@ -39,7 +39,9 @@ export async function presentCliSummarizeResult(options: {
   ) {
     throw new Error("CLI URL presentation requires a URL result");
   }
-  if (result.details.kind === "delegated-asset") return;
+  if (result.details.kind === "delegated-asset") {
+    throw new Error("CLI delegated asset presentation requires an asset context");
+  }
   if (result.input.kind !== "url") {
     throw new Error("CLI URL presentation requires a URL result");
   }

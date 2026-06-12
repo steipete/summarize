@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   SummarizeRequest,
   SummarizeResult,
@@ -79,10 +79,15 @@ function createExecutor(result: SummarizeResult) {
 }
 
 describe("CLI summarize execution", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("executes the planned request and presents URL results", async () => {
     const result = {
       kind: "summary",
       input: { kind: "url" },
+      details: { kind: "visible-page" },
     } as SummarizeResult;
     const fixture = createExecutor(result);
 
@@ -131,6 +136,62 @@ describe("CLI summarize execution", () => {
       },
       details,
     );
+  });
+
+  it("presents delegated URL video summaries through the asset presenter", async () => {
+    const summary = {
+      kind: "summary",
+      outcome: "model",
+      summary: "Video summary",
+      summaryEmitted: false,
+      summaryFromCache: false,
+      prompt: "Prompt",
+      extracted: {
+        kind: "asset",
+        source: "https://cdn.example.com/video.mp4",
+        mediaType: "video/mp4",
+        filename: "video.mp4",
+      },
+      footerParts: [],
+      llm: {
+        provider: "google",
+        model: "google/gemini-2.5-pro",
+        maxCompletionTokens: 256,
+        strategy: "single",
+      },
+    } as const;
+    const result = {
+      kind: "summary",
+      input: {
+        kind: "url",
+        url: "https://example.com/video",
+        title: null,
+        maxCharacters: null,
+      },
+      details: {
+        kind: "delegated-asset",
+        summaryEmitted: false,
+        summary,
+      },
+    } as SummarizeResult;
+    const fixture = createExecutor(result);
+
+    await fixture.execute();
+
+    expect(mocks.presentAssetSummary).toHaveBeenCalledWith(
+      fixture.presentationContext,
+      {
+        sourceKind: "asset-url",
+        sourceLabel: "https://cdn.example.com/video.mp4",
+        attachment: {
+          kind: "file",
+          mediaType: "video/mp4",
+          filename: "video.mp4",
+        },
+      },
+      summary,
+    );
+    expect(mocks.presentCliSummarizeResult).not.toHaveBeenCalled();
   });
 
   it("presents asset extraction from application metrics", async () => {

@@ -628,6 +628,7 @@ export async function executeSummarize(
           summaryDetails = {
             kind: "delegated-asset",
             summaryEmitted: urlResult.summary.summaryEmitted,
+            summary: urlResult.summary,
           };
           normalizedSummary = urlResult.summary.summary;
           if (!urlResult.summary.summaryEmitted) {

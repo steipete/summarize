@@ -1,4 +1,5 @@
 import type { UrlSummaryResolution } from "../engine/web-summary.js";
+import type { AssetSummaryResult } from "../run/flows/asset/types.js";
 
 export type UrlSummaryPresentationResolution =
   | {
@@ -32,6 +33,7 @@ export type SummarizeExecutionDetails =
   | {
       kind: "delegated-asset";
       summaryEmitted: boolean;
+      summary: AssetSummaryResult;
     };
 
 export type SummarizeExtractionDetails = {

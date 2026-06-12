@@ -312,7 +312,11 @@ describe("handleVideoOnlyExtractedContent", () => {
       handled: true,
       extracted: baseExtracted,
       slides: { sourceId: "vid123", slides: [{ index: 1 }, { index: 2 }] },
-      summary: { summary: "Video summary.", llm: { model: "google/gemini-2.5-pro" } },
+      summary: {
+        summary: "Video summary.",
+        footerParts: ["html", "video url", "slides 2"],
+        llm: { model: "google/gemini-2.5-pro" },
+      },
     });
     expect(onExtracted).toHaveBeenCalledWith(baseExtracted);
     expect(mocks.loadRemoteAsset).toHaveBeenCalledWith({
@@ -332,12 +336,7 @@ describe("handleVideoOnlyExtractedContent", () => {
       }),
     );
     expect(onModelChosen).toHaveBeenCalledWith("google/gemini-2.5-pro");
-    expect(writeViaFooter).toHaveBeenCalledWith([
-      "html",
-      "video url",
-      "model google/gemini-2.5-pro",
-      "slides 2",
-    ]);
+    expect(writeViaFooter).not.toHaveBeenCalled();
     expect(updateSummaryProgress).toHaveBeenCalledTimes(1);
     expect(spinner.setText).toHaveBeenCalledWith("Downloading video");
     expect(spinner.setText).toHaveBeenCalledWith("Summarizing video");

@@ -95,14 +95,12 @@ export async function handleVideoOnlyExtractedContent({
   });
   assertAssetMediaTypeSupported({ attachment: loadedVideo.attachment, sizeLabel: null });
 
-  let chosenModel: string | null = null;
   if (flags.progressEnabled) spinner.setText(renderStatus("Summarizing video"));
   const summary = await hooks.summarizeAsset({
     sourceKind: "asset-url",
     sourceLabel: loadedVideo.sourceLabel,
     attachment: loadedVideo.attachment,
     onModelChosen: (modelId) => {
-      chosenModel = modelId;
       hooks.onModelChosen?.(modelId);
       if (flags.progressEnabled) {
         const meta = `${styleDim("(")}${styleDim("model: ")}${accent(modelId)}${styleDim(")")}`;
@@ -111,11 +109,18 @@ export async function handleVideoOnlyExtractedContent({
     },
   });
   const slideCount = directVideoSlides ? directVideoSlides.slides.length : null;
-  hooks.writeViaFooter([
-    ...extractionUi.footerParts,
-    ...(chosenModel ? [`model ${chosenModel}`] : []),
-    ...(slideCount != null ? [`slides ${slideCount}`] : []),
-  ]);
   updateSummaryProgress();
-  return { handled: true, extracted, slides: directVideoSlides, summary };
+  return {
+    handled: true,
+    extracted,
+    slides: directVideoSlides,
+    summary: {
+      ...summary,
+      footerParts: [
+        ...extractionUi.footerParts,
+        ...summary.footerParts,
+        ...(slideCount != null ? [`slides ${slideCount}`] : []),
+      ],
+    },
+  };
 }
