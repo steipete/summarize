@@ -6,6 +6,7 @@ import type { SlideSettings } from "../src/slides/index.js";
 
 const mocks = vi.hoisted(() => ({
   executeSummarize: vi.fn(),
+  outputExtractedAsset: vi.fn(),
   presentCliSummarizeResult: vi.fn(),
   presentAssetSummary: vi.fn(),
 }));
@@ -15,6 +16,9 @@ vi.mock("../src/application/execute-summarize.js", () => ({
 }));
 vi.mock("../src/run/cli-summarize-output.js", () => ({
   presentCliSummarizeResult: mocks.presentCliSummarizeResult,
+}));
+vi.mock("../src/run/flows/asset/output.js", () => ({
+  outputExtractedAsset: mocks.outputExtractedAsset,
 }));
 vi.mock("../src/run/flows/asset/summary.js", () => ({
   presentAssetSummary: mocks.presentAssetSummary,
@@ -121,6 +125,7 @@ describe("CLI summarize execution", () => {
       runtime,
       prepared,
       presentationContext,
+      extractionOutputContext: {} as never,
     });
     const args = {
       sourceKind: "file" as const,
@@ -134,7 +139,7 @@ describe("CLI summarize execution", () => {
       onModelChosen: vi.fn(),
     };
 
-    const result = await execute(args);
+    const result = await execute.summarize(args);
 
     expect(mocks.executeSummarize).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -153,5 +158,79 @@ describe("CLI summarize execution", () => {
     expect(args.onModelChosen).toHaveBeenCalledWith("openai/gpt-5.4");
     expect(mocks.presentAssetSummary).toHaveBeenCalledWith(presentationContext, args, details);
     expect(result).toBe(details);
+  });
+
+  it("presents resolved asset extraction from application metadata", async () => {
+    const extracted = { content: "Extracted", diagnostics: { strategy: "html" } };
+    mocks.executeSummarize.mockResolvedValue({
+      kind: "asset-extraction",
+      input: {
+        kind: "asset",
+        sourceKind: "asset-url",
+        source: "https://example.com/file.pdf",
+        mediaType: "application/pdf",
+        filename: "file.pdf",
+      },
+      extracted,
+      elapsedMs: 42,
+      report: { llm: [], services: {} },
+      costUsd: 0.01,
+    });
+    const runtime = {} as SummarizeRuntime;
+    const prepared = { urlFlowContext: {} as UrlFlowContext };
+    const extractionOutputContext = { io: {} } as never;
+    const execute = createCliResolvedAssetExecutor({
+      baseRequest: {
+        input: { kind: "url", url: "https://example.com/file.pdf" },
+        modelOverride: null,
+        promptOverride: null,
+        lengthRaw: null,
+        languageRaw: null,
+        format: "text",
+        overrides: createEmptyRunOverrides(),
+        extractOnly: true,
+        slides: null,
+      },
+      runtime,
+      prepared,
+      presentationContext: {} as never,
+      extractionOutputContext,
+    });
+    const args = {
+      sourceKind: "asset-url" as const,
+      sourceLabel: "https://example.com/file.pdf",
+      attachment: {
+        kind: "file" as const,
+        mediaType: "application/pdf",
+        filename: "file.pdf",
+        bytes: new Uint8Array([1, 2, 3]),
+      },
+    };
+
+    const result = await execute.extract(args);
+
+    expect(mocks.executeSummarize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({ kind: "resolved-asset", attachment: args.attachment }),
+        extractOnly: true,
+      }),
+      runtime,
+      expect.any(Function),
+      prepared,
+    );
+    expect(mocks.outputExtractedAsset).toHaveBeenCalledWith({
+      ...extractionOutputContext,
+      url: "https://example.com/file.pdf",
+      sourceLabel: "https://example.com/file.pdf",
+      attachment: expect.objectContaining({
+        mediaType: "application/pdf",
+        filename: "file.pdf",
+      }),
+      extracted,
+      elapsedMs: 42,
+      report: { llm: [], services: {} },
+      costUsd: 0.01,
+    });
+    expect(result).toBe(extracted);
   });
 });

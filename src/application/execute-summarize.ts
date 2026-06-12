@@ -2,6 +2,7 @@ import { isYouTubeUrl } from "../content/index.js";
 import type { ExtractedLinkContent } from "../content/index.js";
 import { buildUrlPrompt } from "../engine/web-prompt.js";
 import { resolveUrlSummaryExecution, type UrlSummaryResolution } from "../engine/web-summary.js";
+import { extractAssetContent } from "../run/flows/asset/extract.js";
 import { executeAssetSummary } from "../run/flows/asset/summary.js";
 import { executeUrlFlow } from "../run/flows/url/flow.js";
 import type { UrlFlowContext } from "../run/flows/url/types.js";
@@ -14,6 +15,8 @@ import {
   type PreparedSummarizeExecution,
 } from "./execution-resources.js";
 import type {
+  AssetExecutionInput,
+  AssetExtractionExecutionResult,
   AssetSummaryExecutionResult,
   ExtractionResult,
   SummarizeEvent,
@@ -156,6 +159,18 @@ function emitNormalizedSummary(summary: string, emit: SummarizeEventSink) {
   });
 }
 
+function toAssetExecutionInput(
+  input: Extract<SummarizeRequest["input"], { kind: "resolved-asset" }>,
+): AssetExecutionInput {
+  return {
+    kind: "asset",
+    sourceKind: input.sourceKind,
+    source: input.sourceLabel,
+    mediaType: input.attachment.mediaType,
+    filename: input.attachment.filename,
+  };
+}
+
 export async function executeSummarize(
   request: SummarizeRequest,
   runtime: SummarizeRuntime,
@@ -191,18 +206,55 @@ export async function executeSummarize(
     }
   };
 
-  emit({ type: "run-started", runId: runtime.runId, input: request.input });
+  emit({
+    type: "run-started",
+    runId: runtime.runId,
+    input:
+      request.input.kind === "resolved-asset"
+        ? {
+            kind: "resolved-asset",
+            sourceKind: request.input.sourceKind,
+            sourceLabel: request.input.sourceLabel,
+            mediaType: request.input.attachment.mediaType,
+            filename: request.input.attachment.filename,
+          }
+        : request.input,
+  });
 
   try {
-    if (request.extractOnly && request.input.kind !== "url") {
-      throw new Error("Extract-only execution requires a URL input");
-    }
-
     const boundPrepared = prepared ? bindSummarizeExecutionEvents(prepared, emit) : null;
     if (request.input.kind === "resolved-asset") {
       const assetSummaryContext = boundPrepared?.assetSummaryContext;
       if (!assetSummaryContext) {
         throw new Error("Resolved asset execution requires prepared asset resources");
+      }
+      if (request.extractOnly) {
+        const extractedAsset = await extractAssetContent({
+          ctx: {
+            env: assetSummaryContext.env,
+            envForRun: assetSummaryContext.envForRun,
+            execFileImpl: assetSummaryContext.execFileImpl,
+            timeoutMs: assetSummaryContext.timeoutMs,
+            preprocessMode: assetSummaryContext.preprocessMode,
+          },
+          attachment: request.input.attachment,
+        });
+        const report = assetSummaryContext.shouldComputeReport
+          ? await assetSummaryContext.buildReport()
+          : null;
+        const result: AssetExtractionExecutionResult = {
+          kind: "asset-extraction",
+          input: toAssetExecutionInput(request.input),
+          extracted: extractedAsset,
+          elapsedMs: now() - startedAt,
+          report,
+          costUsd:
+            assetSummaryContext.metricsEnabled && report
+              ? await assetSummaryContext.estimateCostUsd()
+              : null,
+        };
+        emit({ type: "run-completed", result });
+        return result;
       }
       emit({ type: "summary-started" });
       const assetResult = await executeAssetSummary(assetSummaryContext, {
@@ -216,13 +268,7 @@ export async function executeSummarize(
       }
       const result: AssetSummaryExecutionResult = {
         kind: "asset-summary",
-        input: {
-          kind: "asset",
-          sourceKind: request.input.sourceKind,
-          source: request.input.sourceLabel,
-          mediaType: request.input.attachment.mediaType,
-          filename: request.input.attachment.filename,
-        },
+        input: toAssetExecutionInput(request.input),
         summary: assetResult.summary,
         usedModel: usedModel ?? assetResult.llm?.model ?? null,
         summaryFromCache: assetResult.summaryFromCache,
@@ -233,6 +279,10 @@ export async function executeSummarize(
       };
       emit({ type: "run-completed", result });
       return result;
+    }
+
+    if (request.extractOnly && request.input.kind !== "url") {
+      throw new Error("Extract-only execution requires a URL input");
     }
 
     const ctx = boundPrepared

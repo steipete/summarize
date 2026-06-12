@@ -3,22 +3,20 @@ import { AssetLikeHtmlFetchError } from "../packages/core/src/content/index.js";
 import type { AssetInputContext } from "../src/run/flows/asset/input.js";
 import type { UrlFlowContext } from "../src/run/flows/url/types.js";
 
-const extractAssetContent = vi.hoisted(() => vi.fn());
 const handleFileInput = vi.hoisted(() => vi.fn());
+const loadLocalAsset = vi.hoisted(() => vi.fn());
 const withUrlAsset = vi.hoisted(() => vi.fn());
-const outputExtractedAsset = vi.hoisted(() => vi.fn());
 const runUrlFlow = vi.hoisted(() => vi.fn());
 const createTempFileFromStdin = vi.hoisted(() => vi.fn());
 
-vi.mock("../src/run/flows/asset/extract", () => ({
-  extractAssetContent,
+vi.mock("../src/content/asset", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/content/asset.js")>()),
+  loadLocalAsset,
 }));
-vi.mock("../src/run/flows/asset/input", () => ({
+vi.mock("../src/run/flows/asset/input", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/run/flows/asset/input.js")>()),
   handleFileInput,
   withUrlAsset,
-}));
-vi.mock("../src/run/flows/asset/output", () => ({
-  outputExtractedAsset,
 }));
 vi.mock("../src/run/flows/url/flow", () => ({
   runUrlFlow,
@@ -30,10 +28,16 @@ vi.mock("../src/run/stdin-temp-file", () => ({
 import { executeRunnerInput, type RunnerExecutionOptions } from "../src/run/runner-execution";
 
 function buildOptions(overrides?: Partial<RunnerExecutionOptions>): RunnerExecutionOptions {
+  const setClearProgressBeforeStdout = vi.fn();
+  const clearProgressIfCurrent = vi.fn();
   return {
     inputTarget: { kind: "url", url: "https://example.com" } as never,
     stdin: process.stdin,
-    handleFileInputContext: {} as AssetInputContext,
+    handleFileInputContext: {
+      stderr: process.stderr,
+      setClearProgressBeforeStdout,
+      clearProgressIfCurrent,
+    } as unknown as AssetInputContext,
     url: "https://example.com",
     isYoutubeUrl: false,
     withUrlAssetContext: {} as AssetInputContext,
@@ -42,46 +46,13 @@ function buildOptions(overrides?: Partial<RunnerExecutionOptions>): RunnerExecut
     progressEnabled: true,
     renderSpinnerStatus: (label: string) => label,
     renderSpinnerStatusWithModel: (label: string, modelId: string) => `${label}:${modelId}`,
-    extractAssetContext: {
-      env: {},
-      envForRun: {},
-      execFileImpl: vi.fn() as never,
-      timeoutMs: 1_000,
-      preprocessMode: "auto" as const,
+    resolvedAsset: {
+      summarize: vi.fn(async ({ onModelChosen }) => {
+        onModelChosen?.("openai/gpt-5.4");
+        return {} as never;
+      }),
+      extract: vi.fn(async () => ({ content: "body", diagnostics: {} }) as never),
     },
-    outputExtractedAssetContext: {
-      io: { env: {}, envForRun: {}, stdout: process.stdout, stderr: process.stderr },
-      flags: {
-        timeoutMs: 1_000,
-        preprocessMode: "auto" as const,
-        format: "markdown" as const,
-        plain: false,
-        json: false,
-        metricsEnabled: false,
-        metricsDetailed: false,
-        shouldComputeReport: false,
-        runStartedAtMs: 0,
-        verboseColor: false,
-      },
-      hooks: {
-        clearProgressForStdout: vi.fn(),
-        restoreProgressAfterStdout: null,
-        buildReport: vi.fn(async () => ({}) as never),
-        estimateCostUsd: vi.fn(async () => 0),
-      },
-      apiStatus: {
-        xaiApiKey: null,
-        apiKey: null,
-        openrouterApiKey: null,
-        apifyToken: null,
-        firecrawlConfigured: false,
-        googleConfigured: false,
-        anthropicConfigured: false,
-      },
-    },
-    summarizeAsset: vi.fn(async ({ onModelChosen }) => {
-      onModelChosen("openai/gpt-5.4");
-    }),
     runUrlFlowContext: {} as UrlFlowContext,
     executeUrlSummary: async (options) => {
       await runUrlFlow(options);
@@ -102,7 +73,10 @@ describe("runner execution", () => {
 
     await executeRunnerInput(buildOptions({ inputTarget: { kind: "stdin" } as never }));
 
-    expect(handleFileInput).toHaveBeenCalledWith({}, { kind: "file", filePath: "/tmp/stdin.txt" });
+    expect(handleFileInput).toHaveBeenCalledWith(expect.any(Object), {
+      kind: "file",
+      filePath: "/tmp/stdin.txt",
+    });
     expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
@@ -117,9 +91,50 @@ describe("runner execution", () => {
     expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
-  it("extracts asset urls through outputExtractedAsset", async () => {
+  it("registers local PDF extraction progress for clearing before stdout", async () => {
+    const attachment = {
+      kind: "file" as const,
+      mediaType: "application/pdf",
+      filename: "notes.pdf",
+      bytes: new Uint8Array([1, 2, 3]),
+    };
+    loadLocalAsset.mockResolvedValue({
+      sourceLabel: "/tmp/notes.pdf",
+      attachment,
+    });
+    let clearBeforeStdout: (() => void) | null = null;
+    const setClearProgressBeforeStdout = vi.fn((clear) => {
+      clearBeforeStdout = clear;
+    });
+    const clearProgressIfCurrent = vi.fn();
+    const options = buildOptions({
+      inputTarget: { kind: "file", filePath: "/tmp/notes.pdf" } as never,
+      extractMode: true,
+      progressEnabled: false,
+      handleFileInputContext: {
+        stderr: process.stderr,
+        setClearProgressBeforeStdout,
+        clearProgressIfCurrent,
+      } as unknown as AssetInputContext,
+    });
+    vi.mocked(options.resolvedAsset.extract).mockImplementationOnce(async () => {
+      clearBeforeStdout?.();
+      return { content: "Extracted", diagnostics: {} } as never;
+    });
+
+    await executeRunnerInput(options);
+
+    expect(setClearProgressBeforeStdout).toHaveBeenCalledWith(expect.any(Function));
+    expect(options.resolvedAsset.extract).toHaveBeenCalledWith({
+      sourceKind: "file",
+      sourceLabel: "/tmp/notes.pdf",
+      attachment,
+    });
+    expect(clearProgressIfCurrent).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it("extracts asset urls through resolved asset execution", async () => {
     handleFileInput.mockResolvedValue(false);
-    extractAssetContent.mockResolvedValue({ content: "body", diagnostics: {} });
     withUrlAsset.mockImplementation(async (_ctx, _url, _isYoutube, fn) => {
       await fn({
         loaded: {
@@ -131,10 +146,14 @@ describe("runner execution", () => {
       return true;
     });
 
-    await executeRunnerInput(buildOptions({ extractMode: true }));
+    const options = buildOptions({ extractMode: true });
+    await executeRunnerInput(options);
 
-    expect(extractAssetContent).toHaveBeenCalledTimes(1);
-    expect(outputExtractedAsset).toHaveBeenCalledTimes(1);
+    expect(options.resolvedAsset.extract).toHaveBeenCalledWith({
+      sourceKind: "asset-url",
+      sourceLabel: "Example",
+      attachment: { kind: "file", mediaType: "text/html", filename: "index.html" },
+    });
     expect(runUrlFlow).not.toHaveBeenCalled();
   });
 
@@ -152,10 +171,12 @@ describe("runner execution", () => {
       return true;
     });
 
-    await executeRunnerInput(buildOptions());
+    const options = buildOptions();
+    await executeRunnerInput(options);
 
     expect(spinner.setText).toHaveBeenCalledWith("Summarizing");
     expect(spinner.setText).toHaveBeenCalledWith("Summarizing:openai/gpt-5.4");
+    expect(options.resolvedAsset.summarize).toHaveBeenCalledTimes(1);
     expect(runUrlFlow).not.toHaveBeenCalled();
   });
 

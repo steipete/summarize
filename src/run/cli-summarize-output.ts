@@ -8,7 +8,10 @@ import { outputExtractedUrl, presentExtractedUrlSummary } from "./flows/url/summ
 import type { UrlFlowContext } from "./flows/url/types.js";
 import { estimateWhisperTranscriptionCostUsd, formatUSD } from "./format.js";
 
-type CliUrlSummarizeResult = Exclude<SummarizeResult, { kind: "asset-summary" }>;
+type CliUrlSummarizeResult = Exclude<
+  SummarizeResult,
+  { kind: "asset-summary" | "asset-extraction" }
+>;
 
 function buildTranscriptionCostLabel(
   ctx: UrlFlowContext,
@@ -29,7 +32,7 @@ export async function presentCliSummarizeResult(options: {
   slidesOutput?: SlidesTerminalOutput | null;
 }): Promise<void> {
   const { ctx, result } = options;
-  if (result.kind === "asset-summary") {
+  if (result.kind === "asset-summary" || result.kind === "asset-extraction") {
     throw new Error("CLI URL presentation requires a URL result");
   }
   if (result.details.kind === "delegated-asset") return;

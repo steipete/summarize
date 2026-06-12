@@ -6,10 +6,14 @@ import type { UrlFlowContext } from "../src/run/flows/url/types.js";
 import { createEmptyRunOverrides } from "../src/run/run-settings.js";
 
 const mocks = vi.hoisted(() => ({
+  extractAssetContent: vi.fn(),
   executeAssetSummary: vi.fn(),
   executeUrlFlow: vi.fn(),
 }));
 
+vi.mock("../src/run/flows/asset/extract.js", () => ({
+  extractAssetContent: mocks.extractAssetContent,
+}));
 vi.mock("../src/run/flows/asset/summary.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/run/flows/asset/summary.js")>()),
   executeAssetSummary: mocks.executeAssetSummary,
@@ -351,5 +355,137 @@ describe("executeSummarize", () => {
       { type: "summary-delta", text: "Asset summary.\n" },
       { type: "run-completed" },
     ]);
+  });
+
+  it("extracts resolved assets with byte-free event and result metadata", async () => {
+    mocks.extractAssetContent.mockResolvedValueOnce({
+      content: "Extracted asset",
+      diagnostics: {
+        strategy: "html",
+        firecrawl: { used: false },
+        markdown: { used: false, provider: null },
+        transcript: { textProvided: false, provider: null },
+      },
+    });
+    const buildReport = vi.fn(async () => ({
+      llm: [],
+      services: { firecrawl: { requests: 0 }, apify: { requests: 0 } },
+    }));
+    const estimateCostUsd = vi.fn(async () => 0.02);
+    const assetSummaryContext = {
+      env: {},
+      envForRun: {},
+      execFileImpl: execFile,
+      timeoutMs: 5_000,
+      preprocessMode: "auto",
+      shouldComputeReport: true,
+      metricsEnabled: true,
+      buildReport,
+      estimateCostUsd,
+      onSummaryCached: null,
+    };
+    const preparedContext = {
+      hooks: {
+        onModelChosen: null,
+        onExtracted: null,
+        onSlidesExtracted: null,
+        onSlidesProgress: null,
+        onSlidesDone: null,
+        onSlideChunk: undefined,
+        onLinkPreviewProgress: null,
+        onSummaryCached: null,
+        summarizeAsset: vi.fn(),
+      },
+    } as unknown as UrlFlowContext;
+    const attachment = {
+      kind: "file" as const,
+      mediaType: "application/pdf",
+      filename: "notes.pdf",
+      bytes: new Uint8Array([1, 2, 3]),
+    };
+    const events: Array<{ type: string; input?: unknown }> = [];
+
+    const result = await executeSummarize(
+      {
+        input: {
+          kind: "resolved-asset",
+          sourceKind: "asset-url",
+          sourceLabel: "https://example.com/notes.pdf",
+          attachment,
+        },
+        modelOverride: null,
+        promptOverride: null,
+        lengthRaw: null,
+        languageRaw: null,
+        format: "text",
+        overrides: createEmptyRunOverrides(),
+        extractOnly: true,
+        slides: null,
+      },
+      {
+        runId: "asset-extract",
+        env: {},
+        fetch: globalThis.fetch,
+        execFile: execFile as unknown as ExecFileFn,
+        cache: { mode: "bypass", store: null, ttlMs: 0, maxBytes: 0, path: null },
+        mediaCache: null,
+        now: () => 142,
+      },
+      (event) => {
+        events.push({
+          type: event.type,
+          ...(event.type === "run-started" ? { input: event.input } : {}),
+        });
+      },
+      {
+        urlFlowContext: preparedContext,
+        assetSummaryContext: assetSummaryContext as never,
+      },
+    );
+
+    expect(mocks.extractAssetContent).toHaveBeenCalledWith({
+      ctx: expect.objectContaining({
+        timeoutMs: 5_000,
+        preprocessMode: "auto",
+      }),
+      attachment,
+    });
+    expect(result).toEqual({
+      kind: "asset-extraction",
+      input: {
+        kind: "asset",
+        sourceKind: "asset-url",
+        source: "https://example.com/notes.pdf",
+        mediaType: "application/pdf",
+        filename: "notes.pdf",
+      },
+      extracted: {
+        content: "Extracted asset",
+        diagnostics: {
+          strategy: "html",
+          firecrawl: { used: false },
+          markdown: { used: false, provider: null },
+          transcript: { textProvided: false, provider: null },
+        },
+      },
+      elapsedMs: 0,
+      report: {
+        llm: [],
+        services: { firecrawl: { requests: 0 }, apify: { requests: 0 } },
+      },
+      costUsd: 0.02,
+    });
+    expect(events[0]).toEqual({
+      type: "run-started",
+      input: {
+        kind: "resolved-asset",
+        sourceKind: "asset-url",
+        sourceLabel: "https://example.com/notes.pdf",
+        mediaType: "application/pdf",
+        filename: "notes.pdf",
+      },
+    });
+    expect(events[0]?.input).not.toHaveProperty("attachment");
+    expect(events.at(-1)?.type).toBe("run-completed");
   });
 });

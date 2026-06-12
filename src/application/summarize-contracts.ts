@@ -7,6 +7,7 @@ import type {
 } from "../content/index.js";
 import type { RunMetricsReport } from "../costs.js";
 import type { ExecFileFn } from "../markitdown.js";
+import type { AssetExtractResult } from "../run/flows/asset/extract.js";
 import type { AssetSummaryResult } from "../run/flows/asset/types.js";
 import type { RunOverrides } from "../run/run-settings.js";
 import type {
@@ -62,7 +63,7 @@ export type SummarizeRuntime = {
 };
 
 export type SummarizeEvent =
-  | { type: "run-started"; runId: string; input: SummarizeInput }
+  | { type: "run-started"; runId: string; input: SummarizeEventInput }
   | { type: "extraction-started"; url: string }
   | { type: "extraction-progress"; event: LinkPreviewProgressEvent }
   | { type: "content-extracted"; content: ExtractedLinkContent }
@@ -91,6 +92,24 @@ export type SummarizeEventSink = (event: SummarizeEvent) => void;
 
 export type UrlSummarizeInput = Exclude<SummarizeInput, { kind: "resolved-asset" }>;
 
+export type AssetExecutionInput = {
+  kind: "asset";
+  sourceKind: "file" | "asset-url";
+  source: string;
+  mediaType: string;
+  filename: string | null;
+};
+
+export type SummarizeEventInput =
+  | UrlSummarizeInput
+  | {
+      kind: "resolved-asset";
+      sourceKind: "file" | "asset-url";
+      sourceLabel: string;
+      mediaType: string;
+      filename: string | null;
+    };
+
 export type SummaryResult = {
   kind: "summary";
   input: UrlSummarizeInput;
@@ -115,13 +134,7 @@ export type ExtractionResult = {
 
 export type AssetSummaryExecutionResult = {
   kind: "asset-summary";
-  input: {
-    kind: "asset";
-    sourceKind: "file" | "asset-url";
-    source: string;
-    mediaType: string;
-    filename: string | null;
-  };
+  input: AssetExecutionInput;
   summary: string;
   usedModel: string | null;
   summaryFromCache: boolean;
@@ -131,4 +144,17 @@ export type AssetSummaryExecutionResult = {
   details: AssetSummaryResult;
 };
 
-export type SummarizeResult = SummaryResult | ExtractionResult | AssetSummaryExecutionResult;
+export type AssetExtractionExecutionResult = {
+  kind: "asset-extraction";
+  input: AssetExecutionInput;
+  extracted: AssetExtractResult;
+  elapsedMs: number;
+  report: RunMetricsReport | null;
+  costUsd: number | null;
+};
+
+export type SummarizeResult =
+  | SummaryResult
+  | ExtractionResult
+  | AssetSummaryExecutionResult
+  | AssetExtractionExecutionResult;

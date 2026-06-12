@@ -2,19 +2,16 @@ import { pathToFileURL } from "node:url";
 import { loadLocalAsset, type InputTarget } from "../content/asset.js";
 import { isDirectVideoInput } from "../content/index.js";
 import { hasEngineErrorCode } from "../engine/errors.js";
-import type { ExecFileFn } from "../markitdown.js";
 import { startSpinner } from "../tty/spinner.js";
 import type { AssetAttachment } from "./attachments.js";
 import { MAX_PDF_EXTRACT_BYTES } from "./constants.js";
-import { extractAssetContent } from "./flows/asset/extract.js";
-import type { AssetExtractContext } from "./flows/asset/extract.js";
+import type { AssetExtractResult } from "./flows/asset/extract.js";
 import {
   handleFileInput,
   type AssetInputContext,
   isPdfExtension,
   withUrlAsset,
 } from "./flows/asset/input.js";
-import { outputExtractedAsset } from "./flows/asset/output.js";
 import type { AssetSummaryResult, SummarizeAssetArgs } from "./flows/asset/types.js";
 import type { UrlFlowContext } from "./flows/url/types.js";
 import { createTempFileFromStdin } from "./stdin-temp-file.js";
@@ -30,11 +27,6 @@ function allowUrlFlowFirecrawlFallback(ctx: UrlFlowContext): UrlFlowContext {
   };
 }
 
-type OutputExtractedAssetContext = Omit<
-  Parameters<typeof outputExtractedAsset>[0],
-  "url" | "sourceLabel" | "attachment" | "extracted"
->;
-
 export type RunnerExecutionOptions = {
   inputTarget: InputTarget;
   stdin: NodeJS.ReadableStream;
@@ -47,9 +39,10 @@ export type RunnerExecutionOptions = {
   progressEnabled: boolean;
   renderSpinnerStatus: (label: string, detail?: string) => string;
   renderSpinnerStatusWithModel: (label: string, modelId: string) => string;
-  extractAssetContext: AssetExtractContext & { execFileImpl: ExecFileFn };
-  outputExtractedAssetContext: OutputExtractedAssetContext;
-  summarizeAsset: (args: SummarizeAssetArgs) => Promise<AssetSummaryResult>;
+  resolvedAsset: {
+    summarize: (args: SummarizeAssetArgs) => Promise<AssetSummaryResult>;
+    extract: (args: SummarizeAssetArgs) => Promise<AssetExtractResult>;
+  };
   runUrlFlowContext: UrlFlowContext;
   executeUrlSummary: (options: {
     ctx: UrlFlowContext;
@@ -71,9 +64,7 @@ export async function executeRunnerInput(options: RunnerExecutionOptions) {
     progressEnabled,
     renderSpinnerStatus,
     renderSpinnerStatusWithModel,
-    extractAssetContext,
-    outputExtractedAssetContext,
-    summarizeAsset,
+    resolvedAsset,
     runUrlFlowContext,
     executeUrlSummary,
   } = options;
@@ -104,30 +95,36 @@ export async function executeRunnerInput(options: RunnerExecutionOptions) {
     const spinner = startSpinner({
       text: renderSpinnerStatus("Loading file"),
       enabled: progressEnabled,
-      stream: outputExtractedAssetContext.io.stderr,
+      stream: handleFileInputContext.stderr,
       color: undefined,
     });
+    let spinnerStopped = false;
+    const stopSpinner = () => {
+      if (spinnerStopped) return;
+      spinnerStopped = true;
+      spinner.stopAndClear();
+    };
+    const clearProgressLine = () => {
+      stopSpinner();
+      return undefined;
+    };
+    handleFileInputContext.setClearProgressBeforeStdout(clearProgressLine);
     try {
       const loaded = await loadLocalAsset({
         filePath: inputTarget.filePath,
         maxBytes: MAX_PDF_EXTRACT_BYTES,
       });
       if (progressEnabled) spinner.setText(renderSpinnerStatus("Extracting text"));
-      const extracted = await extractAssetContent({
-        ctx: extractAssetContext,
-        attachment: loaded.attachment,
-      });
-      spinner.stopAndClear();
-      await outputExtractedAsset({
-        ...outputExtractedAssetContext,
-        url: inputTarget.filePath,
+      await resolvedAsset.extract({
+        sourceKind: "file",
         sourceLabel: loaded.sourceLabel,
         attachment: loaded.attachment,
-        extracted,
       });
     } catch (err) {
-      spinner.stopAndClear();
       throw err;
+    } finally {
+      handleFileInputContext.clearProgressIfCurrent(clearProgressLine);
+      stopSpinner();
     }
     return;
   }
@@ -159,22 +156,16 @@ export async function executeRunnerInput(options: RunnerExecutionOptions) {
       }) => {
         if (extractMode) {
           if (progressEnabled) spinner.setText(renderSpinnerStatus("Extracting text"));
-          const extracted = await extractAssetContent({
-            ctx: extractAssetContext,
-            attachment: loaded.attachment,
-          });
-          await outputExtractedAsset({
-            ...outputExtractedAssetContext,
-            url,
+          await resolvedAsset.extract({
+            sourceKind: "asset-url",
             sourceLabel: loaded.sourceLabel,
             attachment: loaded.attachment,
-            extracted,
           });
           return;
         }
 
         if (progressEnabled) spinner.setText(renderSpinnerStatus("Summarizing"));
-        await summarizeAsset({
+        await resolvedAsset.summarize({
           sourceKind: "asset-url",
           sourceLabel: loaded.sourceLabel,
           attachment: loaded.attachment,

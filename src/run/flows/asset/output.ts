@@ -1,7 +1,6 @@
 import { render as renderMarkdownAnsi } from "markdansi";
 import type { RunMetricsReport } from "../../../costs.js";
 import { buildRunJsonEnv, type RunApiAvailability } from "../../../shared/run-api-status.js";
-import type { AssetAttachment } from "../../attachments.js";
 import { buildExtractFinishLabel, writeFinishLine } from "../../finish-line.js";
 import { prepareMarkdownForTerminal } from "../../markdown.js";
 import { isRichTty, markdownRenderWidth, supportsColor } from "../../terminal.js";
@@ -15,6 +14,9 @@ export async function outputExtractedAsset({
   sourceLabel,
   attachment,
   extracted,
+  elapsedMs,
+  report,
+  costUsd,
   apiStatus,
 }: {
   io: {
@@ -31,20 +33,22 @@ export async function outputExtractedAsset({
     json: boolean;
     metricsEnabled: boolean;
     metricsDetailed: boolean;
-    shouldComputeReport: boolean;
-    runStartedAtMs: number;
     verboseColor: boolean;
   };
   hooks: {
     clearProgressForStdout: () => void;
     restoreProgressAfterStdout?: (() => void) | null;
-    buildReport: () => Promise<RunMetricsReport>;
-    estimateCostUsd: () => Promise<number | null>;
   };
   url: string;
   sourceLabel: string;
-  attachment: AssetAttachment;
+  attachment: {
+    mediaType: string;
+    filename: string | null;
+  };
   extracted: AssetExtractResult;
+  elapsedMs: number;
+  report: RunMetricsReport | null;
+  costUsd: number | null;
   apiStatus: RunApiAvailability;
 }): Promise<void> {
   hooks.clearProgressForStdout();
@@ -56,7 +60,6 @@ export async function outputExtractedAsset({
   });
 
   if (flags.json) {
-    const finishReport = flags.shouldComputeReport ? await hooks.buildReport() : null;
     const payload = {
       input: {
         kind: "asset-url" as const,
@@ -75,20 +78,19 @@ export async function outputExtractedAsset({
       },
       prompt: null,
       llm: null,
-      metrics: flags.metricsEnabled ? finishReport : null,
+      metrics: flags.metricsEnabled ? report : null,
       summary: null,
     };
     io.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
     hooks.restoreProgressAfterStdout?.();
-    if (flags.metricsEnabled && finishReport) {
-      const costUsd = await hooks.estimateCostUsd();
+    if (flags.metricsEnabled && report) {
       writeFinishLine({
         stderr: io.stderr,
         env: io.envForRun,
-        elapsedMs: Date.now() - flags.runStartedAtMs,
+        elapsedMs,
         label: finishLabel,
         model: null,
-        report: finishReport,
+        report,
         costUsd,
         detailed: flags.metricsDetailed,
         extraParts: null,
@@ -118,13 +120,11 @@ export async function outputExtractedAsset({
   }
   hooks.restoreProgressAfterStdout?.();
 
-  const report = flags.shouldComputeReport ? await hooks.buildReport() : null;
   if (flags.metricsEnabled && report) {
-    const costUsd = await hooks.estimateCostUsd();
     writeFinishLine({
       stderr: io.stderr,
       env: io.envForRun,
-      elapsedMs: Date.now() - flags.runStartedAtMs,
+      elapsedMs,
       label: finishLabel,
       model: null,
       report,

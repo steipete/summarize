@@ -339,7 +339,7 @@ export async function createRunnerPlan(options: {
   });
   const { apiStatus, metrics } = executionResources.modelResources.runtime;
   const { trackedFetch, buildReport, estimateCostUsd } = metrics;
-  const { summarizeAsset, assetSummaryContext, urlFlowContext } = executionResources;
+  const { assetSummaryContext, urlFlowContext } = executionResources;
   const summarizeRuntime = {
     runId: `cli-${runStartedAtMs}`,
     env,
@@ -354,14 +354,32 @@ export async function createRunnerPlan(options: {
     slides: slidesSettings,
     maxExtractCharacters: extractMode ? maxExtractCharacters : null,
   });
-  const executeResolvedAsset = createCliResolvedAssetExecutor({
+  const resolvedAsset = createCliResolvedAssetExecutor({
     baseRequest: summarizeResolution.request,
     runtime: summarizeRuntime,
     prepared: executionResources,
     presentationContext: assetSummaryContext,
+    extractionOutputContext: {
+      io: { env, envForRun, stdout, stderr },
+      flags: {
+        timeoutMs,
+        preprocessMode,
+        format,
+        plain,
+        json,
+        metricsEnabled,
+        metricsDetailed,
+        verboseColor,
+      },
+      hooks: {
+        clearProgressForStdout,
+        restoreProgressAfterStdout,
+      },
+      apiStatus,
+    },
   });
   const assetInputContext = createRunnerAssetInputContext({
-    summarizeAssetImpl: executeResolvedAsset,
+    summarizeAssetImpl: resolvedAsset.summarize,
     summarizeMediaFileImpl,
     assetSummaryContext,
     progressEnabled,
@@ -385,36 +403,7 @@ export async function createRunnerPlan(options: {
         progressEnabled,
         renderSpinnerStatus,
         renderSpinnerStatusWithModel,
-        extractAssetContext: {
-          env,
-          envForRun,
-          execFileImpl,
-          timeoutMs,
-          preprocessMode,
-        },
-        outputExtractedAssetContext: {
-          io: { env, envForRun, stdout, stderr },
-          flags: {
-            timeoutMs,
-            preprocessMode,
-            format,
-            plain,
-            json,
-            metricsEnabled,
-            metricsDetailed,
-            shouldComputeReport,
-            runStartedAtMs,
-            verboseColor,
-          },
-          hooks: {
-            clearProgressForStdout,
-            restoreProgressAfterStdout,
-            buildReport,
-            estimateCostUsd,
-          },
-          apiStatus,
-        },
-        summarizeAsset,
+        resolvedAsset,
         runUrlFlowContext: urlFlowContext,
         executeUrlSummary,
       });

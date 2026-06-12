@@ -4,6 +4,8 @@ import type { SummarizeRunRequest } from "../application/run-spec.js";
 import type { SummarizeRequest, SummarizeRuntime } from "../application/summarize-contracts.js";
 import type { SlideSettings } from "../slides/index.js";
 import { presentCliSummarizeResult } from "./cli-summarize-output.js";
+import type { AssetExtractResult } from "./flows/asset/extract.js";
+import { outputExtractedAsset } from "./flows/asset/output.js";
 import { presentAssetSummary } from "./flows/asset/summary.js";
 import type {
   AssetSummaryContext,
@@ -52,12 +54,19 @@ export function createCliResolvedAssetExecutor(options: {
   runtime: SummarizeRuntime;
   prepared: PreparedSummarizeExecution;
   presentationContext: AssetSummaryContext;
-}): (args: SummarizeAssetArgs) => Promise<AssetSummaryResult> {
+  extractionOutputContext: Omit<
+    Parameters<typeof outputExtractedAsset>[0],
+    "url" | "sourceLabel" | "attachment" | "extracted" | "elapsedMs" | "report" | "costUsd"
+  >;
+}): {
+  summarize: (args: SummarizeAssetArgs) => Promise<AssetSummaryResult>;
+  extract: (args: SummarizeAssetArgs) => Promise<AssetExtractResult>;
+} {
   const { input, slides, ...requestDefaults } = options.baseRequest;
   void input;
   void slides;
 
-  return async (args) => {
+  const execute = async (args: SummarizeAssetArgs, extractOnly: boolean) => {
     const request: SummarizeRequest = {
       ...requestDefaults,
       input: {
@@ -66,6 +75,7 @@ export function createCliResolvedAssetExecutor(options: {
         sourceLabel: args.sourceLabel,
         attachment: args.attachment,
       },
+      extractOnly,
       slides: null,
     };
     const result = await executeSummarize(
@@ -78,10 +88,34 @@ export function createCliResolvedAssetExecutor(options: {
       },
       options.prepared,
     );
-    if (result.kind !== "asset-summary") {
-      throw new Error("CLI asset execution requires an asset summary result");
-    }
-    await presentAssetSummary(options.presentationContext, args, result.details);
-    return result.details;
+    return result;
+  };
+
+  return {
+    summarize: async (args) => {
+      const result = await execute(args, false);
+      if (result.kind !== "asset-summary") {
+        throw new Error("CLI resolved asset summary returned an incompatible result");
+      }
+      await presentAssetSummary(options.presentationContext, args, result.details);
+      return result.details;
+    },
+    extract: async (args) => {
+      const result = await execute(args, true);
+      if (result.kind !== "asset-extraction") {
+        throw new Error("CLI resolved asset extraction returned an incompatible result");
+      }
+      await outputExtractedAsset({
+        ...options.extractionOutputContext,
+        url: result.input.source,
+        sourceLabel: result.input.source,
+        attachment: result.input,
+        extracted: result.extracted,
+        elapsedMs: result.elapsedMs,
+        report: result.report,
+        costUsd: result.costUsd,
+      });
+      return result.extracted;
+    },
   };
 }
