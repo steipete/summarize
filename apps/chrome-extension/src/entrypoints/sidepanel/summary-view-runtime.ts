@@ -46,15 +46,6 @@ type SummaryViewRuntimeOpts = {
   refreshSummarizeControl: () => void;
   resetChatState: () => void;
   setSlidesTranscriptTimedText: (value: string | null) => void;
-  getSlidesParallelValue: () => boolean;
-  getActiveTabId: () => number | null;
-  getActiveTabUrl: () => string | null;
-  setSlidesContextPending: (value: boolean) => void;
-  setSlidesContextUrl: (value: string | null) => void;
-  setSlidesSeededSourceId: (value: string | null) => void;
-  setSlidesAppliedRunId: (value: string | null) => void;
-  setSlidesExpanded: (value: boolean) => void;
-  resolveActiveSlidesRunId: () => string | null;
   getSlidesSummaryState: () => {
     runId: string | null;
     markdown: string;
@@ -89,6 +80,11 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
       applyPanelStateAction(opts.panelState, action);
     }
   };
+  const resolveActiveSlidesRunId = () => {
+    if (opts.panelState.slidesRunId) return opts.panelState.slidesRunId;
+    if (opts.panelState.slides && opts.panelState.runId) return opts.panelState.runId;
+    return null;
+  };
 
   function resetSummaryView({
     preserveChat = false,
@@ -104,15 +100,24 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     clearSummaryCopyButton(opts.summaryCopyBtn);
     opts.metricsController.clearForMode("summary");
     dispatch({ type: "reset-summary", clearRunId, clearSlides: stopSlides });
-    opts.setSlidesExpanded(true);
+    dispatch({
+      type: "slides-session-update",
+      value: {
+        slidesExpanded: true,
+        ...(stopSlides
+          ? {
+              slidesContextPending: false,
+              slidesContextUrl: null,
+              slidesSeededSourceId: null,
+              slidesAppliedRunId: null,
+            }
+          : {}),
+      },
+    });
     if (stopSlides) {
       opts.getSlidesRenderer().clear();
-      opts.setSlidesContextPending(false);
-      opts.setSlidesContextUrl(null);
       opts.setSlidesTranscriptTimedText(null);
       opts.slidesTextController.reset();
-      opts.setSlidesSeededSourceId(null);
-      opts.setSlidesAppliedRunId(null);
       opts.stopSlidesStream();
     }
     opts.refreshSummarizeControl();
@@ -122,8 +127,8 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
   }
 
   function buildPanelCachePayload(): PanelCachePayload | null {
-    const tabId = opts.panelState.activeRun.tabId ?? opts.getActiveTabId();
-    const url = opts.panelState.currentSource?.url ?? opts.getActiveTabUrl();
+    const tabId = opts.panelState.activeRun.tabId ?? opts.panelState.navigation.activeTabId;
+    const url = opts.panelState.currentSource?.url ?? opts.panelState.navigation.activeTabUrl;
     if (!tabId || !url) return null;
     const slidesSummary = opts.getSlidesSummaryState();
     const hasSlidesSummaryState = Boolean(slidesSummary.runId || slidesSummary.markdown.trim());
@@ -148,7 +153,8 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     const preserveChat = applyOpts?.preserveChat ?? false;
     resetSummaryView({ preserveChat });
     const slidesRunId =
-      payload.slidesRunId ?? (opts.getSlidesParallelValue() ? null : (payload.runId ?? null));
+      payload.slidesRunId ??
+      (opts.panelState.slidesSession.slidesParallel ? null : (payload.runId ?? null));
     dispatch({
       type: "restore-session",
       tabId: payload.tabId,
@@ -200,10 +206,13 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
           })),
         },
       });
-      opts.setSlidesContextPending(false);
-      opts.setSlidesContextUrl(
-        opts.slidesTextController.getTranscriptAvailable() ? payload.url : null,
-      );
+      dispatch({
+        type: "slides-session-update",
+        value: {
+          slidesContextPending: false,
+          slidesContextUrl: opts.slidesTextController.getTranscriptAvailable() ? payload.url : null,
+        },
+      });
       opts.updateSlidesTextState();
       if (
         !opts.slidesTextController.getTranscriptAvailable() &&
@@ -212,13 +221,21 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
       ) {
         void opts.requestSlidesContext();
       }
-      opts.setSlidesAppliedRunId(opts.resolveActiveSlidesRunId());
+      dispatch({
+        type: "slides-session-update",
+        value: { slidesAppliedRunId: resolveActiveSlidesRunId() },
+      });
     } else {
       dispatch({ type: "slides", slides: null });
-      opts.setSlidesContextPending(false);
-      opts.setSlidesContextUrl(null);
+      dispatch({
+        type: "slides-session-update",
+        value: {
+          slidesContextPending: false,
+          slidesContextUrl: null,
+          slidesAppliedRunId: null,
+        },
+      });
       opts.updateSlidesTextState();
-      opts.setSlidesAppliedRunId(null);
       if (payload.summaryMarkdown && payload.url && isYouTubeVideoUrl(payload.url)) {
         opts.requestSlidesCapture();
       }

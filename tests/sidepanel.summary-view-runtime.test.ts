@@ -6,7 +6,11 @@ import { createSummaryViewRuntime } from "../apps/chrome-extension/src/entrypoin
 import type { PanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/types";
 
 function createPanelState(): PanelState {
-  return createInitialPanelState();
+  const state = createInitialPanelState();
+  state.navigation.activeTabId = 1;
+  state.navigation.activeTabUrl = "https://example.com/watch?v=abc123";
+  state.slidesSession.slidesParallel = true;
+  return state;
 }
 
 function createCachePayload(overrides: Partial<PanelCachePayload> = {}): PanelCachePayload {
@@ -54,15 +58,6 @@ describe("summary view runtime", () => {
       refreshSummarizeControl: vi.fn(),
       resetChatState: vi.fn(),
       setSlidesTranscriptTimedText: vi.fn(),
-      getSlidesParallelValue: vi.fn(() => true),
-      getActiveTabId: vi.fn(() => 1),
-      getActiveTabUrl: vi.fn(() => "https://example.com/watch?v=abc123"),
-      setSlidesContextPending: vi.fn(),
-      setSlidesContextUrl: vi.fn(),
-      setSlidesSeededSourceId: vi.fn(),
-      setSlidesAppliedRunId: vi.fn(),
-      setSlidesExpanded: vi.fn(),
-      resolveActiveSlidesRunId: vi.fn(() => "slides-1"),
       getSlidesSummaryState: vi.fn(() => ({
         runId: null,
         markdown: "",
@@ -105,9 +100,10 @@ describe("summary view runtime", () => {
 
   it("does not request transcript context when cached slides lack timed transcript text", () => {
     const panelState = createPanelState();
-    const setSlidesContextUrl = vi.fn();
+    panelState.slidesSession.slidesContextUrl = "https://example.com/stale";
     const requestSlidesContext = vi.fn();
     const youtubeUrl = "https://www.youtube.com/watch?v=abc123";
+    panelState.navigation.activeTabUrl = youtubeUrl;
     const runtime = createSummaryViewRuntime({
       panelState,
       renderEl: document.createElement("div"),
@@ -127,15 +123,6 @@ describe("summary view runtime", () => {
       refreshSummarizeControl: vi.fn(),
       resetChatState: vi.fn(),
       setSlidesTranscriptTimedText: vi.fn(),
-      getSlidesParallelValue: vi.fn(() => true),
-      getActiveTabId: vi.fn(() => 1),
-      getActiveTabUrl: vi.fn(() => youtubeUrl),
-      setSlidesContextPending: vi.fn(),
-      setSlidesContextUrl,
-      setSlidesSeededSourceId: vi.fn(),
-      setSlidesAppliedRunId: vi.fn(),
-      setSlidesExpanded: vi.fn(),
-      resolveActiveSlidesRunId: vi.fn(() => "slides-1"),
       getSlidesSummaryState: vi.fn(() => ({
         runId: null,
         markdown: "",
@@ -174,13 +161,14 @@ describe("summary view runtime", () => {
       }),
     );
 
-    expect(setSlidesContextUrl).toHaveBeenCalledWith(null);
+    expect(panelState.slidesSession.slidesContextUrl).toBeNull();
     expect(requestSlidesContext).not.toHaveBeenCalled();
   });
 
   it("does not request browser slide capture for cached non-YouTube URL-mode pages", () => {
     const panelState = createPanelState();
     const requestSlidesCapture = vi.fn();
+    panelState.navigation.activeTabUrl = "https://x.com/example/status/123";
     const runtime = createSummaryViewRuntime({
       panelState,
       renderEl: document.createElement("div"),
@@ -200,15 +188,6 @@ describe("summary view runtime", () => {
       refreshSummarizeControl: vi.fn(),
       resetChatState: vi.fn(),
       setSlidesTranscriptTimedText: vi.fn(),
-      getSlidesParallelValue: vi.fn(() => true),
-      getActiveTabId: vi.fn(() => 1),
-      getActiveTabUrl: vi.fn(() => "https://x.com/example/status/123"),
-      setSlidesContextPending: vi.fn(),
-      setSlidesContextUrl: vi.fn(),
-      setSlidesSeededSourceId: vi.fn(),
-      setSlidesAppliedRunId: vi.fn(),
-      setSlidesExpanded: vi.fn(),
-      resolveActiveSlidesRunId: vi.fn(() => null),
       getSlidesSummaryState: vi.fn(() => ({
         runId: null,
         markdown: "",
@@ -266,15 +245,6 @@ describe("summary view runtime", () => {
       refreshSummarizeControl: vi.fn(),
       resetChatState: vi.fn(),
       setSlidesTranscriptTimedText: vi.fn(),
-      getSlidesParallelValue: vi.fn(() => true),
-      getActiveTabId: vi.fn(() => 1),
-      getActiveTabUrl: vi.fn(() => "https://example.com/watch?v=abc123"),
-      setSlidesContextPending: vi.fn(),
-      setSlidesContextUrl: vi.fn(),
-      setSlidesSeededSourceId: vi.fn(),
-      setSlidesAppliedRunId: vi.fn(),
-      setSlidesExpanded: vi.fn(),
-      resolveActiveSlidesRunId: vi.fn(() => null),
       getSlidesSummaryState: vi.fn(() => ({
         runId: null,
         markdown: "",
@@ -300,5 +270,12 @@ describe("summary view runtime", () => {
     expect(summaryCopyBtn.disabled).toBe(true);
     expect(summaryCopyBtn.onclick).toBeNull();
     expect(panelState.activeRun.tabId).toBeNull();
+    expect(panelState.slidesSession).toMatchObject({
+      slidesExpanded: true,
+      slidesContextPending: false,
+      slidesContextUrl: null,
+      slidesSeededSourceId: null,
+      slidesAppliedRunId: null,
+    });
   });
 });

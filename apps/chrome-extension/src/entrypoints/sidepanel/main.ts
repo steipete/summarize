@@ -856,25 +856,6 @@ const summaryViewRuntime = createSummaryViewRuntime({
   refreshSummarizeControl,
   resetChatState,
   setSlidesTranscriptTimedText,
-  getSlidesParallelValue: () => getSlidesState().slidesParallel,
-  getActiveTabId,
-  getActiveTabUrl,
-  setSlidesContextPending: (value) => {
-    updateSlidesState({ slidesContextPending: value });
-  },
-  setSlidesContextUrl: (value) => {
-    updateSlidesState({ slidesContextUrl: value });
-  },
-  setSlidesSeededSourceId: (value) => {
-    updateSlidesState({ slidesSeededSourceId: value });
-  },
-  setSlidesAppliedRunId: (value) => {
-    updateSlidesState({ slidesAppliedRunId: value });
-  },
-  setSlidesExpanded: (value) => {
-    updateSlidesState({ slidesExpanded: value });
-  },
-  resolveActiveSlidesRunId,
   getSlidesSummaryState: () => ({
     runId: slidesSummaryController.getRunId(),
     markdown: slidesSummaryController.getMarkdown(),
