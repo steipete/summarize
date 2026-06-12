@@ -18,7 +18,7 @@
     "test:firefox:lint": "env -u NO_COLOR pnpm build:firefox && env -u NO_COLOR web-ext lint --source-dir .output/firefox-mv3 --self-hosted --boring"
   },
   "dependencies": {
-    "@huggingface/transformers": "3.8.1",
+    "@huggingface/transformers": "4.2.0",
     "@mozilla/readability": "0.6.0",
     "@steipete/summarize-core": "workspace:*",
     "googlevideo": "4.0.4",

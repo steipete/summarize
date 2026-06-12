@@ -5,6 +5,7 @@
 ### Fixes
 
 - YouTube metadata: harden view-count freshness, fallbacks, embedded transcript cache identity, and timeout enforcement while reading response bodies.
+- Chrome extension: update Transformers.js to 4.2 and resolve its bundled ONNX runtime assets through the installed dependency graph.
 
 ### Docs
 

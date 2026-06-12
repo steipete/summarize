@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { defineConfig } from "wxt";
+import { resolveTransformersRuntimeAssets } from "./scripts/transformers-runtime-assets";
 
 const targetBrowser = process.env.BROWSER === "firefox" ? "firefox" : "chrome";
 
@@ -43,17 +44,13 @@ export default defineConfig({
             {
               name: "bundle-transformers-onnx-runtime",
               generateBundle() {
-                const filename = "ort-wasm-simd-threaded.jsep.mjs";
-                this.emitFile({
-                  type: "asset",
-                  fileName: `assets/${filename}`,
-                  source: readFileSync(
-                    new URL(
-                      `./node_modules/@huggingface/transformers/dist/${filename}`,
-                      import.meta.url,
-                    ),
-                  ),
-                });
+                for (const asset of resolveTransformersRuntimeAssets()) {
+                  this.emitFile({
+                    type: "asset",
+                    fileName: `assets/${asset.fileName}`,
+                    source: readFileSync(asset.sourcePath),
+                  });
+                }
               },
             },
           ]
@@ -62,13 +59,14 @@ export default defineConfig({
       rollupOptions: {
         output: {
           assetFileNames: (asset) =>
-            asset.names.some((name) => name === "ort-wasm-simd-threaded.jsep.wasm")
+            asset.names.some((name) => name === "ort-wasm-simd-threaded.asyncify.wasm")
               ? "assets/[name][extname]"
               : "assets/[name]-[hash][extname]",
         },
       },
     },
     resolve: {
+      conditions: ["onnxruntime-web-use-extern-wasm"],
       alias: {
         react: "preact/compat",
         "react-dom": "preact/compat",

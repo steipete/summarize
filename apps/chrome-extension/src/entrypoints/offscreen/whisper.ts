@@ -9,10 +9,6 @@ const WHISPER_MODEL = "onnx-community/whisper-tiny";
 const WEBGPU_MODEL_LOAD_TIMEOUT_MS = 30_000;
 const WASM_MODEL_LOAD_TIMEOUT_MS = 90_000;
 const WHISPER_IDLE_DISPOSE_MS = 5 * 60 * 1000;
-const ORT_WASM_URL = new URL(
-  "../../../node_modules/@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.wasm",
-  import.meta.url,
-).href;
 type WhisperDevice = "webgpu" | "wasm";
 type WhisperPipelineFactory = (
   device: WhisperDevice,
@@ -101,8 +97,8 @@ async function getTranscriber(onStatus: (status: string) => void): Promise<{
     env.useBrowserCache = true;
     if (env.backends.onnx.wasm) {
       env.backends.onnx.wasm.wasmPaths = {
-        mjs: chrome.runtime.getURL("assets/ort-wasm-simd-threaded.jsep.mjs"),
-        wasm: ORT_WASM_URL,
+        mjs: chrome.runtime.getURL("assets/ort-wasm-simd-threaded.asyncify.mjs"),
+        wasm: chrome.runtime.getURL("assets/ort-wasm-simd-threaded.asyncify.wasm"),
       };
       env.backends.onnx.wasm.proxy = false;
     }
