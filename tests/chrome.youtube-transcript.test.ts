@@ -247,6 +247,99 @@ describe("chrome youtube transcript extraction", () => {
     expect(scrollTo).toHaveBeenCalledWith(5, 8);
   });
 
+  it("rejects caption and panel work after the tab navigates to another video", async () => {
+    (globalThis as { ytInitialPlayerResponse?: unknown }).ytInitialPlayerResponse = {
+      captions: {
+        playerCaptionsTracklistRenderer: {
+          captionTracks: [
+            {
+              baseUrl: "https://example.com/caption?lang=en",
+              languageCode: "en",
+              name: { simpleText: "English" },
+            },
+          ],
+        },
+      },
+      videoDetails: { lengthSeconds: "42", videoId: "test" },
+    };
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          events: [{ tStartMs: 1000, segs: [{ utf8: "Stale caption" }] }],
+        }),
+    }));
+    Object.defineProperty(globalThis, "fetch", {
+      configurable: true,
+      value: fetchImpl,
+    });
+    const button = { click: vi.fn(), textContent: "Show transcript" };
+    installDocumentStub({
+      querySelector: vi.fn((selector: string) =>
+        selector.includes("transcript-section") ? button : null,
+      ) as unknown as Document["querySelector"],
+      querySelectorAll: vi.fn(() => [button]) as unknown as Document["querySelectorAll"],
+    });
+    let injectionCount = 0;
+    Object.defineProperty(globalThis, "chrome", {
+      configurable: true,
+      value: {
+        scripting: {
+          executeScript: vi.fn(async (options: ExecuteScriptOptions) => {
+            injectionCount += 1;
+            if (injectionCount === 2) {
+              (globalThis.location as { href: string }).href =
+                "https://www.youtube.com/watch?v=next";
+            }
+            const serialized = Function(`return (${options.func.toString()})`)() as (
+              ...args: unknown[]
+            ) => unknown;
+            return [{ result: await serialized(...(options.args ?? [])) }];
+          }),
+        },
+      },
+    });
+
+    const result = await extractYouTubeTranscriptInTab(7, 10_000);
+
+    expect(result).toEqual({ ok: false, error: "No YouTube caption transcript found." });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(button.click).not.toHaveBeenCalled();
+  });
+
+  it("rejects a caption response when navigation occurs while reading its body", async () => {
+    (globalThis as { ytInitialPlayerResponse?: unknown }).ytInitialPlayerResponse = {
+      captions: {
+        playerCaptionsTracklistRenderer: {
+          captionTracks: [
+            {
+              baseUrl: "https://example.com/caption?lang=en",
+              languageCode: "en",
+              name: { simpleText: "English" },
+            },
+          ],
+        },
+      },
+      videoDetails: { videoId: "test" },
+    };
+    Object.defineProperty(globalThis, "fetch", {
+      configurable: true,
+      value: vi.fn(async () => ({
+        ok: true,
+        text: async () => {
+          (globalThis.location as { href: string }).href = "https://www.youtube.com/watch?v=next";
+          return JSON.stringify({
+            events: [{ tStartMs: 1000, segs: [{ utf8: "Stale caption" }] }],
+          });
+        },
+      })),
+    });
+
+    const result = await extractYouTubePageTranscript(10_000, false);
+
+    expect(result).toEqual({ ok: false, error: "No YouTube caption transcript found." });
+  });
+
   it("reports wrapper failures", async () => {
     Object.defineProperty(globalThis, "chrome", {
       configurable: true,

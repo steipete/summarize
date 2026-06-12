@@ -38,7 +38,7 @@ export async function extractYouTubeTranscriptInTab(
         const [result] = await chrome.scripting.executeScript({
           target: { tabId },
           world: "MAIN",
-          args: [url],
+          args: [url, source.url],
           func: fetchYouTubeCaptionText,
         });
         return result?.result ?? null;
@@ -47,6 +47,7 @@ export async function extractYouTubeTranscriptInTab(
         const [result] = await chrome.scripting.executeScript({
           target: { tabId },
           world: "MAIN",
+          args: [source.url],
           func: readYouTubeTranscriptPanel,
         });
         return result?.result ?? null;

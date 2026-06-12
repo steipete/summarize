@@ -167,14 +167,34 @@ export function readYouTubePageCaptionSource(): BrowserYouTubeCaptionSource {
 }
 
 // Keep this function self-contained: Chrome serializes it for MAIN-world injection.
-export async function fetchYouTubeCaptionText(url: string): Promise<string | null> {
+export async function fetchYouTubeCaptionText(
+  url: string,
+  expectedPageUrl: string | null = null,
+): Promise<string | null> {
+  const pageIdentity = (value: string) => {
+    try {
+      const pageUrl = new URL(value);
+      const videoId =
+        pageUrl.searchParams.get("v") ??
+        pageUrl.pathname.match(/^\/shorts\/([^/?#]+)/)?.[1] ??
+        null;
+      return videoId ? `youtube:${videoId}` : pageUrl.href;
+    } catch {
+      return value;
+    }
+  };
+  const expectedIdentity = expectedPageUrl ? pageIdentity(expectedPageUrl) : null;
+  const isExpectedPage = () =>
+    expectedIdentity == null || pageIdentity(location.href) === expectedIdentity;
+  if (!isExpectedPage()) return null;
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
   try {
     const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) return null;
+    if (!response.ok || !isExpectedPage()) return null;
     const raw = await response.text();
-    return raw.trim() ? raw : null;
+    return isExpectedPage() && raw.trim() ? raw : null;
   } catch {
     return null;
   } finally {
@@ -183,7 +203,24 @@ export async function fetchYouTubeCaptionText(url: string): Promise<string | nul
 }
 
 // Keep this function self-contained: Chrome serializes it for MAIN-world injection.
-export async function readYouTubeTranscriptPanel(): Promise<BrowserYouTubeTranscriptPanel | null> {
+export async function readYouTubeTranscriptPanel(
+  expectedPageUrl: string | null = null,
+): Promise<BrowserYouTubeTranscriptPanel | null> {
+  const pageIdentity = (value: string) => {
+    try {
+      const pageUrl = new URL(value);
+      const videoId =
+        pageUrl.searchParams.get("v") ??
+        pageUrl.pathname.match(/^\/shorts\/([^/?#]+)/)?.[1] ??
+        null;
+      return videoId ? `youtube:${videoId}` : pageUrl.href;
+    } catch {
+      return value;
+    }
+  };
+  const expectedIdentity = expectedPageUrl ? pageIdentity(expectedPageUrl) : null;
+  const isExpectedPage = () =>
+    expectedIdentity == null || pageIdentity(location.href) === expectedIdentity;
   const normalize = (text: string) =>
     text
       .replace(/\s+/g, " ")
@@ -215,13 +252,16 @@ export async function readYouTubeTranscriptPanel(): Promise<BrowserYouTubeTransc
     Array.from(document.querySelectorAll("button, tp-yt-paper-button, ytd-button-renderer"));
   const scrollBefore = { x: globalThis.scrollX ?? 0, y: globalThis.scrollY ?? 0 };
   try {
+    if (!isExpectedPage()) return null;
     document.querySelector("ytd-watch-metadata")?.scrollIntoView({ block: "center" });
     await delay(120);
+    if (!isExpectedPage()) return null;
     const expand = buttons().find((element) =>
       /\bmore\b/i.test(normalize(element.textContent ?? "")),
     ) as HTMLElement | undefined;
     expand?.click();
     await delay(250);
+    if (!isExpectedPage()) return null;
     const transcriptButton = (document.querySelector(
       "ytd-video-description-transcript-section-renderer button",
     ) ??
@@ -232,12 +272,15 @@ export async function readYouTubeTranscriptPanel(): Promise<BrowserYouTubeTransc
     transcriptButton.click();
     for (let attempt = 0; attempt < 20; attempt += 1) {
       await delay(200);
+      if (!isExpectedPage()) return null;
       const lines = parsePanel();
       if (lines.length > 0) return { url: location.href, lines };
     }
     return null;
   } finally {
-    globalThis.scrollTo?.(scrollBefore.x, scrollBefore.y);
+    if (isExpectedPage()) {
+      globalThis.scrollTo?.(scrollBefore.x, scrollBefore.y);
+    }
   }
 }
 
@@ -322,7 +365,7 @@ export async function extractYouTubePageTranscript(
   return resolveYouTubePageTranscript({
     source,
     limit,
-    loadCaptionText: fetchYouTubeCaptionText,
-    loadPanel: allowPanelFallback ? readYouTubeTranscriptPanel : null,
+    loadCaptionText: (url) => fetchYouTubeCaptionText(url, source.url),
+    loadPanel: allowPanelFallback ? () => readYouTubeTranscriptPanel(source.url) : null,
   });
 }
