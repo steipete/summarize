@@ -6,6 +6,10 @@
 
 - YouTube metadata: harden view-count freshness, fallbacks, embedded transcript cache identity, and timeout enforcement while reading response bodies.
 
+### Docs
+
+- Contributing: add repository setup, checks, and pull-request guidance (thanks @zichen0116).
+
 ## 0.17.3 - 2026-06-11
 
 ### Features
