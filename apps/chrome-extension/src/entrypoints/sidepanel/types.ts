@@ -9,6 +9,10 @@ export type ChatMessage = Message & { id: string };
 
 export type PanelState = {
   ui: UiState | null;
+  navigation: {
+    activeTabId: number | null;
+    activeTabUrl: string | null;
+  };
   runId: string | null;
   slidesRunId: string | null;
   currentSource: { url: string; title: string | null } | null;

@@ -87,10 +87,6 @@ type UiStateRuntimeOpts = {
   isRefreshFreeRunning: () => boolean;
   setModelRefreshDisabled: (value: boolean) => void;
   renderMarkdownHostEl: HTMLElement;
-  getActiveTabId: () => number | null;
-  setActiveTabId: (value: number | null) => void;
-  getActiveTabUrl: () => string | null;
-  setActiveTabUrl: (value: string | null) => void;
   getCurrentRunTabId: () => number | null;
   setCurrentRunTabId: (value: number | null) => void;
   getLastPanelOpen: () => boolean;
@@ -183,8 +179,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
     opts.setAutoValue(state.settings.autoSummarize);
     opts.appearanceControls.setAutoValue(state.settings.autoSummarize);
 
-    const activeTabId = opts.getActiveTabId();
-    const activeTabUrl = opts.getActiveTabUrl();
+    const { activeTabId, activeTabUrl } = opts.panelState.navigation;
     const currentSource = opts.panelState.currentSource;
     const inputModeOverride = opts.getInputModeOverride();
     const inputMode = opts.getInputMode();
@@ -240,8 +235,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
         );
       }
       const previousTabId = activeTabId;
-      opts.setActiveTabId(nextTabId);
-      opts.setActiveTabUrl(nextTabUrl);
+      dispatchPanelState(opts, { type: "active-tab", tabId: nextTabId, url: nextTabUrl });
       if (opts.panelState.chatStreaming && navigation.shouldAbortChatStream) {
         opts.requestAgentAbort("Tab changed");
       }
@@ -262,7 +256,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
         applyCachedOrReset(opts, nextTabId, nextTabUrl, navigation.preserveChat);
       }
     } else if (navigation.kind === "url") {
-      opts.setActiveTabUrl(nextTabUrl);
+      dispatchPanelState(opts, { type: "active-tab-url", url: nextTabUrl });
       if (navigation.preserveChat) {
         opts.navigationRuntime.notePreserveChatForUrl(nextTabUrl);
       } else if (navigation.shouldClearChat) {
@@ -271,7 +265,12 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       }
       opts.abortSummaryStream();
       if (!opts.maybeStartPendingSummaryRunForUrl(nextTabUrl)) {
-        applyCachedOrReset(opts, opts.getActiveTabId(), nextTabUrl, navigation.preserveChat);
+        applyCachedOrReset(
+          opts,
+          opts.panelState.navigation.activeTabId,
+          nextTabUrl,
+          navigation.preserveChat,
+        );
       }
       if (navigation.nextInputMode) {
         opts.setInputMode(navigation.nextInputMode);
@@ -322,7 +321,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
     opts.applyChatEnabled();
     if (
       opts.getChatEnabledValue() &&
-      opts.getActiveTabId() &&
+      opts.panelState.navigation.activeTabId &&
       !shouldPreferUrlMode(nextTabUrl ?? "") &&
       opts.chatController.getMessages().length === 0
     ) {
@@ -359,7 +358,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
         })
       ) {
         const preserveChat = opts.navigationRuntime.isRecentAgentNavigation(
-          opts.getActiveTabId(),
+          opts.panelState.navigation.activeTabId,
           nextTabUrl,
         );
         if (preserveChat) {

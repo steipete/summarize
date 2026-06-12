@@ -3,6 +3,12 @@ import type { PanelState } from "./types";
 export type PanelStateAction =
   | { type: "phase"; phase: PanelState["phase"]; error?: string | null }
   | { type: "ui"; ui: PanelState["ui"] }
+  | {
+      type: "active-tab";
+      tabId: PanelState["navigation"]["activeTabId"];
+      url: PanelState["navigation"]["activeTabUrl"];
+    }
+  | { type: "active-tab-url"; url: PanelState["navigation"]["activeTabUrl"] }
   | { type: "source"; source: PanelState["currentSource"] }
   | { type: "meta"; meta: PanelState["lastMeta"] }
   | { type: "summary"; markdown: string | null }
@@ -31,6 +37,10 @@ export type PanelStateAction =
 export function createInitialPanelState(): PanelState {
   return {
     ui: null,
+    navigation: {
+      activeTabId: null,
+      activeTabUrl: null,
+    },
     runId: null,
     slidesRunId: null,
     currentSource: null,
@@ -54,6 +64,22 @@ export function reducePanelState(state: PanelState, action: PanelStateAction): P
       };
     case "ui":
       return { ...state, ui: action.ui };
+    case "active-tab":
+      return {
+        ...state,
+        navigation: {
+          activeTabId: action.tabId,
+          activeTabUrl: action.url,
+        },
+      };
+    case "active-tab-url":
+      return {
+        ...state,
+        navigation: {
+          ...state.navigation,
+          activeTabUrl: action.url,
+        },
+      };
     case "source":
       return { ...state, currentSource: action.source };
     case "meta":

@@ -5,6 +5,26 @@ import {
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 
 describe("sidepanel panel state store", () => {
+  it("updates active tab identity as one navigation transition", () => {
+    const store = createPanelStateStore();
+    store.dispatch({
+      type: "active-tab",
+      tabId: 42,
+      url: "https://example.com",
+    });
+
+    expect(store.state.navigation).toEqual({
+      activeTabId: 42,
+      activeTabUrl: "https://example.com",
+    });
+
+    store.dispatch({ type: "active-tab-url", url: "https://example.com/next" });
+    expect(store.state.navigation).toEqual({
+      activeTabId: 42,
+      activeTabUrl: "https://example.com/next",
+    });
+  });
+
   it("attaches runs as one transition", () => {
     const store = createPanelStateStore();
     store.dispatch({

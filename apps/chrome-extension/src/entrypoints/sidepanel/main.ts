@@ -169,6 +169,8 @@ md.use(slideTagPlugin);
 
 const panelStateStore = createPanelStateStore();
 const panelState = panelStateStore.state;
+const getActiveTabId = () => panelState.navigation.activeTabId;
+const getActiveTabUrl = () => panelState.navigation.activeTabUrl;
 
 let retainedSlideSummary: {
   markdown: string;
@@ -230,8 +232,6 @@ const chatLimits: ChatHistoryLimits = {
   maxMessages: MAX_CHAT_MESSAGES,
   maxChars: MAX_CHAT_CHARACTERS,
 };
-let activeTabId: number | null = null;
-let activeTabUrl: string | null = null;
 let lastPanelOpen = false;
 let lastAction: "summarize" | "chat" | null = null;
 let automationNoticeSticky = false;
@@ -299,7 +299,7 @@ const chatHistoryRuntime = createChatHistoryRuntime({
   chatLimits,
   normalizeStoredMessage,
   requestChatHistory: (summary) => chatSession.requestChatHistory(summary),
-  getActiveUrl: () => activeTabUrl,
+  getActiveUrl: getActiveTabUrl,
 });
 
 type AutomationNoticeAction = "extensions" | "options";
@@ -379,7 +379,7 @@ function maybeStartPendingSlidesForUrl(url: string | null) {
 }
 
 function getSummaryScopeUrl() {
-  return panelState.currentSource?.url ?? activeTabUrl ?? null;
+  return panelState.currentSource?.url ?? getActiveTabUrl() ?? null;
 }
 
 function rememberSlideSummaryMarkdown(markdown: string) {
@@ -437,7 +437,7 @@ function attachSummaryRun(run: RunStart) {
     : preserveActiveLocalSlideRun
       ? (activeSlidesRunMeta?.runId ?? null)
       : null;
-  currentRunTabId = activeTabId;
+  currentRunTabId = getActiveTabId();
   headerController.setBaseTitle(run.title || run.url || "Summarize");
   headerController.setBaseSubtitle("");
   const fallbackModel = panelState.ui?.settings.model ?? null;
@@ -501,7 +501,7 @@ function applySummarySnapshot(payload: { run: RunStart; markdown: string }) {
     summaryFromCache: null,
     ...(preservedSlides ? { slides: preservedSlides } : {}),
   });
-  currentRunTabId = activeTabId;
+  currentRunTabId = getActiveTabId();
   headerController.setBaseTitle(payload.run.title || payload.run.url || "Summarize");
   headerController.setBaseSubtitle("");
   if (preservedSlides) {
@@ -556,7 +556,8 @@ function currentRunHasResolvedSlideImages(run: RunStart) {
   );
   if (!hasResolvedImages) return false;
   if (panelState.runId === run.id || panelState.slidesRunId === run.id) return true;
-  const sourceUrl = panelState.slides.sourceUrl || panelState.currentSource?.url || activeTabUrl;
+  const sourceUrl =
+    panelState.slides.sourceUrl || panelState.currentSource?.url || getActiveTabUrl();
   return sourceUrl ? panelUrlsMatch(run.url, sourceUrl) : false;
 }
 
@@ -571,7 +572,7 @@ function seedPlannedSlidesForPendingRunAndConsumeWhenReady() {
 
 function isCurrentPlannedSlidesRun(run: RunStart) {
   const currentUrl =
-    panelState.currentSource?.url ?? activeTabUrl ?? panelState.ui?.tab.url ?? null;
+    panelState.currentSource?.url ?? getActiveTabUrl() ?? panelState.ui?.tab.url ?? null;
   return currentUrl ? panelUrlsMatch(run.url, currentUrl) : false;
 }
 
@@ -622,6 +623,7 @@ window.addEventListener("summarize:automation-permissions", (event) => {
 });
 
 async function hideReplOverlayForActiveTab() {
+  const activeTabId = getActiveTabId();
   if (!activeTabId) return;
   try {
     await chrome.tabs.sendMessage(activeTabId, {
@@ -877,8 +879,8 @@ const summaryViewRuntime = createSummaryViewRuntime({
   setSlidesTranscriptTimedText,
   getSlidesParallelValue: () => slidesState.slidesParallel,
   getCurrentRunTabId: () => currentRunTabId,
-  getActiveTabId: () => activeTabId,
-  getActiveTabUrl: () => activeTabUrl,
+  getActiveTabId,
+  getActiveTabUrl,
   setCurrentRunTabId: (value) => {
     currentRunTabId = value;
   },
@@ -1003,7 +1005,7 @@ slidesViewRuntime = createSlidesViewRuntime({
   refreshSummarizeControl,
   hideSlideNotice,
   getState: () => ({
-    activeTabUrl,
+    activeTabUrl: getActiveTabUrl(),
     autoSummarize: autoValue,
     currentSourceTitle: panelState.currentSource?.title ?? null,
     currentSourceUrl: panelState.currentSource?.url ?? null,
@@ -1190,7 +1192,7 @@ chatUiRuntime = createChatUiRuntime({
   chatDockContainerEl: chatDockEl,
   renderEl,
   getChatEnabled: () => chatEnabledValue,
-  getActiveTabId: () => activeTabId,
+  getActiveTabId,
   getSummaryMarkdown: () => panelState.summaryMarkdown,
   clearMetrics: () => {
     metricsController.clearForMode("chat");
@@ -1251,7 +1253,7 @@ const slidesRuntime = createSidepanelSlidesRuntime({
     slidesTextController.clearSummarySource();
   },
   friendlyFetchError,
-  getActiveTabUrl: () => activeTabUrl,
+  getActiveTabUrl,
   getInputMode: () => slidesState.inputMode,
   getInputModeOverride: () => slidesState.inputModeOverride,
   getLengthValue: () => appearanceControls.getLengthValue(),
@@ -1307,7 +1309,7 @@ function startSlidesStreamForRunId(runId: string, meta?: { url?: string | null; 
   const existing = activeSlidesRunMeta?.runId === runId ? activeSlidesRunMeta : null;
   activeSlidesRunMeta = {
     runId,
-    url: meta?.url ?? existing?.url ?? panelState.currentSource?.url ?? activeTabUrl ?? null,
+    url: meta?.url ?? existing?.url ?? panelState.currentSource?.url ?? getActiveTabUrl() ?? null,
     local: meta?.local ?? existing?.local ?? false,
   };
   startSlidesStreamForRunIdBase(runId, { local: activeSlidesRunMeta.local });
@@ -1426,14 +1428,6 @@ const uiStateRuntime = createUiStateRuntime({
     modelRefreshBtn.disabled = value;
   },
   renderMarkdownHostEl,
-  getActiveTabId: () => activeTabId,
-  setActiveTabId: (value) => {
-    activeTabId = value;
-  },
-  getActiveTabUrl: () => activeTabUrl,
-  setActiveTabUrl: (value) => {
-    activeTabUrl = value;
-  },
   getCurrentRunTabId: () => currentRunTabId,
   setCurrentRunTabId: (value) => {
     currentRunTabId = value;
@@ -1511,7 +1505,7 @@ const bgMessageRuntime = createSidepanelBgMessageRuntime({
   },
   setSlidesBusy,
   showSlideNotice,
-  getActiveTabUrl: () => activeTabUrl,
+  getActiveTabUrl,
   rememberPendingSlidesRun: (value) => {
     if (!value.url) return;
     pendingSlidesRunsByUrl.set(normalizePanelUrl(value.url), value);
@@ -1542,7 +1536,7 @@ const bgMessageRuntime = createSidepanelBgMessageRuntime({
   clearPanelCache: () => {
     panelCacheController.clear();
   },
-  getActiveTabId: () => activeTabId,
+  getActiveTabId,
   applyPanelCache: (cache, opts) => {
     applyPanelCache(cache as PanelCachePayload, opts);
   },
@@ -1654,7 +1648,7 @@ summarizeControlRuntime = createSummarizeControlRuntime({
     summarizeVideoLabel: slidesState.summarizeVideoLabel,
     summarizePageWords: slidesState.summarizePageWords,
     summarizeVideoDurationSeconds: slidesState.summarizeVideoDurationSeconds,
-    activeTabUrl,
+    activeTabUrl: getActiveTabUrl(),
     currentSourceUrl: panelState.currentSource?.url ?? null,
   }),
   setInputMode: (value) => {
