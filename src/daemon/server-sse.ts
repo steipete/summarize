@@ -1,5 +1,5 @@
 import http from "node:http";
-import { encodeSseEvent, type SseEvent } from "../shared/sse-events.js";
+import { encodeSseEvent, type SseEvent } from "@steipete/summarize-core/runtime";
 
 export function attachBufferedSseSession({
   res,

@@ -1,22 +1,6 @@
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve as resolvePath } from "node:path";
 import {
-  buildAttachmentContentHash,
-  buildExtractCacheKeyValue,
-  buildLanguageKey,
-  buildLengthKey,
-  buildPromptContentHash,
-  buildPromptHash,
-  buildSlidesCacheKeyValue,
-  buildSummaryCacheKeyValue,
-  buildTranscriptCacheKeyValue,
-  hashJson,
-  hashString,
-  hashBytes,
-  normalizeContentForHash,
-  extractTaggedBlock,
-} from "./cache-keys.js";
-import {
   CACHE_FORMAT_VERSION,
   DEFAULT_CACHE_MAX_MB,
   DEFAULT_CACHE_TTL_DAYS,
@@ -25,7 +9,23 @@ import {
   parseCacheJson,
   type CacheKind,
   type CacheStats,
-} from "./shared/cache-store.js";
+} from "@steipete/summarize-core/runtime";
+import {
+  buildAttachmentContentHash,
+  buildExtractCacheKeyValue,
+  buildLanguageKey,
+  buildLengthKey,
+  buildPromptContentHash,
+  buildPromptHash,
+  buildSlidesCacheKeyValue,
+  buildSummaryCacheKeyValue,
+  buildTranscriptCacheKeyValue,
+  hashJson,
+  hashString,
+  hashBytes,
+  normalizeContentForHash,
+  extractTaggedBlock,
+} from "./cache-keys.js";
 export {
   buildAttachmentContentHash,
   buildExtractCacheKeyValue,
@@ -48,7 +48,7 @@ export {
   DEFAULT_CACHE_TTL_DAYS,
   type CacheKind,
   type CacheStats,
-} from "./shared/cache-store.js";
+} from "@steipete/summarize-core/runtime";
 import { cleanupSlidesPayload, collectSlidesPayloadArtifactPaths } from "./cache-slides-cleanup.js";
 import type { TranscriptCache, TranscriptSource } from "./content/index.js";
 

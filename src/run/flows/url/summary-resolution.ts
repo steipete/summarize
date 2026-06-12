@@ -1,10 +1,10 @@
 import { isTwitterStatusUrl, isYouTubeUrl } from "@steipete/summarize-core/content/url";
+import { normalizeSummarySlideHeadings } from "@steipete/summarize-core/slides";
 import {
   buildLanguageKey,
   buildLengthKey,
   buildPromptContentHash,
   buildPromptHash,
-  buildSummaryCacheKey,
 } from "../../../cache.js";
 import type { ExtractedLinkContent } from "../../../content/index.js";
 import { resolveGitHubModelsApiKey } from "../../../llm/github-models.js";
@@ -18,11 +18,9 @@ import {
 } from "../../cli-fallback-state.js";
 import { parseCliUserModelId } from "../../env.js";
 import { writeVerbose } from "../../logging.js";
-import { runModelAttempts } from "../../model-attempts.js";
-import { buildOpenRouterNoAllowedProvidersMessage } from "../../openrouter.js";
+import { executeSummaryAttempts } from "../../summary-execution.js";
 import type { ModelAttempt } from "../../types.js";
 import type { SlidesTerminalOutput } from "./slides-output.js";
-import { normalizeSummarySlideHeadings } from "./slides-text.js";
 import { buildModelMetaFromAttempt } from "./summary-finish.js";
 import { shouldBypassShortContentSummary } from "./summary-prompt.js";
 import {
@@ -201,12 +199,6 @@ export async function resolveUrlSummaryExecution({
     ? `selection:${model.requestedModelInput.toLowerCase()}`
     : null;
 
-  let summaryResult: Awaited<ReturnType<typeof model.summaryEngine.runSummaryAttempt>> | null =
-    null;
-  let usedAttempt: ModelAttempt | null = null;
-  let summaryFromCache = false;
-  let cacheChecked = false;
-
   const isTweet = extracted.siteName?.toLowerCase() === "x" || isTwitterStatusUrl(extracted.url);
   const isYouTube = extracted.siteName === "YouTube" || isYouTubeUrl(url);
   const hasMedia =
@@ -238,235 +230,90 @@ export async function resolveUrlSummaryExecution({
     };
   }
 
-  if (cacheStore && contentHash && promptHash) {
-    cacheChecked = true;
-    if (autoSelectionCacheModel) {
-      const key = buildSummaryCacheKey({
-        contentHash,
-        promptHash,
-        model: autoSelectionCacheModel,
-        lengthKey,
-        languageKey,
+  const execution = await executeSummaryAttempts({
+    attempts,
+    isFallbackModel: model.isFallbackModel,
+    isNamedModelSelection: model.isNamedModelSelection,
+    wantsFreeNamedModel: model.wantsFreeNamedModel,
+    requestedModelInput: model.requestedModelInput,
+    envHasKeyFor: model.summaryEngine.envHasKeyFor,
+    formatMissingModelError: model.summaryEngine.formatMissingModelError,
+    cache: {
+      store: cacheStore,
+      ttlMs: cacheState.ttlMs,
+      contentHash,
+      promptHash,
+      lengthKey,
+      languageKey,
+      autoSelectionModel: autoSelectionCacheModel,
+    },
+    verbose: (message) =>
+      writeVerbose(io.stderr, flags.verbose, message, flags.verboseColor, io.envForRun),
+    onModelChosen,
+    onCacheResolved: (hit) => {
+      ctx.hooks.onSummaryCached?.(hit);
+      ctx.perfTrace?.mark(hit ? "summary:cache-hit" : "summary:cache-miss");
+    },
+    buildCachedResult: (attempt, summary) => ({
+      summary,
+      summaryAlreadyPrinted: false,
+      modelMeta: buildModelMetaFromAttempt(attempt),
+      maxOutputTokensForCall: null,
+    }),
+    runAttempt: (attempt) =>
+      model.summaryEngine.runSummaryAttempt({
+        attempt,
+        prompt: promptPayload,
+        allowStreaming: flags.streamingEnabled && !sanitizeKeyMoments,
+        onModelChosen: onModelChosen ?? null,
+        streamHandler: slidesOutput?.streamHandler ?? null,
+      }),
+    normalizeResult: (result) => {
+      const normalizedSummaryBase =
+        slides && slides.slides.length > 0
+          ? normalizeSummarySlideHeadings(result.summary)
+          : result.summary;
+      const sanitizedSummary = sanitizeSummaryKeyMoments({
+        markdown: normalizedSummaryBase,
+        maxSeconds: timestampUpperBound,
       });
-      const cached = cacheStore.getJson<{ summary?: unknown; model?: unknown }>("summary", key);
-      const cachedSummary =
-        cached && typeof cached.summary === "string" ? cached.summary.trim() : null;
-      const cachedModelId = cached && typeof cached.model === "string" ? cached.model.trim() : null;
-      if (cachedSummary) {
-        const cachedAttempt = cachedModelId
-          ? (attempts.find((attempt) => attempt.userModelId === cachedModelId) ?? null)
-          : null;
-        const fallbackAttempt =
-          attempts.find((attempt) => model.summaryEngine.envHasKeyFor(attempt.requiredEnv)) ??
-          attempts[0] ??
-          null;
-        const matchedAttempt =
-          cachedAttempt && model.summaryEngine.envHasKeyFor(cachedAttempt.requiredEnv)
-            ? cachedAttempt
-            : fallbackAttempt;
-        if (matchedAttempt) {
-          writeVerbose(
-            io.stderr,
-            flags.verbose,
-            "cache hit summary (auto selection)",
-            flags.verboseColor,
-            io.envForRun,
-          );
-          onModelChosen?.(cachedModelId || matchedAttempt.userModelId);
-          summaryResult = {
-            summary: cachedSummary,
-            summaryAlreadyPrinted: false,
-            modelMeta: buildModelMetaFromAttempt(matchedAttempt),
-            maxOutputTokensForCall: null,
-          };
-          usedAttempt = matchedAttempt;
-          summaryFromCache = true;
-        }
-      }
-    }
-    if (!summaryFromCache) {
-      for (const attempt of attempts) {
-        if (!model.summaryEngine.envHasKeyFor(attempt.requiredEnv)) continue;
-        const key = buildSummaryCacheKey({
-          contentHash,
-          promptHash,
-          model: attempt.userModelId,
-          lengthKey,
-          languageKey,
-        });
-        const cached = cacheStore.getText("summary", key);
-        if (!cached) continue;
-        writeVerbose(
-          io.stderr,
-          flags.verbose,
-          "cache hit summary",
-          flags.verboseColor,
-          io.envForRun,
-        );
-        onModelChosen?.(attempt.userModelId);
-        summaryResult = {
-          summary: cached,
-          summaryAlreadyPrinted: false,
-          modelMeta: buildModelMetaFromAttempt(attempt),
-          maxOutputTokensForCall: null,
-        };
-        usedAttempt = attempt;
-        summaryFromCache = true;
-        break;
-      }
-    }
-  }
-  if (cacheChecked && !summaryFromCache) {
-    writeVerbose(io.stderr, flags.verbose, "cache miss summary", flags.verboseColor, io.envForRun);
-  }
-  ctx.hooks.onSummaryCached?.(summaryFromCache);
-  ctx.perfTrace?.mark(summaryFromCache ? "summary:cache-hit" : "summary:cache-miss");
-
-  let lastError: unknown = null;
-  let missingRequiredEnvs = new Set<ModelAttempt["requiredEnv"]>();
-  let sawOpenRouterNoAllowedProviders = false;
-
-  if (!summaryResult || !usedAttempt) {
-    const attemptOutcome = await runModelAttempts({
-      attempts,
-      isFallbackModel: model.isFallbackModel,
-      isNamedModelSelection: model.isNamedModelSelection,
-      envHasKeyFor: model.summaryEngine.envHasKeyFor,
-      formatMissingModelError: model.summaryEngine.formatMissingModelError,
-      onAutoSkip: (attempt) => {
-        writeVerbose(
-          io.stderr,
-          flags.verbose,
-          `auto skip ${attempt.userModelId}: missing ${attempt.requiredEnv}`,
-          flags.verboseColor,
-          io.envForRun,
-        );
-      },
-      onAutoFailure: (attempt, error) => {
-        writeVerbose(
-          io.stderr,
-          flags.verbose,
-          `auto failed ${attempt.userModelId}: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-          flags.verboseColor,
-          io.envForRun,
-        );
-      },
-      onFixedModelError: (_attempt, error) => {
-        throw error;
-      },
-      runAttempt: (attempt) =>
-        model.summaryEngine.runSummaryAttempt({
-          attempt,
-          prompt: promptPayload,
-          allowStreaming: flags.streamingEnabled && !sanitizeKeyMoments,
-          onModelChosen: onModelChosen ?? null,
-          streamHandler: slidesOutput?.streamHandler ?? null,
+      return {
+        ...result,
+        summary: ensureSummaryKeyMoments({
+          markdown: sanitizedSummary,
+          extracted,
+          maxSeconds: timestampUpperBound,
         }),
-    });
-    summaryResult = attemptOutcome.result;
-    usedAttempt = attemptOutcome.usedAttempt;
-    lastError = attemptOutcome.lastError;
-    missingRequiredEnvs = attemptOutcome.missingRequiredEnvs;
-    sawOpenRouterNoAllowedProviders = attemptOutcome.sawOpenRouterNoAllowedProviders;
-  }
+      };
+    },
+    onFixedModelError: (_attempt, error) => {
+      throw error;
+    },
+    fetchImpl: io.fetch,
+    timeoutMs: flags.timeoutMs,
+    rememberCliProvider: (provider) =>
+      writeLastSuccessfulCliProvider({ env: io.envForRun, provider }),
+  });
 
-  if (!summaryResult || !usedAttempt) {
-    const withFreeTip = (message: string) => {
-      if (!model.isNamedModelSelection || !model.wantsFreeNamedModel) return message;
-      return (
-        `${message}\n` +
-        `Tip: run "summarize refresh-free" to refresh the free model candidates (writes ~/.summarize/config.json).`
-      );
-    };
-
-    if (model.isNamedModelSelection) {
-      if (lastError === null && missingRequiredEnvs.size > 0) {
-        throw new Error(
-          withFreeTip(
-            `Missing ${Array.from(missingRequiredEnvs).sort().join(", ")} for --model ${model.requestedModelInput}.`,
-          ),
-        );
-      }
-      if (lastError instanceof Error) {
-        if (sawOpenRouterNoAllowedProviders) {
-          const message = await buildOpenRouterNoAllowedProvidersMessage({
-            attempts,
-            fetchImpl: io.fetch,
-            timeoutMs: flags.timeoutMs,
-          });
-          throw new Error(withFreeTip(message), { cause: lastError });
-        }
-        throw new Error(withFreeTip(lastError.message), { cause: lastError });
-      }
-      throw new Error(withFreeTip(`No model available for --model ${model.requestedModelInput}`));
-    }
+  if (!execution.result || !execution.usedAttempt) {
     return {
       kind: "use-extracted",
       footerLabel: "no model",
       verboseMessage:
-        lastError instanceof Error ? `auto failed all models: ${lastError.message}` : null,
+        execution.failure.lastError instanceof Error
+          ? `auto failed all models: ${execution.failure.lastError.message}`
+          : null,
     };
   }
 
-  const { summary, summaryAlreadyPrinted, modelMeta, maxOutputTokensForCall } = summaryResult;
-  const normalizedSummaryBase =
-    slides && slides.slides.length > 0 ? normalizeSummarySlideHeadings(summary) : summary;
-  const sanitizedSummary = sanitizeSummaryKeyMoments({
-    markdown: normalizedSummaryBase,
-    maxSeconds: timestampUpperBound,
-  });
-  const normalizedSummary = ensureSummaryKeyMoments({
-    markdown: sanitizedSummary,
-    extracted,
-    maxSeconds: timestampUpperBound,
-  });
-
-  if (!summaryFromCache && cacheStore && contentHash && promptHash) {
-    const perModelKey = buildSummaryCacheKey({
-      contentHash,
-      promptHash,
-      model: usedAttempt.userModelId,
-      lengthKey,
-      languageKey,
-    });
-    cacheStore.setText("summary", perModelKey, normalizedSummary, cacheState.ttlMs);
-    writeVerbose(io.stderr, flags.verbose, "cache write summary", flags.verboseColor, io.envForRun);
-    if (autoSelectionCacheModel) {
-      const selectionKey = buildSummaryCacheKey({
-        contentHash,
-        promptHash,
-        model: autoSelectionCacheModel,
-        lengthKey,
-        languageKey,
-      });
-      cacheStore.setJson(
-        "summary",
-        selectionKey,
-        { summary: normalizedSummary, model: usedAttempt.userModelId },
-        cacheState.ttlMs,
-      );
-      writeVerbose(
-        io.stderr,
-        flags.verbose,
-        "cache write summary (auto selection)",
-        flags.verboseColor,
-        io.envForRun,
-      );
-    }
-  }
-  if (
-    !summaryFromCache &&
-    model.isFallbackModel &&
-    usedAttempt.transport === "cli" &&
-    usedAttempt.cliProvider
-  ) {
-    await writeLastSuccessfulCliProvider({
-      env: io.envForRun,
-      provider: usedAttempt.cliProvider,
-    });
-  }
+  const {
+    summary: normalizedSummary,
+    summaryAlreadyPrinted,
+    modelMeta,
+    maxOutputTokensForCall,
+  } = execution.result;
+  const usedAttempt = execution.usedAttempt;
+  const summaryFromCache = execution.summaryFromCache;
 
   return {
     kind: "summary",

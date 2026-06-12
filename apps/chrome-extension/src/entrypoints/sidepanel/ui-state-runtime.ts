@@ -1,5 +1,6 @@
 import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import type { PanelCachePayload } from "./panel-cache";
+import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
 import {
   resolvePanelNavigationDecision,
   shouldIgnoreTransientPanelTabState,
@@ -44,6 +45,7 @@ type PanelCacheControllerLike = {
 
 type UiStateRuntimeOpts = {
   panelState: PanelState;
+  dispatchPanelState?: (action: PanelStateAction) => void;
   chatController: ChatControllerLike;
   appearanceControls: AppearanceControlsLike;
   typographyController: TypographyControllerLike;
@@ -120,10 +122,22 @@ type UiStateRuntimeOpts = {
   onSlidesOcrChanged: () => void;
 };
 
+function dispatchPanelState(
+  opts: Pick<UiStateRuntimeOpts, "panelState" | "dispatchPanelState">,
+  action: PanelStateAction,
+) {
+  if (opts.dispatchPanelState) {
+    opts.dispatchPanelState(action);
+  } else {
+    applyPanelStateAction(opts.panelState, action);
+  }
+}
+
 function applyCachedOrReset(
   opts: Pick<
     UiStateRuntimeOpts,
     | "panelState"
+    | "dispatchPanelState"
     | "panelCacheController"
     | "applyPanelCache"
     | "requestSlidesCapture"
@@ -147,7 +161,7 @@ function applyCachedOrReset(
         opts.requestSlidesCapture();
       }
     } else {
-      opts.panelState.currentSource = null;
+      dispatchPanelState(opts, { type: "source", source: null });
       opts.setCurrentRunTabId(null);
       opts.resetSummaryView({ preserveChat });
       opts.panelCacheController.request(tabId, url, preserveChat);
@@ -155,7 +169,7 @@ function applyCachedOrReset(
     return;
   }
 
-  opts.panelState.currentSource = null;
+  dispatchPanelState(opts, { type: "source", source: null });
   opts.setCurrentRunTabId(null);
   opts.resetSummaryView({ preserveChat });
 }
@@ -279,11 +293,14 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       fallbackModel &&
       (!opts.panelState.lastMeta.model || !opts.panelState.lastMeta.model.trim())
     ) {
-      opts.panelState.lastMeta = {
-        ...opts.panelState.lastMeta,
-        model: fallbackModel,
-        modelLabel: fallbackModel,
-      };
+      dispatchPanelState(opts, {
+        type: "meta",
+        meta: {
+          ...opts.panelState.lastMeta,
+          model: fallbackModel,
+          modelLabel: fallbackModel,
+        },
+      });
     }
     if (opts.getSlidesEnabledValue() && nextMediaAvailable) {
       opts.setInputMode("video");
@@ -348,23 +365,29 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
         if (preserveChat) {
           opts.navigationRuntime.notePreserveChatForUrl(nextTabUrl);
         }
-        opts.panelState.currentSource = null;
+        dispatchPanelState(opts, { type: "source", source: null });
         opts.setCurrentRunTabId(null);
         if (opts.isStreaming()) {
           opts.abortSummaryStream();
         }
         opts.resetSummaryView({ preserveChat });
       } else if (nextTabTitle && nextTabTitle !== opts.panelState.currentSource.title) {
-        opts.panelState.currentSource = {
-          ...opts.panelState.currentSource,
-          title: nextTabTitle,
-        };
+        dispatchPanelState(opts, {
+          type: "source",
+          source: {
+            ...opts.panelState.currentSource,
+            title: nextTabTitle,
+          },
+        });
         opts.headerController.setBaseTitle(nextTabTitle);
       }
     }
     if (!opts.panelState.currentSource) {
       if (!ignoreTransientTabState) {
-        opts.panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null };
+        dispatchPanelState(opts, {
+          type: "meta",
+          meta: { inputSummary: null, model: null, modelLabel: null },
+        });
         opts.headerController.setBaseTitle(nextTabTitle || nextTabUrl || "Summarize");
         opts.headerController.setBaseSubtitle("");
       }

@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { createSlidesHydrator } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-hydrator.js";
-import { encodeSseEvent, type SseEvent, type SseSlidesData } from "../src/shared/sse-events.js";
+import {
+  encodeSseEvent,
+  type SseEvent,
+  type SseSlidesData,
+} from "../packages/core/src/runtime/sse-events.js";
 
 const encoder = new TextEncoder();
 

@@ -46,6 +46,14 @@
     "./ffmpeg": {
       "types": "./dist/types/ffmpeg.d.ts",
       "import": "./dist/esm/ffmpeg.js"
+    },
+    "./runtime": {
+      "types": "./dist/types/runtime/index.d.ts",
+      "import": "./dist/esm/runtime/index.js"
+    },
+    "./slides": {
+      "types": "./dist/types/slides/index.d.ts",
+      "import": "./dist/esm/slides/index.js"
     }
   },
   "scripts": {

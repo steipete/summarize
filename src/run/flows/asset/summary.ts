@@ -1,3 +1,4 @@
+import type { SummaryLength } from "@steipete/summarize-core";
 import { render as renderMarkdownAnsi } from "markdansi";
 import {
   buildAttachmentContentHash,
@@ -5,7 +6,6 @@ import {
   buildLengthKey,
   buildPromptContentHash,
   buildPromptHash,
-  buildSummaryCacheKey,
   type CacheState,
 } from "../../../cache.js";
 import type { CliProvider, SummarizeConfig } from "../../../config.js";
@@ -13,12 +13,10 @@ import type { MediaCache } from "../../../content/index.js";
 import type { LlmCall, RunMetricsReport } from "../../../costs.js";
 import type { OutputLanguage } from "../../../language.js";
 import { formatOutputLanguageForJson } from "../../../language.js";
-import { parseGatewayStyleModelId } from "../../../llm/model-id.js";
 import type { Prompt } from "../../../llm/prompt.js";
 import type { ExecFileFn } from "../../../markitdown.js";
 import type { FixedModelSpec, RequestedModel } from "../../../model-spec.js";
 import { SUMMARY_LENGTH_TARGET_CHARACTERS, SUMMARY_SYSTEM_PROMPT } from "../../../prompts/index.js";
-import type { SummaryLength } from "../../../shared/contracts.js";
 import type { SpeakerIdentificationSettings } from "../../../speaker-identification/index.js";
 import { countTokens } from "../../../tokenizer.js";
 import { type AssetAttachment, isUnsupportedAttachmentError } from "../../attachments.js";
@@ -30,24 +28,13 @@ import { writeFinishLine } from "../../finish-line.js";
 import { resolveTargetCharacters } from "../../format.js";
 import { writeVerbose } from "../../logging.js";
 import { prepareMarkdownForTerminal } from "../../markdown.js";
-import { runModelAttempts } from "../../model-attempts.js";
-import { buildOpenRouterNoAllowedProvidersMessage } from "../../openrouter.js";
+import { buildModelMetaFromAttempt } from "../../model-meta.js";
 import type { createSummaryEngine } from "../../summary-engine.js";
+import { executeSummaryAttempts } from "../../summary-execution.js";
 import { isRichTty, markdownRenderWidth, supportsColor } from "../../terminal.js";
 import type { ModelAttempt } from "../../types.js";
 import { prepareAssetPrompt } from "./preprocess.js";
 import { buildAssetCliContext, buildAssetModelAttempts } from "./summary-attempts.js";
-
-const buildModelMetaFromAttempt = (attempt: ModelAttempt) => {
-  if (attempt.transport === "cli") {
-    return { provider: "cli" as const, canonical: attempt.userModelId };
-  }
-  const parsed = parseGatewayStyleModelId(attempt.llmModelId ?? attempt.userModelId);
-  const canonical = attempt.userModelId.toLowerCase().startsWith("openrouter/")
-    ? attempt.userModelId
-    : parsed.canonical;
-  return { provider: parsed.provider, canonical };
-};
 
 function shouldBypassShortContentSummary({
   ctx,
@@ -483,173 +470,56 @@ export async function summarizeAsset(ctx: AssetSummaryContext, args: SummarizeAs
     ? `selection:${ctx.requestedModelInput.toLowerCase()}`
     : null;
 
-  let summaryResult: Awaited<ReturnType<typeof ctx.summaryEngine.runSummaryAttempt>> | null = null;
-  let usedAttempt: ModelAttempt | null = null;
-  let summaryFromCache = false;
-  let cacheChecked = false;
-
-  if (cacheStore && contentHash && promptHash) {
-    cacheChecked = true;
-    if (autoSelectionCacheModel) {
-      const key = buildSummaryCacheKey({
-        contentHash,
-        promptHash,
-        model: autoSelectionCacheModel,
-        lengthKey,
-        languageKey,
-      });
-      const cached = cacheStore.getJson<{ summary?: unknown; model?: unknown }>("summary", key);
-      const cachedSummary =
-        cached && typeof cached.summary === "string" ? cached.summary.trim() : null;
-      const cachedModelId = cached && typeof cached.model === "string" ? cached.model.trim() : null;
-      if (cachedSummary) {
-        const cachedAttempt = cachedModelId
-          ? (attempts.find((attempt) => attempt.userModelId === cachedModelId) ?? null)
-          : null;
-        const fallbackAttempt =
-          attempts.find((attempt) => ctx.summaryEngine.envHasKeyFor(attempt.requiredEnv)) ??
-          attempts[0] ??
-          null;
-        const matchedAttempt =
-          cachedAttempt && ctx.summaryEngine.envHasKeyFor(cachedAttempt.requiredEnv)
-            ? cachedAttempt
-            : fallbackAttempt;
-        if (matchedAttempt) {
-          writeVerbose(
-            ctx.stderr,
-            ctx.verbose,
-            "cache hit summary (auto selection)",
-            ctx.verboseColor,
-            ctx.envForRun,
-          );
-          args.onModelChosen?.(cachedModelId || matchedAttempt.userModelId);
-          summaryResult = {
-            summary: cachedSummary,
-            summaryAlreadyPrinted: false,
-            modelMeta: buildModelMetaFromAttempt(matchedAttempt),
-            maxOutputTokensForCall: null,
-          };
-          usedAttempt = matchedAttempt;
-          summaryFromCache = true;
-        }
-      }
-    }
-    if (!summaryFromCache) {
-      for (const attempt of attempts) {
-        if (!ctx.summaryEngine.envHasKeyFor(attempt.requiredEnv)) continue;
-        const key = buildSummaryCacheKey({
-          contentHash,
-          promptHash,
-          model: attempt.userModelId,
-          lengthKey,
-          languageKey,
-        });
-        const cached = cacheStore.getText("summary", key);
-        if (!cached) continue;
-        writeVerbose(ctx.stderr, ctx.verbose, "cache hit summary", ctx.verboseColor, ctx.envForRun);
-        args.onModelChosen?.(attempt.userModelId);
-        summaryResult = {
-          summary: cached,
-          summaryAlreadyPrinted: false,
-          modelMeta: buildModelMetaFromAttempt(attempt),
-          maxOutputTokensForCall: null,
-        };
-        usedAttempt = attempt;
-        summaryFromCache = true;
-        break;
-      }
-    }
-  }
-  if (cacheChecked && !summaryFromCache) {
-    writeVerbose(ctx.stderr, ctx.verbose, "cache miss summary", ctx.verboseColor, ctx.envForRun);
-  }
-
-  let lastError: unknown = null;
-  let missingRequiredEnvs = new Set<ModelAttempt["requiredEnv"]>();
-  let sawOpenRouterNoAllowedProviders = false;
-
-  if (!summaryResult || !usedAttempt) {
-    const attemptOutcome = await runModelAttempts({
-      attempts,
-      isFallbackModel: ctx.isFallbackModel,
-      isNamedModelSelection: ctx.isNamedModelSelection,
-      envHasKeyFor: ctx.summaryEngine.envHasKeyFor,
-      formatMissingModelError: ctx.summaryEngine.formatMissingModelError,
-      onAutoSkip: (attempt) => {
-        writeVerbose(
-          ctx.stderr,
-          ctx.verbose,
-          `auto skip ${attempt.userModelId}: missing ${attempt.requiredEnv}`,
-          ctx.verboseColor,
-          ctx.envForRun,
-        );
-      },
-      onAutoFailure: (attempt, error) => {
-        writeVerbose(
-          ctx.stderr,
-          ctx.verbose,
-          `auto failed ${attempt.userModelId}: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-          ctx.verboseColor,
-          ctx.envForRun,
-        );
-      },
-      onFixedModelError: (attempt, error) => {
-        if (isUnsupportedAttachmentError(error)) {
-          throw new Error(
-            `Model ${attempt.userModelId} does not support attaching files of type ${args.attachment.mediaType}. Try a different --model.`,
-            { cause: error },
-          );
-        }
-        throw error;
-      },
-      runAttempt: (attempt) =>
-        ctx.summaryEngine.runSummaryAttempt({
-          attempt,
-          prompt,
-          allowStreaming: ctx.streamingEnabled,
-          onModelChosen: args.onModelChosen ?? null,
-          cli: cliContext,
-        }),
-    });
-    summaryResult = attemptOutcome.result;
-    usedAttempt = attemptOutcome.usedAttempt;
-    lastError = attemptOutcome.lastError;
-    missingRequiredEnvs = attemptOutcome.missingRequiredEnvs;
-    sawOpenRouterNoAllowedProviders = attemptOutcome.sawOpenRouterNoAllowedProviders;
-  }
-
-  if (!summaryResult || !usedAttempt) {
-    const withFreeTip = (message: string) => {
-      if (!ctx.isNamedModelSelection || !ctx.wantsFreeNamedModel) return message;
-      return (
-        `${message}\n` +
-        `Tip: run "summarize refresh-free" to refresh the free model candidates (writes ~/.summarize/config.json).`
-      );
-    };
-
-    if (ctx.isNamedModelSelection) {
-      if (lastError === null && missingRequiredEnvs.size > 0) {
+  const execution = await executeSummaryAttempts({
+    attempts,
+    isFallbackModel: ctx.isFallbackModel,
+    isNamedModelSelection: ctx.isNamedModelSelection,
+    wantsFreeNamedModel: ctx.wantsFreeNamedModel,
+    requestedModelInput: ctx.requestedModelInput,
+    envHasKeyFor: ctx.summaryEngine.envHasKeyFor,
+    formatMissingModelError: ctx.summaryEngine.formatMissingModelError,
+    cache: {
+      store: cacheStore,
+      ttlMs: ctx.cache.ttlMs,
+      contentHash,
+      promptHash,
+      lengthKey,
+      languageKey,
+      autoSelectionModel: autoSelectionCacheModel,
+    },
+    verbose: (message) =>
+      writeVerbose(ctx.stderr, ctx.verbose, message, ctx.verboseColor, ctx.envForRun),
+    onModelChosen: args.onModelChosen,
+    buildCachedResult: (attempt, summary) => ({
+      summary,
+      summaryAlreadyPrinted: false,
+      modelMeta: buildModelMetaFromAttempt(attempt),
+      maxOutputTokensForCall: null,
+    }),
+    runAttempt: (attempt) =>
+      ctx.summaryEngine.runSummaryAttempt({
+        attempt,
+        prompt,
+        allowStreaming: ctx.streamingEnabled,
+        onModelChosen: args.onModelChosen ?? null,
+        cli: cliContext,
+      }),
+    onFixedModelError: (attempt, error) => {
+      if (isUnsupportedAttachmentError(error)) {
         throw new Error(
-          withFreeTip(
-            `Missing ${Array.from(missingRequiredEnvs).sort().join(", ")} for --model ${ctx.requestedModelInput}.`,
-          ),
+          `Model ${attempt.userModelId} does not support attaching files of type ${args.attachment.mediaType}. Try a different --model.`,
+          { cause: error },
         );
       }
-      if (lastError instanceof Error) {
-        if (sawOpenRouterNoAllowedProviders) {
-          const message = await buildOpenRouterNoAllowedProvidersMessage({
-            attempts,
-            fetchImpl: ctx.trackedFetch,
-            timeoutMs: ctx.timeoutMs,
-          });
-          throw new Error(withFreeTip(message), { cause: lastError });
-        }
-        throw new Error(withFreeTip(lastError.message), { cause: lastError });
-      }
-      throw new Error(withFreeTip(`No model available for --model ${ctx.requestedModelInput}`));
-    }
+      throw error;
+    },
+    fetchImpl: ctx.trackedFetch,
+    timeoutMs: ctx.timeoutMs,
+    rememberCliProvider: (provider) =>
+      writeLastSuccessfulCliProvider({ env: ctx.envForRun, provider }),
+  });
+
+  if (!execution.result || !execution.usedAttempt) {
     if (textContent) {
       ctx.clearProgressForStdout();
       ctx.stdout.write(`${textContent.content.trim()}\n`);
@@ -659,56 +529,13 @@ export async function summarizeAsset(ctx: AssetSummaryContext, args: SummarizeAs
       }
       return;
     }
-    if (lastError instanceof Error) throw lastError;
+    if (execution.failure.lastError instanceof Error) throw execution.failure.lastError;
     throw new Error("No model available for this input");
   }
 
-  if (!summaryFromCache && cacheStore && contentHash && promptHash) {
-    const perModelKey = buildSummaryCacheKey({
-      contentHash,
-      promptHash,
-      model: usedAttempt.userModelId,
-      lengthKey,
-      languageKey,
-    });
-    cacheStore.setText("summary", perModelKey, summaryResult.summary, ctx.cache.ttlMs);
-    writeVerbose(ctx.stderr, ctx.verbose, "cache write summary", ctx.verboseColor, ctx.envForRun);
-    if (autoSelectionCacheModel) {
-      const selectionKey = buildSummaryCacheKey({
-        contentHash,
-        promptHash,
-        model: autoSelectionCacheModel,
-        lengthKey,
-        languageKey,
-      });
-      cacheStore.setJson(
-        "summary",
-        selectionKey,
-        { summary: summaryResult.summary, model: usedAttempt.userModelId },
-        ctx.cache.ttlMs,
-      );
-      writeVerbose(
-        ctx.stderr,
-        ctx.verbose,
-        "cache write summary (auto selection)",
-        ctx.verboseColor,
-        ctx.envForRun,
-      );
-    }
-  }
-  if (
-    !summaryFromCache &&
-    ctx.isFallbackModel &&
-    usedAttempt.transport === "cli" &&
-    usedAttempt.cliProvider
-  ) {
-    await writeLastSuccessfulCliProvider({
-      env: ctx.envForRun,
-      provider: usedAttempt.cliProvider,
-    });
-  }
-
-  const { summary, summaryAlreadyPrinted, modelMeta, maxOutputTokensForCall } = summaryResult;
+  const { summary, summaryAlreadyPrinted, modelMeta, maxOutputTokensForCall } = execution.result;
+  const usedAttempt = execution.usedAttempt;
+  const summaryFromCache = execution.summaryFromCache;
 
   const extracted = {
     kind: "asset" as const,

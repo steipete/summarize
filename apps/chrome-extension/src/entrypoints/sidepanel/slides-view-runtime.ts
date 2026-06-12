@@ -3,6 +3,7 @@ import type MarkdownIt from "markdown-it";
 import { logExtensionEvent } from "../../lib/extension-logs";
 import type { SseSlidesData } from "../../lib/runtime-contracts";
 import type { SlidesLayout } from "../../lib/settings";
+import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
 import { createSlideImageLoader, normalizeSlideImageUrl } from "./slide-images";
 import {
   normalizeSlidesPayload,
@@ -29,6 +30,7 @@ export function createSlidesViewRuntime({
   refreshSummarizeControl,
   hideSlideNotice,
   getState,
+  dispatchPanelState,
   setSlidesBusyValue,
   getSlidesBusy,
   setSlidesContextPending,
@@ -84,6 +86,7 @@ export function createSlidesViewRuntime({
     slidesExpanded: boolean;
     mediaAvailable: boolean;
   };
+  dispatchPanelState?: (action: PanelStateAction) => void;
   setSlidesBusyValue: (value: boolean) => void;
   getSlidesBusy: () => boolean;
   setSlidesContextPending: (value: boolean) => void;
@@ -100,6 +103,13 @@ export function createSlidesViewRuntime({
   getFallbackSummaryMarkdown?: () => string | null;
 }) {
   const slideImageLoader = createSlideImageLoader();
+  const dispatch = (action: PanelStateAction) => {
+    if (dispatchPanelState) {
+      dispatchPanelState(action);
+    } else {
+      applyPanelStateAction(getState().panelState, action);
+    }
+  };
 
   const seekToSlideTimestamp = (seconds: number | null | undefined) => {
     if (seconds == null || !Number.isFinite(seconds)) return;
@@ -240,7 +250,7 @@ export function createSlidesViewRuntime({
 
   const renderMarkdown = (markdown: string) => {
     const state = getState();
-    state.panelState.summaryMarkdown = markdown;
+    dispatch({ type: "summary", markdown });
     updateSlideSummaryFromMarkdown(markdown, {
       preserveIfEmpty: slidesTextController.hasSummaryTitles(),
       source: "summary",
@@ -318,7 +328,7 @@ export function createSlidesViewRuntime({
       }
       return;
     }
-    state.panelState.slides = merged;
+    dispatch({ type: "slides", slides: merged });
     if (activeSlidesRunId) {
       setSlidesAppliedRunId(activeSlidesRunId);
     }

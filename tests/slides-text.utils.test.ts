@@ -15,7 +15,7 @@ import {
   resolveSlideWindowSeconds,
   splitSlideTitleFromText,
   splitSummaryFromSlides,
-} from "../src/run/flows/url/slides-text.js";
+} from "../packages/core/src/slides/text.js";
 
 describe("slides text helpers", () => {
   it("finds the earliest slides marker", () => {

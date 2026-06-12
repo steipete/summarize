@@ -1,10 +1,10 @@
+import { markFetchAsDnsPinned } from "@steipete/summarize-core/content";
 import { describe, expect, it, vi } from "vitest";
 import {
   assertDaemonUrlFetchAllowed,
   createDaemonUrlFetchGuard,
   isBlockedNetworkAddress,
 } from "../src/daemon/url-fetch-guard.js";
-import { markFetchAsDnsPinned } from "../src/shared/fetch-capabilities.js";
 
 async function withBunRuntime<T>(fn: () => Promise<T> | T): Promise<T> {
   const descriptor = Object.getOwnPropertyDescriptor(process.versions, "bun");

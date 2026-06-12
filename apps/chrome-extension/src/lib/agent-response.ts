@@ -24,7 +24,7 @@ export async function* readAgentResponse(res: Response): AsyncGenerator<AgentStr
   }
 
   for await (const raw of parseSseStream(res.body)) {
-    const event = parseSseEvent(raw);
+    const event = parseSseEvent<AssistantMessage>(raw);
     if (!event) continue;
     if (event.event === "chunk") {
       yield { type: "chunk", text: event.data.text };

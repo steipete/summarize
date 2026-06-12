@@ -1,11 +1,11 @@
-import type { SummaryLength } from "./contracts.js";
+import type { SummaryLength } from "../shared/contracts.js";
 import {
   buildSlideTextFallback,
   coerceSummaryWithSlides,
   parseSlideSummariesFromMarkdown,
   splitSlideTitleFromText,
   type SlideTimelineEntry,
-} from "./slides-text.js";
+} from "./text.js";
 
 export type SlidePresentationLength =
   | { kind: "preset"; preset: SummaryLength }

@@ -1,14 +1,14 @@
 import { lookup as dnsLookup } from "node:dns/promises";
 import { createRequire } from "node:module";
 import { isIP } from "node:net";
-import { fetchWithDnsPinnedAddresses } from "../shared/dns-pinned-fetch.js";
+import { fetchWithDnsPinnedAddresses } from "@steipete/summarize-core/content";
 import {
   attachDnsPinnedAddresses,
   isNativeOrBoundGlobalFetch,
   markFetchAsDnsPinned,
   resolveDnsPinnedFetch,
   supportsDnsPinnedFetch,
-} from "../shared/fetch-capabilities.js";
+} from "@steipete/summarize-core/content";
 
 type LookupAddress = { address: string; family?: number };
 type LookupFn = (hostname: string) => Promise<LookupAddress[]>;

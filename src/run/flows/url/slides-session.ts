@@ -1,3 +1,4 @@
+import { parseTranscriptTimedText } from "@steipete/summarize-core/slides";
 import { buildSlidesCacheKey } from "../../../cache.js";
 import type { ExtractedLinkContent } from "../../../content/index.js";
 import {
@@ -12,7 +13,6 @@ import { buildIntervalTimestamps } from "../../../slides/scene-detection.js";
 import { writeVerbose } from "../../logging.js";
 import { resolveUrlFlowYtDlpPath } from "./external-media.js";
 import { createSlidesTerminalOutput, type SlidesTerminalOutput } from "./slides-output.js";
-import { parseTranscriptTimedText } from "./slides-text.js";
 import { composeUrlFlowHooks, type UrlFlowContext } from "./types.js";
 
 type ProgressStatusLike = {

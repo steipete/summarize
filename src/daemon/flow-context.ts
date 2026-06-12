@@ -21,6 +21,7 @@ import { resolveModelSelection } from "../run/run-models.js";
 import { resolveDesiredOutputTokens } from "../run/run-output.js";
 import {
   buildPromptLengthInstruction,
+  createEmptyRunOverrides,
   type RunOverrides,
   resolveOutputLanguageSetting,
   resolveSummaryLength,
@@ -137,23 +138,7 @@ export function createDaemonUrlFlowContext(args: DaemonUrlFlowContextArgs): UrlF
 
   const languageExplicitlySet = typeof languageRaw === "string" && Boolean(languageRaw.trim());
 
-  const resolvedOverrides: RunOverrides = overrides ?? {
-    firecrawlMode: null,
-    markdownMode: null,
-    preprocessMode: null,
-    youtubeMode: null,
-    videoMode: null,
-    embeddedVideoMode: null,
-    transcriptTimestamps: null,
-    transcriptDiarization: null,
-    forceSummary: null,
-    timeoutMs: null,
-    retries: null,
-    maxOutputTokensArg: null,
-    transcriber: null,
-    autoCliFallbackEnabled: null,
-    autoCliOrder: null,
-  };
+  const resolvedOverrides: RunOverrides = overrides ?? createEmptyRunOverrides();
   if (resolvedOverrides.transcriber) {
     envForRun.SUMMARIZE_TRANSCRIBER = resolvedOverrides.transcriber;
   }

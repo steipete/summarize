@@ -1,4 +1,4 @@
-import type { CacheStats } from "../../../../../src/shared/cache-store";
+import type { CacheStats } from "@steipete/summarize-core/runtime";
 import { defaultSettings, loadSettings, saveSettings } from "../../lib/settings";
 import { applyTheme, type ColorMode, type ColorScheme } from "../../lib/theme";
 import { bindOptionsInputs } from "./bindings";

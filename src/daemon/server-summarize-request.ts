@@ -1,5 +1,6 @@
 import type http from "node:http";
-import { resolveRunOverrides } from "../run/run-settings.js";
+import type { SummarizeRequestBody } from "@steipete/summarize-core/runtime";
+import { resolveRunOverrides, type RunOverrides } from "../run/run-settings.js";
 import type { SlideSettings } from "../slides/index.js";
 import { resolveSlideSettings } from "../slides/index.js";
 import type { DaemonRequestedMode } from "./auto-mode.js";
@@ -67,7 +68,7 @@ export type ParsedSummarizeRequest = {
   mode: DaemonRequestedMode;
   maxCharacters: number | null;
   format: "text" | "markdown";
-  overrides: ReturnType<typeof resolveRunOverrides>;
+  overrides: RunOverrides;
   slidesSettings: SlideSettings | null;
   diagnostics: { includeContent: boolean };
   hasText: boolean;
@@ -103,7 +104,7 @@ export async function parseSummarizeRequest({
     return null;
   }
 
-  const obj = body as Record<string, unknown>;
+  const obj = body as Partial<SummarizeRequestBody> & Record<string, unknown>;
   const pageUrl = typeof obj.url === "string" ? obj.url.trim() : "";
   const title = typeof obj.title === "string" ? obj.title.trim() : null;
   const textContent = typeof obj.text === "string" ? obj.text : "";
@@ -129,24 +130,7 @@ export async function parseSummarizeRequest({
   const formatRaw = typeof obj.format === "string" ? obj.format.trim().toLowerCase() : "";
   const format: "text" | "markdown" =
     formatRaw === "markdown" || formatRaw === "md" ? "markdown" : "text";
-  const overrides = resolveRunOverrides({
-    firecrawl: obj.firecrawl,
-    markdownMode: obj.markdownMode,
-    preprocess: obj.preprocess,
-    youtube: obj.youtube,
-    videoMode: obj.videoMode,
-    embeddedVideo: obj.embeddedVideo,
-    timestamps: obj.timestamps,
-    diarize: obj.diarize,
-    forceSummary: obj.forceSummary,
-    timeout: obj.timeout,
-    retries: obj.retries,
-    maxOutputTokens: obj.maxOutputTokens,
-    autoCliFallback: obj.autoCliFallback,
-    autoCliOrder: obj.autoCliOrder,
-    magicCliAuto: obj.magicCliAuto,
-    magicCliOrder: obj.magicCliOrder,
-  });
+  const overrides = resolveRunOverrides(obj);
   const slidesSettings = resolveRequestSlidesSettings({ env, request: obj, resolveToolPath });
   const diagnostics = parseDiagnostics(obj.diagnostics);
   const hasText = Boolean(textContent.trim());

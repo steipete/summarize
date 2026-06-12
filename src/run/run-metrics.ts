@@ -1,3 +1,10 @@
+import { fetchWithDnsPinnedAddresses } from "@steipete/summarize-core/content";
+import {
+  isNativeOrBoundGlobalFetch,
+  markFetchAsDnsPinned,
+  resolveDnsPinnedFetch,
+  supportsDnsPinnedFetch,
+} from "@steipete/summarize-core/content";
 import { normalizeTokenUsage, tallyCosts } from "tokentally";
 import { fetch as undiciFetch } from "undici";
 import type { LlmCall, RunMetricsReport } from "../costs.js";
@@ -9,13 +16,6 @@ import {
   resolveLiteLlmMaxOutputTokensForModelId,
   resolveLiteLlmPricingForModelId,
 } from "../pricing/litellm.js";
-import { fetchWithDnsPinnedAddresses } from "../shared/dns-pinned-fetch.js";
-import {
-  isNativeOrBoundGlobalFetch,
-  markFetchAsDnsPinned,
-  resolveDnsPinnedFetch,
-  supportsDnsPinnedFetch,
-} from "../shared/fetch-capabilities.js";
 
 export type RunMetrics = {
   llmCalls: LlmCall[];

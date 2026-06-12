@@ -84,6 +84,26 @@ export type RunOverridesInput = {
   magicCliRememberLastSuccess?: unknown;
 };
 
+export function createEmptyRunOverrides(): RunOverrides {
+  return {
+    firecrawlMode: null,
+    markdownMode: null,
+    preprocessMode: null,
+    youtubeMode: null,
+    videoMode: null,
+    embeddedVideoMode: null,
+    transcriptTimestamps: null,
+    transcriptDiarization: null,
+    forceSummary: null,
+    timeoutMs: null,
+    retries: null,
+    maxOutputTokensArg: null,
+    transcriber: null,
+    autoCliFallbackEnabled: null,
+    autoCliOrder: null,
+  };
+}
+
 export function resolveSummaryLength(
   raw: unknown,
   fallback = "xl",

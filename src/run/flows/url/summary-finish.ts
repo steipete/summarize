@@ -1,6 +1,6 @@
 import type { ExtractedLinkContent } from "../../../content/index.js";
-import { parseGatewayStyleModelId } from "../../../llm/model-id.js";
 import { buildLengthPartsForFinishLine } from "../../finish-line.js";
+export { buildModelMetaFromAttempt } from "../../model-meta.js";
 import type { ModelAttempt } from "../../types.js";
 import type { UrlFlowContext } from "./types.js";
 
@@ -42,15 +42,4 @@ export function pickModelForFinishLine(
   if (lastCall?.model) return lastCall.model;
 
   return fallback;
-}
-
-export function buildModelMetaFromAttempt(attempt: ModelAttempt) {
-  if (attempt.transport === "cli") {
-    return { provider: "cli" as const, canonical: attempt.userModelId };
-  }
-  const parsed = parseGatewayStyleModelId(attempt.llmModelId ?? attempt.userModelId);
-  const canonical = attempt.userModelId.toLowerCase().startsWith("openrouter/")
-    ? attempt.userModelId
-    : parsed.canonical;
-  return { provider: parsed.provider, canonical };
 }

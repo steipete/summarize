@@ -1,21 +1,13 @@
+import {
+  attachDnsPinnedAddresses,
+  isNativeOrBoundGlobalFetch,
+  markFetchAsDnsPinned,
+  readDnsPinnedAddresses,
+  resolveDnsPinnedFetch,
+  supportsDnsPinnedFetch,
+} from "@steipete/summarize-core/content";
 import { describe, expect, it, vi } from "vitest";
-import {
-  attachDnsPinnedAddresses as attachCoreDnsPinnedAddresses,
-  isNativeOrBoundGlobalFetch as isCoreNativeOrBoundGlobalFetch,
-  markFetchAsDnsPinned as markCoreFetchAsDnsPinned,
-  readDnsPinnedAddresses as readCoreDnsPinnedAddresses,
-  resolveDnsPinnedFetch as resolveCoreDnsPinnedFetch,
-  supportsDnsPinnedFetch as coreSupportsDnsPinnedFetch,
-} from "../packages/core/src/content/index.js";
 import { createRunMetrics } from "../src/run/run-metrics.js";
-import {
-  attachDnsPinnedAddresses as attachRootDnsPinnedAddresses,
-  isNativeOrBoundGlobalFetch as isRootNativeOrBoundGlobalFetch,
-  markFetchAsDnsPinned as markRootFetchAsDnsPinned,
-  readDnsPinnedAddresses as readRootDnsPinnedAddresses,
-  resolveDnsPinnedFetch as resolveRootDnsPinnedFetch,
-  supportsDnsPinnedFetch as rootSupportsDnsPinnedFetch,
-} from "../src/shared/fetch-capabilities.js";
 
 async function withBunRuntime<T>(fn: () => Promise<T> | T): Promise<T> {
   const descriptor = Object.getOwnPropertyDescriptor(process.versions, "bun");
@@ -36,14 +28,12 @@ async function withBunRuntime<T>(fn: () => Promise<T> | T): Promise<T> {
 
 describe("DNS-pinned fetch capabilities", () => {
   it("does not advertise unwrapped global fetch as an explicit DNS-pinned wrapper", () => {
-    expect(coreSupportsDnsPinnedFetch(globalThis.fetch)).toBe(false);
-    expect(rootSupportsDnsPinnedFetch(globalThis.fetch)).toBe(false);
+    expect(supportsDnsPinnedFetch(globalThis.fetch)).toBe(false);
   });
 
   it("does not advertise Bun global fetch as an explicit DNS-pinned wrapper", async () => {
     await withBunRuntime(() => {
-      expect(coreSupportsDnsPinnedFetch(globalThis.fetch)).toBe(false);
-      expect(rootSupportsDnsPinnedFetch(globalThis.fetch)).toBe(false);
+      expect(supportsDnsPinnedFetch(globalThis.fetch)).toBe(false);
     });
   });
 
@@ -51,32 +41,21 @@ describe("DNS-pinned fetch capabilities", () => {
     const boundGlobalFetch = globalThis.fetch.bind(globalThis);
     const customFetch = vi.fn(async () => new Response("ok")) as unknown as typeof fetch;
 
-    expect(isCoreNativeOrBoundGlobalFetch(globalThis.fetch)).toBe(true);
-    expect(isRootNativeOrBoundGlobalFetch(globalThis.fetch)).toBe(true);
-    expect(isCoreNativeOrBoundGlobalFetch(boundGlobalFetch)).toBe(true);
-    expect(isRootNativeOrBoundGlobalFetch(boundGlobalFetch)).toBe(true);
-    expect(isCoreNativeOrBoundGlobalFetch(customFetch)).toBe(false);
-    expect(isRootNativeOrBoundGlobalFetch(customFetch)).toBe(false);
+    expect(isNativeOrBoundGlobalFetch(globalThis.fetch)).toBe(true);
+    expect(isNativeOrBoundGlobalFetch(boundGlobalFetch)).toBe(true);
+    expect(isNativeOrBoundGlobalFetch(customFetch)).toBe(false);
   });
 
-  it("shares explicit DNS-pinned markers across core and root helpers", () => {
-    const coreMarked = markCoreFetchAsDnsPinned(async () => new Response("ok"));
-    const rootMarked = markRootFetchAsDnsPinned(async () => new Response("ok"));
-
-    expect(rootSupportsDnsPinnedFetch(coreMarked)).toBe(true);
-    expect(coreSupportsDnsPinnedFetch(rootMarked)).toBe(true);
-    expect(resolveRootDnsPinnedFetch(coreMarked)).toBe(coreMarked);
-    expect(resolveCoreDnsPinnedFetch(rootMarked)).toBe(rootMarked);
+  it("recognizes explicit DNS-pinned markers", () => {
+    const marked = markFetchAsDnsPinned(async () => new Response("ok"));
+    expect(supportsDnsPinnedFetch(marked)).toBe(true);
+    expect(resolveDnsPinnedFetch(marked)).toBe(marked);
   });
 
   it("preserves pinned address metadata through RequestInit cloning", () => {
     const addresses = [{ address: "93.184.216.34", family: 4 }];
-
-    const rootInit = attachRootDnsPinnedAddresses({ redirect: "manual" }, addresses);
-    const coreInit = attachCoreDnsPinnedAddresses({ redirect: "manual" }, addresses);
-
-    expect(readRootDnsPinnedAddresses({ ...rootInit })).toEqual(addresses);
-    expect(readCoreDnsPinnedAddresses({ ...coreInit })).toEqual(addresses);
+    const init = attachDnsPinnedAddresses({ redirect: "manual" }, addresses);
+    expect(readDnsPinnedAddresses({ ...init })).toEqual(addresses);
   });
 
   it("preserves explicit pinned transports through the run metrics fetch wrapper", async () => {
@@ -84,10 +63,10 @@ describe("DNS-pinned fetch capabilities", () => {
     const pinnedFetch = vi.fn(async () => new Response("pinned")) as unknown as typeof fetch;
     const metrics = createRunMetrics({
       env: {},
-      fetchImpl: markRootFetchAsDnsPinned(baseFetch, pinnedFetch),
+      fetchImpl: markFetchAsDnsPinned(baseFetch, pinnedFetch),
       maxOutputTokensArg: null,
     });
-    const trackedPinnedFetch = resolveRootDnsPinnedFetch(metrics.trackedFetch);
+    const trackedPinnedFetch = resolveDnsPinnedFetch(metrics.trackedFetch);
 
     expect(trackedPinnedFetch).toBeTruthy();
     await expect(trackedPinnedFetch?.("https://api.firecrawl.dev/scrape")).resolves.toBeInstanceOf(
@@ -108,7 +87,7 @@ describe("DNS-pinned fetch capabilities", () => {
         fetchImpl: globalThis.fetch,
         maxOutputTokensArg: null,
       });
-      const trackedPinnedFetch = resolveRootDnsPinnedFetch(metrics.trackedFetch);
+      const trackedPinnedFetch = resolveDnsPinnedFetch(metrics.trackedFetch);
 
       expect(trackedPinnedFetch).toBeTruthy();
       expect(trackedPinnedFetch).not.toBe(globalThis.fetch);

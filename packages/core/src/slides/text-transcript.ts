@@ -1,6 +1,6 @@
-import { extractYouTubeVideoId } from "@steipete/summarize-core/content/url";
-import type { SummaryLength } from "../../../shared/contracts.js";
-import type { SlideTimelineEntry, TranscriptSegment } from "./slides-text-types.js";
+import { extractYouTubeVideoId } from "../content/url.js";
+import type { SummaryLength } from "../shared/contracts.js";
+import type { SlideTimelineEntry, TranscriptSegment } from "./text-types.js";
 
 const SLIDE_TEXT_BUDGET_BY_PRESET: Record<SummaryLength, number> = {
   short: 120,

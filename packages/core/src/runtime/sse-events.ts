@@ -1,5 +1,3 @@
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-
 export type SseMetaData = {
   model: string | null;
   modelLabel: string | null;
@@ -31,23 +29,25 @@ export type SseMetricsData = {
   detailsDetailed: string | null;
 };
 
-export type SseEvent =
+export type SseEvent<TAssistant = unknown> =
   | { event: "meta"; data: SseMetaData }
   | { event: "slides"; data: SseSlidesData }
   | { event: "status"; data: { text: string } }
   | { event: "chunk"; data: { text: string } }
-  | { event: "assistant"; data: AssistantMessage }
+  | { event: "assistant"; data: TAssistant }
   | { event: "metrics"; data: SseMetricsData }
   | { event: "done"; data: Record<string, never> }
   | { event: "error"; data: { message: string } };
 
 export type RawSseMessage = { event: string; data: string };
 
-export function encodeSseEvent(event: SseEvent): string {
+export function encodeSseEvent<TAssistant>(event: SseEvent<TAssistant>): string {
   return `event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`;
 }
 
-export function parseSseEvent(message: RawSseMessage): SseEvent | null {
+export function parseSseEvent<TAssistant = unknown>(
+  message: RawSseMessage,
+): SseEvent<TAssistant> | null {
   switch (message.event) {
     case "meta":
       return { event: "meta", data: JSON.parse(message.data) as SseMetaData };
@@ -58,7 +58,7 @@ export function parseSseEvent(message: RawSseMessage): SseEvent | null {
     case "chunk":
       return { event: "chunk", data: JSON.parse(message.data) as { text: string } };
     case "assistant":
-      return { event: "assistant", data: JSON.parse(message.data) as AssistantMessage };
+      return { event: "assistant", data: JSON.parse(message.data) as TAssistant };
     case "metrics":
       return { event: "metrics", data: JSON.parse(message.data) as SseMetricsData };
     case "done":

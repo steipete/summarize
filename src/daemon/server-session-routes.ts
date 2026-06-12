@@ -1,6 +1,6 @@
 import { createReadStream, promises as fs } from "node:fs";
 import path from "node:path";
-import { encodeSseEvent } from "../shared/sse-events.js";
+import { encodeSseEvent } from "@steipete/summarize-core/runtime";
 import { resolveValidSlideImagePath, type SlideExtractionResult } from "../slides/index.js";
 import { json } from "./server-http.js";
 import type { Session } from "./server-session.js";

@@ -1,7 +1,6 @@
 import { resolveTranscriptForLink } from "../../transcript/index.js";
-import { resolveTranscriptionAvailability } from "../../transcript/providers/transcription-start.js";
 import { resolveTranscriptionConfig } from "../../transcript/transcription-config.js";
-import { isDirectMediaUrl, isYouTubeUrl } from "../../url.js";
+import { isYouTubeUrl } from "../../url.js";
 import type { FirecrawlScrapeResult, LinkPreviewDeps } from "../deps.js";
 import type { CacheMode, FirecrawlDiagnostics, TranscriptResolution } from "../types.js";
 import { normalizeForPrompt } from "./cleaner.js";
@@ -9,12 +8,11 @@ import { MIN_READABILITY_CONTENT_CHARACTERS } from "./constants.js";
 import { fetchHtmlDocument, fetchWithFirecrawl } from "./fetcher.js";
 import { buildResultFromFirecrawl, shouldFallbackToFirecrawl } from "./firecrawl.js";
 import { buildResultFromHtmlDocument } from "./html.js";
-import { extractApplePodcastIds, extractSpotifyEpisodeId } from "./podcast-utils.js";
 import { extractReadabilityFromHtml } from "./readability.js";
+import { tryTranscriptOnlyStrategy } from "./transcript-only-strategies.js";
 import {
   isAnubisHtml,
   isBlockedTwitterContent,
-  isTwitterBroadcastUrl,
   isTwitterStatusUrl,
   toNitterUrls,
 } from "./twitter-utils.js";
@@ -89,246 +87,21 @@ export async function fetchLinkContent(
   const canUseFirecrawl =
     firecrawlMode !== "off" && deps.scrapeWithFirecrawl !== null && !isYouTubeUrl(url);
 
-  const spotifyEpisodeId = extractSpotifyEpisodeId(url);
-  if (spotifyEpisodeId) {
-    const transcriptionAvailability = await resolveTranscriptionAvailability({
-      transcription,
-    });
-    if (!transcriptionAvailability.hasAnyProvider) {
-      throw new Error(
-        "Spotify episode transcription requires a transcription provider (install whisper-cpp or set GROQ_API_KEY, ASSEMBLYAI_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, or FAL_KEY); otherwise you may only get a captcha/recaptcha HTML page.",
-      );
-    }
-
-    const transcriptResolution = await resolveTranscriptForLink(url, null, deps, {
-      youtubeTranscriptMode,
-      mediaTranscriptMode,
-      transcriptTimestamps,
-      transcriptDiarization,
-      transcriptVideoDownload,
-      cacheMode,
-      fileMtime,
-    });
-    if (!transcriptResolution.text) {
-      const notes = transcriptResolution.diagnostics?.notes;
-      const suffix = notes ? ` (${notes})` : "";
-      throw new Error(`Failed to transcribe Spotify episode${suffix}`);
-    }
-
-    const transcriptDiagnostics = ensureTranscriptDiagnostics(
-      transcriptResolution,
-      cacheMode ?? "default",
-    );
-    transcriptDiagnostics.notes = appendNote(
-      transcriptDiagnostics.notes,
-      "Spotify episode: skipped HTML fetch to avoid captcha pages",
-    );
-
-    return finalizeExtractedLinkContent({
-      url,
-      baseContent: selectBaseContent("", transcriptResolution.text, transcriptResolution.segments),
-      maxCharacters,
-      title: null,
-      description: null,
-      siteName: "Spotify",
-      transcriptResolution,
-      video: null,
-      isVideoOnly: false,
-      diagnostics: {
-        strategy: "html",
-        firecrawl: {
-          attempted: false,
-          used: false,
-          cacheMode,
-          cacheStatus: cacheMode === "bypass" ? "bypassed" : "unknown",
-          notes: "Spotify short-circuit skipped HTML/Firecrawl",
-        },
-        markdown: {
-          requested: markdownRequested,
-          used: false,
-          provider: null,
-          notes: "Spotify short-circuit uses transcript content",
-        },
-        transcript: transcriptDiagnostics,
-      },
-    });
-  }
-
-  const appleIds = extractApplePodcastIds(url);
-  if (appleIds) {
-    const transcriptionAvailability = await resolveTranscriptionAvailability({
-      transcription,
-    });
-    if (!transcriptionAvailability.hasAnyProvider) {
-      throw new Error(
-        "Apple Podcasts transcription requires a transcription provider (install whisper-cpp or set GROQ_API_KEY, ASSEMBLYAI_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, or FAL_KEY); otherwise you may only get a slow/blocked HTML page.",
-      );
-    }
-
-    const transcriptResolution = await resolveTranscriptForLink(url, null, deps, {
-      youtubeTranscriptMode,
-      mediaTranscriptMode,
-      transcriptTimestamps,
-      transcriptDiarization,
-      transcriptVideoDownload,
-      cacheMode,
-      fileMtime,
-    });
-    if (!transcriptResolution.text) {
-      const notes = transcriptResolution.diagnostics?.notes;
-      const suffix = notes ? ` (${notes})` : "";
-      throw new Error(`Failed to transcribe Apple Podcasts episode${suffix}`);
-    }
-
-    const transcriptDiagnostics = ensureTranscriptDiagnostics(
-      transcriptResolution,
-      cacheMode ?? "default",
-    );
-    transcriptDiagnostics.notes = appendNote(
-      transcriptDiagnostics.notes,
-      "Apple Podcasts: skipped HTML fetch (prefer iTunes lookup / enclosures)",
-    );
-
-    return finalizeExtractedLinkContent({
-      url,
-      baseContent: selectBaseContent("", transcriptResolution.text, transcriptResolution.segments),
-      maxCharacters,
-      title: null,
-      description: null,
-      siteName: "Apple Podcasts",
-      transcriptResolution,
-      video: null,
-      isVideoOnly: false,
-      diagnostics: {
-        strategy: "html",
-        firecrawl: {
-          attempted: false,
-          used: false,
-          cacheMode,
-          cacheStatus: cacheMode === "bypass" ? "bypassed" : "unknown",
-          notes: "Apple Podcasts short-circuit skipped HTML/Firecrawl",
-        },
-        markdown: {
-          requested: markdownRequested,
-          used: false,
-          provider: null,
-          notes: "Apple Podcasts short-circuit uses transcript content",
-        },
-        transcript: transcriptDiagnostics,
-      },
-    });
-  }
-
-  if (isTwitterBroadcastUrl(url)) {
-    const broadcastTranscriptMode = mediaTranscriptMode === "auto" ? "prefer" : mediaTranscriptMode;
-    const transcriptResolution = await resolveTranscriptForLink(url, null, deps, {
-      youtubeTranscriptMode,
-      mediaTranscriptMode: broadcastTranscriptMode,
-      transcriptTimestamps,
-      transcriptDiarization,
-      transcriptVideoDownload,
-      cacheMode,
-      fileMtime,
-    });
-    if (!transcriptResolution.text) {
-      const notes = transcriptResolution.diagnostics?.notes;
-      const suffix = notes ? ` (${notes})` : "";
-      throw new Error(`Failed to transcribe X broadcast${suffix}`);
-    }
-
-    const transcriptDiagnostics = ensureTranscriptDiagnostics(
-      transcriptResolution,
-      cacheMode ?? "default",
-    );
-    transcriptDiagnostics.notes = appendNote(
-      transcriptDiagnostics.notes,
-      "X broadcast: skipped HTML/Firecrawl",
-    );
-
-    return finalizeExtractedLinkContent({
-      url,
-      baseContent: selectBaseContent("", transcriptResolution.text, transcriptResolution.segments),
-      maxCharacters,
-      title: null,
-      description: null,
-      siteName: "X",
-      transcriptResolution,
-      video: { kind: "direct", url },
-      isVideoOnly: true,
-      diagnostics: {
-        strategy: "html",
-        firecrawl: {
-          attempted: false,
-          used: false,
-          cacheMode,
-          cacheStatus: cacheMode === "bypass" ? "bypassed" : "unknown",
-          notes: "X broadcast short-circuit skipped HTML/Firecrawl",
-        },
-        markdown: {
-          requested: markdownRequested,
-          used: false,
-          provider: null,
-          notes: "X broadcast uses transcript content",
-        },
-        transcript: transcriptDiagnostics,
-      },
-    });
-  }
-
-  if (isDirectMediaUrl(url) && mediaTranscriptMode === "prefer") {
-    const transcriptResolution = await resolveTranscriptForLink(url, null, deps, {
-      youtubeTranscriptMode,
-      mediaTranscriptMode,
-      transcriptTimestamps,
-      transcriptDiarization,
-      transcriptVideoDownload,
-      cacheMode,
-      fileMtime,
-    });
-    if (!transcriptResolution.text) {
-      const notes = transcriptResolution.diagnostics?.notes;
-      const suffix = notes ? ` (${notes})` : "";
-      throw new Error(`Failed to transcribe media${suffix}`);
-    }
-
-    const transcriptDiagnostics = ensureTranscriptDiagnostics(
-      transcriptResolution,
-      cacheMode ?? "default",
-    );
-    transcriptDiagnostics.notes = appendNote(
-      transcriptDiagnostics.notes,
-      "Direct media URL: skipped HTML/Firecrawl",
-    );
-
-    return finalizeExtractedLinkContent({
-      url,
-      baseContent: selectBaseContent("", transcriptResolution.text, transcriptResolution.segments),
-      maxCharacters,
-      title: null,
-      description: null,
-      siteName: null,
-      transcriptResolution,
-      video: { kind: "direct", url },
-      isVideoOnly: true,
-      diagnostics: {
-        strategy: "html",
-        firecrawl: {
-          attempted: false,
-          used: false,
-          cacheMode,
-          cacheStatus: cacheMode === "bypass" ? "bypassed" : "unknown",
-          notes: "Direct media URL skipped HTML/Firecrawl",
-        },
-        markdown: {
-          requested: markdownRequested,
-          used: false,
-          provider: null,
-          notes: "Direct media URL uses transcript content",
-        },
-        transcript: transcriptDiagnostics,
-      },
-    });
-  }
+  const transcriptOnlyResult = await tryTranscriptOnlyStrategy({
+    url,
+    deps,
+    transcription,
+    maxCharacters,
+    youtubeTranscriptMode,
+    mediaTranscriptMode,
+    transcriptTimestamps,
+    transcriptDiarization,
+    transcriptVideoDownload,
+    cacheMode,
+    fileMtime,
+    markdownRequested,
+  });
+  if (transcriptOnlyResult) return transcriptOnlyResult;
 
   let firecrawlAttempted = false;
   let firecrawlPayload: FirecrawlScrapeResult | null = null;

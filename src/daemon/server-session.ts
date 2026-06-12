@@ -1,5 +1,9 @@
 import http from "node:http";
-import { encodeSseEvent, type SseEvent, type SseSlidesData } from "../shared/sse-events.js";
+import {
+  encodeSseEvent,
+  type SseEvent,
+  type SseSlidesData,
+} from "@steipete/summarize-core/runtime";
 import type { SlideExtractionResult } from "../slides/index.js";
 
 export type SessionEvent = SseEvent;

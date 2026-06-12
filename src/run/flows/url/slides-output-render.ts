@@ -1,7 +1,11 @@
 import { promises as fs } from "node:fs";
+import {
+  buildTimestampUrl,
+  formatOsc8Link,
+  formatTimestamp,
+} from "@steipete/summarize-core/slides";
 import type { SlideExtractionResult } from "../../../slides/index.js";
 import type { SlideState } from "./slides-output-state.js";
-import { buildTimestampUrl, formatOsc8Link, formatTimestamp } from "./slides-text.js";
 
 export function createInlineSlidesUnsupportedNotifier({
   inlineNoticeEnabled,

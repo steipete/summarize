@@ -1,4 +1,9 @@
 import { isTwitterStatusUrl, isYouTubeUrl } from "@steipete/summarize-core/content/url";
+import {
+  coerceSummaryWithSlides,
+  interleaveSlidesIntoTranscript,
+  normalizeSummarySlideHeadings,
+} from "@steipete/summarize-core/slides";
 import { render as renderMarkdownAnsi } from "markdansi";
 import type { ExtractedLinkContent } from "../../../content/index.js";
 import type { RunMetricsReport } from "../../../costs.js";
@@ -8,11 +13,6 @@ import { prepareMarkdownForTerminal } from "../../markdown.js";
 import { isRichTty, markdownRenderWidth, supportsColor } from "../../terminal.js";
 import type { UrlExtractionUi } from "./extract.js";
 import type { SlidesTerminalOutput } from "./slides-output.js";
-import {
-  coerceSummaryWithSlides,
-  interleaveSlidesIntoTranscript,
-  normalizeSummarySlideHeadings,
-} from "./slides-text.js";
 import { formatSourceMetricsHeader } from "./source-metrics.js";
 import {
   buildFinishExtras,

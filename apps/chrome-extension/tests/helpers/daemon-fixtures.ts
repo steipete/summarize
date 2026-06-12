@@ -4,14 +4,14 @@ import { createServer as createNetServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { SummaryLength } from "@steipete/summarize-core";
 import { SUMMARY_LENGTH_SPECS } from "@steipete/summarize-core/prompts";
+import type { SseSlidesData } from "@steipete/summarize-core/runtime";
 import {
   coerceSummaryWithSlides,
   parseSlideSummariesFromMarkdown,
   splitSlideTitleFromText,
-} from "../../../../src/run/flows/url/slides-text.js";
-import type { SummaryLength } from "../../../../src/shared/contracts.js";
-import type { SseSlidesData } from "../../../../src/shared/sse-events.js";
+} from "@steipete/summarize-core/slides";
 import type { ExtensionHarness } from "./extension-harness";
 import { getBackground } from "./extension-harness";
 
