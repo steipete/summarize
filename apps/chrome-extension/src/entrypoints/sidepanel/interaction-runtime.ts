@@ -5,11 +5,6 @@ type PatchSettingsResult = {
 };
 
 export function createSidepanelInteractionRuntime(options: {
-  sendRawMessage: (message: object) => Promise<void>;
-  setLastAction: (value: "chat" | "summarize") => void;
-  clearInlineError: () => void;
-  getInputModeOverride: () => "page" | "video" | null;
-  retryChat: () => void;
   chatEnabled: () => boolean;
   getRawChatInput: () => string;
   clearChatInput: () => void;
@@ -37,37 +32,6 @@ export function createSidepanelInteractionRuntime(options: {
   blurCustomModel: () => void;
   readCurrentModelValue: () => string;
 }) {
-  async function send(message: object) {
-    const type = (
-      message as {
-        type?: string;
-      }
-    ).type;
-    if (type === "panel:summarize") {
-      options.setLastAction("summarize");
-    } else if (type === "panel:agent") {
-      options.setLastAction("chat");
-    }
-    await options.sendRawMessage(message);
-  }
-
-  function sendSummarize(opts?: { refresh?: boolean }) {
-    options.clearInlineError();
-    void send({
-      type: "panel:summarize",
-      refresh: Boolean(opts?.refresh),
-      inputMode: options.getInputModeOverride() ?? undefined,
-    });
-  }
-
-  function retryLastAction(lastAction: "chat" | "summarize") {
-    if (lastAction === "chat") {
-      options.retryChat();
-      return;
-    }
-    sendSummarize({ refresh: true });
-  }
-
   function sendChatMessage() {
     if (!options.chatEnabled()) return;
     const rawInput = options.getRawChatInput();
@@ -124,9 +88,6 @@ export function createSidepanelInteractionRuntime(options: {
   };
 
   return {
-    send,
-    sendSummarize,
-    retryLastAction,
     sendChatMessage,
     bumpFontSize,
     bumpLineHeight,

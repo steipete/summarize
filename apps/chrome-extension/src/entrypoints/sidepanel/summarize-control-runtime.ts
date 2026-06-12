@@ -1,18 +1,14 @@
 import type { Settings, SlidesLayout } from "../../lib/settings";
 import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
-import { mountSummarizeControl } from "./pickers";
 import type { SlideTextMode } from "./slides-state";
 import { resolveSlidesRenderLayout } from "./slides-view-policy";
 import type { PanelState } from "./types";
 
 type SlidesTextControllerLike = {
-  getTextMode: () => SlideTextMode;
-  getTextToggleVisible: () => boolean;
   setTextMode: (value: SlideTextMode) => boolean;
 };
 
 type SummarizeControlRuntimeOptions = {
-  summarizeControlRoot: HTMLElement;
   renderMarkdownHostEl: HTMLElement;
   renderSlidesHostEl: HTMLElement;
   slidesLayoutEl: HTMLSelectElement;
@@ -86,7 +82,6 @@ export function createSummarizeControlRuntime(options: SummarizeControlRuntimeOp
     } else {
       options.queueSlidesRender();
     }
-    refreshSummarizeControl();
   };
 
   const handleSummarizeControlChange = async (value: SummarizeControlPayload) => {
@@ -103,7 +98,6 @@ export function createSummarizeControlRuntime(options: SummarizeControlRuntimeOp
           options.showSlideNotice(
             `Slide extraction requires ${tools.missing.join(", ")}. Install and restart the daemon.`,
           );
-          refreshSummarizeControl();
           return;
         }
       }
@@ -134,7 +128,6 @@ export function createSummarizeControlRuntime(options: SummarizeControlRuntimeOp
     ) {
       options.sendSummarize({ refresh: true });
     }
-    refreshSummarizeControl();
   };
 
   const retrySlidesStream = () => {
@@ -175,41 +168,10 @@ export function createSummarizeControlRuntime(options: SummarizeControlRuntimeOp
     applySlidesLayout();
   };
 
-  const summarizeControl = mountSummarizeControl(options.summarizeControlRoot, {
-    mode: options.panelState.slidesSession.inputMode,
-    slidesEnabled: options.panelState.slidesSession.slidesEnabled,
-    mediaAvailable: false,
-    videoLabel: "Video",
-    busy: false,
-    slidesTextMode: options.slidesTextController.getTextMode(),
-    slidesTextToggleVisible: options.slidesTextController.getTextToggleVisible(),
-    onSlidesTextModeChange: handleSlidesTextModeChange,
-    onChange: handleSummarizeControlChange,
-    onSummarize: () => options.sendSummarize(),
-  });
-
-  function refreshSummarizeControl() {
-    const state = options.panelState.slidesSession;
-    summarizeControl.update({
-      mode: state.inputMode,
-      slidesEnabled: state.slidesEnabled,
-      mediaAvailable: state.mediaAvailable,
-      busy: state.slidesBusy,
-      videoLabel: state.summarizeVideoLabel,
-      pageWords: state.summarizePageWords,
-      videoDurationSeconds: state.summarizeVideoDurationSeconds,
-      slidesTextMode: options.slidesTextController.getTextMode(),
-      slidesTextToggleVisible: options.slidesTextController.getTextToggleVisible(),
-      onSlidesTextModeChange: handleSlidesTextModeChange,
-      onChange: handleSummarizeControlChange,
-      onSummarize: () => options.sendSummarize(),
-    });
-  }
-
   return {
     applySlidesLayout,
     handleSummarizeControlChange,
-    refreshSummarizeControl,
+    handleSlidesTextModeChange,
     retrySlidesStream,
     setSlidesLayout,
   };

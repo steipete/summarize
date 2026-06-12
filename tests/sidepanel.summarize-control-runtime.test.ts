@@ -5,6 +5,7 @@ import {
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import type { SlideTextMode } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-state";
 import { createSummarizeControlRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/summarize-control-runtime";
+import { createSummarizeControlView } from "../apps/chrome-extension/src/entrypoints/sidepanel/summarize-control-view";
 import type { Settings, SlidesLayout } from "../apps/chrome-extension/src/lib/settings";
 
 type SummarizeControlProps = {
@@ -131,7 +132,6 @@ function buildRuntime(
   };
 
   const runtime = createSummarizeControlRuntime({
-    summarizeControlRoot: {} as HTMLElement,
     renderMarkdownHostEl,
     renderSlidesHostEl,
     slidesLayoutEl,
@@ -156,11 +156,20 @@ function buildRuntime(
     queueSlidesRender: calls.queueSlidesRender,
     applySlidesRendererLayout: calls.applySlidesRendererLayout,
   });
+  const view = createSummarizeControlView({
+    root: {} as HTMLElement,
+    panelState: panelStateStore.state,
+    slidesTextController,
+    onSlidesTextModeChange: runtime.handleSlidesTextModeChange,
+    onChange: runtime.handleSummarizeControlChange,
+    onSummarize: () => calls.sendSummarize(),
+  });
 
   return {
     state: panelStateStore.state,
     calls,
     runtime,
+    view,
     currentProps: () => currentProps,
     renderMarkdownHostEl,
     renderSlidesHostEl,
@@ -174,6 +183,22 @@ describe("sidepanel summarize control runtime", () => {
     vi.restoreAllMocks();
     summarizeControlUpdate.mockReset();
     currentProps = null;
+  });
+
+  it("refreshes the mounted control from canonical panel state", () => {
+    const { state, view } = buildRuntime();
+    state.slidesSession.inputMode = "video";
+    state.slidesSession.slidesEnabled = true;
+    state.slidesSession.slidesBusy = true;
+
+    view.refresh();
+
+    expect(summarizeControlUpdate).toHaveBeenCalledOnce();
+    expect(currentProps).toMatchObject({
+      mode: "video",
+      slidesEnabled: true,
+      busy: true,
+    });
   });
 
   it("blocks enabling slides when required tools are missing", async () => {
