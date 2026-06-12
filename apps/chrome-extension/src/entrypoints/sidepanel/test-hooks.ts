@@ -5,7 +5,7 @@ import type { PanelPhase } from "./types";
 
 type SummarizeMode = { mode: "page" | "video"; slides: boolean };
 
-type SidepanelTestHooks = {
+export type SidepanelTestHooks = {
   applySlidesPayload?: (payload: SseSlidesData) => void;
   getRunId?: () => string | null;
   getSummaryMarkdown?: () => string;
@@ -32,44 +32,13 @@ type SidepanelTestHooks = {
   applySummarySnapshot?: (payload: { run: RunStart; markdown: string }) => void;
   applySummaryMarkdown?: (markdown: string) => void;
   applySlidesSummaryMarkdown?: (markdown: string) => void;
-  forceRenderSlides?: () => void;
+  forceRenderSlides?: () => number | void;
   showInlineError?: (message: string) => void;
   isInlineErrorVisible?: () => boolean;
   getInlineErrorMessage?: () => string;
 };
 
-export function registerSidepanelTestHooks(options: {
-  applySlidesPayload: (payload: SseSlidesData) => void;
-  getRunId: () => string | null;
-  getSummaryMarkdown: () => string;
-  getRetainedSlideSummaryMarkdown: () => string;
-  getSlideDescriptions: () => Array<[number, string]>;
-  getSlideSummaryEntries: () => Array<[number, string]>;
-  getSlideTitleEntries: () => Array<[number, string]>;
-  getPhase: () => PanelPhase;
-  getModel: () => string | null;
-  getSlidesTimeline: () => Array<{ index: number; timestamp: number | null }>;
-  getTranscriptTimedText: () => string | null;
-  getSlidesSummaryMarkdown: () => string;
-  getSlidesSummaryComplete: () => boolean;
-  getSlidesSummaryModel: () => string | null;
-  getChatEnabled: () => boolean;
-  getSettingsHydrated: () => boolean;
-  setTranscriptTimedText: (value: string | null) => void;
-  setSummarizeMode: (payload: SummarizeMode) => Promise<void>;
-  getSummarizeMode: () => { mode: "page" | "video"; slides: boolean; mediaAvailable: boolean };
-  getSlidesState: () => { slidesCount: number; layout: SlidesLayout; hasSlides: boolean };
-  renderSlidesNow: () => void;
-  applyUiState: (state: UiState) => void;
-  applyBgMessage: (message: BgToPanel) => void;
-  applySummarySnapshot: (payload: { run: RunStart; markdown: string }) => void;
-  applySummaryMarkdown: (markdown: string) => void;
-  applySlidesSummaryMarkdown: (markdown: string) => void;
-  forceRenderSlides: () => void;
-  showInlineError: (message: string) => void;
-  isInlineErrorVisible: () => boolean;
-  getInlineErrorMessage: () => string;
-}) {
+export function registerSidepanelTestHooks(options: Required<SidepanelTestHooks>) {
   const hooks = (
     globalThis as {
       __summarizeTestHooks?: SidepanelTestHooks;

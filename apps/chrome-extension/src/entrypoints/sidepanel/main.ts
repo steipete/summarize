@@ -10,14 +10,12 @@ import { createMetricsController } from "./metrics-controller";
 import { createPanelMessagingRuntime } from "./panel-messaging";
 import { createPanelStateStore } from "./panel-state-store";
 import { createSidepanelPresentationRuntime } from "./presentation-runtime";
-import { selectRetainedSlideSummaryMarkdown } from "./retained-slide-summary";
 import { createSidepanelRunRuntime } from "./run-runtime";
 import { createSidepanelSessionRuntime } from "./session-runtime";
 import { createSetupControlsRuntime } from "./setup-controls-runtime";
 import { friendlyFetchError } from "./setup-runtime";
-import { resolveSlidesInputMode } from "./slides-session-state";
 import { createSidepanelStateEffectsRuntime } from "./state-effects-runtime";
-import { registerSidepanelTestHooks } from "./test-hooks";
+import { registerSidepanelRuntimeTestHooks } from "./test-hooks-runtime";
 import { createTypographyController } from "./typography-controller";
 
 const dom = createSidepanelDom();
@@ -33,8 +31,6 @@ const {
   clearBtn,
   drawerEl,
   drawerToggleBtn,
-  inlineErrorEl,
-  inlineErrorMessageEl,
   lengthRoot,
   lineLooseBtn,
   lineTightBtn,
@@ -73,10 +69,6 @@ const panelStateStore = createPanelStateStore();
 const panelState = panelStateStore.state;
 const getActiveTabId = () => panelState.navigation.activeTabId;
 const getActiveTabUrl = () => panelState.navigation.activeTabUrl;
-const getSlidesState = () => panelState.slidesSession;
-const updateSlidesState = (value: Partial<typeof panelState.slidesSession>) => {
-  panelStateStore.dispatch({ type: "slides-session-update", value });
-};
 const getPanelSession = () => panelState.panelSession;
 const updatePanelSession = (value: Partial<typeof panelState.panelSession>) => {
   panelStateStore.dispatch({ type: "panel-session-update", value });
@@ -124,19 +116,10 @@ const presentationRuntime = createSidepanelPresentationRuntime({
 const {
   panelCacheController,
   feedback: { bindActions: bindFeedbackActions, errorController, headerController },
-  phase: { setPhase },
-  summary: { renderMarkdown, sendSummarize },
-  slides: {
-    applySlidesPayload,
-    controlRuntime: summarizeControlRuntime,
-    refreshSummarizeControl,
-    setSlidesTranscriptTimedText,
-    textController: slidesTextController,
-    updateSlideSummaryFromMarkdown,
-    viewRuntime: slidesViewRuntime,
-  },
+  summary: { sendSummarize },
+  slides: { controlRuntime: summarizeControlRuntime, viewRuntime: slidesViewRuntime },
 } = presentationRuntime;
-const { queueSlidesRender, renderMarkdownDisplay, updateSlidesTextState } = slidesViewRuntime;
+const { renderMarkdownDisplay } = slidesViewRuntime;
 const { applySlidesLayout, setSlidesLayout } = summarizeControlRuntime;
 
 const sessionRuntime = createSidepanelSessionRuntime({
@@ -165,7 +148,7 @@ const runRuntime = createSidepanelRunRuntime({
   send,
   syncWithActiveTab,
 });
-const { autoSummarizeRuntime, streamController, summaryRunRuntime } = runRuntime;
+const { autoSummarizeRuntime, streamController } = runRuntime;
 
 bindRunActions({ abortSummaryStream: streamController.abort });
 
@@ -218,76 +201,13 @@ function handleBgMessage(msg: BgToPanel) {
   stateEffectsRuntime.handleBgMessage(msg);
 }
 
-registerSidepanelTestHooks({
-  applySlidesPayload,
-  getRunId: () => panelState.runId,
-  getSummaryMarkdown: () => panelState.summaryMarkdown ?? "",
-  getRetainedSlideSummaryMarkdown: () => selectRetainedSlideSummaryMarkdown(panelState) ?? "",
-  getSlideDescriptions: () => slidesTextController.getDescriptionEntries(),
-  getSlideSummaryEntries: () => slidesTextController.getSummaryEntries(),
-  getSlideTitleEntries: () => Array.from(slidesTextController.getTitles().entries()),
-  getPhase: () => panelState.phase,
-  getModel: () => panelState.lastMeta.model ?? null,
-  getSlidesTimeline: () =>
-    panelState.slides?.slides.map((slide) => ({
-      index: slide.index,
-      timestamp: Number.isFinite(slide.timestamp) ? slide.timestamp : null,
-    })) ?? [],
-  getTranscriptTimedText: () => slidesTextController.getTranscriptTimedText(),
-  getSlidesSummaryMarkdown: () => panelState.slidesSummary.markdown,
-  getSlidesSummaryComplete: () => panelState.slidesSummary.complete,
-  getSlidesSummaryModel: () => panelState.slidesSummary.model,
-  getChatEnabled: () => getPanelSession().chatEnabled,
-  getSettingsHydrated: () => getPanelSession().settingsHydrated,
-  setTranscriptTimedText: (value) => {
-    setSlidesTranscriptTimedText(value);
-    updateSlidesTextState();
-  },
-  setSummarizeMode: async (payload) => {
-    await summarizeControlRuntime.handleSummarizeControlChange(payload);
-    refreshSummarizeControl();
-  },
-  getSummarizeMode: () => ({
-    mode: resolveSlidesInputMode(getSlidesState()),
-    slides: getSlidesState().slidesEnabled,
-    mediaAvailable: getSlidesState().mediaAvailable,
-  }),
-  getSlidesState: () => ({
-    slidesCount: panelState.slides?.slides.length ?? 0,
-    layout: getSlidesState().slidesLayout,
-    hasSlides: Boolean(panelState.slides),
-  }),
-  renderSlidesNow: () => {
-    queueSlidesRender();
-  },
-  applyUiState: (state) => {
-    panelStateStore.dispatch({ type: "ui", ui: state });
-    stateEffectsRuntime.applyUiState(state);
-  },
-  applyBgMessage: handleBgMessage,
-  applySummarySnapshot: summaryRunRuntime.applySnapshot,
-  applySummaryMarkdown: (markdown) => {
-    renderMarkdown(markdown);
-    setPhase("idle");
-  },
-  applySlidesSummaryMarkdown: (markdown) => {
-    updateSlideSummaryFromMarkdown(markdown, {
-      preserveIfEmpty: true,
-      source: "slides-partial",
-    });
-    setPhase("idle");
-  },
-  forceRenderSlides: () => {
-    updateSlidesState({
-      slidesEnabled: true,
-      inputMode: "video",
-      inputModeOverride: "video",
-    });
-    return slidesViewRuntime.slidesRenderer.forceRender();
-  },
-  showInlineError: errorController.showInlineError,
-  isInlineErrorVisible: () => !inlineErrorEl.classList.contains("hidden"),
-  getInlineErrorMessage: () => inlineErrorMessageEl.textContent ?? "",
+registerSidepanelRuntimeTestHooks({
+  dom,
+  panelState,
+  dispatchPanelState: panelStateStore.dispatch,
+  presentationRuntime,
+  runRuntime,
+  stateEffectsRuntime,
 });
 
 const interactionRuntime = createSidepanelInteractionRuntime({
