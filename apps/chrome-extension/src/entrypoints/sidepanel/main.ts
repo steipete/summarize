@@ -230,6 +230,8 @@ const chatController = new ChatController({
   contextEl: chatContextStatusEl,
   markdown: md,
   limits: chatLimits,
+  panelState,
+  dispatchPanelState: panelStateStore.dispatch,
   scrollToBottom: () => scrollToBottom(),
   onNewContent: () => {
     renderInlineSlides(chatMessagesEl);
@@ -361,7 +363,7 @@ function attachSummaryRun(run: RunStart) {
   setPhase("connecting");
   updatePanelSession({ lastAction: "summarize" });
   window.clearTimeout(autoKickTimer);
-  if (panelState.chatStreaming) {
+  if (panelState.chat.streaming) {
     chatStreamRuntime.finishStreamingMessage();
   }
   const preserveChat = navigationRuntime.shouldPreserveChatForRun(run.url);
@@ -776,7 +778,7 @@ const syncWithActiveTab = () => navigationRuntime.syncWithActiveTab();
 
 async function clearCurrentView() {
   panelStateStore.dispatch({ type: "retained-slide-summary", value: null });
-  if (panelState.chatStreaming) {
+  if (panelState.chat.streaming) {
     requestAgentAbort("Cleared");
   }
   streamController.abort();
@@ -1089,7 +1091,6 @@ chatUiRuntime = createChatUiRuntime({
   persistHistory: (tabId, chatEnabled) => chatHistoryRuntime.persist(tabId, chatEnabled),
   restoreHistory: (tabId, summaryMarkdown) => chatHistoryRuntime.restore(tabId, summaryMarkdown),
   resetChatController: () => {
-    panelStateStore.dispatch({ type: "chat-streaming", value: false });
     chatController.reset();
   },
   resetChatSession: () => {
@@ -1268,7 +1269,6 @@ const { streamController } = summaryStreamRuntime;
 const uiStateRuntime = createUiStateRuntime({
   panelState,
   dispatchPanelState: panelStateStore.dispatch,
-  chatController,
   appearanceControls,
   typographyController,
   navigationRuntime,
@@ -1449,7 +1449,7 @@ const interactionRuntime = createSidepanelInteractionRuntime({
   setChatInputHeight: (value) => {
     chatInputEl.style.height = value;
   },
-  isChatStreaming: () => panelState.chatStreaming,
+  isChatStreaming: () => panelState.chat.streaming,
   getQueuedChatCount: () => chatQueueRuntime.getQueueLength(),
   enqueueChatMessage: (value) => chatQueueRuntime.enqueueChatMessage(value),
   maybeSendQueuedChat: () => {
@@ -1639,7 +1639,7 @@ async function runAgentLoop() {
 
 const chatStreamRuntime = createChatStreamRuntime({
   chatEnabled: () => getPanelSession().chatEnabled,
-  isChatStreaming: () => panelState.chatStreaming,
+  isChatStreaming: () => panelState.chat.streaming,
   setChatStreaming: (value) => {
     panelStateStore.dispatch({ type: "chat-streaming", value });
   },

@@ -36,7 +36,7 @@ function createPanelState(): PanelState {
     slides: null,
     phase: "idle",
     error: null,
-    chatStreaming: false,
+    chat: { messages: [], streaming: false },
   };
 }
 

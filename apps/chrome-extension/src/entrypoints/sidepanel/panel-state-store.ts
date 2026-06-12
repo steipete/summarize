@@ -34,6 +34,11 @@ export type PanelStateAction =
   | { type: "slides"; slides: PanelState["slides"] }
   | { type: "slides-run"; runId: string | null }
   | { type: "chat-streaming"; value: boolean }
+  | { type: "chat-reset" }
+  | { type: "chat-messages"; messages: PanelState["chat"]["messages"] }
+  | { type: "chat-message-add"; message: PanelState["chat"]["messages"][number] }
+  | { type: "chat-message-replace"; message: PanelState["chat"]["messages"][number] }
+  | { type: "chat-message-remove"; id: string }
   | {
       type: "attach-run";
       tabId: PanelState["activeRun"]["tabId"];
@@ -96,10 +101,13 @@ export function createInitialPanelState(): PanelState {
     summaryMarkdown: null,
     summaryFromCache: null,
     retainedSlideSummary: null,
+    chat: {
+      messages: [],
+      streaming: false,
+    },
     slides: null,
     phase: "idle",
     error: null,
-    chatStreaming: false,
   };
 }
 
@@ -204,7 +212,55 @@ export function reducePanelState(state: PanelState, action: PanelStateAction): P
     case "slides-run":
       return { ...state, slidesRunId: action.runId };
     case "chat-streaming":
-      return { ...state, chatStreaming: action.value };
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          streaming: action.value,
+        },
+      };
+    case "chat-reset":
+      return {
+        ...state,
+        chat: {
+          messages: [],
+          streaming: false,
+        },
+      };
+    case "chat-messages":
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          messages: action.messages,
+        },
+      };
+    case "chat-message-add":
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          messages: [...state.chat.messages, action.message],
+        },
+      };
+    case "chat-message-replace":
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          messages: state.chat.messages.map((message) =>
+            message.id === action.message.id ? action.message : message,
+          ),
+        },
+      };
+    case "chat-message-remove":
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          messages: state.chat.messages.filter((message) => message.id !== action.id),
+        },
+      };
     case "attach-run":
       return {
         ...state,

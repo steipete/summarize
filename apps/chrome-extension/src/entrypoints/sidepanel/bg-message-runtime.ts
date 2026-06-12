@@ -5,6 +5,7 @@ import {
   shouldAcceptRunForCurrentPage,
   shouldAcceptSlidesForCurrentPage,
 } from "./session-policy";
+import type { PanelState } from "./types";
 
 export function handleSidepanelBgMessage(options: {
   msg: BgToPanel;
@@ -73,14 +74,7 @@ type SlidesRunMessage = Extract<BgToPanel, { type: "slides:run" }>;
 type UiCacheMessage = Extract<BgToPanel, { type: "ui:cache" }>;
 
 export function createSidepanelBgMessageRuntime(options: {
-  panelState: {
-    ui: UiState | null;
-    error: string | null;
-    chatStreaming: boolean;
-    currentSource: { url: string | null } | null;
-    summaryMarkdown: string | null;
-    slides: unknown;
-  };
+  panelState: PanelState;
   dispatchPanelState?: (action: PanelStateAction) => void;
   applyUiState: (state: UiState) => void;
   setStatus: (text: string) => void;
@@ -149,7 +143,7 @@ export function createSidepanelBgMessageRuntime(options: {
           const detail = message && message.trim().length > 0 ? message : "Something went wrong.";
           options.setStatus(`Error: ${detail}`);
           options.setPhase("error", { error: detail });
-          if (options.panelState.chatStreaming) {
+          if (options.panelState.chat.streaming) {
             options.finishStreamingMessage();
           }
         },

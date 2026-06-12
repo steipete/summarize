@@ -144,6 +144,42 @@ describe("sidepanel panel state store", () => {
     });
   });
 
+  it("owns chat messages and streaming state", () => {
+    const store = createPanelStateStore();
+    const userMessage = {
+      id: "user-1",
+      role: "user" as const,
+      content: "Hello",
+      timestamp: 1,
+    };
+    const assistantMessage = {
+      id: "assistant-1",
+      role: "assistant" as const,
+      content: "Hi",
+      timestamp: 2,
+    };
+
+    store.dispatch({ type: "chat-message-add", message: userMessage });
+    store.dispatch({ type: "chat-message-add", message: assistantMessage });
+    store.dispatch({ type: "chat-streaming", value: true });
+    store.dispatch({
+      type: "chat-message-replace",
+      message: { ...assistantMessage, content: "Updated" },
+    });
+    store.dispatch({ type: "chat-message-remove", id: userMessage.id });
+
+    expect(store.state.chat).toEqual({
+      messages: [{ ...assistantMessage, content: "Updated" }],
+      streaming: true,
+    });
+
+    store.dispatch({ type: "chat-messages", messages: [userMessage] });
+    expect(store.state.chat.messages).toEqual([userMessage]);
+
+    store.dispatch({ type: "chat-reset" });
+    expect(store.state.chat).toEqual({ messages: [], streaming: false });
+  });
+
   it("restores cached sessions without replacing omitted slides", () => {
     const store = createPanelStateStore();
     store.dispatch({

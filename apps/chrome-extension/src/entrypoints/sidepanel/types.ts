@@ -61,8 +61,11 @@ export type PanelState = {
     markdown: string;
     url: string | null;
   } | null;
+  chat: {
+    messages: ChatMessage[];
+    streaming: boolean;
+  };
   slides: SseSlidesData | null;
   phase: PanelPhase;
   error: string | null;
-  chatStreaming: boolean;
 };

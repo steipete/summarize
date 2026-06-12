@@ -5,8 +5,9 @@ import {
   computeChatContextUsage,
   hasUserChatMessage,
 } from "./chat-state";
+import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
 import { parseTimestampSeconds } from "./timestamp-links";
-import type { ChatMessage } from "./types";
+import type { ChatMessage, PanelState } from "./types";
 
 type RenderOptions = { prepend?: boolean; scroll?: boolean };
 
@@ -17,18 +18,21 @@ export type ChatControllerOptions = {
   contextEl: HTMLDivElement;
   markdown: MarkdownIt;
   limits: ChatHistoryLimits;
+  panelState: PanelState;
+  dispatchPanelState?: (action: PanelStateAction) => void;
   scrollToBottom?: () => void;
   onNewContent?: () => void;
 };
 
 export class ChatController {
-  private messages: ChatMessage[] = [];
   private readonly messagesEl: HTMLDivElement;
   private readonly inputEl: HTMLTextAreaElement;
   private readonly sendBtn: HTMLButtonElement;
   private readonly contextEl: HTMLDivElement;
   private readonly markdown: MarkdownIt;
   private readonly limits: ChatHistoryLimits;
+  private readonly panelState: PanelState;
+  private readonly dispatchPanelState?: (action: PanelStateAction) => void;
   private readonly scrollToBottom?: () => void;
   private readonly onNewContent?: () => void;
   private readonly typingIndicatorHtml =
@@ -43,24 +47,26 @@ export class ChatController {
     this.contextEl = opts.contextEl;
     this.markdown = opts.markdown;
     this.limits = opts.limits;
+    this.panelState = opts.panelState;
+    this.dispatchPanelState = opts.dispatchPanelState;
     this.scrollToBottom = opts.scrollToBottom;
     this.onNewContent = opts.onNewContent;
   }
 
   getMessages(): ChatMessage[] {
-    return this.messages;
+    return this.panelState.chat.messages;
   }
 
   hasUserMessages(): boolean {
-    return hasUserChatMessage(this.messages);
+    return hasUserChatMessage(this.getMessages());
   }
 
   buildRequestMessages() {
-    return buildChatRequestMessages(this.messages);
+    return buildChatRequestMessages(this.getMessages());
   }
 
   reset() {
-    this.messages = [];
+    this.dispatch({ type: "chat-reset" });
     this.messagesEl.innerHTML = "";
     this.inputEl.value = "";
     this.sendBtn.disabled = false;
@@ -69,7 +75,7 @@ export class ChatController {
   }
 
   setMessages(messages: ChatMessage[], opts?: RenderOptions) {
-    this.messages = messages;
+    this.dispatch({ type: "chat-messages", messages });
     this.messagesEl.innerHTML = "";
     for (const message of messages) {
       this.renderMessage(message, { scroll: false });
@@ -83,19 +89,19 @@ export class ChatController {
   }
 
   addMessage(message: ChatMessage, opts?: RenderOptions) {
-    this.messages.push(message);
+    this.dispatch({ type: "chat-message-add", message });
     this.renderMessage(message, opts);
     this.updateVisibility();
     this.updateContextStatus();
   }
 
   replaceMessage(message: ChatMessage, opts?: RenderOptions) {
-    const index = this.messages.findIndex((item) => item.id === message.id);
+    const index = this.getMessages().findIndex((item) => item.id === message.id);
     if (index === -1) {
       this.addMessage(message, opts);
       return;
     }
-    this.messages[index] = message;
+    this.dispatch({ type: "chat-message-replace", message });
     const existing = this.messagesEl.querySelector(`[data-id="${message.id}"]`);
     if (existing) {
       const nextEl = this.createMessageElement(message);
@@ -112,9 +118,9 @@ export class ChatController {
   }
 
   removeMessage(id: string) {
-    const index = this.messages.findIndex((item) => item.id === id);
+    const index = this.getMessages().findIndex((item) => item.id === id);
     if (index === -1) return;
-    this.messages.splice(index, 1);
+    this.dispatch({ type: "chat-message-remove", id });
     const existing = this.messagesEl.querySelector(`[data-id="${id}"]`);
     existing?.remove();
     this.updateVisibility();
@@ -122,9 +128,16 @@ export class ChatController {
   }
 
   updateStreamingMessage(content: string) {
-    const lastMsg = this.messages[this.messages.length - 1];
+    const messages = this.getMessages();
+    const lastMsg = messages[messages.length - 1];
     if (lastMsg?.role === "assistant") {
-      lastMsg.content = [{ type: "text", text: content }];
+      this.dispatch({
+        type: "chat-message-replace",
+        message: {
+          ...lastMsg,
+          content: [{ type: "text", text: content }],
+        },
+      });
       const msgEl = this.messagesEl.querySelector(`[data-id="${lastMsg.id}"]`);
       if (msgEl) {
         if (content.trim()) {
@@ -144,7 +157,8 @@ export class ChatController {
   }
 
   finishStreamingMessage() {
-    const lastMsg = this.messages[this.messages.length - 1];
+    const messages = this.getMessages();
+    const lastMsg = messages[messages.length - 1];
     if (lastMsg?.role === "assistant") {
       const msgEl = this.messagesEl.querySelector(`[data-id="${lastMsg.id}"]`);
       if (msgEl) {
@@ -170,7 +184,7 @@ export class ChatController {
   }
 
   private updateVisibility() {
-    const hasMessages = this.messages.length > 0;
+    const hasMessages = this.getMessages().length > 0;
     this.messagesEl.classList.toggle("isHidden", !hasMessages);
   }
 
@@ -181,7 +195,7 @@ export class ChatController {
       this.contextEl.classList.add("isHidden");
       return;
     }
-    const usage = computeChatContextUsage(this.messages, this.limits);
+    const usage = computeChatContextUsage(this.getMessages(), this.limits);
     this.contextEl.classList.remove("isHidden");
     this.contextEl.textContent = `Context ${usage.percent}% · ${usage.totalMessages} msgs · ${usage.totalChars.toLocaleString()} chars`;
     if (usage.percent >= 85) {
@@ -197,6 +211,14 @@ export class ChatController {
       if (seconds == null) return match;
       return `[${time}](timestamp:${seconds})`;
     });
+  }
+
+  private dispatch(action: PanelStateAction) {
+    if (this.dispatchPanelState) {
+      this.dispatchPanelState(action);
+    } else {
+      applyPanelStateAction(this.panelState, action);
+    }
   }
 
   private createMessageElement(message: ChatMessage): HTMLDivElement {

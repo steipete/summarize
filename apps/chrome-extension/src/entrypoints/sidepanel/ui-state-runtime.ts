@@ -6,7 +6,7 @@ import {
   shouldIgnoreTransientPanelTabState,
   shouldInvalidateCurrentSource,
 } from "./session-policy";
-import type { ChatMessage, PanelPhase, PanelState, UiState } from "./types";
+import type { PanelPhase, PanelState, UiState } from "./types";
 
 type AppearanceControlsLike = {
   setAutoValue: (value: boolean) => void;
@@ -34,10 +34,6 @@ type NavigationRuntimeLike = {
   getLastAgentNavigationUrl: () => string | null;
 };
 
-type ChatControllerLike = {
-  getMessages: () => ChatMessage[];
-};
-
 type PanelCacheControllerLike = {
   resolve: (tabId: number, url: string) => PanelCachePayload | null;
   request: (tabId: number, url: string, preserveChat: boolean) => void;
@@ -46,7 +42,6 @@ type PanelCacheControllerLike = {
 type UiStateRuntimeOpts = {
   panelState: PanelState;
   dispatchPanelState?: (action: PanelStateAction) => void;
-  chatController: ChatControllerLike;
   appearanceControls: AppearanceControlsLike;
   typographyController: TypographyControllerLike;
   navigationRuntime: NavigationRuntimeLike;
@@ -173,8 +168,8 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       : (state.tab.title ?? null);
     const preferUrlMode = nextTabUrl ? shouldPreferUrlMode(nextTabUrl) : false;
     const hasActiveChat =
-      opts.panelState.chatStreaming ||
-      opts.chatController.getMessages().length > 0 ||
+      opts.panelState.chat.streaming ||
+      opts.panelState.chat.messages.length > 0 ||
       chatEnabledValue;
     const hasMediaInfo = state.media != null;
     const mediaFromState = Boolean(state.media && (state.media.hasVideo || state.media.hasAudio));
@@ -210,7 +205,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       }
       const previousTabId = activeTabId;
       dispatchPanelState(opts, { type: "active-tab", tabId: nextTabId, url: nextTabUrl });
-      if (opts.panelState.chatStreaming && navigation.shouldAbortChatStream) {
+      if (opts.panelState.chat.streaming && navigation.shouldAbortChatStream) {
         opts.requestAgentAbort("Tab changed");
       }
       if (navigation.shouldClearChat) {
@@ -324,7 +319,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       opts.panelState.panelSession.chatEnabled &&
       opts.panelState.navigation.activeTabId &&
       !shouldPreferUrlMode(nextTabUrl ?? "") &&
-      opts.chatController.getMessages().length === 0
+      opts.panelState.chat.messages.length === 0
     ) {
       void opts.restoreChatHistory();
     }

@@ -9,7 +9,7 @@ function createRuntime(
     panelState: {
       ui: null,
       error: null,
-      chatStreaming: false,
+      chat: { messages: [], streaming: false },
       currentSource: { url: "https://www.youtube.com/watch?v=current" },
       summaryMarkdown: null,
       slides: null,
@@ -124,7 +124,7 @@ describe("sidepanel background message runtime", () => {
       panelState: {
         ui: null,
         error: null,
-        chatStreaming: true,
+        chat: { messages: [], streaming: true },
         currentSource: { url: "https://www.youtube.com/watch?v=current" },
         summaryMarkdown: null,
         slides: null,
@@ -220,7 +220,7 @@ describe("sidepanel background message runtime", () => {
       panelState: {
         ui: null,
         error: null,
-        chatStreaming: false,
+        chat: { messages: [], streaming: false },
         currentSource: { url: "https://www.youtube.com/watch?v=current" },
         summaryMarkdown: "Summary markdown",
         slides: {},
