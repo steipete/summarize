@@ -16,7 +16,6 @@ import {
 } from "./flows/asset/input.js";
 import { outputExtractedAsset } from "./flows/asset/output.js";
 import type { AssetSummaryResult, SummarizeAssetArgs } from "./flows/asset/types.js";
-import { runUrlFlow } from "./flows/url/flow.js";
 import type { UrlFlowContext } from "./flows/url/types.js";
 import { createTempFileFromStdin } from "./stdin-temp-file.js";
 
@@ -79,9 +78,7 @@ export async function executeRunnerInput(options: RunnerExecutionOptions) {
     executeUrlSummary,
   } = options;
   const runResolvedUrl = (ctx: UrlFlowContext, targetUrl: string, targetIsYoutubeUrl: boolean) =>
-    slidesEnabled
-      ? runUrlFlow({ ctx, url: targetUrl, isYoutubeUrl: targetIsYoutubeUrl })
-      : executeUrlSummary({ ctx, url: targetUrl, isYoutubeUrl: targetIsYoutubeUrl });
+    executeUrlSummary({ ctx, url: targetUrl, isYoutubeUrl: targetIsYoutubeUrl });
   const slidesDirectInputUrl =
     slidesEnabled && inputTarget.kind === "file" && isDirectVideoInput(inputTarget.filePath)
       ? pathToFileURL(inputTarget.filePath).href
