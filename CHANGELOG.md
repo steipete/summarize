@@ -10,6 +10,7 @@
 - Network safety: block private IPv4 targets embedded in the IPv4-translatable IPv6 prefix.
 - Slides: ignore invalid zero-index slide markers without hanging while extracting slide references.
 - Summary length: use `long` as the built-in default across the CLI, daemon, and Chrome extension; explicit and configured lengths remain unchanged.
+- YouTube captions: ignore WebVTT header metadata, cue identifiers, comments, styles, and regions when building transcripts.
 
 ## 0.18.0 - 2026-06-12
 

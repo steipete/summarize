@@ -236,34 +236,36 @@ function parseXml(raw: string): YoutubeCaptionTranscript | null {
 function parseVtt(raw: string): YoutubeCaptionTranscript | null {
   const lines: YoutubeCaptionLine[] = [];
   let hasTiming = false;
-  let startMs: number | null = null;
-  let endMs: number | null = null;
-  let textLines: string[] = [];
-  const flush = () => {
-    const text = normalizeYoutubeCaptionText(textLines.join(" "));
-    if (text) lines.push({ startMs, endMs, text });
-    startMs = null;
-    endMs = null;
-    textLines = [];
-  };
-  for (const line of raw.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      flush();
+  const blocks = raw.replace(/\r\n?/g, "\n").split(/\n[ \t]*\n/);
+  for (const block of blocks) {
+    const blockLines = block
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const firstLine = blockLines[0] ?? "";
+    if (
+      !firstLine ||
+      /^WEBVTT(?:[ \t].*)?$/i.test(firstLine) ||
+      /^(NOTE|STYLE|REGION)(?:[ \t]|$)/i.test(firstLine)
+    ) {
       continue;
     }
-    const timing = /^(\S+)\s+-->\s+(\S+)/.exec(trimmed);
-    if (timing) {
-      hasTiming = true;
-      flush();
-      startMs = timing[1] ? parseTimestampStringToMs(timing[1]) : null;
-      endMs = timing[2] ? parseTimestampStringToMs(timing[2]) : null;
-      continue;
-    }
-    if (trimmed === "WEBVTT" || /^\d+$/.test(trimmed)) continue;
-    textLines.push(trimmed);
+
+    const timingIndex = blockLines
+      .slice(0, 2)
+      .findIndex((line) => /^(\S+)\s+-->\s+(\S+)/.test(line));
+    if (timingIndex < 0) continue;
+    const timing = /^(\S+)\s+-->\s+(\S+)/.exec(blockLines[timingIndex] ?? "");
+    if (!timing) continue;
+    hasTiming = true;
+    const text = normalizeYoutubeCaptionText(blockLines.slice(timingIndex + 1).join(" "));
+    if (!text) continue;
+    lines.push({
+      startMs: timing[1] ? parseTimestampStringToMs(timing[1]) : null,
+      endMs: timing[2] ? parseTimestampStringToMs(timing[2]) : null,
+      text,
+    });
   }
-  flush();
   return hasTiming ? transcriptFromLines(lines) : null;
 }
 

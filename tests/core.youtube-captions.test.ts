@@ -82,6 +82,43 @@ describe("YouTube caption codec", () => {
     });
   });
 
+  it("ignores WebVTT header metadata, cue identifiers, and metadata blocks", () => {
+    const transcript = parseYoutubeCaptionPayload(
+      [
+        "WEBVTT - YouTube captions",
+        "Kind: captions",
+        "Language: en",
+        "",
+        "NOTE generated metadata",
+        "00:00:00.000 --> 00:00:01.000",
+        "This comment is not a cue.",
+        "",
+        "STYLE",
+        "::cue { color: lime; }",
+        "",
+        "REGION",
+        "id:sidebar",
+        "width:40%",
+        "",
+        "cue-17",
+        "00:00:02.000 --> 00:00:04.000 align:start position:0%",
+        "Actual caption",
+        "second line",
+      ].join("\n"),
+    );
+
+    expect(transcript).toMatchObject({
+      text: "Actual caption second line",
+      segments: [
+        {
+          startMs: 2_000,
+          endMs: 4_000,
+          text: "Actual caption second line",
+        },
+      ],
+    });
+  });
+
   it("tries canonical JSON3, base, and VTT variants until one parses", async () => {
     const loadText = vi.fn(async (url: string) =>
       url.includes("fmt=vtt")
