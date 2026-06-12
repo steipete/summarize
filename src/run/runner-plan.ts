@@ -1,10 +1,8 @@
 import type { Command } from "commander";
-import { createSummarizeModelResources } from "../application/execution-resources.js";
-import { createRunFlowContexts } from "../application/flow-contexts.js";
+import { createSummarizeExecutionResources } from "../application/execution-resources.js";
 import { resolveSummarizeRun } from "../application/run-spec.js";
 import { type CacheState } from "../cache.js";
 import type { ExecFileFn } from "../markitdown.js";
-import { scopeTranscriptCacheForDiarization } from "../shared/transcript-diarization-cache-scope.js";
 import { resolveSpeakerIdentificationSettings } from "../speaker-identification/index.js";
 import {
   createThemeRenderer,
@@ -155,16 +153,9 @@ export async function createRunnerPlan(options: {
   });
   Object.assign(envForRun, resolvedRun.bindings.envForRun);
   const runContext = resolvedRun.bindings.context;
-  const runSpec = resolvedRun.spec;
-  const {
-    config,
-    configPath,
-    openaiRequestOptions,
-    openaiRequestOptionsOverride,
-    cliReasoningEffortOverride,
-  } = runContext;
-  const { configModelLabel } = runSpec;
-  promptOverride = runSpec.promptOverride;
+  const { config, openaiRequestOptions, openaiRequestOptionsOverride, cliReasoningEffortOverride } =
+    runContext;
+  promptOverride = resolvedRun.spec.promptOverride;
   perfTrace?.mark("plan:context");
 
   const themeName = resolveThemeNameFromSources({
@@ -198,13 +189,12 @@ export async function createRunnerPlan(options: {
   });
 
   const transcriptNamespace = `yt:${youtubeMode}`;
-  let cacheState = await createCacheStateFromConfig({
+  const cacheState = await createCacheStateFromConfig({
     envForRun,
     config,
     noCacheFlag,
     transcriptNamespace,
   });
-  cacheState = scopeTranscriptCacheForDiarization(cacheState, diarizationMode);
   const mediaCache = await createMediaCacheFromConfig({
     envForRun,
     config,
@@ -290,22 +280,6 @@ export async function createRunnerPlan(options: {
         restoreProgressAfterStdout,
       })
     : null;
-  const modelResources = createSummarizeModelResources({
-    resolvedRun,
-    env,
-    metricsEnv: env,
-    fetchImpl,
-    execFileImpl,
-    streamingEnabled,
-    summaryStream,
-    requestOptions,
-    log: (message) => writeVerbose(stderr, verbose, message, verboseColor, envForRun),
-    trace: (name, detail) => perfTrace?.mark(name, detail),
-  });
-  const { apiStatus, metrics } = modelResources.runtime;
-  const { trackedFetch, buildReport, estimateCostUsd, setTranscriptionCost } = metrics;
-  const { model } = modelResources;
-
   const writeViaFooter = (parts: string[]) => {
     if (json || extractMode) return;
     const filtered = parts.map((part) => part.trim()).filter(Boolean);
@@ -314,73 +288,54 @@ export async function createRunnerPlan(options: {
     stderr.write(`${themeForStderr.dim(`via ${filtered.join(", ")}`)}\n`);
     restoreProgressAfterStdout?.();
   };
-
-  const runtimeHooks = {
-    setTranscriptionCost,
-    writeViaFooter,
-    clearProgressForStdout,
-    restoreProgressAfterStdout,
-    setClearProgressBeforeStdout,
-    clearProgressIfCurrent,
-    buildReport,
-    estimateCostUsd,
-  };
-  const { summarizeAsset, assetSummaryContext, urlFlowContext } = createRunFlowContexts({
+  const executionResources = createSummarizeExecutionResources({
+    resolvedRun,
+    env,
+    metricsEnv: env,
+    fetchImpl,
+    execFileImpl,
     cacheState,
     mediaCache,
-    io: {
-      env,
-      envForRun,
-      stdout,
-      stderr,
-      execFileImpl,
-      fetch: trackedFetch,
-    },
-    flags: {
-      timeoutMs: runSpec.timeoutMs,
-      maxExtractCharacters: extractMode ? maxExtractCharacters : null,
-      retries: runSpec.retries,
-      format: runSpec.format,
-      markdownMode: runSpec.markdownMode,
-      preprocessMode: runSpec.preprocessMode,
-      youtubeMode: runSpec.youtubeMode,
-      firecrawlMode: runSpec.firecrawlMode,
-      videoMode: runSpec.videoMode,
-      embeddedVideoMode: runSpec.embeddedVideoMode,
-      transcriptTimestamps,
-      transcriptDiarization: runSpec.transcriptDiarization,
-      speakerIdentification,
-      outputLanguage: runSpec.outputLanguage,
-      lengthArg: runSpec.lengthArg,
-      forceSummary: runSpec.forceSummary,
-      promptOverride: runSpec.promptOverride,
-      lengthInstruction: runSpec.lengthInstruction,
-      languageInstruction: runSpec.languageInstruction,
-      summaryCacheBypass: noCacheFlag,
-      maxOutputTokensArg: runSpec.maxOutputTokensArg,
-      json,
+    stdout,
+    stderr,
+    summaryStream,
+    requestOptions,
+    flow: {
+      runStartedAtMs,
+      streamingEnabled,
       extractMode,
+      maxExtractCharacters: extractMode ? maxExtractCharacters : null,
+      transcriptTimestamps,
+      speakerIdentification,
+      summaryCacheBypass: noCacheFlag,
+      json,
       metricsEnabled,
       metricsDetailed,
       shouldComputeReport,
-      runStartedAtMs,
       verbose,
       verboseColor,
       progressEnabled,
       streamMode,
-      streamingEnabled,
       plain,
-      configPath,
-      configModelLabel,
       slides: slidesSettings,
       slidesDebug,
       slidesOutput: true,
       throwOnAssetLikeHtmlError: true,
     },
-    model,
-    runtimeHooks,
+    adapterHooks: {
+      writeViaFooter,
+      clearProgressForStdout,
+      restoreProgressAfterStdout,
+      setClearProgressBeforeStdout,
+      clearProgressIfCurrent,
+    },
+    log: (message) => writeVerbose(stderr, verbose, message, verboseColor, envForRun),
+    trace: (name, detail) => perfTrace?.mark(name, detail),
     perfTrace,
   });
+  const { apiStatus, metrics } = executionResources.modelResources.runtime;
+  const { trackedFetch, buildReport, estimateCostUsd } = metrics;
+  const { summarizeAsset, assetSummaryContext, urlFlowContext } = executionResources;
   const assetInputContext = createRunnerAssetInputContext({
     summarizeMediaFileImpl,
     assetSummaryContext,

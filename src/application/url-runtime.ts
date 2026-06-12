@@ -2,9 +2,7 @@ import { Writable } from "node:stream";
 import type { SummaryStreamHandler } from "../engine/events.js";
 import { executeAssetSummary } from "../run/flows/asset/summary.js";
 import type { UrlFlowContext } from "../run/flows/url/types.js";
-import { scopeTranscriptCacheForDiarization } from "../shared/transcript-diarization-cache-scope.js";
-import { createSummarizeModelResources } from "./execution-resources.js";
-import { createRunFlowContexts } from "./flow-contexts.js";
+import { createSummarizeExecutionResources } from "./execution-resources.js";
 import { resolveSummarizeRun } from "./run-spec.js";
 import type {
   SummarizeEventSink,
@@ -64,85 +62,32 @@ export function createSummarizeUrlFlowContext(args: {
   const stderr = process.stderr;
 
   const summaryStream = createEventSummaryStreamHandler(emit);
-  const modelResources = createSummarizeModelResources({
+  const resources = createSummarizeExecutionResources({
     resolvedRun: { spec, bindings },
     env: envForRun,
     metricsEnv: envForRun,
     fetchImpl,
     execFileImpl: execFile,
-    streamingEnabled: true,
-    summaryStream,
-  });
-  const { metrics } = modelResources.runtime;
-  const { model } = modelResources;
-
-  const urlCache = scopeTranscriptCacheForDiarization(cache, spec.transcriptDiarization);
-  const io: UrlFlowContext["io"] = {
-    env: envForRun,
-    envForRun,
+    cacheState: cache,
+    mediaCache,
     stdout,
     stderr,
-    execFileImpl: execFile,
-    fetch: metrics.trackedFetch,
-    ...(urlFetchImpl ? { urlFetch: urlFetchImpl } : {}),
-  };
-  const flags: UrlFlowContext["flags"] = {
-    timeoutMs: spec.timeoutMs,
-    maxExtractCharacters: spec.maxExtractCharacters,
-    retries: spec.retries,
-    format: spec.format,
-    markdownMode: spec.markdownMode,
-    preprocessMode: spec.preprocessMode,
-    youtubeMode: spec.youtubeMode,
-    firecrawlMode: spec.firecrawlMode,
-    videoMode: spec.videoMode,
-    embeddedVideoMode: spec.embeddedVideoMode,
-    transcriptTimestamps: spec.transcriptTimestamps,
-    transcriptDiarization: spec.transcriptDiarization,
-    speakerIdentification: null,
-    outputLanguage: spec.outputLanguage,
-    lengthArg: spec.lengthArg,
-    forceSummary: spec.forceSummary,
-    promptOverride: spec.promptOverride,
-    lengthInstruction: spec.lengthInstruction,
-    languageInstruction: spec.languageInstruction,
-    summaryCacheBypass: false,
-    maxOutputTokensArg: spec.maxOutputTokensArg,
-    json: false,
-    extractMode: extractOnly ?? false,
-    metricsEnabled: false,
-    metricsDetailed: false,
-    shouldComputeReport: false,
-    runStartedAtMs,
-    verbose: false,
-    verboseColor: false,
-    progressEnabled: false,
-    streamMode: "on",
-    streamingEnabled: true,
-    plain: true,
-    configPath: spec.configPath,
-    configModelLabel: spec.configModelLabel,
-    slides: slides ?? null,
-    slidesDebug: false,
-    slidesOutput: false,
-  };
-  const runtimeHooks = {
-    setTranscriptionCost: metrics.setTranscriptionCost,
-    writeViaFooter: () => {},
-    clearProgressForStdout: () => {},
-    restoreProgressAfterStdout: undefined,
-    setClearProgressBeforeStdout: () => {},
-    clearProgressIfCurrent: () => {},
-    buildReport: metrics.buildReport,
-    estimateCostUsd: metrics.estimateCostUsd,
-  };
-  const { assetSummaryContext, urlFlowContext } = createRunFlowContexts({
-    cacheState: urlCache,
-    mediaCache,
-    io,
-    flags,
-    model,
-    runtimeHooks,
+    urlFetch: urlFetchImpl,
+    summaryStream,
+    flow: {
+      runStartedAtMs,
+      streamingEnabled: true,
+      extractMode: extractOnly ?? false,
+      maxExtractCharacters: spec.maxExtractCharacters,
+      slides: slides ?? null,
+    },
+    adapterHooks: {
+      writeViaFooter: () => {},
+      clearProgressForStdout: () => {},
+      restoreProgressAfterStdout: undefined,
+      setClearProgressBeforeStdout: () => {},
+      clearProgressIfCurrent: () => {},
+    },
     eventHooks: {
       onModelChosen: (modelId) => emit({ type: "model-selected", modelId }),
       onExtracted: (content) => emit({ type: "content-extracted", content }),
@@ -158,10 +103,10 @@ export function createSummarizeUrlFlowContext(args: {
   });
 
   return {
-    ...urlFlowContext,
+    ...resources.urlFlowContext,
     hooks: {
-      ...urlFlowContext.hooks,
-      summarizeAsset: (args) => executeAssetSummary(assetSummaryContext, args),
+      ...resources.urlFlowContext.hooks,
+      summarizeAsset: (args) => executeAssetSummary(resources.assetSummaryContext, args),
     },
   };
 }
