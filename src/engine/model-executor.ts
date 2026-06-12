@@ -7,6 +7,7 @@ import type { ModelRequestOptions, OpenAiReasoningEffort } from "../llm/model-op
 import type { Prompt } from "../llm/prompt.js";
 import {
   cliProviderForRequiredEnv,
+  formatMissingCliModelError,
   gatewayProviderForRequiredEnv,
 } from "../llm/provider-capabilities.js";
 import type { ProviderRuntimeBindings } from "../llm/provider-profile.js";
@@ -101,33 +102,8 @@ export function createModelExecutor(deps: ModelExecutorDeps) {
   };
 
   const formatMissingModelError = (attempt: ModelAttempt): string => {
-    if (attempt.requiredEnv === "CLI_CLAUDE") {
-      return `Claude CLI not found for model ${attempt.userModelId}. Install Claude CLI or set CLAUDE_PATH.`;
-    }
-    if (attempt.requiredEnv === "CLI_CODEX") {
-      return `Codex CLI not found for model ${attempt.userModelId}. Install Codex CLI or set CODEX_PATH.`;
-    }
-    if (attempt.requiredEnv === "CLI_GEMINI") {
-      return `Gemini CLI not found for model ${attempt.userModelId}. Install Gemini CLI or set GEMINI_PATH.`;
-    }
-    if (attempt.requiredEnv === "CLI_AGENT") {
-      return `Cursor Agent CLI not found for model ${attempt.userModelId}. Install Cursor CLI or set AGENT_PATH.`;
-    }
-    if (attempt.requiredEnv === "CLI_OPENCLAW") {
-      return `OpenClaw CLI not found for model ${attempt.userModelId}. Install OpenClaw CLI or set OPENCLAW_PATH.`;
-    }
-    if (attempt.requiredEnv === "CLI_OPENCODE") {
-      return `OpenCode CLI not found for model ${attempt.userModelId}. Install OpenCode CLI or set OPENCODE_PATH.`;
-    }
-    if (attempt.requiredEnv === "CLI_COPILOT") {
-      return `GitHub Copilot CLI not found for model ${attempt.userModelId}. Install Copilot CLI or set COPILOT_PATH.`;
-    }
-    if (attempt.requiredEnv === "CLI_AGY") {
-      return `Antigravity CLI not found for model ${attempt.userModelId}. Install agy or set AGY_PATH.`;
-    }
-    if (attempt.requiredEnv === "CLI_PI") {
-      return `pi CLI not found for model ${attempt.userModelId}. Install pi or set PI_PATH.`;
-    }
+    const cliError = formatMissingCliModelError(attempt);
+    if (cliError) return cliError;
     return `Missing ${attempt.requiredEnv} for model ${attempt.userModelId}. Set the env var or choose a different --model.`;
   };
 

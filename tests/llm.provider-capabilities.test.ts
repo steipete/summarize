@@ -4,7 +4,9 @@ import {
   DEFAULT_CLI_MODELS,
   cliProviderForRequiredEnv,
   envHasRequiredKey,
+  formatMissingCliModelError,
   gatewayProviderForRequiredEnv,
+  getCliProviderProfile,
   isGatewayProvider,
   isVideoUnderstandingCapableModelId,
   parseCliProviderName,
@@ -55,6 +57,54 @@ describe("llm provider capabilities", () => {
     expect(gatewayProviderForRequiredEnv("OPENROUTER_API_KEY")).toBeNull();
     expect(isGatewayProvider("minimax")).toBe(true);
     expect(isGatewayProvider("openrouter")).toBe(false);
+  });
+
+  it("owns CLI missing-binary guidance in provider profiles", () => {
+    expect(getCliProviderProfile("gemini")).toMatchObject({
+      requiredEnv: "CLI_GEMINI",
+      defaultModel: "flash",
+      pathEnv: "GEMINI_PATH",
+    });
+
+    const cases = [
+      [
+        "CLI_CLAUDE",
+        "Claude CLI not found for model cli/test. Install Claude CLI or set CLAUDE_PATH.",
+      ],
+      ["CLI_CODEX", "Codex CLI not found for model cli/test. Install Codex CLI or set CODEX_PATH."],
+      [
+        "CLI_GEMINI",
+        "Gemini CLI not found for model cli/test. Install Gemini CLI or set GEMINI_PATH.",
+      ],
+      [
+        "CLI_AGENT",
+        "Cursor Agent CLI not found for model cli/test. Install Cursor CLI or set AGENT_PATH.",
+      ],
+      [
+        "CLI_OPENCLAW",
+        "OpenClaw CLI not found for model cli/test. Install OpenClaw CLI or set OPENCLAW_PATH.",
+      ],
+      [
+        "CLI_OPENCODE",
+        "OpenCode CLI not found for model cli/test. Install OpenCode CLI or set OPENCODE_PATH.",
+      ],
+      [
+        "CLI_COPILOT",
+        "GitHub Copilot CLI not found for model cli/test. Install Copilot CLI or set COPILOT_PATH.",
+      ],
+      ["CLI_AGY", "Antigravity CLI not found for model cli/test. Install agy or set AGY_PATH."],
+      ["CLI_PI", "pi CLI not found for model cli/test. Install pi or set PI_PATH."],
+    ] as const;
+
+    for (const [requiredEnv, expected] of cases) {
+      expect(formatMissingCliModelError({ requiredEnv, userModelId: "cli/test" })).toBe(expected);
+    }
+    expect(
+      formatMissingCliModelError({
+        requiredEnv: "OPENAI_API_KEY",
+        userModelId: "openai/gpt-5",
+      }),
+    ).toBeNull();
   });
 
   it("tracks native provider capabilities centrally", () => {

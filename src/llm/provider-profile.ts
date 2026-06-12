@@ -180,17 +180,88 @@ export function resolveProviderOpenAiOverrides({
   };
 }
 
-export const DEFAULT_CLI_MODELS: Record<CliProvider, string | null> = {
-  claude: "sonnet",
-  codex: null,
-  gemini: "flash",
-  agent: "auto",
-  openclaw: "main",
-  opencode: null,
-  copilot: null,
-  agy: null,
-  pi: null,
+type CliRequiredModelEnv = Extract<RequiredModelEnv, `CLI_${string}`>;
+
+export type CliProviderProfile = {
+  requiredEnv: CliRequiredModelEnv;
+  defaultModel: string | null;
+  missingBinaryLabel: string;
+  installLabel: string;
+  pathEnv: string;
 };
+
+const CLI_PROVIDER_PROFILES: Record<CliProvider, CliProviderProfile> = {
+  claude: {
+    requiredEnv: "CLI_CLAUDE",
+    defaultModel: "sonnet",
+    missingBinaryLabel: "Claude CLI",
+    installLabel: "Claude CLI",
+    pathEnv: "CLAUDE_PATH",
+  },
+  codex: {
+    requiredEnv: "CLI_CODEX",
+    defaultModel: null,
+    missingBinaryLabel: "Codex CLI",
+    installLabel: "Codex CLI",
+    pathEnv: "CODEX_PATH",
+  },
+  gemini: {
+    requiredEnv: "CLI_GEMINI",
+    defaultModel: "flash",
+    missingBinaryLabel: "Gemini CLI",
+    installLabel: "Gemini CLI",
+    pathEnv: "GEMINI_PATH",
+  },
+  agent: {
+    requiredEnv: "CLI_AGENT",
+    defaultModel: "auto",
+    missingBinaryLabel: "Cursor Agent CLI",
+    installLabel: "Cursor CLI",
+    pathEnv: "AGENT_PATH",
+  },
+  openclaw: {
+    requiredEnv: "CLI_OPENCLAW",
+    defaultModel: "main",
+    missingBinaryLabel: "OpenClaw CLI",
+    installLabel: "OpenClaw CLI",
+    pathEnv: "OPENCLAW_PATH",
+  },
+  opencode: {
+    requiredEnv: "CLI_OPENCODE",
+    defaultModel: null,
+    missingBinaryLabel: "OpenCode CLI",
+    installLabel: "OpenCode CLI",
+    pathEnv: "OPENCODE_PATH",
+  },
+  copilot: {
+    requiredEnv: "CLI_COPILOT",
+    defaultModel: null,
+    missingBinaryLabel: "GitHub Copilot CLI",
+    installLabel: "Copilot CLI",
+    pathEnv: "COPILOT_PATH",
+  },
+  agy: {
+    requiredEnv: "CLI_AGY",
+    defaultModel: null,
+    missingBinaryLabel: "Antigravity CLI",
+    installLabel: "agy",
+    pathEnv: "AGY_PATH",
+  },
+  pi: {
+    requiredEnv: "CLI_PI",
+    defaultModel: null,
+    missingBinaryLabel: "pi CLI",
+    installLabel: "pi",
+    pathEnv: "PI_PATH",
+  },
+};
+
+export const DEFAULT_CLI_MODELS = Object.fromEntries(
+  Object.entries(CLI_PROVIDER_PROFILES).map(([provider, profile]) => [
+    provider,
+    profile.defaultModel,
+  ]),
+) as Record<CliProvider, string | null>;
 
 export const DEFAULT_AUTO_CLI_ORDER: CliProvider[] = [
   "claude",
@@ -205,43 +276,37 @@ export const DEFAULT_AUTO_CLI_ORDER: CliProvider[] = [
   // pi is also excluded; use --cli pi or --model cli/pi explicitly.
 ];
 
-type CliRequiredModelEnv = Extract<RequiredModelEnv, `CLI_${string}`>;
-
-const CLI_REQUIRED_ENV_BY_PROVIDER: Record<CliProvider, CliRequiredModelEnv> = {
-  claude: "CLI_CLAUDE",
-  codex: "CLI_CODEX",
-  gemini: "CLI_GEMINI",
-  agent: "CLI_AGENT",
-  openclaw: "CLI_OPENCLAW",
-  opencode: "CLI_OPENCODE",
-  copilot: "CLI_COPILOT",
-  agy: "CLI_AGY",
-  pi: "CLI_PI",
-};
-
 export function parseCliProviderName(raw: string): CliProvider | null {
   const normalized = raw.trim().toLowerCase();
-  if (normalized === "claude") return "claude";
-  if (normalized === "codex") return "codex";
-  if (normalized === "gemini") return "gemini";
-  if (normalized === "agent") return "agent";
-  if (normalized === "openclaw") return "openclaw";
-  if (normalized === "opencode") return "opencode";
-  if (normalized === "copilot") return "copilot";
-  if (normalized === "agy") return "agy";
-  if (normalized === "pi") return "pi";
-  return null;
+  return Object.hasOwn(CLI_PROVIDER_PROFILES, normalized) ? (normalized as CliProvider) : null;
+}
+
+export function getCliProviderProfile(provider: CliProvider): CliProviderProfile {
+  return CLI_PROVIDER_PROFILES[provider];
 }
 
 export function requiredEnvForCliProvider(provider: CliProvider): RequiredModelEnv {
-  return CLI_REQUIRED_ENV_BY_PROVIDER[provider];
+  return getCliProviderProfile(provider).requiredEnv;
 }
 
 export function cliProviderForRequiredEnv(requiredEnv: RequiredModelEnv): CliProvider | null {
-  for (const [provider, candidate] of Object.entries(CLI_REQUIRED_ENV_BY_PROVIDER)) {
-    if (candidate === requiredEnv) return provider as CliProvider;
+  for (const [provider, profile] of Object.entries(CLI_PROVIDER_PROFILES)) {
+    if (profile.requiredEnv === requiredEnv) return provider as CliProvider;
   }
   return null;
+}
+
+export function formatMissingCliModelError({
+  requiredEnv,
+  userModelId,
+}: {
+  requiredEnv: RequiredModelEnv;
+  userModelId: string;
+}): string | null {
+  const provider = cliProviderForRequiredEnv(requiredEnv);
+  if (!provider) return null;
+  const profile = getCliProviderProfile(provider);
+  return `${profile.missingBinaryLabel} not found for model ${userModelId}. Install ${profile.installLabel} or set ${profile.pathEnv}.`;
 }
 
 export function isGatewayProvider(provider: string): provider is GatewayProvider {

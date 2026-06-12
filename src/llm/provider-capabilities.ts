@@ -3,7 +3,9 @@ export {
   DEFAULT_CLI_MODELS,
   cliProviderForRequiredEnv,
   envHasRequiredKey,
+  formatMissingCliModelError,
   gatewayProviderForRequiredEnv,
+  getCliProviderProfile,
   getGatewayProviderProfile,
   isGatewayProvider,
   isVideoUnderstandingCapableModelId,
@@ -22,6 +24,7 @@ export {
 export type {
   GatewayProvider,
   GatewayProviderProfile,
+  CliProviderProfile,
   ProviderOpenAiOverrides,
   ProviderExecution,
   ProviderRuntimeBindings,
