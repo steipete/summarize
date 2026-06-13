@@ -43,6 +43,18 @@ describe("resolveSlideSettings", () => {
     });
   });
 
+  it("disables auto-tuning for an explicit scene threshold", () => {
+    const settings = resolveSlideSettings({
+      slides: true,
+      slidesSceneThreshold: "0.2",
+      slidesSceneThresholdExplicit: true,
+      cwd: "/tmp",
+    });
+
+    expect(settings?.sceneThreshold).toBe(0.2);
+    expect(settings?.autoTuneThreshold).toBe(false);
+  });
+
   it("rejects invalid scene threshold", () => {
     expect(() =>
       resolveSlideSettings({ slides: true, slidesSceneThreshold: "2", cwd: "/tmp" }),

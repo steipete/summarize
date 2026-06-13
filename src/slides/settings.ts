@@ -99,7 +99,7 @@ export function resolveSlideSettings(input: SlideSettingsInput): SlideSettings |
     ocr: Boolean(ocrFlag ?? false),
     outputDir,
     sceneThreshold,
-    autoTuneThreshold: true,
+    autoTuneThreshold: !input.slidesSceneThresholdExplicit,
     maxSlides,
     minDurationSeconds,
   };

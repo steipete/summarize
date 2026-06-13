@@ -13,6 +13,18 @@ describe("resolveRunnerSlidesSettings", () => {
     expect(settings?.enabled).toBe(true);
   });
 
+  it("disables auto-tuning when the scene threshold is explicit", () => {
+    const settings = resolveRunnerSlidesSettings({
+      normalizedArgv: ["--slides", "--slides-scene-threshold", "0.2"],
+      programOpts: { slides: true, slidesSceneThreshold: "0.2" },
+      config: null,
+      inputTarget: { kind: "file", filePath: "/tmp/video.webm" },
+    });
+
+    expect(settings?.sceneThreshold).toBe(0.2);
+    expect(settings?.autoTuneThreshold).toBe(false);
+  });
+
   it("rejects slides for stdin", () => {
     expect(() =>
       resolveRunnerSlidesSettings({

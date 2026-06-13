@@ -75,6 +75,7 @@ vi.mock("../src/run/slides-render.js", async () => {
 describe("cli slides mode", () => {
   afterEach(() => {
     renderMocks.renderSlidesInline.mockClear();
+    mocks.extractSlidesForSource.mockClear();
   });
 
   it("prints slide paths in text mode", async () => {
@@ -104,6 +105,24 @@ describe("cli slides mode", () => {
     const parsed = JSON.parse(stdout.getText());
     expect(parsed.ok).toBe(true);
     expect(parsed.slides?.slides?.length).toBe(1);
+  });
+
+  it("keeps an explicit scene threshold instead of auto-tuning it", async () => {
+    const stdout = collectStream({ isTTY: false });
+    const stderr = collectStream({ isTTY: false });
+    await runCli(
+      ["slides", "https://example.com/video.mp4", "--json", "--slides-scene-threshold", "0.2"],
+      {
+        env: { HOME: "/tmp" },
+        fetch: globalThis.fetch.bind(globalThis),
+        stdout: stdout.stream,
+        stderr: stderr.stream,
+      },
+    );
+
+    const call = mocks.extractSlidesForSource.mock.calls[0]?.[0];
+    expect(call?.settings.sceneThreshold).toBe(0.2);
+    expect(call?.settings.autoTuneThreshold).toBe(false);
   });
 
   it("fails to render inline when stdout is not a TTY", async () => {
