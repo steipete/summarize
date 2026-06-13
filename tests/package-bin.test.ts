@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 import { describe, expect, it } from "vitest";
+import { buildProgram, buildSlidesProgram } from "../src/run/help.js";
 
 describe("package bin wrappers", () => {
   it("writes an executable dist wrapper that runs the ESM CLI entrypoint", async () => {
@@ -82,5 +83,32 @@ describe("package bin wrappers", () => {
 
     expect(pkg.bin?.summarize).toBe("./dist/cli.js");
     expect(pkg.bin?.summarizer).toBe("./dist/cli.js");
+  });
+
+  it("ships fish completions in the npm package", async () => {
+    const pkg = JSON.parse(await readFile("package.json", "utf8")) as {
+      files?: string[];
+    };
+
+    expect(pkg.files).toContain("completions");
+  });
+
+  it("keeps fish completions aligned with visible CLI options", async () => {
+    const fish = await readFile("completions/summarize.fish", "utf8");
+    const completedLongOptions = Array.from(
+      new Set(Array.from(fish.matchAll(/(?:^|\s)-l\s+([a-z0-9-]+)/g)).map((match) => match[1])),
+    );
+    const visibleLongOptions = (program: ReturnType<typeof buildProgram>) =>
+      program.options
+        .filter((option) => !option.hidden)
+        .flatMap((option) => option.flags.match(/--[a-z0-9-]+/g) ?? [])
+        .map((flag) => flag.slice(2));
+
+    expect(completedLongOptions).toEqual(
+      expect.arrayContaining(visibleLongOptions(buildProgram())),
+    );
+    expect(completedLongOptions).toEqual(
+      expect.arrayContaining(visibleLongOptions(buildSlidesProgram())),
+    );
   });
 });

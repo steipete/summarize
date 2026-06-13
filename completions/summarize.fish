@@ -1,58 +1,145 @@
-# Completions for summarize (steipete/summarize)
+# Fish completions for summarize (steipete/summarize)
 
-# YouTube options
-complete -c summarize -l youtube -d 'YouTube transcript source' -xa 'auto web no-auto yt-dlp apify'
-complete -c summarize -l transcriber -d 'Audio transcription backend' -xa 'auto whisper parakeet canary'
-complete -c summarize -l video-mode -d 'Video handling mode' -xa 'auto transcript understand'
+set -g __summarize_commands help slides status refresh-free daemon transcriber
+set -g __summarize_themes aurora ember moss mono
 
-# Slides options
-complete -c summarize -l slides -d 'Extract slides for video URLs'
-complete -c summarize -l slides-debug -d 'Show slide image paths'
-complete -c summarize -l slides-ocr -d 'Run OCR on extracted slides'
-complete -c summarize -l slides-dir -d 'Base output dir for slides' -rF
-complete -c summarize -l slides-scene-threshold -d 'Scene detection threshold (0.1-1.0)' -x
-complete -c summarize -l slides-max -d 'Maximum slides to extract' -x
-complete -c summarize -l slides-min-duration -d 'Minimum seconds between slides' -x
-complete -c summarize -l timestamps -d 'Include timestamps in transcripts'
+function __summarize_no_subcommand
+    set -l tokens (commandline -opc)
+    for token in $tokens[2..-1]
+        contains -- $token $__summarize_commands
+        and return 1
+    end
+    return 0
+end
 
-# Content options
-complete -c summarize -l firecrawl -d 'Firecrawl usage' -xa 'off auto always'
-complete -c summarize -l format -d 'Content format' -xa 'md text'
-complete -c summarize -l preprocess -d 'Preprocess inputs' -xa 'off auto always'
-complete -c summarize -l markdown-mode -d 'Markdown conversion mode' -xa 'off auto llm readability'
+function __summarize_seen_command
+    set -l wanted $argv[1]
+    set -l tokens (commandline -opc)
+    contains -- $wanted $tokens[2..-1]
+end
 
-# Summary options
-complete -c summarize -l length -d 'Summary length' -xa 'short s medium m long l xl xxl'
-complete -c summarize -l max-extract-characters -d 'Max characters in --extract' -x
-complete -c summarize -l language -l lang -d 'Output language' -xa 'auto en de english german'
-complete -c summarize -l max-output-tokens -d 'Hard cap for LLM output tokens' -x
-complete -c summarize -l force-summary -d 'Force LLM summary even for short content'
-complete -c summarize -l timeout -d 'Timeout for fetching/LLM (e.g. 30s, 2m)' -x
-complete -c summarize -l retries -d 'LLM retry attempts on timeout' -x
+function __summarize_no_daemon_subcommand
+    set -l daemon_commands install restart status uninstall run
+    set -l tokens (commandline -opc)
+    for token in $tokens[2..-1]
+        contains -- $token $daemon_commands
+        and return 1
+    end
+    return 0
+end
 
-# Model options
-complete -c summarize -l model -d 'LLM model id' -x
-complete -c summarize -l cli -d 'Use CLI provider' -xa 'claude gemini codex agent'
-complete -c summarize -l prompt -d 'Override summary prompt' -x
-complete -c summarize -l prompt-file -d 'Read prompt from file' -rF
+for cmd in summarize summarizer
+    complete -c $cmd -n '__summarize_no_subcommand' -xa "$__summarize_commands" -d 'Subcommand'
 
-# Cache options
-complete -c summarize -l no-cache -d 'Bypass summary cache'
-complete -c summarize -l no-media-cache -d 'Disable media download cache'
-complete -c summarize -l cache-stats -d 'Print cache stats and exit'
-complete -c summarize -l clear-cache -d 'Delete cache database and exit'
+    # YouTube and media options
+    complete -c $cmd -n '__summarize_no_subcommand' -l youtube -d 'YouTube transcript source' -xa 'auto web no-auto yt-dlp apify'
+    complete -c $cmd -n '__summarize_no_subcommand' -l transcriber -d 'Audio transcription backend' -xa 'auto whisper parakeet canary'
+    complete -c $cmd -n '__summarize_no_subcommand' -l diarize -d 'Add speaker labels' -xa 'auto elevenlabs openai'
+    complete -c $cmd -n '__summarize_no_subcommand' -l identify-speakers -d 'Resolve diarization labels to real names'
+    complete -c $cmd -n '__summarize_no_subcommand' -l no-identify-speakers -d 'Keep generic diarization labels'
+    complete -c $cmd -n '__summarize_no_subcommand' -l speaker-profile -d 'Speaker profile name' -x
+    complete -c $cmd -n '__summarize_no_subcommand' -l speaker-at -d 'Timestamp speaker anchor' -x
+    complete -c $cmd -n '__summarize_no_subcommand' -l remember-speakers -d 'Persist resolved speaker mappings'
+    complete -c $cmd -n '__summarize_no_subcommand' -l video-mode -d 'Video handling mode' -xa 'auto transcript understand'
+    complete -c $cmd -n '__summarize_no_subcommand' -l embedded-video -d 'Embedded YouTube handling' -xa 'auto off prefer both'
 
-# Output options
-complete -c summarize -l extract -d 'Print extracted content (no LLM)'
-complete -c summarize -l json -d 'Output structured JSON'
-complete -c summarize -l stream -d 'Stream LLM output' -xa 'auto on off'
-complete -c summarize -l plain -d 'Keep raw text/markdown (no ANSI)'
-complete -c summarize -l no-color -d 'Disable ANSI colors'
-complete -c summarize -l theme -d 'CLI theme' -xa 'aurora ember moss mono'
+    # Slides options
+    complete -c $cmd -n '__summarize_no_subcommand' -l slides -d 'Extract slides for video URLs' -xa 'true false yes no on off 1 0'
+    complete -c $cmd -n '__summarize_no_subcommand' -l slides-debug -d 'Show slide image paths'
+    complete -c $cmd -n '__summarize_no_subcommand' -l slides-ocr -d 'Run OCR on extracted slides'
+    complete -c $cmd -n '__summarize_no_subcommand' -l slides-dir -d 'Base output dir for slides' -rF
+    complete -c $cmd -n '__summarize_no_subcommand' -l slides-scene-threshold -d 'Scene detection threshold (0.1-1.0)' -x
+    complete -c $cmd -n '__summarize_no_subcommand' -l slides-max -d 'Maximum slides to extract' -x
+    complete -c $cmd -n '__summarize_no_subcommand' -l slides-min-duration -d 'Minimum seconds between slides' -x
+    complete -c $cmd -n '__summarize_no_subcommand' -l timestamps -d 'Include timestamps in transcripts'
 
-# Debug/info
-complete -c summarize -l verbose -d 'Print detailed progress to stderr'
-complete -c summarize -l debug -d 'Alias for --verbose'
-complete -c summarize -l metrics -d 'Metrics output' -xa 'off on detailed'
-complete -c summarize -s V -l version -d 'Print version and exit'
-complete -c summarize -s h -l help -d 'Display help'
+    # Content options
+    complete -c $cmd -n '__summarize_no_subcommand' -l firecrawl -d 'Firecrawl usage' -xa 'off auto always'
+    complete -c $cmd -n '__summarize_no_subcommand' -l format -d 'Content format' -xa 'md markdown text plain'
+    complete -c $cmd -n '__summarize_no_subcommand' -l preprocess -d 'Preprocess inputs' -xa 'off auto always on'
+    complete -c $cmd -n '__summarize_no_subcommand' -l markdown-mode -d 'Markdown conversion mode' -xa 'off auto llm readability'
+
+    # Summary options
+    complete -c $cmd -n '__summarize_no_subcommand' -l length -d 'Summary length' -xa 'short s medium m long l xl xxl'
+    complete -c $cmd -n '__summarize_no_subcommand' -l max-extract-characters -d 'Max characters in --extract' -x
+    complete -c $cmd -n '__summarize_no_subcommand' -l language -l lang -d 'Output language' -xa 'auto en de english german'
+    complete -c $cmd -n '__summarize_no_subcommand' -l max-output-tokens -d 'Hard cap for LLM output tokens' -x
+    complete -c $cmd -n '__summarize_no_subcommand' -l force-summary -d 'Force LLM summary even for short content'
+    complete -c $cmd -n '__summarize_no_subcommand' -l timeout -d 'Timeout for fetching/LLM' -x
+    complete -c $cmd -n '__summarize_no_subcommand' -l retries -d 'LLM retry attempts on timeout' -x
+
+    # Model options
+    complete -c $cmd -n '__summarize_no_subcommand' -l model -d 'LLM model id' -x
+    complete -c $cmd -n '__summarize_no_subcommand' -l cli -d 'Use CLI provider' -xa 'claude gemini codex agent openclaw opencode copilot agy pi'
+    complete -c $cmd -n '__summarize_no_subcommand' -l fast -d 'Use OpenAI fast service tier'
+    complete -c $cmd -n '__summarize_no_subcommand' -l service-tier -d 'OpenAI service tier' -xa 'default fast priority flex'
+    complete -c $cmd -n '__summarize_no_subcommand' -l thinking -d 'OpenAI reasoning effort' -xa 'none low medium high xhigh off min mid'
+    complete -c $cmd -n '__summarize_no_subcommand' -l prompt -d 'Override summary prompt' -x
+    complete -c $cmd -n '__summarize_no_subcommand' -l prompt-file -d 'Read prompt from file' -rF
+
+    # Cache options
+    complete -c $cmd -n '__summarize_no_subcommand' -l no-cache -d 'Bypass summary cache'
+    complete -c $cmd -n '__summarize_no_subcommand' -l no-media-cache -d 'Disable media download cache'
+    complete -c $cmd -n '__summarize_no_subcommand' -l cache-stats -d 'Print cache stats and exit'
+    complete -c $cmd -n '__summarize_no_subcommand' -l clear-cache -d 'Delete cache database and exit'
+
+    # Output options
+    complete -c $cmd -n '__summarize_no_subcommand' -l extract -d 'Print extracted content'
+    complete -c $cmd -n '__summarize_no_subcommand' -l json -d 'Output structured JSON'
+    complete -c $cmd -n '__summarize_no_subcommand' -l stream -d 'Stream LLM output' -xa 'auto on off'
+    complete -c $cmd -n '__summarize_no_subcommand' -l width -d 'Override terminal width' -x
+    complete -c $cmd -n '__summarize_no_subcommand' -l plain -d 'Keep raw text/markdown'
+    complete -c $cmd -n '__summarize_no_subcommand' -l no-color -d 'Disable ANSI colors'
+    complete -c $cmd -n '__summarize_no_subcommand' -l theme -d 'CLI theme' -xa "$__summarize_themes"
+
+    # Debug/info
+    complete -c $cmd -n '__summarize_no_subcommand' -l verbose -d 'Print detailed progress to stderr'
+    complete -c $cmd -n '__summarize_no_subcommand' -l debug -d 'Alias for --verbose'
+    complete -c $cmd -n '__summarize_no_subcommand' -l metrics -d 'Metrics output' -xa 'off on detailed'
+    complete -c $cmd -n '__summarize_no_subcommand' -s V -l version -d 'Print version and exit'
+    complete -c $cmd -s h -l help -d 'Display help'
+
+    # help topics
+    complete -c $cmd -n '__summarize_seen_command help' -xa "$__summarize_commands" -d 'Help topic'
+
+    # slides subcommand
+    complete -c $cmd -n '__summarize_seen_command slides' -l slides-ocr -d 'Run OCR on extracted slides'
+    complete -c $cmd -n '__summarize_seen_command slides' -l slides-dir -d 'Base output dir for slides' -rF
+    complete -c $cmd -n '__summarize_seen_command slides' -s o -l output -d 'Alias for --slides-dir' -rF
+    complete -c $cmd -n '__summarize_seen_command slides' -l slides-scene-threshold -d 'Scene detection threshold (0.1-1.0)' -x
+    complete -c $cmd -n '__summarize_seen_command slides' -l slides-max -d 'Maximum slides to extract' -x
+    complete -c $cmd -n '__summarize_seen_command slides' -l slides-min-duration -d 'Minimum seconds between slides' -x
+    complete -c $cmd -n '__summarize_seen_command slides' -l render -d 'Inline render mode' -xa 'auto kitty iterm none'
+    complete -c $cmd -n '__summarize_seen_command slides' -l theme -d 'CLI theme' -xa "$__summarize_themes"
+    complete -c $cmd -n '__summarize_seen_command slides' -l timeout -d 'Timeout for video extraction' -x
+    complete -c $cmd -n '__summarize_seen_command slides' -l no-cache -d 'Bypass slide cache'
+    complete -c $cmd -n '__summarize_seen_command slides' -l json -d 'Output JSON payload'
+    complete -c $cmd -n '__summarize_seen_command slides' -l verbose -d 'Print detailed progress to stderr'
+    complete -c $cmd -n '__summarize_seen_command slides' -l debug -d 'Alias for --verbose'
+    complete -c $cmd -n '__summarize_seen_command slides' -s V -l version -d 'Print version and exit'
+
+    # status subcommand
+    complete -c $cmd -n '__summarize_seen_command status' -l json -d 'Output structured JSON'
+    complete -c $cmd -n '__summarize_seen_command status' -l probe -d 'Probe model-list endpoints'
+    complete -c $cmd -n '__summarize_seen_command status' -l verbose -d 'Include detailed status'
+    complete -c $cmd -n '__summarize_seen_command status' -l no-color -d 'Disable ANSI colors'
+
+    # refresh-free subcommand
+    complete -c $cmd -n '__summarize_seen_command refresh-free' -l runs -d 'Smoke-test runs per model' -x
+    complete -c $cmd -n '__summarize_seen_command refresh-free' -l smart -d 'Smart benchmark runs' -x
+    complete -c $cmd -n '__summarize_seen_command refresh-free' -l min-params -d 'Minimum parameter size' -x
+    complete -c $cmd -n '__summarize_seen_command refresh-free' -l max-age-days -d 'Maximum model age in days' -x
+    complete -c $cmd -n '__summarize_seen_command refresh-free' -l set-default -d 'Set free preset as default'
+    complete -c $cmd -n '__summarize_seen_command refresh-free' -l verbose -d 'Print detailed progress'
+
+    # daemon subcommand
+    complete -c $cmd -n '__summarize_seen_command daemon; and __summarize_no_daemon_subcommand' -xa 'install restart status uninstall run' -d 'Daemon command'
+    complete -c $cmd -n '__summarize_seen_command daemon' -l dev -d 'Install dev-mode daemon'
+    complete -c $cmd -n '__summarize_seen_command daemon' -l port -d 'Daemon port' -x
+    complete -c $cmd -n '__summarize_seen_command daemon' -l token -d 'Daemon auth token' -x
+
+    # transcriber subcommand
+    complete -c $cmd -n '__summarize_seen_command transcriber' -xa 'setup' -d 'Transcriber command'
+    complete -c $cmd -n '__summarize_seen_command transcriber' -l model -d 'ONNX transcription model' -xa 'parakeet canary'
+    complete -c $cmd -n '__summarize_seen_command transcriber' -l theme -d 'CLI theme' -xa "$__summarize_themes"
+end
