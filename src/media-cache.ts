@@ -1,6 +1,7 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createReadStream, promises as fs } from "node:fs";
 import { isAbsolute, join, resolve as resolvePath } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import type { MediaCache, MediaCacheEntry } from "./content/index.js";
 
 export type MediaCacheVerifyMode = "none" | "size" | "hash";
@@ -36,6 +37,9 @@ export const DEFAULT_MEDIA_CACHE_VERIFY: MediaCacheVerifyMode = "size";
 
 const INDEX_VERSION = 1;
 const INDEX_FILENAME = "index.json";
+const INDEX_LOCK_RETRY_MS = 25;
+const INDEX_LOCK_HEARTBEAT_MS = 30_000;
+const INDEX_LOCK_STALE_MS = 5 * 60_000;
 
 const ensureDir = async (path: string) => {
   await fs.mkdir(path, { recursive: true });
@@ -116,10 +120,66 @@ const readIndex = async (indexPath: string): Promise<MediaCacheIndex> => {
   return { version: INDEX_VERSION, entries: {} };
 };
 
+function isNodeErrorWithCode(error: unknown, code: string): boolean {
+  return error instanceof Error && "code" in error && error.code === code;
+}
+
+async function readLockInfo(lockPath: string) {
+  return fs.lstat(lockPath).catch((error: unknown) => {
+    if (isNodeErrorWithCode(error, "ENOENT")) return null;
+    throw error;
+  });
+}
+
+async function acquireIndexLock(indexPath: string): Promise<() => Promise<void>> {
+  const lockPath = `${indexPath}.lock`;
+
+  while (true) {
+    try {
+      const handle = await fs.open(lockPath, "wx", 0o600);
+      const identity = await handle.stat();
+      try {
+        await handle.writeFile(`${process.pid}\n`, "utf8");
+      } catch (error) {
+        await handle.close().catch(() => {});
+        await fs.unlink(lockPath).catch(() => {});
+        throw error;
+      }
+      const heartbeat = setInterval(() => {
+        const now = new Date();
+        void handle.utimes(now, now).catch(() => {});
+      }, INDEX_LOCK_HEARTBEAT_MS);
+      heartbeat.unref();
+      return async () => {
+        clearInterval(heartbeat);
+        await handle.close();
+        const current = await readLockInfo(lockPath);
+        if (current && current.dev === identity.dev && current.ino === identity.ino) {
+          await fs.unlink(lockPath);
+        }
+      };
+    } catch (error) {
+      if (!isNodeErrorWithCode(error, "EEXIST")) throw error;
+      const info = await readLockInfo(lockPath);
+      if (info?.isFile() && Date.now() - info.mtimeMs > INDEX_LOCK_STALE_MS) {
+        await fs.unlink(lockPath).catch((unlinkError: unknown) => {
+          if (!isNodeErrorWithCode(unlinkError, "ENOENT")) throw unlinkError;
+        });
+        continue;
+      }
+      await delay(INDEX_LOCK_RETRY_MS);
+    }
+  }
+}
+
 const writeIndex = async (indexPath: string, index: MediaCacheIndex) => {
-  const tmpPath = `${indexPath}.tmp-${process.pid}-${Date.now()}`;
-  await fs.writeFile(tmpPath, JSON.stringify(index));
-  await fs.rename(tmpPath, indexPath);
+  const tmpPath = `${indexPath}.tmp-${process.pid}-${randomUUID()}`;
+  try {
+    await fs.writeFile(tmpPath, JSON.stringify(index));
+    await fs.rename(tmpPath, indexPath);
+  } finally {
+    await fs.rm(tmpPath, { force: true });
+  }
 };
 
 const removeEntry = async (
@@ -179,6 +239,15 @@ export async function createMediaCache({
   const indexPath = join(cacheDir, INDEX_FILENAME);
   await ensureDir(cacheDir);
 
+  const withIndexLock = async <T>(fn: () => Promise<T>): Promise<T> => {
+    const release = await acquireIndexLock(indexPath);
+    try {
+      return await fn();
+    } finally {
+      await release();
+    }
+  };
+
   const pruneExpired = async (index: MediaCacheIndex, now: number) => {
     const entries = Object.entries(index.entries);
     for (const [key, entry] of entries) {
@@ -224,47 +293,49 @@ export async function createMediaCache({
 
   const get = async ({ url }: { url: string }): Promise<MediaCacheEntry | null> => {
     if (!shouldCacheUrl(url)) return null;
-    const now = Date.now();
-    const index = await readIndex(indexPath);
-    await pruneExpired(index, now);
-    const key = hashKey(url);
-    const entry = index.entries[key];
-    if (!entry) return null;
+    return await withIndexLock(async () => {
+      const now = Date.now();
+      const index = await readIndex(indexPath);
+      await pruneExpired(index, now);
+      const key = hashKey(url);
+      const entry = index.entries[key];
+      if (!entry) return null;
 
-    const filePath = join(cacheDir, entry.fileName);
-    let stat: { size: number } | null = null;
-    try {
-      stat = await fs.stat(filePath);
-    } catch {
-      await removeEntry(cacheDir, index, key, entry);
+      const filePath = join(cacheDir, entry.fileName);
+      let stat: { size: number } | null = null;
+      try {
+        stat = await fs.stat(filePath);
+      } catch {
+        await removeEntry(cacheDir, index, key, entry);
+        await writeIndex(indexPath, index);
+        return null;
+      }
+
+      if (verify === "size" && typeof entry.sizeBytes === "number") {
+        if (stat.size !== entry.sizeBytes) {
+          await removeEntry(cacheDir, index, key, entry);
+          await writeIndex(indexPath, index);
+          return null;
+        }
+      }
+      if (verify === "hash") {
+        const hash = await hashFile(filePath);
+        if (entry.sha256 && entry.sha256 !== hash) {
+          await removeEntry(cacheDir, index, key, entry);
+          await writeIndex(indexPath, index);
+          return null;
+        }
+        entry.sha256 = hash;
+      }
+
+      if (typeof entry.sizeBytes !== "number" || entry.sizeBytes !== stat.size) {
+        entry.sizeBytes = stat.size;
+      }
+      entry.lastAccessAtMs = now;
+      index.entries[key] = entry;
       await writeIndex(indexPath, index);
-      return null;
-    }
-
-    if (verify === "size" && typeof entry.sizeBytes === "number") {
-      if (stat.size !== entry.sizeBytes) {
-        await removeEntry(cacheDir, index, key, entry);
-        await writeIndex(indexPath, index);
-        return null;
-      }
-    }
-    if (verify === "hash") {
-      const hash = await hashFile(filePath);
-      if (entry.sha256 && entry.sha256 !== hash) {
-        await removeEntry(cacheDir, index, key, entry);
-        await writeIndex(indexPath, index);
-        return null;
-      }
-      entry.sha256 = hash;
-    }
-
-    if (typeof entry.sizeBytes !== "number" || entry.sizeBytes !== stat.size) {
-      entry.sizeBytes = stat.size;
-    }
-    entry.lastAccessAtMs = now;
-    index.entries[key] = entry;
-    await writeIndex(indexPath, index);
-    return normalizeEntry(cacheDir, entry);
+      return normalizeEntry(cacheDir, entry);
+    });
   };
 
   const put = async ({
@@ -279,38 +350,44 @@ export async function createMediaCache({
     filename?: string | null;
   }): Promise<MediaCacheEntry | null> => {
     if (!shouldCacheUrl(url)) return null;
-    const now = Date.now();
-    const index = await readIndex(indexPath);
-    await pruneExpired(index, now);
-    const key = hashKey(url);
-    const ext = resolveExtension(filename, mediaType);
-    const fileName = `${key}${ext}`;
-    const destPath = join(cacheDir, fileName);
-
     const sourceStat = await fs.stat(filePath);
     if (Number.isFinite(maxBytes) && maxBytes > 0 && sourceStat.size > maxBytes) {
       return null;
     }
-    await moveFile(filePath, destPath);
-    const stat = sourceStat;
-    const sha256 = verify === "hash" ? await hashFile(destPath) : null;
-    const expiresAtMs = ttlMs > 0 ? now + ttlMs : null;
-    const entry: MediaCacheIndexEntry = {
-      url,
-      fileName,
-      sizeBytes: stat.size,
-      sha256,
-      mediaType,
-      filename,
-      createdAtMs: now,
-      lastAccessAtMs: now,
-      expiresAtMs,
-    };
-    index.entries[key] = entry;
-    await enforceMaxBytes(index);
-    const finalEntry = index.entries[key];
-    await writeIndex(indexPath, index);
-    return finalEntry ? normalizeEntry(cacheDir, finalEntry) : null;
+
+    const key = hashKey(url);
+    const ext = resolveExtension(filename, mediaType);
+    const fileName = `${key}${ext}`;
+    const stagingPath = join(cacheDir, `.${key}.incoming-${process.pid}-${randomUUID()}`);
+    await moveFile(filePath, stagingPath);
+    try {
+      const sha256 = verify === "hash" ? await hashFile(stagingPath) : null;
+      return await withIndexLock(async () => {
+        const now = Date.now();
+        const index = await readIndex(indexPath);
+        await pruneExpired(index, now);
+        await moveFile(stagingPath, join(cacheDir, fileName));
+        const expiresAtMs = ttlMs > 0 ? now + ttlMs : null;
+        const entry: MediaCacheIndexEntry = {
+          url,
+          fileName,
+          sizeBytes: sourceStat.size,
+          sha256,
+          mediaType,
+          filename,
+          createdAtMs: now,
+          lastAccessAtMs: now,
+          expiresAtMs,
+        };
+        index.entries[key] = entry;
+        await enforceMaxBytes(index);
+        const finalEntry = index.entries[key];
+        await writeIndex(indexPath, index);
+        return finalEntry ? normalizeEntry(cacheDir, finalEntry) : null;
+      });
+    } finally {
+      await fs.rm(stagingPath, { force: true });
+    }
   };
 
   return { get, put };

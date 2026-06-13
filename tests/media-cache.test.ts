@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -9,6 +9,78 @@ const makeTempDir = async (prefix: string) => {
 };
 
 describe("media cache", () => {
+  it("serializes concurrent writes across independent cache instances", async () => {
+    const cacheDir = await makeTempDir("summarize-media-cache-");
+    try {
+      const caches = await Promise.all(
+        Array.from({ length: 3 }, () =>
+          createMediaCache({
+            path: cacheDir,
+            maxBytes: 10 * 1024 * 1024,
+            ttlMs: 60_000,
+            verify: "size",
+          }),
+        ),
+      );
+      const count = 30;
+      await Promise.all(
+        Array.from({ length: count }, async (_, index) => {
+          const tempFile = join(cacheDir, `source-${index}.bin`);
+          await writeFile(tempFile, new Uint8Array([index]));
+          await caches[index % caches.length]?.put({
+            url: `https://example.com/concurrent-${index}.mp4`,
+            filePath: tempFile,
+            mediaType: "video/mp4",
+            filename: `${index}.mp4`,
+          });
+        }),
+      );
+
+      const index = JSON.parse(await readFile(join(cacheDir, "index.json"), "utf8")) as {
+        entries: Record<string, unknown>;
+      };
+      expect(Object.keys(index.entries)).toHaveLength(count);
+      const entries = await Promise.all(
+        Array.from({ length: count }, (_, entryIndex) =>
+          caches[0]?.get({ url: `https://example.com/concurrent-${entryIndex}.mp4` }),
+        ),
+      );
+      expect(entries.every(Boolean)).toBe(true);
+    } finally {
+      await rm(cacheDir, { recursive: true, force: true });
+    }
+  });
+
+  it("recovers a stale index lock", async () => {
+    const cacheDir = await makeTempDir("summarize-media-cache-");
+    try {
+      const cache = await createMediaCache({
+        path: cacheDir,
+        maxBytes: 10 * 1024 * 1024,
+        ttlMs: 60_000,
+        verify: "size",
+      });
+      const lockPath = join(cacheDir, "index.json.lock");
+      await writeFile(lockPath, "stale");
+      const staleDate = new Date(Date.now() - 10 * 60_000);
+      await utimes(lockPath, staleDate, staleDate);
+      const tempFile = join(cacheDir, "stale-lock.bin");
+      await writeFile(tempFile, new Uint8Array([1, 2, 3]));
+
+      const stored = await cache.put({
+        url: "https://example.com/stale-lock.mp4",
+        filePath: tempFile,
+        mediaType: "video/mp4",
+        filename: "stale-lock.mp4",
+      });
+
+      expect(stored).not.toBeNull();
+      await expect(stat(lockPath)).rejects.toBeDefined();
+    } finally {
+      await rm(cacheDir, { recursive: true, force: true });
+    }
+  });
+
   it("stores and reuses cached media", async () => {
     const cacheDir = await makeTempDir("summarize-media-cache-");
     try {

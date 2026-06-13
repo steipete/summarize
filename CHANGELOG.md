@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Media cache: serialize index updates across concurrent daemon and CLI processes to prevent failed writes, lost entries, and orphaned files.
 - Daemon chat: cancel CLI-backed agent processes when their HTTP client disconnects.
 - Chrome extension: restore persisted chat history after the daemon agent-route refactor.
 - CLI extraction: honor `--max-extract-characters` for remote text and document assets, not only web-page extraction.
