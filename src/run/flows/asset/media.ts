@@ -7,7 +7,11 @@
 import { statSync } from "node:fs";
 import { isAbsolute, resolve as resolvePath } from "node:path";
 import { pathToFileURL } from "node:url";
-import { createLinkPreviewClient, type ExtractedLinkContent } from "../../../content/index.js";
+import {
+  createLinkPreviewClient,
+  resolveTranscriptionAvailability,
+  type ExtractedLinkContent,
+} from "../../../content/index.js";
 import { createFirecrawlScraper } from "../../../firecrawl.js";
 import {
   identifySpeakersInExtractedContent,
@@ -104,11 +108,6 @@ export async function executeMediaFile(
   // Check for yt-dlp: either via env var or on PATH
   const ytDlpPath = ctx.env.YT_DLP_PATH || ((await isBinaryAvailable("yt-dlp")) ? "yt-dlp" : null);
 
-  // Check for whisper.cpp: either via env var or by checking if whisper-cli is on PATH
-  const hasLocalWhisper = ctx.env.SUMMARIZE_WHISPER_CPP_BINARY
-    ? true
-    : await isBinaryAvailable("whisper-cli");
-
   if (ctx.transcriptDiarization === "elevenlabs" && !elevenlabsKey) {
     throw new Error("Speaker diarization with ElevenLabs requires ELEVENLABS_API_KEY");
   }
@@ -119,38 +118,45 @@ export async function executeMediaFile(
     throw new Error("Speaker diarization requires ELEVENLABS_API_KEY or OPENAI_API_KEY");
   }
 
+  const transcription = {
+    env: ctx.envForRun,
+    falApiKey: falKey,
+    groqApiKey: groqKey,
+    assemblyaiApiKey: assemblyaiKey ?? ctx.apiStatus.assemblyaiApiKey,
+    elevenlabsApiKey: elevenlabsKey,
+    geminiApiKey: geminiKey,
+    openaiApiKey: openaiKey,
+  };
+  const availability = await resolveTranscriptionAvailability({ transcription });
   const hasAnyTranscriptionProvider =
-    groqKey ||
-    assemblyaiKey ||
-    geminiKey ||
-    openaiKey ||
-    falKey ||
-    hasLocalWhisper ||
-    Boolean(ctx.transcriptDiarization && elevenlabsKey);
+    ctx.transcriptDiarization !== null || availability.hasAnyProvider;
 
   if (!hasAnyTranscriptionProvider) {
     throw new Error(`Media file transcription requires one of the following:
 
-1. Groq Whisper (fast, free tier):
+1. Local ONNX (Parakeet or Canary):
+   Run summarize transcriber setup
+
+2. Groq Whisper (fast, free tier):
    Set GROQ_API_KEY=gsk_...
 
-2. Gemini audio transcription:
+3. Gemini audio transcription:
    Set GEMINI_API_KEY=...
 
-3. AssemblyAI transcription:
+4. AssemblyAI transcription:
    Set ASSEMBLYAI_API_KEY=...
 
-4. OpenAI Whisper:
+5. OpenAI Whisper:
    Set OPENAI_API_KEY=sk-...
 
-5. FAL Whisper:
+6. FAL Whisper:
    Set FAL_KEY=...
 
-6. Local whisper.cpp (recommended, free):
+7. Local whisper.cpp:
    brew install whisper-cpp
    Ensure whisper-cli is on your PATH (or set SUMMARIZE_WHISPER_CPP_BINARY)
 
-See: https://github.com/openai/whisper for setup details`);
+See: summarize transcriber help`);
   }
 
   const isHttpUrl = (value: string): boolean => {
@@ -233,15 +239,7 @@ See: https://github.com/openai/whisper for setup details`);
     env: ctx.envForRun,
     apifyApiToken: ctx.apiStatus.apifyToken,
     ytDlpPath: ytDlpPath,
-    transcription: {
-      env: ctx.envForRun,
-      falApiKey: falKey,
-      groqApiKey: groqKey,
-      assemblyaiApiKey: assemblyaiKey ?? ctx.apiStatus.assemblyaiApiKey,
-      elevenlabsApiKey: elevenlabsKey,
-      geminiApiKey: geminiKey,
-      openaiApiKey: openaiKey,
-    },
+    transcription,
     scrapeWithFirecrawl: firecrawlScraper,
     convertHtmlToMarkdown: null, // Not needed for media
     readTweetWithBird: readTweetWithBirdClient,

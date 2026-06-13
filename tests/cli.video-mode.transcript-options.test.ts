@@ -65,6 +65,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("../src/content/index.js", () => ({
   createLinkPreviewClient: mocks.createLinkPreviewClient,
+  resolveTranscriptionAvailability: vi.fn(async () => ({ hasAnyProvider: true })),
 }));
 
 import { runCli } from "../src/run.js";

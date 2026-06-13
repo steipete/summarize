@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Local media: accept configured Parakeet and Canary ONNX transcribers instead of rejecting them during provider preflight.
 - Streaming: preserve repeated model deltas when a chunk exactly matches the accumulated summary.
 - Daemon logging: expand `~` in configured log file paths instead of creating a literal working-directory path.
 - Media cache: persist TTL pruning to the index after an expired-entry miss.

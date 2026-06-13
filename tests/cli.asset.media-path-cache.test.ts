@@ -10,6 +10,7 @@ const fetchLinkContent = vi.hoisted(() => vi.fn());
 
 vi.mock("../src/content/index.js", () => ({
   createLinkPreviewClient,
+  resolveTranscriptionAvailability: vi.fn(async () => ({ hasAnyProvider: true })),
 }));
 
 import { runCli } from "../src/run.js";

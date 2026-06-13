@@ -12,6 +12,7 @@ const createLinkPreviewClient = vi.fn();
 
 vi.mock("../src/content/index.js", () => ({
   createLinkPreviewClient,
+  resolveTranscriptionAvailability: vi.fn(async () => ({ hasAnyProvider: true })),
 }));
 
 function makeContext(): AssetSummaryContext {

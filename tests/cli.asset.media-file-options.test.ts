@@ -8,11 +8,16 @@ import type { ExtractedLinkContent } from "../src/content/index.js";
 import { executeMediaFile } from "../src/run/flows/asset/media.js";
 import type { AssetSummaryContext } from "../src/run/flows/asset/types.js";
 
-const createLinkPreviewClient = vi.hoisted(() => vi.fn());
+const contentMocks = vi.hoisted(() => ({
+  createLinkPreviewClient: vi.fn(),
+  resolveTranscriptionAvailability: vi.fn(async () => ({ hasAnyProvider: true })),
+}));
 
 vi.mock("../src/content/index.js", () => ({
-  createLinkPreviewClient,
+  ...contentMocks,
 }));
+
+const { createLinkPreviewClient } = contentMocks;
 
 function makeContext(overrides: Partial<AssetSummaryContext>): AssetSummaryContext {
   const stderr = new Writable({

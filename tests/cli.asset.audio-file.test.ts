@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Writable } from "node:stream";
@@ -42,6 +42,61 @@ vi.mock("@earendil-works/pi-ai", () => ({
 }));
 
 describe("cli asset inputs (media files)", () => {
+  it.each(["parakeet", "canary"] as const)(
+    "transcribes a local WAV with configured ONNX %s",
+    async (model) => {
+      const root = mkdtempSync(join(tmpdir(), `summarize-audio-onnx-${model}-`));
+      const cacheDir = join(root, "onnx");
+      const modelDir = join(cacheDir, model);
+      mkdirSync(modelDir, { recursive: true });
+      writeFileSync(join(modelDir, "model.onnx"), "fixture");
+      writeFileSync(join(modelDir, "vocab.txt"), "fixture");
+      const wavPath = join(root, "test-audio.wav");
+      writeFileSync(wavPath, "RIFF fixture WAVE");
+
+      const stdout = collectStream();
+      const stderr = collectStream();
+      const commandEnv =
+        model === "parakeet" ? "SUMMARIZE_ONNX_PARAKEET_CMD" : "SUMMARIZE_ONNX_CANARY_CMD";
+      const env = {
+        HOME: root,
+        SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP: "1",
+        SUMMARIZE_ONNX_CACHE_DIR: cacheDir,
+        [commandEnv]: JSON.stringify([
+          process.execPath,
+          "-e",
+          `process.stdout.write("Local ${model} transcript")`,
+          "{input}",
+        ]),
+      };
+
+      await runCli(
+        [
+          "--extract",
+          "--plain",
+          "--metrics",
+          "off",
+          "--no-cache",
+          "--no-media-cache",
+          "--transcriber",
+          model,
+          wavPath,
+        ],
+        {
+          env,
+          fetch: vi.fn(async () => {
+            throw new Error("unexpected fetch");
+          }) as unknown as typeof fetch,
+          stdout: stdout.stream,
+          stderr: stderr.stream,
+        },
+      );
+
+      expect(stdout.getText()).toContain(`Local ${model} transcript`);
+      expect(stderr.getText()).toBe("");
+    },
+  );
+
   it("detects missing transcription provider and provides setup guidance", async () => {
     mocks.streamSimple.mockClear();
 
@@ -66,6 +121,7 @@ describe("cli asset inputs (media files)", () => {
     await expect(run()).rejects.toThrow(/Media file transcription requires/);
     await expect(run()).rejects.toThrow(/OpenAI Whisper/);
     await expect(run()).rejects.toThrow(/FAL Whisper/);
+    await expect(run()).rejects.toThrow(/Local ONNX/);
     await expect(run()).rejects.toThrow(/whisper\.cpp/);
     expect(mocks.streamSimple).toHaveBeenCalledTimes(0);
   });
@@ -96,8 +152,10 @@ describe("cli asset inputs (media files)", () => {
       await run();
     } catch (err) {
       const errMsg = String(err);
-      expect(errMsg).toMatch(/OPENAI_API_KEY|FAL_KEY|SUMMARIZE_WHISPER_CPP_BINARY/);
-      expect(errMsg).toMatch(/github\.com\/openai\/whisper/);
+      expect(errMsg).toMatch(
+        /summarize transcriber setup|OPENAI_API_KEY|FAL_KEY|SUMMARIZE_WHISPER_CPP_BINARY/,
+      );
+      expect(errMsg).toMatch(/summarize transcriber help/);
     }
     expect(mocks.streamSimple).toHaveBeenCalledTimes(0);
   });

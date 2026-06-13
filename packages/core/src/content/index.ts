@@ -68,6 +68,10 @@ export {
 } from "./link-preview/types.js";
 export { formatTimestampMs, parseTimestampStringToMs } from "./transcript/timestamps.js";
 export {
+  resolveTranscriptionAvailability,
+  type TranscriptionAvailability,
+} from "./transcript/providers/transcription-start.js";
+export {
   buildYoutubeCaptionTrackUrls,
   formatYoutubeCaptionLines,
   normalizeYoutubeCaptionText,
