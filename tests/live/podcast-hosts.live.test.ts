@@ -96,11 +96,10 @@ const silentStderr = new Writable({
 
   it(
     "amazon music episode prefers description-sized content (requires Firecrawl)",
-    async () => {
+    async ({ skip }) => {
       const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY?.trim() ?? "";
       if (!FIRECRAWL_API_KEY) {
-        it.skip("requires FIRECRAWL_API_KEY", () => {});
-        return;
+        skip("requires FIRECRAWL_API_KEY");
       }
 
       const out = collectStream();

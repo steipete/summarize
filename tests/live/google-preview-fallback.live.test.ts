@@ -8,15 +8,14 @@ const LIVE = process.env.SUMMARIZE_LIVE_TEST === "1";
 
   it(
     "returns non-empty text for google/gemini-3-flash-preview",
-    async () => {
+    async ({ skip }) => {
       const googleApiKey =
         process.env.GEMINI_API_KEY ??
         process.env.GOOGLE_GENERATIVE_AI_API_KEY ??
         process.env.GOOGLE_API_KEY ??
         null;
       if (!googleApiKey) {
-        it.skip("requires GEMINI_API_KEY", () => {});
-        return;
+        skip("requires GEMINI_API_KEY");
       }
 
       const result = await generateTextWithModelId({

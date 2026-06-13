@@ -17,11 +17,10 @@ function shouldSoftSkipLiveError(message: string): boolean {
 
   it(
     "maps native model to OpenRouter id and returns text",
-    async () => {
+    async ({ skip }) => {
       const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY?.trim() ?? "";
       if (!OPENROUTER_API_KEY) {
-        it.skip("requires OPENROUTER_API_KEY", () => {});
-        return;
+        skip("requires OPENROUTER_API_KEY");
       }
 
       const config: SummarizeConfig = {

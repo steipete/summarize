@@ -36,11 +36,10 @@ const silentStderr = new Writable({
 
   it(
     "refresh-free + --model free returns JSON with llm!=null",
-    async () => {
+    async ({ skip }) => {
       const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY?.trim() ?? "";
       if (!OPENROUTER_API_KEY) {
-        it.skip("requires OPENROUTER_API_KEY", () => {});
-        return;
+        skip("requires OPENROUTER_API_KEY");
       }
 
       const home = await fs.mkdtemp(path.join(os.tmpdir(), "summarize-live-free-"));
@@ -97,11 +96,10 @@ const silentStderr = new Writable({
 
   it(
     "--model free streams when stdout is a TTY",
-    async () => {
+    async ({ skip }) => {
       const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY?.trim() ?? "";
       if (!OPENROUTER_API_KEY) {
-        it.skip("requires OPENROUTER_API_KEY", () => {});
-        return;
+        skip("requires OPENROUTER_API_KEY");
       }
 
       const home = await fs.mkdtemp(path.join(os.tmpdir(), "summarize-live-free-stream-"));

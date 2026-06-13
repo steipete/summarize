@@ -17,10 +17,9 @@ function shouldSoftSkipLiveError(message: string): boolean {
 
   it(
     "summarizes PDF attachments",
-    async () => {
+    async ({ skip }) => {
       if (!openaiApiKey) {
-        it.skip("requires OPENAI_API_KEY", () => {});
-        return;
+        skip("requires OPENAI_API_KEY");
       }
 
       try {

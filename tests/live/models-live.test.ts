@@ -25,10 +25,9 @@ function shouldSoftSkipLiveError(message: string): boolean {
 
   it(
     "OpenAI (gpt-5.2) returns text",
-    async () => {
+    async ({ skip }) => {
       if (!apiKeys.openaiApiKey) {
-        it.skip("requires OPENAI_API_KEY", () => {});
-        return;
+        skip("requires OPENAI_API_KEY");
       }
       try {
         const result = await generateTextWithModelId({
@@ -51,10 +50,9 @@ function shouldSoftSkipLiveError(message: string): boolean {
 
   it(
     "OpenAI (gpt-5.2) streams text (temperature ignored)",
-    async () => {
+    async ({ skip }) => {
       if (!apiKeys.openaiApiKey) {
-        it.skip("requires OPENAI_API_KEY", () => {});
-        return;
+        skip("requires OPENAI_API_KEY");
       }
       try {
         const result = await streamTextWithModelId({
@@ -83,10 +81,9 @@ function shouldSoftSkipLiveError(message: string): boolean {
 
   it(
     "OpenAI (gpt-5-mini) streams text",
-    async () => {
+    async ({ skip }) => {
       if (!apiKeys.openaiApiKey) {
-        it.skip("requires OPENAI_API_KEY", () => {});
-        return;
+        skip("requires OPENAI_API_KEY");
       }
       try {
         const result = await streamTextWithModelId({
@@ -115,10 +112,9 @@ function shouldSoftSkipLiveError(message: string): boolean {
 
   it(
     "Anthropic (opus 4.5) returns text",
-    async () => {
+    async ({ skip }) => {
       if (!apiKeys.anthropicApiKey) {
-        it.skip("requires ANTHROPIC_API_KEY", () => {});
-        return;
+        skip("requires ANTHROPIC_API_KEY");
       }
       try {
         const result = await generateTextWithModelId({
@@ -141,10 +137,9 @@ function shouldSoftSkipLiveError(message: string): boolean {
 
   it(
     "Anthropic (sonnet 4.5) returns text",
-    async () => {
+    async ({ skip }) => {
       if (!apiKeys.anthropicApiKey) {
-        it.skip("requires ANTHROPIC_API_KEY", () => {});
-        return;
+        skip("requires ANTHROPIC_API_KEY");
       }
       try {
         const result = await generateTextWithModelId({
@@ -167,10 +162,9 @@ function shouldSoftSkipLiveError(message: string): boolean {
 
   it(
     "xAI (grok 4.1 fast) returns text",
-    async () => {
+    async ({ skip }) => {
       if (!apiKeys.xaiApiKey) {
-        it.skip("requires XAI_API_KEY", () => {});
-        return;
+        skip("requires XAI_API_KEY");
       }
       try {
         const result = await generateTextWithModelId({
@@ -193,10 +187,9 @@ function shouldSoftSkipLiveError(message: string): boolean {
 
   it(
     "Google (Gemini 3 Flash) returns text",
-    async () => {
+    async ({ skip }) => {
       if (!apiKeys.googleApiKey) {
-        it.skip("requires GEMINI_API_KEY", () => {});
-        return;
+        skip("requires GEMINI_API_KEY");
       }
       try {
         const result = await generateTextWithModelId({

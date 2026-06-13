@@ -17,10 +17,9 @@ function shouldSoftSkipLiveError(message: string): boolean {
 
   it(
     "summarizes PDF attachments",
-    async () => {
+    async ({ skip }) => {
       if (!anthropicApiKey) {
-        it.skip("requires ANTHROPIC_API_KEY", () => {});
-        return;
+        skip("requires ANTHROPIC_API_KEY");
       }
 
       try {
