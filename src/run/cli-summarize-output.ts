@@ -48,6 +48,18 @@ export async function presentCliSummarizeResult(options: {
 
   const extractionUi = deriveExtractionUi(result.extracted);
   const transcriptionCostLabel = buildTranscriptionCostLabel(ctx, result);
+  const extractionSlidesReady =
+    result.kind === "extraction" &&
+    Boolean(result.slides?.slides.length) &&
+    Boolean(result.slides?.slides.every((slide) => slide.imagePath.trim().length > 0));
+  const slidesOutputEnabled =
+    Boolean(ctx.flags.slides) &&
+    !ctx.flags.json &&
+    (result.kind === "extraction"
+      ? extractionSlidesReady
+      : result.details.kind === "url-summary" &&
+        result.details.resolution.kind === "summary" &&
+        !result.details.resolution.summaryEmitted);
   const slidesOutput =
     options.slidesOutput === undefined
       ? createSlidesTerminalOutput({
@@ -59,13 +71,7 @@ export async function presentCliSummarizeResult(options: {
           },
           extracted: result.extracted,
           slides: result.slides,
-          enabled:
-            result.kind === "summary" &&
-            result.details.kind === "url-summary" &&
-            result.details.resolution.kind === "summary" &&
-            !result.details.resolution.summaryEmitted &&
-            Boolean(ctx.flags.slides) &&
-            !ctx.flags.json,
+          enabled: slidesOutputEnabled,
           outputMode: "delta",
           clearProgressForStdout: ctx.hooks.clearProgressForStdout,
           restoreProgressAfterStdout: ctx.hooks.restoreProgressAfterStdout ?? null,
