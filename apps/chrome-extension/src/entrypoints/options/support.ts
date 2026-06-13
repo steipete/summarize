@@ -79,11 +79,14 @@ export function createAutomationPermissionsController(options: {
     const status = await getUserScriptsStatus();
     const hasPermission = status.permissionGranted;
     const apiAvailable = status.apiAvailable;
+    const needsChromeToggle = status.chromeVersion !== null && hasPermission && !apiAvailable;
 
     automationPermissionsBtn.disabled = !chrome.permissions || (hasPermission && apiAvailable);
-    automationPermissionsBtn.textContent = hasPermission
-      ? "Automation permissions granted"
-      : "Enable automation permissions";
+    automationPermissionsBtn.textContent = needsChromeToggle
+      ? "Open Chrome User Scripts settings"
+      : hasPermission
+        ? "Automation permissions granted"
+        : "Enable automation permissions";
 
     if (!getAutomationEnabled()) {
       userScriptsNoticeEl.hidden = true;
@@ -103,6 +106,13 @@ export function createAutomationPermissionsController(options: {
   const requestPermissions = async () => {
     if (!chrome.permissions) return;
     try {
+      const status = await getUserScriptsStatus();
+      if (status.chromeVersion !== null && status.permissionGranted && !status.apiAvailable) {
+        await chrome.tabs.create({
+          url: `chrome://extensions/?id=${chrome.runtime.id}`,
+        });
+        return;
+      }
       const ok = await chrome.permissions.request({
         permissions: ["userScripts"],
       });

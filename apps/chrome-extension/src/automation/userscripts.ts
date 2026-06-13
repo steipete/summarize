@@ -50,7 +50,7 @@ export function buildUserScriptsGuidance(status: UserScriptsStatus): string {
   if (chromeVersion >= 120) {
     return [
       permissionHint,
-      `Chrome ${chromeVersion} detected. The userScripts API requires Chrome 120+ with experimental features enabled. Update Chrome and retry.`,
+      `Chrome ${chromeVersion} detected. Enable Developer mode in chrome://extensions, then reload the extension and try again.`,
     ]
       .filter(Boolean)
       .join(" ");

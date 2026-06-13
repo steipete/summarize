@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Browser extension: declare User Scripts permissions per browser, route Chrome users to the required extension toggle, remove an invalid manifest permission, and align documented browser minimums.
 - CLI video summaries: restore terminal and JSON output when direct video understanding delegates URL handling to the asset summarizer.
 - Chrome extension: reject YouTube caption and transcript-panel results when the tab navigates to another video during extraction.
 - Development CLI: build the core workspace before `pnpm summarize` and `pnpm s` so newly added core exports never depend on stale generated files.

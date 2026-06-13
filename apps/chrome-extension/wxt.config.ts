@@ -96,10 +96,10 @@ export default defineConfig({
         "webNavigation",
         ...(browser === "firefox" ? [] : ["webRequest" as const]),
         "scripting",
-        "windows",
+        ...(browser === "firefox" ? [] : ["userScripts" as const]),
         ...(browser === "firefox" ? [] : ["debugger" as const]),
       ],
-      optional_permissions: ["userScripts"],
+      optional_permissions: browser === "firefox" ? ["userScripts"] : [],
       host_permissions: ["<all_urls>", "http://127.0.0.1:8787/*"],
       background: {
         type: "module",
@@ -132,6 +132,7 @@ export default defineConfig({
             },
           }
         : {
+            minimum_chrome_version: "120",
             // Chrome uses side_panel API
             side_panel: {
               default_path: "sidepanel/index.html",
@@ -147,10 +148,13 @@ export default defineConfig({
             browser_specific_settings: {
               gecko: {
                 id: "summarize-test@steipete.com",
-                strict_min_version: "131.0",
+                strict_min_version: "140.0",
                 data_collection_permissions: {
                   required: ["none"],
                 },
+              },
+              gecko_android: {
+                strict_min_version: "142.0",
               },
             },
           }
