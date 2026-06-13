@@ -3,6 +3,11 @@
 set -g __summarize_commands help slides status refresh-free daemon transcriber
 set -g __summarize_themes aurora ember moss mono
 
+function __summarize_needs_subcommand
+    set -l tokens (commandline -opc)
+    test (count $tokens) -lt 2
+end
+
 function __summarize_no_subcommand
     set -l tokens (commandline -opc)
     if test (count $tokens) -lt 2
@@ -18,21 +23,30 @@ function __summarize_command_is
     test "$tokens[2]" = "$argv[1]"
 end
 
-function __summarize_needs_daemon_command
-    set -l daemon_commands install restart status uninstall run
+function __summarize_needs_child_command
+    set -l parent "$argv[1]"
+    set -e argv[1]
     set -l tokens (commandline -opc)
     test (count $tokens) -ge 2
-    and test "$tokens[2]" = daemon
+    and test "$tokens[2]" = "$parent"
     or return 1
     if test (count $tokens) -eq 2
         return 0
     end
     test (count $tokens) -eq 3
-    and not contains -- $tokens[3] $daemon_commands
+    and not contains -- $tokens[3] $argv
+end
+
+function __summarize_nested_command_is
+    set -l tokens (commandline -opc)
+    test (count $tokens) -ge 3
+    or return 1
+    test "$tokens[2]" = "$argv[1]"
+    and test "$tokens[3]" = "$argv[2]"
 end
 
 for cmd in summarize summarizer
-    complete -c $cmd -n '__summarize_no_subcommand' -xa "$__summarize_commands" -d 'Subcommand'
+    complete -c $cmd -n '__summarize_needs_subcommand' -xa "$__summarize_commands" -d 'Subcommand'
 
     # YouTube and media options
     complete -c $cmd -n '__summarize_no_subcommand' -l youtube -d 'YouTube transcript source' -xa 'auto web no-auto yt-dlp apify'
@@ -59,7 +73,7 @@ for cmd in summarize summarizer
     # Content options
     complete -c $cmd -n '__summarize_no_subcommand' -l firecrawl -d 'Firecrawl usage' -xa 'off auto always'
     complete -c $cmd -n '__summarize_no_subcommand' -l format -d 'Content format' -xa 'md markdown text plain'
-    complete -c $cmd -n '__summarize_no_subcommand' -l preprocess -d 'Preprocess inputs' -xa 'off auto always on'
+    complete -c $cmd -n '__summarize_no_subcommand' -l preprocess -d 'Preprocess inputs' -xa 'off auto always'
     complete -c $cmd -n '__summarize_no_subcommand' -l markdown-mode -d 'Markdown conversion mode' -xa 'off auto llm readability'
 
     # Summary options
@@ -103,7 +117,7 @@ for cmd in summarize summarizer
     complete -c $cmd -s h -l help -d 'Display help'
 
     # help topics
-    complete -c $cmd -n '__summarize_command_is help' -xa "$__summarize_commands" -d 'Help topic'
+    complete -c $cmd -n '__summarize_needs_child_command help help slides status refresh-free daemon transcriber' -xa "$__summarize_commands" -d 'Help topic'
 
     # slides subcommand
     complete -c $cmd -n '__summarize_command_is slides' -l slides-ocr -d 'Run OCR on extracted slides'
@@ -136,13 +150,13 @@ for cmd in summarize summarizer
     complete -c $cmd -n '__summarize_command_is refresh-free' -l verbose -d 'Print detailed progress'
 
     # daemon subcommand
-    complete -c $cmd -n '__summarize_needs_daemon_command' -xa 'install restart status uninstall run' -d 'Daemon command'
-    complete -c $cmd -n '__summarize_command_is daemon' -l dev -d 'Install dev-mode daemon'
-    complete -c $cmd -n '__summarize_command_is daemon' -l port -d 'Daemon port' -x
-    complete -c $cmd -n '__summarize_command_is daemon' -l token -d 'Daemon auth token' -x
+    complete -c $cmd -n '__summarize_needs_child_command daemon install restart status uninstall run' -xa 'install restart status uninstall run' -d 'Daemon command'
+    complete -c $cmd -n '__summarize_nested_command_is daemon install' -l dev -d 'Install dev-mode daemon'
+    complete -c $cmd -n '__summarize_nested_command_is daemon install; or __summarize_nested_command_is daemon run' -l port -d 'Daemon port' -x
+    complete -c $cmd -n '__summarize_nested_command_is daemon install; or __summarize_nested_command_is daemon run' -l token -d 'Daemon auth token' -x
 
     # transcriber subcommand
-    complete -c $cmd -n '__summarize_command_is transcriber' -xa 'setup' -d 'Transcriber command'
-    complete -c $cmd -n '__summarize_command_is transcriber' -l model -d 'ONNX transcription model' -xa 'parakeet canary'
-    complete -c $cmd -n '__summarize_command_is transcriber' -l theme -d 'CLI theme' -xa "$__summarize_themes"
+    complete -c $cmd -n '__summarize_needs_child_command transcriber setup' -xa 'setup' -d 'Transcriber command'
+    complete -c $cmd -n '__summarize_nested_command_is transcriber setup' -l model -d 'ONNX transcription model' -xa 'parakeet canary'
+    complete -c $cmd -n '__summarize_nested_command_is transcriber setup' -l theme -d 'CLI theme' -xa "$__summarize_themes"
 end
