@@ -84,6 +84,20 @@ test("manifest excludes Meta sites from always-on content scripts", () => {
   }
 });
 
+test("Chromium manifest grants User Scripts as a required permission", () => {
+  const manifestPath = path.resolve(__dirname, "..", ".output", "chrome-mv3", "manifest.json");
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+    minimum_chrome_version?: string;
+    permissions?: string[];
+    optional_permissions?: string[];
+  };
+
+  expect(manifest.minimum_chrome_version).toBe("120");
+  expect(manifest.permissions).toContain("userScripts");
+  expect(manifest.permissions).not.toContain("windows");
+  expect(manifest.optional_permissions).not.toContain("userScripts");
+});
+
 test("sidepanel shows a ready state instead of going blank when switching tabs manually", async ({
   browserName: _browserName,
 }, testInfo) => {

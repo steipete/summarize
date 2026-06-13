@@ -242,6 +242,48 @@ describe("options support", () => {
     expect(flashStatus).toHaveBeenCalledWith("Permission request denied");
   });
 
+  it("opens Chrome extension settings when the required permission needs its browser toggle", async () => {
+    const automationPermissionsBtn = {
+      disabled: false,
+      textContent: "",
+    } as HTMLButtonElement;
+    const userScriptsNoticeEl = createFakeElement();
+    const createTab = vi.fn(async () => undefined);
+    const request = vi.fn(async () => true);
+    vi.stubGlobal("chrome", {
+      permissions: { request },
+      runtime: { id: "extension-id" },
+      tabs: { create: createTab },
+    });
+    vi.mocked(getUserScriptsStatus)
+      .mockResolvedValueOnce({
+        apiAvailable: false,
+        permissionGranted: true,
+        chromeVersion: 138,
+      })
+      .mockResolvedValueOnce({
+        apiAvailable: false,
+        permissionGranted: true,
+        chromeVersion: 138,
+      });
+
+    const controller = createAutomationPermissionsController({
+      automationPermissionsBtn,
+      userScriptsNoticeEl,
+      getAutomationEnabled: () => true,
+      flashStatus: vi.fn(),
+    });
+    await controller.updateUi();
+    expect(automationPermissionsBtn.disabled).toBe(false);
+    expect(automationPermissionsBtn.textContent).toBe("Open Chrome User Scripts settings");
+
+    await controller.requestPermissions();
+    expect(createTab).toHaveBeenCalledWith({
+      url: "chrome://extensions/?id=extension-id",
+    });
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it("ignores permission requests when permissions api is missing or throws", async () => {
     const automationPermissionsBtn = {
       disabled: false,

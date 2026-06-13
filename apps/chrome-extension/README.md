@@ -4,8 +4,8 @@ Browser extension for Chrome and Firefox that streams AI-powered summaries direc
 
 **Supported browsers**:
 
-- Chrome (Side Panel) - Auto-opens on toolbar icon click
-- Firefox 131+ (Sidebar) - Toggle with toolbar icon or `Ctrl+Shift+U`
+- Chrome 120+ (Side Panel) - Auto-opens on toolbar icon click
+- Firefox 140+ (Sidebar) - Toggle with toolbar icon or `Ctrl+Shift+U`
 
 Docs + setup: `https://summarize.sh`
 
