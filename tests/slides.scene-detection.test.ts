@@ -3,14 +3,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   runProcess: vi.fn(),
   runProcessCapture: vi.fn(),
+  runProcessCaptureBuffer: vi.fn(),
 }));
 
 vi.mock("../src/slides/process.js", () => ({
   runProcess: mocks.runProcess,
   runProcessCapture: mocks.runProcessCapture,
-  runProcessCaptureBuffer: vi.fn(),
+  runProcessCaptureBuffer: mocks.runProcessCaptureBuffer,
+  runWithConcurrency: async <T>(tasks: Array<() => Promise<T>>) =>
+    Promise.all(tasks.map((task) => task())),
 }));
 
+import { detectSlideTimestamps } from "../src/slides/frame-extraction.js";
 import {
   adjustTimestampWithinSegment,
   applyMaxSlidesFilter,
@@ -160,6 +164,44 @@ describe("slides scene detection", () => {
       [2, 2],
     ]);
     expect(mocks.runProcess).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports the calibrated threshold when interval fallback replaces zero scene detections", async () => {
+    mocks.runProcessCapture.mockResolvedValue(
+      JSON.stringify({
+        streams: [{ codec_type: "video", width: 1280, height: 720, duration: "10" }],
+      }),
+    );
+    const darkThenLight = Buffer.concat([Buffer.alloc(512, 0), Buffer.alloc(512, 255)]);
+    const lightThenDark = Buffer.concat([Buffer.alloc(512, 255), Buffer.alloc(512, 0)]);
+    mocks.runProcessCaptureBuffer
+      .mockResolvedValueOnce(darkThenLight)
+      .mockResolvedValueOnce(lightThenDark)
+      .mockResolvedValueOnce(darkThenLight);
+    mocks.runProcess.mockResolvedValue(undefined);
+    const warnings: string[] = [];
+
+    const result = await detectSlideTimestamps({
+      ffmpegPath: "ffmpeg",
+      ffprobePath: "ffprobe",
+      inputPath: "/tmp/video.mp4",
+      sceneThreshold: 0.3,
+      autoTuneThreshold: true,
+      env: {},
+      timeoutMs: 1000,
+      warnings,
+      workers: 1,
+      sampleCount: 3,
+    });
+
+    expect(result.timestamps).toEqual([]);
+    expect(result.autoTune).toEqual({
+      enabled: true,
+      chosenThreshold: 0.05,
+      confidence: 1,
+      strategy: "hash",
+    });
+    expect(warnings).toEqual(["Auto-tuned scene threshold from 0.3 to 0.05"]);
   });
 
   it("parses ffprobe output and falls back to format duration", async () => {
