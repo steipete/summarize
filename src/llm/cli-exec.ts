@@ -67,6 +67,12 @@ function getExecCommand(error: CliExecError, cmd: string, args: string[]): strin
     : [cmd, ...args].join(" ");
 }
 
+function abortReason(signal: AbortSignal): Error {
+  return signal.reason instanceof Error
+    ? signal.reason
+    : new DOMException("This operation was aborted", "AbortError");
+}
+
 export async function execCliWithInput({
   execFileImpl,
   cmd,
@@ -75,6 +81,7 @@ export async function execCliWithInput({
   timeoutMs,
   env,
   cwd,
+  signal,
 }: {
   execFileImpl: ExecFileFn;
   cmd: string;
@@ -83,9 +90,11 @@ export async function execCliWithInput({
   timeoutMs: number;
   env: Record<string, string | undefined>;
   cwd?: string;
+  signal?: AbortSignal;
 }): Promise<{ stdout: string; stderr: string }> {
   return await new Promise((resolve, reject) => {
     let interruptedSignal: NodeJS.Signals | null = null;
+    let aborted = false;
     let child: ReturnType<ExecFileFn> | null = null;
     const forwardSignal = (signal: NodeJS.Signals) => {
       if (interruptedSignal) return;
@@ -98,14 +107,30 @@ export async function execCliWithInput({
     };
     const handleSigint = () => forwardSignal("SIGINT");
     const handleSigterm = () => forwardSignal("SIGTERM");
+    const handleAbort = () => {
+      if (aborted) return;
+      aborted = true;
+      try {
+        child?.kill("SIGTERM");
+      } catch {
+        // Process may have already exited between cancellation and forwarding.
+      }
+    };
     const cleanupSignalHandlers = () => {
       process.removeListener("SIGINT", handleSigint);
       process.removeListener("SIGTERM", handleSigterm);
+      signal?.removeEventListener("abort", handleAbort);
     };
+
+    if (signal?.aborted) {
+      reject(abortReason(signal));
+      return;
+    }
 
     // Run before progress UI exit handlers so active CLI backends don't survive Ctrl+C.
     process.prependOnceListener("SIGINT", handleSigint);
     process.prependOnceListener("SIGTERM", handleSigterm);
+    signal?.addEventListener("abort", handleAbort, { once: true });
 
     child = execFileImpl(
       cmd,
@@ -119,6 +144,10 @@ export async function execCliWithInput({
       (error, stdout, stderr) => {
         cleanupSignalHandlers();
         const stderrText = toUtf8String(stderr);
+        if (aborted && signal) {
+          reject(abortReason(signal));
+          return;
+        }
         if (interruptedSignal) {
           reject(new CliInterruptedError(interruptedSignal));
           return;
@@ -145,6 +174,14 @@ export async function execCliWithInput({
         resolve({ stdout: toUtf8String(stdout), stderr: stderrText });
       },
     );
+
+    if (aborted) {
+      try {
+        child.kill("SIGTERM");
+      } catch {
+        // Process may have exited synchronously in an injected exec implementation.
+      }
+    }
 
     if (child.stdin) {
       child.stdin.write(input);

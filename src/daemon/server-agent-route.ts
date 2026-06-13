@@ -81,6 +81,10 @@ export async function handleAgentRoute({
   const normalizedModelOverride =
     modelOverride && modelOverride.toLowerCase() !== "auto" ? modelOverride : null;
   const runId = `agent-${createRunId()}`;
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  req.once("aborted", abort);
+  res.once("close", abort);
   const wantsJson = wantsJsonResponse(req, url);
   if (wantsJson) {
     try {
@@ -94,11 +98,13 @@ export async function handleAgentRoute({
           modelOverride: normalizedModelOverride,
           tools,
           automationEnabled,
+          signal: controller.signal,
         }),
       );
       writeAgentHistory({ cacheState, cacheInput, messages, assistant });
       json(res, 200, { ok: true, assistant }, cors);
     } catch (error) {
+      if (controller.signal.aborted) return true;
       const message = error instanceof Error ? error.message : String(error);
       console.error("[summarize-daemon] agent failed", error);
       json(res, 500, { ok: false, error: message }, cors);
@@ -113,11 +119,6 @@ export async function handleAgentRoute({
     "x-accel-buffering": "no",
     ...cors,
   });
-
-  const controller = new AbortController();
-  const abort = () => controller.abort();
-  req.on("close", abort);
-  res.on("close", abort);
 
   const writeEvent = (event: SseEvent) => {
     if (res.writableEnded) return;

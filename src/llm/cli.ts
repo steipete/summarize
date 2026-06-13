@@ -57,6 +57,7 @@ type RunCliModelOptions = {
   cwd?: string;
   extraArgs?: string[];
   systemPrompt?: string | null;
+  signal?: AbortSignal;
 };
 
 type CliRunResult = {
@@ -203,6 +204,7 @@ export async function runCliModel({
   cwd,
   extraArgs,
   systemPrompt,
+  signal,
 }: RunCliModelOptions): Promise<CliRunResult> {
   const execFileFn = execFileImpl ?? execFile;
   const binary = resolveCliBinary(provider, config, env);
@@ -253,6 +255,7 @@ export async function runCliModel({
       timeoutMs,
       env: effectiveEnv,
       cwd,
+      signal,
     });
     const parsed = JSON.parse(stdout);
     const payloads = parsed?.result?.payloads;
@@ -286,6 +289,7 @@ export async function runCliModel({
         timeoutMs,
         env: effectiveEnv,
         cwd: isolatedCwd ?? cwd,
+        signal,
       });
       return parseOpenCodeOutputFromJsonl(stdout);
     } finally {
@@ -335,6 +339,7 @@ export async function runCliModel({
         timeoutMs,
         env: isolatedCodexHome ? { ...effectiveEnv, CODEX_HOME: isolatedCodexHome } : effectiveEnv,
         cwd: isolatedCwd ?? cwd,
+        signal,
       });
       const { usage, costUsd } = parseCodexUsageFromJsonl(stdout);
       let fileText = "";
@@ -385,6 +390,7 @@ export async function runCliModel({
       timeoutMs,
       env: effectiveEnv,
       cwd,
+      signal,
     });
     const text = stdout.trim();
     if (!text) throw new Error("CLI returned empty output");
@@ -417,6 +423,7 @@ export async function runCliModel({
         timeoutMs,
         env: effectiveEnv,
         cwd: isolatedCwd ?? cwd,
+        signal,
       });
       const text = stdout.trim();
       if (!text) throw new Error("CLI returned empty output");
@@ -464,6 +471,7 @@ export async function runCliModel({
         timeoutMs,
         env: effectiveEnv,
         cwd: isolatedCwd ?? cwd,
+        signal,
       });
       return parsePiOutputFromJsonl(stdout);
     } finally {
@@ -496,6 +504,7 @@ export async function runCliModel({
     timeoutMs,
     env: effectiveEnv,
     cwd,
+    signal,
   });
   return parseJsonProviderOutput({ provider, stdout });
 }

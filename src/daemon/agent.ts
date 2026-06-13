@@ -325,6 +325,7 @@ export async function streamAgentResponse({
         timeoutMs: 120_000,
         env,
         config: resolved.cliConfig,
+        signal,
       }),
     );
     onChunk(result.text);
@@ -383,6 +384,7 @@ export async function completeAgentResponse({
   modelOverride,
   tools,
   automationEnabled,
+  signal,
 }: {
   env: Record<string, string | undefined>;
   pageUrl: string;
@@ -392,6 +394,7 @@ export async function completeAgentResponse({
   modelOverride: string | null;
   tools: string[];
   automationEnabled: boolean;
+  signal?: AbortSignal;
 }): Promise<AssistantMessage> {
   const normalizedMessages = normalizeMessages(messages);
   const toolList = resolveToolList(automationEnabled, tools, TOOL_DEFINITIONS);
@@ -420,6 +423,7 @@ export async function completeAgentResponse({
         timeoutMs: 120_000,
         env,
         config: resolved.cliConfig,
+        signal,
       }),
     );
     return { role: "assistant", content: result.text } as unknown as AssistantMessage;
@@ -439,6 +443,7 @@ export async function completeAgentResponse({
       maxTokens: maxOutputTokens,
       ...resolveProviderPayloadOptions(provider),
       apiKey,
+      signal,
     },
   );
 
