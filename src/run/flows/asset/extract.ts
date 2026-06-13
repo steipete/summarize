@@ -1,3 +1,4 @@
+import { applyContentBudget } from "@steipete/summarize-core/content";
 import type { ExecFileFn } from "../../../markitdown.js";
 import { convertToMarkdownWithMarkitdown } from "../../../markitdown.js";
 import { formatBytes } from "../../../tty/format.js";
@@ -35,9 +36,11 @@ const baseDiagnostics: ExtractDiagnosticsForFinishLine = {
 export async function extractAssetContent({
   ctx,
   attachment,
+  maxCharacters,
 }: {
   ctx: AssetExtractContext;
   attachment: AssetAttachment;
+  maxCharacters?: number | null;
 }): Promise<AssetExtractResult> {
   const textContent = getTextContentFromAttachment(attachment);
   if (textContent) {
@@ -47,7 +50,10 @@ export async function extractAssetContent({
       );
     }
     return {
-      content: textContent.content,
+      content:
+        typeof maxCharacters === "number"
+          ? applyContentBudget(textContent.content, maxCharacters).content
+          : textContent.content,
       diagnostics: baseDiagnostics,
     };
   }
@@ -106,7 +112,10 @@ export async function extractAssetContent({
   }
 
   return {
-    content: markdown,
+    content:
+      typeof maxCharacters === "number"
+        ? applyContentBudget(markdown, maxCharacters).content
+        : markdown,
     diagnostics: {
       ...baseDiagnostics,
       markdown: { used: true, provider: null, notes: usedOcr ? "markitdown+ocr" : "markitdown" },

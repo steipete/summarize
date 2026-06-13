@@ -110,6 +110,53 @@ describe("cli --extract (asset url)", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("caps extracted text assets with --max-extract-characters", async () => {
+    const body = `First sentence. ${"word ".repeat(100)}`;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url === "https://example.com/file.txt") {
+        return new Response(body, {
+          status: 200,
+          headers: { "Content-Type": "text/plain" },
+        });
+      }
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+
+    let stdoutText = "";
+    const stdout = new Writable({
+      write(chunk, _encoding, callback) {
+        stdoutText += chunk.toString();
+        callback();
+      },
+    });
+
+    await runCli(
+      [
+        "--extract",
+        "--max-extract-characters",
+        "80",
+        "--timeout",
+        "2s",
+        "https://example.com/file.txt",
+      ],
+      {
+        env: {},
+        fetch: fetchMock as unknown as typeof fetch,
+        stdout,
+        stderr: new Writable({
+          write(_chunk, _encoding, cb) {
+            cb();
+          },
+        }),
+      },
+    );
+
+    expect(stdoutText.trim().length).toBeLessThanOrEqual(80);
+    expect(stdoutText.trim()).not.toBe(body.trim());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("routes extensionless text downloads through asset JSON output", async () => {
     const body = "a,b\n1,2\n";
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

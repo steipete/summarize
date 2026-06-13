@@ -379,6 +379,10 @@ export async function executeSummarize(
         throw new Error("Resolved asset execution requires prepared asset resources");
       }
       if (request.extractOnly) {
+        const maxCharacters =
+          request.input.kind === "url" || request.input.kind === "input-url"
+            ? request.input.maxCharacters
+            : null;
         const extractedAsset = await extractAssetContent({
           ctx: {
             env: assetSummaryContext.env,
@@ -388,6 +392,7 @@ export async function executeSummarize(
             preprocessMode: assetSummaryContext.preprocessMode,
           },
           attachment: input.attachment,
+          ...(typeof maxCharacters === "number" ? { maxCharacters } : {}),
         });
         const report = assetSummaryContext.shouldComputeReport
           ? await assetSummaryContext.buildReport()

@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- CLI extraction: honor `--max-extract-characters` for remote text and document assets, not only web-page extraction.
 - Slides: render extracted slide labels or debug paths for `--slides --extract` even when a direct video has no transcript.
 - CLI errors: print Commander validation failures and missing-input help once instead of duplicating them across stdout/stderr.
 - Shell completions: sync and package Fish completions for both CLI aliases and subcommands, with candidate values matched to accepted CLI choices (#277, thanks @vincent-peng).
