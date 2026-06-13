@@ -249,12 +249,15 @@ export async function createMediaCache({
   };
 
   const pruneExpired = async (index: MediaCacheIndex, now: number) => {
+    let pruned = false;
     const entries = Object.entries(index.entries);
     for (const [key, entry] of entries) {
       if (entry.expiresAtMs != null && entry.expiresAtMs <= now) {
         await removeEntry(cacheDir, index, key, entry);
+        pruned = true;
       }
     }
+    return pruned;
   };
 
   const computeSizeBytes = async (entry: MediaCacheIndexEntry): Promise<number | null> => {
@@ -296,10 +299,13 @@ export async function createMediaCache({
     return await withIndexLock(async () => {
       const now = Date.now();
       const index = await readIndex(indexPath);
-      await pruneExpired(index, now);
+      const pruned = await pruneExpired(index, now);
       const key = hashKey(url);
       const entry = index.entries[key];
-      if (!entry) return null;
+      if (!entry) {
+        if (pruned) await writeIndex(indexPath, index);
+        return null;
+      }
 
       const filePath = join(cacheDir, entry.fileName);
       let stat: { size: number } | null = null;

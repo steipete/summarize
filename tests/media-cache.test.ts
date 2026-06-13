@@ -234,6 +234,10 @@ describe("media cache", () => {
       const cached = await cache.get({ url: "https://example.com/expired" });
       expect(cached).toBeNull();
       await expect(stat(stored.filePath)).rejects.toBeDefined();
+      const pruned = JSON.parse(await readFile(indexPath, "utf8")) as {
+        entries?: Record<string, unknown>;
+      };
+      expect(pruned.entries).toEqual({});
     } finally {
       await rm(cacheDir, { recursive: true, force: true });
     }
