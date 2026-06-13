@@ -5,27 +5,30 @@ set -g __summarize_themes aurora ember moss mono
 
 function __summarize_no_subcommand
     set -l tokens (commandline -opc)
-    for token in $tokens[2..-1]
-        contains -- $token $__summarize_commands
-        and return 1
+    if test (count $tokens) -lt 2
+        return 0
     end
-    return 0
+    not contains -- $tokens[2] $__summarize_commands
 end
 
-function __summarize_seen_command
-    set -l wanted $argv[1]
+function __summarize_command_is
     set -l tokens (commandline -opc)
-    contains -- $wanted $tokens[2..-1]
+    test (count $tokens) -ge 2
+    or return 1
+    test "$tokens[2]" = "$argv[1]"
 end
 
-function __summarize_no_daemon_subcommand
+function __summarize_needs_daemon_command
     set -l daemon_commands install restart status uninstall run
     set -l tokens (commandline -opc)
-    for token in $tokens[2..-1]
-        contains -- $token $daemon_commands
-        and return 1
+    test (count $tokens) -ge 2
+    and test "$tokens[2]" = daemon
+    or return 1
+    if test (count $tokens) -eq 2
+        return 0
     end
-    return 0
+    test (count $tokens) -eq 3
+    and not contains -- $tokens[3] $daemon_commands
 end
 
 for cmd in summarize summarizer
@@ -100,46 +103,46 @@ for cmd in summarize summarizer
     complete -c $cmd -s h -l help -d 'Display help'
 
     # help topics
-    complete -c $cmd -n '__summarize_seen_command help' -xa "$__summarize_commands" -d 'Help topic'
+    complete -c $cmd -n '__summarize_command_is help' -xa "$__summarize_commands" -d 'Help topic'
 
     # slides subcommand
-    complete -c $cmd -n '__summarize_seen_command slides' -l slides-ocr -d 'Run OCR on extracted slides'
-    complete -c $cmd -n '__summarize_seen_command slides' -l slides-dir -d 'Base output dir for slides' -rF
-    complete -c $cmd -n '__summarize_seen_command slides' -s o -l output -d 'Alias for --slides-dir' -rF
-    complete -c $cmd -n '__summarize_seen_command slides' -l slides-scene-threshold -d 'Scene detection threshold (0.1-1.0)' -x
-    complete -c $cmd -n '__summarize_seen_command slides' -l slides-max -d 'Maximum slides to extract' -x
-    complete -c $cmd -n '__summarize_seen_command slides' -l slides-min-duration -d 'Minimum seconds between slides' -x
-    complete -c $cmd -n '__summarize_seen_command slides' -l render -d 'Inline render mode' -xa 'auto kitty iterm none'
-    complete -c $cmd -n '__summarize_seen_command slides' -l theme -d 'CLI theme' -xa "$__summarize_themes"
-    complete -c $cmd -n '__summarize_seen_command slides' -l timeout -d 'Timeout for video extraction' -x
-    complete -c $cmd -n '__summarize_seen_command slides' -l no-cache -d 'Bypass slide cache'
-    complete -c $cmd -n '__summarize_seen_command slides' -l json -d 'Output JSON payload'
-    complete -c $cmd -n '__summarize_seen_command slides' -l verbose -d 'Print detailed progress to stderr'
-    complete -c $cmd -n '__summarize_seen_command slides' -l debug -d 'Alias for --verbose'
-    complete -c $cmd -n '__summarize_seen_command slides' -s V -l version -d 'Print version and exit'
+    complete -c $cmd -n '__summarize_command_is slides' -l slides-ocr -d 'Run OCR on extracted slides'
+    complete -c $cmd -n '__summarize_command_is slides' -l slides-dir -d 'Base output dir for slides' -rF
+    complete -c $cmd -n '__summarize_command_is slides' -s o -l output -d 'Alias for --slides-dir' -rF
+    complete -c $cmd -n '__summarize_command_is slides' -l slides-scene-threshold -d 'Scene detection threshold (0.1-1.0)' -x
+    complete -c $cmd -n '__summarize_command_is slides' -l slides-max -d 'Maximum slides to extract' -x
+    complete -c $cmd -n '__summarize_command_is slides' -l slides-min-duration -d 'Minimum seconds between slides' -x
+    complete -c $cmd -n '__summarize_command_is slides' -l render -d 'Inline render mode' -xa 'auto kitty iterm none'
+    complete -c $cmd -n '__summarize_command_is slides' -l theme -d 'CLI theme' -xa "$__summarize_themes"
+    complete -c $cmd -n '__summarize_command_is slides' -l timeout -d 'Timeout for video extraction' -x
+    complete -c $cmd -n '__summarize_command_is slides' -l no-cache -d 'Bypass slide cache'
+    complete -c $cmd -n '__summarize_command_is slides' -l json -d 'Output JSON payload'
+    complete -c $cmd -n '__summarize_command_is slides' -l verbose -d 'Print detailed progress to stderr'
+    complete -c $cmd -n '__summarize_command_is slides' -l debug -d 'Alias for --verbose'
+    complete -c $cmd -n '__summarize_command_is slides' -s V -l version -d 'Print version and exit'
 
     # status subcommand
-    complete -c $cmd -n '__summarize_seen_command status' -l json -d 'Output structured JSON'
-    complete -c $cmd -n '__summarize_seen_command status' -l probe -d 'Probe model-list endpoints'
-    complete -c $cmd -n '__summarize_seen_command status' -l verbose -d 'Include detailed status'
-    complete -c $cmd -n '__summarize_seen_command status' -l no-color -d 'Disable ANSI colors'
+    complete -c $cmd -n '__summarize_command_is status' -l json -d 'Output structured JSON'
+    complete -c $cmd -n '__summarize_command_is status' -l probe -d 'Probe model-list endpoints'
+    complete -c $cmd -n '__summarize_command_is status' -l verbose -d 'Include detailed status'
+    complete -c $cmd -n '__summarize_command_is status' -l no-color -d 'Disable ANSI colors'
 
     # refresh-free subcommand
-    complete -c $cmd -n '__summarize_seen_command refresh-free' -l runs -d 'Smoke-test runs per model' -x
-    complete -c $cmd -n '__summarize_seen_command refresh-free' -l smart -d 'Smart benchmark runs' -x
-    complete -c $cmd -n '__summarize_seen_command refresh-free' -l min-params -d 'Minimum parameter size' -x
-    complete -c $cmd -n '__summarize_seen_command refresh-free' -l max-age-days -d 'Maximum model age in days' -x
-    complete -c $cmd -n '__summarize_seen_command refresh-free' -l set-default -d 'Set free preset as default'
-    complete -c $cmd -n '__summarize_seen_command refresh-free' -l verbose -d 'Print detailed progress'
+    complete -c $cmd -n '__summarize_command_is refresh-free' -l runs -d 'Smoke-test runs per model' -x
+    complete -c $cmd -n '__summarize_command_is refresh-free' -l smart -d 'Smart benchmark runs' -x
+    complete -c $cmd -n '__summarize_command_is refresh-free' -l min-params -d 'Minimum parameter size' -x
+    complete -c $cmd -n '__summarize_command_is refresh-free' -l max-age-days -d 'Maximum model age in days' -x
+    complete -c $cmd -n '__summarize_command_is refresh-free' -l set-default -d 'Set free preset as default'
+    complete -c $cmd -n '__summarize_command_is refresh-free' -l verbose -d 'Print detailed progress'
 
     # daemon subcommand
-    complete -c $cmd -n '__summarize_seen_command daemon; and __summarize_no_daemon_subcommand' -xa 'install restart status uninstall run' -d 'Daemon command'
-    complete -c $cmd -n '__summarize_seen_command daemon' -l dev -d 'Install dev-mode daemon'
-    complete -c $cmd -n '__summarize_seen_command daemon' -l port -d 'Daemon port' -x
-    complete -c $cmd -n '__summarize_seen_command daemon' -l token -d 'Daemon auth token' -x
+    complete -c $cmd -n '__summarize_needs_daemon_command' -xa 'install restart status uninstall run' -d 'Daemon command'
+    complete -c $cmd -n '__summarize_command_is daemon' -l dev -d 'Install dev-mode daemon'
+    complete -c $cmd -n '__summarize_command_is daemon' -l port -d 'Daemon port' -x
+    complete -c $cmd -n '__summarize_command_is daemon' -l token -d 'Daemon auth token' -x
 
     # transcriber subcommand
-    complete -c $cmd -n '__summarize_seen_command transcriber' -xa 'setup' -d 'Transcriber command'
-    complete -c $cmd -n '__summarize_seen_command transcriber' -l model -d 'ONNX transcription model' -xa 'parakeet canary'
-    complete -c $cmd -n '__summarize_seen_command transcriber' -l theme -d 'CLI theme' -xa "$__summarize_themes"
+    complete -c $cmd -n '__summarize_command_is transcriber' -xa 'setup' -d 'Transcriber command'
+    complete -c $cmd -n '__summarize_command_is transcriber' -l model -d 'ONNX transcription model' -xa 'parakeet canary'
+    complete -c $cmd -n '__summarize_command_is transcriber' -l theme -d 'CLI theme' -xa "$__summarize_themes"
 end

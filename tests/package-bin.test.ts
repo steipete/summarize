@@ -95,20 +95,35 @@ describe("package bin wrappers", () => {
 
   it("keeps fish completions aligned with visible CLI options", async () => {
     const fish = await readFile("completions/summarize.fish", "utf8");
-    const completedLongOptions = Array.from(
-      new Set(Array.from(fish.matchAll(/(?:^|\s)-l\s+([a-z0-9-]+)/g)).map((match) => match[1])),
-    );
+    const completedLongOptions = (condition: string) =>
+      Array.from(
+        new Set(
+          fish
+            .split("\n")
+            .filter((line) => line.includes(`-n '${condition}'`))
+            .flatMap((line) =>
+              Array.from(line.matchAll(/(?:^|\s)-l\s+([a-z0-9-]+)/g), (match) => match[1]),
+            ),
+        ),
+      );
     const visibleLongOptions = (program: ReturnType<typeof buildProgram>) =>
       program.options
         .filter((option) => !option.hidden)
         .flatMap((option) => option.flags.match(/--[a-z0-9-]+/g) ?? [])
         .map((flag) => flag.slice(2));
 
-    expect(completedLongOptions).toEqual(
+    expect(completedLongOptions("__summarize_no_subcommand")).toEqual(
       expect.arrayContaining(visibleLongOptions(buildProgram())),
     );
-    expect(completedLongOptions).toEqual(
+    expect(completedLongOptions("__summarize_command_is slides")).toEqual(
       expect.arrayContaining(visibleLongOptions(buildSlidesProgram())),
     );
+  });
+
+  it("routes fish subcommands from the first CLI argument", async () => {
+    const fish = await readFile("completions/summarize.fish", "utf8");
+
+    expect(fish).toContain('test "$tokens[2]" = "$argv[1]"');
+    expect(fish).not.toContain("$tokens[2..-1]");
   });
 });
