@@ -437,6 +437,7 @@ export async function streamTextWithModelId({
   canonicalModelId: string;
   provider: LlmProvider;
   usage: Promise<LlmTokenUsage | null>;
+  finalText: Promise<string | null>;
   lastError: () => unknown;
 }> {
   const context = promptToContext(prompt);

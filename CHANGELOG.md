@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Streaming: preserve repeated model deltas when a chunk exactly matches the accumulated summary.
 - Daemon logging: expand `~` in configured log file paths instead of creating a literal working-directory path.
 - Media cache: persist TTL pruning to the index after an expired-entry miss.
 - Media cache: serialize index updates across concurrent daemon and CLI processes to prevent failed writes, lost entries, and orphaned files.

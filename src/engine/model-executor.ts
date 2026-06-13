@@ -397,6 +397,22 @@ export function createModelExecutor(deps: ModelExecutorDeps) {
           }
         }
 
+        const finalText = (await streamResult.finalText)?.trim() ?? "";
+        if (finalText.length > streamed.length && finalText.startsWith(streamed)) {
+          const prevStreamed = streamed;
+          const firstChunk = !streamHandlerStarted;
+          streamed = finalText;
+          if (streamHandler) {
+            streamHandlerStarted = true;
+            streamOutputEmitted =
+              (await streamHandler.onChunk({
+                streamed,
+                prevStreamed: firstChunk ? "" : prevStreamed,
+                appended: firstChunk ? streamed : streamed.slice(prevStreamed.length),
+              })) || streamOutputEmitted;
+          }
+        }
+
         streamedRaw = streamed;
         const trimmed = streamed.trim();
         streamed = trimmed;

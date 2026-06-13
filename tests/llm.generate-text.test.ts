@@ -1234,6 +1234,7 @@ describe("llm generate/stream", () => {
 
     expect(chunks).toEqual(["He", "llo"]);
     expect(result.canonicalModelId).toBe("openai/gpt-5.5");
+    await expect(result.finalText).resolves.toBe("Hello");
     await expect(result.usage).resolves.toEqual({
       promptTokens: 3,
       completionTokens: 4,

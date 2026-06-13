@@ -1,7 +1,11 @@
 import { streamSimple } from "@earendil-works/pi-ai";
-import type { Context } from "@earendil-works/pi-ai";
+import type { AssistantMessage, Context } from "@earendil-works/pi-ai";
 import { createUnsupportedFunctionalityError } from "./errors.js";
-import { resolveEffectiveTemperature, streamUsageWithTimeout } from "./generate-text-shared.js";
+import {
+  resolveEffectiveTemperature,
+  streamUsageWithTimeout,
+  withTimeoutFallback,
+} from "./generate-text-shared.js";
 import type { LlmApiKeys } from "./generate-text-types.js";
 import { parseGatewayStyleModelId } from "./model-id.js";
 import type { LlmProvider } from "./model-id.js";
@@ -25,6 +29,7 @@ import {
   resolveXaiModel,
 } from "./providers/models.js";
 import { completeOpenAiText, streamOpenAiText } from "./providers/openai.js";
+import { extractText } from "./providers/shared.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
 import type { LlmTokenUsage } from "./types.js";
 
@@ -51,8 +56,50 @@ export type StreamTextResult = {
   canonicalModelId: string;
   provider: LlmProvider;
   usage: Promise<LlmTokenUsage | null>;
+  finalText: Promise<string | null>;
   lastError: () => unknown;
 };
+
+function resolveStreamCompletion(
+  stream: { result: () => Promise<AssistantMessage> },
+  timeoutMs: number,
+): Pick<StreamTextResult, "usage" | "finalText"> {
+  const result = stream.result();
+  return {
+    usage: streamUsageWithTimeout({ result, timeoutMs }),
+    finalText: withTimeoutFallback({
+      promise: result.then((message) => extractText(message) || null).catch(() => null),
+      timeoutMs,
+      fallback: null,
+    }),
+  };
+}
+
+function captureFinalText(textStream: AsyncIterable<string>): {
+  textStream: AsyncIterable<string>;
+  finalText: Promise<string | null>;
+} {
+  let resolveFinalText: (value: string | null) => void = () => {};
+  const finalText = new Promise<string | null>((resolve) => {
+    resolveFinalText = resolve;
+  });
+  return {
+    textStream: {
+      async *[Symbol.asyncIterator]() {
+        let collected = "";
+        try {
+          for await (const chunk of textStream) {
+            collected += chunk;
+            yield chunk;
+          }
+        } finally {
+          resolveFinalText(collected.trim() || null);
+        }
+      },
+    },
+    finalText,
+  };
+}
 
 function createTimedTextStream({
   textStream,
@@ -260,7 +307,7 @@ export async function streamTextWithContext({
         }),
         canonicalModelId: parsed.canonical,
         provider: parsed.provider,
-        usage: streamUsageWithTimeout({ result: stream.result(), timeoutMs }),
+        ...resolveStreamCompletion(stream, timeoutMs),
         lastError: () => lastError,
       };
     }
@@ -298,7 +345,7 @@ export async function streamTextWithContext({
         }),
         canonicalModelId: parsed.canonical,
         provider: parsed.provider,
-        usage: streamUsageWithTimeout({ result: stream.result(), timeoutMs }),
+        ...resolveStreamCompletion(stream, timeoutMs),
         lastError: () => lastError,
       };
     }
@@ -337,7 +384,7 @@ export async function streamTextWithContext({
         }),
         canonicalModelId: parsed.canonical,
         provider: parsed.provider,
-        usage: streamUsageWithTimeout({ result: stream.result(), timeoutMs }),
+        ...resolveStreamCompletion(stream, timeoutMs),
         lastError: () => lastError,
       };
     }
@@ -385,9 +432,10 @@ export async function streamTextWithContext({
             setLastError,
           });
           if (streamResult) {
+            const captured = captureFinalText(streamResult.textStream);
             return {
               textStream: createTimedTextStream({
-                textStream: streamResult.textStream,
+                textStream: captured.textStream,
                 timeoutMs,
                 controller,
                 setLastError,
@@ -397,6 +445,7 @@ export async function streamTextWithContext({
                 : parsed.canonical,
               provider: parsed.provider,
               usage: streamResult.usage,
+              finalText: captured.finalText,
               lastError: () => lastError,
             };
           }
@@ -426,6 +475,7 @@ export async function streamTextWithContext({
             : parsed.canonical,
           provider: parsed.provider,
           usage: Promise.resolve(result.usage),
+          finalText: Promise.resolve(result.text.trim() || null),
           lastError: () => lastError,
         };
       }
@@ -459,7 +509,7 @@ export async function streamTextWithContext({
         }),
         canonicalModelId: parsed.canonical,
         provider: parsed.provider,
-        usage: streamUsageWithTimeout({ result: stream.result(), timeoutMs }),
+        ...resolveStreamCompletion(stream, timeoutMs),
         lastError: () => lastError,
       };
     }

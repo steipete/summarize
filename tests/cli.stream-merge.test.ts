@@ -57,13 +57,18 @@ function writeLiteLlmCache(root: string) {
 
 async function runStreamedSummary(
   chunks: string[],
-  options?: { perfTrace?: boolean; stdoutIsTty?: boolean; writeLiteLlmCatalog?: boolean },
+  options?: {
+    finalText?: string;
+    perfTrace?: boolean;
+    stdoutIsTty?: boolean;
+    writeLiteLlmCatalog?: boolean;
+  },
 ): Promise<{ stderr: string; stdout: string; stdoutChunks: string[] }> {
   mocks.streamSimple.mockReset().mockImplementation(() =>
     makeTextDeltaStream(
       chunks,
       makeAssistantMessage({
-        text: chunks.at(-1) ?? "",
+        text: options?.finalText ?? chunks.at(-1) ?? "",
         usage: { input: 100, output: 50, totalTokens: 150 },
       }),
     ),
@@ -140,6 +145,13 @@ describe("cli stream chunk merge", () => {
   it("keeps delta chunks unchanged", async () => {
     const { stdout: out } = await runStreamedSummary(["Hello ", "world", "!"]);
     expect(out).toBe("Hello world!\n");
+  }, 20_000);
+
+  it("preserves identical consecutive delta chunks", async () => {
+    const { stdout: out } = await runStreamedSummary(["repeat", "repeat"], {
+      finalText: "repeatrepeat",
+    });
+    expect(out).toBe("repeatrepeat\n");
   }, 20_000);
 
   it("writes the first plain stdout chunk before a newline arrives", async () => {
