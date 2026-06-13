@@ -34,7 +34,7 @@ export function resolveRunInput({
   if (!rawInput) {
     const help = buildConciseHelp();
     stdout.write(`${help}\n`);
-    throw new Error(help);
+    throw Object.assign(new Error(help), { exitCode: 1, silent: true });
   }
 
   const inputTarget = resolveInputTarget(rawInput);

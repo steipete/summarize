@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { CommanderError } from "commander";
 import { runCli } from "./run.js";
 
 export type CliMainArgs = {
@@ -134,6 +135,17 @@ export async function runCliMain({
     const mergedEnv = env === process.env ? { ...(await loadDotenvFromCwd()), ...env } : env;
     await runCli(argv, { env: mergedEnv, fetch, stdout, stderr });
   } catch (error: unknown) {
+    if (error instanceof CommanderError) {
+      setExitCode(error.exitCode);
+      return;
+    }
+
+    const exitCode = (error as { exitCode?: unknown } | null)?.exitCode;
+    if ((error as { silent?: unknown } | null)?.silent === true && typeof exitCode === "number") {
+      setExitCode(exitCode);
+      return;
+    }
+
     const isTty = Boolean((stderr as unknown as { isTTY?: boolean }).isTTY);
     if (isTty) stderr.write("\n");
 
@@ -149,11 +161,6 @@ export async function runCliMain({
 
     const message =
       error instanceof Error ? error.message : error ? String(error) : "Unknown error";
-    const exitCode = (error as { exitCode?: unknown } | null)?.exitCode;
-    if ((error as { silent?: unknown } | null)?.silent === true && typeof exitCode === "number") {
-      setExitCode(exitCode);
-      return;
-    }
     stderr.write(`${stripAnsi(message)}\n`);
     setExitCode(typeof exitCode === "number" ? exitCode : 1);
   }

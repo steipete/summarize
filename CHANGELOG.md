@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- CLI errors: print Commander validation failures and missing-input help once instead of duplicating them across stdout/stderr.
 - Shell completions: sync and package Fish completions for both CLI aliases and subcommands, with candidate values matched to accepted CLI choices (#277, thanks @vincent-peng).
 - Daemon: close live summarize and slide SSE connections immediately after terminal events instead of retaining them until session cleanup.
 - Browser extension: declare User Scripts permissions per browser, route Chrome users to the required extension toggle, remove an invalid manifest permission, and align documented browser minimums.
