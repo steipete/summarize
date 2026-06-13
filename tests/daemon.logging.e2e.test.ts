@@ -61,7 +61,7 @@ describe("daemon logging", () => {
             enabled: true,
             level: "debug",
             format: "json",
-            file: logPath,
+            file: "~/.summarize/logs/daemon.jsonl",
             maxMb: 1,
             maxFiles: 1,
           },

@@ -42,6 +42,12 @@ const LOG_LEVEL_MAP: Record<DaemonLogLevel, number> = {
   error: 5,
 };
 
+function resolveLogFilePath(raw: string, home: string): string {
+  if (raw === "~") return home;
+  if (raw.startsWith("~/")) return path.resolve(path.join(home, raw.slice(2)));
+  return raw;
+}
+
 function safeJsonStringify(value: unknown): string {
   const seen = new WeakSet<object>();
   return JSON.stringify(value, (_key, val) => {
@@ -88,9 +94,10 @@ export function resolveDaemonLoggingConfig({
   if (!logging || logging.enabled !== true) return null;
 
   const { logDir } = resolveDaemonLogPaths(env);
+  const home = env.HOME?.trim() || env.USERPROFILE?.trim() || "";
   const file =
     typeof logging.file === "string" && logging.file.trim()
-      ? logging.file.trim()
+      ? resolveLogFilePath(logging.file.trim(), home)
       : path.join(logDir, "daemon.jsonl");
   const maxMb =
     typeof logging.maxMb === "number" && logging.maxMb > 0 ? logging.maxMb : DEFAULT_LOG_MAX_MB;
