@@ -119,13 +119,6 @@ export async function tryTranscriptOnlyStrategy({
   );
   if (!strategy) return null;
 
-  if (strategy.requiresTranscriptionProvider) {
-    const availability = await resolveTranscriptionAvailability({ transcription });
-    if (!availability.hasAnyProvider) {
-      throw new Error(strategy.availabilityError ?? "Transcription provider unavailable");
-    }
-  }
-
   const transcriptResolution = await resolveTranscriptForLink(url, null, deps, {
     youtubeTranscriptMode,
     mediaTranscriptMode: strategy.transcriptMode(mediaTranscriptMode),
@@ -136,6 +129,12 @@ export async function tryTranscriptOnlyStrategy({
     fileMtime,
   });
   if (!transcriptResolution.text) {
+    if (strategy.requiresTranscriptionProvider) {
+      const availability = await resolveTranscriptionAvailability({ transcription });
+      if (!availability.hasAnyProvider) {
+        throw new Error(strategy.availabilityError ?? "Transcription provider unavailable");
+      }
+    }
     const notes = transcriptResolution.diagnostics?.notes;
     throw new Error(`Failed to transcribe ${strategy.failureLabel}${notes ? ` (${notes})` : ""}`);
   }

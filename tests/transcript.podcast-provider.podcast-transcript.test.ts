@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-async function importPodcastProviderWithoutTranscription() {
+async function importPodcastModulesWithoutTranscription() {
   vi.resetModules();
   vi.doMock("../packages/core/src/transcription/whisper.js", () => ({
     MAX_OPENAI_UPLOAD_BYTES: 24 * 1024 * 1024,
@@ -17,7 +17,14 @@ async function importPodcastProviderWithoutTranscription() {
   }));
 
   try {
-    return await import("../packages/core/src/content/transcript/providers/podcast.js");
+    const [provider, content] = await Promise.all([
+      import("../packages/core/src/content/transcript/providers/podcast.js"),
+      import("../packages/core/src/content/link-preview/content/index.js"),
+    ]);
+    return {
+      fetchTranscript: provider.fetchTranscript,
+      fetchLinkContent: content.fetchLinkContent,
+    };
   } finally {
     vi.doUnmock("../packages/core/src/transcription/whisper.js");
   }
@@ -36,7 +43,7 @@ const baseOptions = {
 
 describe("podcast transcript provider: RSS <podcast:transcript>", () => {
   it("uses JSON transcript from RSS without requiring transcription providers", async () => {
-    const { fetchTranscript } = await importPodcastProviderWithoutTranscription();
+    const { fetchTranscript } = await importPodcastModulesWithoutTranscription();
 
     const transcriptUrl = "http://93.184.216.34/transcript.json";
     const feedXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -74,7 +81,7 @@ describe("podcast transcript provider: RSS <podcast:transcript>", () => {
   });
 
   it("uses RSS transcript for Apple Podcasts episode (iTunes lookup → feed)", async () => {
-    const { fetchTranscript } = await importPodcastProviderWithoutTranscription();
+    const { fetchTranscript } = await importPodcastModulesWithoutTranscription();
 
     const showId = "1794526548";
     const episodeId = "1000741457032";
@@ -146,5 +153,90 @@ Hello from VTT
     expect(result.source).toBe("podcastTranscript");
     expect(result.text).toContain("Hello from VTT");
     expect(result.attemptedProviders).toEqual(["podcastTranscript"]);
+  });
+
+  it("allows Apple Podcasts RSS transcripts through link-preview preflight without a provider", async () => {
+    const { fetchLinkContent } = await importPodcastModulesWithoutTranscription();
+
+    const showId = "1794526548";
+    const episodeId = "1000741457032";
+    const pageUrl = `https://podcasts.apple.com/us/podcast/test/id${showId}?i=${episodeId}`;
+    const feedUrl = "https://example.com/feed.xml";
+    const transcriptUrl = "http://93.184.216.34/transcript.vtt";
+    const lookupResponse = JSON.stringify({
+      resultCount: 2,
+      results: [
+        { wrapperType: "track", kind: "podcast", feedUrl },
+        {
+          wrapperType: "podcastEpisode",
+          trackId: Number(episodeId),
+          trackName: "Episode with RSS transcript",
+          episodeUrl: "https://example.com/episode.mp3",
+          episodeFileExtension: "mp3",
+        },
+      ],
+    });
+    const feedXml = `<?xml version="1.0" encoding="UTF-8"?>
+      <rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+        <channel>
+          <item>
+            <title>Episode with RSS transcript</title>
+            <podcast:transcript url="${transcriptUrl}" type="text/vtt" />
+          </item>
+        </channel>
+      </rss>`;
+
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("https://itunes.apple.com/lookup")) {
+        return new Response(lookupResponse, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (url === feedUrl) {
+        return new Response(feedXml, {
+          status: 200,
+          headers: { "content-type": "application/xml" },
+        });
+      }
+      if (url === transcriptUrl) {
+        return new Response(
+          `WEBVTT
+
+00:00:00.000 --> 00:00:01.000
+Transcript without cloud credentials
+`,
+          { status: 200, headers: { "content-type": "text/vtt" } },
+        );
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const result = await fetchLinkContent(
+      pageUrl,
+      { cacheMode: "bypass" },
+      {
+        fetch: fetchImpl as unknown as typeof fetch,
+        env: {
+          SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP: "1",
+          GEMINI_API_KEY: "",
+          GOOGLE_GENERATIVE_AI_API_KEY: "",
+          GOOGLE_API_KEY: "",
+        },
+        scrapeWithFirecrawl: null,
+        apifyApiToken: null,
+        ytDlpPath: null,
+        groqApiKey: null,
+        falApiKey: null,
+        openaiApiKey: null,
+        convertHtmlToMarkdown: null,
+        transcriptCache: null,
+      },
+    );
+
+    expect(result.transcriptSource).toBe("podcastTranscript");
+    expect(result.content).toContain("Transcript without cloud credentials");
   });
 });

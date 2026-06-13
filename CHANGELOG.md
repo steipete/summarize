@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Podcast transcripts: allow Apple and Spotify RSS transcripts without requiring a local or cloud transcription provider.
 - CLI cancellation: terminate tracked transcriber, downloader, and media-tool process trees on SIGINT or SIGTERM.
 - Local media: accept configured Parakeet and Canary ONNX transcribers instead of rejecting them during provider preflight.
 - Streaming: preserve repeated model deltas when a chunk exactly matches the accumulated summary.
