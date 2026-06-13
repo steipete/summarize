@@ -33,12 +33,16 @@ describe("daemon server sessions", () => {
     ]);
     expect(session.summaryEvents.done).toBe(true);
     expect(client.write).toHaveBeenCalledTimes(2);
+    expect(client.end).toHaveBeenCalledOnce();
+    expect(session.summaryEvents.clients.size).toBe(0);
     expect(onEvent).toHaveBeenCalledTimes(2);
   });
 
   it("keeps slide terminal sequencing separate from summary policy", () => {
     const session = createSession(() => "summary-1");
+    const client = createClient();
     const onEvent = vi.fn();
+    session.slideEvents.clients.add(client);
 
     emitSlidesStatus(session, "  extracting  ", onEvent);
     emitSlidesDone(session, { ok: false, error: "failed" }, onEvent);
@@ -49,6 +53,9 @@ describe("daemon server sessions", () => {
       "done",
     ]);
     expect(session.slideEvents.done).toBe(true);
+    expect(client.write).toHaveBeenCalledTimes(3);
+    expect(client.end).toHaveBeenCalledOnce();
+    expect(session.slideEvents.clients.size).toBe(0);
     expect(session.slidesLastStatus).toBe("extracting");
     expect(onEvent).toHaveBeenCalledTimes(3);
   });

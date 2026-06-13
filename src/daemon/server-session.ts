@@ -55,7 +55,10 @@ export function pushToSession(
   if (session.summaryEvents.done) return;
   pushBufferedSseEvent(session.summaryEvents, event);
   onSessionEvent?.(event, session.id);
-  if (event.event === "done" || event.event === "error") session.summaryEvents.done = true;
+  if (event.event === "done" || event.event === "error") {
+    session.summaryEvents.done = true;
+    closeBufferedSseChannel(session.summaryEvents);
+  }
 }
 
 export function pushSlidesToSession(
@@ -65,7 +68,10 @@ export function pushSlidesToSession(
 ) {
   pushBufferedSseEvent(session.slideEvents, event);
   onSessionEvent?.(event, session.id);
-  if (event.event === "done" || event.event === "error") session.slideEvents.done = true;
+  if (event.event === "done") {
+    session.slideEvents.done = true;
+    closeBufferedSseChannel(session.slideEvents);
+  }
   if (event.event === "status") session.slidesLastStatus = event.data.text;
 }
 
