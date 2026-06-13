@@ -35,6 +35,7 @@ import {
   getPanelSlideDescriptions,
   getPanelSlidesSummaryComplete,
   getPanelSlidesSummaryMarkdown,
+  getPanelSlidesSummaryModel,
   getPanelSlidesTimeline,
   getPanelSummaryMarkdown,
   getPanelTranscriptTimedText,
