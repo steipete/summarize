@@ -40,7 +40,7 @@
     "build:lib": "tsgo -p tsconfig.build.json",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:coverage",
     "clean": "rimraf dist packages/core/dist",
-    "dev:cli": "pnpm -C packages/core build && tsx src/cli.ts",
+    "dev:cli": "tsx --tsconfig tsconfig.dev.json src/cli.ts",
     "docs:build": "node scripts/build-docs-site.mjs",
     "docs:list": "tsx scripts/docs-list.ts",
     "docs:serve": "bash scripts/docs-serve.sh",

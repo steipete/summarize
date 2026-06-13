@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@steipete/summarize-core": ["packages/core/src/index.ts"],
+      "@steipete/summarize-core/*": ["packages/core/src/*"]
+    }
+  }
+}

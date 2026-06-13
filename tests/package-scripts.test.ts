@@ -13,6 +13,11 @@ const corePackage = JSON.parse(readFileSync(resolve("packages/core/package.json"
   engines: Record<string, string>;
 };
 const releaseScript = readFileSync(resolve("scripts/release.sh"), "utf8");
+const devTsconfig = JSON5.parse(readFileSync(resolve("tsconfig.dev.json"), "utf8")) as {
+  compilerOptions?: {
+    paths?: Record<string, string[]>;
+  };
+};
 const oxfmtConfig = JSON5.parse(readFileSync(resolve(".oxfmtrc.jsonc"), "utf8")) as {
   ignorePatterns?: string[];
 };
@@ -43,10 +48,14 @@ describe("package scripts", () => {
     );
   });
 
-  it("builds core before source CLI aliases", () => {
-    expect(rootPackage.scripts["dev:cli"]).toBe("pnpm -C packages/core build && tsx src/cli.ts");
+  it("runs source CLI aliases against core source without rebuilding shared output", () => {
+    expect(rootPackage.scripts["dev:cli"]).toBe("tsx --tsconfig tsconfig.dev.json src/cli.ts");
     expect(rootPackage.scripts.s).toBe("pnpm dev:cli");
     expect(rootPackage.scripts.summarize).toBe("pnpm dev:cli");
+    expect(devTsconfig.compilerOptions?.paths).toEqual({
+      "@steipete/summarize-core": ["packages/core/src/index.ts"],
+      "@steipete/summarize-core/*": ["packages/core/src/*"],
+    });
   });
 
   it("typechecks both workspace layers from the root script", () => {
