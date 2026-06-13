@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Chrome extension: restore persisted chat history after the daemon agent-route refactor.
 - CLI extraction: honor `--max-extract-characters` for remote text and document assets, not only web-page extraction.
 - Cache: wait for concurrent first-open SQLite locks before enabling WAL instead of failing CLI startup with `database is locked`.
 - Slides: honor explicit and configured scene thresholds without silently replacing them through auto-tuning.

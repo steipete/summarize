@@ -173,7 +173,17 @@ export async function runDaemonServer({
         return;
       }
 
-      if (await handleAgentRoute({ req, res, url, cors, env, createRunId: randomUUID })) {
+      if (
+        await handleAgentRoute({
+          req,
+          res,
+          url,
+          cors,
+          env,
+          cacheState,
+          createRunId: randomUUID,
+        })
+      ) {
         return;
       }
 
