@@ -5,6 +5,7 @@
 ### Fixes
 
 - CLI extraction: honor `--max-extract-characters` for remote text and document assets, not only web-page extraction.
+- Cache: wait for concurrent first-open SQLite locks before enabling WAL instead of failing CLI startup with `database is locked`.
 - Slides: honor explicit and configured scene thresholds without silently replacing them through auto-tuning.
 - Slides: report the calibrated scene threshold in JSON and `slides.json` when interval fallback supplies frames after zero scene detections.
 - Slides: render extracted slide labels or debug paths for `--slides --extract` even when a direct video has no transcript.

@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -5,6 +6,56 @@ import { describe, expect, it } from "vitest";
 import { buildTranscriptCacheKey, createCacheStore } from "../src/cache.js";
 
 describe("cache store", () => {
+  it("waits for a first-open database lock before enabling WAL", async () => {
+    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const path = join(root, "cache.sqlite");
+    const holder = spawn(
+      process.execPath,
+      [
+        "--no-warnings",
+        "--input-type=module",
+        "--eval",
+        `
+          import { DatabaseSync } from "node:sqlite";
+          const db = new DatabaseSync(process.argv[1]);
+          db.exec("CREATE TABLE holder (id INTEGER)");
+          db.exec("BEGIN EXCLUSIVE");
+          process.stdout.write("locked\\n");
+          setTimeout(() => {
+            db.exec("COMMIT");
+            db.close();
+          }, 300);
+        `,
+        path,
+      ],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+    const holderExit = new Promise<void>((resolve, reject) => {
+      holder.on("error", reject);
+      holder.on("close", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`lock holder exited with code ${String(code)}`));
+      });
+    });
+    await new Promise<void>((resolve, reject) => {
+      let output = "";
+      holder.on("error", reject);
+      holder.stdout.on("data", (chunk) => {
+        output += chunk.toString();
+        if (output.includes("locked")) resolve();
+      });
+      holder.on("close", (code) => {
+        if (!output.includes("locked")) {
+          reject(new Error(`lock holder exited before acquiring the lock (${String(code)})`));
+        }
+      });
+    });
+
+    const store = await createCacheStore({ path, maxBytes: 1024 * 1024 });
+    store.close();
+    await holderExit;
+  });
+
   it("round-trips text entries", async () => {
     const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
     const path = join(root, "cache.sqlite");

@@ -193,9 +193,9 @@ export async function createCacheStore({
 }): Promise<CacheStore> {
   ensureDir(dirname(path));
   const db = await openSqlite(path);
+  db.exec("PRAGMA busy_timeout=5000");
   db.exec("PRAGMA journal_mode=WAL");
   db.exec("PRAGMA synchronous=NORMAL");
-  db.exec("PRAGMA busy_timeout=5000");
   db.exec("PRAGMA auto_vacuum=INCREMENTAL");
   db.exec(`
     CREATE TABLE IF NOT EXISTS cache_entries (
