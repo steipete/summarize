@@ -6,9 +6,13 @@ import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 
 const runCliMock = vi.fn(async () => {});
+const terminateTrackedProcessesMock = vi.fn();
 
 vi.mock("../src/run.js", () => ({
   runCli: runCliMock,
+}));
+vi.mock("../src/processes.js", () => ({
+  terminateTrackedProcesses: terminateTrackedProcessesMock,
 }));
 
 describe("cli main wiring", async () => {
@@ -80,6 +84,56 @@ describe("cli main wiring", async () => {
 
     expect(exitCode).toBe(130);
     expect(stderrText).toBe("");
+  });
+
+  it.each([
+    ["SIGINT", 130],
+    ["SIGTERM", 143],
+  ] as const)("terminates tracked children and exits on %s", async (signal, expectedExitCode) => {
+    let finishRun: (() => void) | null = null;
+    runCliMock.mockReset().mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRun = resolve;
+        }),
+    );
+    terminateTrackedProcessesMock.mockReset();
+    const exit = vi.fn();
+    const beforeSigint = process.listenerCount("SIGINT");
+    const beforeSigterm = process.listenerCount("SIGTERM");
+
+    const run = runCliMain({
+      argv: [],
+      env: {},
+      fetch: globalThis.fetch.bind(globalThis),
+      stdout: new Writable({
+        write(_c, _e, cb) {
+          cb();
+        },
+      }),
+      stderr: new Writable({
+        write(_c, _e, cb) {
+          cb();
+        },
+      }),
+      exit,
+      setExitCode: () => {},
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    const laterSignalCleanup = vi.fn();
+    process.once(signal, laterSignalCleanup);
+
+    process.emit(signal);
+
+    expect(terminateTrackedProcessesMock).toHaveBeenCalledWith(signal);
+    expect(laterSignalCleanup).toHaveBeenCalledOnce();
+    expect(exit).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(exit).toHaveBeenCalledWith(expectedExitCode);
+    finishRun?.();
+    await run;
+    expect(process.listenerCount("SIGINT")).toBe(beforeSigint);
+    expect(process.listenerCount("SIGTERM")).toBe(beforeSigterm);
   });
 
   it("strips ANSI control sequences from non-verbose errors", async () => {

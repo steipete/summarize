@@ -6,6 +6,7 @@ import {
   runWithProcessContext,
   setProcessObserver,
   spawnTracked,
+  terminateTrackedProcesses,
 } from "../packages/core/src/processes.js";
 
 const createObserver = (capture: {
@@ -26,6 +27,7 @@ const createObserver = (capture: {
 });
 
 afterEach(() => {
+  terminateTrackedProcesses("SIGKILL");
   setProcessObserver(null);
 });
 
@@ -149,5 +151,47 @@ describe("process tracking", () => {
     await once(proc, "close");
 
     expect(capture.outputs.length).toBe(0);
+  });
+
+  it("terminates active tracked processes", async () => {
+    const { proc } = spawnTracked(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
+      stdio: "ignore",
+    });
+    const closed = once(proc, "close");
+
+    terminateTrackedProcesses("SIGTERM");
+
+    const [, signal] = await closed;
+    expect(signal).toBe("SIGTERM");
+  });
+
+  it.runIf(process.platform !== "win32")("terminates tracked process groups", async () => {
+    const parentScript = [
+      'const { spawn } = require("node:child_process");',
+      "const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });",
+      "process.stdout.write(String(child.pid));",
+      "setInterval(() => {}, 1000);",
+    ].join("\n");
+    const { proc } = spawnTracked(process.execPath, ["-e", parentScript], {
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const [chunk] = await once(proc.stdout!, "data");
+    const childPid = Number(String(chunk));
+    const closed = once(proc, "close");
+
+    terminateTrackedProcesses("SIGTERM");
+    await closed;
+
+    let childAlive = true;
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      try {
+        process.kill(childPid, 0);
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      } catch {
+        childAlive = false;
+        break;
+      }
+    }
+    expect(childAlive).toBe(false);
   });
 });

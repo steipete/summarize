@@ -5,7 +5,7 @@ import type {
   ExecFileOptions,
   SpawnOptions,
 } from "node:child_process";
-import { execFile, spawn } from "node:child_process";
+import { execFile, spawn, spawnSync } from "node:child_process";
 
 export type ProcessContext = {
   runId?: string | null;
@@ -56,6 +56,7 @@ export type SpawnTrackedOptions = SpawnOptions & {
 
 const processContext = new AsyncLocalStorage<ProcessContext>();
 let processObserver: ProcessObserver | null = null;
+const activeTrackedProcesses = new Map<ChildProcess, { processGroup: boolean }>();
 
 export function setProcessObserver(next: ProcessObserver | null): void {
   processObserver = next;
@@ -77,6 +78,47 @@ function registerProcess(info: ProcessRegistration): ProcessHandle | null {
     runId: info.runId ?? ctx.runId ?? null,
     source: info.source ?? ctx.source ?? null,
   });
+}
+
+function registerActiveProcess(proc: ChildProcess, processGroup: boolean): void {
+  activeTrackedProcesses.set(proc, { processGroup });
+  const cleanup = () => {
+    activeTrackedProcesses.delete(proc);
+  };
+  proc.on("error", cleanup);
+  proc.on("close", cleanup);
+}
+
+export function terminateTrackedProcesses(signal: NodeJS.Signals): void {
+  for (const [proc, metadata] of activeTrackedProcesses) {
+    if (proc.exitCode !== null || proc.signalCode !== null) {
+      activeTrackedProcesses.delete(proc);
+      continue;
+    }
+
+    if (process.platform === "win32" && proc.pid) {
+      const result = spawnSync("taskkill", ["/PID", String(proc.pid), "/T", "/F"], {
+        stdio: "ignore",
+        windowsHide: true,
+      });
+      if (result.status === 0) continue;
+    }
+
+    if (metadata.processGroup && proc.pid) {
+      try {
+        process.kill(-proc.pid, signal);
+        continue;
+      } catch {
+        // The group may have exited between the state check and signal.
+      }
+    }
+
+    try {
+      proc.kill(signal);
+    } catch {
+      // Process already exited.
+    }
+  }
 }
 
 type LineListener = (line: string) => void;
@@ -104,8 +146,9 @@ function attachLineReader(stream: NodeJS.ReadableStream | null | undefined, onLi
 export function trackChildProcess(
   proc: ChildProcess,
   info: ProcessRegistration,
-  options?: { captureOutput?: boolean },
+  options?: { captureOutput?: boolean; processGroup?: boolean },
 ): ProcessHandle | null {
+  registerActiveProcess(proc, options?.processGroup === true);
   const handle = registerProcess(info);
   if (!handle) return null;
   handle.setPid(proc.pid ?? null);
@@ -143,7 +186,12 @@ export function spawnTracked(
   options: SpawnTrackedOptions = {},
 ): { proc: ChildProcess; handle: ProcessHandle | null } {
   const { label, kind, runId, source, captureOutput, ...spawnOptions } = options;
-  const proc = spawn(command, args, spawnOptions);
+  const processGroup = process.platform !== "win32" && spawnOptions.detached !== false;
+  const effectiveSpawnOptions =
+    processGroup && spawnOptions.detached === undefined
+      ? { ...spawnOptions, detached: true }
+      : spawnOptions;
+  const proc = spawn(command, args, effectiveSpawnOptions);
   const handle = trackChildProcess(
     proc,
     {
@@ -153,10 +201,10 @@ export function spawnTracked(
       kind,
       runId,
       source,
-      cwd: spawnOptions.cwd ? String(spawnOptions.cwd) : null,
-      env: spawnOptions.env ?? null,
+      cwd: effectiveSpawnOptions.cwd ? String(effectiveSpawnOptions.cwd) : null,
+      env: effectiveSpawnOptions.env ?? null,
     },
-    { captureOutput },
+    { captureOutput, processGroup },
   );
   return { proc, handle };
 }
