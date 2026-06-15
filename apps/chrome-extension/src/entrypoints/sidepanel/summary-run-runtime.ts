@@ -1,3 +1,4 @@
+import type { BrowserAiSummaryInput } from "../../lib/panel-contracts";
 import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
 import { normalizePanelUrl, panelUrlsMatch } from "./session-policy";
 import { resolveSlidesInputMode } from "./slides-session-state";
@@ -43,6 +44,7 @@ export function createSummaryRunRuntime({
   slides,
   chat,
   view,
+  browserAi,
 }: {
   panelState: PanelState;
   dispatchPanelState?: (action: PanelStateAction) => void;
@@ -52,6 +54,15 @@ export function createSummaryRunRuntime({
   slides: SlidesRunPort;
   chat: ChatRunPort;
   view: SummaryViewPort;
+  browserAi: {
+    cancel: () => void;
+    enhance: (payload: {
+      type: "run:snapshot";
+      run: RunStart;
+      markdown: string;
+      browserAi?: BrowserAiSummaryInput;
+    }) => void;
+  };
 }) {
   const dispatch = (action: PanelStateAction) => {
     if (dispatchPanelState) {
@@ -62,6 +73,7 @@ export function createSummaryRunRuntime({
   };
 
   const attachRun = (run: RunStart) => {
+    browserAi.cancel();
     const activeSlidesRun = panelState.slidesLifecycle.activeRun;
     const preserveActiveLocalSlideRun = Boolean(
       activeSlidesRun?.local && activeSlidesRun.url && panelUrlsMatch(activeSlidesRun.url, run.url),
@@ -115,7 +127,12 @@ export function createSummaryRunRuntime({
     void summaryStream.start(run);
   };
 
-  const applySnapshot = (payload: { run: RunStart; markdown: string }) => {
+  const applySnapshot = (payload: {
+    type?: "run:snapshot";
+    run: RunStart;
+    markdown: string;
+    browserAi?: BrowserAiSummaryInput;
+  }) => {
     const activeSlidesRun = panelState.slidesLifecycle.activeRun;
     const preserveActiveSlideRun =
       payload.run.slides === true &&
@@ -160,6 +177,7 @@ export function createSummaryRunRuntime({
     view.renderMarkdown(payload.markdown);
     if (preservedSlides) slides.queueRender();
     view.setPhase("idle");
+    browserAi.enhance({ type: "run:snapshot", ...payload });
   };
 
   const rememberPendingRun = (run: RunStart) => {
@@ -170,7 +188,11 @@ export function createSummaryRunRuntime({
     });
   };
 
-  const rememberPendingSnapshot = (payload: { run: RunStart; markdown: string }) => {
+  const rememberPendingSnapshot = (payload: {
+    run: RunStart;
+    markdown: string;
+    browserAi?: BrowserAiSummaryInput;
+  }) => {
     dispatch({
       type: "pending-summary-run",
       urlKey: normalizePanelUrl(payload.run.url),
@@ -178,6 +200,7 @@ export function createSummaryRunRuntime({
         type: "snapshot",
         run: payload.run,
         markdown: payload.markdown,
+        browserAi: payload.browserAi,
       },
     });
   };
@@ -189,7 +212,11 @@ export function createSummaryRunRuntime({
     if (!pending || summaryStream.isStreaming()) return false;
     dispatch({ type: "pending-summary-run", urlKey: key, value: null });
     if (pending.type === "snapshot") {
-      applySnapshot({ run: pending.run, markdown: pending.markdown });
+      applySnapshot({
+        run: pending.run,
+        markdown: pending.markdown,
+        browserAi: pending.browserAi,
+      });
     } else {
       attachRun(pending.run);
     }

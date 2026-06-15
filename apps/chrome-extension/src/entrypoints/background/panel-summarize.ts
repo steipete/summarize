@@ -3,11 +3,11 @@ import {
   isYouTubeVideoUrl,
   shouldPreferUrlMode,
 } from "@steipete/summarize-core/content/url";
+import { buildBrowserSummaryPayload } from "../../lib/browser-summary";
 import { planMediaExtraction } from "../../lib/media-extraction-plan";
-import type { RunStart } from "../../lib/panel-contracts";
+import type { BrowserAiSummaryInput, RunStart } from "../../lib/panel-contracts";
 import type { Settings } from "../../lib/settings";
 import type { BrowserLocalMediaTranscript } from "./browser-local-transcript";
-import { buildBrowserSummaryMarkdown } from "./browser-summary";
 import { createCachedExtract, type CachedExtract } from "./cached-extract";
 import type { ExtractResponse } from "./content-script-bridge";
 import type { ExtractorContext } from "./extractors/router";
@@ -53,8 +53,18 @@ type SendFn = (
   msg:
     | { type: "run:error"; message: string }
     | { type: "run:start"; run: RunStart }
-    | { type: "run:snapshot"; run: RunStart; markdown: string },
+    | {
+        type: "run:snapshot";
+        run: RunStart;
+        markdown: string;
+        browserAi?: BrowserAiSummaryInput;
+      },
 ) => void;
+
+function resolveBrowserAiLength(value: string): "short" | "medium" | "long" {
+  if (value === "short" || value === "medium") return value;
+  return "long";
+}
 
 export async function summarizeActiveTab({
   session,
@@ -164,7 +174,8 @@ export async function summarizeActiveTab({
     urlsMatch(candidate.url, tabUrl) &&
     candidate.inputMode === requestedInputMode &&
     candidate.slides === requestedWantsSlides;
-  const canCoalesceSameUrl = !opts?.refresh && reason !== "length-change";
+  const canCoalesceSameUrl =
+    !opts?.refresh && reason !== "length-change" && !(useBrowserSummary && reason === "manual");
   const activeRun = session.activeSummaryRun;
   if (
     canCoalesceSameUrl &&
@@ -367,16 +378,22 @@ export async function summarizeActiveTab({
     session.inflightRequest = null;
     session.lastSummarizedUrl = resolvedPayload.url;
     clearCurrentRun();
+    const browserSummary = buildBrowserSummaryPayload({
+      title: resolvedTitle,
+      text: resolvedPayload.text,
+      transcriptTimedText: browserTranscriptTimedText,
+    });
+    sendStatus("");
     send({
       type: "run:snapshot",
       run,
-      markdown: buildBrowserSummaryMarkdown({
-        title: resolvedTitle,
-        text: resolvedPayload.text,
-        transcriptTimedText: browserTranscriptTimedText,
-      }),
+      markdown: browserSummary.markdown,
+      browserAi: {
+        text: browserSummary.sourceText,
+        length: resolveBrowserAiLength(settings.length),
+        keyMoments: browserSummary.keyMoments,
+      },
     });
-    sendStatus("");
   };
 
   if (useBrowserSummary) {

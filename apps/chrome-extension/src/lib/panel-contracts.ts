@@ -26,6 +26,15 @@ export type UiState = {
   status: string;
 };
 
+export type BrowserAiSummaryInput = {
+  text: string;
+  length: "short" | "medium" | "long";
+  keyMoments: Array<{
+    startSeconds: number;
+    text: string;
+  }>;
+};
+
 export type RunStart = {
   id: string;
   url: string;
@@ -89,7 +98,12 @@ export type BgToPanel =
   | { type: "ui:state"; state: UiState }
   | { type: "ui:status"; status: string }
   | { type: "run:start"; run: RunStart }
-  | { type: "run:snapshot"; run: RunStart; markdown: string }
+  | {
+      type: "run:snapshot";
+      run: RunStart;
+      markdown: string;
+      browserAi?: BrowserAiSummaryInput;
+    }
   | { type: "run:error"; message: string }
   | { type: "ui:cache-cleared" }
   | {

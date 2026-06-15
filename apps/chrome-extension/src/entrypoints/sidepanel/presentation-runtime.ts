@@ -2,6 +2,7 @@ import MarkdownIt from "markdown-it";
 import type { PanelToBg } from "../../lib/panel-contracts";
 import { loadSettings, patchSettings } from "../../lib/settings";
 import type { createAppearanceControls } from "./appearance-controls";
+import { createBrowserAiSummaryRuntime } from "./browser-ai-summary-runtime";
 import type { SidepanelDom } from "./dom";
 import { createSidepanelFeedbackRuntime } from "./feedback-runtime";
 import type { createMetricsController } from "./metrics-controller";
@@ -124,6 +125,9 @@ export function createSidepanelPresentationRuntime({
     },
   });
   const { errorController, headerController, hideSlideNotice, showSlideNotice } = feedbackRuntime;
+  const browserAiRuntime = createBrowserAiSummaryRuntime({
+    setStatus: headerController.setStatus,
+  });
 
   const sendSummarize = createSummarizeCommand({
     send,
@@ -132,6 +136,11 @@ export function createSidepanelPresentationRuntime({
     },
     clearInlineError: errorController.clearInlineError,
     getInputModeOverride: () => panelState.slidesSession.inputModeOverride,
+    prepareBrowserAi: () => {
+      if (panelState.ui?.settings.slideRuntime !== "browser") return;
+      const length = appearanceControls.getLengthValue();
+      browserAiRuntime.prepare(length === "short" || length === "medium" ? length : "long");
+    },
   });
 
   const summarizeControlView = createSummarizeControlView({
@@ -299,6 +308,7 @@ export function createSidepanelPresentationRuntime({
     },
     phase: phaseRuntime,
     summary: {
+      browserAiRuntime,
       renderMarkdown,
       sendSummarize,
       viewRuntime: summaryViewRuntime,

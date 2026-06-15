@@ -159,8 +159,8 @@
             <header class="advancedHead">
               <h2>Runtime</h2>
               <div class="hint">
-                Browser mode runs locally with extractive summaries. Daemon mode adds AI summaries
-                and daemon-backed tools.
+                Browser mode uses on-device Gemini Nano when available, with extractive fallback.
+                Daemon mode adds configurable AI providers and daemon-backed tools.
               </div>
             </header>
             <div class="advancedFields">
@@ -179,16 +179,17 @@
                       <input type="radio" name="slideRuntimeMode" value="browser" />
                       <div class="runtimeModeTitle">Browser</div>
                       <div class="runtimeModeText">
-                        Runs inside Chrome. Local extraction, extractive summaries, browser
-                        transcription, and frame capture; no Summarize daemon required.
+                        Runs inside Chrome. Uses Gemini Nano on eligible Chrome 138+ desktops, with
+                        extractive fallback, browser transcription, and frame capture; no Summarize
+                        daemon required.
                       </div>
                     </label>
                     <label class="runtimeModeCard">
                       <input type="radio" name="slideRuntimeMode" value="daemon" />
                       <div class="runtimeModeTitle">Daemon</div>
                       <div class="runtimeModeText">
-                        Uses the local daemon for AI summaries, chat, automation, hover summaries,
-                        OCR, and broader native media support.
+                        Uses the local daemon for configurable provider-backed AI summaries, chat,
+                        automation, hover summaries, OCR, and broader native media support.
                       </div>
                     </label>
                   </div>

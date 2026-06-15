@@ -3,6 +3,7 @@ export function createSummarizeCommand({
   setLastAction,
   clearInlineError,
   getInputModeOverride,
+  prepareBrowserAi,
 }: {
   send: (message: {
     type: "panel:summarize";
@@ -12,10 +13,12 @@ export function createSummarizeCommand({
   setLastAction: (value: "summarize") => void;
   clearInlineError: () => void;
   getInputModeOverride: () => "page" | "video" | null;
+  prepareBrowserAi?: () => void;
 }) {
   return (options?: { refresh?: boolean }) => {
     clearInlineError();
     setLastAction("summarize");
+    prepareBrowserAi?.();
     void send({
       type: "panel:summarize",
       refresh: Boolean(options?.refresh),
