@@ -1,6 +1,8 @@
 import { buildBrowserAiSummaryMarkdown } from "../../lib/browser-summary";
+import { logExtensionEvent } from "../../lib/extension-logs";
 import type { BgToPanel } from "../../lib/panel-contracts";
 import type { PanelStateAction } from "./panel-state-store";
+import { panelUrlsMatch } from "./session-policy";
 import type { PanelState } from "./types";
 
 type BrowserSummarySnapshot = Extract<BgToPanel, { type: "run:snapshot" }>;
@@ -33,8 +35,25 @@ export function createBrowserAiSnapshotRuntime(options: {
       })
       .then((summary) => {
         if (!summary) return;
-        if (options.panelState.runId !== runId) return;
-        if (options.panelState.currentSource?.url !== runUrl) return;
+        if (options.panelState.runId !== runId) {
+          logExtensionEvent({
+            event: "browser-ai:snapshot-discarded",
+            level: "verbose",
+            scope: "sidepanel",
+            detail: { reason: "run-changed" },
+          });
+          return;
+        }
+        const currentUrl = options.panelState.currentSource?.url;
+        if (!currentUrl || !panelUrlsMatch(currentUrl, runUrl)) {
+          logExtensionEvent({
+            event: "browser-ai:snapshot-discarded",
+            level: "verbose",
+            scope: "sidepanel",
+            detail: { reason: "url-changed", currentUrl, runUrl },
+          });
+          return;
+        }
         options.dispatchPanelState({
           type: "meta",
           meta: {
