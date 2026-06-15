@@ -13,8 +13,8 @@ Goal: Chrome **Side Panel** (“real sidebar”) summarizes **what you see** on 
 Quickstart:
 
 - Build/load extension: `apps/chrome-extension/README.md`
-- Chrome Browser mode works immediately without a daemon for local extractive page/media summaries, fetchable video slides, and fetchable YouTube/direct/embedded media transcription.
-- AI summaries, chat, automation, hover summaries, OCR, process/log tools, and broader native media support require the daemon.
+- Chrome Browser mode works immediately without a daemon for local page/media summaries, fetchable video slides, and fetchable YouTube/direct/embedded media transcription. Eligible Chrome 138+ desktop installs use the built-in Summarizer API with Gemini Nano after its first-use model download; other installs retain extractive summaries.
+- Configurable provider-backed AI summaries, chat, automation, hover summaries, OCR, process/log tools, and broader native media support require the daemon.
 - Optional: install summarize for daemon-backed media support:
   - `npm i -g @steipete/summarize`
   - `brew install summarize` (macOS, Linux)

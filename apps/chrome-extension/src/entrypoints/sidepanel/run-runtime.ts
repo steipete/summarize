@@ -2,6 +2,7 @@ import type { PanelToBg } from "../../lib/panel-contracts";
 import { loadSettings } from "../../lib/settings";
 import type { createAppearanceControls } from "./appearance-controls";
 import { createAutoSummarizeRuntime } from "./auto-summarize-runtime";
+import { createBrowserAiSnapshotRuntime } from "./browser-ai-snapshot-runtime";
 import type { createSidepanelChatRuntime } from "./chat-runtime";
 import type { HeaderController } from "./header-controller";
 import type { createMetricsController } from "./metrics-controller";
@@ -135,6 +136,12 @@ export function createSidepanelRunRuntime({
     hasSummary: () => Boolean(panelState.summaryMarkdown),
     summarize: sendSummarize,
   });
+  const browserAiSnapshotRuntime = createBrowserAiSnapshotRuntime({
+    panelState,
+    dispatchPanelState,
+    browserAi: presentationRuntime.summary.browserAiRuntime,
+    renderMarkdown,
+  });
 
   const summaryRunRuntime = createSummaryRunRuntime({
     panelState,
@@ -168,6 +175,7 @@ export function createSidepanelRunRuntime({
       setMetricsMode: metricsController.setActiveMode,
       setPhase,
     },
+    browserAi: browserAiSnapshotRuntime,
   });
 
   return {

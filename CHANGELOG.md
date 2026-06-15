@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Chrome extension: use Chrome's built-in Gemini Nano Summarizer API for daemonless Browser summaries when available, with first-use download progress and automatic extractive fallback.
 - Chrome extension: keep Browser runtime fully daemonless even with saved tokens, fail clearly when local extraction or transcription is unavailable, and hide daemon-backed chat and automation without an authenticated daemon.
 
 ## 0.18.1 - 2026-06-13

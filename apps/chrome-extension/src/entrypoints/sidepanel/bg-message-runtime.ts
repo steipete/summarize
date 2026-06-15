@@ -72,6 +72,7 @@ type SlidesContextMessage = Extract<BgToPanel, { type: "slides:context" }>;
 type SlidesLocalMessage = Extract<BgToPanel, { type: "slides:local" }>;
 type SlidesRunMessage = Extract<BgToPanel, { type: "slides:run" }>;
 type UiCacheMessage = Extract<BgToPanel, { type: "ui:cache" }>;
+type SummarySnapshotPayload = Omit<Extract<BgToPanel, { type: "run:snapshot" }>, "type">;
 
 export function createSidepanelBgMessageRuntime(options: {
   panelState: PanelState;
@@ -114,9 +115,9 @@ export function createSidepanelBgMessageRuntime(options: {
   getActiveTabId: () => number | null;
   applyPanelCache: (cache: unknown, opts: { preserveChat?: boolean }) => void;
   rememberPendingSummaryRun: (run: RunStart) => void;
-  rememberPendingSummarySnapshot: (payload: { run: RunStart; markdown: string }) => void;
+  rememberPendingSummarySnapshot: (payload: SummarySnapshotPayload) => void;
   attachSummaryRun: (run: RunStart) => void;
-  applySummarySnapshot: (payload: { run: RunStart; markdown: string }) => void;
+  applySummarySnapshot: (payload: SummarySnapshotPayload) => void;
   handleChatHistory: (msg: Extract<BgMessage, { type: "chat:history" }>) => void;
   handleAgentChunk: (msg: Extract<BgMessage, { type: "agent:chunk" }>) => void;
   handleAgentResponse: (msg: Extract<BgMessage, { type: "agent:response" }>) => void;
@@ -240,10 +241,15 @@ export function createSidepanelBgMessageRuntime(options: {
             options.rememberPendingSummarySnapshot({
               run: snapshot.run,
               markdown: snapshot.markdown,
+              browserAi: snapshot.browserAi,
             });
             return;
           }
-          options.applySummarySnapshot({ run: snapshot.run, markdown: snapshot.markdown });
+          options.applySummarySnapshot({
+            run: snapshot.run,
+            markdown: snapshot.markdown,
+            browserAi: snapshot.browserAi,
+          });
         },
         handleChatHistory: options.handleChatHistory,
         handleAgentChunk: options.handleAgentChunk,

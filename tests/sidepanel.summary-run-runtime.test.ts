@@ -35,6 +35,8 @@ function createHarness(
   panelState.navigation.activeTabUrl =
     options.activeTabUrl === undefined ? "https://example.com/watch?v=1" : options.activeTabUrl;
   const calls = {
+    browserAiCancel: vi.fn(),
+    browserAiEnhance: vi.fn(),
     chatClearHistory: vi.fn(async () => {}),
     chatFinishStreamingMessage: vi.fn(),
     chatReset: vi.fn(),
@@ -88,6 +90,10 @@ function createHarness(
       setMetricsMode: calls.setMetricsMode,
       setPhase: calls.setPhase,
     },
+    browserAi: {
+      cancel: calls.browserAiCancel,
+      enhance: calls.browserAiEnhance,
+    },
   });
   return { calls, panelState, runtime };
 }
@@ -105,6 +111,7 @@ describe("summary run runtime", () => {
     harness.runtime.attachRun(run);
 
     expect(harness.calls.slidesStop).toHaveBeenCalledOnce();
+    expect(harness.calls.browserAiCancel).toHaveBeenCalledOnce();
     expect(harness.calls.chatFinishStreamingMessage).toHaveBeenCalledOnce();
     expect(harness.calls.chatClearHistory).toHaveBeenCalledOnce();
     expect(harness.calls.chatReset).toHaveBeenCalledOnce();
@@ -214,6 +221,11 @@ describe("summary run runtime", () => {
     expect(harness.calls.slidesQueueRender).toHaveBeenCalledOnce();
     expect(harness.calls.renderMarkdown).toHaveBeenCalledWith("Cached summary");
     expect(harness.calls.setPhase).toHaveBeenCalledWith("idle");
+    expect(harness.calls.browserAiEnhance).toHaveBeenCalledWith({
+      type: "run:snapshot",
+      run,
+      markdown: "Cached summary",
+    });
   });
 
   it("preserves a matching active slides run", () => {
@@ -284,11 +296,22 @@ describe("summary run runtime", () => {
   it("normalizes, restores, and consumes pending snapshots", () => {
     const run = createRun({ url: "https://example.com/watch?v=1#chapter", slides: false });
     const harness = createHarness();
+    const browserAi = {
+      text: "Browser source",
+      length: "medium" as const,
+      keyMoments: [],
+    };
 
-    harness.runtime.rememberPendingSnapshot({ run, markdown: "Cached" });
+    harness.runtime.rememberPendingSnapshot({ run, markdown: "Cached", browserAi });
 
     expect(harness.runtime.maybeStartPendingForUrl("https://example.com/watch?v=1")).toBe(true);
     expect(harness.calls.renderMarkdown).toHaveBeenCalledWith("Cached");
+    expect(harness.calls.browserAiEnhance).toHaveBeenCalledWith({
+      type: "run:snapshot",
+      run,
+      markdown: "Cached",
+      browserAi,
+    });
     expect(harness.calls.summaryStart).not.toHaveBeenCalled();
   });
 

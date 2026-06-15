@@ -87,6 +87,12 @@ describe("sidepanel run runtime", () => {
           setPhase: vi.fn(),
         },
         summary: {
+          browserAiRuntime: {
+            cancel: vi.fn(),
+            destroy: vi.fn(),
+            prepare: vi.fn(),
+            summarize: vi.fn(async () => null),
+          },
           renderMarkdown: vi.fn(),
           sendSummarize,
           viewRuntime: {

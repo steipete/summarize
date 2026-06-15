@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildBrowserSummaryMarkdown } from "../apps/chrome-extension/src/entrypoints/background/browser-summary";
+import {
+  buildBrowserAiSummaryMarkdown,
+  buildBrowserSummaryMarkdown,
+} from "../apps/chrome-extension/src/lib/browser-summary";
 
 describe("chrome browser summary", () => {
   it("escapes browser-derived Markdown before rendering in the sidepanel", () => {
@@ -15,5 +18,20 @@ describe("chrome browser summary", () => {
     expect(markdown).toContain("\\[link\\]\\(https://example\\.test\\)");
     expect(markdown).not.toContain("![");
     expect(markdown).not.toContain("](https://example.test");
+  });
+
+  it("escapes Gemini Nano plain text before rendering it as Markdown", () => {
+    const markdown = buildBrowserAiSummaryMarkdown({
+      title: "Demo",
+      summary:
+        "- Important ![image](https://example.test/pixel.png)\n- Follow [link](https://example.test)",
+      keyMoments: [],
+    });
+
+    expect(markdown).toContain(
+      "- Important \\!\\[image\\]\\(https://example\\.test/pixel\\.png\\)",
+    );
+    expect(markdown).toContain("- Follow \\[link\\]\\(https://example\\.test\\)");
+    expect(markdown).not.toContain("![");
   });
 });

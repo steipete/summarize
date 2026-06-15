@@ -254,9 +254,54 @@ describe("chrome panel summarize", () => {
         slides: false,
       },
       markdown: expect.stringContaining("First sentence\\."),
+      browserAi: {
+        text: "First sentence. Second sentence. Third sentence.",
+        length: "long",
+        keyMoments: [],
+      },
     });
     expect(harness.session.lastSummarizedUrl).toBe(url);
     expect(sendStatus).toHaveBeenLastCalledWith("");
+  });
+
+  it("does not coalesce a manual Browser summary behind a recent automatic fallback", async () => {
+    const harness = createHarness();
+    const url = "https://example.com/article";
+    const overrides = {
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser" as const,
+      })),
+      getActiveTab: vi.fn(async () => ({
+        id: 7,
+        windowId: 1,
+        url,
+        title: "Browser Article",
+      })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true as const,
+        data: {
+          ok: true as const,
+          url,
+          title: "Browser Article",
+          text: "First sentence. Second sentence.",
+          truncated: false,
+          media: null,
+        },
+      })),
+    };
+
+    await harness.summarize({ ...overrides, reason: "panel-open" });
+    await harness.summarize({ ...overrides, reason: "manual" });
+
+    expect(harness.sent).toHaveLength(2);
+    expect(harness.sent).toEqual([
+      expect.objectContaining({ type: "run:snapshot" }),
+      expect.objectContaining({ type: "run:snapshot" }),
+    ]);
   });
 
   it("transcribes a captionless YouTube tab locally without a daemon token", async () => {
