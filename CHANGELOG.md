@@ -2,6 +2,10 @@
 
 ## 0.18.2 - Unreleased
 
+### Fixes
+
+- Remote transcripts: cap RSS and embedded caption response bodies at 5 MiB and cancel oversized streams. Thanks @Hinotoi-agent.
+
 ## 0.18.1 - 2026-06-13
 
 ### Fixes
