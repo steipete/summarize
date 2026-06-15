@@ -114,4 +114,22 @@ describe("sse events", () => {
       { event: "done", data: "{}" },
     ]);
   });
+
+  it("preserves significant whitespace in SSE data fields", async () => {
+    await expect(collectSse("event: chunk\ndata:  leading and trailing  \n\n")).resolves.toEqual([
+      { event: "chunk", data: " leading and trailing  " },
+    ]);
+  });
+
+  it("preserves trailing whitespace before joining multi-line SSE data", async () => {
+    await expect(collectSse("event: chunk\ndata: first  \ndata: second\n\n")).resolves.toEqual([
+      { event: "chunk", data: "first  \nsecond" },
+    ]);
+  });
+
+  it("treats colonless SSE data fields as empty values", async () => {
+    await expect(collectSse("event: chunk\ndata\ndata: x\n\n")).resolves.toEqual([
+      { event: "chunk", data: "\nx" },
+    ]);
+  });
 });

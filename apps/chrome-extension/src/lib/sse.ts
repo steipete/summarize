@@ -11,11 +11,28 @@ export async function* parseSseStream(
   let currentData = "";
 
   const flush = () => {
-    const data = currentData.trimEnd();
+    const data = currentData.endsWith("\n") ? currentData.slice(0, -1) : currentData;
     const evt = currentEvent || "message";
     currentEvent = "message";
     currentData = "";
     return data ? ({ event: evt, data } as const) : null;
+  };
+
+  const parseField = (line: string) => {
+    const colonIndex = line.indexOf(":");
+    if (colonIndex === -1) {
+      return { name: line, value: "" };
+    }
+    const value = line.slice(colonIndex + 1);
+    return {
+      name: line.slice(0, colonIndex),
+      value: value.startsWith(" ") ? value.slice(1) : value,
+    };
+  };
+
+  const commentValue = (line: string) => {
+    const value = line.slice(1);
+    return value.startsWith(" ") ? value.slice(1) : value;
   };
 
   const processLine = (line: string): SseMessage | null => {
@@ -24,14 +41,15 @@ export async function* parseSseStream(
     }
 
     if (line.startsWith(":")) {
-      return { event: "__comment__", data: line.slice(1).trim() };
+      return { event: "__comment__", data: commentValue(line).trim() };
     }
-    if (line.startsWith("event:")) {
-      currentEvent = line.slice("event:".length).trim() || "message";
+    const field = parseField(line);
+    if (field.name === "event") {
+      currentEvent = field.value.trim() || "message";
       return null;
     }
-    if (line.startsWith("data:")) {
-      currentData += `${line.slice("data:".length).trim()}\n`;
+    if (field.name === "data") {
+      currentData += `${field.value}\n`;
     }
     return null;
   };
