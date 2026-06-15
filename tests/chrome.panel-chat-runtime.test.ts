@@ -81,7 +81,7 @@ function panelCache(overrides: Partial<PanelCachePayload> = {}): PanelCachePaylo
 }
 
 function createHarness({
-  settings = { ...defaultSettings, token: "secret" },
+  settings = { ...defaultSettings, token: "secret", summaryRuntime: "daemon" as const },
   activeTab = tab,
   cache = null as PanelCachePayload | null,
   extract = baseExtract,
@@ -221,7 +221,7 @@ describe("chrome panel chat runtime", () => {
 
   it("reports missing credentials through the history protocol", async () => {
     const harness = createHarness({
-      settings: { ...defaultSettings, token: " " },
+      settings: { ...defaultSettings, token: " ", summaryRuntime: "daemon" },
     });
 
     await harness.runtime.handleHistory(harness.session, {
@@ -312,7 +312,12 @@ describe("chrome panel chat runtime", () => {
       transcriptTimedText: "0:02 direct transcript",
     });
     const harness = createHarness({
-      settings: { ...defaultSettings, token: "secret", slideRuntime: "daemon" },
+      settings: {
+        ...defaultSettings,
+        token: "secret",
+        summaryRuntime: "daemon",
+        slideRuntime: "daemon",
+      },
       cache,
     });
 

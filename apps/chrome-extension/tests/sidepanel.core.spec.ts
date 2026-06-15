@@ -70,7 +70,11 @@ test("sidepanel updates chat visibility when settings change", async ({
 
   try {
     await mockDaemonSummarize(harness);
-    await seedSettings(harness, { chatEnabled: true });
+    await seedSettings(harness, {
+      chatEnabled: true,
+      summaryRuntime: "daemon",
+      token: "test-token",
+    });
     const page = await openExtensionPage(harness, "sidepanel.html", "#title", () => {
       (window as typeof globalThis & { IntersectionObserver?: unknown }).IntersectionObserver =
         undefined;
@@ -81,7 +85,11 @@ test("sidepanel updates chat visibility when settings change", async ({
       type: "ui:state",
       state: buildUiState({
         daemon: { ok: true, authed: true },
-        settings: { chatEnabled: true, tokenPresent: true },
+        settings: {
+          chatEnabled: true,
+          summaryRuntime: "daemon",
+          tokenPresent: true,
+        },
       }),
     });
     await waitForChatEnabled(page, true);

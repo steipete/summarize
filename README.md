@@ -37,16 +37,16 @@ YouTube slide screenshots (from the browser):
 ### Beginner quickstart (extension)
 
 1. Install the extension (Chrome Web Store link above) and open the Side Panel.
-2. Keep the default **Browser** runtime for daemonless local extraction, on-device Gemini Nano summaries when Chrome supports them, extractive fallback, browser transcription, and slides.
-3. Optional: install the CLI and pair the daemon for provider-backed AI summaries, chat, automation, hover summaries, OCR, and broader native media support:
+2. Choose **Direct** or **Daemon**. Direct uses Gemini Nano by default when no provider key is configured, or calls your selected provider from Chrome.
+3. Choose Browser media for daemonless transcription/slides. Optional: install the CLI and pair the daemon for native tools, CLI model fallbacks, OCR, and broader media support:
    - **npm** (cross-platform): `npm i -g @steipete/summarize`
    - **Homebrew** (Homebrew/core): `brew install summarize`
    - `summarize daemon install --token <TOKEN>`
 
 Why a daemon/service?
 
-- Browser mode works without the daemon. Eligible Chrome 138+ desktop installs use the built-in Summarizer API with Gemini Nano after its first-use model download; unsupported devices and failed local inference keep the extractive fallback. Browser mode also provides ranged video slides through MediaBunny/WebCodecs and fetchable YouTube/direct/embedded media transcription with browser-cached Whisper.
-- The optional daemon on `127.0.0.1` adds configurable provider-backed AI summaries, chat, automation, hover summaries, native ffmpeg, configurable transcription providers, OCR, and broader media support.
+- Direct mode works without the daemon. Auto uses a configured OpenAI, OpenRouter, Anthropic, Gemini, xAI, Z.AI, NVIDIA, MiniMax, GitHub Models, or Ollama provider, otherwise Gemini Nano on-device; keys remain in extension-local storage.
+- The optional daemon on `127.0.0.1` adds CLI model fallbacks, shared caches/diagnostics, native ffmpeg, configurable transcription providers, OCR, and broader media support.
 - The service autostarts (launchd/systemd/Scheduled Task) so the Side Panel is always ready.
 
 If you only want the **CLI**, you can skip the daemon install entirely.
@@ -153,7 +153,7 @@ If native `ffmpeg`/`ffprobe` are unavailable, Summarize uses the bundled WebAsse
 ### CLI vs extension
 
 - **CLI only:** just install via npm/Homebrew and run `summarize ...` (no daemon needed).
-- **Chrome extension:** Browser mode works without the CLI or daemon, using Chrome's on-device Gemini Nano summarizer when available and extractive fallback everywhere else. Install the daemon for provider-backed AI summaries and daemon-backed tools.
+- **Chrome extension:** Direct mode defaults to Gemini Nano without a key and supports provider-backed summaries/chat/automation/hover when configured; Browser media provides daemonless transcription and slides. Install the daemon for CLI fallbacks and native media tools.
 - **Firefox extension:** install the CLI and daemon for media extraction.
 
 ### Quickstart

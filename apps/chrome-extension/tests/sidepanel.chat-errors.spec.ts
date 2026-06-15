@@ -32,7 +32,12 @@ test("sidepanel shows an error when agent request fails", async ({
 
   try {
     await mockDaemonSummarize(harness);
-    await seedSettings(harness, { token: "test-token", autoSummarize: false, chatEnabled: true });
+    await seedSettings(harness, {
+      token: "test-token",
+      summaryRuntime: "daemon",
+      autoSummarize: false,
+      chatEnabled: true,
+    });
     const contentPage = await harness.context.newPage();
     await contentPage.goto("https://example.com", { waitUntil: "domcontentloaded" });
     await contentPage.evaluate(() => {
@@ -65,7 +70,11 @@ test("sidepanel shows an error when agent request fails", async ({
       type: "ui:state",
       state: buildUiState({
         tab: { id: activeTabId, url: "https://example.com", title: "Example" },
-        settings: { chatEnabled: true, tokenPresent: true },
+        settings: {
+          chatEnabled: true,
+          summaryRuntime: "daemon",
+          tokenPresent: true,
+        },
       }),
     });
 
@@ -81,7 +90,9 @@ test("sidepanel shows an error when agent request fails", async ({
 
     await expect.poll(() => agentCalls).toBe(1);
     await expect(page.locator("#inlineError")).toBeVisible();
-    await expect(page.locator("#inlineErrorMessage")).toContainText("Chat request failed: Boom");
+    await expect(page.locator("#inlineErrorMessage")).toContainText(
+      "Daemon chat request failed: Boom",
+    );
     await expect(page.locator(".chatMessage.assistant.streaming")).toHaveCount(0);
     assertNoErrors(harness);
   } finally {
@@ -164,7 +175,12 @@ test("sidepanel shows daemon upgrade hint when /v1/agent is missing", async ({
 
   try {
     await mockDaemonSummarize(harness);
-    await seedSettings(harness, { token: "test-token", autoSummarize: false, chatEnabled: true });
+    await seedSettings(harness, {
+      token: "test-token",
+      summaryRuntime: "daemon",
+      autoSummarize: false,
+      chatEnabled: true,
+    });
     const contentPage = await harness.context.newPage();
     await contentPage.goto("https://example.com", { waitUntil: "domcontentloaded" });
     await contentPage.evaluate(() => {
@@ -197,7 +213,11 @@ test("sidepanel shows daemon upgrade hint when /v1/agent is missing", async ({
       type: "ui:state",
       state: buildUiState({
         tab: { id: activeTabId, url: "https://example.com", title: "Example" },
-        settings: { chatEnabled: true, tokenPresent: true },
+        settings: {
+          chatEnabled: true,
+          summaryRuntime: "daemon",
+          tokenPresent: true,
+        },
       }),
     });
 

@@ -51,6 +51,7 @@ function createHarness() {
           slidesEnabled: true,
           slidesParallel: true,
           slideRuntime: "daemon",
+          summaryRuntime: "daemon",
           summaryTimestamps: true,
         })),
         emitState: vi.fn(),
@@ -139,6 +140,7 @@ describe("chrome panel summarize", () => {
         slidesEnabled,
         slidesParallel: true,
         slideRuntime: "daemon",
+        summaryRuntime: "daemon",
         summaryTimestamps: true,
       })),
     });
@@ -152,6 +154,7 @@ describe("chrome panel summarize", () => {
         slidesEnabled,
         slidesParallel: true,
         slideRuntime: "daemon",
+        summaryRuntime: "daemon",
         summaryTimestamps: true,
       })),
     });
@@ -497,6 +500,184 @@ describe("chrome panel summarize", () => {
     });
   });
 
+  it("keeps explicit Gemini Nano summaries local in Daemon mode", async () => {
+    const harness = createHarness();
+    const url = "https://example.com/article";
+
+    await harness.summarize({
+      reason: "manual",
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "token",
+        summaryRuntime: "daemon",
+        model: "browser/gemini-nano",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      getActiveTab: vi.fn(async () => ({
+        id: 7,
+        windowId: 1,
+        url,
+        title: "Nano Article",
+      })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url,
+          title: "Nano Article",
+          text: "First sentence. Second sentence.",
+          truncated: false,
+          media: null,
+        },
+      })),
+    });
+
+    expect(harness.fetchImpl).not.toHaveBeenCalled();
+    expect(harness.sent[0]).toMatchObject({
+      type: "run:snapshot",
+      run: { url, model: "Browser", slides: false },
+      browserAi: { text: "First sentence. Second sentence." },
+    });
+  });
+
+  it("starts daemon slides alongside an explicit Gemini Nano summary", async () => {
+    const harness = createHarness();
+
+    await harness.summarize({
+      reason: "manual",
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "token",
+        summaryRuntime: "daemon",
+        model: "browser/gemini-nano",
+        autoSummarize: true,
+        slidesEnabled: true,
+        slideRuntime: "daemon",
+      })),
+      extractYouTubeTranscript: vi.fn(async () => ({
+        ok: true as const,
+        url: youtubeUrl,
+        text: "Caption transcript.",
+        transcriptTimedText: "[0:00] Caption transcript.",
+        truncated: false,
+        durationSeconds: 42,
+      })),
+    });
+
+    expect(harness.sent).toEqual([
+      expect.objectContaining({
+        type: "run:snapshot",
+        run: expect.objectContaining({
+          url: youtubeUrl,
+          model: "Browser",
+          slides: true,
+        }),
+      }),
+      {
+        type: "slides:run",
+        ok: true,
+        runId: "summary-with-slides",
+        url: youtubeUrl,
+      },
+    ]);
+    expect(harness.fetchImpl).toHaveBeenCalledOnce();
+    const [, init] = harness.fetchImpl.mock.calls[0];
+    const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+    expect(body).toMatchObject({
+      url: youtubeUrl,
+      mode: "url",
+      model: "auto",
+      slides: true,
+      timestamps: true,
+    });
+  });
+
+  it("starts daemon slides alongside a direct provider summary", async () => {
+    const harness = createHarness();
+    const encoder = new TextEncoder();
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith("https://api.openai.com/")) {
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                encoder.encode('data: {"choices":[{"delta":{"content":"Direct summary."}}]}\n\n'),
+              );
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              controller.close();
+            },
+          }),
+          { status: 200, headers: { "content-type": "text/event-stream" } },
+        );
+      }
+      const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      return new Response(
+        JSON.stringify({ ok: true, id: body.slides ? "direct-slides" : "summary" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    await harness.summarize({
+      reason: "manual",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "token",
+        summaryRuntime: "direct",
+        model: "auto",
+        provider: "openai",
+        providerApiKeys: {
+          ...defaultSettings.providerApiKeys,
+          openai: "openai-key",
+        },
+        autoSummarize: true,
+        slidesEnabled: true,
+        slideRuntime: "daemon",
+      })),
+      extractYouTubeTranscript: vi.fn(async () => ({
+        ok: true as const,
+        url: youtubeUrl,
+        text: "Caption transcript.",
+        transcriptTimedText: "[0:00] Caption transcript.",
+        truncated: false,
+        durationSeconds: 42,
+      })),
+    });
+
+    expect(harness.sent).toEqual([
+      expect.objectContaining({
+        type: "run:snapshot",
+        run: expect.objectContaining({
+          url: youtubeUrl,
+          model: "OpenAI · gpt-5-mini",
+          slides: true,
+        }),
+        markdown: "Direct summary.",
+      }),
+      {
+        type: "slides:run",
+        ok: true,
+        runId: "direct-slides",
+        url: youtubeUrl,
+      },
+    ]);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    const daemonCall = fetchImpl.mock.calls.find(([input]) =>
+      String(input).startsWith("http://127.0.0.1:8787/"),
+    );
+    expect(daemonCall).toBeDefined();
+    const daemonBody = JSON.parse(String(daemonCall?.[1]?.body ?? "{}")) as Record<string, unknown>;
+    expect(daemonBody).toMatchObject({
+      model: "auto",
+      mode: "url",
+      slides: true,
+      timestamps: true,
+    });
+  });
+
   it("does not probe an unreachable daemon in browser runtime", async () => {
     const harness = createHarness();
     const url = "https://example.com/article";
@@ -631,7 +812,7 @@ describe("chrome panel summarize", () => {
       {
         type: "run:error",
         message:
-          "Could not transcribe this media in Browser mode: decoder unavailable. Switch Runtime to Daemon for broader media support.",
+          "Could not transcribe this media in standalone mode: decoder unavailable. Switch Runtime to Daemon for broader media support.",
       },
     ]);
     expect(harness.session.lastSummarizedUrl).toBeNull();
@@ -710,7 +891,7 @@ describe("chrome panel summarize", () => {
       {
         type: "run:error",
         message:
-          "No readable text was available in Browser mode. Reload the page or switch Runtime to Daemon for URL extraction.",
+          "No readable text was available in standalone mode. Reload the page or switch Runtime to Daemon for URL extraction.",
       },
     ]);
     expect(harness.session.lastSummarizedUrl).toBeNull();

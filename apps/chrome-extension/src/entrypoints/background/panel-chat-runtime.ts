@@ -1,3 +1,4 @@
+import { resolveCapabilityExecution } from "../../lib/model-routing";
 import type { BgToPanel, PanelCachePayload, PanelToBg } from "../../lib/panel-contracts";
 import type { Settings } from "../../lib/settings";
 import { createCachedExtract, type CachedExtract } from "./cached-extract";
@@ -108,7 +109,14 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
     if (!settings.chatEnabled) {
       return { ok: false, error: "Chat is disabled in settings" };
     }
-    if (!settings.token.trim()) {
+    const capabilityExecution = resolveCapabilityExecution(settings);
+    if (capabilityExecution === "unavailable") {
+      return {
+        ok: false,
+        error: "Chat requires a configured direct provider or the daemon.",
+      };
+    }
+    if (capabilityExecution === "daemon" && !settings.token.trim()) {
       return { ok: false, error: "Setup required (missing token)" };
     }
 

@@ -1,11 +1,9 @@
-import {
-  getNetworkAddressFamily,
-  isBlockedNetworkAddress,
-  isBlockedNetworkHostname,
-} from "@steipete/summarize-core/content/network-safety";
+import { fetchBrowserUrlContent, isPublicBrowserUrl } from "../../lib/browser-url-content";
+import { streamDirectModel } from "../../lib/direct-provider";
 import { logExtensionEvent } from "../../lib/extension-logs";
+import { resolveCapabilityExecution, resolveCapabilityModel } from "../../lib/model-routing";
 import { parseSseEvent } from "../../lib/runtime-contracts";
-import { loadSettings } from "../../lib/settings";
+import { getProviderSettings, loadSettings } from "../../lib/settings";
 import { parseSseStream } from "../../lib/sse";
 import { friendlyFetchError } from "./daemon-client";
 
@@ -53,17 +51,7 @@ async function resolveHoverTabId(sender: chrome.runtime.MessageSender): Promise<
 }
 
 export function isHoverSummarizeUrlAllowed(rawUrl: string): boolean {
-  try {
-    const url = new URL(rawUrl);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-    const hostname = url.hostname.toLowerCase();
-    if (!hostname) return false;
-    if (isBlockedNetworkHostname(hostname)) return false;
-    if (getNetworkAddressFamily(hostname) !== 0 && isBlockedNetworkAddress(hostname)) return false;
-    return true;
-  } catch {
-    return false;
-  }
+  return isPublicBrowserUrl(rawUrl);
 }
 
 export function createHoverController({
@@ -117,7 +105,19 @@ export function createHoverController({
       console.debug("[summarize][hover:bg]", payload);
     };
     const token = msg.token?.trim() || settings.token.trim();
-    if (!token) {
+    const capabilityExecution = resolveCapabilityExecution(settings);
+    if (capabilityExecution === "unavailable") {
+      const message = "Hover summaries require a configured direct provider or the daemon";
+      notifyStart({ ok: false, error: message });
+      await sendHover(tabId, {
+        type: "hover:error",
+        requestId: msg.requestId,
+        url: msg.url,
+        message,
+      });
+      return;
+    }
+    if (capabilityExecution === "daemon" && !token) {
       notifyStart({ ok: false, error: "Setup required (missing token)" });
       await sendHover(tabId, {
         type: "hover:error",
@@ -142,9 +142,48 @@ export function createHoverController({
 
     try {
       logHover("start", { tabId, requestId: msg.requestId, url: msg.url });
+      if (capabilityExecution === "direct") {
+        const content = await fetchBrowserUrlContent({
+          url: msg.url,
+          maxCharacters: Math.min(settings.maxChars, 60_000),
+          signal: controller.signal,
+        });
+        if (!isStillActive()) return;
+        notifyStart({ ok: true });
+        const prompt = `${settings.hoverPrompt}
+
+Source URL: ${content.url}
+Page name: ${content.title ?? msg.title ?? ""}
+
+<content>
+${content.text}
+</content>`;
+        for await (const event of streamDirectModel({
+          model: resolveCapabilityModel(settings.model),
+          providerSettings: getProviderSettings(settings),
+          system:
+            "Summarize the linked page. Return plain text only and follow the user's length constraints.",
+          messages: [{ role: "user", content: prompt, timestamp: Date.now() }],
+          maxTokens: 512,
+          signal: controller.signal,
+        })) {
+          if (!isStillActive()) return;
+          if (event.type !== "text" || !event.text) continue;
+          await sendHover(tabId, {
+            type: "hover:chunk",
+            requestId: msg.requestId,
+            url: msg.url,
+            text: event.text,
+          });
+        }
+        if (!isStillActive()) return;
+        await sendHover(tabId, { type: "hover:done", requestId: msg.requestId, url: msg.url });
+        return;
+      }
+
       const base = buildDaemonRequestBody({
         extracted: { url: msg.url, title: msg.title, text: "", truncated: false },
-        settings,
+        settings: { ...settings, model: resolveCapabilityModel(settings.model) },
       });
       const body = {
         ...base,
@@ -204,9 +243,13 @@ export function createHoverController({
       await sendHover(tabId, { type: "hover:done", requestId: msg.requestId, url: msg.url });
     } catch (err) {
       if (!isStillActive()) return;
+      const errorContext =
+        capabilityExecution === "direct"
+          ? "Direct hover summary failed"
+          : "Daemon hover summary failed";
       notifyStart({
         ok: false,
-        error: friendlyFetchError(err, "Hover summarize failed"),
+        error: friendlyFetchError(err, errorContext),
       });
       logHover("error", {
         tabId,
@@ -218,7 +261,7 @@ export function createHoverController({
         type: "hover:error",
         requestId: msg.requestId,
         url: msg.url,
-        message: friendlyFetchError(err, "Hover summarize failed"),
+        message: friendlyFetchError(err, errorContext),
       });
     } finally {
       notifyStart({ ok: false, error: "Hover summarize aborted" });

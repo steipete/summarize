@@ -4,9 +4,16 @@ import {
   shouldPreferUrlMode,
 } from "@steipete/summarize-core/content/url";
 import { buildBrowserSummaryPayload } from "../../lib/browser-summary";
+import {
+  buildDirectSummaryPrompt,
+  DIRECT_SUMMARY_SYSTEM_PROMPT,
+  resolveDirectMaxTokens,
+} from "../../lib/direct-prompts";
+import { completeDirectText, providerLabel } from "../../lib/direct-provider";
 import { planMediaExtraction } from "../../lib/media-extraction-plan";
+import { resolveSummaryExecution } from "../../lib/model-routing";
 import type { BrowserAiSummaryInput, RunStart } from "../../lib/panel-contracts";
-import type { Settings } from "../../lib/settings";
+import { getProviderSettings, type Settings } from "../../lib/settings";
 import type { BrowserLocalMediaTranscript } from "./browser-local-transcript";
 import { createCachedExtract, type CachedExtract } from "./cached-extract";
 import type { ExtractResponse } from "./content-script-bridge";
@@ -53,6 +60,14 @@ type SendFn = (
   msg:
     | { type: "run:error"; message: string }
     | { type: "run:start"; run: RunStart }
+    | {
+        type: "slides:run";
+        ok: boolean;
+        runId?: string;
+        url?: string;
+        local?: boolean;
+        error?: string;
+      }
     | {
         type: "run:snapshot";
         run: RunStart;
@@ -143,10 +158,11 @@ export async function summarizeActiveTab({
   if (!panelSessionStore.isPanelOpen(session)) return;
 
   const settings = await loadSettings();
+  const summaryExecution = resolveSummaryExecution(settings);
   const isManual = reason === "manual" || reason === "refresh" || reason === "length-change";
   if (!isManual && !settings.autoSummarize) return;
-  const useBrowserSummary = settings.slideRuntime === "browser";
-  if (!useBrowserSummary && !settings.token.trim()) {
+  const useStandaloneExtraction = summaryExecution !== "daemon";
+  if (summaryExecution === "daemon" && !settings.token.trim()) {
     await emitState(session, "Setup required (missing token)");
     return;
   }
@@ -175,7 +191,9 @@ export async function summarizeActiveTab({
     candidate.inputMode === requestedInputMode &&
     candidate.slides === requestedWantsSlides;
   const canCoalesceSameUrl =
-    !opts?.refresh && reason !== "length-change" && !(useBrowserSummary && reason === "manual");
+    !opts?.refresh &&
+    reason !== "length-change" &&
+    !(useStandaloneExtraction && reason === "manual");
   const activeRun = session.activeSummaryRun;
   if (
     canCoalesceSameUrl &&
@@ -233,7 +251,7 @@ export async function summarizeActiveTab({
     reason,
     refresh: Boolean(opts?.refresh),
     requestedInputMode,
-    useBrowserSummary,
+    useBrowserSummary: useStandaloneExtraction,
     panelOpen: () => panelSessionStore.isPanelOpen(session),
     isSuperseded,
     signal: controller.signal,
@@ -272,7 +290,7 @@ export async function summarizeActiveTab({
     resolvedPayload = preparedContent.payload;
     browserTranscriptTimedText = preparedContent.transcriptTimedText;
   };
-  if (useBrowserSummary) {
+  if (useStandaloneExtraction) {
     await ensureLocalBrowserTranscript();
     if (isSuperseded()) return;
     const browserExtractionPlan = planMediaExtraction({
@@ -288,11 +306,11 @@ export async function summarizeActiveTab({
       .replace(/[.!?]+$/, "");
     const browserError =
       localTranscriptError && requiresMediaTranscript
-        ? `Could not transcribe this media in Browser mode: ${localTranscriptError}. Switch Runtime to Daemon for broader media support.`
+        ? `Could not transcribe this media in standalone mode: ${localTranscriptError}. Switch Runtime to Daemon for broader media support.`
         : resolvedPayload.text.trim().length === 0
           ? browserExtractionPlan.localTranscriptKind
-            ? "No transcript text was available in Browser mode. Switch Runtime to Daemon for broader media support."
-            : "No readable text was available in Browser mode. Reload the page or switch Runtime to Daemon for URL extraction."
+            ? "No transcript text was available in standalone mode. Switch Runtime to Daemon for broader media support."
+            : "No readable text was available in standalone mode. Reload the page or switch Runtime to Daemon for URL extraction."
           : null;
     if (browserError) {
       send({ type: "run:error", message: browserError });
@@ -332,6 +350,7 @@ export async function summarizeActiveTab({
     wantsSlides,
     wantsDaemonSlides,
     slideRuntime: settings.slideRuntime,
+    summaryRuntime: settings.summaryRuntime,
     wantsParallelSlides: false,
   });
 
@@ -356,6 +375,56 @@ export async function summarizeActiveTab({
   };
   cacheResolvedPayload();
 
+  const daemonSlidesConfig = wantsDaemonSlides
+    ? {
+        enabled: true as const,
+        ocr: settings.slidesOcrEnabled,
+        maxSlides: null,
+        minDurationSeconds: null,
+      }
+    : { enabled: false as const };
+  const startStandaloneDaemonSlides = async () => {
+    if (!wantsDaemonSlides) return;
+    if (!settings.token.trim()) {
+      send({
+        type: "slides:run",
+        ok: false,
+        error: "Daemon slides require a daemon token. Open Settings to connect the daemon.",
+      });
+      return;
+    }
+
+    sendStatus("Starting daemon slides…");
+    try {
+      const id = await startPanelDaemonSummary({
+        extracted: resolvedPayload,
+        settings: { ...settings, model: "auto" },
+        noCache: Boolean(opts?.refresh),
+        inputMode: effectiveInputMode,
+        timestamps: true,
+        slides: daemonSlidesConfig,
+        signal: controller.signal,
+        fetchImpl,
+        buildSummarizeRequestBody,
+        log: logPanel,
+      });
+      if (isSuperseded()) return;
+      session.daemonStatus.markReady();
+      send({
+        type: "slides:run",
+        ok: true,
+        runId: id,
+        url: resolvedPayload.url,
+      });
+      sendStatus("");
+    } catch (error) {
+      if (isSuperseded()) return;
+      const message = friendlyFetchError(error, "Daemon slide extraction failed");
+      send({ type: "slides:run", ok: false, error: message });
+      sendStatus(`Slides failed: ${message}`);
+    }
+  };
+
   const sendBrowserSummarySnapshot = () => {
     const random =
       typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -377,7 +446,6 @@ export async function summarizeActiveTab({
     };
     session.inflightRequest = null;
     session.lastSummarizedUrl = resolvedPayload.url;
-    clearCurrentRun();
     const browserSummary = buildBrowserSummaryPayload({
       title: resolvedTitle,
       text: resolvedPayload.text,
@@ -396,22 +464,72 @@ export async function summarizeActiveTab({
     });
   };
 
-  if (useBrowserSummary) {
+  if (summaryExecution === "browser") {
     sendBrowserSummarySnapshot();
+    await startStandaloneDaemonSlides();
+    clearCurrentRun();
     return;
+  }
+
+  if (summaryExecution === "direct") {
+    sendStatus("Sending to provider…");
+    try {
+      const prompt = buildDirectSummaryPrompt({
+        url: resolvedPayload.url,
+        title: resolvedTitle,
+        text: resolvedPayload.text,
+        transcriptTimedText: browserTranscriptTimedText,
+        truncated: resolvedPayload.truncated,
+        settings,
+      });
+      const result = await completeDirectText({
+        model: settings.model,
+        providerSettings: getProviderSettings(settings),
+        system: DIRECT_SUMMARY_SYSTEM_PROMPT,
+        prompt,
+        maxTokens: resolveDirectMaxTokens(settings),
+        signal: controller.signal,
+        fetchImpl,
+      });
+      if (isSuperseded()) return;
+      const random =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const run: RunStart = {
+        id: `direct-summary-${random}`,
+        url: resolvedPayload.url,
+        title: resolvedTitle,
+        model: `${providerLabel(result.config.provider)} · ${result.config.model}`,
+        reason,
+        slides: wantsSlides,
+      };
+      session.activeSummaryRun = {
+        run,
+        startedAt: Date.now(),
+        inputMode: requestedInputMode,
+        slides: requestedWantsSlides,
+      };
+      session.inflightRequest = null;
+      session.lastSummarizedUrl = resolvedPayload.url;
+      sendStatus("");
+      send({ type: "run:snapshot", run, markdown: result.text });
+      await startStandaloneDaemonSlides();
+      clearCurrentRun();
+      return;
+    } catch (error) {
+      if (isSuperseded()) return;
+      const message = friendlyFetchError(error, "Direct provider request failed");
+      send({ type: "run:error", message });
+      sendStatus(`Error: ${message}`);
+      clearCurrentRun();
+      return;
+    }
   }
 
   sendStatus("Connecting…");
   session.inflightUrl = resolvedPayload.url;
-  const slidesConfig = wantsDaemonSlides
-    ? {
-        enabled: true as const,
-        ocr: settings.slidesOcrEnabled,
-        maxSlides: null,
-        minDurationSeconds: null,
-      }
-    : { enabled: false as const };
-  const summarySlides = slidesConfig;
+  const summarySlides = daemonSlidesConfig;
 
   let id: string;
   try {

@@ -57,14 +57,21 @@ Step-by-step:
 
 **Note**: Temporary add-ons are removed when Firefox restarts. For permanent installation, the extension needs to be signed via AMO (Firefox Add-ons).
 
-## Optional Daemon (Pairing)
+## AI and Media Runtimes
 
-Chrome Browser mode works without a CLI install or daemon. On eligible Chrome 138+ desktop installs, it automatically uses Chrome's built-in Summarizer API with Gemini Nano; the model downloads after the first manual summary. Unsupported devices, unavailable models, and local inference failures keep the existing extractive fallback. Browser mode also uses MediaBunny with native WebCodecs for fetchable video slides up to 128 MB and transcribes captionless YouTube videos with local multilingual Whisper. YouTube audio prefers a same-origin Android VR direct-media URL, with the active tab's captured SABR session as fallback. Chrome's native audio decoder is preferred; MediaBunny handles supported streams that WebAudio rejects. The Whisper model downloads on first use and is cached by Chrome; offline model bundling is not currently provided. Install the daemon for configurable provider-backed AI summaries, chat, automation, hover summaries, native tools, configurable transcription providers, OCR, broader media support, and Firefox media support.
+The extension separates its AI connection from media/slide extraction:
+
+- **Direct**: Auto calls a configured OpenAI, OpenRouter, Anthropic, Gemini, xAI, Z.AI, NVIDIA, MiniMax, GitHub Models, Ollama, or overridden compatible endpoint directly from Chrome. Without a configured provider, Auto uses Chrome's built-in Gemini Nano Summarizer API with extractive fallback. Gemini Nano can also be selected explicitly. Provider-backed chat, automation, and hover summaries work without the daemon. Keys stay in `chrome.storage.local` and are sent only to the selected provider.
+- **Daemon**: uses the local Summarize daemon and its configured providers, CLI fallbacks, cache, and diagnostics. Explicitly selecting Gemini Nano still keeps summaries on-device while daemon-only capabilities remain available.
+
+Media/slides can independently use **Browser** or **Daemon**. Browser media uses MediaBunny with native WebCodecs for fetchable video slides up to 128 MB and transcribes captionless YouTube videos with local multilingual Whisper. The Whisper model downloads on first use and is cached by Chrome. Daemon media adds native tools, configurable transcription providers, OCR, broader media support, and Firefox media support.
+
+## Optional Daemon (Pairing)
 
 1. Install `summarize` (choose one):
    - `npm i -g @steipete/summarize` (requires Node.js 24+)
    - `brew install summarize` (macOS, Linux)
-2. Switch Runtime to **Daemon**, then copy the pairing token and install command from the extension.
+2. Switch the AI connection or media runtime to **Daemon**, then copy the pairing token and install command from the extension.
 3. Open Terminal:
    - macOS: Applications → Utilities → Terminal
    - Windows: Start menu → Terminal (or PowerShell) — **right-click → Run as administrator**

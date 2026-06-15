@@ -15,6 +15,10 @@ export function createModelPresetsController({
     auto.value = "auto";
     auto.textContent = "Auto";
     presetEl.append(auto);
+    const geminiNano = document.createElement("option");
+    geminiNano.value = "browser/gemini-nano";
+    geminiNano.textContent = "Gemini Nano (on-device)";
+    presetEl.append(geminiNano);
     const gptFast = document.createElement("option");
     gptFast.value = "gpt-fast";
     gptFast.textContent = "GPT Fast";

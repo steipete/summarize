@@ -42,6 +42,7 @@ export function createModelPresetsController({
     modelPresetEl.innerHTML = "";
     for (const { value, label } of [
       { value: "auto", label: "Auto" },
+      { value: "browser/gemini-nano", label: "Gemini Nano (on-device)" },
       { value: "gpt-fast", label: "GPT Fast" },
       { value: "free", label: "Free" },
       { value: "custom", label: "Custom…" },

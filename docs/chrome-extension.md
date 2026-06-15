@@ -13,8 +13,9 @@ Goal: Chrome **Side Panel** (“real sidebar”) summarizes **what you see** on 
 Quickstart:
 
 - Build/load extension: `apps/chrome-extension/README.md`
-- Chrome Browser mode works immediately without a daemon for local page/media summaries, fetchable video slides, and fetchable YouTube/direct/embedded media transcription. Eligible Chrome 138+ desktop installs use the built-in Summarizer API with Gemini Nano after its first-use model download; other installs retain extractive summaries.
-- Configurable provider-backed AI summaries, chat, automation, hover summaries, OCR, process/log tools, and broader native media support require the daemon.
+- Direct mode works immediately without a daemon. Auto uses a configured provider, otherwise Gemini Nano when available with extractive fallback.
+- Configured direct providers support summaries, chat, automation, hover summaries, and public-URL extraction without a daemon. Provider keys stay in extension-local storage.
+- Browser media provides daemonless transcription and slides. OCR, process/log tools, CLI fallbacks, and broader native media support require the daemon.
 - Optional: install summarize for daemon-backed media support:
   - `npm i -g @steipete/summarize`
   - `brew install summarize` (macOS, Linux)
@@ -88,6 +89,7 @@ Dev (repo checkout):
   - Background service worker: tab + navigation tracking, content extraction, starts summarize runs.
   - Chrome offscreen page: runs MediaBunny with native WebCodecs for ranged video slides and chunked local media transcription, plus an idle-evictable Whisper runtime.
   - Content script: extract readable article text from the **rendered DOM** via Readability; also detect SPA URL changes.
+  - Direct provider adapters: OpenAI-compatible SSE, Anthropic Messages SSE, and Gemini SSE, normalized to the same summary/chat/tool-call contracts.
   - Panel page streams SSE directly (MV3 service workers can be flaky for long-lived streams).
 - **Daemon (local, autostart service)**
   - HTTP server on `127.0.0.1:8787` only.
@@ -100,8 +102,8 @@ Dev (repo checkout):
 2. Panel sends a “ready” message to the background (plus periodic “ping” heartbeats while open).
 3. On nav/tab change (and auto enabled): background asks the content script to extract `{ url, title, text }` (best-effort).
 4. In Chrome Browser mode, fetchable audio is decoded in bounded chunks through MediaBunny/WebCodecs and transcribed locally. YouTube prefers active-player/watch-page direct audio, then Android VR, buffered direct audio, and captured SABR.
-5. In Daemon mode, background `POST`s payload to `/v1/summarize` with `Authorization: Bearer <token>`.
-6. Panel opens `/v1/summarize/<id>/events` (SSE) and renders streamed Markdown.
+5. In Direct mode, background uses Gemini Nano for Auto without provider credentials, or calls the selected provider and returns the normalized summary/chat result to the panel.
+6. In Daemon mode, background `POST`s payload to `/v1/summarize` with `Authorization: Bearer <token>`; the panel streams `/v1/summarize/<id>/events`.
 
 ## Auto Mode (URL + Page Text)
 
@@ -154,7 +156,10 @@ See `docs/media.md` for detection and transcript rules.
 ## Model Selection UX
 
 - Settings:
-  - Model preset (Options → Advanced): `auto` | `free` | custom string (e.g. `openai/gpt-5-mini`, `openai/gpt-5.5`, `openrouter/...`). OpenAI fast service tier is configured via `openai.serviceTier`.
+  - AI connection (Options → Runtime): Direct | Daemon.
+  - Direct provider and credential/base URL (Options → Runtime). `auto` uses the configured provider, otherwise Gemini Nano; an explicit provider prefix overrides the selection.
+  - Media/slide runtime (Options → Runtime): Browser | Daemon.
+  - Model preset: `auto` | Gemini Nano | `free` | custom string (e.g. `openai/gpt-5-mini`, `openrouter/...`, `github-copilot/...`). Explicit Gemini Nano summaries stay on-device in either connection mode.
   - Length: `short|medium|long|xl|xxl` (or a character target like `20k`). Tooltips show target ranges + paragraph guidance (from `packages/core/src/prompts/summary-lengths.ts`).
   - Language: `auto` (match source) or a tag like `en`, `de`, `pt-BR` (or free-form like “German”).
   - Prompt override (advanced): custom instruction prefix (context + content still appended).
@@ -163,7 +168,7 @@ See `docs/media.md` for detection and transcript rules.
   - Typography: font family (dropdown + custom), font size (slider).
 - Advanced overrides (Options → Advanced tab).
   - Leave blank to use daemon config/defaults; set a value to override.
-  - Chat (advanced): enable/disable the daemon-backed side panel chat input (default on; hidden when no authenticated daemon is available).
+  - Chat: enabled for a configured Direct provider or authenticated daemon.
   - Summary timestamps (advanced): include `[mm:ss]` links in summaries for media when available (default on).
   - Slides parallel (advanced): show summary first and extract slides in parallel (default on).
   - Slides OCR text (advanced): allow OCR text as a slide text source (default off).

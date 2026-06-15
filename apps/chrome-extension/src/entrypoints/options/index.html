@@ -126,13 +126,13 @@
             <div class="combo">
               <div id="chatToggle"></div>
               <span class="subtitle">
-                Enable daemon-backed Chat mode in the side panel (default on).
+                Enable Chat in the side panel with a direct provider or the daemon.
               </span>
             </div>
             <div class="combo">
               <div id="automationToggle"></div>
               <span class="subtitle">
-                Enable daemon-backed website automation tools in the side panel.
+                Enable website automation tools with a direct provider or the daemon.
               </span>
             </div>
             <div class="combo">
@@ -159,37 +159,107 @@
             <header class="advancedHead">
               <h2>Runtime</h2>
               <div class="hint">
-                Browser mode uses on-device Gemini Nano when available, with extractive fallback.
-                Daemon mode adds configurable AI providers and daemon-backed tools.
+                Choose how Chrome connects to AI independently from media and slide extraction.
               </div>
             </header>
             <div class="advancedFields">
               <div class="subgroup">
                 <div class="subgroupHead">
-                  <span class="subgroupTitle">Summary and slide runtime</span>
+                  <span class="subgroupTitle">AI connection</span>
+                </div>
+                <div class="subgroupBody">
+                  <div
+                    id="summaryRuntimeMode"
+                    class="runtimeModeGrid"
+                    role="radiogroup"
+                    aria-label="AI connection"
+                  >
+                    <label class="runtimeModeCard">
+                      <input type="radio" name="summaryRuntimeMode" value="direct" />
+                      <div class="runtimeModeTitle">Direct</div>
+                      <div class="runtimeModeText">
+                        Runs Gemini Nano on-device or calls your configured provider directly from
+                        Chrome.
+                      </div>
+                    </label>
+                    <label class="runtimeModeCard">
+                      <input type="radio" name="summaryRuntimeMode" value="daemon" />
+                      <div class="runtimeModeTitle">Daemon</div>
+                      <div class="runtimeModeText">
+                        Uses the local Summarize daemon and its configured providers and tools.
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="subgroup">
+                <div class="subgroupHead">
+                  <span class="subgroupTitle">Direct provider</span>
+                </div>
+                <div class="subgroupBody">
+                  <label class="field">
+                    <span>Provider</span>
+                    <select id="provider">
+                      <option value="openai">OpenAI</option>
+                      <option value="openrouter">OpenRouter</option>
+                      <option value="anthropic">Anthropic</option>
+                      <option value="google">Google Gemini</option>
+                      <option value="xai">xAI</option>
+                      <option value="zai">Z.AI</option>
+                      <option value="nvidia">NVIDIA</option>
+                      <option value="minimax">MiniMax</option>
+                      <option value="github">GitHub Models</option>
+                      <option value="ollama">Ollama</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>API key</span>
+                    <input
+                      id="providerApiKey"
+                      type="password"
+                      autocomplete="off"
+                      placeholder="Stored locally in this Chrome profile"
+                    />
+                  </label>
+                  <label class="field">
+                    <span>Base URL override</span>
+                    <input
+                      id="providerBaseUrl"
+                      type="url"
+                      autocomplete="off"
+                      placeholder="Use provider default"
+                    />
+                  </label>
+                  <div class="hint">
+                    Keys are stored in <code>chrome.storage.local</code> and sent only to the
+                    selected provider.
+                  </div>
+                </div>
+              </div>
+              <div class="subgroup">
+                <div class="subgroupHead">
+                  <span class="subgroupTitle">Media and slide runtime</span>
                 </div>
                 <div class="subgroupBody">
                   <div
                     id="slideRuntimeMode"
                     class="runtimeModeGrid"
                     role="radiogroup"
-                    aria-label="Summary and slide runtime"
+                    aria-label="Media and slide runtime"
                   >
                     <label class="runtimeModeCard">
                       <input type="radio" name="slideRuntimeMode" value="browser" />
                       <div class="runtimeModeTitle">Browser</div>
                       <div class="runtimeModeText">
-                        Runs inside Chrome. Uses Gemini Nano on eligible Chrome 138+ desktops, with
-                        extractive fallback, browser transcription, and frame capture; no Summarize
-                        daemon required.
+                        Browser transcription and frame capture. Fully daemonless for supported
+                        media.
                       </div>
                     </label>
                     <label class="runtimeModeCard">
                       <input type="radio" name="slideRuntimeMode" value="daemon" />
                       <div class="runtimeModeTitle">Daemon</div>
                       <div class="runtimeModeText">
-                        Uses the local daemon for configurable provider-backed AI summaries, chat,
-                        automation, hover summaries, OCR, and broader native media support.
+                        Broader native media support and OCR through local tools.
                       </div>
                     </label>
                   </div>
@@ -234,8 +304,7 @@
               </div>
             </label>
             <div class="hint">
-              Used only for Daemon runtime and daemon-backed tools. Browser summaries work without
-              it.
+              Used only for Daemon mode or daemon-backed media. Direct mode does not need it.
             </div>
           </section>
         </div>
@@ -319,6 +388,7 @@
               <div class="combo">
                 <select id="modelPreset">
                   <option value="auto">Auto</option>
+                  <option value="browser/gemini-nano">Gemini Nano (on-device)</option>
                   <option value="gpt-fast">GPT Fast</option>
                   <option value="custom">Custom…</option>
                 </select>
@@ -333,10 +403,10 @@
                 />
               </div>
               <div class="hint">
-                Tip: configure “free” models via <code>summarize refresh-free</code> (needs
-                <code>OPENROUTER_API_KEY</code>). Writes
-                <code>~/.summarize/config.json</code> (updates <code>models.free</code>). Add
-                <code>--set-default</code> to also set your default model to <code>free</code>.
+                Auto uses the configured direct provider, or Gemini Nano when no provider is
+                configured. In Daemon mode, Auto uses the daemon. Selecting Gemini Nano always keeps
+                summaries on-device. A provider prefix such as
+                <code>anthropic/...</code> overrides the selected direct provider.
               </div>
             </label>
             <label>

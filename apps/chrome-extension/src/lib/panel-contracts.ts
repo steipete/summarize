@@ -17,6 +17,8 @@ export type UiState = {
     slidesOcrEnabled: boolean;
     slidesLayout: "strip" | "gallery";
     slideRuntime: "browser" | "daemon";
+    summaryRuntime: "direct" | "daemon";
+    providerConfigured: boolean;
     fontSize: number;
     lineHeight: number;
     model: string;

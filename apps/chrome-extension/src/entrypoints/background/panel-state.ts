@@ -1,3 +1,4 @@
+import { hasDirectProviderCredentials } from "../../lib/model-routing";
 import type { UiState as PanelUiState } from "../../lib/panel-contracts";
 
 export type { PanelUiState };
@@ -41,6 +42,9 @@ type SettingsLike = {
   slidesOcrEnabled: boolean;
   slidesLayout: "strip" | "gallery";
   slideRuntime: "browser" | "daemon";
+  summaryRuntime: "direct" | "daemon";
+  provider: string;
+  providerApiKeys: Record<string, string | undefined>;
   fontSize: number;
   lineHeight: number;
   model: string;
@@ -128,6 +132,8 @@ export async function resolvePanelState({
         slidesOcrEnabled: settings.slidesOcrEnabled,
         slidesLayout: settings.slidesLayout,
         slideRuntime: settings.slideRuntime,
+        summaryRuntime: settings.summaryRuntime,
+        providerConfigured: hasDirectProviderCredentials(settings),
         fontSize: settings.fontSize,
         lineHeight: settings.lineHeight,
         model: settings.model,

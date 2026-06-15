@@ -74,6 +74,14 @@ describe("chrome/settings", () => {
     expect((await loadSettings()).slideRuntime).toBe("browser");
   });
 
+  it("migrates the old browser AI runtime to Direct with Gemini Nano selected", async () => {
+    storage.settings = { summaryRuntime: "browser", model: "auto" };
+
+    const loaded = await loadSettings();
+    expect(loaded.summaryRuntime).toBe("direct");
+    expect(loaded.model).toBe("browser/gemini-nano");
+  });
+
   it("normalizes advanced overrides on save", async () => {
     await saveSettings({
       ...defaultSettings,

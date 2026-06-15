@@ -14,7 +14,7 @@ const createDeferred = <T>() => {
 };
 
 describe("options daemon status", () => {
-  it("shows browser mode without probing the daemon", async () => {
+  it("shows that the daemon is not selected without probing it", async () => {
     const statusEl = document.createElement("div");
     let fetchCalls = 0;
     const checker = createDaemonStatusChecker({
@@ -29,7 +29,7 @@ describe("options daemon status", () => {
 
     await checker.checkDaemonStatus("token");
 
-    expect(statusEl.textContent).toBe("Browser mode active");
+    expect(statusEl.textContent).toBe("Daemon not selected");
     expect(statusEl.dataset.state).toBe("ok");
     expect(fetchCalls).toBe(0);
   });
@@ -58,7 +58,7 @@ describe("options daemon status", () => {
     expect(statusEl.dataset.state).toBe("warn");
   });
 
-  it("keeps browser mode from being overwritten by an older daemon check", async () => {
+  it("keeps the unselected state from being overwritten by an older daemon check", async () => {
     const statusEl = document.createElement("div");
     const health = createDeferred<Response>();
     let daemonMode = true;
@@ -81,7 +81,7 @@ describe("options daemon status", () => {
     health.resolve(jsonResponse({ version: "0.17.0" }));
     await staleCheck;
 
-    expect(statusEl.textContent).toBe("Browser mode active");
+    expect(statusEl.textContent).toBe("Daemon not selected");
     expect(statusEl.dataset.state).toBe("ok");
   });
 });

@@ -1,4 +1,4 @@
-import type { defaultSettings, SlideRuntime } from "../../lib/settings";
+import type { defaultSettings, SlideRuntime, SummaryRuntime } from "../../lib/settings";
 import { createBooleanToggleController } from "./toggles";
 
 type BooleanSettingsState = {
@@ -9,6 +9,7 @@ type BooleanSettingsState = {
   summaryTimestamps: boolean;
   slidesParallel: boolean;
   slideRuntime: SlideRuntime;
+  summaryRuntime: SummaryRuntime;
   slidesOcrEnabled: boolean;
   extendedLogging: boolean;
   autoCliFallback: boolean;
@@ -18,27 +19,29 @@ type ToggleController = {
   render: () => void;
 };
 
-function createSlideRuntimeController({
+function createRuntimeController<T extends string>({
   root,
+  name,
+  normalize,
   getValue,
   setValue,
   scheduleAutoSave,
   afterChange,
 }: {
   root: HTMLElement;
-  getValue: () => SlideRuntime;
-  setValue: (value: SlideRuntime) => void;
+  name: string;
+  normalize: (value: string) => T;
+  getValue: () => T;
+  setValue: (value: T) => void;
   scheduleAutoSave: (delay?: number) => void;
   afterChange?: () => void | Promise<void>;
 }): ToggleController {
-  const inputs = Array.from(
-    root.querySelectorAll<HTMLInputElement>('input[name="slideRuntimeMode"]'),
-  );
+  const inputs = Array.from(root.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`));
 
   for (const input of inputs) {
     input.addEventListener("change", () => {
       if (!input.checked) return;
-      setValue(input.value === "daemon" ? "daemon" : "browser");
+      setValue(normalize(input.value));
       render();
       scheduleAutoSave(0);
       void afterChange?.();
@@ -66,13 +69,14 @@ export function createBooleanSettingsRuntime(options: {
     summaryTimestampsToggleRoot: HTMLElement;
     slidesParallelToggleRoot: HTMLElement;
     slideRuntimeModeRoot: HTMLElement;
+    summaryRuntimeModeRoot: HTMLElement;
     slidesOcrToggleRoot: HTMLElement;
     extendedLoggingToggleRoot: HTMLElement;
     autoCliFallbackToggleRoot: HTMLElement;
   };
   scheduleAutoSave: (delayMs?: number) => void;
   onAutomationChanged?: () => void;
-  onDaemonSlidesModeChanged?: () => void;
+  onRuntimeChanged?: () => void;
 }) {
   const state: BooleanSettingsState = {
     autoSummarize: options.defaults.autoSummarize,
@@ -82,6 +86,7 @@ export function createBooleanSettingsRuntime(options: {
     summaryTimestamps: options.defaults.summaryTimestamps,
     slidesParallel: options.defaults.slidesParallel,
     slideRuntime: options.defaults.slideRuntime,
+    summaryRuntime: options.defaults.summaryRuntime,
     slidesOcrEnabled: options.defaults.slidesOcrEnabled,
     extendedLogging: options.defaults.extendedLogging,
     autoCliFallback: options.defaults.autoCliFallback,
@@ -149,14 +154,27 @@ export function createBooleanSettingsRuntime(options: {
       },
       scheduleAutoSave: options.scheduleAutoSave,
     }),
-    createSlideRuntimeController({
+    createRuntimeController({
+      root: options.roots.summaryRuntimeModeRoot,
+      name: "summaryRuntimeMode",
+      normalize: (value): SummaryRuntime => (value === "daemon" ? "daemon" : "direct"),
+      getValue: () => state.summaryRuntime,
+      setValue: (value) => {
+        state.summaryRuntime = value;
+      },
+      scheduleAutoSave: options.scheduleAutoSave,
+      afterChange: options.onRuntimeChanged,
+    }),
+    createRuntimeController({
       root: options.roots.slideRuntimeModeRoot,
+      name: "slideRuntimeMode",
+      normalize: (value): SlideRuntime => (value === "daemon" ? "daemon" : "browser"),
       getValue: () => state.slideRuntime,
       setValue: (value) => {
         state.slideRuntime = value;
       },
       scheduleAutoSave: options.scheduleAutoSave,
-      afterChange: options.onDaemonSlidesModeChanged,
+      afterChange: options.onRuntimeChanged,
     }),
     createBooleanToggleController({
       root: options.roots.slidesOcrToggleRoot,

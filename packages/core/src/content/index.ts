@@ -21,6 +21,7 @@ export {
   type SourceMetrics,
 } from "./link-preview/content/types.js";
 export { applyContentBudget } from "./link-preview/content/cleaner.js";
+export { extractBrowserHtmlContent, type BrowserHtmlContent } from "./browser-html.js";
 export {
   AssetLikeHtmlFetchError,
   isAssetLikeHtmlFetchError,

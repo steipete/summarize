@@ -17,6 +17,10 @@ type TranscriberSetting = "" | NonNullable<SummarizeRequestOverrides["transcribe
 
 export type Settings = {
   token: string;
+  summaryRuntime: SummaryRuntime;
+  provider: DirectProvider;
+  providerApiKeys: Partial<Record<DirectProvider, string>>;
+  providerBaseUrls: Partial<Record<DirectProvider, string>>;
   autoSummarize: boolean;
   hoverSummaries: boolean;
   chatEnabled: boolean;
@@ -54,6 +58,24 @@ export type Settings = {
 
 export type SlidesLayout = "strip" | "gallery";
 export type SlideRuntime = "browser" | "daemon";
+export type SummaryRuntime = "direct" | "daemon";
+export type DirectProvider =
+  | "openai"
+  | "openrouter"
+  | "anthropic"
+  | "google"
+  | "xai"
+  | "zai"
+  | "nvidia"
+  | "minimax"
+  | "github"
+  | "ollama";
+
+export type ProviderSettings = {
+  provider: DirectProvider;
+  apiKeys: Partial<Record<DirectProvider, string>>;
+  baseUrls: Partial<Record<DirectProvider, string>>;
+};
 
 const storageKey = "settings";
 const fallbackStorageKey = "summarize.settings";
@@ -102,7 +124,13 @@ function normalizeFontFamily(value: unknown): string {
   return legacyFontFamilyMap.get(trimmed) ?? trimmed;
 }
 
-function normalizeModel(value: unknown): string {
+function normalizeModel(value: unknown, raw?: Record<string, unknown>): string {
+  if (
+    typeof raw?.summaryRuntime === "string" &&
+    raw.summaryRuntime.trim().toLowerCase() === "browser"
+  ) {
+    return "browser/gemini-nano";
+  }
   if (typeof value !== "string") return defaultSettings.model;
   const trimmed = value.trim();
   if (!trimmed) return defaultSettings.model;
@@ -206,6 +234,44 @@ function normalizeSlideRuntime(value: unknown, raw?: Record<string, unknown>): S
     return legacyDaemonlessSlides ? "browser" : "daemon";
   }
   return defaultSettings.slideRuntime;
+}
+
+function normalizeSummaryRuntime(value: unknown, raw?: Record<string, unknown>): SummaryRuntime {
+  if (typeof value === "string") {
+    const trimmed = value.trim().toLowerCase();
+    if (trimmed === "daemon") return "daemon";
+    if (trimmed === "browser" || trimmed === "direct") return "direct";
+  }
+  return normalizeSlideRuntime(raw?.slideRuntime, raw) === "daemon" ? "daemon" : "direct";
+}
+
+const directProviders = new Set<DirectProvider>([
+  "openai",
+  "openrouter",
+  "anthropic",
+  "google",
+  "xai",
+  "zai",
+  "nvidia",
+  "minimax",
+  "github",
+  "ollama",
+]);
+
+function normalizeProvider(value: unknown): DirectProvider {
+  if (typeof value !== "string") return defaultSettings.provider;
+  const normalized = value.trim().toLowerCase() as DirectProvider;
+  return directProviders.has(normalized) ? normalized : defaultSettings.provider;
+}
+
+function normalizeProviderMap(value: unknown): Partial<Record<DirectProvider, string>> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: Partial<Record<DirectProvider, string>> = {};
+  for (const provider of directProviders) {
+    const entry = (value as Record<string, unknown>)[provider];
+    if (typeof entry === "string") out[provider] = entry.trim();
+  }
+  return out;
 }
 
 function normalizeFirecrawlMode(value: unknown): FirecrawlModeSetting {
@@ -324,6 +390,10 @@ function normalizeLineHeight(value: unknown): number {
 
 export const defaultSettings: Settings = {
   token: "",
+  summaryRuntime: "direct",
+  provider: "openai",
+  providerApiKeys: {},
+  providerBaseUrls: {},
   autoSummarize: true,
   hoverSummaries: false,
   chatEnabled: true,
@@ -384,7 +454,11 @@ export async function loadSettings(): Promise<Settings> {
     ...defaultSettings,
     ...raw,
     token: typeof raw.token === "string" ? raw.token : defaultSettings.token,
-    model: normalizeModel(raw.model),
+    summaryRuntime: normalizeSummaryRuntime(raw.summaryRuntime, raw),
+    provider: normalizeProvider(raw.provider),
+    providerApiKeys: normalizeProviderMap(raw.providerApiKeys),
+    providerBaseUrls: normalizeProviderMap(raw.providerBaseUrls),
+    model: normalizeModel(raw.model, raw),
     length: normalizeLength(raw.length),
     language: normalizeLanguage(raw.language),
     promptOverride: normalizePromptOverride(raw.promptOverride),
@@ -449,6 +523,10 @@ export async function loadSettings(): Promise<Settings> {
 export async function saveSettings(settings: Settings): Promise<void> {
   const normalized = {
     ...settings,
+    summaryRuntime: normalizeSummaryRuntime(settings.summaryRuntime),
+    provider: normalizeProvider(settings.provider),
+    providerApiKeys: normalizeProviderMap(settings.providerApiKeys),
+    providerBaseUrls: normalizeProviderMap(settings.providerBaseUrls),
     model: normalizeModel(settings.model),
     length: normalizeLength(settings.length),
     language: normalizeLanguage(settings.language),
@@ -482,6 +560,14 @@ export async function saveSettings(settings: Settings): Promise<void> {
       ...normalized,
     },
   });
+}
+
+export function getProviderSettings(settings: Settings): ProviderSettings {
+  return {
+    provider: settings.provider,
+    apiKeys: settings.providerApiKeys,
+    baseUrls: settings.providerBaseUrls,
+  };
 }
 
 export async function patchSettings(patch: Partial<Settings>): Promise<Settings> {

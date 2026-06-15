@@ -2,6 +2,11 @@
 
 ## 0.18.2 - Unreleased
 
+### Features
+
+- Chrome extension: add Direct and Daemon AI connections with unified model selection; Auto uses configured direct providers or Gemini Nano on-device, while explicit Nano summaries remain local even with daemon capabilities enabled.
+- Chrome extension: add direct provider-backed summaries, chat, automation, hover summaries, and URL extraction without the daemon, with independent AI and media runtimes plus local credentials for OpenAI, OpenRouter, Anthropic, Gemini, xAI, Z.AI, NVIDIA, MiniMax, GitHub Models, Ollama, and custom base URLs.
+
 ### Fixes
 
 - Chrome extension: preserve significant whitespace in SSE data fields while parsing daemon streams (#303, thanks @vincent-peng).
@@ -9,7 +14,7 @@
 - Chrome extension slides: sample browser-captured frames across the full video duration so long videos include their final segment.
 - Chrome extension: use Chrome's built-in Gemini Nano Summarizer API for daemonless Browser summaries when available, with first-use download progress and automatic extractive fallback.
 - Remote transcripts: cap RSS and embedded caption response bodies at 5 MiB and cancel oversized streams. Thanks @Hinotoi-agent.
-- Chrome extension: keep Browser runtime fully daemonless even with saved tokens, fail clearly when local extraction or transcription is unavailable, and hide daemon-backed chat and automation without an authenticated daemon.
+- Chrome extension: keep Direct mode's Gemini Nano path fully daemonless even with saved tokens, fail clearly when local extraction or transcription is unavailable, and hide chat and automation without a configured direct provider or authenticated daemon.
 
 ## 0.18.1 - 2026-06-13
 

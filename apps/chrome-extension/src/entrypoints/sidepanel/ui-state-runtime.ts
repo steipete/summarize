@@ -7,6 +7,7 @@ import {
   shouldIgnoreTransientPanelTabState,
   shouldInvalidateCurrentSource,
 } from "./session-policy";
+import type { SetupDisplay } from "./setup-runtime";
 import type { PanelPhase, PanelState, UiState } from "./types";
 
 type AppearanceControlsLike = {
@@ -73,7 +74,7 @@ type UiStateRuntimeOpts = {
   setSlidesLayout: (value: string) => void;
   maybeSeedPlannedSlidesForPendingRun: () => void;
   refreshSummarizeControl: () => void;
-  maybeShowSetup: (state: UiState) => boolean;
+  maybeShowSetup: (state: UiState) => SetupDisplay;
   setPhase: (phase: PanelPhase, opts?: { error?: string | null }) => void;
   renderMarkdownDisplay: () => void;
   readCurrentModelValue: () => string;
@@ -258,7 +259,9 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       value: {
         chatEnabled: state.settings.chatEnabled,
         automationEnabled: state.settings.automationEnabled,
-        daemonFeaturesAvailable: state.daemon.ok && state.daemon.authed,
+        daemonFeaturesAvailable:
+          (state.settings.summaryRuntime === "direct" && state.settings.providerConfigured) ||
+          (state.settings.summaryRuntime === "daemon" && state.daemon.ok && state.daemon.authed),
       },
     });
     const nextSlidesOcrEnabled = Boolean(state.settings.slidesOcrEnabled);
@@ -408,10 +411,10 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
     });
     opts.maybeSeedPlannedSlidesForPendingRun();
     opts.refreshSummarizeControl();
-    const showingSetup = opts.maybeShowSetup(state);
-    if (showingSetup && opts.panelState.phase !== "setup") {
+    const setupDisplay = opts.maybeShowSetup(state);
+    if (setupDisplay === "blocking" && opts.panelState.phase !== "setup") {
       opts.setPhase("setup");
-    } else if (!showingSetup && opts.panelState.phase === "setup") {
+    } else if (setupDisplay !== "blocking" && opts.panelState.phase === "setup") {
       opts.setPhase("idle");
     }
     if (!opts.panelState.summaryMarkdown?.trim()) {

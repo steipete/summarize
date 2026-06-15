@@ -1,7 +1,14 @@
 import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import { readAgentResponse } from "../../lib/agent-response";
 import { buildChatPageContent } from "../../lib/chat-context";
-import type { Settings } from "../../lib/settings";
+import {
+  buildDirectAgentSystemPrompt,
+  normalizeDirectMessages,
+  resolveDirectTools,
+} from "../../lib/direct-prompts";
+import { streamDirectModel } from "../../lib/direct-provider";
+import { resolveCapabilityExecution, resolveCapabilityModel } from "../../lib/model-routing";
+import { getProviderSettings, type Settings } from "../../lib/settings";
 import type { CachedExtract } from "./extract-cache";
 
 type BackgroundChatSession = {
@@ -118,8 +125,45 @@ export async function handlePanelAgentRequest({
   });
 
   sendStatus("Sending to AI…");
+  const capabilityExecution = resolveCapabilityExecution(settings);
+  const capabilityModel = resolveCapabilityModel(settings.model);
 
   try {
+    if (capabilityExecution === "direct") {
+      let sawAssistant = false;
+      for await (const event of streamDirectModel({
+        model: capabilityModel,
+        providerSettings: getProviderSettings(settings),
+        system: buildDirectAgentSystemPrompt({
+          pageUrl: cachedExtract.url,
+          pageTitle: cachedExtract.title,
+          pageContent,
+          automationEnabled: settings.automationEnabled,
+        }),
+        messages: normalizeDirectMessages(messages),
+        tools: resolveDirectTools(settings.automationEnabled, tools),
+        maxTokens: 4096,
+        signal: agentController.signal,
+        fetchImpl,
+      })) {
+        if (!isStillActive()) return;
+        if (event.type === "text") {
+          send({ type: "agent:chunk", requestId, text: event.text });
+        } else {
+          sawAssistant = true;
+          send({
+            type: "agent:response",
+            requestId,
+            ok: true,
+            assistant: event.assistant,
+          });
+        }
+      }
+      if (!sawAssistant) throw new Error("Provider stream ended without a response.");
+      sendStatus("");
+      return;
+    }
+
     const res = await fetchImpl("http://127.0.0.1:8787/v1/agent", {
       method: "POST",
       headers: {
@@ -133,7 +177,7 @@ export async function handlePanelAgentRequest({
         pageContent,
         cacheContent,
         messages,
-        model: settings.model,
+        model: capabilityModel,
         length: settings.length,
         language: settings.language,
         tools,
@@ -168,7 +212,12 @@ export async function handlePanelAgentRequest({
     sendStatus("");
   } catch (err) {
     if (agentController.signal.aborted) return;
-    const message = friendlyFetchError(err, "Chat request failed");
+    const message = friendlyFetchError(
+      err,
+      capabilityExecution === "direct"
+        ? "Direct chat request failed"
+        : "Daemon chat request failed",
+    );
     send({ type: "agent:response", requestId, ok: false, error: message });
     sendStatus(`Error: ${message}`);
   } finally {
@@ -195,6 +244,11 @@ export async function handlePanelChatHistoryRequest({
   fetchImpl: typeof fetch;
   friendlyFetchError: (error: unknown, fallback: string) => string;
 }) {
+  const capabilityExecution = resolveCapabilityExecution(settings);
+  if (capabilityExecution === "direct") {
+    send({ type: "chat:history", requestId, ok: true, messages: undefined });
+    return;
+  }
   const summaryText = typeof summary === "string" ? summary.trim() : "";
   const { pageContent, cacheContent } = buildChatRequestContext({
     cachedExtract,
@@ -214,7 +268,7 @@ export async function handlePanelChatHistoryRequest({
         title: cachedExtract.title,
         pageContent,
         cacheContent,
-        model: settings.model,
+        model: resolveCapabilityModel(settings.model),
         length: settings.length,
         language: settings.language,
         automationEnabled: settings.automationEnabled,

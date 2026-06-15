@@ -1,6 +1,15 @@
 import type { ToolCall, ToolResultMessage } from "@earendil-works/pi-ai";
+import { buildBrowserSummaryPayload } from "../lib/browser-summary";
+import { fetchBrowserUrlContent } from "../lib/browser-url-content";
+import {
+  buildDirectSummaryPrompt,
+  DIRECT_SUMMARY_SYSTEM_PROMPT,
+  resolveDirectMaxTokens,
+} from "../lib/direct-prompts";
+import { completeDirectText } from "../lib/direct-provider";
+import { resolveSummaryExecution } from "../lib/model-routing";
 import { parseSseEvent } from "../lib/runtime-contracts";
-import { loadSettings } from "../lib/settings";
+import { getProviderSettings, loadSettings } from "../lib/settings";
 import { parseSseStream } from "../lib/sse";
 import {
   deleteArtifact,
@@ -93,8 +102,20 @@ type SummarizeToolResult = {
 
 async function executeSummarizeTool(args: SummarizeToolArgs): Promise<SummarizeToolResult> {
   const settings = await loadSettings();
+  const effectiveSettings = {
+    ...settings,
+    model: args.model ?? settings.model,
+    length: args.length ?? settings.length,
+    language: args.language ?? settings.language,
+    promptOverride: args.prompt ?? settings.promptOverride,
+    maxOutputTokens:
+      typeof args.maxOutputTokens === "number"
+        ? String(args.maxOutputTokens)
+        : (args.maxOutputTokens ?? settings.maxOutputTokens),
+  };
+  const summaryExecution = resolveSummaryExecution(effectiveSettings);
   const token = settings.token.trim();
-  if (!token) {
+  if (summaryExecution === "daemon" && !token) {
     throw new Error("Missing daemon token. Open the side panel setup to pair the daemon.");
   }
 
@@ -103,6 +124,62 @@ async function executeSummarizeTool(args: SummarizeToolArgs): Promise<SummarizeT
 
   const format = args.format === "markdown" ? "markdown" : "text";
   const extractOnly = Boolean(args.extractOnly);
+  if (summaryExecution !== "daemon") {
+    const content = await fetchBrowserUrlContent({
+      url,
+      maxCharacters:
+        typeof args.maxCharacters === "number" && Number.isFinite(args.maxCharacters)
+          ? args.maxCharacters
+          : settings.maxChars,
+    });
+    if (extractOnly) {
+      return {
+        text: content.text,
+        details: {
+          url: content.url,
+          title: content.title,
+          truncated: content.truncated,
+          format,
+          runtime: "browser",
+        },
+      };
+    }
+    if (summaryExecution === "browser") {
+      const summary = buildBrowserSummaryPayload({
+        title: content.title,
+        text: content.text,
+        transcriptTimedText: null,
+      });
+      return {
+        text: summary.markdown,
+        details: { url: content.url, title: content.title, runtime: "browser" },
+      };
+    }
+    const result = await completeDirectText({
+      model: effectiveSettings.model,
+      providerSettings: getProviderSettings(effectiveSettings),
+      system: DIRECT_SUMMARY_SYSTEM_PROMPT,
+      prompt: buildDirectSummaryPrompt({
+        url: content.url,
+        title: content.title,
+        text: content.text,
+        truncated: content.truncated,
+        settings: effectiveSettings,
+      }),
+      maxTokens: resolveDirectMaxTokens(effectiveSettings),
+      signal: new AbortController().signal,
+    });
+    return {
+      text: result.text,
+      details: {
+        url: content.url,
+        title: content.title,
+        runtime: "direct",
+        provider: result.config.provider,
+        model: result.config.model,
+      },
+    };
+  }
 
   const body: Record<string, unknown> = {
     url,

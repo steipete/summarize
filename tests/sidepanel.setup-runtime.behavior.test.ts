@@ -56,6 +56,8 @@ function makeUiState(overrides?: Partial<UiState>): UiState {
       slidesOcrEnabled: false,
       slidesLayout: "strip",
       slideRuntime: "browser",
+      summaryRuntime: "direct",
+      providerConfigured: false,
       fontSize: 15,
       lineHeight: 1.6,
       model: "auto",
@@ -116,10 +118,14 @@ describe("sidepanel setup runtime behavior", () => {
     expect(
       runtime.maybeShowSetup(
         makeUiState({
-          settings: { ...makeUiState().settings, slideRuntime: "daemon", tokenPresent: false },
+          settings: {
+            ...makeUiState().settings,
+            summaryRuntime: "daemon",
+            tokenPresent: false,
+          },
         }),
       ),
-    ).toBe(true);
+    ).toBe("blocking");
 
     await flushPromises();
 
@@ -158,10 +164,10 @@ describe("sidepanel setup runtime behavior", () => {
       runtime.maybeShowSetup(
         makeUiState({
           daemon: { ok: false, authed: false },
-          settings: { ...makeUiState().settings, slideRuntime: "daemon" },
+          settings: { ...makeUiState().settings, summaryRuntime: "daemon" },
         }),
       ),
-    ).toBe(true);
+    ).toBe("blocking");
 
     await flushPromises();
 
@@ -191,11 +197,11 @@ describe("sidepanel setup runtime behavior", () => {
       getStatusResetText: vi.fn(() => "Ready"),
     });
 
-    expect(runtime.maybeShowSetup(makeUiState())).toBe(false);
+    expect(runtime.maybeShowSetup(makeUiState())).toBe("hidden");
     expect(setupEl.classList.add).toHaveBeenCalledWith("hidden");
   });
 
-  it("hides setup in browser runtime even when chat is enabled", async () => {
+  it("hides setup in direct mode without provider credentials", async () => {
     const setupEl = makeSetupEl();
     const ensureToken = vi.fn(async () => "fresh-token");
     const loadToken = vi.fn(async () => "unused-token");
@@ -214,14 +220,92 @@ describe("sidepanel setup runtime behavior", () => {
       runtime.maybeShowSetup(
         makeUiState({
           daemon: { ok: false, authed: false },
-          settings: { ...makeUiState().settings, slideRuntime: "browser", tokenPresent: false },
+          settings: {
+            ...makeUiState().settings,
+            summaryRuntime: "direct",
+            slideRuntime: "browser",
+            tokenPresent: false,
+          },
         }),
       ),
-    ).toBe(false);
+    ).toBe("hidden");
     await flushPromises();
     expect(setupEl.classList.add).toHaveBeenCalledWith("hidden");
     expect(ensureToken).not.toHaveBeenCalled();
     expect(loadToken).not.toHaveBeenCalled();
+  });
+
+  it("shows advisory setup for daemon capabilities without blocking Gemini Nano", async () => {
+    const setupEl = makeSetupEl();
+    const ensureToken = vi.fn(async () => "fresh-token");
+    const loadToken = vi.fn(async () => "unused-token");
+
+    const runtime = createSetupRuntime({
+      setupEl,
+      ensureToken,
+      loadToken,
+      patchSettings: vi.fn() as never,
+      generateToken: vi.fn() as never,
+      headerSetStatus: vi.fn(),
+      getStatusResetText: vi.fn(() => "Ready"),
+    });
+
+    expect(
+      runtime.maybeShowSetup(
+        makeUiState({
+          daemon: { ok: false, authed: false },
+          settings: {
+            ...makeUiState().settings,
+            summaryRuntime: "daemon",
+            slideRuntime: "browser",
+            model: "browser/gemini-nano",
+            tokenPresent: false,
+          },
+        }),
+      ),
+    ).toBe("advisory");
+    await flushPromises();
+    expect(setupEl.classList.remove).toHaveBeenCalledWith("hidden");
+    expect(ensureToken).toHaveBeenCalledOnce();
+    expect(loadToken).not.toHaveBeenCalled();
+    expect(setupViewMocks.installStepsHtml).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headline: "Daemon capabilities unavailable",
+      }),
+    );
+  });
+
+  it("shows advisory setup for daemon-backed slides with Gemini Nano summaries", async () => {
+    const setupEl = makeSetupEl();
+    const ensureToken = vi.fn(async () => "fresh-token");
+
+    const runtime = createSetupRuntime({
+      setupEl,
+      ensureToken,
+      loadToken: vi.fn(async () => "unused-token"),
+      patchSettings: vi.fn() as never,
+      generateToken: vi.fn() as never,
+      headerSetStatus: vi.fn(),
+      getStatusResetText: vi.fn(() => "Ready"),
+    });
+
+    expect(
+      runtime.maybeShowSetup(
+        makeUiState({
+          daemon: { ok: false, authed: false },
+          settings: {
+            ...makeUiState().settings,
+            summaryRuntime: "daemon",
+            slideRuntime: "daemon",
+            model: "browser/gemini-nano",
+            tokenPresent: false,
+          },
+        }),
+      ),
+    ).toBe("advisory");
+    await flushPromises();
+    expect(ensureToken).toHaveBeenCalledOnce();
+    expect(setupEl.classList.remove).toHaveBeenCalledWith("hidden");
   });
 
   it("hides setup in browser runtime when daemon-backed chat is disabled", () => {
@@ -246,12 +330,13 @@ describe("sidepanel setup runtime behavior", () => {
           settings: {
             ...makeUiState().settings,
             chatEnabled: false,
+            summaryRuntime: "direct",
             slideRuntime: "browser",
             tokenPresent: false,
           },
         }),
       ),
-    ).toBe(false);
+    ).toBe("hidden");
     expect(setupEl.classList.add).toHaveBeenCalledWith("hidden");
     expect(ensureToken).not.toHaveBeenCalled();
     expect(loadToken).not.toHaveBeenCalled();

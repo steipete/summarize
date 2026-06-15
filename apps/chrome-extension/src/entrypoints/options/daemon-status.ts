@@ -39,7 +39,7 @@ export function createDaemonStatusChecker({
 
   const setBrowserStatus = () => {
     daemonCheckId += 1;
-    setDaemonStatus("Browser mode active", "ok");
+    setDaemonStatus("Daemon not selected", "ok");
   };
 
   const fetchWithRetry = async (url: string, options: RequestInit = {}) => {

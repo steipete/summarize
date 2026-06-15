@@ -37,6 +37,8 @@ export type UiState = {
     slidesOcrEnabled: boolean;
     slidesLayout?: "strip" | "gallery";
     slideRuntime?: "browser" | "daemon";
+    summaryRuntime?: "direct" | "daemon";
+    providerConfigured?: boolean;
     model: string;
     length: string;
     tokenPresent: boolean;
@@ -60,6 +62,8 @@ const defaultUiState: UiState = {
     slidesOcrEnabled: false,
     slidesLayout: "strip",
     slideRuntime: "browser",
+    summaryRuntime: "direct",
+    providerConfigured: false,
     model: "auto",
     length: "xl",
     tokenPresent: true,

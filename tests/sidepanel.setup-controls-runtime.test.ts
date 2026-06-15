@@ -30,7 +30,7 @@ vi.mock("../apps/chrome-extension/src/entrypoints/sidepanel/drawer-controls", ()
 vi.mock("../apps/chrome-extension/src/entrypoints/sidepanel/setup-runtime", () => ({
   createSetupRuntime: vi.fn((options) => {
     capturedSetupOptions = options;
-    return { maybeShowSetup: vi.fn(() => false) };
+    return { maybeShowSetup: vi.fn(() => "hidden") };
   }),
 }));
 
