@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Chrome extension: invoke Gemini Nano session methods with their native receiver so Browser summaries complete instead of silently falling back.
 - Chrome extension: use Chrome's built-in Gemini Nano Summarizer API for daemonless Browser summaries when available, with first-use download progress and automatic extractive fallback.
 - Remote transcripts: cap RSS and embedded caption response bodies at 5 MiB and cancel oversized streams. Thanks @Hinotoi-agent.
 - Chrome extension: keep Browser runtime fully daemonless even with saved tokens, fail clearly when local extraction or transcription is unavailable, and hide daemon-backed chat and automation without an authenticated daemon.

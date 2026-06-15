@@ -1,3 +1,4 @@
+import { logExtensionEvent } from "../../lib/extension-logs";
 import type { BrowserAiSummaryInput } from "../../lib/panel-contracts";
 
 type BrowserAiAvailability = "available" | "downloadable" | "downloading" | "unavailable";
@@ -50,6 +51,13 @@ function isQuotaError(error: unknown): boolean {
   if ((error as { name?: unknown } | null)?.name === "QuotaExceededError") return true;
   const message = error instanceof Error ? error.message : String(error);
   return /context window|input quota|quota exceeded/i.test(message);
+}
+
+function errorDetail(error: unknown) {
+  return {
+    error: error instanceof Error ? error.message : String(error),
+    errorName: (error as { name?: unknown } | null)?.name,
+  };
 }
 
 function splitLongUnit(value: string, target: number): string[] {
@@ -127,14 +135,13 @@ async function summarizeRecursively({
     throw new DOMException("Input exceeds the on-device context window", "QuotaExceededError");
 
   const inputQuota = session.inputQuota;
-  const measureInputUsage = session.measureInputUsage;
   if (
     typeof inputQuota === "number" &&
     Number.isFinite(inputQuota) &&
     inputQuota > 0 &&
-    measureInputUsage
+    session.measureInputUsage
   ) {
-    const usage = await measureInputUsage(text, context ? { context } : undefined);
+    const usage = await session.measureInputUsage(text, context ? { context } : undefined);
     if (usage <= inputQuota) {
       return await session.summarize(text, { context, signal });
     }
@@ -217,7 +224,13 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
           });
         },
       })
-      .catch(() => {
+      .catch((error) => {
+        logExtensionEvent({
+          event: "browser-ai:create-error",
+          level: "warn",
+          scope: "sidepanel",
+          detail: { length, ...errorDetail(error) },
+        });
         sessions.delete(length);
         return null;
       });
@@ -232,7 +245,15 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     if (cached) return await cached;
     const api = getApi();
     if (!api) return null;
-    const availability = await api.availability().catch(() => "unavailable" as const);
+    const availability = await api.availability().catch((error) => {
+      logExtensionEvent({
+        event: "browser-ai:availability-error",
+        level: "warn",
+        scope: "sidepanel",
+        detail: errorDetail(error),
+      });
+      return "unavailable" as const;
+    });
     if (availability === "unavailable") return null;
     if (availability === "downloadable" && !isUserActive()) return null;
     return await createSession(api, length);
@@ -275,6 +296,12 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     }
 
     options.setStatus("Summarizing with on-device AI…");
+    logExtensionEvent({
+      event: "browser-ai:summarize-start",
+      level: "verbose",
+      scope: "sidepanel",
+      detail: { chars: input.text.length, length: input.length },
+    });
     try {
       const result = await summarizeRecursively({
         session,
@@ -283,8 +310,26 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
         signal: controller.signal,
         depth: 0,
       });
-      return request === activeRequest && result.trim() ? result.trim() : null;
-    } catch {
+      const summary = request === activeRequest && result.trim() ? result.trim() : null;
+      logExtensionEvent({
+        event: summary ? "browser-ai:summarize-done" : "browser-ai:summarize-discarded",
+        level: summary ? "verbose" : "warn",
+        scope: "sidepanel",
+        detail: { chars: input.text.length, resultChars: result.trim().length },
+      });
+      return summary;
+    } catch (error) {
+      logExtensionEvent({
+        event: "browser-ai:summarize-error",
+        level: controller.signal.aborted ? "verbose" : "warn",
+        scope: "sidepanel",
+        detail: {
+          aborted: controller.signal.aborted,
+          chars: input.text.length,
+          length: input.length,
+          ...errorDetail(error),
+        },
+      });
       return null;
     } finally {
       if (request === activeRequest) {

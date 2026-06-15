@@ -17,7 +17,10 @@ let flushTimer = 0;
 let flushInFlight = false;
 let pendingLines: string[] = [];
 
-const getStorage = () => chrome.storage?.session ?? chrome.storage?.local;
+const getStorage = () => {
+  if (typeof chrome === "undefined") return undefined;
+  return chrome.storage?.session ?? chrome.storage?.local;
+};
 
 const queueFlush = () => {
   if (flushTimer) return;
