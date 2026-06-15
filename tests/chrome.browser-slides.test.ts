@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { runBrowserSlidesForTab } from "../apps/chrome-extension/src/entrypoints/background/browser-slides";
+import {
+  chooseBrowserSlideTimestamps,
+  runBrowserSlidesForTab,
+} from "../apps/chrome-extension/src/entrypoints/background/browser-slides";
 
 const originalChrome = globalThis.chrome;
 const originalFetch = globalThis.fetch;
@@ -25,6 +28,19 @@ describe("chrome browser slide capture", () => {
       configurable: true,
       value: originalOffscreenCanvas,
     });
+  });
+
+  it("samples long videos through the final segment", () => {
+    for (const durationSeconds of [4203, 1787]) {
+      const timestamps = chooseBrowserSlideTimestamps(durationSeconds);
+
+      expect(timestamps).toHaveLength(6);
+      expect(timestamps[0]).toBeCloseTo(0.4, 5);
+      expect(timestamps.at(-1)).toBeCloseTo(durationSeconds - 0.4, 5);
+      for (let index = 1; index < timestamps.length; index += 1) {
+        expect(timestamps[index]).toBeGreaterThan(timestamps[index - 1]);
+      }
+    }
   });
 
   it("captures the current frame without seek setup or restore", async () => {
@@ -118,7 +134,7 @@ describe("chrome browser slide capture", () => {
     });
     const extractFramesWithMediaBunny = vi.fn(async () => [
       { imageUrl: "data:image/jpeg;base64,AQID", timestamp: 0.4 },
-      { imageUrl: "data:image/jpeg;base64,BAUG", timestamp: 2.4 },
+      { imageUrl: "data:image/jpeg;base64,BAUG", timestamp: 3.6 },
     ]);
     const beginFrameCapture = vi.fn();
 
@@ -146,7 +162,7 @@ describe("chrome browser slide capture", () => {
     expect(extractFramesWithMediaBunny).toHaveBeenCalledWith(
       expect.objectContaining({
         mediaUrl: "https://cdn.example.com/video.mp4",
-        timestamps: [0.4, 2.4],
+        timestamps: [0.4, 3.6],
       }),
     );
     expect(beginFrameCapture).not.toHaveBeenCalled();

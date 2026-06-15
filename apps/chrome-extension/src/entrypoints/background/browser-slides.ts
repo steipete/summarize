@@ -29,12 +29,18 @@ function makeRunId() {
   return `browser-${random}`;
 }
 
-function chooseTimestamps(durationSeconds: number | null, maxSlides = MAX_LOCAL_SLIDES): number[] {
+export function chooseBrowserSlideTimestamps(
+  durationSeconds: number | null,
+  maxSlides = MAX_LOCAL_SLIDES,
+): number[] {
   if (!durationSeconds || durationSeconds <= 0 || !Number.isFinite(durationSeconds)) return [0];
   const count = Math.min(maxSlides, Math.max(1, Math.ceil(durationSeconds / 2)));
-  const step = durationSeconds / count;
+  const inset = Math.min(0.4, durationSeconds / 3);
+  if (count === 1) return [inset];
+  const end = Math.max(inset, durationSeconds - inset);
+  const step = (end - inset) / (count - 1);
   return Array.from({ length: count }, (_value, index) =>
-    Math.max(0, Math.min(durationSeconds - 0.1, index * step + Math.min(0.4, step / 3))),
+    Math.max(0, Math.min(durationSeconds - 0.1, inset + index * step)),
   );
 }
 
@@ -145,7 +151,7 @@ export async function runBrowserSlidesForTab(args: {
   if (captureMode === "seek" && args.getMediaInfo) {
     const media = await args.getMediaInfo(tabId);
     if (media.ok && isBrowserMediaUrl(media.mediaSrc)) {
-      const timestamps = chooseTimestamps(media.durationSeconds, args.maxSlides);
+      const timestamps = chooseBrowserSlideTimestamps(media.durationSeconds, args.maxSlides);
       try {
         const frames = await (args.extractFramesWithMediaBunny ?? extractBrowserMediaFrames)({
           mediaUrl: media.mediaSrc,
@@ -191,7 +197,7 @@ export async function runBrowserSlidesForTab(args: {
               ? first.data.currentTimeSeconds
               : 0,
           ]
-        : chooseTimestamps(first.data.durationSeconds, args.maxSlides);
+        : chooseBrowserSlideTimestamps(first.data.durationSeconds, args.maxSlides);
     const slides: SseSlidesData["slides"] = [];
     let lastCaptureAt = 0;
 
