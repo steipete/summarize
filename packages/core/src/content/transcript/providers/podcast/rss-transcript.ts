@@ -6,6 +6,7 @@ import {
   vttToPlainText,
   vttToSegments,
 } from "../../parse.js";
+import { readTranscriptTextWithLimit } from "../response-size-limit.js";
 import { TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
 import {
   decodeXmlEntities,
@@ -65,7 +66,7 @@ export async function tryFetchTranscriptFromFeedXml({
       const contentType =
         res.headers.get("content-type")?.toLowerCase().split(";")[0]?.trim() ?? null;
       const effectiveType = preferred.type?.toLowerCase().split(";")[0]?.trim() ?? contentType;
-      const body = await res.text();
+      const body = await readTranscriptTextWithLimit(res);
       const parsed = parseTranscriptBody({
         body,
         transcriptUrl,

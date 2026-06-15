@@ -7,6 +7,7 @@ import {
   vttToPlainText,
   vttToSegments,
 } from "../parse.js";
+import { readTranscriptTextWithLimit } from "./response-size-limit.js";
 
 export type EmbeddedTrack = {
   url: string;
@@ -77,7 +78,7 @@ export async function fetchCaptionTrack(
       notes.push(`Embedded captions fetch failed (${res.status})`);
       return null;
     }
-    const body = await res.text();
+    const body = await readTranscriptTextWithLimit(res);
     const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
     const type = track.type?.toLowerCase() ?? "";
 
