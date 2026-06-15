@@ -9,6 +9,7 @@ export type ExtractorContext = {
   maxChars: number;
   minTextChars: number;
   token: string;
+  allowDaemon?: boolean;
   noCache?: boolean;
   includeDiagnostics?: boolean;
   signal?: AbortSignal;

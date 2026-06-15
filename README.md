@@ -36,17 +36,17 @@ YouTube slide screenshots (from the browser):
 
 ### Beginner quickstart (extension)
 
-1. Install the CLI (choose one):
-   - **npm** (cross‑platform): `npm i -g @steipete/summarize`
+1. Install the extension (Chrome Web Store link above) and open the Side Panel.
+2. Keep the default **Browser** runtime for daemonless local extraction, extractive page/media summaries, browser transcription, and slides.
+3. Optional: install the CLI and pair the daemon for AI summaries, chat, automation, hover summaries, OCR, and broader native media support:
+   - **npm** (cross-platform): `npm i -g @steipete/summarize`
    - **Homebrew** (Homebrew/core): `brew install summarize`
-2. Install the extension (Chrome Web Store link above) and open the Side Panel.
-3. The panel shows a token + install command. Run it in Terminal:
    - `summarize daemon install --token <TOKEN>`
 
 Why a daemon/service?
 
-- Browser mode works without the daemon for page summaries, ranged video slides through MediaBunny/WebCodecs, and fetchable YouTube/direct/embedded media transcription with browser-cached Whisper.
-- The optional daemon on `127.0.0.1` is faster and adds native ffmpeg, configurable transcription providers, OCR, and broader media support.
+- Browser mode works without the daemon for local extractive page/media summaries, ranged video slides through MediaBunny/WebCodecs, and fetchable YouTube/direct/embedded media transcription with browser-cached Whisper.
+- The optional daemon on `127.0.0.1` adds AI summaries, chat, automation, hover summaries, native ffmpeg, configurable transcription providers, OCR, and broader media support.
 - The service autostarts (launchd/systemd/Scheduled Task) so the Side Panel is always ready.
 
 If you only want the **CLI**, you can skip the daemon install entirely.
@@ -153,7 +153,7 @@ If native `ffmpeg`/`ffprobe` are unavailable, Summarize uses the bundled WebAsse
 ### CLI vs extension
 
 - **CLI only:** just install via npm/Homebrew and run `summarize ...` (no daemon needed).
-- **Chrome extension:** Browser mode works without the CLI or daemon; install the daemon for faster and broader media support.
+- **Chrome extension:** Browser mode works without the CLI or daemon for extractive summaries; install the daemon for AI summaries and daemon-backed tools.
 - **Firefox extension:** install the CLI and daemon for media extraction.
 
 ### Quickstart

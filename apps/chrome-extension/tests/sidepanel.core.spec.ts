@@ -69,6 +69,7 @@ test("sidepanel updates chat visibility when settings change", async ({
   const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
 
   try {
+    await mockDaemonSummarize(harness);
     await seedSettings(harness, { chatEnabled: true });
     const page = await openExtensionPage(harness, "sidepanel.html", "#title", () => {
       (window as typeof globalThis & { IntersectionObserver?: unknown }).IntersectionObserver =
@@ -76,10 +77,52 @@ test("sidepanel updates chat visibility when settings change", async ({
     });
     await waitForPanelPort(page);
     await waitForSettingsHydratedHook(page);
+    await sendBgMessage(harness, {
+      type: "ui:state",
+      state: buildUiState({
+        daemon: { ok: true, authed: true },
+        settings: { chatEnabled: true, tokenPresent: true },
+      }),
+    });
     await waitForChatEnabled(page, true);
     await expect(page.locator("#chatDock")).toBeVisible();
 
     await updateSettings(page, { chatEnabled: false });
+    await waitForChatEnabled(page, false);
+    await expect(page.locator("#chatDock")).toBeHidden();
+    await expect(page.locator("#chatContainer")).toBeHidden();
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
+test("sidepanel hides daemon-backed chat when browser mode has no daemon", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, {
+      token: "",
+      chatEnabled: true,
+      slideRuntime: "browser",
+    });
+    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+    await waitForPanelPort(page);
+    await waitForSettingsHydratedHook(page);
+    await sendBgMessage(harness, {
+      type: "ui:state",
+      state: buildUiState({
+        daemon: { ok: false, authed: false },
+        settings: {
+          chatEnabled: true,
+          slideRuntime: "browser",
+          tokenPresent: false,
+        },
+      }),
+    });
+
     await waitForChatEnabled(page, false);
     await expect(page.locator("#chatDock")).toBeHidden();
     await expect(page.locator("#chatContainer")).toBeHidden();

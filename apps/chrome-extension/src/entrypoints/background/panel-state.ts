@@ -85,10 +85,9 @@ export async function resolvePanelState({
   const settings = await loadSettings();
   const tab = await getActiveTab(session.windowId);
   const token = settings.token.trim();
-  const [health, authed] = await Promise.all([
-    daemonHealth(),
-    token ? daemonPing(token) : Promise.resolve({ ok: false }),
-  ]);
+  const [health, authed] = token
+    ? await Promise.all([daemonHealth(), daemonPing(token)])
+    : [{ ok: false }, { ok: false }];
   const daemonReady = health.ok && authed.ok;
   const pendingUrl = session.daemonRecovery.getPendingUrl();
   const currentUrlMatches = Boolean(pendingUrl && tab?.url && urlsMatch(tab.url, pendingUrl));

@@ -1,4 +1,8 @@
-import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
+import {
+  isDirectMediaUrl,
+  isYouTubeVideoUrl,
+  shouldPreferUrlMode,
+} from "@steipete/summarize-core/content/url";
 import { planMediaExtraction } from "../../lib/media-extraction-plan";
 import type { RunStart } from "../../lib/panel-contracts";
 import type { Settings } from "../../lib/settings";
@@ -131,7 +135,7 @@ export async function summarizeActiveTab({
   const settings = await loadSettings();
   const isManual = reason === "manual" || reason === "refresh" || reason === "length-change";
   if (!isManual && !settings.autoSummarize) return;
-  const useBrowserSummary = settings.slideRuntime === "browser" && !settings.token.trim();
+  const useBrowserSummary = settings.slideRuntime === "browser";
   if (!useBrowserSummary && !settings.token.trim()) {
     await emitState(session, "Setup required (missing token)");
     return;
@@ -260,6 +264,31 @@ export async function summarizeActiveTab({
   if (useBrowserSummary) {
     await ensureLocalBrowserTranscript();
     if (isSuperseded()) return;
+    const browserExtractionPlan = planMediaExtraction({
+      url: resolvedPayload.url,
+      requestedInputMode,
+    });
+    const requiresMediaTranscript =
+      browserExtractionPlan.isYouTubeVideo ||
+      isDirectMediaUrl(resolvedPayload.url) ||
+      Boolean(resolvedPayload.media?.hasVideo || resolvedPayload.media?.hasAudio);
+    const localTranscriptError = preparedContent.localTranscriptError
+      ?.trim()
+      .replace(/[.!?]+$/, "");
+    const browserError =
+      localTranscriptError && requiresMediaTranscript
+        ? `Could not transcribe this media in Browser mode: ${localTranscriptError}. Switch Runtime to Daemon for broader media support.`
+        : resolvedPayload.text.trim().length === 0
+          ? browserExtractionPlan.localTranscriptKind
+            ? "No transcript text was available in Browser mode. Switch Runtime to Daemon for broader media support."
+            : "No readable text was available in Browser mode. Reload the page or switch Runtime to Daemon for URL extraction."
+          : null;
+    if (browserError) {
+      send({ type: "run:error", message: browserError });
+      sendStatus(`Error: ${browserError}`);
+      clearCurrentRun();
+      return;
+    }
   }
   const effectiveInputMode =
     opts?.inputMode ??
@@ -389,16 +418,6 @@ export async function summarizeActiveTab({
     session.daemonStatus.markReady();
   } catch (err) {
     if (isSuperseded()) return;
-    if (settings.slideRuntime === "browser") {
-      if (isDaemonUnreachableError(err)) {
-        session.daemonRecovery.recordFailure(resolvedPayload.url);
-      }
-      await ensureLocalBrowserTranscript();
-      if (isSuperseded()) return;
-      cacheResolvedPayload();
-      sendBrowserSummarySnapshot();
-      return;
-    }
     const message = friendlyFetchError(err, "Daemon request failed");
     send({ type: "run:error", message });
     sendStatus(`Error: ${message}`);

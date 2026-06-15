@@ -59,12 +59,12 @@ Step-by-step:
 
 ## Optional Daemon (Pairing)
 
-Chrome Browser mode works without a CLI install or daemon. It can summarize pages, use MediaBunny with native WebCodecs for fetchable video slides up to 128 MB, and transcribe captionless YouTube videos with local multilingual Whisper. YouTube audio prefers a same-origin Android VR direct-media URL, with the active tab's captured SABR session as fallback. Chrome's native audio decoder is preferred; MediaBunny handles supported streams that WebAudio rejects. The Whisper model downloads on first use and is cached by Chrome; offline model bundling is not currently provided. Install the daemon for faster extraction, native tools, configurable transcription providers, OCR, and Firefox media support.
+Chrome Browser mode works without a CLI install or daemon. It provides local extractive page/media summaries, uses MediaBunny with native WebCodecs for fetchable video slides up to 128 MB, and transcribes captionless YouTube videos with local multilingual Whisper. YouTube audio prefers a same-origin Android VR direct-media URL, with the active tab's captured SABR session as fallback. Chrome's native audio decoder is preferred; MediaBunny handles supported streams that WebAudio rejects. The Whisper model downloads on first use and is cached by Chrome; offline model bundling is not currently provided. Install the daemon for AI summaries, chat, automation, hover summaries, native tools, configurable transcription providers, OCR, broader media support, and Firefox media support.
 
 1. Install `summarize` (choose one):
    - `npm i -g @steipete/summarize` (requires Node.js 24+)
    - `brew install summarize` (macOS, Linux)
-2. Open the Side Panel (Chrome) or Sidebar (Firefox). You'll see a **Setup** screen with a token and an install command.
+2. Switch Runtime to **Daemon**, then copy the pairing token and install command from the extension.
 3. Open Terminal:
    - macOS: Applications → Utilities → Terminal
    - Windows: Start menu → Terminal (or PowerShell) — **right-click → Run as administrator**
@@ -72,7 +72,7 @@ Chrome Browser mode works without a CLI install or daemon. It can summarize page
 4. Paste the command from the Setup screen and press Enter.
    - Installed binary: `summarize daemon install --token <TOKEN>`
    - Repo/dev checkout: `pnpm summarize daemon install --token <TOKEN> --dev`
-5. Back in your browser, the Setup screen should disappear once the daemon is running.
+5. Back in your browser, the Daemon runtime setup screen should disappear once the daemon is running.
 6. Verify / troubleshoot:
    - `summarize daemon status`
    - `summarize daemon restart`

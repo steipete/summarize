@@ -27,9 +27,12 @@ vi.mock("../apps/chrome-extension/src/automation/tools", () => ({
   getAutomationToolNames: vi.fn(() => ["navigate", "debugger"]),
 }));
 
-function createHarness(options: { activeTabId?: number | null } = {}) {
+function createHarness(
+  options: { activeTabId?: number | null; daemonFeaturesAvailable?: boolean } = {},
+) {
   const panelState = createInitialPanelState();
   panelState.panelSession.automationEnabled = true;
+  panelState.panelSession.daemonFeaturesAvailable = options.daemonFeaturesAvailable ?? true;
   panelState.summaryMarkdown = "Summary";
   const automationNoticeActionBtn = document.createElement("button");
   const automationNoticeEl = document.createElement("div");
@@ -233,5 +236,13 @@ describe("automation runtime", () => {
     await expect(options.hasDebuggerPermission()).resolves.toBe(true);
     await options.executeToolCall({ name: "navigate" });
     expect(automationMocks.executeToolCall).toHaveBeenCalledOnce();
+  });
+
+  it("disables automation tools when daemon features are unavailable", async () => {
+    const harness = createHarness({ daemonFeaturesAvailable: false });
+
+    await harness.runtime.runAgentLoop();
+
+    expect(capturedAgentLoopOptions).toMatchObject({ automationEnabled: false });
   });
 });

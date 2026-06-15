@@ -7,6 +7,7 @@ import { bootstrapSidepanel } from "./bootstrap-runtime";
 import { createSidepanelDom } from "./dom";
 import { createSidepanelInteractionRuntime } from "./interaction-runtime";
 import { createMetricsController } from "./metrics-controller";
+import { isPanelChatAvailable } from "./panel-capabilities";
 import { createPanelMessagingRuntime } from "./panel-messaging";
 import { createPanelStateStore } from "./panel-state-store";
 import { createSidepanelPresentationRuntime } from "./presentation-runtime";
@@ -211,7 +212,7 @@ registerSidepanelRuntimeTestHooks({
 });
 
 const interactionRuntime = createSidepanelInteractionRuntime({
-  chatEnabled: () => getPanelSession().chatEnabled,
+  chatEnabled: () => isPanelChatAvailable(panelState),
   getRawChatInput: () => chatInputEl.value,
   clearChatInput: () => {
     chatInputEl.value = "";

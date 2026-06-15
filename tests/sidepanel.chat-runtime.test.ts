@@ -41,6 +41,7 @@ function createHarness(options: { chatEnabled?: boolean } = {}) {
   const store = createPanelStateStore(createInitialPanelState());
   store.state.panelSession.chatEnabled = options.chatEnabled ?? true;
   store.state.panelSession.automationEnabled = true;
+  store.state.panelSession.daemonFeaturesAvailable = true;
   store.state.navigation.activeTabId = 7;
   store.state.navigation.activeTabUrl = "https://example.com/current";
   store.state.summaryMarkdown = "Current summary";

@@ -5,6 +5,7 @@
 ### Fixes
 
 - Remote transcripts: cap RSS and embedded caption response bodies at 5 MiB and cancel oversized streams. Thanks @Hinotoi-agent.
+- Chrome extension: keep Browser runtime fully daemonless even with saved tokens, fail clearly when local extraction or transcription is unavailable, and hide daemon-backed chat and automation without an authenticated daemon.
 
 ## 0.18.1 - 2026-06-13
 

@@ -96,6 +96,7 @@ describe("chrome panel content preparation", () => {
         },
         title: "Tab title",
         transcriptTimedText: null,
+        localTranscriptError: null,
         source: "url",
         diagnostics: { strategy: "daemon" },
         prefersUrlMode: false,
@@ -105,6 +106,7 @@ describe("chrome panel content preparation", () => {
       expect.objectContaining({
         url: articleUrl,
         noCache: false,
+        allowDaemon: true,
         signal: harness.args.signal,
       }),
     );
@@ -284,6 +286,7 @@ describe("chrome panel content preparation", () => {
       },
       title: "Video",
       transcriptTimedText: null,
+      localTranscriptError: null,
       source: "page",
       diagnostics: null,
       prefersUrlMode: true,
@@ -339,6 +342,7 @@ describe("chrome panel content preparation", () => {
       },
       title: "Media",
       transcriptTimedText: null,
+      localTranscriptError: null,
       source: "page",
       diagnostics: null,
       prefersUrlMode: false,
@@ -366,7 +370,10 @@ describe("chrome panel content preparation", () => {
       })),
     });
 
-    expect(result).toBe(content);
+    expect(result).toEqual({
+      ...content,
+      localTranscriptError: "The page changed before browser transcription completed.",
+    });
   });
 
   it("keeps prepared content and logs a local transcription failure", async () => {
@@ -381,6 +388,7 @@ describe("chrome panel content preparation", () => {
       },
       title: "Video",
       transcriptTimedText: null,
+      localTranscriptError: null,
       source: "page",
       diagnostics: null,
       prefersUrlMode: true,
@@ -403,9 +411,22 @@ describe("chrome panel content preparation", () => {
       transcribeMediaLocally: vi.fn(),
     });
 
-    expect(result).toBe(content);
+    expect(result).toEqual({
+      ...content,
+      localTranscriptError: "decoder unavailable",
+    });
     expect(logPanel).toHaveBeenCalledWith("extract:url-direct:local-transcript-failed", {
       error: "decoder unavailable",
     });
+  });
+
+  it("disables daemon URL fallback for browser summaries", async () => {
+    const harness = createHarness({ useBrowserSummary: true });
+
+    await preparePanelContent(harness.args);
+
+    expect(harness.routeExtractImpl).toHaveBeenCalledWith(
+      expect.objectContaining({ allowDaemon: false }),
+    );
   });
 });

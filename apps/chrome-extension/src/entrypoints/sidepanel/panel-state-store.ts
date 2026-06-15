@@ -100,6 +100,7 @@ export function createInitialPanelState(): PanelState {
       autoSummarize: false,
       chatEnabled: defaultSettings.chatEnabled,
       automationEnabled: defaultSettings.automationEnabled,
+      daemonFeaturesAvailable: false,
       settingsHydrated: false,
       pendingSettingsSnapshot: null,
       lastPanelOpen: false,

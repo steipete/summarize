@@ -1,5 +1,6 @@
 import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import type { PanelCachePayload } from "./panel-cache";
+import { isPanelChatAvailable } from "./panel-capabilities";
 import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
 import {
   resolvePanelNavigationDecision,
@@ -152,7 +153,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
     const currentSource = opts.panelState.currentSource;
     const inputModeOverride = opts.panelState.slidesSession.inputModeOverride;
     const mediaAvailable = opts.panelState.slidesSession.mediaAvailable;
-    const chatEnabledValue = opts.panelState.panelSession.chatEnabled;
+    const chatEnabledValue = state.settings.chatEnabled;
     const slidesLayoutValue = opts.panelState.slidesSession.slidesLayout;
 
     const ignoreTransientTabState = shouldIgnoreTransientPanelTabState({
@@ -257,6 +258,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       value: {
         chatEnabled: state.settings.chatEnabled,
         automationEnabled: state.settings.automationEnabled,
+        daemonFeaturesAvailable: state.daemon.ok && state.daemon.authed,
       },
     });
     const nextSlidesOcrEnabled = Boolean(state.settings.slidesOcrEnabled);
@@ -313,7 +315,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
     }
     opts.applyChatEnabled();
     if (
-      opts.panelState.panelSession.chatEnabled &&
+      isPanelChatAvailable(opts.panelState) &&
       opts.panelState.navigation.activeTabId &&
       !shouldPreferUrlMode(nextTabUrl ?? "") &&
       opts.panelState.chat.messages.length === 0

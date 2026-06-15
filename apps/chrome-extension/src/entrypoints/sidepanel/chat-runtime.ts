@@ -10,6 +10,7 @@ import { createChatSession } from "./chat-session";
 import type { ChatHistoryLimits } from "./chat-state";
 import { createChatStreamRuntime } from "./chat-stream-runtime";
 import { createChatUiRuntime } from "./chat-ui-runtime";
+import { isPanelChatAvailable } from "./panel-capabilities";
 import type { PanelStateAction } from "./panel-state-store";
 import { parseTimestampHref } from "./timestamp-links";
 import type { ChatMessage, PanelState } from "./types";
@@ -139,7 +140,7 @@ export function createSidepanelChatRuntime({
     chatContainerEl,
     chatDockContainerEl: chatDockEl,
     renderEl,
-    getChatEnabled: () => panelState.panelSession.chatEnabled,
+    getChatEnabled: () => isPanelChatAvailable(panelState),
     getActiveTabId,
     getSummaryMarkdown: () => panelState.summaryMarkdown,
     clearMetrics: clearChatMetrics,
@@ -168,7 +169,7 @@ export function createSidepanelChatRuntime({
   });
 
   const chatStreamRuntime = createChatStreamRuntime({
-    chatEnabled: () => panelState.panelSession.chatEnabled,
+    chatEnabled: () => isPanelChatAvailable(panelState),
     isChatStreaming: () => panelState.chat.streaming,
     setChatStreaming: (value) => {
       dispatchPanelState({ type: "chat-streaming", value });

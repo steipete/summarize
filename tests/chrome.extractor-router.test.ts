@@ -221,4 +221,35 @@ describe("chrome/extractor-router", () => {
       ),
     ).toBe(true);
   });
+
+  it("does not call daemon URL extraction when daemon fallback is disabled", async () => {
+    const extractFromTab = vi.fn(async () => ({
+      ok: true as const,
+      data: {
+        ok: true as const,
+        url: "https://example.com/article",
+        title: "Page Title",
+        text: "",
+        truncated: false,
+        media: null,
+      },
+    }));
+    const { ctx, fetchImpl, logs } = createContext({
+      allowDaemon: false,
+      extractFromTab,
+    });
+
+    const result = await routeExtract(ctx);
+
+    expect(result).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(
+      logs.some(
+        (entry) =>
+          entry.event === "extractor.try" &&
+          entry.detail?.extractor === "url-daemon" &&
+          entry.detail?.matched === false,
+      ),
+    ).toBe(true);
+  });
 });

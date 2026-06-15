@@ -1,5 +1,6 @@
 import type { BgToPanel, UiState } from "../../lib/panel-contracts";
 import type { SidepanelDom } from "./dom";
+import { isPanelChatAvailable } from "./panel-capabilities";
 import type { PanelStateAction } from "./panel-state-store";
 import type { createSidepanelPresentationRuntime } from "./presentation-runtime";
 import { selectRetainedSlideSummaryMarkdown } from "./retained-slide-summary";
@@ -62,7 +63,7 @@ export function registerSidepanelRuntimeTestHooks({
     getSlidesSummaryMarkdown: () => panelState.slidesSummary.markdown,
     getSlidesSummaryComplete: () => panelState.slidesSummary.complete,
     getSlidesSummaryModel: () => panelState.slidesSummary.model,
-    getChatEnabled: () => panelState.panelSession.chatEnabled,
+    getChatEnabled: () => isPanelChatAvailable(panelState),
     getSettingsHydrated: () => panelState.panelSession.settingsHydrated,
     setTranscriptTimedText: (value) => {
       setSlidesTranscriptTimedText(value);

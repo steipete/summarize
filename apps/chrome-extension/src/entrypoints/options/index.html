@@ -125,11 +125,15 @@
             </div>
             <div class="combo">
               <div id="chatToggle"></div>
-              <span class="subtitle">Enable Chat mode in the side panel (default on).</span>
+              <span class="subtitle">
+                Enable daemon-backed Chat mode in the side panel (default on).
+              </span>
             </div>
             <div class="combo">
               <div id="automationToggle"></div>
-              <span class="subtitle">Enable website automation tools in the side panel.</span>
+              <span class="subtitle">
+                Enable daemon-backed website automation tools in the side panel.
+              </span>
             </div>
             <div class="combo">
               <button id="automationPermissions" type="button" class="miniButton">
@@ -155,35 +159,36 @@
             <header class="advancedHead">
               <h2>Runtime</h2>
               <div class="hint">
-                Browser mode is the default. Switch to daemon mode only when you want the local
-                helper for heavier slide extraction.
+                Browser mode runs locally with extractive summaries. Daemon mode adds AI summaries
+                and daemon-backed tools.
               </div>
             </header>
             <div class="advancedFields">
               <div class="subgroup">
                 <div class="subgroupHead">
-                  <span class="subgroupTitle">Slide extraction backend</span>
+                  <span class="subgroupTitle">Summary and slide runtime</span>
                 </div>
                 <div class="subgroupBody">
                   <div
                     id="slideRuntimeMode"
                     class="runtimeModeGrid"
                     role="radiogroup"
-                    aria-label="Slide extraction backend"
+                    aria-label="Summary and slide runtime"
                   >
                     <label class="runtimeModeCard">
                       <input type="radio" name="slideRuntimeMode" value="browser" />
                       <div class="runtimeModeTitle">Browser</div>
                       <div class="runtimeModeText">
-                        Runs inside Chrome. Uses browser transcript and frame capture without
-                        requiring the Summarize daemon.
+                        Runs inside Chrome. Local extraction, extractive summaries, browser
+                        transcription, and frame capture; no Summarize daemon required.
                       </div>
                     </label>
                     <label class="runtimeModeCard">
                       <input type="radio" name="slideRuntimeMode" value="daemon" />
                       <div class="runtimeModeTitle">Daemon</div>
                       <div class="runtimeModeText">
-                        Sends slide extraction to the local daemon for long or expensive videos.
+                        Uses the local daemon for AI summaries, chat, automation, hover summaries,
+                        OCR, and broader native media support.
                       </div>
                     </label>
                   </div>
@@ -228,7 +233,8 @@
               </div>
             </label>
             <div class="hint">
-              Used only for daemon mode and daemon-backed tools. Browser mode works without it.
+              Used only for Daemon runtime and daemon-backed tools. Browser summaries work without
+              it.
             </div>
           </section>
         </div>

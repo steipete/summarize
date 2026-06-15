@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mockDaemonSummarize } from "./helpers/daemon-fixtures";
 import {
   activateTabByUrl,
   assertNoErrors,
@@ -30,6 +31,7 @@ test("sidepanel shows an error when agent request fails", async ({
   const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
 
   try {
+    await mockDaemonSummarize(harness);
     await seedSettings(harness, { token: "test-token", autoSummarize: false, chatEnabled: true });
     const contentPage = await harness.context.newPage();
     await contentPage.goto("https://example.com", { waitUntil: "domcontentloaded" });
@@ -99,22 +101,39 @@ test("sidepanel hides inline error when message is empty", async ({
       ).__summarizeTestHooks = {};
     });
     await waitForPanelPort(page);
-
+    await waitForSettingsHydratedHook(page);
     await page.evaluate(() => {
-      const hooks = (
-        window as typeof globalThis & {
-          __summarizeTestHooks?: {
-            showInlineError?: (message: string) => void;
-            isInlineErrorVisible?: () => boolean;
-            getInlineErrorMessage?: () => string;
-          };
-        }
-      ).__summarizeTestHooks;
-      hooks?.showInlineError?.("Boom");
+      const global = window as typeof globalThis & {
+        __summarizePanelPort?: { disconnect?: () => void };
+      };
+      global.__summarizePanelPort?.disconnect?.();
+      global.__summarizePanelPort = undefined;
     });
-    await expect(page.locator("#inlineError")).toBeVisible();
 
-    await page.evaluate(() => {
+    const shown = await page.evaluate(
+      (state) => {
+        const hooks = (
+          window as typeof globalThis & {
+            __summarizeTestHooks?: {
+              applyUiState?: (state: unknown) => void;
+              showInlineError?: (message: string) => void;
+              isInlineErrorVisible?: () => boolean;
+              getInlineErrorMessage?: () => string;
+            };
+          }
+        ).__summarizeTestHooks;
+        hooks?.applyUiState?.(state);
+        hooks?.showInlineError?.("Boom");
+        return {
+          visible: hooks?.isInlineErrorVisible?.() ?? false,
+          message: hooks?.getInlineErrorMessage?.() ?? "",
+        };
+      },
+      buildUiState({ daemon: { ok: false, authed: false } }),
+    );
+    expect(shown).toEqual({ visible: true, message: "Boom" });
+
+    const hidden = await page.evaluate(() => {
       const hooks = (
         window as typeof globalThis & {
           __summarizeTestHooks?: {
@@ -125,10 +144,13 @@ test("sidepanel hides inline error when message is empty", async ({
         }
       ).__summarizeTestHooks;
       hooks?.showInlineError?.("   ");
+      return {
+        visible: hooks?.isInlineErrorVisible?.() ?? false,
+        message: hooks?.getInlineErrorMessage?.() ?? "",
+      };
     });
 
-    await expect(page.locator("#inlineError")).toBeHidden();
-    await expect(page.locator("#inlineErrorMessage")).toHaveText("");
+    expect(hidden).toEqual({ visible: false, message: "" });
     assertNoErrors(harness);
   } finally {
     await closeExtension(harness.context, harness.userDataDir);
@@ -141,6 +163,7 @@ test("sidepanel shows daemon upgrade hint when /v1/agent is missing", async ({
   const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
 
   try {
+    await mockDaemonSummarize(harness);
     await seedSettings(harness, { token: "test-token", autoSummarize: false, chatEnabled: true });
     const contentPage = await harness.context.newPage();
     await contentPage.goto("https://example.com", { waitUntil: "domcontentloaded" });
@@ -201,7 +224,15 @@ test("sidepanel shows automation notice when permission event fires", async ({
   try {
     const page = await openExtensionPage(harness, "sidepanel.html", "#title");
     await waitForPanelPort(page);
+    await waitForSettingsHydratedHook(page);
     await page.evaluate(() => {
+      const global = window as typeof globalThis & {
+        __summarizePanelPort?: { disconnect?: () => void };
+      };
+      global.__summarizePanelPort?.disconnect?.();
+      global.__summarizePanelPort = undefined;
+    });
+    const notice = await page.evaluate(() => {
       window.dispatchEvent(
         new CustomEvent("summarize:automation-permissions", {
           detail: {
@@ -211,10 +242,15 @@ test("sidepanel shows automation notice when permission event fires", async ({
           },
         }),
       );
+      const noticeEl = document.getElementById("automationNotice");
+      return {
+        visible: !noticeEl?.classList.contains("hidden"),
+        message: document.getElementById("automationNoticeMessage")?.textContent ?? "",
+      };
     });
 
-    await expect(page.locator("#automationNotice")).toBeVisible();
-    await expect(page.locator("#automationNoticeMessage")).toContainText("Enable User Scripts");
+    expect(notice.visible).toBe(true);
+    expect(notice.message).toContain("Enable User Scripts");
     assertNoErrors(harness);
   } finally {
     await closeExtension(harness.context, harness.userDataDir);

@@ -13,7 +13,8 @@ Goal: Chrome **Side Panel** (“real sidebar”) summarizes **what you see** on 
 Quickstart:
 
 - Build/load extension: `apps/chrome-extension/README.md`
-- Chrome Browser mode works immediately without a daemon for page summaries, fetchable video slides, and fetchable YouTube/direct/embedded media transcription.
+- Chrome Browser mode works immediately without a daemon for local extractive page/media summaries, fetchable video slides, and fetchable YouTube/direct/embedded media transcription.
+- AI summaries, chat, automation, hover summaries, OCR, process/log tools, and broader native media support require the daemon.
 - Optional: install summarize for daemon-backed media support:
   - `npm i -g @steipete/summarize`
   - `brew install summarize` (macOS, Linux)
@@ -162,7 +163,7 @@ See `docs/media.md` for detection and transcript rules.
   - Typography: font family (dropdown + custom), font size (slider).
 - Advanced overrides (Options → Advanced tab).
   - Leave blank to use daemon config/defaults; set a value to override.
-  - Chat (advanced): enable/disable the side panel chat input (default on; summary is the first message).
+  - Chat (advanced): enable/disable the daemon-backed side panel chat input (default on; hidden when no authenticated daemon is available).
   - Summary timestamps (advanced): include `[mm:ss]` links in summaries for media when available (default on).
   - Slides parallel (advanced): show summary first and extract slides in parallel (default on).
   - Slides OCR text (advanced): allow OCR text as a slide text source (default off).

@@ -407,7 +407,7 @@ describe("chrome panel summarize", () => {
     });
   });
 
-  it("keeps daemon summaries when browser runtime has a daemon token", async () => {
+  it("keeps browser summaries local when browser runtime has a daemon token", async () => {
     const harness = createHarness();
     const url = "https://example.com/article";
 
@@ -439,33 +439,31 @@ describe("chrome panel summarize", () => {
       })),
     });
 
-    expect(harness.fetchImpl).toHaveBeenCalledOnce();
-    expect(harness.sent).toEqual([
-      {
-        type: "run:start",
-        run: {
-          id: "summary",
-          url,
-          title: "Browser Article",
-          model: defaultSettings.model,
-          reason: "manual",
-          slides: false,
-        },
+    expect(harness.fetchImpl).not.toHaveBeenCalled();
+    expect(harness.sent[0]).toMatchObject({
+      type: "run:snapshot",
+      run: {
+        url,
+        title: "Browser Article",
+        model: "Browser",
+        reason: "manual",
+        slides: false,
       },
-    ]);
+    });
   });
 
-  it("falls back to a browser summary snapshot when the configured daemon is unreachable", async () => {
+  it("does not probe an unreachable daemon in browser runtime", async () => {
     const harness = createHarness();
     const url = "https://example.com/article";
     const sendStatus = vi.fn();
+    const fetchImpl = vi.fn(async () => {
+      throw new Error("Failed to fetch");
+    });
 
     await harness.summarize({
       reason: "manual",
       sendStatus,
-      fetchImpl: vi.fn(async () => {
-        throw new Error("Failed to fetch");
-      }) as unknown as typeof fetch,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
       isDaemonUnreachableError: () => true,
       loadSettings: vi.fn(async () => ({
         ...defaultSettings,
@@ -499,22 +497,24 @@ describe("chrome panel summarize", () => {
       run: { url, model: "Browser", slides: false },
       markdown: expect.stringContaining("First sentence\\."),
     });
-    expect(harness.session.daemonRecovery.recordFailure).toHaveBeenCalledWith(url);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(harness.session.daemonRecovery.recordFailure).not.toHaveBeenCalled();
     expect(sendStatus).toHaveBeenLastCalledWith("");
   });
 
-  it("falls back to a browser summary snapshot when a saved daemon token is stale", async () => {
+  it("does not probe a stale daemon token in browser runtime", async () => {
     const harness = createHarness();
     const url = "https://example.com/article";
+    const fetchImpl = vi.fn(async () => ({
+      ok: false,
+      status: 401,
+      statusText: "Unauthorized",
+      json: async () => ({ ok: false, error: "Unauthorized" }),
+    }));
 
     await harness.summarize({
       reason: "manual",
-      fetchImpl: vi.fn(async () => ({
-        ok: false,
-        status: 401,
-        statusText: "Unauthorized",
-        json: async () => ({ ok: false, error: "Unauthorized" }),
-      })) as unknown as typeof fetch,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
       isDaemonUnreachableError: () => false,
       loadSettings: vi.fn(async () => ({
         ...defaultSettings,
@@ -548,6 +548,126 @@ describe("chrome panel summarize", () => {
       run: { url, model: "Browser", slides: false },
       markdown: expect.stringContaining("First sentence\\."),
     });
+    expect(fetchImpl).not.toHaveBeenCalled();
     expect(harness.session.daemonRecovery.recordFailure).not.toHaveBeenCalled();
+  });
+
+  it("reports browser media transcription failures instead of summarizing descriptions", async () => {
+    const harness = createHarness();
+
+    await harness.summarize({
+      reason: "manual",
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url: youtubeUrl,
+          title: "YouTube",
+          text: "Video description without captions.",
+          truncated: false,
+          media: { hasVideo: true, hasAudio: true, hasCaptions: false },
+        },
+      })),
+      transcribeYouTubeLocally: vi.fn(async () => ({
+        ok: false as const,
+        error: "decoder unavailable",
+      })),
+    });
+
+    expect(harness.fetchImpl).not.toHaveBeenCalled();
+    expect(harness.sent).toEqual([
+      {
+        type: "run:error",
+        message:
+          "Could not transcribe this media in Browser mode: decoder unavailable. Switch Runtime to Daemon for broader media support.",
+      },
+    ]);
+    expect(harness.session.lastSummarizedUrl).toBeNull();
+  });
+
+  it("summarizes usable text-first preferred URLs when no local media is available", async () => {
+    const harness = createHarness();
+    const url = "https://x.com/example/status/1234567890123456789";
+
+    await harness.summarize({
+      reason: "manual",
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      getActiveTab: vi.fn(async () => ({
+        id: 7,
+        windowId: 1,
+        url,
+        title: "Post",
+      })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url,
+          title: "Post",
+          text: "Useful post text without fetchable media.",
+          truncated: false,
+          media: null,
+        },
+      })),
+      transcribeMediaLocally: vi.fn(async () => ({
+        ok: false as const,
+        error: "No fetchable media source.",
+      })),
+    });
+
+    expect(harness.fetchImpl).not.toHaveBeenCalled();
+    expect(harness.sent[0]).toMatchObject({
+      type: "run:snapshot",
+      run: { url, model: "Browser", slides: false },
+      markdown: expect.stringContaining("Useful post text without fetchable media\\."),
+    });
+  });
+
+  it("reports empty browser page extraction instead of caching a fake summary", async () => {
+    const harness = createHarness();
+    const url = "https://example.com/empty";
+
+    await harness.summarize({
+      reason: "manual",
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "",
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      getActiveTab: vi.fn(async () => ({
+        id: 7,
+        windowId: 1,
+        url,
+        title: "Empty",
+      })),
+      extractFromTab: vi.fn(async () => ({
+        ok: false,
+        error: "blocked",
+      })),
+    });
+
+    expect(harness.sent).toEqual([
+      {
+        type: "run:error",
+        message:
+          "No readable text was available in Browser mode. Reload the page or switch Runtime to Daemon for URL extraction.",
+      },
+    ]);
+    expect(harness.session.lastSummarizedUrl).toBeNull();
   });
 });

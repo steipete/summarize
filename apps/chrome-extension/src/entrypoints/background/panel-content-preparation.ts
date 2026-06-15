@@ -17,6 +17,7 @@ export type PreparedPanelContent = {
   payload: ExtractResponse & { ok: true };
   title: string | null;
   transcriptTimedText: string | null;
+  localTranscriptError: string | null;
   source: CachedExtract["source"];
   diagnostics: CachedExtract["diagnostics"];
   prefersUrlMode: boolean;
@@ -189,6 +190,7 @@ export async function preparePanelContent({
         maxChars: settings.maxChars,
         minTextChars: 1,
         token: settings.token,
+        allowDaemon: !useBrowserSummary,
         noCache: refresh,
         includeDiagnostics: settings.extendedLogging,
         signal,
@@ -241,6 +243,7 @@ export async function preparePanelContent({
       payload: { ...payload, title },
       title,
       transcriptTimedText,
+      localTranscriptError: null,
       source,
       diagnostics,
       prefersUrlMode,
@@ -300,9 +303,14 @@ export async function ensurePreparedPanelTranscript({
         : "extract:browser-media:local-transcript-failed",
       { error: localTranscript.error },
     );
-    return content;
+    return { ...content, localTranscriptError: localTranscript.error };
   }
-  if (!urlsMatch(localTranscript.url, tabUrl)) return content;
+  if (!urlsMatch(localTranscript.url, tabUrl)) {
+    return {
+      ...content,
+      localTranscriptError: "The page changed before browser transcription completed.",
+    };
+  }
   logPanel(
     localTranscriptKind === "youtube"
       ? "extract:url-direct:local-transcript"
@@ -331,6 +339,7 @@ export async function ensurePreparedPanelTranscript({
       media: { hasVideo: true, hasAudio: true, hasCaptions: false },
     },
     transcriptTimedText: localTranscript.transcriptTimedText,
+    localTranscriptError: null,
   };
 }
 

@@ -86,6 +86,7 @@ export type PanelState = {
     autoSummarize: boolean;
     chatEnabled: boolean;
     automationEnabled: boolean;
+    daemonFeaturesAvailable: boolean;
     settingsHydrated: boolean;
     pendingSettingsSnapshot: Partial<Settings> | null;
     lastPanelOpen: boolean;

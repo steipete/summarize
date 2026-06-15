@@ -23,7 +23,7 @@ type UrlDaemonExtractResponse = {
 
 export const urlDaemonExtractor: Extractor = {
   name: "url-daemon",
-  match: () => true,
+  match: (ctx) => ctx.allowDaemon !== false && Boolean(ctx.token.trim()),
   async extract(ctx: ExtractorContext): Promise<ExtractorResult | null> {
     const res = await ctx.fetchImpl("http://127.0.0.1:8787/v1/summarize", {
       method: "POST",
