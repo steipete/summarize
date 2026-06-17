@@ -12,6 +12,7 @@ describe("resolveEnvState", () => {
       ASSEMBLYAI_API_KEY: "sk-assemblyai",
       ELEVENLABS_API_KEY: "sk-elevenlabs",
       XAI_API_KEY: "sk-xai",
+      EVOLINK_API_KEY: "sk-evolink",
       ZAI_API_KEY: "sk-zai",
       NVIDIA_API_KEY: "sk-nvidia",
       MINIMAX_API_KEY: "sk-minimax",
@@ -35,6 +36,8 @@ describe("resolveEnvState", () => {
     expect(state.assemblyaiApiKey).toBe("sk-assemblyai");
     expect(state.elevenlabsApiKey).toBe("sk-elevenlabs");
     expect(state.xaiApiKey).toBe("sk-xai");
+    expect(state.evolinkApiKey).toBe("sk-evolink");
+    expect(state.evolinkBaseUrl).toBe("https://direct.evolink.ai/v1");
     expect(state.zaiApiKey).toBe("sk-zai");
     expect(state.nvidiaApiKey).toBe("sk-nvidia");
     expect(state.minimaxApiKey).toBe("sk-minimax");
@@ -109,6 +112,7 @@ describe("resolveEnvState", () => {
       env: {},
       envForRun: {
         OPENAI_BASE_URL: "https://custom-openai.com",
+        EVOLINK_BASE_URL: "https://custom-evolink.com/v1",
         GOOGLE_BASE_URL: "https://custom-google.com",
       },
       configForCli: {
@@ -118,6 +122,7 @@ describe("resolveEnvState", () => {
     });
 
     expect(state.providerBaseUrls.openai).toBe("https://custom-openai.com");
+    expect(state.evolinkBaseUrl).toBe("https://custom-evolink.com/v1");
     expect(state.providerBaseUrls.google).toBe("https://custom-google.com");
     expect(state.nvidiaBaseUrl).toBe("https://custom-nvidia.com");
     expect(state.minimaxBaseUrl).toBe("https://custom-minimax.com/v1");

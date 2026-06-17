@@ -28,6 +28,7 @@ export type MarkdownConverters = {
     | "openai"
     | "google"
     | "anthropic"
+    | "evolink"
     | "zai"
     | "nvidia"
     | "minimax"

@@ -13,6 +13,7 @@ Goal: sanity-check auto selection + presets end-to-end.
 ## Setup
 
 - `OPENAI_API_KEY=...` (optional)
+- `EVOLINK_API_KEY=...` (optional)
 - `ASSEMBLYAI_API_KEY=...` (optional)
 - `GEMINI_API_KEY=...` (optional)
 - `ANTHROPIC_API_KEY=...` (optional)

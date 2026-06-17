@@ -1,6 +1,10 @@
 import { isOpenRouterBaseUrl, resolveConfiguredBaseUrl } from "@steipete/summarize-core";
 import type { CliProvider, SummarizeConfig } from "../config.js";
-import { DEFAULT_MINIMAX_BASE_URL, DEFAULT_OLLAMA_BASE_URL } from "../llm/provider-profile.js";
+import {
+  DEFAULT_EVOLINK_BASE_URL,
+  DEFAULT_MINIMAX_BASE_URL,
+  DEFAULT_OLLAMA_BASE_URL,
+} from "../llm/provider-profile.js";
 import { resolveCliAvailability, resolveExecutableInPath } from "./environment.js";
 
 export type EnvState = {
@@ -11,6 +15,8 @@ export type EnvState = {
   assemblyaiApiKey: string | null;
   elevenlabsApiKey: string | null;
   openaiApiKey: string | null;
+  evolinkApiKey: string | null;
+  evolinkBaseUrl: string;
   xaiApiKey: string | null;
   googleApiKey: string | null;
   anthropicApiKey: string | null;
@@ -58,6 +64,10 @@ export function resolveEnvState({
     envValue: envForRun.NVIDIA_BASE_URL,
     configValue: configForCli?.nvidia?.baseUrl,
   });
+  const evolinkBaseUrl = resolveConfiguredBaseUrl({
+    envValue: envForRun.EVOLINK_BASE_URL,
+    configValue: configForCli?.evolink?.baseUrl,
+  });
   const anthropicBaseUrl = resolveConfiguredBaseUrl({
     envValue: envForRun.ANTHROPIC_BASE_URL,
     configValue: configForCli?.anthropic?.baseUrl,
@@ -97,6 +107,8 @@ export function resolveEnvState({
     typeof envForRun.OPENROUTER_API_KEY === "string" ? envForRun.OPENROUTER_API_KEY : null;
   const openaiKeyRaw =
     typeof envForRun.OPENAI_API_KEY === "string" ? envForRun.OPENAI_API_KEY : null;
+  const evolinkKeyRaw =
+    typeof envForRun.EVOLINK_API_KEY === "string" ? envForRun.EVOLINK_API_KEY : null;
   const nvidiaKeyRaw =
     typeof envForRun.NVIDIA_API_KEY === "string"
       ? envForRun.NVIDIA_API_KEY
@@ -153,6 +165,8 @@ export function resolveEnvState({
   const firecrawlApiKey = firecrawlKey && firecrawlKey.trim().length > 0 ? firecrawlKey : null;
   const firecrawlConfigured = firecrawlApiKey !== null;
   const xaiApiKey = xaiKeyRaw?.trim() ?? null;
+  const evolinkApiKey = evolinkKeyRaw?.trim() ?? null;
+  const evolinkBaseUrlEffective = (evolinkBaseUrl?.trim() ?? "") || DEFAULT_EVOLINK_BASE_URL;
   const zaiApiKey = zaiKeyRaw?.trim() ?? null;
   const zaiBaseUrlEffective = (zaiBaseUrl?.trim() ?? "") || "https://api.z.ai/api/paas/v4";
   const nvidiaApiKey = nvidiaKeyRaw?.trim() ?? null;
@@ -197,6 +211,8 @@ export function resolveEnvState({
     assemblyaiApiKey,
     elevenlabsApiKey,
     openaiApiKey,
+    evolinkApiKey,
+    evolinkBaseUrl: evolinkBaseUrlEffective,
     xaiApiKey,
     googleApiKey,
     anthropicApiKey,

@@ -9,6 +9,7 @@ const emptyApiKeys = {
   openrouterApiKey: null,
   anthropicApiKey: null,
   googleApiKey: null,
+  evolinkApiKey: null,
   xaiApiKey: null,
   zaiApiKey: null,
   nvidiaApiKey: null,
@@ -120,6 +121,29 @@ describe("daemon agent model resolution", () => {
     expect(resolved.provider).toBe("nvidia");
     expect(resolved.model?.api).toBe("openai-completions");
     expect(resolved.model?.baseUrl).toBe("https://integrate.api.nvidia.com/v1");
+  });
+
+  it("keeps EvoLink agent models on chat completions", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-agent-evolink-"));
+
+    const resolved = await resolveAgentModel({
+      env: {
+        HOME: home,
+        EVOLINK_API_KEY: "sk-evolink",
+        EVOLINK_BASE_URL: "https://evolink.example.com/v1",
+        OPENAI_USE_CHAT_COMPLETIONS: "false",
+      },
+      pageContent: "Hello",
+      modelOverride: "evolink/gpt-5.2",
+    });
+
+    expect(resolved.provider).toBe("evolink");
+    expect(resolved.model).toMatchObject({
+      provider: "openai",
+      id: "gpt-5.2",
+      api: "openai-completions",
+      baseUrl: "https://evolink.example.com/v1",
+    });
   });
 
   it("keeps MiniMax agent metadata and compatibility settings", async () => {

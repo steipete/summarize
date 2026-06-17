@@ -598,6 +598,7 @@ describe("config loading", () => {
     const { root } = writeJsonConfig({
       model: { id: "openai/gpt-5.2" },
       openai: { baseUrl: "https://openai-proxy.example.com/v1" },
+      evolink: { baseUrl: "https://evolink-proxy.example.com/v1" },
       anthropic: { baseUrl: "https://anthropic-proxy.example.com" },
       google: { baseUrl: "https://google-proxy.example.com" },
       xai: { baseUrl: "https://xai-proxy.example.com" },
@@ -607,6 +608,7 @@ describe("config loading", () => {
     expect(result.config).toEqual({
       model: { id: "openai/gpt-5.2" },
       openai: { baseUrl: "https://openai-proxy.example.com/v1" },
+      evolink: { baseUrl: "https://evolink-proxy.example.com/v1" },
       anthropic: { baseUrl: "https://anthropic-proxy.example.com" },
       google: { baseUrl: "https://google-proxy.example.com" },
       xai: { baseUrl: "https://xai-proxy.example.com" },
@@ -630,6 +632,11 @@ describe("config loading", () => {
 
     const { root: root4 } = writeJsonConfig({ zai: 123 });
     expect(() => loadSummarizeConfig({ env: { HOME: root4 } })).toThrow(/"zai" must be an object/i);
+
+    const { root: root5 } = writeJsonConfig({ evolink: "nope" });
+    expect(() => loadSummarizeConfig({ env: { HOME: root5 } })).toThrow(
+      /"evolink" must be an object/i,
+    );
   });
 
   it("trims provider baseUrl strings and ignores empty strings", () => {

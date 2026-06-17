@@ -9,6 +9,8 @@ describe("provider runtime bindings", () => {
       XAI_BASE_URL: "https://xai.example/v1",
       OPENAI_API_KEY: "o-key",
       OPENAI_BASE_URL: "https://openai.example/v1",
+      EVOLINK_API_KEY: "ev-key",
+      EVOLINK_BASE_URL: "https://evolink.example/v1",
       GOOGLE_API_KEY: "g-key",
       GOOGLE_BASE_URL: "https://google.example/v1",
       ANTHROPIC_API_KEY: "a-key",
@@ -25,6 +27,7 @@ describe("provider runtime bindings", () => {
       apiKeys: {
         xai: "x-key",
         openai: "o-key",
+        evolink: "ev-key",
         google: "g-key",
         anthropic: "a-key",
         zai: "z-key",
@@ -36,6 +39,7 @@ describe("provider runtime bindings", () => {
       baseUrls: {
         xai: "https://xai.example/v1",
         openai: "https://openai.example/v1",
+        evolink: "https://evolink.example/v1",
         google: "https://google.example/v1",
         anthropic: "https://anthropic.example/v1",
         ollama: "http://ollama.example:11434/v1",

@@ -54,6 +54,7 @@ describe("llm provider capabilities", () => {
     expect(cliProviderForRequiredEnv("CLI_OPENCODE")).toBe("opencode");
     expect(cliProviderForRequiredEnv("OPENAI_API_KEY")).toBeNull();
     expect(gatewayProviderForRequiredEnv("OPENAI_API_KEY")).toBe("openai");
+    expect(gatewayProviderForRequiredEnv("EVOLINK_API_KEY")).toBe("evolink");
     expect(gatewayProviderForRequiredEnv("OPENROUTER_API_KEY")).toBeNull();
     expect(isGatewayProvider("minimax")).toBe(true);
     expect(isGatewayProvider("openrouter")).toBe(false);
@@ -143,12 +144,27 @@ describe("llm provider capabilities", () => {
     expect(resolveRequiredEnvForModelId("cli/pi/openai/gpt-5.4")).toBe("CLI_PI");
     expect(resolveRequiredEnvForModelId("cli/nope/test")).toBe("CLI_CLAUDE");
     expect(resolveRequiredEnvForModelId("openrouter/openai/gpt-5-mini")).toBe("OPENROUTER_API_KEY");
+    expect(resolveRequiredEnvForModelId("evolink/gpt-5.2")).toBe("EVOLINK_API_KEY");
     expect(resolveRequiredEnvForModelId("nvidia/meta/llama-3.1-8b-instruct")).toBe(
       "NVIDIA_API_KEY",
     );
     expect(resolveRequiredEnvForModelId("minimax/MiniMax-M3")).toBe("MINIMAX_API_KEY");
     expect(resolveRequiredEnvForModelId("github-copilot/gpt-4.1")).toBe("GITHUB_TOKEN");
     expect(resolveRequiredEnvForModelId("ollama/qwen3:14b")).toBe("OLLAMA_BASE_URL");
+
+    expect(
+      resolveOpenAiCompatibleClientConfigForProvider({
+        provider: "evolink",
+        openaiApiKey: "ev-key",
+        openrouterApiKey: null,
+        openaiBaseUrlOverride: null,
+      }),
+    ).toEqual({
+      apiKey: "ev-key",
+      baseURL: "https://direct.evolink.ai/v1",
+      useChatCompletions: true,
+      isOpenRouter: false,
+    });
 
     expect(
       resolveOpenAiCompatibleClientConfigForProvider({
@@ -231,6 +247,7 @@ describe("llm provider capabilities", () => {
   it("resolves runtime OpenAI-compatible overrides from provider profiles", () => {
     const runtime = {
       apiKeys: {
+        evolink: "ev-key",
         zai: "z-key",
         nvidia: "n-key",
         minimax: "m-key",
@@ -238,6 +255,7 @@ describe("llm provider capabilities", () => {
       },
       baseUrls: {
         openai: "https://openai.example/v1",
+        evolink: "https://evolink.example/v1",
         zai: "https://zai.example/v1",
         nvidia: "https://nvidia.example/v1",
         minimax: "https://minimax.example/v1",
@@ -246,6 +264,11 @@ describe("llm provider capabilities", () => {
       openaiUseChatCompletions: false,
     } as const;
 
+    expect(resolveProviderOpenAiOverrides({ provider: "evolink", runtime })).toEqual({
+      openaiApiKeyOverride: "ev-key",
+      openaiBaseUrlOverride: "https://evolink.example/v1",
+      forceChatCompletions: true,
+    });
     expect(resolveProviderOpenAiOverrides({ provider: "zai", runtime })).toEqual({
       openaiApiKeyOverride: "z-key",
       openaiBaseUrlOverride: "https://zai.example/v1",
@@ -281,6 +304,14 @@ describe("llm provider capabilities", () => {
   it("returns false for invalid video model ids and requires provider keys", () => {
     expect(isVideoUnderstandingCapableModelId("not-a-model")).toBe(false);
     expect(isVideoUnderstandingCapableModelId("invalid-provider/model")).toBe(false);
+    expect(() =>
+      resolveOpenAiCompatibleClientConfigForProvider({
+        provider: "evolink",
+        openaiApiKey: null,
+        openrouterApiKey: null,
+        openaiBaseUrlOverride: null,
+      }),
+    ).toThrow(/Missing EVOLINK_API_KEY/);
     expect(() =>
       resolveOpenAiCompatibleClientConfigForProvider({
         provider: "zai",

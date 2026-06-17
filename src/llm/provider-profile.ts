@@ -14,6 +14,7 @@ export type GatewayProvider =
   | "openai"
   | "google"
   | "anthropic"
+  | "evolink"
   | "zai"
   | "nvidia"
   | "minimax"
@@ -26,6 +27,7 @@ export type RequiredModelEnv =
   | "NVIDIA_API_KEY"
   | "GEMINI_API_KEY"
   | "ANTHROPIC_API_KEY"
+  | "EVOLINK_API_KEY"
   | "OPENROUTER_API_KEY"
   | "Z_AI_API_KEY"
   | "MINIMAX_API_KEY"
@@ -62,6 +64,8 @@ export const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434/v1";
 
 export const DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 
+export const DEFAULT_EVOLINK_BASE_URL = "https://direct.evolink.ai/v1";
+
 const GATEWAY_PROVIDER_PROFILES: Record<GatewayProvider, GatewayProviderProfile> = {
   xai: {
     requiredEnv: "XAI_API_KEY",
@@ -90,6 +94,15 @@ const GATEWAY_PROVIDER_PROFILES: Record<GatewayProvider, GatewayProviderProfile>
     supportsDocuments: true,
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
+  },
+  evolink: {
+    requiredEnv: "EVOLINK_API_KEY",
+    execution: "openai-compatible",
+    supportsDocuments: false,
+    supportsStreaming: true,
+    supportsVideoUnderstanding: false,
+    defaultBaseUrl: DEFAULT_EVOLINK_BASE_URL,
+    forceChatCompletions: true,
   },
   zai: {
     requiredEnv: "Z_AI_API_KEY",
@@ -340,7 +353,7 @@ export function supportsStreaming(provider: GatewayProvider): boolean {
 
 export function isOpenAiCompatibleProvider(
   provider: GatewayProvider,
-): provider is "zai" | "nvidia" | "minimax" | "ollama" {
+): provider is "evolink" | "zai" | "nvidia" | "minimax" | "ollama" {
   return getGatewayProviderProfile(provider).execution === "openai-compatible";
 }
 
@@ -402,7 +415,7 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
   forceChatCompletions,
   requestOptions,
 }: {
-  provider: "openai" | "zai" | "nvidia" | "minimax" | "github-copilot" | "ollama";
+  provider: "openai" | "evolink" | "zai" | "nvidia" | "minimax" | "github-copilot" | "ollama";
   openaiApiKey: string | null;
   openrouterApiKey: string | null;
   forceOpenRouter?: boolean;
@@ -448,20 +461,24 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
   const apiKey = openaiApiKey;
   if (!apiKey) {
     throw new Error(
-      provider === "zai"
-        ? "Missing Z_AI_API_KEY for zai/... model"
-        : provider === "minimax"
-          ? "Missing MINIMAX_API_KEY for minimax/... model"
-          : "Missing NVIDIA_API_KEY for nvidia/... model",
+      provider === "evolink"
+        ? "Missing EVOLINK_API_KEY for evolink/... model"
+        : provider === "zai"
+          ? "Missing Z_AI_API_KEY for zai/... model"
+          : provider === "minimax"
+            ? "Missing MINIMAX_API_KEY for minimax/... model"
+            : "Missing NVIDIA_API_KEY for nvidia/... model",
     );
   }
 
   const defaultBaseUrl =
-    provider === "zai"
-      ? "https://api.z.ai/api/paas/v4"
-      : provider === "minimax"
-        ? DEFAULT_MINIMAX_BASE_URL
-        : "https://integrate.api.nvidia.com/v1";
+    provider === "evolink"
+      ? DEFAULT_EVOLINK_BASE_URL
+      : provider === "zai"
+        ? "https://api.z.ai/api/paas/v4"
+        : provider === "minimax"
+          ? DEFAULT_MINIMAX_BASE_URL
+          : "https://integrate.api.nvidia.com/v1";
 
   return {
     apiKey,

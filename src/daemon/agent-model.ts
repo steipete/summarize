@@ -31,6 +31,7 @@ type AgentApiKeys = {
   openrouterApiKey: string | null;
   anthropicApiKey: string | null;
   googleApiKey: string | null;
+  evolinkApiKey: string | null;
   xaiApiKey: string | null;
   zaiApiKey: string | null;
   nvidiaApiKey: string | null;
@@ -152,6 +153,7 @@ export function resolveApiKeyForModel({
     openai: apiKeys.openaiApiKey,
     anthropic: apiKeys.anthropicApiKey,
     google: apiKeys.googleApiKey,
+    evolink: apiKeys.evolinkApiKey,
     xai: apiKeys.xaiApiKey,
     zai: apiKeys.zaiApiKey,
     nvidia: apiKeys.nvidiaApiKey,
@@ -227,6 +229,7 @@ export async function resolveAgentModel({
     openrouterApiKey,
     anthropicApiKey,
     googleApiKey,
+    evolinkApiKey,
     xaiApiKey,
     zaiApiKey,
     nvidiaApiKey,
@@ -240,6 +243,7 @@ export async function resolveAgentModel({
     openrouterApiKey,
     anthropicApiKey,
     googleApiKey,
+    evolinkApiKey,
     xaiApiKey,
     zaiApiKey,
     nvidiaApiKey,
@@ -288,7 +292,10 @@ export async function resolveAgentModel({
       };
     }
     const providerForPiAi =
-      provider === "nvidia" || provider === "github-copilot" || provider === "ollama"
+      provider === "evolink" ||
+      provider === "nvidia" ||
+      provider === "github-copilot" ||
+      provider === "ollama"
         ? "openai"
         : provider;
     const model = resolveModelWithFallback({

@@ -1114,6 +1114,44 @@ describe("llm generate/stream", () => {
     }
   });
 
+  it("routes EvoLink generate and stream calls through OpenAI-compatible chat completions", async () => {
+    mocks.completeSimple.mockClear();
+    mocks.streamSimple.mockClear();
+
+    const args = {
+      modelId: "evolink/gpt-5.2",
+      apiKeys: {
+        openaiApiKey: "evolink-key",
+        openrouterApiKey: null,
+        xaiApiKey: null,
+        googleApiKey: null,
+        anthropicApiKey: null,
+      },
+      prompt: { userText: "hi" },
+      timeoutMs: 2000,
+      fetchImpl: globalThis.fetch.bind(globalThis),
+      openaiBaseUrlOverride: "https://evolink-proxy.example.com/v1",
+    } as const;
+
+    const result = await generateTextWithModelId(args);
+    const streamResult = await streamTextWithModelId(args);
+
+    expect(result.provider).toBe("evolink");
+    expect(streamResult.provider).toBe("evolink");
+
+    for (const call of [mocks.completeSimple.mock.calls[0], mocks.streamSimple.mock.calls[0]]) {
+      const model = call?.[0] as MockModel & { baseUrl?: string };
+      const options = (call?.[2] ?? {}) as { apiKey?: string };
+      expect(model).toMatchObject({
+        provider: "openai",
+        id: "gpt-5.2",
+        api: "openai-completions",
+        baseUrl: "https://evolink-proxy.example.com/v1",
+      });
+      expect(options.apiKey).toBe("evolink-key");
+    }
+  });
+
   it("wraps anthropic model access errors with a helpful message", async () => {
     mocks.completeSimple.mockImplementationOnce(async () => {
       const error = Object.assign(new Error("model: claude-3-5-sonnet-latest"), {

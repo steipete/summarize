@@ -68,6 +68,12 @@ const API_STATUS_PROVIDERS = [
     sources: ["ANTHROPIC_API_KEY"],
   },
   {
+    provider: "evolink",
+    id: "evolink",
+    label: "EvoLink API",
+    sources: ["EVOLINK_API_KEY"],
+  },
+  {
     provider: "zai",
     id: "zai",
     label: "Z.AI API",
@@ -308,6 +314,7 @@ async function applyProviderProbes({
   const probeModels = new Map<string, string[]>([
     ["openai-compatible", discoveredModels(result.options, "Local (")],
     ["ollama", discoveredModels(result.options, "Ollama (")],
+    ["evolink", discoveredModels(result.options, "EvoLink (")],
     ["nvidia", discoveredModels(result.options, "NVIDIA (")],
     ["minimax", discoveredModels(result.options, "MiniMax (")],
   ]);

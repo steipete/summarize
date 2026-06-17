@@ -5,6 +5,7 @@ export type LlmProvider =
   | "openai"
   | "google"
   | "anthropic"
+  | "evolink"
   | "zai"
   | "nvidia"
   | "minimax"

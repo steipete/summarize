@@ -10,6 +10,8 @@ export function resolveRunApiStatus(envState: EnvState): RunApiStatus {
     assemblyaiApiKey: envState.assemblyaiApiKey,
     elevenlabsApiKey: envState.elevenlabsApiKey,
     openaiApiKey: envState.openaiApiKey,
+    evolinkApiKey: envState.evolinkApiKey,
+    evolinkBaseUrl: envState.evolinkBaseUrl,
     xaiApiKey: envState.xaiApiKey,
     googleApiKey: envState.googleApiKey,
     anthropicApiKey: envState.anthropicApiKey,

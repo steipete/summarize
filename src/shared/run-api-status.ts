@@ -6,6 +6,8 @@ export type RunApiStatus = {
   assemblyaiApiKey: string | null;
   elevenlabsApiKey: string | null;
   openaiApiKey: string | null;
+  evolinkApiKey: string | null;
+  evolinkBaseUrl: string;
   xaiApiKey: string | null;
   googleApiKey: string | null;
   anthropicApiKey: string | null;

@@ -38,6 +38,7 @@ function hasAnyApiKeysConfigured(env: Record<string, string | undefined>): boole
     has(env.GOOGLE_GENERATIVE_AI_API_KEY) ||
     has(env.GOOGLE_API_KEY) ||
     has(env.ANTHROPIC_API_KEY) ||
+    has(env.EVOLINK_API_KEY) ||
     has(env.XAI_API_KEY) ||
     has(env.OPENROUTER_API_KEY) ||
     has(env.Z_AI_API_KEY) ||

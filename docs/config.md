@@ -468,6 +468,7 @@ Override API endpoints for any provider to use proxies, gateways, or compatible 
 ```json
 {
   "openai": { "baseUrl": "https://my-openai-proxy.example.com/v1" },
+  "evolink": { "baseUrl": "https://direct.evolink.ai/v1" },
   "nvidia": { "baseUrl": "https://integrate.api.nvidia.com/v1" },
   "anthropic": { "baseUrl": "https://my-anthropic-proxy.example.com" },
   "google": { "baseUrl": "https://my-google-proxy.example.com" },
@@ -483,6 +484,7 @@ Or via environment variables (which take precedence over config):
 | Provider  | Environment Variable(s)                      |
 | --------- | -------------------------------------------- |
 | OpenAI    | `OPENAI_BASE_URL`                            |
+| EvoLink   | `EVOLINK_BASE_URL`                           |
 | NVIDIA    | `NVIDIA_BASE_URL`                            |
 | Anthropic | `ANTHROPIC_BASE_URL`                         |
 | Google    | `GOOGLE_BASE_URL` (alias: `GEMINI_BASE_URL`) |

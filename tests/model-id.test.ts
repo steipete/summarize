@@ -11,6 +11,7 @@ describe("model id parsing", () => {
     expect(normalizeGatewayStyleModelId("anthropic/claude-sonnet-4-5")).toBe(
       "anthropic/claude-sonnet-4-5",
     );
+    expect(normalizeGatewayStyleModelId("evolink/gpt-5.2")).toBe("evolink/gpt-5.2");
     expect(normalizeGatewayStyleModelId("nvidia/z-ai/glm5")).toBe("nvidia/z-ai/glm5");
     expect(normalizeGatewayStyleModelId("ollama/qwen3:14b")).toBe("ollama/qwen3:14b");
     expect(normalizeGatewayStyleModelId("Ollama/Qwen3:14b")).toBe("ollama/Qwen3:14b");
@@ -114,6 +115,11 @@ describe("model id parsing", () => {
       provider: "github-copilot",
       model: "anthropic/claude-opus-4.6",
       canonical: "github-copilot/anthropic/claude-opus-4.6",
+    });
+    expect(parseGatewayStyleModelId("evolink/gpt-5.2")).toEqual({
+      provider: "evolink",
+      model: "gpt-5.2",
+      canonical: "evolink/gpt-5.2",
     });
   });
 

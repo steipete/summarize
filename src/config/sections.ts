@@ -602,6 +602,7 @@ export function parseApiKeysConfig(
   const keys: Record<string, string> = {};
   const allowed = [
     "openai",
+    "evolink",
     "nvidia",
     "minimax",
     "anthropic",

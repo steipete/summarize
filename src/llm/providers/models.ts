@@ -1,5 +1,9 @@
 import type { Api, Context, Model } from "@earendil-works/pi-ai";
-import { DEFAULT_MINIMAX_BASE_URL, DEFAULT_OLLAMA_BASE_URL } from "../provider-profile.js";
+import {
+  DEFAULT_EVOLINK_BASE_URL,
+  DEFAULT_MINIMAX_BASE_URL,
+  DEFAULT_OLLAMA_BASE_URL,
+} from "../provider-profile.js";
 import {
   createSyntheticModel,
   resolveBaseUrlOverride,
@@ -121,6 +125,27 @@ export function resolveMinimaxModel({
   };
 }
 
+export function resolveEvolinkModel({
+  modelId,
+  context,
+  openaiBaseUrlOverride,
+}: {
+  modelId: string;
+  context: Context;
+  openaiBaseUrlOverride?: string | null;
+}): Model<Api> {
+  const allowImages = wantsImages(context);
+  const api = "openai-completions";
+  const baseUrl = openaiBaseUrlOverride ?? DEFAULT_EVOLINK_BASE_URL;
+  return createSyntheticModel({
+    provider: "openai",
+    modelId,
+    api,
+    baseUrl,
+    allowImages,
+  });
+}
+
 export function resolveOllamaModel({
   modelId,
   context,
@@ -149,12 +174,18 @@ export function resolveOpenAiCompatibleGatewayModel({
   context,
   openaiConfig,
 }: {
-  provider: "zai" | "nvidia" | "minimax" | "ollama";
+  provider: "evolink" | "zai" | "nvidia" | "minimax" | "ollama";
   modelId: string;
   context: Context;
   openaiConfig: OpenAiClientConfig;
 }): Model<Api> {
   switch (provider) {
+    case "evolink":
+      return resolveEvolinkModel({
+        modelId,
+        context,
+        openaiBaseUrlOverride: openaiConfig.baseURL,
+      });
     case "zai":
       return resolveZaiModel({
         modelId,

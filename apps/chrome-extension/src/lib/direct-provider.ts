@@ -14,6 +14,7 @@ export type DirectStreamEvent =
 
 const DEFAULT_MODELS: Record<DirectProvider, string> = {
   openai: "gpt-5-mini",
+  evolink: "gpt-5.2",
   openrouter: "openai/gpt-5-mini",
   anthropic: "claude-sonnet-4-5",
   google: "gemini-3-flash",
@@ -27,6 +28,7 @@ const DEFAULT_MODELS: Record<DirectProvider, string> = {
 
 const DEFAULT_BASE_URLS: Record<DirectProvider, string> = {
   openai: "https://api.openai.com/v1",
+  evolink: "https://direct.evolink.ai/v1",
   openrouter: "https://openrouter.ai/api/v1",
   anthropic: "https://api.anthropic.com",
   google: "https://generativelanguage.googleapis.com/v1beta",
@@ -40,6 +42,7 @@ const DEFAULT_BASE_URLS: Record<DirectProvider, string> = {
 
 const PROVIDER_PREFIXES = new Set<DirectProvider>([
   "openai",
+  "evolink",
   "openrouter",
   "anthropic",
   "google",
@@ -129,6 +132,7 @@ export function resolveDirectModel(
 export function providerLabel(provider: DirectProvider): string {
   const labels: Record<DirectProvider, string> = {
     openai: "OpenAI",
+    evolink: "EvoLink",
     openrouter: "OpenRouter",
     anthropic: "Anthropic",
     google: "Google Gemini",

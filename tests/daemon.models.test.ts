@@ -167,6 +167,28 @@ describe("daemon /v1/models", () => {
     expect(result.options.some((o) => o.id === "nvidia/z-ai/glm5")).toBe(true);
   });
 
+  it("discovers EvoLink models when EVOLINK_API_KEY is set", async () => {
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe("https://direct.evolink.ai/v1/models");
+      expect(init?.headers).toEqual({ authorization: "Bearer evolink-test" });
+      return {
+        ok: true,
+        json: async () => ({ data: [{ id: "gpt-5.2" }] }),
+      } as Response;
+    }) as unknown as typeof fetch;
+
+    const result = await buildModelPickerOptions({
+      env: {},
+      envForRun: { EVOLINK_API_KEY: "evolink-test" },
+      configForCli: null,
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.providers.evolink).toBe(true);
+    expect(result.options.some((o) => o.id === "evolink/gpt-5.2")).toBe(true);
+  });
+
   it("discovers MiniMax models when MINIMAX_API_KEY is set", async () => {
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
       expect(url).toBe("https://api.minimax.io/v1/models");

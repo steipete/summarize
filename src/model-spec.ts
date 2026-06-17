@@ -8,7 +8,7 @@ import {
   requiredEnvForCliProvider,
   resolveRequiredEnvForModelId,
 } from "./llm/provider-capabilities.js";
-import { DEFAULT_OLLAMA_BASE_URL } from "./llm/provider-profile.js";
+import { DEFAULT_EVOLINK_BASE_URL, DEFAULT_OLLAMA_BASE_URL } from "./llm/provider-profile.js";
 
 export type FixedModelSpec =
   | {
@@ -21,6 +21,7 @@ export type FixedModelSpec =
       requiredEnv:
         | "XAI_API_KEY"
         | "OPENAI_API_KEY"
+        | "EVOLINK_API_KEY"
         | "GEMINI_API_KEY"
         | "ANTHROPIC_API_KEY"
         | "Z_AI_API_KEY"
@@ -117,6 +118,25 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       forceOpenRouter: false,
       requiredEnv: "Z_AI_API_KEY",
       openaiBaseUrlOverride: "https://api.z.ai/api/paas/v4",
+      forceChatCompletions: true,
+    };
+  }
+
+  if (lower.startsWith("evolink/")) {
+    const model = trimmed.slice("evolink/".length).trim();
+    if (model.length === 0) {
+      throw new Error("Invalid model id: evolink/… is missing the model id");
+    }
+    return {
+      kind: "fixed",
+      transport: "native",
+      userModelId: `evolink/${model}`,
+      llmModelId: `evolink/${model}`,
+      provider: "evolink",
+      openrouterProviders: null,
+      forceOpenRouter: false,
+      requiredEnv: "EVOLINK_API_KEY",
+      openaiBaseUrlOverride: DEFAULT_EVOLINK_BASE_URL,
       forceChatCompletions: true,
     };
   }
@@ -285,7 +305,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       };
     }
     throw new Error(
-      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., anthropic/..., xai/..., zai/..., nvidia/..., minimax/..., openrouter/... or cli/....`,
+      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., anthropic/..., xai/..., evolink/..., zai/..., nvidia/..., minimax/..., openrouter/... or cli/....`,
     );
   }
 
@@ -297,6 +317,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     RequiredModelEnv,
     | "XAI_API_KEY"
     | "OPENAI_API_KEY"
+    | "EVOLINK_API_KEY"
     | "GEMINI_API_KEY"
     | "ANTHROPIC_API_KEY"
     | "Z_AI_API_KEY"

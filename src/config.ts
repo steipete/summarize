@@ -27,6 +27,7 @@ export type {
   CliProvider,
   CliProviderConfig,
   EnvConfig,
+  EvolinkConfig,
   GoogleConfig,
   LoggingConfig,
   LoggingFormat,
@@ -102,6 +103,11 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
     path,
     "nvidia",
   );
+  const evolink = parseProviderBaseUrlConfig(
+    (parsed as Record<string, unknown>).evolink,
+    path,
+    "evolink",
+  );
   const minimax = parseProviderBaseUrlConfig(
     (parsed as Record<string, unknown>).minimax,
     path,
@@ -134,6 +140,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       ...(ui ? { ui } : {}),
       ...(cli ? { cli } : {}),
       ...(openai ? { openai } : {}),
+      ...(evolink ? { evolink } : {}),
       ...(nvidia ? { nvidia } : {}),
       ...(minimax ? { minimax } : {}),
       ...(anthropic ? { anthropic } : {}),

@@ -29,6 +29,7 @@ export const DEFAULT_DAEMON_TOKEN = "test-token";
 export const BLOCKED_ENV_KEYS = [
   "ANTHROPIC_API_KEY",
   "GEMINI_API_KEY",
+  "EVOLINK_API_KEY",
   "OPENAI_API_KEY",
   "OPENROUTER_API_KEY",
   "XAI_API_KEY",

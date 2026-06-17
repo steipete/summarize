@@ -45,7 +45,7 @@ YouTube slide screenshots (from the browser):
 
 Why a daemon/service?
 
-- Direct mode works without the daemon. Auto uses a configured OpenAI, OpenRouter, Anthropic, Gemini, xAI, Z.AI, NVIDIA, MiniMax, GitHub Models, or Ollama provider, otherwise Gemini Nano on-device; keys remain in extension-local storage.
+- Direct mode works without the daemon. Auto uses a configured OpenAI, EvoLink, OpenRouter, Anthropic, Gemini, xAI, Z.AI, NVIDIA, MiniMax, GitHub Models, or Ollama provider, otherwise Gemini Nano on-device; keys remain in extension-local storage.
 - The optional daemon on `127.0.0.1` adds CLI model fallbacks, shared caches/diagnostics, native ffmpeg, configurable transcription providers, OCR, and broader media support.
 - The service autostarts (launchd/systemd/Scheduled Task) so the Side Panel is always ready.
 
@@ -708,6 +708,7 @@ Set the key matching your chosen `--model`:
   - legacy `"apiKeys"` still works (mapped to env names)
 
 - `OPENAI_API_KEY` (for `openai/...`)
+- `EVOLINK_API_KEY` (for `evolink/...`)
 - `NVIDIA_API_KEY` (for `nvidia/...`)
 - `MINIMAX_API_KEY` (for `minimax/...`)
 - `ANTHROPIC_API_KEY` (for `anthropic/...`)
@@ -775,6 +776,12 @@ If your OpenRouter account enforces an allowed-provider list, make sure at least
 is allowed for the selected model. When routing fails, `summarize` prints the exact providers to allow.
 
 Legacy: `OPENAI_BASE_URL=https://openrouter.ai/api/v1` (and either `OPENAI_API_KEY` or `OPENROUTER_API_KEY`) also works.
+
+EvoLink (OpenAI-compatible):
+
+- Set `EVOLINK_API_KEY=...`
+- Optional base URL override: `EVOLINK_BASE_URL=https://direct.evolink.ai/v1`
+- Use `evolink/<model>` ids, such as `evolink/gpt-5.2`
 
 NVIDIA API Catalog (OpenAI-compatible; free credits):
 

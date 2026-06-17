@@ -62,6 +62,7 @@ export type SlideRuntime = "browser" | "daemon";
 export type SummaryRuntime = "direct" | "daemon";
 export type DirectProvider =
   | "openai"
+  | "evolink"
   | "openrouter"
   | "anthropic"
   | "google"
@@ -248,6 +249,7 @@ function normalizeSummaryRuntime(value: unknown, raw?: Record<string, unknown>):
 
 const directProviders = new Set<DirectProvider>([
   "openai",
+  "evolink",
   "openrouter",
   "anthropic",
   "google",

@@ -395,6 +395,7 @@ export async function streamTextWithContext({
     ) {
       const provider = parsed.provider as
         | "openai"
+        | "evolink"
         | "zai"
         | "nvidia"
         | "minimax"

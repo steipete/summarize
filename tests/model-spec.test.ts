@@ -167,6 +167,17 @@ describe("model spec parsing", () => {
     expect(zai.requiredEnv).toBe("Z_AI_API_KEY");
     expect(zai.llmModelId).toBe("zai/glm-4.7");
 
+    const evolink = parseRequestedModelId("evolink/gpt-5.2");
+    expect(evolink.kind).toBe("fixed");
+    expect(evolink.transport).toBe("native");
+    if (evolink.kind === "fixed" && evolink.transport === "native") {
+      expect(evolink.provider).toBe("evolink");
+      expect(evolink.requiredEnv).toBe("EVOLINK_API_KEY");
+      expect(evolink.llmModelId).toBe("evolink/gpt-5.2");
+      expect(evolink.openaiBaseUrlOverride).toBe("https://direct.evolink.ai/v1");
+      expect(evolink.forceChatCompletions).toBe(true);
+    }
+
     const nvidia = parseRequestedModelId("nvidia/z-ai/glm5");
     expect(nvidia.kind).toBe("fixed");
     expect(nvidia.transport).toBe("native");
@@ -209,6 +220,10 @@ describe("model spec parsing", () => {
 
   it("rejects empty zai model id", () => {
     expect(() => parseRequestedModelId("zai/")).toThrow(/missing the model id/);
+  });
+
+  it("rejects empty evolink model id", () => {
+    expect(() => parseRequestedModelId("evolink/")).toThrow(/missing the model id/);
   });
 
   it("rejects empty nvidia model id", () => {

@@ -325,6 +325,8 @@ ${heading("Env Vars")}
   OPENAI_WHISPER_BASE_URL optional (OpenAI-compatible Whisper endpoint override)
   OPENAI_BASE_URL       optional (OpenAI-compatible API endpoint; e.g. OpenRouter)
   OPENAI_USE_CHAT_COMPLETIONS optional (force OpenAI chat completions)
+  EVOLINK_API_KEY       optional (required for evolink/... models)
+  EVOLINK_BASE_URL      optional (override EvoLink OpenAI-compatible endpoint)
   NVIDIA_API_KEY        optional (required for nvidia/... models)
   NGC_API_KEY           optional (alias for NVIDIA_API_KEY)
   NVIDIA_BASE_URL       optional (override NVIDIA OpenAI-compatible API endpoint)

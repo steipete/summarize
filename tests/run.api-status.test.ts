@@ -7,6 +7,7 @@ describe("run API status", () => {
     const env = {
       OPENAI_API_KEY: "openai",
       OPENROUTER_API_KEY: "openrouter",
+      EVOLINK_API_KEY: "evolink",
       GEMINI_API_KEY: "google",
       ANTHROPIC_API_KEY: "anthropic",
       NVIDIA_API_KEY: "nvidia",
@@ -25,6 +26,8 @@ describe("run API status", () => {
     expect(status).toMatchObject({
       apiKey: "openai",
       openrouterApiKey: "openrouter",
+      evolinkApiKey: "evolink",
+      evolinkBaseUrl: "https://direct.evolink.ai/v1",
       googleApiKey: "google",
       anthropicApiKey: "anthropic",
       nvidiaApiKey: "nvidia",

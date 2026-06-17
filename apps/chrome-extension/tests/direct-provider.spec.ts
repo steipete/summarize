@@ -36,6 +36,7 @@ async function finalAssistant(options: Parameters<typeof streamDirectModel>[0]) 
 test("direct provider resolves all supported gateways", () => {
   const providers: DirectProvider[] = [
     "openai",
+    "evolink",
     "openrouter",
     "anthropic",
     "google",

@@ -130,6 +130,7 @@ describe("summarize status", () => {
         PATH: "",
         XAI_API_KEY: "x-secret",
         XAI_BASE_URL: "https://xai.example/v1",
+        EVOLINK_API_KEY: "evolink-secret",
         NGC_API_KEY: "nvidia-secret",
         GH_TOKEN: "github-secret",
       },
@@ -147,6 +148,11 @@ describe("summarize status", () => {
           id: "xai",
           source: "XAI_API_KEY",
           endpoint: "xai.example",
+        }),
+        expect.objectContaining({
+          id: "evolink",
+          source: "EVOLINK_API_KEY",
+          endpoint: "direct.evolink.ai",
         }),
         expect.objectContaining({
           id: "nvidia",

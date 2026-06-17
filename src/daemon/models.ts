@@ -14,6 +14,7 @@ export type ModelPickerOption = {
 type ModelPickerProviders = {
   xai: boolean;
   openai: boolean;
+  evolink: boolean;
   nvidia: boolean;
   minimax: boolean;
   google: boolean;
@@ -140,7 +141,7 @@ async function appendDiscoveredOpenAiCompatibleModels({
   timeoutMs,
 }: {
   options: ModelPickerOption[];
-  provider: Extract<GatewayProvider, "openai" | "nvidia" | "minimax" | "ollama">;
+  provider: Extract<GatewayProvider, "openai" | "evolink" | "nvidia" | "minimax" | "ollama">;
   label: string;
   baseUrl: string;
   apiKey: string | null;
@@ -185,6 +186,7 @@ export async function buildModelPickerOptions({
   const providers = {
     xai: Boolean(envState.xaiApiKey),
     openai: Boolean(envState.apiKey),
+    evolink: Boolean(envState.evolinkApiKey),
     nvidia: Boolean(envState.nvidiaApiKey),
     minimax: Boolean(envState.minimaxApiKey),
     google: envState.googleConfigured,
@@ -232,6 +234,13 @@ export async function buildModelPickerOptions({
   }
 
   const discoveryProviders = [
+    {
+      provider: "evolink",
+      label: "EvoLink",
+      enabled: providers.evolink,
+      baseUrl: envState.evolinkBaseUrl,
+      apiKey: envState.evolinkApiKey,
+    },
     {
       provider: "nvidia",
       label: "NVIDIA",

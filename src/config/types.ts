@@ -137,8 +137,20 @@ export type NvidiaConfig = {
   baseUrl?: string;
 };
 
+export type EvolinkConfig = {
+  /**
+   * Override the EvoLink OpenAI-compatible API base URL.
+   *
+   * Default: https://direct.evolink.ai/v1
+   *
+   * Prefer env `EVOLINK_BASE_URL` when you need per-run overrides.
+   */
+  baseUrl?: string;
+};
+
 export type ApiKeysConfig = {
   openai?: string;
+  evolink?: string;
   nvidia?: string;
   minimax?: string;
   anthropic?: string;
@@ -316,6 +328,7 @@ export type SummarizeConfig = {
   };
   cli?: CliConfig;
   openai?: OpenAiConfig;
+  evolink?: EvolinkConfig;
   nvidia?: NvidiaConfig;
   minimax?: MinimaxConfig;
   anthropic?: AnthropicConfig;

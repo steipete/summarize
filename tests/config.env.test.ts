@@ -82,6 +82,7 @@ describe("config env", () => {
       config: {
         apiKeys: {
           openai: "sk-openai",
+          evolink: "sk-evolink",
           openrouter: "sk-openrouter",
           zai: "sk-zai",
           apify: "apify-token",
@@ -94,6 +95,7 @@ describe("config env", () => {
     });
 
     expect(merged.OPENAI_API_KEY).toBe("sk-openai");
+    expect(merged.EVOLINK_API_KEY).toBe("sk-evolink");
     expect(merged.OPENROUTER_API_KEY).toBe("sk-openrouter");
     expect(merged.Z_AI_API_KEY).toBe("sk-zai");
     expect(merged.APIFY_API_TOKEN).toBe("apify-token");

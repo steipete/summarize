@@ -52,6 +52,7 @@ export function canStream({
     "openai",
     "google",
     "anthropic",
+    "evolink",
     "zai",
     "nvidia",
     "minimax",

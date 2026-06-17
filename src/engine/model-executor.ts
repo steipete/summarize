@@ -45,6 +45,7 @@ export type ModelExecutorDeps = {
       | "openai"
       | "google"
       | "anthropic"
+      | "evolink"
       | "zai"
       | "nvidia"
       | "minimax"

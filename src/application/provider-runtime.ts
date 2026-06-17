@@ -31,6 +31,7 @@ export function resolveProviderRuntimeBindings({
     apiKeys: {
       xai: envState.xaiApiKey,
       openai: envState.apiKey,
+      evolink: envState.evolinkApiKey,
       google: envState.googleApiKey,
       anthropic: envState.anthropicApiKey,
       zai: envState.zaiApiKey,
@@ -42,6 +43,7 @@ export function resolveProviderRuntimeBindings({
     baseUrls: {
       xai: envState.providerBaseUrls.xai,
       openai: envState.providerBaseUrls.openai,
+      evolink: envState.evolinkBaseUrl,
       google: envState.providerBaseUrls.google,
       anthropic: envState.providerBaseUrls.anthropic,
       zai: envState.zaiBaseUrl,

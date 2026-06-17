@@ -5,6 +5,7 @@ export type LlmProvider =
   | "openai"
   | "google"
   | "anthropic"
+  | "evolink"
   | "zai"
   | "nvidia"
   | "minimax"
@@ -28,6 +29,7 @@ const PROVIDERS: LlmProvider[] = [
   "openai",
   "google",
   "anthropic",
+  "evolink",
   "zai",
   "nvidia",
   "minimax",
@@ -92,7 +94,7 @@ export function normalizeGatewayStyleModelId(raw: string): string {
   }
   if (!PROVIDERS.includes(provider as LlmProvider)) {
     throw new Error(
-      `Unsupported model provider "${provider}". Use xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/..., or ollama/...`,
+      `Unsupported model provider "${provider}". Use xai/..., openai/..., google/..., anthropic/..., evolink/..., zai/..., nvidia/..., minimax/..., github-copilot/..., or ollama/...`,
     );
   }
   if (model.trim().length === 0) {

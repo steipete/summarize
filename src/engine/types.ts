@@ -8,6 +8,7 @@ export type ModelAttemptRequiredEnv =
   | "NVIDIA_API_KEY"
   | "GEMINI_API_KEY"
   | "ANTHROPIC_API_KEY"
+  | "EVOLINK_API_KEY"
   | "OPENROUTER_API_KEY"
   | "Z_AI_API_KEY"
   | "MINIMAX_API_KEY"
