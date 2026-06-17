@@ -149,6 +149,7 @@ export function createSidepanelPresentationRuntime({
       const length = appearanceControls.getLengthValue();
       browserAiRuntime.prepare(length === "short" || length === "medium" ? length : "long");
       browserAiRuntime.prepare("short", "slides");
+      browserAiRuntime.preparePrompt("slides", { imageInput: true });
     },
   });
 

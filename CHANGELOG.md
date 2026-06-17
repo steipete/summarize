@@ -13,6 +13,7 @@
 - Chrome extension: preserve significant whitespace in SSE data fields while parsing daemon streams (#303, thanks @vincent-peng).
 - Chrome extension: invoke Gemini Nano session methods with their native receiver so Browser summaries complete instead of silently falling back.
 - Chrome extension slides: summarize each browser-extracted slide with Gemini Nano and cache CLI-compatible slide markers instead of showing raw transcript windows.
+- Chrome extension slides: batch browser-extracted frames and transcript windows into one constrained multimodal Gemini Nano prompt, splitting only on context pressure and falling back safely when unavailable.
 - Chrome extension slides: sample browser-captured frames across the full video duration so long videos include their final segment.
 - Chrome extension: use Chrome's built-in Gemini Nano Summarizer API for daemonless Browser summaries when available, with first-use download progress and automatic extractive fallback.
 - Remote transcripts: cap RSS and embedded caption response bodies at 5 MiB and cancel oversized streams. Thanks @Hinotoi-agent.

@@ -81,6 +81,68 @@ test("browser AI creates distinct summaries for browser-extracted slides", async
 
   try {
     const page = await openExtensionPage(harness, "sidepanel.html", "#title", () => {
+      (
+        globalThis as typeof globalThis & {
+          __browserAiPromptCalls?: number;
+          __browserAiPromptImageInputs?: number;
+          __browserAiSlideSummarizerCalls?: number;
+        }
+      ).__browserAiPromptCalls = 0;
+      (
+        globalThis as typeof globalThis & {
+          __browserAiPromptImageInputs?: number;
+        }
+      ).__browserAiPromptImageInputs = 0;
+      (
+        globalThis as typeof globalThis & {
+          __browserAiSlideSummarizerCalls?: number;
+        }
+      ).__browserAiSlideSummarizerCalls = 0;
+      Object.defineProperty(globalThis, "LanguageModel", {
+        configurable: true,
+        value: {
+          availability: async () => "available",
+          create: async (createOptions?: { expectedInputs?: Array<{ type?: string }> }) => ({
+            contextWindow: 9_216,
+            async measureContextUsage() {
+              return 500;
+            },
+            async prompt(
+              input:
+                | string
+                | Array<{
+                    content?: Array<{ type?: string; value?: unknown }>;
+                  }>,
+              options?: { responseConstraint?: RegExp },
+            ) {
+              const scope = globalThis as typeof globalThis & {
+                __browserAiPromptCalls?: number;
+                __browserAiPromptImageInputs?: number;
+              };
+              scope.__browserAiPromptCalls = (scope.__browserAiPromptCalls ?? 0) + 1;
+              scope.__browserAiPromptImageInputs =
+                typeof input === "string"
+                  ? 0
+                  : input
+                      .flatMap((message) => message.content ?? [])
+                      .filter(
+                        (content) => content.type === "image" && content.value instanceof Blob,
+                      ).length;
+              if (!createOptions?.expectedInputs?.some((expected) => expected.type === "image")) {
+                throw new DOMException("Missing image modality", "NotSupportedError");
+              }
+              const result =
+                "[slide:1] Linear classifiers learn a decision boundary between labeled examples.\n" +
+                "[slide:2] The sigmoid converts model scores into class probabilities.";
+              if (!options?.responseConstraint?.test(result)) {
+                throw new DOMException("Constraint mismatch", "SyntaxError");
+              }
+              return result;
+            },
+            destroy() {},
+          }),
+        },
+      });
       Object.defineProperty(globalThis, "Summarizer", {
         configurable: true,
         value: {
@@ -88,9 +150,19 @@ test("browser AI creates distinct summaries for browser-extracted slides", async
           create: async () => ({
             async summarize(input: string, options?: { context?: string }) {
               if (options?.context?.includes("slide 1 of 2")) {
+                const scope = globalThis as typeof globalThis & {
+                  __browserAiSlideSummarizerCalls?: number;
+                };
+                scope.__browserAiSlideSummarizerCalls =
+                  (scope.__browserAiSlideSummarizerCalls ?? 0) + 1;
                 return "Linear classifiers learn a decision boundary between labeled examples.";
               }
               if (options?.context?.includes("slide 2 of 2")) {
+                const scope = globalThis as typeof globalThis & {
+                  __browserAiSlideSummarizerCalls?: number;
+                };
+                scope.__browserAiSlideSummarizerCalls =
+                  (scope.__browserAiSlideSummarizerCalls ?? 0) + 1;
                 return "The sigmoid converts model scores into class probabilities.";
               }
               return `Overall summary of ${input.slice(0, 20)}.`;
@@ -142,8 +214,18 @@ test("browser AI creates distinct summaries for browser-extracted slides", async
         "[00:00] The first section explains linear decision boundaries and labeled examples.\n" +
         "[01:00] The second section derives the sigmoid and probability interpretation.",
       slides: [
-        { index: 1, timestamp: 0, imageUrl: "" },
-        { index: 2, timestamp: 60, imageUrl: "" },
+        {
+          index: 1,
+          timestamp: 0,
+          imageUrl:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2xZkAAAAASUVORK5CYII=",
+        },
+        {
+          index: 2,
+          timestamp: 60,
+          imageUrl:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2xZkAAAAASUVORK5CYII=",
+        },
       ],
     });
 
@@ -159,6 +241,38 @@ test("browser AI creates distinct summaries for browser-extracted slides", async
       [1, "Linear classifiers learn a decision boundary between labeled examples."],
       [2, "The sigmoid converts model scores into class probabilities."],
     ]);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (
+              globalThis as typeof globalThis & {
+                __browserAiPromptCalls?: number;
+              }
+            ).__browserAiPromptCalls ?? 0,
+        ),
+      )
+      .toBe(1);
+    expect(
+      await page.evaluate(
+        () =>
+          (
+            globalThis as typeof globalThis & {
+              __browserAiPromptImageInputs?: number;
+            }
+          ).__browserAiPromptImageInputs ?? 0,
+      ),
+    ).toBe(2);
+    expect(
+      await page.evaluate(
+        () =>
+          (
+            globalThis as typeof globalThis & {
+              __browserAiSlideSummarizerCalls?: number;
+            }
+          ).__browserAiSlideSummarizerCalls ?? 0,
+      ),
+    ).toBe(0);
     assertNoErrors(harness);
   } finally {
     await closeExtension(harness.context, harness.userDataDir);

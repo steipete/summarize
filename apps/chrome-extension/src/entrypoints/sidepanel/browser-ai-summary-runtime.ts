@@ -23,16 +23,113 @@ type BrowserSummarizerApi = {
   }) => Promise<BrowserSummarizerSession>;
 };
 
+type BrowserLanguageModelPromptOptions = {
+  responseConstraint: RegExp;
+  omitResponseConstraintInput: true;
+  signal?: AbortSignal;
+};
+
+type BrowserLanguageModelContent = { type: "text"; value: string } | { type: "image"; value: Blob };
+
+type BrowserLanguageModelMessage = {
+  role: "user";
+  content: BrowserLanguageModelContent[];
+};
+
+export type BrowserAiPromptInput = string | BrowserLanguageModelMessage[];
+
+type BrowserLanguageModelSession = {
+  contextWindow?: number;
+  measureContextUsage?: (
+    input: BrowserAiPromptInput,
+    options: Omit<BrowserLanguageModelPromptOptions, "signal">,
+  ) => Promise<number>;
+  prompt: (
+    input: BrowserAiPromptInput,
+    options: BrowserLanguageModelPromptOptions,
+  ) => Promise<string>;
+  destroy?: () => void;
+};
+
+type BrowserLanguageModelApi = {
+  availability: (options: BrowserLanguageModelCreateOptions) => Promise<BrowserAiAvailability>;
+  create: (
+    options: BrowserLanguageModelCreateOptions & {
+      monitor: (monitor: EventTarget) => void;
+    },
+  ) => Promise<BrowserLanguageModelSession>;
+};
+
+type BrowserLanguageModelCreateOptions = {
+  expectedInputs: Array<{ type: "text"; languages: ["en"] } | { type: "image" }>;
+  expectedOutputs: Array<{ type: "text"; languages: ["en"] }>;
+};
+
 type RuntimeOptions = {
   getApi?: () => BrowserSummarizerApi | null;
+  getLanguageModelApi?: () => BrowserLanguageModelApi | null;
   isUserActive?: () => boolean;
   setStatus: (status: string) => void;
 };
 
 export type BrowserAiRequestKey = "summary" | "slides";
+export type BrowserAiPromptResult =
+  | {
+      kind: "success";
+      text: string;
+      contextUsage: number | null;
+      contextWindow: number | null;
+    }
+  | {
+      kind: "too-large";
+      contextUsage: number | null;
+      contextWindow: number | null;
+    };
+
+function buildLanguageModelOptions(imageInput: boolean): BrowserLanguageModelCreateOptions {
+  return {
+    expectedInputs: [
+      { type: "text", languages: ["en"] },
+      ...(imageInput ? ([{ type: "image" }] as const) : []),
+    ],
+    expectedOutputs: [{ type: "text", languages: ["en"] }],
+  };
+}
+
+function promptUsesImages(input: BrowserAiPromptInput): boolean {
+  return (
+    typeof input !== "string" &&
+    input.some((message) => message.content.some((content) => content.type === "image"))
+  );
+}
+
+function promptTextLength(input: BrowserAiPromptInput): number {
+  if (typeof input === "string") return input.length;
+  return input.reduce(
+    (total, message) =>
+      total +
+      message.content.reduce(
+        (contentTotal, content) =>
+          contentTotal + (content.type === "text" ? content.value.length : 0),
+        0,
+      ),
+    0,
+  );
+}
 
 function defaultGetApi(): BrowserSummarizerApi | null {
   const api = (globalThis as typeof globalThis & { Summarizer?: BrowserSummarizerApi }).Summarizer;
+  return api && typeof api.availability === "function" && typeof api.create === "function"
+    ? api
+    : null;
+}
+
+function defaultGetLanguageModelApi(): BrowserLanguageModelApi | null {
+  const api = (
+    globalThis as typeof globalThis & {
+      LanguageModel?: BrowserLanguageModelApi;
+    }
+  ).LanguageModel;
   return api && typeof api.availability === "function" && typeof api.create === "function"
     ? api
     : null;
@@ -198,14 +295,18 @@ async function summarizeRecursively({
 
 export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
   const getApi = options.getApi ?? defaultGetApi;
+  const getLanguageModelApi = options.getLanguageModelApi ?? defaultGetLanguageModelApi;
   const isUserActive = options.isUserActive ?? defaultIsUserActive;
   const sessions = new Map<string, Promise<BrowserSummarizerSession | null>>();
+  const promptSessions = new Map<string, Promise<BrowserLanguageModelSession | null>>();
   const activeRequests = new Map<BrowserAiRequestKey, number>();
   const activeControllers = new Map<BrowserAiRequestKey, AbortController>();
   let statusOwner: { requestKey: BrowserAiRequestKey; token: symbol } | null = null;
 
   const sessionKey = (requestKey: BrowserAiRequestKey, length: BrowserAiSummaryInput["length"]) =>
     `${requestKey}:${length}`;
+  const promptSessionKey = (requestKey: BrowserAiRequestKey, imageInput: boolean) =>
+    `${requestKey}:${imageInput ? "image" : "text"}`;
   const setOwnedStatus = (requestKey: BrowserAiRequestKey, owner: symbol, status: string) => {
     statusOwner = { requestKey, token: owner };
     options.setStatus(status);
@@ -277,6 +378,67 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     return await createSession(api, length, requestKey, statusToken);
   };
 
+  const createPromptSession = (
+    api: BrowserLanguageModelApi,
+    requestKey: BrowserAiRequestKey,
+    imageInput: boolean,
+    statusToken: symbol,
+  ): Promise<BrowserLanguageModelSession | null> => {
+    const key = promptSessionKey(requestKey, imageInput);
+    const promise = api
+      .create({
+        ...buildLanguageModelOptions(imageInput),
+        monitor(monitor) {
+          monitor.addEventListener("downloadprogress", (event) => {
+            const loaded = (event as Event & { loaded?: number }).loaded;
+            const percent =
+              typeof loaded === "number" && Number.isFinite(loaded)
+                ? ` ${Math.round(loaded * 100)}%`
+                : "";
+            setOwnedStatus(requestKey, statusToken, `Downloading on-device AI…${percent}`);
+          });
+        },
+      })
+      .catch((error) => {
+        logExtensionEvent({
+          event: "browser-ai:prompt-create-error",
+          level: "warn",
+          scope: "sidepanel",
+          detail: { imageInput, requestKey, ...errorDetail(error) },
+        });
+        promptSessions.delete(key);
+        return null;
+      });
+    promptSessions.set(key, promise);
+    return promise;
+  };
+
+  const ensurePromptSession = async (
+    requestKey: BrowserAiRequestKey,
+    imageInput: boolean,
+    statusToken: symbol,
+  ): Promise<BrowserLanguageModelSession | null> => {
+    const key = promptSessionKey(requestKey, imageInput);
+    const cached = promptSessions.get(key);
+    if (cached) return await cached;
+    const api = getLanguageModelApi();
+    if (!api) return null;
+    const availability = await api
+      .availability(buildLanguageModelOptions(imageInput))
+      .catch((error) => {
+        logExtensionEvent({
+          event: "browser-ai:prompt-availability-error",
+          level: "warn",
+          scope: "sidepanel",
+          detail: { imageInput, ...errorDetail(error) },
+        });
+        return "unavailable" as const;
+      });
+    if (availability === "unavailable") return null;
+    if (availability === "downloadable" && !isUserActive()) return null;
+    return await createPromptSession(api, requestKey, imageInput, statusToken);
+  };
+
   const prepare = (
     length: BrowserAiSummaryInput["length"],
     requestKey: BrowserAiRequestKey = "summary",
@@ -287,6 +449,21 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     if (!api) return;
     const statusToken = Symbol(`browser-ai:${requestKey}:prepare`);
     void createSession(api, length, requestKey, statusToken).then(() => {
+      clearOwnedStatus(statusToken);
+    });
+  };
+
+  const preparePrompt = (
+    requestKey: BrowserAiRequestKey = "slides",
+    options: { imageInput?: boolean } = {},
+  ) => {
+    const imageInput = options.imageInput === true;
+    const key = promptSessionKey(requestKey, imageInput);
+    if (!isUserActive() || promptSessions.has(key)) return;
+    const api = getLanguageModelApi();
+    if (!api) return;
+    const statusToken = Symbol(`browser-ai:${requestKey}:prompt-prepare`);
+    void createPromptSession(api, requestKey, imageInput, statusToken).then(() => {
       clearOwnedStatus(statusToken);
     });
   };
@@ -382,13 +559,124 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     }
   };
 
+  const prompt = async ({
+    input,
+    responseConstraint,
+    requestKey = "slides",
+    status = "Summarizing with on-device AI…",
+  }: {
+    input: BrowserAiPromptInput;
+    responseConstraint: RegExp;
+    requestKey?: BrowserAiRequestKey;
+    status?: string;
+  }): Promise<BrowserAiPromptResult | null> => {
+    const request = (activeRequests.get(requestKey) ?? 0) + 1;
+    activeRequests.set(requestKey, request);
+    activeControllers.get(requestKey)?.abort();
+    const controller = new AbortController();
+    activeControllers.set(requestKey, controller);
+    const statusToken = Symbol(`browser-ai:${requestKey}:prompt:${request}`);
+    const imageInput = promptUsesImages(input);
+    const key = promptSessionKey(requestKey, imageInput);
+    const chars = promptTextLength(input);
+    const session = await ensurePromptSession(requestKey, imageInput, statusToken);
+    if (!session || request !== activeRequests.get(requestKey)) {
+      if (request === activeRequests.get(requestKey)) {
+        activeControllers.delete(requestKey);
+        clearOwnedStatus(statusToken);
+      }
+      return null;
+    }
+
+    const promptOptions: BrowserLanguageModelPromptOptions = {
+      responseConstraint,
+      omitResponseConstraintInput: true,
+      signal: controller.signal,
+    };
+    let contextUsage: number | null = null;
+    const contextWindow =
+      typeof session.contextWindow === "number" && Number.isFinite(session.contextWindow)
+        ? session.contextWindow
+        : null;
+    setOwnedStatus(requestKey, statusToken, status);
+    logExtensionEvent({
+      event: "browser-ai:prompt-start",
+      level: "verbose",
+      scope: "sidepanel",
+      detail: { chars, imageInput, requestKey },
+    });
+    try {
+      if (session.measureContextUsage) {
+        contextUsage = await session.measureContextUsage(input, {
+          responseConstraint,
+          omitResponseConstraintInput: true,
+        });
+        if (
+          contextWindow != null &&
+          Number.isFinite(contextUsage) &&
+          contextUsage > Math.floor(contextWindow * 0.85)
+        ) {
+          return { kind: "too-large", contextUsage, contextWindow };
+        }
+      }
+      const result = await session.prompt(input, promptOptions);
+      const text = request === activeRequests.get(requestKey) && result.trim() ? result.trim() : "";
+      if (!text) return null;
+      logExtensionEvent({
+        event: "browser-ai:prompt-done",
+        level: "verbose",
+        scope: "sidepanel",
+        detail: {
+          chars,
+          contextUsage,
+          contextWindow,
+          imageInput,
+          requestKey,
+          resultChars: text.length,
+        },
+      });
+      return { kind: "success", text, contextUsage, contextWindow };
+    } catch (error) {
+      if (isQuotaError(error)) {
+        return { kind: "too-large", contextUsage, contextWindow };
+      }
+      logExtensionEvent({
+        event: "browser-ai:prompt-error",
+        level: controller.signal.aborted ? "verbose" : "warn",
+        scope: "sidepanel",
+        detail: {
+          aborted: controller.signal.aborted,
+          chars,
+          imageInput,
+          requestKey,
+          ...errorDetail(error),
+        },
+      });
+      return null;
+    } finally {
+      session.destroy?.();
+      const cached = promptSessions.get(key);
+      if (cached && (await cached) === session) {
+        promptSessions.delete(key);
+      }
+      if (request === activeRequests.get(requestKey)) {
+        activeControllers.delete(requestKey);
+        clearOwnedStatus(statusToken);
+      }
+    }
+  };
+
   const destroy = () => {
     cancel();
     for (const sessionPromise of sessions.values()) {
       void sessionPromise.then((session) => session?.destroy?.());
     }
+    for (const sessionPromise of promptSessions.values()) {
+      void sessionPromise.then((session) => session?.destroy?.());
+    }
     sessions.clear();
+    promptSessions.clear();
   };
 
-  return { cancel, destroy, prepare, summarize };
+  return { cancel, destroy, prepare, preparePrompt, prompt, summarize };
 }

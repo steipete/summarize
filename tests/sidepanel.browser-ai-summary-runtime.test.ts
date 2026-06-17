@@ -169,4 +169,132 @@ describe("sidepanel browser AI summary runtime", () => {
     await expect(overall).resolves.toBe("Overall result");
     expect(create).toHaveBeenCalledTimes(2);
   });
+
+  it("prewarms and runs a constrained Prompt API request", async () => {
+    const session = {
+      contextWindow: 9_216,
+      measureContextUsage: vi.fn(async () => 700),
+      prompt: vi.fn(async () => "[slide:1] A concise summary."),
+      destroy: vi.fn(),
+    };
+    const create = vi.fn(async () => session);
+    const availability = vi.fn(async () => "downloadable" as const);
+    const runtime = createBrowserAiSummaryRuntime({
+      getApi: () => null,
+      getLanguageModelApi: () => ({ availability, create }),
+      isUserActive: () => true,
+      setStatus: vi.fn(),
+    });
+    const constraint = /^\[slide:1\] [^\r\n]{1,180}$/;
+
+    runtime.preparePrompt();
+    await Promise.resolve();
+    const result = await runtime.prompt({
+      input: "INDEX 1\nSource text",
+      responseConstraint: constraint,
+      status: "Summarizing slides…",
+    });
+
+    expect(result).toEqual({
+      kind: "success",
+      text: "[slide:1] A concise summary.",
+      contextUsage: 700,
+      contextWindow: 9_216,
+    });
+    expect(create).toHaveBeenCalledOnce();
+    expect(availability).not.toHaveBeenCalled();
+    expect(session.prompt).toHaveBeenCalledWith("INDEX 1\nSource text", {
+      responseConstraint: constraint,
+      omitResponseConstraintInput: true,
+      signal: expect.any(AbortSignal),
+    });
+    expect(session.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("creates a multimodal Prompt API session for slide images", async () => {
+    const image = new Blob(["image"], { type: "image/jpeg" });
+    const input = [
+      {
+        role: "user" as const,
+        content: [
+          { type: "text" as const, value: "INDEX 1" },
+          { type: "image" as const, value: image },
+        ],
+      },
+    ];
+    const session = {
+      contextWindow: 9_216,
+      measureContextUsage: vi.fn(async () => 900),
+      prompt: vi.fn(async () => "[slide:1] A visible equation is explained."),
+      destroy: vi.fn(),
+    };
+    const create = vi.fn(async () => session);
+    const availability = vi.fn(async () => "downloadable" as const);
+    const runtime = createBrowserAiSummaryRuntime({
+      getApi: () => null,
+      getLanguageModelApi: () => ({ availability, create }),
+      isUserActive: () => true,
+      setStatus: vi.fn(),
+    });
+
+    runtime.preparePrompt("slides", { imageInput: true });
+    await Promise.resolve();
+    await expect(
+      runtime.prompt({
+        input,
+        responseConstraint: /^\[slide:1\] [^\r\n]{1,260}$/,
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        kind: "success",
+        text: "[slide:1] A visible equation is explained.",
+      }),
+    );
+
+    expect(create).toHaveBeenCalledOnce();
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedInputs: [{ type: "text", languages: ["en"] }, { type: "image" }],
+      }),
+    );
+    expect(availability).not.toHaveBeenCalled();
+    expect(session.prompt).toHaveBeenCalledWith(
+      input,
+      expect.objectContaining({
+        omitResponseConstraintInput: true,
+        signal: expect.any(AbortSignal),
+      }),
+    );
+  });
+
+  it("reports context pressure before prompting", async () => {
+    const session = {
+      contextWindow: 1_000,
+      measureContextUsage: vi.fn(async () => 900),
+      prompt: vi.fn(),
+      destroy: vi.fn(),
+    };
+    const runtime = createBrowserAiSummaryRuntime({
+      getApi: () => null,
+      getLanguageModelApi: () => ({
+        availability: vi.fn(async () => "available" as const),
+        create: vi.fn(async () => session),
+      }),
+      isUserActive: () => false,
+      setStatus: vi.fn(),
+    });
+
+    await expect(
+      runtime.prompt({
+        input: "Oversized source",
+        responseConstraint: /^.+$/,
+      }),
+    ).resolves.toEqual({
+      kind: "too-large",
+      contextUsage: 900,
+      contextWindow: 1_000,
+    });
+    expect(session.prompt).not.toHaveBeenCalled();
+    expect(session.destroy).toHaveBeenCalledOnce();
+  });
 });
