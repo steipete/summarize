@@ -1,8 +1,4 @@
-import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
-import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
-import { transcribeWithOnnxCli, transcribeWithOnnxCliFile } from "../onnx-cli.js";
 import { transcribeChunkedFile } from "./chunking.js";
 import { DEFAULT_SEGMENT_SECONDS, MAX_OPENAI_UPLOAD_BYTES } from "./constants.js";
 import {
@@ -11,7 +7,12 @@ import {
 } from "./diarization.js";
 import { isFfmpegAvailable, transcodeBytesToMp3 } from "./ffmpeg.js";
 import { shouldRetryGroqViaFfmpeg, transcribeWithGroq } from "./groq.js";
-import { resolveOnnxModelPreference } from "./preferences.js";
+import {
+  transcribeWithLocalOnnx,
+  transcribeWithLocalOnnxFile,
+  transcribeWithLocalWhisperBytes,
+  transcribeWithLocalWhisperFile,
+} from "./local.js";
 import {
   transcribeBytesWithRemoteFallbacks,
   transcribeFileWithRemoteFallbacks,
@@ -22,8 +23,7 @@ import type {
   WhisperProgressEvent,
   WhisperTranscriptionResult,
 } from "./types.js";
-import { ensureWhisperFilenameExtension, formatBytes, wrapError } from "./utils.js";
-import { isWhisperCppReady, transcribeWithWhisperCppFile } from "./whisper-cpp.js";
+import { formatBytes, wrapError } from "./utils.js";
 
 type Env = Record<string, string | undefined>;
 
@@ -425,192 +425,4 @@ async function transcribeGroqFileFirst({
     `Groq chunked transcription failed; falling back to local/AssemblyAI/Gemini/OpenAI: ${error.message}`,
   );
   return { text: null, provider: "groq", error, notes };
-}
-
-async function transcribeWithLocalOnnx({
-  bytes,
-  mediaType,
-  filename,
-  totalDurationSeconds,
-  onProgress,
-  env,
-  notes,
-}: {
-  bytes: Uint8Array;
-  mediaType: string;
-  filename: string | null;
-  totalDurationSeconds: number | null;
-  onProgress?: ((event: WhisperProgressEvent) => void) | null;
-  env: Env;
-  notes: string[];
-}): Promise<WhisperTranscriptionResult | null> {
-  const onnxPreference = resolveOnnxModelPreference(env);
-  if (!onnxPreference) return null;
-  const onnx = await transcribeWithOnnxCli({
-    model: onnxPreference,
-    bytes,
-    mediaType,
-    filename,
-    totalDurationSeconds,
-    onProgress,
-    env,
-  });
-  if (onnx.text) {
-    if (onnx.notes.length > 0) notes.push(...onnx.notes);
-    return { ...onnx, notes };
-  }
-  if (onnx.notes.length > 0) notes.push(...onnx.notes);
-  if (onnx.error) {
-    notes.push(`${onnx.provider ?? "onnx"} failed; falling back to Whisper: ${onnx.error.message}`);
-  }
-  return null;
-}
-
-async function transcribeWithLocalOnnxFile({
-  filePath,
-  mediaType,
-  totalDurationSeconds,
-  onProgress,
-  env,
-  notes,
-}: {
-  filePath: string;
-  mediaType: string;
-  totalDurationSeconds: number | null;
-  onProgress?: ((event: WhisperProgressEvent) => void) | null;
-  env: Env;
-  notes: string[];
-}): Promise<WhisperTranscriptionResult | null> {
-  const onnxPreference = resolveOnnxModelPreference(env);
-  if (!onnxPreference) return null;
-  onProgress?.({
-    partIndex: null,
-    parts: null,
-    processedDurationSeconds: null,
-    totalDurationSeconds,
-  });
-  const onnx = await transcribeWithOnnxCliFile({
-    model: onnxPreference,
-    filePath,
-    mediaType,
-    totalDurationSeconds,
-    onProgress,
-    env,
-  });
-  if (onnx.text) {
-    if (onnx.notes.length > 0) notes.push(...onnx.notes);
-    return { ...onnx, notes };
-  }
-  if (onnx.notes.length > 0) notes.push(...onnx.notes);
-  if (onnx.error) {
-    notes.push(`${onnx.provider ?? "onnx"} failed; falling back to Whisper: ${onnx.error.message}`);
-  }
-  return null;
-}
-
-async function transcribeWithLocalWhisperBytes({
-  bytes,
-  mediaType,
-  filename,
-  totalDurationSeconds,
-  onProgress,
-  env,
-  notes,
-}: {
-  bytes: Uint8Array;
-  mediaType: string;
-  filename: string | null;
-  totalDurationSeconds: number | null;
-  onProgress?: ((event: WhisperProgressEvent) => void) | null;
-  env: Env;
-  notes: string[];
-}): Promise<WhisperTranscriptionResult | null> {
-  const localReady = await isWhisperCppReady(env);
-  if (!localReady) return null;
-  const nameHint = filename?.trim() ? basename(filename.trim()) : "media";
-  const tempFile = join(
-    tmpdir(),
-    `summarize-whisper-local-${randomUUID()}-${ensureWhisperFilenameExtension(nameHint, mediaType)}`,
-  );
-  try {
-    await fs.writeFile(tempFile, bytes);
-    const result = await safeTranscribeWithWhisperCppFile({
-      filePath: tempFile,
-      mediaType,
-      totalDurationSeconds,
-      onProgress,
-      env,
-    });
-    if (result.text) {
-      if (result.notes.length > 0) notes.push(...result.notes);
-      return { ...result, notes };
-    }
-    if (result.notes.length > 0) notes.push(...result.notes);
-    if (result.error) {
-      notes.push(`whisper.cpp failed; falling back to remote Whisper: ${result.error.message}`);
-    }
-    return null;
-  } finally {
-    await fs.unlink(tempFile).catch(() => {});
-  }
-}
-
-async function transcribeWithLocalWhisperFile({
-  filePath,
-  mediaType,
-  totalDurationSeconds,
-  onProgress,
-  env,
-  notes,
-}: {
-  filePath: string;
-  mediaType: string;
-  totalDurationSeconds: number | null;
-  onProgress?: ((event: WhisperProgressEvent) => void) | null;
-  env: Env;
-  notes: string[];
-}): Promise<WhisperTranscriptionResult | null> {
-  const localReady = await isWhisperCppReady(env);
-  if (!localReady) return null;
-  onProgress?.({
-    partIndex: null,
-    parts: null,
-    processedDurationSeconds: null,
-    totalDurationSeconds,
-  });
-  const result = await safeTranscribeWithWhisperCppFile({
-    filePath,
-    mediaType,
-    totalDurationSeconds,
-    onProgress,
-    env,
-  });
-  if (result.text) {
-    if (result.notes.length > 0) notes.push(...result.notes);
-    return { ...result, notes };
-  }
-  if (result.notes.length > 0) notes.push(...result.notes);
-  if (result.error) {
-    notes.push(`whisper.cpp failed; falling back to remote Whisper: ${result.error.message}`);
-  }
-  return null;
-}
-
-async function safeTranscribeWithWhisperCppFile(args: {
-  filePath: string;
-  mediaType: string;
-  totalDurationSeconds: number | null;
-  onProgress?: ((event: WhisperProgressEvent) => void) | null;
-  env: Env;
-}): Promise<WhisperTranscriptionResult> {
-  try {
-    return await transcribeWithWhisperCppFile(args);
-  } catch (error) {
-    return {
-      text: null,
-      provider: "whisper.cpp",
-      error: wrapError("whisper.cpp failed", error),
-      notes: [],
-    };
-  }
 }

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_OPENAI_UPLOAD_BYTES } from "../packages/core/src/transcription/whisper/constants.js";
+import { transcribeOpenAiMediaFileInChunks } from "../packages/core/src/transcription/whisper/diarization-openai-chunks.js";
 import {
   buildDiarizationModelChain,
   isRetryableOpenAiError,
@@ -60,6 +61,15 @@ describe("transcription diarization", () => {
       ),
     ).toBe(true);
     expect(isRetryableOpenAiError(new Error("invalid diarized segment payload"))).toBe(false);
+    expect(isRetryableOpenAiError(new OpenAiTranscriptionHttpError(408, null, null))).toBe(true);
+    expect(isRetryableOpenAiError(new OpenAiTranscriptionHttpError(409, null, null))).toBe(true);
+    expect(isRetryableOpenAiError(new OpenAiTranscriptionHttpError(500, null, null))).toBe(true);
+    expect(isRetryableOpenAiError(new DOMException("aborted", "AbortError"))).toBe(true);
+    expect(isRetryableOpenAiError(new DOMException("bad", "SyntaxError"))).toBe(false);
+    expect(isRetryableOpenAiError(new TypeError("invalid payload"))).toBe(false);
+    expect(
+      isRetryableOpenAiError(Object.assign(new TypeError("request failed"), { cause: null })),
+    ).toBe(false);
   });
 
   beforeEach(() => {
@@ -73,6 +83,138 @@ describe("transcription diarization", () => {
     ffmpegMocks.runFfmpegTranscodeToMp3.mockImplementation(async ({ outputPath }) => {
       await writeFile(outputPath, new Uint8Array([4, 5, 6]));
     });
+  });
+
+  it("executes and cleans up OpenAI diarization chunks", async () => {
+    ffmpegMocks.runFfmpegSegment.mockImplementation(async ({ outputPattern }) => {
+      await writeFile(outputPattern.replace("%05d", "00000"), new Uint8Array([1, 2, 3]));
+    });
+    const progress = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              segments: [
+                { start: 0, end: 1, speaker: "A", text: "First." },
+                { start: 1, end: 2, speaker: "B", text: "Second." },
+                { start: 2, speaker: "A", text: "Again." },
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+
+    try {
+      const result = await transcribeOpenAiMediaFileInChunks({
+        filePath: "/unused/input.mp3",
+        apiKey: "OPENAI",
+        env: {},
+        totalDurationSeconds: 600,
+        onProgress: progress,
+      });
+
+      expect(result.text).toBe("Speaker 1: First.\nSpeaker 2: Second.\nSpeaker 1: Again.");
+      expect(result.segments).toEqual([
+        { startMs: 0, endMs: 1_000, speaker: "Speaker 1", text: "First." },
+        { startMs: 1_000, endMs: 2_000, speaker: "Speaker 2", text: "Second." },
+        { startMs: 2_000, endMs: null, speaker: "Speaker 1", text: "Again." },
+      ]);
+      expect(progress).toHaveBeenCalledWith({
+        partIndex: 1,
+        parts: 1,
+        processedDurationSeconds: 300,
+        totalDurationSeconds: 600,
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("rejects chunked OpenAI diarization without ffmpeg", async () => {
+    ffmpegMocks.isFfmpegAvailable.mockResolvedValue(false);
+    await expect(
+      transcribeOpenAiMediaFileInChunks({
+        filePath: "/unused/input.mp3",
+        apiKey: "OPENAI",
+        env: {},
+        totalDurationSeconds: null,
+      }),
+    ).rejects.toThrow("requires ffmpeg");
+  });
+
+  it("rejects when ffmpeg produces no diarization chunks", async () => {
+    ffmpegMocks.runFfmpegSegment.mockResolvedValue(undefined);
+    await expect(
+      transcribeOpenAiMediaFileInChunks({
+        filePath: "/unused/input.mp3",
+        apiKey: "OPENAI",
+        env: {},
+        totalDurationSeconds: null,
+      }),
+    ).rejects.toThrow("produced no OpenAI diarization chunks");
+  });
+
+  it("propagates non-retryable OpenAI chunk failures", async () => {
+    ffmpegMocks.runFfmpegSegment.mockImplementation(async ({ outputPattern }) => {
+      await writeFile(outputPattern.replace("%05d", "00000"), new Uint8Array([1]));
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("bad request", { status: 400 })),
+    );
+
+    try {
+      await expect(
+        transcribeOpenAiMediaFileInChunks({
+          filePath: "/unused/input.mp3",
+          apiKey: "OPENAI",
+          env: {},
+          totalDurationSeconds: null,
+        }),
+      ).rejects.toMatchObject({ status: 400 });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("retries transient OpenAI chunk failures", async () => {
+    ffmpegMocks.runFfmpegSegment.mockImplementation(async ({ outputPattern }) => {
+      await writeFile(outputPattern.replace("%05d", "00000"), new Uint8Array([1]));
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("temporary", { status: 500 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            segments: [{ start: 0, end: 1, speaker: "A", text: "Recovered." }],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const timeoutSpy = vi.spyOn(globalThis, "setTimeout").mockImplementation((callback) => {
+      queueMicrotask(() => callback());
+      return undefined as unknown as ReturnType<typeof setTimeout>;
+    });
+
+    try {
+      await expect(
+        transcribeOpenAiMediaFileInChunks({
+          filePath: "/unused/input.mp3",
+          apiKey: "OPENAI",
+          env: {},
+          totalDurationSeconds: null,
+        }),
+      ).resolves.toMatchObject({ text: "Speaker 1: Recovered." });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      timeoutSpy.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("prefers ElevenLabs and falls back to OpenAI in auto mode", () => {
