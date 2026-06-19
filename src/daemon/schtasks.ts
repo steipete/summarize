@@ -59,7 +59,7 @@ function buildScheduledTaskXml({
   // daemon look like it was failing to start. Register via /XML so we can flip
   // those flags off and own every other relevant setting too.
   return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<?xml version="1.0"?>',
     '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">',
     "  <RegistrationInfo>",
     "    <Author>summarize</Author>",
