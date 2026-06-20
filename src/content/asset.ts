@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Message } from "@earendil-works/pi-ai";
 import { fileTypeFromBuffer } from "file-type";
 import mime from "mime";
@@ -24,6 +25,16 @@ export type AssetAttachment = {
 };
 
 const MAX_ASSET_BYTES_DEFAULT = 50 * 1024 * 1024;
+
+export function resolveFileUrlPath(url: URL, options?: { windows?: boolean }): string {
+  const normalized = new URL(url.href);
+  normalized.search = "";
+  normalized.hash = "";
+  if (typeof options?.windows === "boolean") {
+    return fileURLToPath(normalized, { windows: options.windows });
+  }
+  return fileURLToPath(normalized);
+}
 
 function normalizeUrlInput(raw: string): string {
   return (
@@ -222,7 +233,7 @@ export function resolveInputTarget(raw: string): InputTarget {
   }
 
   if (parsed.protocol === "file:") {
-    const filePath = path.resolve(decodeURIComponent(parsed.pathname));
+    const filePath = resolveFileUrlPath(parsed);
     return { kind: "file", filePath };
   }
 

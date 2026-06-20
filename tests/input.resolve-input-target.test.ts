@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveInputTarget } from "../src/content/asset.js";
+import { resolveFileUrlPath, resolveInputTarget } from "../src/content/asset.js";
 
 describe("resolveInputTarget", () => {
   it("accepts valid URLs unchanged", () => {
@@ -91,6 +91,30 @@ describe("resolveInputTarget", () => {
     expect(resolveInputTarget("  -  ")).toEqual({
       kind: "stdin",
     });
+  });
+
+  it("rejects non-local file URL hosts on POSIX", () => {
+    expect(() =>
+      resolveFileUrlPath(new URL("file://not-localhost/tmp/summarize.txt"), { windows: false }),
+    ).toThrow(/File URL host/i);
+  });
+
+  it("rejects encoded path separators in file URLs", () => {
+    expect(() => resolveInputTarget("file:///tmp/a%2Fb.txt")).toThrow(/encoded .* characters/i);
+  });
+
+  it("uses Node file URL parsing for Windows drive and UNC paths", () => {
+    expect(resolveFileUrlPath(new URL("file:///C:/Users/Alice/input.txt"), { windows: true })).toBe(
+      "C:\\Users\\Alice\\input.txt",
+    );
+    expect(resolveFileUrlPath(new URL("file://server/share/input.txt"), { windows: true })).toBe(
+      "\\\\server\\share\\input.txt",
+    );
+    expect(
+      resolveFileUrlPath(new URL("file:///C:/Users/Alice/My%20Docs/resume.pdf"), {
+        windows: true,
+      }),
+    ).toBe("C:\\Users\\Alice\\My Docs\\resume.pdf");
   });
 
   it("throws when neither file nor URL can be resolved", () => {
