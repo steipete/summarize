@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { isHoverSummarizeUrlAllowed } from "../apps/chrome-extension/src/entrypoints/background/hover-controller.js";
-import { shouldHandleHoverTriggerEvent } from "../apps/chrome-extension/src/entrypoints/hover.content.js";
+import {
+  shouldHandleHoverTriggerEvent,
+  shouldStartHoverRequest,
+} from "../apps/chrome-extension/src/entrypoints/hover.content.js";
 
 describe("hover summary security boundaries", () => {
   it("ignores synthetic hover events from page script", () => {
@@ -9,6 +12,15 @@ describe("hover summary security boundaries", () => {
 
   it("accepts browser-trusted hover events", () => {
     expect(shouldHandleHoverTriggerEvent({ isTrusted: true })).toBe(true);
+  });
+
+  it("does not require a daemon token before asking the background to summarize", () => {
+    expect(shouldStartHoverRequest({ hoverSummaries: true, token: "" })).toBe(true);
+  });
+
+  it("respects disabled hover summaries before asking the background to summarize", () => {
+    expect(shouldStartHoverRequest({ hoverSummaries: false, token: "token" })).toBe(false);
+    expect(shouldStartHoverRequest(null)).toBe(false);
   });
 
   it("rejects hover summaries for localhost and private literal hosts", () => {

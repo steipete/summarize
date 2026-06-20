@@ -118,6 +118,12 @@ export function shouldHandleHoverTriggerEvent(event: Pick<Event, "isTrusted">): 
   return event.isTrusted === true;
 }
 
+export function shouldStartHoverRequest(
+  settings: Pick<Settings, "hoverSummaries" | "token"> | null,
+): boolean {
+  return Boolean(settings?.hoverSummaries);
+}
+
 function ensureTooltip(): Tooltip {
   ensureStyle();
   let el = document.getElementById(TOOLTIP_ID) as HTMLDivElement | null;
@@ -346,10 +352,9 @@ export default defineContentScript({
 
     const handleHover = async (anchor: HTMLAnchorElement) => {
       if (!settingsLoaded) await refreshSettings();
-      if (!settings?.hoverSummaries) return;
+      if (!shouldStartHoverRequest(settings)) return;
       const url = resolveUrl(anchor);
       if (!url) return;
-      if (!settings.token.trim()) return;
 
       activeAnchor = anchor;
       activeUrl = url;
