@@ -59,7 +59,7 @@ function buildScheduledTaskXml({
   // daemon look like it was failing to start. Register via /XML so we can flip
   // those flags off and own every other relevant setting too.
   return [
-    '<?xml version="1.0"?>',
+    '<?xml version="1.0" encoding="UTF-16"?>',
     '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">',
     "  <RegistrationInfo>",
     "    <Author>summarize</Author>",
@@ -104,6 +104,12 @@ function buildScheduledTaskXml({
     "</Task>",
     "",
   ].join("\r\n");
+}
+
+function encodeScheduledTaskXml(xml: string): Buffer {
+  // Task Scheduler reliably imports UTF-16 XML across Windows ANSI code pages.
+  // Keep the BOM, declaration, and bytes aligned so localized values survive.
+  return Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(xml, "utf16le")]);
 }
 
 function resolveLegacyLauncherPath(env: Record<string, string | undefined>): string {
@@ -331,7 +337,7 @@ export async function installScheduledTask({
 
   const userPrincipal = resolveCurrentUserPrincipal(env);
   const xml = buildScheduledTaskXml({ launcherPath, userPrincipal });
-  await fs.writeFile(xmlPath, xml, "utf8");
+  await fs.writeFile(xmlPath, encodeScheduledTaskXml(xml));
 
   const create = await execSchtasks([
     "/Create",

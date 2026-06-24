@@ -93,8 +93,10 @@ describe("daemon/schtasks install", () => {
     expect(launcher).toContain('sh.Run "node dist/cli.js daemon run", 0, False');
 
     const xmlPath = path.join(home, ".summarize", "daemon-task.xml");
-    const xml = readFileSync(xmlPath, "utf8");
-    expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+    const xmlBytes = readFileSync(xmlPath);
+    expect(xmlBytes.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xfe]));
+    const xml = xmlBytes.subarray(2).toString("utf16le");
+    expect(xml).toContain('<?xml version="1.0" encoding="UTF-16"?>');
     expect(xml).toContain("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>");
     expect(xml).toContain("<StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>");
     expect(xml).toContain("<Hidden>true</Hidden>");
@@ -116,6 +118,25 @@ describe("daemon/schtasks install", () => {
     expect(createArgs).not.toContain("/TR");
   });
 
+  it("preserves non-ASCII principals and launcher paths in UTF-16 task XML", async () => {
+    mockExecFileSuccess();
+    const root = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
+    const home = path.join(root, "用户 资料");
+    const out = collectStream();
+
+    await installScheduledTask({
+      env: { HOME: home, USERNAME: "测试用户", USERDOMAIN: "本机" },
+      stdout: out.stream,
+      programArguments: ["node", "dist/cli.js", "daemon", "run"],
+    });
+
+    const xmlBytes = readFileSync(path.join(home, ".summarize", "daemon-task.xml"));
+    expect(xmlBytes.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xfe]));
+    const xml = xmlBytes.subarray(2).toString("utf16le");
+    expect(xml).toContain("<UserId>本机\\测试用户</UserId>");
+    expect(xml).toContain(`&quot;${path.join(home, ".summarize", "daemon-launch.vbs")}&quot;`);
+  });
+
   it("falls back to COMPUTERNAME when USERDOMAIN is missing", async () => {
     mockExecFileSuccess();
     const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
@@ -127,7 +148,9 @@ describe("daemon/schtasks install", () => {
       programArguments: ["node", "dist/cli.js", "daemon", "run"],
     });
 
-    const xml = readFileSync(path.join(home, ".summarize", "daemon-task.xml"), "utf8");
+    const xml = readFileSync(path.join(home, ".summarize", "daemon-task.xml"))
+      .subarray(2)
+      .toString("utf16le");
     expect(xml).toContain("<UserId>FALLBACK\\testuser</UserId>");
   });
 
