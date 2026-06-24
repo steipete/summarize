@@ -60,7 +60,7 @@
     "typecheck": "pnpm -C packages/core typecheck && tsgo -p tsconfig.build.json --noEmit"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^0.79.4",
+    "@earendil-works/pi-ai": "^0.80.2",
     "@steipete/summarize-core": "workspace:*",
     "bpe-lite": "^0.5.2",
     "commander": "^15.0.0",

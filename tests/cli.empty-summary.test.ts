@@ -24,7 +24,7 @@ mocks.completeSimple.mockImplementation(async (model: MockModel) =>
   makeAssistantMessage({ text: "   ", provider: model.provider, model: model.id, api: model.api }),
 );
 
-vi.mock("@earendil-works/pi-ai", () => ({
+vi.mock("@earendil-works/pi-ai/compat", () => ({
   completeSimple: mocks.completeSimple,
   streamSimple: mocks.streamSimple,
   getModel: mocks.getModel,

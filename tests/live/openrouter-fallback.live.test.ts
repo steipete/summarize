@@ -1,4 +1,4 @@
-import { getModels } from "@earendil-works/pi-ai";
+import { getModels } from "@earendil-works/pi-ai/compat";
 import { describe, expect, it } from "vitest";
 import type { SummarizeConfig } from "../../src/config.js";
 import { generateTextWithModelId } from "../../src/llm/generate-text.js";

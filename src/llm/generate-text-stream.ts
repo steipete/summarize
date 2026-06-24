@@ -1,5 +1,5 @@
-import { streamSimple } from "@earendil-works/pi-ai";
 import type { AssistantMessage, Context } from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
 import { createUnsupportedFunctionalityError } from "./errors.js";
 import {
   resolveEffectiveTemperature,
@@ -358,14 +358,14 @@ export async function streamTextWithContext({
     if (providerProfile.execution === "anthropic") {
       const apiKey = apiKeys.anthropicApiKey;
       if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY for anthropic/... model");
-      const baseModel = resolveAnthropicModel({
+      const { model: baseModel, isSyntheticCustomGateway } = resolveAnthropicModel({
         modelId: parsed.model,
         context,
         anthropicBaseUrlOverride,
       });
       const { model, reasoning } = prepareAnthropicReasoning({
-        modelId: parsed.model,
         baseModel,
+        isSyntheticCustomGateway,
         reasoningEffort: requestOptions?.reasoningEffort,
       });
       const stream = streamSimple(model, context, {

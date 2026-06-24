@@ -9,6 +9,7 @@
 - LLM summaries: retry transient API and pre-output streaming failures such as HTTP 502 instead of failing immediately.
 - Dependencies: update eligible runtime, test, lint, formatting, and extension tooling releases.
 - Chrome extension: allow Direct and Ollama hover summaries without a daemon token (#317, thanks @vincent-peng).
+- Anthropic custom gateways: request adaptive thinking for synthetic models so Bedrock-compatible proxies accept configured reasoning (#321, thanks @wangwllu).
 
 ## 0.20.0 - 2026-06-19
 

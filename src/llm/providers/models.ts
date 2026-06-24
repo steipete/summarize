@@ -264,31 +264,36 @@ export function resolveAnthropicModel({
   modelId: string;
   context: Context;
   anthropicBaseUrlOverride?: string | null;
-}): Model<Api> {
+}): { model: Model<Api>; isSyntheticCustomGateway: boolean } {
   const allowImages = wantsImages(context);
   const base = tryGetModel("anthropic", modelId);
   const override = resolveBaseUrlOverride(anthropicBaseUrlOverride);
   if (override) {
     return {
-      ...(base ??
-        createSyntheticModel({
-          provider: "anthropic",
-          modelId,
-          api: "anthropic-messages",
-          baseUrl: override,
-          allowImages,
-        })),
-      baseUrl: override,
+      model: {
+        ...(base ??
+          createSyntheticModel({
+            provider: "anthropic",
+            modelId,
+            api: "anthropic-messages",
+            baseUrl: override,
+            allowImages,
+          })),
+        baseUrl: override,
+      },
+      isSyntheticCustomGateway: !base,
     };
   }
-  return (
-    base ??
-    createSyntheticModel({
-      provider: "anthropic",
-      modelId,
-      api: "anthropic-messages",
-      baseUrl: "https://api.anthropic.com",
-      allowImages,
-    })
-  );
+  return {
+    model:
+      base ??
+      createSyntheticModel({
+        provider: "anthropic",
+        modelId,
+        api: "anthropic-messages",
+        baseUrl: "https://api.anthropic.com",
+        allowImages,
+      }),
+    isSyntheticCustomGateway: false,
+  };
 }

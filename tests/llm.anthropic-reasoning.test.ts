@@ -24,7 +24,10 @@ function makeBase(
 describe("prepareAnthropicReasoning", () => {
   it("returns the base model untouched when no effort is requested", () => {
     const baseModel = makeBase("claude-opus-4-5", true);
-    const result = prepareAnthropicReasoning({ modelId: "claude-opus-4-5", baseModel });
+    const result = prepareAnthropicReasoning({
+      baseModel,
+      isSyntheticCustomGateway: false,
+    });
     expect(result.model).toBe(baseModel);
     expect(result.reasoning).toBeUndefined();
   });
@@ -32,8 +35,8 @@ describe("prepareAnthropicReasoning", () => {
   it("treats 'none' as off and does not forward reasoning", () => {
     const baseModel = makeBase("claude-opus-4-5", true);
     const result = prepareAnthropicReasoning({
-      modelId: "claude-opus-4-5",
       baseModel,
+      isSyntheticCustomGateway: false,
       reasoningEffort: "none",
     });
     expect(result.reasoning).toBeUndefined();
@@ -45,8 +48,8 @@ describe("prepareAnthropicReasoning", () => {
     // returns it intact so we should not flip any flags.
     const baseModel = makeBase("claude-opus-4-5", true);
     const result = prepareAnthropicReasoning({
-      modelId: "claude-opus-4-5",
       baseModel,
+      isSyntheticCustomGateway: false,
       reasoningEffort: "xhigh",
     });
     expect(result.reasoning).toBe("xhigh");
@@ -61,8 +64,8 @@ describe("prepareAnthropicReasoning", () => {
     // when the user has a global `thinking` setting active.
     const baseModel = makeBase("claude-3-5-sonnet-20241022", false);
     const result = prepareAnthropicReasoning({
-      modelId: "claude-3-5-sonnet-20241022",
       baseModel,
+      isSyntheticCustomGateway: false,
       reasoningEffort: "high",
     });
     expect(result.model).toBe(baseModel);
@@ -84,8 +87,8 @@ describe("prepareAnthropicReasoning", () => {
       "https://proxy.example/anthropic",
     );
     const result = prepareAnthropicReasoning({
-      modelId: "Definitely-Not-A-Real-Claude-Model-Id-42",
       baseModel,
+      isSyntheticCustomGateway: true,
       reasoningEffort: "xhigh",
     });
     expect(result.reasoning).toBe("xhigh");
