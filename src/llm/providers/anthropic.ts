@@ -184,7 +184,12 @@ export async function completeAnthropicDocument({
     throw new Error("Internal error: expected a document attachment for Anthropic.");
   }
   const baseUrl = resolveBaseUrlOverride(anthropicBaseUrlOverride) ?? "https://api.anthropic.com";
-  const url = new URL("/v1/messages", baseUrl);
+  // Join onto the base URL so a path prefix on the override survives. Using
+  // `new URL("/v1/messages", baseUrl)` would treat the absolute path as
+  // root-relative and discard any prefix (e.g. a custom Anthropic-compatible
+  // gateway exposed at `https://host/anthropic` would lose `/anthropic` and
+  // POST to `https://host/v1/messages`). Mirror completeGoogleDocument's join.
+  const url = new URL(`${baseUrl.replace(/\/$/, "")}/v1/messages`);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const payload = {
