@@ -2,6 +2,10 @@
 
 ## 0.20.2 - Unreleased
 
+### Fixes
+
+- Anthropic custom gateways: preserve path prefixes when sending PDF document requests (#325, thanks @wangwllu).
+
 ## 0.20.1 - 2026-06-24
 
 ### Fixes
