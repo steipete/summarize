@@ -171,6 +171,17 @@ describe("package bin wrappers", () => {
     }
   });
 
+  it("documents extract and local video support in visible help", () => {
+    const mainHelp = buildProgram().helpInformation();
+    expect(mainHelp).toMatch(/URLs,\s+media,\s+and local PDFs/);
+    expect(mainHelp).toContain("stdin is unsupported");
+    expect(mainHelp).toContain("or local video files");
+
+    const slidesHelp = buildSlidesProgram().helpInformation();
+    expect(slidesHelp).toContain("Usage: summarize slides [options] <source>");
+    expect(slidesHelp).toMatch(/local\s+video\s+file/);
+  });
+
   it("routes fish subcommands from the first CLI argument", async () => {
     const fish = await readFile("completions/summarize.fish", "utf8");
 

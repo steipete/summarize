@@ -2,16 +2,16 @@
 title: summarize slides
 permalink: /docs/commands/slides.html
 kicker: command
-summary: "Extract scene-change keyframes from a video URL into PNG files."
+summary: "Extract scene-change keyframes from a video source into PNG files."
 ---
 
 # `summarize slides`
 
 ```text
-summarize slides <url> [flags]
+summarize slides <source> [flags]
 ```
 
-Extracts slide-shaped keyframes from a YouTube or direct video URL using FFmpeg scene detection. Native ffmpeg is preferred; bundled FFmpeg WebAssembly is used when native `ffmpeg`/`ffprobe` are unavailable. Output is a directory of PNGs (and optional OCR text). This is the standalone form of the `--slides` flag on the main command — useful when you only want the slides without a summary.
+Extracts slide-shaped keyframes from a YouTube URL, direct video URL, or local video file using FFmpeg scene detection. Native ffmpeg is preferred; bundled FFmpeg WebAssembly is used when native `ffmpeg`/`ffprobe` are unavailable. Output is a directory of PNGs (and optional OCR text). This is the standalone form of the `--slides` flag on the main command — useful when you only want the slides without a summary.
 
 ## Synopsis
 
@@ -20,6 +20,7 @@ summarize slides "https://youtu.be/..."
 summarize slides "https://youtu.be/..." --render auto
 summarize slides "https://youtu.be/..." --slides-ocr -o ./out
 summarize slides "https://example.com/lecture.mp4" --slides-max 12
+summarize slides ./lecture.mp4 --slides-max 12
 ```
 
 ## Requirements

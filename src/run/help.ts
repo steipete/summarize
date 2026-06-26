@@ -79,7 +79,7 @@ export function buildProgram() {
     )
     .option(
       "--slides [value]",
-      "Extract slides for YouTube/direct video URLs and render them inline inside the summary narrative (when supported). Combine with --extract to interleave slides in the full transcript.",
+      "Extract slides for YouTube/direct video URLs or local video files and render them inline inside the summary narrative (when supported). Combine with --extract to interleave slides in the full transcript.",
     )
     .option("--slides-debug", "Show slide image paths instead of rendering inline images.", false)
     .option("--slides-ocr", "Run OCR on extracted slides (requires tesseract).", false)
@@ -193,7 +193,11 @@ export function buildProgram() {
         "Use a CLI provider: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi (equivalent to --model cli/<provider>). If omitted, use auto selection with CLI enabled.",
       ),
     )
-    .option("--extract", "Print extracted content and exit (no LLM summary)", false)
+    .option(
+      "--extract",
+      "Print extracted content and exit: URLs, media, and local PDFs; stdin is unsupported.",
+      false,
+    )
     .addOption(new Option("--extract-only", "Deprecated alias for --extract").hideHelp())
     .option("--json", "Output structured JSON (includes prompt + metrics)", false)
     .option(
@@ -248,8 +252,10 @@ export function applyHelpStyle(
 export function buildSlidesProgram() {
   return new Command()
     .name("summarize slides")
-    .description("Extract slide screenshots from a YouTube or direct video URL.")
-    .argument("<url>", "YouTube or direct video URL")
+    .description(
+      "Extract slide screenshots from a YouTube URL, direct video URL, or local video file.",
+    )
+    .argument("<source>", "YouTube URL, direct video URL, or local video file")
     .option("--slides-ocr", "Run OCR on extracted slides (requires tesseract).", false)
     .option("--slides-dir <dir>", "Base output dir for slides (default: ./slides).", "slides")
     .option("-o, --output <dir>", "Alias for --slides-dir.", undefined)

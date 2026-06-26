@@ -12,7 +12,7 @@ summary: "Every summarize subcommand and flag, with examples."
 ## Subcommands
 
 - [`summarize`](summarize.md) — main command. Takes a URL, file, or stdin and produces a summary or extracted content.
-- [`summarize slides`](slides.md) — extract scene-change keyframes from a video URL into PNGs (and optional OCR text). Standalone version of the `--slides` flag.
+- [`summarize slides`](slides.md) — extract scene-change keyframes from a YouTube URL, direct video URL, or local video file into PNGs (and optional OCR text). Standalone version of the `--slides` flag.
 - [`summarize transcriber`](transcriber.md) — set up local ONNX transcription (Parakeet, Canary). Prints the env vars you need.
 - [`summarize daemon`](daemon.md) — manage the local HTTP daemon that the Chrome Side Panel talks to. Subcommands: `install`, `restart`, `status`, `uninstall`, `run`.
 - [`summarize refresh-free`](refresh-free.md) — scan OpenRouter `:free` models, write working candidates to `~/.summarize/config.json`.

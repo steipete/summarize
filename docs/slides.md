@@ -57,13 +57,13 @@ read_when:
 
 ## CLI
 
-- `summarize <url> --slides` streams a short intro paragraph and then a continuous narrative with slide images inserted inline where `[slide:N]` markers appear.
+- `summarize <source> --slides` streams a short intro paragraph and then a continuous narrative with slide images inserted inline where `[slide:N]` markers appear. The source can be a YouTube URL, direct video URL, or local video file.
   - The model is responsible for inserting every slide marker in order; text length is still governed by `--length`.
   - If inline images are unsupported, the CLI prints text-only output and notes how to export slides to disk.
   - Timestamp links use OSC-8 when supported (YouTube/Vimeo/Loom/Dropbox).
   - Progress line reports slide extraction steps (includes slide counts when available).
-- `summarize <url> --slides --extract` prints the full timed transcript and inserts slide images inline at matching timestamps.
-- `summarize slides <url>` extracts slides without summarizing (use `--render auto|kitty|iterm` for inline thumbnails).
+- `summarize <source> --slides --extract` prints the full timed transcript and inserts slide images inline at matching timestamps.
+- `summarize slides <source>` extracts slides without summarizing (use `--render auto|kitty|iterm` for inline thumbnails).
 - Defaults to writing images under `./slides/<sourceId>/` (override via `--slides-dir` / `--output`).
 
 ## Implementation notes

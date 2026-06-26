@@ -11,7 +11,7 @@ summary: "Main command. URL, file, or stdin → clean text → summary."
 summarize [input] [flags]
 ```
 
-Takes a URL, local file path, or `-` for stdin and produces a summary. With `--extract`, prints cleaned content instead of summarizing.
+Takes a URL, local file path, or `-` for stdin and produces a summary. With `--extract`, prints cleaned content instead of summarizing; stdin is not supported in extract mode.
 
 ## Synopsis
 
@@ -37,7 +37,8 @@ If `[input]` is omitted, summarize prints concise help and exits.
 ### Extraction
 
 `--extract`
-: Print extracted content and exit. No LLM call. The `--extract-only` alias is hidden but still works.
+: Print extracted content and exit. No LLM call. Supports URLs, YouTube/direct media, local audio/video, and local PDFs; `-` stdin is not supported. The `--extract-only` alias is hidden but still works.
+: Extraction can still use configured remote transcription, OCR, or Markdown providers for media/PDF inputs.
 
 `--format <format>`
 : `md` or `text`. Controls website extraction format and whether files are preprocessed to Markdown for model compatibility. Default: `text`. Default in `--extract` mode for URLs: `md`.
@@ -87,7 +88,7 @@ If `[input]` is omitted, summarize prints concise help and exits.
 ### Slides
 
 `--slides [value]`
-: Extract slides from a video URL and render inline alongside the summary. Combine with `--extract` to interleave slides in the full transcript. See [Slides mode](../slides.md).
+: Extract slides from a YouTube URL, direct video URL, or local video file and render inline alongside the summary. Combine with `--extract` to interleave slides in the full transcript. See [Slides mode](../slides.md).
 
 `--slides-ocr`
 : Run OCR on extracted slides. Requires `tesseract`.
