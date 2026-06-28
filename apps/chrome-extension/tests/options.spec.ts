@@ -236,6 +236,57 @@ test("options exposes two AI connections and independent slide runtimes", async 
   }
 });
 
+test("options stores an OpenAI key for direct mode without requiring the daemon", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, {
+      summaryRuntime: "daemon",
+      slideRuntime: "daemon",
+      provider: "openrouter",
+      providerApiKeys: {},
+    });
+    const page = await openExtensionPage(harness, "options.html", "#tabs");
+
+    await page.click("#tab-runtime");
+    await page.locator('#summaryRuntimeMode input[value="direct"]').click();
+    await page.locator('#slideRuntimeMode input[value="browser"]').click();
+    await page.locator("#provider").selectOption("openai");
+    await page.locator("#providerApiKey").fill("sk-test-direct-openai");
+
+    await expect
+      .poll(async () => {
+        const settings = await getSettings(harness);
+        return {
+          summaryRuntime: settings.summaryRuntime,
+          slideRuntime: settings.slideRuntime,
+          provider: settings.provider,
+          key: settings.providerApiKeys?.openai,
+        };
+      })
+      .toEqual({
+        summaryRuntime: "direct",
+        slideRuntime: "browser",
+        provider: "openai",
+        key: "sk-test-direct-openai",
+      });
+
+    await page.reload();
+    await page.click("#tab-runtime");
+    await expect(page.locator('#summaryRuntimeMode input[value="direct"]')).toBeChecked();
+    await expect(page.locator('#slideRuntimeMode input[value="browser"]')).toBeChecked();
+    await expect(page.locator("#provider")).toHaveValue("openai");
+    await expect(page.locator("#providerApiKey")).toHaveValue("sk-test-direct-openai");
+    await expect(page.locator("#daemonStatus")).toContainText("Daemon not selected");
+
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
 test("options disables automation permissions button when granted", async ({
   browserName: _browserName,
 }, testInfo) => {
