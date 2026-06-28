@@ -120,15 +120,30 @@ export function shouldHandleHoverTriggerEvent(event: Pick<Event, "isTrusted">): 
 }
 
 export function shouldStartHoverRequest(
-  settings: Pick<
-    Settings,
-    "hoverSummaries" | "model" | "provider" | "providerApiKeys" | "summaryRuntime" | "token"
-  > | null,
+  settings:
+    | (Pick<Settings, "hoverSummaries"> &
+        Partial<
+          Pick<Settings, "model" | "provider" | "providerApiKeys" | "summaryRuntime" | "token">
+        >)
+    | null,
 ): boolean {
-  return Boolean(
-    settings?.hoverSummaries &&
-    (resolveCapabilityExecution(settings) !== "daemon" || settings.token.trim()),
-  );
+  if (!settings?.hoverSummaries) return false;
+  if (
+    !settings.model ||
+    !settings.provider ||
+    !settings.providerApiKeys ||
+    !settings.summaryRuntime
+  ) {
+    return true;
+  }
+  return resolveCapabilityExecution({
+    model: settings.model,
+    provider: settings.provider,
+    providerApiKeys: settings.providerApiKeys,
+    summaryRuntime: settings.summaryRuntime,
+  }) !== "daemon"
+    ? true
+    : Boolean(settings.token?.trim());
 }
 
 function ensureTooltip(): Tooltip {

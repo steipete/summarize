@@ -18,6 +18,32 @@ describe("hover summary security boundaries", () => {
     expect(shouldStartHoverRequest({ hoverSummaries: true })).toBe(true);
   });
 
+  it("does not require a daemon token for configured direct hover summaries", () => {
+    expect(
+      shouldStartHoverRequest({
+        hoverSummaries: true,
+        model: "auto",
+        provider: "openai",
+        providerApiKeys: { openai: "test-key" },
+        summaryRuntime: "direct",
+        token: "",
+      }),
+    ).toBe(true);
+  });
+
+  it("requires a daemon token for daemon-backed hover summaries", () => {
+    expect(
+      shouldStartHoverRequest({
+        hoverSummaries: true,
+        model: "auto",
+        provider: "openai",
+        providerApiKeys: { openai: "test-key" },
+        summaryRuntime: "daemon",
+        token: "",
+      }),
+    ).toBe(false);
+  });
+
   it("respects disabled hover summaries before asking the background to summarize", () => {
     expect(shouldStartHoverRequest({ hoverSummaries: false })).toBe(false);
     expect(shouldStartHoverRequest(null)).toBe(false);
