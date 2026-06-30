@@ -1,4 +1,4 @@
-import { getModels } from "@earendil-works/pi-ai";
+import { getModels } from "@earendil-works/pi-ai/compat";
 import { isOpenRouterBaseUrl } from "@steipete/summarize-core";
 import { resolveEnvState } from "../application/environment-state.js";
 import { resolveCliAvailability } from "../application/environment.js";

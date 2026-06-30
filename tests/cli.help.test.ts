@@ -50,4 +50,22 @@ describe("--help output", () => {
     expect(out).toContain('summarize "https://example.com"');
     expect(out).toContain("Env Vars");
   });
+
+  it("prints refresh-free options supported by the CLI parser", async () => {
+    const stdout = collectStream();
+    const stderr = collectStream();
+
+    await runCli(["refresh-free", "--help"], {
+      env: {},
+      fetch: globalThis.fetch.bind(globalThis),
+      stdout: stdout.stream,
+      stderr: stderr.stream,
+    });
+
+    const out = stdout.getText();
+    expect(out).toContain("Usage: summarize refresh-free");
+    expect(out).toContain("--max-age-days 180");
+    expect(out).toContain("--set-default");
+    expect(stderr.getText()).toBe("");
+  });
 });

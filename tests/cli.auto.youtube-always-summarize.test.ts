@@ -55,7 +55,7 @@ const htmlResponse = (html: string, status = 200) =>
     headers: { "Content-Type": "text/html" },
   });
 
-vi.mock("@earendil-works/pi-ai", () => ({
+vi.mock("@earendil-works/pi-ai/compat", () => ({
   completeSimple: mocks.completeSimple,
   streamSimple: () => {
     throw new Error("unexpected pi-ai streamSimple call");

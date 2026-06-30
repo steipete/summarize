@@ -1,5 +1,5 @@
 import type { Api, AssistantMessage, Model, Tool } from "@earendil-works/pi-ai";
-import { completeSimple, streamSimple } from "@earendil-works/pi-ai";
+import { completeSimple, streamSimple } from "@earendil-works/pi-ai/compat";
 import { buildPromptHash } from "../cache.js";
 import {
   resolveGitHubModelsCompatFallbackModelId,

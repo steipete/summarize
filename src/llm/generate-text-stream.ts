@@ -1,5 +1,5 @@
 import type { AssistantMessage, Context } from "@earendil-works/pi-ai";
-import { streamSimple } from "@earendil-works/pi-ai";
+import { streamSimple } from "@earendil-works/pi-ai/compat";
 import { createUnsupportedFunctionalityError } from "./errors.js";
 import {
   resolveEffectiveTemperature,
