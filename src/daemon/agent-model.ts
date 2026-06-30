@@ -1,5 +1,5 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
-import { getModel } from "@earendil-works/pi-ai";
+import { getModel } from "@earendil-works/pi-ai/compat";
 import { isOpenRouterBaseUrl } from "@steipete/summarize-core";
 import { createRunConfigInput } from "../application/config-state.js";
 import { resolveRunContextState } from "../application/context.js";

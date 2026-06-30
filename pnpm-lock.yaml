@@ -20,8 +20,8 @@ importers:
   .:
     dependencies:
       '@earendil-works/pi-ai':
-        specifier: ^0.79.9
-        version: 0.79.9(ws@8.21.0)(zod@4.4.3)
+        specifier: ^0.80.2
+        version: 0.80.2(ws@8.21.0)(zod@4.4.3)
       '@steipete/summarize-core':
         specifier: workspace:*
         version: link:packages/core
@@ -332,8 +332,8 @@ packages:
     engines: {node: '>= 0.10.4'}
     hasBin: true
 
-  '@earendil-works/pi-ai@0.79.9':
-    resolution: {integrity: sha512-fHmgNMONwCCE7bQAKbcz76sgm3iQuA7km1mpIc4H5xXd9+zhPh/faULz6ARkgjQE0EufHnfZPJY39+lNf8Sa9g==}
+  '@earendil-works/pi-ai@0.80.2':
+    resolution: {integrity: sha512-5GNKfdrRJ4uZ5Zd9iudoXggi/BbUcKnD/xfRHtdR+7q4vWqPvfx8auFuaT+ewGBVI8K4wj87eigFQ/iCSuy9RQ==}
     engines: {node: '>=22.19.0'}
     hasBin: true
 
@@ -3978,7 +3978,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@earendil-works/pi-ai@0.79.9(ws@8.21.0)(zod@4.4.3)':
+  '@earendil-works/pi-ai@0.80.2(ws@8.21.0)(zod@4.4.3)':
     dependencies:
       '@anthropic-ai/sdk': 0.91.1(zod@4.4.3)
       '@aws-sdk/client-bedrock-runtime': 3.1048.0

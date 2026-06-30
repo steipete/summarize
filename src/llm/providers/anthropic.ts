@@ -1,6 +1,6 @@
 import type { Context, Model, ThinkingLevel } from "@earendil-works/pi-ai";
 import type { Api } from "@earendil-works/pi-ai";
-import { completeSimple } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 import type { Attachment } from "../attachments.js";
 import type { OpenAiReasoningEffort } from "../model-options.js";
 import type { LlmTokenUsage } from "../types.js";

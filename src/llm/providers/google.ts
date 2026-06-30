@@ -1,5 +1,5 @@
 import type { Context } from "@earendil-works/pi-ai";
-import { completeSimple } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 import type { Attachment } from "../attachments.js";
 import type { LlmTokenUsage } from "../types.js";
 import { normalizeGoogleUsage, normalizeTokenUsage } from "../usage.js";

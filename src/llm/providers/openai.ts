@@ -1,5 +1,5 @@
 import type { Context } from "@earendil-works/pi-ai";
-import { completeSimple } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 export {
   resolveOpenAiClientConfig,
   type OpenAiClientConfigInput,
