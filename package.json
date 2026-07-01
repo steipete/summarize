@@ -75,7 +75,7 @@
   "devDependencies": {
     "@types/node": "^24.13.1",
     "@types/sanitize-html": "^2.16.1",
-    "@typescript/native-preview": "7.0.0-dev.20260623.1",
+    "@typescript/native-preview": "7.0.0-dev.20260624.1",
     "@vitest/coverage-v8": "^4.1.9",
     "happy-dom": "^20.10.6",
     "oxfmt": "0.56.0",
