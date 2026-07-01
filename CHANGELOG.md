@@ -6,6 +6,7 @@
 
 - Anthropic custom gateways: preserve path prefixes when sending PDF document requests (#325, thanks @wangwllu).
 - Dependencies: use the latest policy-eligible `pi-ai` release so clean installs satisfy the seven-day minimum release age.
+- Dependencies: refresh eligible browser media, test, lint, formatting, and extension tooling releases.
 
 ## 0.20.1 - 2026-06-24
 
