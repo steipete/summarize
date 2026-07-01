@@ -1,6 +1,6 @@
 import { defineBackground } from "wxt/utils/define-background";
 import { createBrowserPanelCacheStore } from "../lib/browser-panel-cache";
-import { bindNativeDaemonBridge, daemonFetch, extensionFetch } from "../lib/daemon-fetch";
+import { bindNativeDaemonBridge, daemonFetch } from "../lib/daemon-fetch";
 import { buildDaemonRequestBody, buildSummarizeRequestBody } from "../lib/daemon-payload";
 import { createDaemonRecovery, isDaemonUnreachableError } from "../lib/daemon-recovery";
 import { createDaemonStatusTracker } from "../lib/daemon-status";
@@ -131,7 +131,8 @@ export default defineBackground(() => {
       buildSummarizeRequestBody,
       friendlyFetchError,
       isDaemonUnreachableError,
-      fetchImpl: (...args) => extensionFetch(...args),
+      fetchImpl: (...args) => fetch(...args),
+      daemonFetchImpl: daemonFetch,
       resolveLogLevel,
       transcribeMediaLocally:
         import.meta.env.BROWSER === "chrome" ? transcribeBrowserMediaInTab : undefined,
@@ -146,7 +147,8 @@ export default defineBackground(() => {
     send,
     sendStatus,
     extractFromTab,
-    fetchImpl: (...args) => extensionFetch(...args),
+    fetchImpl: (...args) => fetch(...args),
+    daemonFetchImpl: daemonFetch,
     logExtract,
     friendlyFetchError,
   });

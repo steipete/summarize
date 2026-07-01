@@ -274,10 +274,12 @@ describe("sidepanel browser AI slides runtime", () => {
         },
       },
     });
-    const fetchMock = vi.fn(async () => ({
+    const fetchResponse = async () => ({
       ok: true,
       blob: async () => new Blob(["image"], { type: "image/jpeg" }),
-    }));
+    });
+    const fetchMock = vi.fn(fetchResponse);
+    const daemonFetchMock = vi.fn(fetchResponse);
     vi.stubGlobal("fetch", fetchMock);
     const runtime = createBrowserAiSlidesRuntime({
       panelState,
@@ -297,11 +299,14 @@ describe("sidepanel browser AI slides runtime", () => {
       applyGeneratedSummary: vi.fn(),
       schedulePanelCacheSync: vi.fn(),
       fetchImpl: fetchMock as unknown as typeof fetch,
+      daemonFetchImpl: daemonFetchMock as unknown as typeof fetch,
     });
 
     await runtime.refresh();
 
-    const daemonCall = fetchMock.mock.calls.find(([url]) => String(url).includes("127.0.0.1:8787"));
+    const daemonCall = daemonFetchMock.mock.calls.find(([url]) =>
+      String(url).includes("127.0.0.1:8787"),
+    );
     const untrustedCall = fetchMock.mock.calls.find(([url]) =>
       String(url).includes("localhost:9999"),
     );
@@ -309,5 +314,9 @@ describe("sidepanel browser AI slides runtime", () => {
     const untrustedHeaders = new Headers(untrustedCall?.[1]?.headers);
     expect(daemonHeaders.get("Authorization")).toBe("Bearer daemon-secret");
     expect(untrustedHeaders.get("Authorization")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining("127.0.0.1:8787"),
+      expect.anything(),
+    );
   });
 });

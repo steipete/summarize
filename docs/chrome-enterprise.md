@@ -62,11 +62,11 @@ launching the named host even for another extension. `NativeMessagingUserLevelHo
 only administrator-installed system hosts; it is not a complete block on its own.
 
 `runtime_blocked_hosts` is an independent browser-enforced guard against local HTTP. The production
-manifest has no `127.0.0.1` permission, but retains `http://localhost/*` for the optional Direct
-Ollama provider and local-page Browser workflows. The exact-ID policy above blocks this extension
-from interacting with localhost, IPv4 loopback, or IPv6 loopback on any port. Cloud Direct providers
-and Browser mode on ordinary sites continue to work. Chrome policy host patterns omit the path;
-adding `/*` here is not valid for this policy.
+manifest retains `http://localhost/*` and `http://127.0.0.1/*` for configured Direct local providers;
+daemon requests never use those grants. The exact-ID policy above blocks this extension from
+interacting with localhost, IPv4 loopback, or IPv6 loopback on any port. Cloud Direct providers and
+Browser mode on ordinary sites continue to work. Chrome policy host patterns omit the path; adding
+`/*` here is not valid for this policy.
 
 To disable every native messaging host, use `"NativeMessagingBlocklist": ["*"]`. If the company
 needs selected hosts, combine the wildcard block with `NativeMessagingAllowlist` entries. To
@@ -116,11 +116,11 @@ every native-host connection.
 
 ## Transport and remaining limitation
 
-The Chrome extension has no `127.0.0.1` host permission. Its service worker sends bounded framed
-messages to the exact native host. The bridge accepts only `GET`, `POST`, and `DELETE` requests for
-`/health` and `/v1/*`, requires the configured daemon port to match, filters request headers, and
-chunks responses below Chrome's 1 MiB native-message limit. This retains summary/chat SSE streams,
-slide images, models, logs, and process views without giving the extension general loopback access.
+The service worker sends daemon requests as bounded framed messages to the exact native host. The
+bridge accepts only `GET`, `POST`, and `DELETE` requests for `/health` and `/v1/*`, requires the
+configured daemon port to match, filters request headers, and chunks responses below Chrome's 1 MiB
+native-message limit. The separate retained loopback host grants preserve configured Direct local
+providers; daemon routing never selects them by URL.
 
 The companion daemon itself still exposes its bearer-token-authenticated HTTP API on loopback, and
 the native process proxies to that API. Native Messaging removes the extension's direct network
@@ -129,17 +129,16 @@ different extension independently granted loopback access—that obtains the tok
 the daemon. Moving the daemon API entirely onto an OS-authenticated local socket would be a separate
 hardening project.
 
-Chrome match patterns cannot express “all HTTP hosts except loopback.” Removing the required
-`<all_urls>` host permission is therefore necessary to prove the Store artifact has no direct
-loopback capability. Always-on content scripts still extract the current ordinary HTTP tab, but
-privileged background fetches of a different plain-HTTP URL or media asset are no longer guaranteed.
-Restoring that edge case requires a product decision: add a separate explicit per-origin HTTP
-permission flow, while enterprise policy also blocks loopback hosts, or keep the narrower default.
+Chrome match patterns cannot express “all HTTP hosts except loopback.” The Store manifest removes
+`<all_urls>` while retaining only HTTPS plus localhost and IPv4 loopback for existing Direct local
+provider compatibility. Privileged background fetches of a different plain-HTTP host or media asset
+are no longer guaranteed. Enterprise deployments that prohibit local providers should keep the
+browser-enforced `runtime_blocked_hosts` policy above.
 
 The npm-installed Windows CLI currently lacks the standalone `.exe` launcher that Chrome requires
 for a native host path. macOS and Linux install the host end to end; Windows daemon mode is blocked
 until release packaging includes that executable shim. Do not work around this with a `.cmd` host
-or by restoring extension loopback permissions.
+or by routing daemon requests through the Direct-provider loopback grants.
 
 Chrome references:
 

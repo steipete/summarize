@@ -14,6 +14,7 @@ export type ExtractorContext = {
   includeDiagnostics?: boolean;
   signal?: AbortSignal;
   fetchImpl: typeof fetch;
+  daemonFetchImpl?: typeof fetch;
   extractFromTab: (
     tabId: number,
     maxCharacters: number,

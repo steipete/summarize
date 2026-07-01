@@ -102,7 +102,7 @@ The daemon is documented in detail in [Chrome extension](../chrome-extension.md)
 - **Containers** — `install` starts the daemon for the current container session but does not register a Scheduled Task / unit. Run `summarize daemon run` from your entrypoint. Do not expose the port as a Chrome Native Messaging substitute.
 - **Token rotation** — running `install --token <NEW>` adds a new paired browser; old browsers keep working. Edit `daemon.json` by hand to revoke.
 - **Multiple installs** — only one daemon per user. Reinstall to upgrade; omitting `--port` preserves the configured port.
-- **Windows** — the npm-installed CLI still needs a packaged native-host `.exe`; do not restore Chrome loopback host permissions as a workaround. Direct and Browser modes continue to work.
+- **Windows** — the npm-installed CLI still needs a packaged native-host `.exe`; do not route daemon traffic through the Direct-provider loopback grants as a workaround. Direct and Browser modes continue to work.
 
 ## See also
 

@@ -103,7 +103,7 @@ test("Chromium manifest keeps native companion access optional", () => {
   expect(manifest.permissions ?? []).not.toContain("nativeMessaging");
   expect(manifest.optional_permissions ?? []).toContain("nativeMessaging");
   expect(manifest.host_permissions ?? []).not.toContain("<all_urls>");
-  expect(manifest.host_permissions ?? []).not.toContain("http://127.0.0.1/*");
+  expect(manifest.host_permissions ?? []).toContain("http://127.0.0.1/*");
   expect(manifest.optional_host_permissions ?? []).toEqual([]);
   expect(manifest.storage?.managed_schema).toBe("managed-storage-schema.json");
   expect(LOCAL_COMPANION_EXCLUDE_MATCHES).toEqual(["http://127.0.0.1/*"]);

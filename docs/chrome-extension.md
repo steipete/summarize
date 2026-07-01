@@ -24,8 +24,8 @@ Quickstart:
   - `summarize daemon install --token <TOKEN> --port 8787` (macOS: LaunchAgent, Linux: systemd user, Windows: Scheduled Task)
   - Non-default port: replace `8787`, then set the same value in **Options → Runtime → Daemon → Port**.
 - Chrome asks for optional Native Messaging access only when the user explicitly enables a Daemon
-  runtime. The extension has no loopback host permission. Managed deployments can browser-disable
-  that capability; see
+  runtime. Retained loopback host access serves configured Direct local providers only, not daemon
+  traffic. Managed deployments can browser-disable both boundaries; see
   [Chrome enterprise policy](chrome-enterprise.md).
 - Verify:
   - `summarize daemon status`

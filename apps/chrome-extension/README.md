@@ -89,9 +89,10 @@ Media/slides can independently use **Browser** or **Daemon**. Browser media uses
    - `summarize daemon status`
    - `summarize daemon restart`
 
-Chrome communicates with the daemon only through the optional native host; the Chrome manifest has
-no loopback host permission. The npm-installed Windows CLI still needs a packaged native-host `.exe`
-before Daemon mode can work there. Direct and Browser modes are unaffected.
+Chrome communicates with the daemon only through the optional native host. The manifest retains
+loopback access for configured Direct local providers, but those requests never enter the daemon
+bridge. The npm-installed Windows CLI still needs a packaged native-host `.exe` before Daemon mode
+can work there. Direct and Browser modes are unaffected.
 
 Company administrators can keep Direct and Browser modes available while blocking all daemon
 access with Chrome policy; see [`docs/chrome-enterprise.md`](../../docs/chrome-enterprise.md).

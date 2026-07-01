@@ -46,7 +46,7 @@ YouTube slide screenshots (from the browser):
 Why a daemon/service?
 
 - Direct mode works without the daemon. Auto uses a configured OpenAI, OpenRouter, Anthropic, Gemini, xAI, Z.AI, NVIDIA, MiniMax, GitHub Models, or Ollama provider, otherwise Gemini Nano on-device; keys remain in extension-local storage.
-- The optional daemon adds CLI model fallbacks, shared caches/diagnostics, native ffmpeg, configurable transcription providers, OCR, and broader media support. Chrome reaches it through an explicitly enabled Native Messaging host rather than a loopback host permission.
+- The optional daemon adds CLI model fallbacks, shared caches/diagnostics, native ffmpeg, configurable transcription providers, OCR, and broader media support. Chrome reaches it through an explicitly enabled Native Messaging host; retained loopback network access is used only by configured Direct local providers.
 - The service autostarts (launchd/systemd/Scheduled Task) so the Side Panel is always ready.
 
 If you only want the **CLI**, you can skip the daemon install entirely.

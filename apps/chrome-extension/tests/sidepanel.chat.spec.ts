@@ -308,12 +308,14 @@ test("sidepanel clears chat on user navigation", async ({
     const contentPage = await harness.context.newPage();
     await contentPage.goto("https://example.com", { waitUntil: "domcontentloaded" });
     await contentPage.evaluate(() => {
-      document.body.innerHTML = `<article><p>Chat nav test.</p></article>`;
+      document.body.innerHTML = `<article><p>${"Chat navigation context. ".repeat(20)}</p></article>`;
     });
     await maybeBringToFront(contentPage);
     await activateTabByUrl(harness, "https://example.com");
     await waitForActiveTabUrl(harness, "https://example.com");
     await injectContentScript(harness, "content-scripts/extract.js", "https://example.com");
+    await waitForExtractReady(harness, "https://example.com");
+    const activeTabId = await getActiveTabId(harness);
 
     await harness.context.route("http://127.0.0.1:8787/v1/agent", async (route) => {
       const body = buildAgentStream("Ack");
@@ -328,7 +330,7 @@ test("sidepanel clears chat on user navigation", async ({
     await sendBgMessage(harness, {
       type: "ui:state",
       state: buildUiState({
-        tab: { id: 1, url: "https://example.com", title: "Example" },
+        tab: { id: activeTabId, url: "https://example.com", title: "Example" },
         settings: {
           chatEnabled: true,
           summaryRuntime: "daemon",
@@ -351,7 +353,7 @@ test("sidepanel clears chat on user navigation", async ({
     await sendBgMessage(harness, {
       type: "ui:state",
       state: buildUiState({
-        tab: { id: 1, url: "https://example.com/next", title: "Next" },
+        tab: { id: activeTabId, url: "https://example.com/next", title: "Next" },
         settings: {
           chatEnabled: true,
           summaryRuntime: "daemon",

@@ -99,6 +99,7 @@ export async function handlePanelAgentRequest({
   send,
   sendStatus,
   fetchImpl,
+  daemonFetchImpl = fetchImpl,
   friendlyFetchError,
 }: {
   session: BackgroundChatSession;
@@ -112,6 +113,7 @@ export async function handlePanelAgentRequest({
   send: SendFn;
   sendStatus: (status: string) => void;
   fetchImpl: typeof fetch;
+  daemonFetchImpl?: typeof fetch;
   friendlyFetchError: (error: unknown, fallback: string) => string;
 }) {
   session.agentController?.abort();
@@ -170,7 +172,7 @@ export async function handlePanelAgentRequest({
 
     const origin = daemonOrigin(settings.daemonPort);
 
-    const res = await fetchImpl(`${origin}/v1/agent`, {
+    const res = await daemonFetchImpl(`${origin}/v1/agent`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${settings.token.trim()}`,
@@ -240,6 +242,7 @@ export async function handlePanelChatHistoryRequest({
   cachedExtract,
   send,
   fetchImpl,
+  daemonFetchImpl = fetchImpl,
   friendlyFetchError,
 }: {
   requestId: string;
@@ -248,6 +251,7 @@ export async function handlePanelChatHistoryRequest({
   cachedExtract: CachedExtract;
   send: SendFn;
   fetchImpl: typeof fetch;
+  daemonFetchImpl?: typeof fetch;
   friendlyFetchError: (error: unknown, fallback: string) => string;
 }) {
   const capabilityExecution = resolveCapabilityExecution(settings);
@@ -265,7 +269,7 @@ export async function handlePanelChatHistoryRequest({
   const origin = daemonOrigin(settings.daemonPort);
 
   try {
-    const res = await fetchImpl(`${origin}/v1/agent/history`, {
+    const res = await daemonFetchImpl(`${origin}/v1/agent/history`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${settings.token.trim()}`,

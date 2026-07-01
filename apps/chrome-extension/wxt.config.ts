@@ -106,7 +106,7 @@ export default defineConfig({
       host_permissions:
         browser === "firefox"
           ? ["<all_urls>", "http://127.0.0.1/*"]
-          : ["https://*/*", "http://localhost/*"],
+          : ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
       ...(browser === "firefox"
         ? {}
         : {

@@ -678,6 +678,68 @@ describe("chrome panel summarize", () => {
     });
   });
 
+  it("keeps a Direct provider on 127.0.0.1 off the daemon bridge", async () => {
+    const harness = createHarness();
+    const url = "https://example.com/article";
+    const encoder = new TextEncoder();
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                encoder.encode('data: {"choices":[{"delta":{"content":"Local summary."}}]}\n\n'),
+              );
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              controller.close();
+            },
+          }),
+          { status: 200, headers: { "content-type": "text/event-stream" } },
+        ),
+    );
+    const daemonFetchImpl = vi.fn(async () => {
+      throw new Error("daemon bridge must not handle Direct provider requests");
+    });
+
+    await harness.summarize({
+      reason: "manual",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      daemonFetchImpl: daemonFetchImpl as unknown as typeof fetch,
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "",
+        summaryRuntime: "direct",
+        model: "auto",
+        provider: "ollama",
+        providerBaseUrls: { ollama: "http://127.0.0.1:11434/v1" },
+        autoSummarize: true,
+        slidesEnabled: false,
+        slideRuntime: "browser",
+      })),
+      getActiveTab: vi.fn(async () => ({ id: 7, windowId: 1, url, title: "Article" })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url,
+          title: "Article",
+          text: "Article body.",
+          truncated: false,
+          media: null,
+        },
+      })),
+    });
+
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toBe("http://127.0.0.1:11434/v1/chat/completions");
+    expect(daemonFetchImpl).not.toHaveBeenCalled();
+    expect(harness.sent[0]).toMatchObject({
+      type: "run:snapshot",
+      markdown: "Local summary.",
+      run: { model: "Ollama · llama3.2" },
+    });
+  });
+
   it("does not probe an unreachable daemon in browser runtime", async () => {
     const harness = createHarness();
     const url = "https://example.com/article";

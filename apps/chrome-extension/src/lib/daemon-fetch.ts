@@ -173,18 +173,6 @@ export async function daemonFetch(input: RequestInfo | URL, init?: RequestInit):
   return await nativeDaemonFetch(input, init);
 }
 
-export async function extensionFetch(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Promise<Response> {
-  const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-  const url = new URL(rawUrl);
-  if (url.protocol === "http:" && url.hostname === "127.0.0.1") {
-    return await daemonFetch(input, init);
-  }
-  return await fetch(input, init);
-}
-
 export function bindNativeDaemonBridge(): void {
   if (import.meta.env.BROWSER !== "chrome") return;
   chrome.runtime.onConnect.addListener((clientPort) => {
