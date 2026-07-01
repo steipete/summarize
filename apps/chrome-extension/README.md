@@ -71,19 +71,31 @@ Media/slides can independently use **Browser** or **Daemon**. Browser media uses
 1. Install `summarize` (choose one):
    - `npm i -g @steipete/summarize` (requires Node.js 24+)
    - `brew install summarize` (macOS, Linux)
-2. Switch the AI connection or media runtime to **Daemon**, then copy the pairing token and install command from the extension.
-3. Open Terminal:
+2. Under **Options → Runtime → Daemon**, click **Enable local companion** and approve Chrome's
+   optional **Communicate with cooperating native applications** permission. Switching either
+   runtime to **Daemon** also starts this explicit permission flow.
+3. Switch the AI connection or media runtime to **Daemon**, then copy the pairing token and install command from the extension.
+4. Open Terminal:
    - macOS: Applications → Utilities → Terminal
    - Windows: Start menu → Terminal (or PowerShell) — **right-click → Run as administrator**
    - Linux: your Terminal app
-4. Paste the command from the Setup screen and press Enter.
+5. Paste the command from the Setup screen and press Enter.
    - Installed binary: `summarize daemon install --token <TOKEN> --port 8787`
-   - Repo/dev checkout: `pnpm summarize daemon install --token <TOKEN> --port 8787 --dev`
+   - Repo/dev checkout: `pnpm summarize daemon install --token <TOKEN> --port 8787 --dev --extension-id <UNPACKED_ID>`
+   - The install registers native host `com.steipete.summarize` for the exact Web Store extension ID.
    - Non-default port: replace `8787`, then enter the same port under **Options → Runtime → Daemon → Port**.
-5. Back in your browser, the Daemon runtime setup screen should disappear once the daemon is running.
-6. Verify / troubleshoot:
+6. Back in your browser, the Daemon runtime setup screen should disappear once the daemon is running.
+7. Verify / troubleshoot:
    - `summarize daemon status`
    - `summarize daemon restart`
+
+Chrome communicates with the daemon only through the optional native host. The manifest retains
+loopback access for configured Direct local providers, but those requests never enter the daemon
+bridge. The npm-installed Windows CLI still needs a packaged native-host `.exe` before Daemon mode
+can work there. Direct and Browser modes are unaffected.
+
+Company administrators can keep Direct and Browser modes available while blocking all daemon
+access with Chrome policy; see [`docs/chrome-enterprise.md`](../../docs/chrome-enterprise.md).
 
 ## Length Presets
 

@@ -4,6 +4,7 @@ import { applyTheme, type ColorMode, type ColorScheme } from "../../lib/theme";
 import { bindOptionsInputs } from "./bindings";
 import { createBooleanSettingsRuntime } from "./boolean-settings";
 import { languagePresets, optionsTabStorageKey } from "./constants";
+import { createDaemonCapabilityController } from "./daemon-capability";
 import { createDaemonStatusChecker } from "./daemon-status";
 import { getOptionsElements } from "./elements";
 import { applyLoadedOptionsSettings, buildSavedOptionsSettings } from "./form-state";
@@ -29,6 +30,9 @@ const {
   statusEl,
   tokenEl,
   daemonPortEl,
+  daemonCapabilityStatusEl,
+  daemonPermissionEnableBtn,
+  daemonFieldsEl,
   tokenCopyBtn,
   summaryRuntimeModeRoot,
   providerEl,
@@ -219,6 +223,7 @@ const { resolveActiveTab } = createOptionsTabs({
 });
 
 let booleanSettings: ReturnType<typeof createBooleanSettingsRuntime> | null = null;
+let daemonCapability: ReturnType<typeof createDaemonCapabilityController> | null = null;
 let refreshRuntimeStatus = (_token = tokenEl.value) => {};
 const settingsElements = {
   tokenEl,
@@ -299,6 +304,7 @@ booleanSettings = createBooleanSettingsRuntime({
   onRuntimeChanged: () => {
     refreshRuntimeStatus();
   },
+  ensureDaemonEnabled: () => daemonCapability?.ensureEnabled() ?? false,
 });
 
 const resolveExtensionVersion = () => {
@@ -307,7 +313,7 @@ const resolveExtensionVersion = () => {
   return injected || chrome?.runtime?.getManifest?.().version || "";
 };
 
-const { checkDaemonStatus } = createDaemonStatusChecker({
+const { checkDaemonStatus, setDaemonStatus } = createDaemonStatusChecker({
   statusEl: daemonStatusEl,
   getExtensionVersion: resolveExtensionVersion,
   isDaemonMode: () => {
@@ -316,7 +322,25 @@ const { checkDaemonStatus } = createDaemonStatusChecker({
   },
 });
 
+daemonCapability = createDaemonCapabilityController({
+  statusEl: daemonCapabilityStatusEl,
+  enableBtn: daemonPermissionEnableBtn,
+  daemonFieldsEl,
+  summaryRuntimeRoot: summaryRuntimeModeRoot,
+  slideRuntimeRoot: slideRuntimeModeRoot,
+  onStateChanged: () => refreshRuntimeStatus(),
+});
+
 refreshRuntimeStatus = (token = tokenEl.value) => {
+  const capability = daemonCapability?.getState();
+  if (capability && !capability.policy.daemonAllowed) {
+    setDaemonStatus("Disabled by administrator", "warn");
+    return;
+  }
+  if (capability && !capability.permissionGranted) {
+    setDaemonStatus("Local companion not enabled", "warn");
+    return;
+  }
   void checkDaemonStatus(token);
 };
 
@@ -425,7 +449,7 @@ automationPermissionsBtn.addEventListener("click", () => {
 });
 
 async function load() {
-  const s = await loadSettings();
+  const [s] = await Promise.all([loadSettings(), daemonCapability?.initialize()]);
   activeProvider = s.provider;
   await modelPresets.refreshPresets(s.token);
   modelPresets.setValue(s.model);
@@ -443,6 +467,8 @@ async function load() {
   currentMode = loadedState.colorMode;
   pickers.update({ scheme: currentScheme, mode: currentMode, ...pickerHandlers });
   applyTheme({ scheme: s.colorScheme, mode: s.colorMode });
+  isInitializing = false;
+  document.documentElement.dataset.settingsReady = "true";
   await automationPermissions.updateUi();
   if (resolveActiveTab() === "logs") {
     logsViewer.handleTokenChanged();
@@ -450,8 +476,11 @@ async function load() {
   if (resolveActiveTab() === "processes") {
     processesViewer.handleTokenChanged();
   }
-  isInitializing = false;
 }
+
+chrome.storage.onChanged.addListener((_changes, areaName) => {
+  if (areaName === "managed") void load();
+});
 
 providerEl.addEventListener("change", () => {
   void (async () => {

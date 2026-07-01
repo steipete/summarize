@@ -26,6 +26,7 @@ function createRuntimeController<T extends string>({
   getValue,
   setValue,
   scheduleAutoSave,
+  beforeChange,
   afterChange,
 }: {
   root: HTMLElement;
@@ -34,6 +35,7 @@ function createRuntimeController<T extends string>({
   getValue: () => T;
   setValue: (value: T) => void;
   scheduleAutoSave: (delay?: number) => void;
+  beforeChange?: (value: T) => boolean | Promise<boolean>;
   afterChange?: () => void | Promise<void>;
 }): ToggleController {
   const inputs = Array.from(root.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`));
@@ -41,10 +43,17 @@ function createRuntimeController<T extends string>({
   for (const input of inputs) {
     input.addEventListener("change", () => {
       if (!input.checked) return;
-      setValue(normalize(input.value));
-      render();
-      scheduleAutoSave(0);
-      void afterChange?.();
+      const nextValue = normalize(input.value);
+      void (async () => {
+        if (beforeChange && !(await beforeChange(nextValue))) {
+          render();
+          return;
+        }
+        setValue(nextValue);
+        render();
+        scheduleAutoSave(0);
+        await afterChange?.();
+      })();
     });
   }
 
@@ -77,6 +86,7 @@ export function createBooleanSettingsRuntime(options: {
   scheduleAutoSave: (delayMs?: number) => void;
   onAutomationChanged?: () => void;
   onRuntimeChanged?: () => void;
+  ensureDaemonEnabled?: () => boolean | Promise<boolean>;
 }) {
   const state: BooleanSettingsState = {
     autoSummarize: options.defaults.autoSummarize,
@@ -163,6 +173,8 @@ export function createBooleanSettingsRuntime(options: {
         state.summaryRuntime = value;
       },
       scheduleAutoSave: options.scheduleAutoSave,
+      beforeChange: (value) =>
+        value !== "daemon" || !options.ensureDaemonEnabled ? true : options.ensureDaemonEnabled(),
       afterChange: options.onRuntimeChanged,
     }),
     createRuntimeController({
@@ -174,6 +186,8 @@ export function createBooleanSettingsRuntime(options: {
         state.slideRuntime = value;
       },
       scheduleAutoSave: options.scheduleAutoSave,
+      beforeChange: (value) =>
+        value !== "daemon" || !options.ensureDaemonEnabled ? true : options.ensureDaemonEnabled(),
       afterChange: options.onRuntimeChanged,
     }),
     createBooleanToggleController({

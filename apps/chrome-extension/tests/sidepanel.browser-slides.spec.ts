@@ -86,7 +86,7 @@ test("sidepanel captures local video slides in browser runtime", async ({
         reject(new Error("Failed to resolve local server port"));
         return;
       }
-      serverUrl = `http://127.0.0.1:${address.port}`;
+      serverUrl = `http://localhost:${address.port}`;
       resolve();
     });
   });

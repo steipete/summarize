@@ -130,7 +130,7 @@ test("sidepanel extracts slides from local video via daemon", async ({
         reject(new Error("Failed to resolve local server port"));
         return;
       }
-      serverUrl = `http://127.0.0.1:${address.port}`;
+      serverUrl = `http://localhost:${address.port}`;
       resolve();
     });
   });
@@ -139,7 +139,9 @@ test("sidepanel extracts slides from local video via daemon", async ({
   const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "summarize-daemon-e2e-"));
   const abortController = new AbortController();
   let daemonPromise: Promise<void> | null = null;
-  const guardedServerUrl = serverUrl.replace("127.0.0.1", "93.184.216.34");
+  const guardedUrl = new URL(serverUrl);
+  guardedUrl.hostname = "93.184.216.34";
+  const guardedServerUrl = guardedUrl.origin;
   const localFixtureFetch: typeof fetch = async (input, init) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     if (url.startsWith(guardedServerUrl)) {

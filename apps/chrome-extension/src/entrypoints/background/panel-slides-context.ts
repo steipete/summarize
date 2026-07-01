@@ -1,3 +1,4 @@
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { daemonOrigin } from "../../lib/daemon-url";
 import { logExtensionEvent } from "../../lib/extension-logs";
 import { createCachedExtract, type CachedExtract } from "./cached-extract";
@@ -70,7 +71,7 @@ export async function handlePanelSlidesContextRequest<Recovery, Status>(options:
     const origin = daemonOrigin(settings.daemonPort);
 
     try {
-      const res = await (fetchImpl ?? fetch)(`${origin}/v1/summarize`, {
+      const res = await (fetchImpl ?? daemonFetch)(`${origin}/v1/summarize`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${settings.token.trim()}`,

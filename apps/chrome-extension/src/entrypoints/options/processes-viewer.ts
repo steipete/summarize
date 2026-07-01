@@ -1,3 +1,4 @@
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
 
 type ProcessStatus = "running" | "exited" | "error";
@@ -221,7 +222,7 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
       const url = new URL(`${origin}/v1/processes/${requestedId}/logs`);
       url.searchParams.set("tail", String(tail));
       url.searchParams.set("stream", stream);
-      const res = await (fetchImpl ?? fetch)(url.toString(), {
+      const res = await (fetchImpl ?? daemonFetch)(url.toString(), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!isCurrentRequest()) return;
@@ -272,7 +273,7 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
       const url = new URL(`${origin}/v1/processes`);
       url.searchParams.set("includeCompleted", showCompletedEl.checked ? "true" : "false");
       url.searchParams.set("limit", String(limit));
-      const res = await (fetchImpl ?? fetch)(url.toString(), {
+      const res = await (fetchImpl ?? daemonFetch)(url.toString(), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {

@@ -17,7 +17,11 @@ describe("chrome/settings", () => {
 
   it("loads defaults when storage is empty", async () => {
     const s = await loadSettings();
-    expect(s).toEqual(defaultSettings);
+    expect(s).toEqual({
+      ...defaultSettings,
+      daemonAllowed: true,
+      daemonManaged: false,
+    });
     expect(s.length).toBe("long");
   });
 

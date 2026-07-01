@@ -80,6 +80,7 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
   sendStatus: (session: Session, status: string) => void;
   extractFromTab: Parameters<typeof ensureChatExtract>[0]["extractFromTab"];
   fetchImpl: typeof fetch;
+  daemonFetchImpl?: typeof fetch;
   logExtract: (windowId: number) => NonNullable<Parameters<typeof ensureChatExtract>[0]["log"]>;
   friendlyFetchError: Parameters<typeof handlePanelAgentRequest>[0]["friendlyFetchError"];
   ensureChatExtractImpl?: typeof ensureChatExtract;
@@ -96,6 +97,7 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
     sendStatus,
     extractFromTab,
     fetchImpl,
+    daemonFetchImpl = fetchImpl,
     logExtract,
     friendlyFetchError,
     ensureChatExtractImpl = ensureChatExtract,
@@ -141,6 +143,7 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
       sendStatus: onStatus,
       extractFromTab,
       fetchImpl,
+      daemonFetchImpl,
       log: logExtract(session.windowId),
     });
 
@@ -188,6 +191,7 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
       send: (message) => send(session, message),
       sendStatus: (status) => sendStatus(session, status),
       fetchImpl,
+      daemonFetchImpl,
       friendlyFetchError,
     });
   }
@@ -226,6 +230,7 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
       cachedExtract,
       send: (message) => send(session, message),
       fetchImpl,
+      daemonFetchImpl,
       friendlyFetchError,
     });
   }

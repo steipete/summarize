@@ -23,6 +23,9 @@ const mocks = vi.hoisted(() => ({
   readScheduledTaskCommand: vi.fn(),
   restartScheduledTask: vi.fn(),
   uninstallScheduledTask: vi.fn(),
+  installNativeMessagingHost: vi.fn(),
+  isNativeMessagingHostInstalled: vi.fn(),
+  uninstallNativeMessagingHost: vi.fn(),
 }));
 
 vi.mock("node:child_process", () => ({
@@ -79,6 +82,12 @@ vi.mock("../src/daemon/windows-container.js", () => ({
   isWindowsContainerEnvironment: mocks.isWindowsContainerEnvironment,
 }));
 
+vi.mock("../src/daemon/native-messaging-install.js", () => ({
+  installNativeMessagingHost: mocks.installNativeMessagingHost,
+  isNativeMessagingHostInstalled: mocks.isNativeMessagingHostInstalled,
+  uninstallNativeMessagingHost: mocks.uninstallNativeMessagingHost,
+}));
+
 import { handleDaemonRequest } from "../src/daemon/cli.js";
 
 describe("daemon cli", () => {
@@ -100,6 +109,13 @@ describe("daemon cli", () => {
     mocks.installLaunchAgent.mockResolvedValue(undefined);
     mocks.installSystemdService.mockResolvedValue(undefined);
     mocks.installScheduledTask.mockResolvedValue(undefined);
+    mocks.installNativeMessagingHost.mockResolvedValue({
+      installed: true,
+      manifestPath: "/tmp/native-host.json",
+      launcherPath: "/tmp/native-host",
+    });
+    mocks.isNativeMessagingHostInstalled.mockResolvedValue(true);
+    mocks.uninstallNativeMessagingHost.mockResolvedValue(undefined);
     mocks.spawn.mockReturnValue({ unref: vi.fn() });
   });
 
@@ -323,7 +339,7 @@ describe("daemon cli", () => {
     expect(text).toContain(
       "Run `summarize daemon install --token <TOKEN>` each time the container starts",
     );
-    expect(text).toContain("Publish port 8787:8787 so the host browser can reach the daemon.");
+    expect(text).toContain("requires a packaged Windows native-host executable");
     expect(text).toContain("OK: daemon is running in this container session and authenticated.");
   });
 });

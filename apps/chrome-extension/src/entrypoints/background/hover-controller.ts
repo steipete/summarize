@@ -1,5 +1,6 @@
 import { parseSseStream } from "@steipete/summarize-core/runtime";
 import { fetchBrowserUrlContent, isPublicBrowserUrl } from "../../lib/browser-url-content";
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { daemonOrigin } from "../../lib/daemon-url";
 import { streamDirectModel } from "../../lib/direct-provider";
 import { logExtensionEvent } from "../../lib/extension-logs";
@@ -195,7 +196,7 @@ ${content.text}
       };
       const origin = daemonOrigin(settings.daemonPort);
 
-      const res = await fetch(`${origin}/v1/summarize`, {
+      const res = await daemonFetch(`${origin}/v1/summarize`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -214,7 +215,7 @@ ${content.text}
       notifyStart({ ok: true });
       logHover("stream-start", { tabId, requestId: msg.requestId, url: msg.url, runId: json.id });
 
-      const streamRes = await fetch(`${origin}/v1/summarize/${json.id}/events`, {
+      const streamRes = await daemonFetch(`${origin}/v1/summarize/${json.id}/events`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       });

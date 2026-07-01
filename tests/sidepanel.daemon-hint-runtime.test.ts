@@ -24,6 +24,8 @@ function makeUiState(overrides: Partial<UiState["settings"]> = {}): UiState {
       slideRuntime: "browser",
       summaryRuntime: "direct",
       providerConfigured: false,
+      daemonAllowed: true,
+      daemonManaged: false,
       daemonHintDismissed: false,
       fontSize: 14,
       lineHeight: 1.45,
@@ -39,6 +41,7 @@ function makeUiState(overrides: Partial<UiState["settings"]> = {}): UiState {
 function makeElement() {
   const classes = new Set(["hidden"]);
   return {
+    querySelector: () => null,
     classList: {
       add: (value: string) => classes.add(value),
       remove: (value: string) => classes.delete(value),

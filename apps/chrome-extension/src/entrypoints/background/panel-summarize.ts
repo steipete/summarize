@@ -72,6 +72,7 @@ export async function summarizeActiveTab({
   sendStatus,
   send,
   fetchImpl,
+  daemonFetchImpl = fetchImpl,
   extractFromTab,
   urlsMatch,
   buildSummarizeRequestBody,
@@ -100,6 +101,7 @@ export async function summarizeActiveTab({
   sendStatus: (status: string) => void;
   send: SendFn;
   fetchImpl: typeof fetch;
+  daemonFetchImpl?: typeof fetch;
   extractFromTab: ExtractorContext["extractFromTab"];
   urlsMatch: (left: string, right: string) => boolean;
   buildSummarizeRequestBody: (args: {
@@ -200,6 +202,7 @@ export async function summarizeActiveTab({
     isSuperseded,
     signal: controller.signal,
     fetchImpl,
+    daemonFetchImpl,
     extractFromTab,
     sendStatus,
     logPanel,
@@ -348,7 +351,7 @@ export async function summarizeActiveTab({
         timestamps: true,
         slides: daemonSlidesConfig,
         signal: controller.signal,
-        fetchImpl,
+        fetchImpl: daemonFetchImpl,
         buildSummarizeRequestBody,
         log: logPanel,
       });
@@ -467,7 +470,7 @@ export async function summarizeActiveTab({
       timestamps: summaryTimestamps,
       slides: summarySlides,
       signal: controller.signal,
-      fetchImpl,
+      fetchImpl: daemonFetchImpl,
       buildSummarizeRequestBody,
       log: logPanel,
     });

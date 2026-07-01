@@ -5,7 +5,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { runDaemonServer } from "../../../src/daemon/server.js";
-import { META_SITE_EXCLUDE_MATCHES } from "../src/lib/content-script-matches";
+import {
+  ALWAYS_ON_CONTENT_SCRIPT_EXCLUDE_MATCHES,
+  LOCAL_COMPANION_EXCLUDE_MATCHES,
+  META_SITE_EXCLUDE_MATCHES,
+} from "../src/lib/content-script-matches";
 import {
   BLOCKED_ENV_KEYS,
   DAEMON_PORT,
@@ -63,7 +67,7 @@ test.skip(
   "Firefox extension tests are blocked by Playwright limitations. Set ALLOW_FIREFOX_EXTENSION_TESTS=1 to run.",
 );
 
-test("manifest excludes Meta sites from always-on content scripts", () => {
+test("manifest excludes Meta sites and the local companion from always-on content scripts", () => {
   const manifestPath = path.resolve(__dirname, "..", ".output", "chrome-mv3", "manifest.json");
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
     content_scripts?: Array<{ js?: string[]; exclude_matches?: string[] }>;
@@ -80,7 +84,44 @@ test("manifest excludes Meta sites from always-on content scripts", () => {
 
   expect(matchingEntries.length).toBeGreaterThan(0);
   for (const entry of matchingEntries) {
-    expect(entry.exclude_matches ?? []).toEqual(expect.arrayContaining(META_SITE_EXCLUDE_MATCHES));
+    expect(entry.exclude_matches ?? []).toEqual(
+      expect.arrayContaining(ALWAYS_ON_CONTENT_SCRIPT_EXCLUDE_MATCHES),
+    );
+  }
+});
+
+test("Chromium manifest keeps native companion access optional", () => {
+  const manifestPath = path.resolve(__dirname, "..", ".output", "chrome-mv3", "manifest.json");
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+    host_permissions?: string[];
+    optional_host_permissions?: string[];
+    permissions?: string[];
+    optional_permissions?: string[];
+    storage?: { managed_schema?: string };
+  };
+
+  expect(manifest.permissions ?? []).not.toContain("nativeMessaging");
+  expect(manifest.optional_permissions ?? []).toContain("nativeMessaging");
+  expect(manifest.host_permissions ?? []).not.toContain("<all_urls>");
+  expect(manifest.host_permissions ?? []).toContain("http://127.0.0.1/*");
+  expect(manifest.optional_host_permissions ?? []).toEqual([]);
+  expect(manifest.storage?.managed_schema).toBe("managed-storage-schema.json");
+  expect(LOCAL_COMPANION_EXCLUDE_MATCHES).toEqual(["http://127.0.0.1/*"]);
+  expect(META_SITE_EXCLUDE_MATCHES.length).toBeGreaterThan(0);
+});
+
+test("fresh Chromium install has no native companion grant", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+  try {
+    const background = await getBackground(harness);
+    const granted = await background.evaluate(async () => {
+      return await chrome.permissions.contains({ permissions: ["nativeMessaging"] });
+    });
+    expect(granted).toBe(false);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
   }
 });
 

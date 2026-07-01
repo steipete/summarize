@@ -1,11 +1,17 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createSlideImageLoader } from "../apps/chrome-extension/src/entrypoints/sidepanel/slide-images";
+import { createSlideImageLoader as createNativeSlideImageLoader } from "../apps/chrome-extension/src/entrypoints/sidepanel/slide-images";
 import type { Settings } from "../apps/chrome-extension/src/lib/settings";
 
 const originalFetch = globalThis.fetch;
 const originalCreateObjectUrl = Object.getOwnPropertyDescriptor(URL, "createObjectURL");
 const originalIntersectionObserver = globalThis.IntersectionObserver;
+
+const createSlideImageLoader = (options: Parameters<typeof createNativeSlideImageLoader>[0] = {}) =>
+  createNativeSlideImageLoader({
+    ...options,
+    fetchImpl: (...args) => fetch(...args),
+  });
 
 afterEach(() => {
   globalThis.fetch = originalFetch;

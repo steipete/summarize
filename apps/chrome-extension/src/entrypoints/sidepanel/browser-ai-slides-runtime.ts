@@ -1,4 +1,5 @@
 import { normalizeBrowserAiGeneratedPoints } from "../../lib/browser-summary";
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { daemonOrigin } from "../../lib/daemon-url";
 import { logExtensionEvent } from "../../lib/extension-logs";
 import { isGeminiNanoModel } from "../../lib/model-routing";
@@ -187,7 +188,11 @@ function isDaemonSlideUrl(imageUrl: string, origin: string): boolean {
   }
 }
 
-async function loadSlideImage(imageUrl: string): Promise<Blob | null> {
+async function loadSlideImage(
+  imageUrl: string,
+  fetchImpl: typeof fetch = fetch,
+  daemonFetchImpl: typeof fetch = daemonFetch,
+): Promise<Blob | null> {
   if (!imageUrl) return null;
   try {
     const settings = await loadSettings();
@@ -196,7 +201,9 @@ async function loadSlideImage(imageUrl: string): Promise<Blob | null> {
       const token = settings.token.trim();
       if (token) headers.set("Authorization", `Bearer ${token}`);
     }
-    const response = await fetch(imageUrl, { headers });
+    const response = await (
+      isDaemonSlideUrl(imageUrl, daemonOrigin(settings.daemonPort)) ? daemonFetchImpl : fetchImpl
+    )(imageUrl, { headers });
     if (!response.ok) return null;
     const blob = await response.blob();
     return blob.type.startsWith("image/") ? blob : null;
@@ -220,6 +227,8 @@ export function createBrowserAiSlidesRuntime(options: {
   applyGeneratedSummary: (summary: GeneratedSummary) => void;
   schedulePanelCacheSync: () => void;
   loadSlideImage?: (imageUrl: string) => Promise<Blob | null>;
+  fetchImpl?: typeof fetch;
+  daemonFetchImpl?: typeof fetch;
 }) {
   let activeGeneration = 0;
   let activeSourceKey: string | null = null;
@@ -279,7 +288,9 @@ export function createBrowserAiSlidesRuntime(options: {
       imageUrl: slide.imageUrl ?? "",
     }));
     const startedAt = performance.now();
-    const imageLoader = options.loadSlideImage ?? loadSlideImage;
+    const imageLoader =
+      options.loadSlideImage ??
+      ((imageUrl: string) => loadSlideImage(imageUrl, options.fetchImpl, options.daemonFetchImpl));
     const preparedSources = await Promise.all(
       sources.map(async (slide) => ({
         ...slide,

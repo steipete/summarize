@@ -45,6 +45,8 @@ type SettingsLike = {
   summaryRuntime: "direct" | "daemon";
   provider: string;
   providerApiKeys: Record<string, string | undefined>;
+  daemonAllowed?: boolean;
+  daemonManaged?: boolean;
   daemonHintDismissed: boolean;
   fontSize: number;
   lineHeight: number;
@@ -135,6 +137,8 @@ export async function resolvePanelState({
         slideRuntime: settings.slideRuntime,
         summaryRuntime: settings.summaryRuntime,
         providerConfigured: hasDirectProviderCredentials(settings),
+        daemonAllowed: settings.daemonAllowed !== false,
+        daemonManaged: settings.daemonManaged === true,
         daemonHintDismissed: settings.daemonHintDismissed,
         fontSize: settings.fontSize,
         lineHeight: settings.lineHeight,

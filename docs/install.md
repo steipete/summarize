@@ -129,7 +129,7 @@ Use `PORT=4001 ./scripts/docs-serve.sh` to pick another port.
 ## Notes (Windows / containers)
 
 - **Windows native:** `summarize` runs under Node 24. The daemon registers a Scheduled Task on first install.
-- **Windows containers:** `summarize daemon install` starts the daemon for the current container session but does not register a Scheduled Task. Run the install on each startup or add it to the container entrypoint, publish the configured port (default `8787`), and set the same port under **Options → Runtime → Daemon → Port**.
+- **Windows containers:** `summarize daemon install` starts the daemon for the current container session but does not register a Scheduled Task. Chrome Daemon mode also needs the pending packaged Windows native-host executable; Direct and Browser modes remain available.
 - **WSL2:** treat as Linux. The daemon installs as a systemd user service if `systemd` is available; otherwise run `summarize daemon run` in a long-lived shell.
 
 Next: head to [Quickstart](quickstart.md).

@@ -46,7 +46,7 @@ YouTube slide screenshots (from the browser):
 Why a daemon/service?
 
 - Direct mode works without the daemon. Auto uses a configured OpenAI, OpenRouter, Anthropic, Gemini, xAI, Z.AI, NVIDIA, MiniMax, GitHub Models, or Ollama provider, otherwise Gemini Nano on-device; keys remain in extension-local storage.
-- The optional daemon on `127.0.0.1` adds CLI model fallbacks, shared caches/diagnostics, native ffmpeg, configurable transcription providers, OCR, and broader media support.
+- The optional daemon adds CLI model fallbacks, shared caches/diagnostics, native ffmpeg, configurable transcription providers, OCR, and broader media support. Chrome reaches it through an explicitly enabled Native Messaging host; retained loopback network access is used only by configured Direct local providers.
 - The service autostarts (launchd/systemd/Scheduled Task) so the Side Panel is always ready.
 
 If you only want the **CLI**, you can skip the daemon install entirely.
@@ -56,9 +56,10 @@ Notes:
 - Summarization only runs when the Side Panel is open.
 - Auto mode summarizes on navigation (incl. SPAs); otherwise use the button.
 - Daemon is localhost-only and requires a shared token; rerunning `summarize daemon install --token <TOKEN>` adds another paired browser token instead of invalidating the old one.
+- Chrome local-companion access is optional and browser-policy enforceable; Direct and Browser modes do not require it.
 - Non-default port: install with `summarize daemon install --token <TOKEN> --port <PORT>`, then set the same value in **Options → Runtime → Daemon → Port**.
 - Autostart: macOS (launchd), Linux (systemd user), Windows (Scheduled Task).
-- Windows containers: `summarize daemon install` starts the daemon for the current container session but does not register a Scheduled Task. Run it each time the container starts or add that command to your container startup, publish the configured port (default `8787`), and set the same port in the extension.
+- Windows containers: `summarize daemon install` starts the daemon for the current container session but does not register a Scheduled Task. Chrome Daemon mode also needs the pending packaged Windows native-host executable; Direct and Browser modes remain available.
 - Tip: configure `free` via `summarize refresh-free` (needs `OPENROUTER_API_KEY`). Add `--set-default` to set model=`free`.
 
 More:
@@ -86,7 +87,7 @@ More:
      - Pick: `apps/chrome-extension/.output/firefox-mv3/manifest.json`
 2. Open Side Panel/Sidebar → copy token.
 3. Install daemon in dev mode:
-   - `pnpm summarize daemon install --token <TOKEN> --dev`
+   - `pnpm summarize daemon install --token <TOKEN> --dev --extension-id <UNPACKED_ID>`
 
 ## CLI
 

@@ -41,7 +41,7 @@ describe("firefox extension manifest", () => {
     const permissions = Array.isArray(manifest.permissions) ? manifest.permissions : [];
     expect(permissions).toContain("userScripts");
     expect(permissions).not.toContain("windows");
-    expect(manifest.optional_permissions).toEqual([]);
+    expect(manifest.optional_permissions).toEqual(["nativeMessaging"]);
     expect(manifest.minimum_chrome_version).toBe("120");
   });
 });

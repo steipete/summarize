@@ -23,6 +23,10 @@ Quickstart:
 - Open side panel → copy token install command → run for daemon mode:
   - `summarize daemon install --token <TOKEN> --port 8787` (macOS: LaunchAgent, Linux: systemd user, Windows: Scheduled Task)
   - Non-default port: replace `8787`, then set the same value in **Options → Runtime → Daemon → Port**.
+- Chrome asks for optional Native Messaging access only when the user explicitly enables a Daemon
+  runtime. Retained loopback host access serves configured Direct local providers only, not daemon
+  traffic. Managed deployments can browser-disable both boundaries; see
+  [Chrome enterprise policy](chrome-enterprise.md).
 - Verify:
   - `summarize daemon status`
   - Restart (if needed): `summarize daemon restart`
@@ -35,7 +39,7 @@ Firefox notes:
 
 Dev (repo checkout):
 
-- Use: `pnpm summarize daemon install --token <TOKEN> --dev` (autostart service runs `src/cli.ts` via Node's native TypeScript support; no `dist/` build required).
+- Use: `pnpm summarize daemon install --token <TOKEN> --dev --extension-id <UNPACKED_ID>` (copy the ID from `chrome://extensions`; autostart runs `src/cli.ts` with no `dist/` build required).
 - E2E (Playwright): `pnpm -C apps/chrome-extension test:e2e`
   - First run: `pnpm -C apps/chrome-extension exec playwright install chromium`
   - Chromium runs headless by default.
@@ -45,6 +49,7 @@ Dev (repo checkout):
 
 - “Daemon not reachable”:
   - `summarize daemon status`
+  - Confirm the native host is reported as installed and Chrome granted the optional companion permission.
   - If the daemon uses a non-default port, confirm **Options → Runtime → Daemon → Port** matches the daemon configuration.
   - Logs: `~/.summarize/logs/daemon.err.log`
 - Windows install:
@@ -56,10 +61,7 @@ Dev (repo checkout):
   - Re-run: `summarize daemon install --token <TOKEN>`.
 - Windows containers:
   - `summarize daemon install --token <TOKEN>` starts the daemon for the current container session but does not create a Scheduled Task.
-  - Run that command manually each time the container starts, or add it to your container startup. Also publish the configured daemon port in `docker-compose.yml` (default `8787`):
-    `ports: ['8787:8787']`
-    `command: ['cmd', '/c', 'summarize daemon install --token <TOKEN>']`
-  - Then restart the container and verify `http://127.0.0.1:8787/health`.
+  - Chrome Daemon mode also needs the pending packaged Windows native-host executable. Do not expose the daemon port as a substitute; use Direct and Browser modes.
 - “Need extension-side traces”:
   - Options → Logs → `extension.log` (panel/background events).
   - Enable “Extended logging” in Advanced settings for full pipeline traces.
@@ -78,11 +80,10 @@ Dev (repo checkout):
 - “Could not establish connection / Receiving end does not exist”:
   - The content script wasn’t injected (yet), or Chrome blocked site access.
   - Chrome → extension details → “Site access” → “On all sites” (or allow the domain), then reload the tab.
-- “<site> wants to look for and connect to any device on your local network”:
-  - Trigger: content scripts (page context) hitting the configured daemon origin (default `http://127.0.0.1:8787`) can cause Chrome to attribute the request to the current origin and prompt per-site.
-  - Fix: hover summaries must proxy daemon calls via the extension background service worker (reload the extension after updating).
-  - Verify daemon: `summarize daemon status` (or `curl http://127.0.0.1:8787/health`).
-  - Repro/dev: `pnpm -C apps/chrome-extension dev` then enable “Hover summaries” and hover a link.
+- “Native messaging host not found”:
+  - Re-run `summarize daemon install --token <TOKEN>` so the Chrome host manifest and launcher are refreshed.
+  - Verify `summarize daemon status` reports `Chrome native messaging host: installed`.
+  - The host is bound to Web Store ID `cejgnmmhbbpdmjnfppjdfkocebngehfg`; a normal unpacked build has a different ID unless a development host manifest explicitly allows it.
 
 ## Architecture
 
@@ -92,12 +93,13 @@ Dev (repo checkout):
   - Chrome offscreen page: runs MediaBunny with native WebCodecs for ranged video slides and chunked local media transcription, plus an idle-evictable Whisper runtime.
   - Content script: extract readable article text from the **rendered DOM** via Readability; also detect SPA URL changes.
   - Direct provider adapters: OpenAI-compatible SSE, Anthropic Messages SSE, and Gemini SSE, normalized to the same summary/chat/tool-call contracts.
-  - Panel page streams SSE directly (MV3 service workers can be flaky for long-lived streams).
+  - Panel page reconstructs daemon SSE streams carried through the service worker's native bridge.
 - **Daemon (local, autostart service)**
   - HTTP server on `127.0.0.1` (default port `8787`).
   - Token-authenticated API.
   - Runs the existing summarize pipeline (env/config-based) and streams tokens to client via SSE.
-  - Port is configurable: set **Options → Runtime → Daemon → Port** to match a daemon started with `summarize daemon install --port <n>` (e.g. when `8787` is taken by another service). The extension talks to `127.0.0.1:<port>` for every daemon call.
+  - Native host `com.steipete.summarize` proxies only `/health` and `/v1/*` to the configured daemon port and preserves SSE and binary responses.
+  - Port is configurable: set **Options → Runtime → Daemon → Port** to match a daemon started with `summarize daemon install --port <n>`.
 
 ## Data Flow
 
@@ -106,7 +108,7 @@ Dev (repo checkout):
 3. On nav/tab change (and auto enabled): background asks the content script to extract `{ url, title, text }` (best-effort).
 4. In Chrome Browser mode, fetchable audio is decoded in bounded chunks through MediaBunny/WebCodecs and transcribed locally. YouTube prefers active-player/watch-page direct audio, then Android VR, buffered direct audio, and captured SABR.
 5. In Direct mode, background uses Gemini Nano for Auto without provider credentials, or calls the selected provider and returns the normalized summary/chat result to the panel.
-6. In Daemon mode, background `POST`s payload to `/v1/summarize` with `Authorization: Bearer <token>`; the panel streams `/v1/summarize/<id>/events`.
+6. In Daemon mode, extension contexts send request metadata through the service worker, which checks managed policy and optional permission before connecting to the native host. The host proxies the authenticated `/v1/*` API and streams response chunks back to the caller.
 
 ## Auto Mode (URL + Page Text)
 
@@ -199,7 +201,9 @@ Problem: daemon must be secured; extension must discover and pair with it.
   - “Copy command” button.
 - Daemon stores paired tokens in `~/.summarize/daemon.json`.
 - Extension stores token in `chrome.storage.local`.
-- The manifest permits HTTP to `127.0.0.1` on any port; bearer tokens are attached only for the exact configured daemon origin.
+- Chrome declares `nativeMessaging` as an optional named permission. It is requested only when the
+  user enables the local companion. The registered host is bound to the exact Web Store extension
+  ID, accepts only daemon API paths, and rejects a port that does not match `daemon.json`.
 - If daemon unreachable or 401: show Setup state + troubleshooting.
 
 ## Daemon Endpoints

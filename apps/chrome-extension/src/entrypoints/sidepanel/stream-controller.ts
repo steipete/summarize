@@ -1,4 +1,5 @@
 import { parseSseStream, type RawSseMessage } from "@steipete/summarize-core/runtime";
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
 import { parseSseEvent, type SseMetaData, type SseSlidesData } from "../../lib/runtime-contracts";
 import {
@@ -176,7 +177,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
 
     try {
       const origin = await getDaemonOrigin();
-      const res = await (fetchImpl ?? fetch)(`${origin}/v1/summarize/${run.id}/events`, {
+      const res = await (fetchImpl ?? daemonFetch)(`${origin}/v1/summarize/${run.id}/events`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: nextController.signal,
       });

@@ -1,3 +1,4 @@
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
 
 const DAEMON_STATUS_TIMEOUT_MS = 5000;
@@ -53,7 +54,7 @@ export async function daemonHealth(): Promise<{ ok: boolean; error?: string }> {
 
   return await withDaemonRetry(
     async (signal) => {
-      return await fetch(`${origin}/health`, { signal });
+      return await daemonFetch(`${origin}/health`, { signal });
     },
     {
       timeout: "Timed out",
@@ -69,7 +70,7 @@ export async function daemonPing(token: string): Promise<{ ok: boolean; error?: 
 
   return await withDaemonRetry(
     async (signal) => {
-      return await fetch(`${origin}/v1/ping`, {
+      return await daemonFetch(`${origin}/v1/ping`, {
         headers: { Authorization: `Bearer ${token}` },
         signal,
       });

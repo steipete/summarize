@@ -34,6 +34,7 @@ export async function ensureChatExtract({
   sendStatus,
   extractFromTab,
   fetchImpl,
+  daemonFetchImpl = fetchImpl,
   log,
 }: {
   session: { windowId: number };
@@ -43,6 +44,7 @@ export async function ensureChatExtract({
   sendStatus: (status: string) => void;
   extractFromTab: ExtractorContext["extractFromTab"];
   fetchImpl: typeof fetch;
+  daemonFetchImpl?: typeof fetch;
   log?: ExtractLog;
 }): Promise<CachedExtract> {
   if (!tab.id || !tab.url) {
@@ -64,6 +66,7 @@ export async function ensureChatExtract({
       token: settings.token,
       includeDiagnostics: settings.extendedLogging,
       fetchImpl,
+      daemonFetchImpl,
       extractFromTab,
       log: routeLog,
     });
@@ -77,6 +80,7 @@ export async function ensureChatExtract({
       token: settings.token,
       includeDiagnostics: settings.extendedLogging,
       fetchImpl,
+      daemonFetchImpl,
       extractFromTab,
       log: routeLog,
     });
@@ -132,7 +136,7 @@ export async function ensureChatExtract({
   const origin = daemonOrigin(settings.daemonPort);
 
   try {
-    res = await fetchImpl(`${origin}/v1/summarize`, {
+    res = await daemonFetchImpl(`${origin}/v1/summarize`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${settings.token.trim()}`,

@@ -1,3 +1,4 @@
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { daemonOrigin } from "../../lib/daemon-url";
 import { logExtensionEvent } from "../../lib/extension-logs";
 import { loadSettings, type Settings } from "../../lib/settings";
@@ -36,9 +37,14 @@ type SlideImageLoader = {
 };
 
 export function createSlideImageLoader(
-  options: { loadSettings?: () => Promise<Settings>; maxCacheEntries?: number } = {},
+  options: {
+    loadSettings?: () => Promise<Settings>;
+    maxCacheEntries?: number;
+    fetchImpl?: typeof fetch;
+  } = {},
 ): SlideImageLoader {
   const loadSettingsFn = options.loadSettings ?? loadSettings;
+  const fetchImpl = options.fetchImpl ?? daemonFetch;
   const slideImageCache = new Map<string, { objectUrl: string; lastUsed: number }>();
   const slideImagePending = new Map<string, Promise<string | null>>();
   const slideImageRetryTimers = new WeakMap<HTMLImageElement, number>();
@@ -120,7 +126,9 @@ export function createSlideImageLoader(
           return null;
         }
         if (!sameDaemonOrigin) return null;
-        const res = await fetch(imageUrl, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetchImpl(imageUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (!res.ok) {
           if (settings.extendedLogging) {
             logExtensionEvent({

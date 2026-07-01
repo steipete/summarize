@@ -23,7 +23,7 @@ function openAiStream(text: string) {
   ].join("\n");
 }
 
-test("sidepanel summarizes and chats through a direct provider without daemon", async ({
+test("sidepanel summarizes and chats through a local direct provider without daemon", async ({
   browserName: _browserName,
 }, testInfo) => {
   const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
@@ -34,7 +34,7 @@ test("sidepanel summarizes and chats through a direct provider without daemon", 
       slideRuntime: "browser",
       provider: "openai",
       providerApiKeys: { openai: "test-key" },
-      providerBaseUrls: { openai: "https://api.openai.test/v1" },
+      providerBaseUrls: { openai: "http://127.0.0.1:11434/v1" },
       model: "openai/test-model",
       autoSummarize: false,
       chatEnabled: true,
@@ -61,7 +61,7 @@ test("sidepanel summarizes and chats through a direct provider without daemon", 
 
     let requestCount = 0;
     const requestBodies: Array<Record<string, unknown>> = [];
-    await harness.context.route("https://api.openai.test/v1/chat/completions", async (route) => {
+    await harness.context.route("http://127.0.0.1:11434/v1/chat/completions", async (route) => {
       requestCount += 1;
       requestBodies.push(route.request().postDataJSON() as Record<string, unknown>);
       await route.fulfill({

@@ -28,7 +28,7 @@ export const urlDaemonExtractor: Extractor = {
   async extract(ctx: ExtractorContext): Promise<ExtractorResult | null> {
     const origin = await getDaemonOrigin();
 
-    const res = await ctx.fetchImpl(`${origin}/v1/summarize`, {
+    const res = await (ctx.daemonFetchImpl ?? ctx.fetchImpl)(`${origin}/v1/summarize`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${ctx.token.trim()}`,

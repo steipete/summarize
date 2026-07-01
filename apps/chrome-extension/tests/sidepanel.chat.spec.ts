@@ -308,12 +308,14 @@ test("sidepanel clears chat on user navigation", async ({
     const contentPage = await harness.context.newPage();
     await contentPage.goto("https://example.com", { waitUntil: "domcontentloaded" });
     await contentPage.evaluate(() => {
-      document.body.innerHTML = `<article><p>Chat nav test.</p></article>`;
+      document.body.innerHTML = `<article><p>${"Chat navigation context. ".repeat(20)}</p></article>`;
     });
     await maybeBringToFront(contentPage);
     await activateTabByUrl(harness, "https://example.com");
     await waitForActiveTabUrl(harness, "https://example.com");
     await injectContentScript(harness, "content-scripts/extract.js", "https://example.com");
+    await waitForExtractReady(harness, "https://example.com");
+    const activeTabId = await getActiveTabId(harness);
 
     await harness.context.route("http://127.0.0.1:8787/v1/agent", async (route) => {
       const body = buildAgentStream("Ack");
@@ -328,7 +330,7 @@ test("sidepanel clears chat on user navigation", async ({
     await sendBgMessage(harness, {
       type: "ui:state",
       state: buildUiState({
-        tab: { id: 1, url: "https://example.com", title: "Example" },
+        tab: { id: activeTabId, url: "https://example.com", title: "Example" },
         settings: {
           chatEnabled: true,
           summaryRuntime: "daemon",
@@ -351,7 +353,7 @@ test("sidepanel clears chat on user navigation", async ({
     await sendBgMessage(harness, {
       type: "ui:state",
       state: buildUiState({
-        tab: { id: 1, url: "https://example.com/next", title: "Next" },
+        tab: { id: activeTabId, url: "https://example.com/next", title: "Next" },
         settings: {
           chatEnabled: true,
           summaryRuntime: "daemon",
@@ -504,7 +506,6 @@ test("sidepanel updates title while streaming on same URL", async ({
 test("hover tooltip proxies daemon calls via background (no page-origin localhost fetch)", async ({
   browserName: _browserName,
 }, testInfo) => {
-  test.setTimeout(30_000);
   const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
 
   try {
@@ -513,10 +514,24 @@ test("hover tooltip proxies daemon calls via background (no page-origin localhos
       hoverSummaries: true,
       summaryRuntime: "daemon",
     });
-    await mockDaemonSummarize(harness);
 
-    let eventsCalls = 0;
+    await harness.context.route("https://example.com/hover-daemon-proof", async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: { "content-type": "text/html" },
+        body: '<a id="target" href="https://example.com/next">Summarize target</a>',
+      });
+    });
 
+    const requestWorkerUrls: Array<string | null> = [];
+    await harness.context.route("http://127.0.0.1:8787/v1/summarize", async (route) => {
+      requestWorkerUrls.push(route.request().serviceWorker()?.url() ?? null);
+      await route.fulfill({
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ok: true, id: "hover-route-run" }),
+      });
+    });
     const sseBody = [
       "event: chunk",
       'data: {"text":"Hello hover"}',
@@ -528,7 +543,7 @@ test("hover tooltip proxies daemon calls via background (no page-origin localhos
     await harness.context.route(
       /http:\/\/127\.0\.0\.1:8787\/v1\/summarize\/[^/]+\/events/,
       async (route) => {
-        eventsCalls += 1;
+        requestWorkerUrls.push(route.request().serviceWorker()?.url() ?? null);
         await route.fulfill({
           status: 200,
           headers: { "content-type": "text/event-stream" },
@@ -539,34 +554,22 @@ test("hover tooltip proxies daemon calls via background (no page-origin localhos
 
     const page = await harness.context.newPage();
     trackErrors(page, harness.pageErrors, harness.consoleErrors);
-    await page.goto("https://example.com", { waitUntil: "domcontentloaded" });
-    await maybeBringToFront(page);
-    await activateTabByUrl(harness, "https://example.com");
-    await waitForActiveTabUrl(harness, "https://example.com");
-
-    const background = await getBackground(harness);
-    const hoverResponse = await background.evaluate(async () => {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.id) return { ok: false, error: "missing tab" };
-      const [result] = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        world: "ISOLATED",
-        func: async () => {
-          return chrome.runtime.sendMessage({
-            type: "hover:summarize",
-            requestId: "hover-1",
-            url: "https://example.com/next",
-            title: "Next",
-            token: "test-token",
-          });
-        },
-      });
-      return result?.result ?? { ok: false, error: "no response" };
+    await page.goto("https://example.com/hover-daemon-proof", {
+      waitUntil: "domcontentloaded",
     });
-    expect(hoverResponse).toEqual(expect.objectContaining({ ok: true }));
+    await maybeBringToFront(page);
+    await activateTabByUrl(harness, "https://example.com/hover-daemon-proof");
+    await waitForActiveTabUrl(harness, "https://example.com/hover-daemon-proof");
 
-    await expect.poll(() => getSummarizeCalls(harness)).toBeGreaterThan(0);
-    await expect.poll(() => eventsCalls).toBeGreaterThan(0);
+    await page.locator("#target").hover();
+
+    const tooltip = page.locator('#__summarize_hover_tooltip__[data-visible="true"] .summary');
+    await expect(tooltip).toContainText("Hello hover");
+    await expect.poll(() => requestWorkerUrls).toHaveLength(2);
+    expect(requestWorkerUrls).toEqual([
+      expect.stringMatching(/^chrome-extension:\/\//),
+      expect.stringMatching(/^chrome-extension:\/\//),
+    ]);
 
     assertNoErrors(harness);
   } finally {

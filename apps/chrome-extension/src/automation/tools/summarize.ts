@@ -1,6 +1,7 @@
 import { parseSseStream } from "@steipete/summarize-core/runtime";
 import { buildBrowserSummaryPayload } from "../../lib/browser-summary";
 import { fetchBrowserUrlContent } from "../../lib/browser-url-content";
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { daemonOrigin } from "../../lib/daemon-url";
 import {
   buildDirectSummaryPrompt,
@@ -154,7 +155,7 @@ export async function executeSummarizeTool(args: SummarizeToolArgs): Promise<Sum
   }
 
   const origin = daemonOrigin(settings.daemonPort);
-  const res = await fetch(`${origin}/v1/summarize`, {
+  const res = await daemonFetch(`${origin}/v1/summarize`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -176,7 +177,7 @@ export async function executeSummarizeTool(args: SummarizeToolArgs): Promise<Sum
   }
   if (!("id" in json) || !json.id) throw new Error("Missing summarize run id");
 
-  const streamRes = await fetch(`${origin}/v1/summarize/${json.id}/events`, {
+  const streamRes = await daemonFetch(`${origin}/v1/summarize/${json.id}/events`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!streamRes.ok) throw new Error(`${streamRes.status} ${streamRes.statusText}`);

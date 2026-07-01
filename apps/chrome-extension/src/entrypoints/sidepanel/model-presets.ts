@@ -1,5 +1,6 @@
 import { parseSseStream } from "@steipete/summarize-core/runtime";
 import { readPresetOrCustomValue } from "../../lib/combo";
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { daemonOrigin, getDaemonOrigin } from "../../lib/daemon-url";
 import { parseSseEvent } from "../../lib/runtime-contracts";
 import type { Settings } from "../../lib/settings";
@@ -16,6 +17,7 @@ export function createModelPresetsController({
   defaultPlaceholder = "auto",
   loadSettings,
   friendlyFetchError,
+  fetchImpl = daemonFetch,
 }: {
   modelPresetEl: HTMLSelectElement;
   modelCustomEl: HTMLInputElement;
@@ -26,6 +28,7 @@ export function createModelPresetsController({
   defaultPlaceholder?: string;
   loadSettings: () => Promise<Settings>;
   friendlyFetchError: (error: unknown, context: string) => string;
+  fetchImpl?: typeof fetch;
 }) {
   let refreshAt = 0;
   let refreshFreeRunning = false;
@@ -147,7 +150,7 @@ export function createModelPresetsController({
     }
     try {
       const origin = await getDaemonOrigin();
-      const response = await fetch(`${origin}/v1/models`, {
+      const response = await fetchImpl(`${origin}/v1/models`, {
         headers: { Authorization: `Bearer ${trimmed}` },
       });
       if (!isCurrentRequest()) return;
@@ -231,7 +234,7 @@ export function createModelPresetsController({
     let winnerModel: string | null = null;
 
     try {
-      const response = await fetch(`${origin}/v1/refresh-free`, {
+      const response = await fetchImpl(`${origin}/v1/refresh-free`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -244,7 +247,7 @@ export function createModelPresetsController({
         throw new Error(json.error || `${response.status} ${response.statusText}`);
       }
 
-      const streamResponse = await fetch(`${origin}/v1/refresh-free/${json.id}/events`, {
+      const streamResponse = await fetchImpl(`${origin}/v1/refresh-free/${json.id}/events`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!streamResponse.ok)

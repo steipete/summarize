@@ -1,5 +1,5 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
-import { META_SITE_EXCLUDE_MATCHES } from "../lib/content-script-matches";
+import { ALWAYS_ON_CONTENT_SCRIPT_EXCLUDE_MATCHES } from "../lib/content-script-matches";
 
 export type ElementInfo = {
   selector: string;
@@ -369,7 +369,7 @@ function handleNativeInputBridge() {
 
 export default defineContentScript({
   matches: ["<all_urls>"],
-  excludeMatches: META_SITE_EXCLUDE_MATCHES,
+  excludeMatches: ALWAYS_ON_CONTENT_SCRIPT_EXCLUDE_MATCHES,
   runAt: "document_idle",
   main() {
     const flag = "__summarize_automation_installed__";

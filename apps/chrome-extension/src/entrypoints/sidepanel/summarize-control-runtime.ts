@@ -1,3 +1,4 @@
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
 import type { Settings, SlidesLayout } from "../../lib/settings";
 import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
@@ -33,6 +34,7 @@ type SummarizeControlRuntimeOptions = {
   renderInlineSlidesFallback: () => void;
   queueSlidesRender: () => void;
   applySlidesRendererLayout: () => void;
+  daemonFetchImpl?: typeof fetch;
 };
 
 type SummarizeControlPayload = { mode: "page" | "video"; slides: boolean };
@@ -40,11 +42,12 @@ type SummarizeControlPayload = { mode: "page" | "video"; slides: boolean };
 async function fetchSlideTools(
   tokenValue: string,
   requireOcr: boolean,
+  fetchImpl: typeof fetch = daemonFetch,
 ): Promise<{ ok: boolean; missing: string[] }> {
   const token = tokenValue.trim();
   if (!token) return { ok: false, missing: ["daemon token"] };
   const origin = await getDaemonOrigin();
-  const res = await fetch(`${origin}/v1/tools`, {
+  const res = await fetchImpl(`${origin}/v1/tools`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) return { ok: false, missing: ["daemon tools endpoint"] };
@@ -95,6 +98,7 @@ export function createSummarizeControlRuntime(options: SummarizeControlRuntimeOp
         const tools = await fetchSlideTools(
           settings.token,
           options.panelState.slidesSession.slidesOcrEnabled,
+          options.daemonFetchImpl,
         );
         if (!tools.ok) {
           options.showSlideNotice(

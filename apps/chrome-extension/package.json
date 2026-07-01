@@ -11,8 +11,8 @@
     "dev:firefox": "BROWSER=firefox wxt dev",
     "lint": "oxlint --type-aware --tsconfig tsconfig.json --config ../../.oxlintrc.json .",
     "test": "pnpm test:e2e",
-    "test:chrome": "env -u NO_COLOR pnpm build && env -u NO_COLOR playwright test -c playwright.config.ts --project=chromium",
-    "test:e2e": "env -u NO_COLOR pnpm build && env -u NO_COLOR playwright test -c playwright.config.ts --project=chromium",
+    "test:chrome": "env -u NO_COLOR pnpm build && env -u NO_COLOR playwright test -c playwright.config.ts --project=chromium tests/native-messaging.e2e.spec.ts && env -u NO_COLOR SUMMARIZE_E2E_HTTP_TRANSPORT=1 pnpm build && env -u NO_COLOR SUMMARIZE_E2E_HTTP_TRANSPORT=1 playwright test -c playwright.config.ts --project=chromium",
+    "test:e2e": "pnpm test:chrome",
     "test:firefox": "env -u NO_COLOR pnpm build:firefox && env -u NO_COLOR node scripts/firefox-smoke.mjs",
     "test:firefox:force": "env -u NO_COLOR ALLOW_FIREFOX_EXTENSION_TESTS=1 pnpm build:firefox && env -u NO_COLOR ALLOW_FIREFOX_EXTENSION_TESTS=1 playwright test -c playwright.config.ts --project=firefox",
     "test:firefox:lint": "env -u NO_COLOR pnpm build:firefox && env -u NO_COLOR web-ext lint --source-dir .output/firefox-mv3 --self-hosted --boring"

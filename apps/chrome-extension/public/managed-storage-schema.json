@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "properties": {
+    "daemonAllowed": {
+      "title": "Allow the local Summarize companion",
+      "description": "When false, Summarize uses Direct and Browser modes and never requests or contacts the local daemon.",
+      "type": "boolean"
+    }
+  }
+}

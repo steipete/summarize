@@ -160,6 +160,7 @@ function buildRuntime(
     renderInlineSlidesFallback: calls.renderInlineSlidesFallback,
     queueSlidesRender: calls.queueSlidesRender,
     applySlidesRendererLayout: calls.applySlidesRendererLayout,
+    daemonFetchImpl: fetch,
   });
   view.bindActions({
     onSlidesTextModeChange: runtime.handleSlidesTextModeChange,

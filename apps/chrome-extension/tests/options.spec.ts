@@ -151,6 +151,7 @@ test("options persists automation toggle without save", async ({
   try {
     await seedSettings(harness, { automationEnabled: false });
     const page = await openExtensionPage(harness, "options.html", "#tabs");
+    await page.waitForFunction(() => document.documentElement.dataset.settingsReady === "true");
 
     const toggle = page.locator("#automationToggle .checkboxRoot");
     await toggle.click();
@@ -185,7 +186,7 @@ test("options exposes two AI connections and independent slide runtimes", async 
     await seedSettings(harness, { summaryRuntime: "direct", slideRuntime: "browser" });
     const page = await openExtensionPage(harness, "options.html", "#tabs");
 
-    await expect(page.locator("#daemonStatus")).toContainText("Daemon not selected");
+    await expect(page.locator("#daemonStatus")).toContainText("Local companion not enabled");
     await expect(page.locator("#panel-general")).not.toContainText("Token");
 
     await page.click("#tab-runtime");
@@ -200,6 +201,7 @@ test("options exposes two AI connections and independent slide runtimes", async 
     await expect(page.locator("#panel-runtime")).toContainText("Browser cache");
     await expect(page.locator("#panel-runtime #daemonPort")).toBeVisible();
     await expect(page.locator("#panel-runtime #token")).toBeVisible();
+    await expect(page.locator("#daemonPermissionEnable")).toBeVisible();
     await expect(page.locator("#panel-runtime")).not.toContainText("Show summary first");
     await expect(page.locator("#browserCacheStatus")).toContainText(/entries? · /);
     await page.locator("#browserCacheClear").click();
@@ -207,25 +209,8 @@ test("options exposes two AI connections and independent slide runtimes", async 
 
     const aiMode = page.locator("#summaryRuntimeMode");
     await expect(aiMode.locator('input[value="direct"]')).toBeChecked();
-    await aiMode.locator('input[value="daemon"]').click();
-    await expect(page.locator("#daemonStatus")).toContainText("Add token to verify daemon");
-
-    await expect
-      .poll(async () => {
-        const settings = await getSettings(harness);
-        return settings.summaryRuntime;
-      })
-      .toBe("daemon");
-
     const slideMode = page.locator("#slideRuntimeMode");
     await expect(slideMode.locator('input[value="browser"]')).toBeChecked();
-    await slideMode.locator('input[value="daemon"]').click();
-    await expect
-      .poll(async () => {
-        const settings = await getSettings(harness);
-        return settings.slideRuntime;
-      })
-      .toBe("daemon");
 
     await page.click("#tab-advanced");
     await expect(page.locator("#panel-advanced")).toContainText("Show summary first");
@@ -250,10 +235,18 @@ test("options stores an OpenAI key for direct mode without requiring the daemon"
     });
     const page = await openExtensionPage(harness, "options.html", "#tabs");
 
+    await expect(page.locator("#daemonStatus")).toContainText("Local companion not enabled");
     await page.click("#tab-runtime");
     await page.locator('#summaryRuntimeMode input[value="direct"]').click();
     await page.locator('#slideRuntimeMode input[value="browser"]').click();
+    await expect
+      .poll(async () => {
+        const settings = await getSettings(harness);
+        return { summaryRuntime: settings.summaryRuntime, slideRuntime: settings.slideRuntime };
+      })
+      .toEqual({ summaryRuntime: "direct", slideRuntime: "browser" });
     await page.locator("#provider").selectOption("openai");
+    await expect.poll(async () => (await getSettings(harness)).provider).toBe("openai");
     await page.locator("#providerApiKey").fill("sk-test-direct-openai");
 
     await expect
@@ -279,8 +272,50 @@ test("options stores an OpenAI key for direct mode without requiring the daemon"
     await expect(page.locator('#slideRuntimeMode input[value="browser"]')).toBeChecked();
     await expect(page.locator("#provider")).toHaveValue("openai");
     await expect(page.locator("#providerApiKey")).toHaveValue("sk-test-direct-openai");
-    await expect(page.locator("#daemonStatus")).toContainText("Daemon not selected");
+    await expect(page.locator("#daemonStatus")).toContainText("Local companion not enabled");
 
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
+test("managed daemon disable locks the UI to Direct and Browser", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, {
+      token: "saved-daemon-token",
+      summaryRuntime: "daemon",
+      slideRuntime: "daemon",
+      autoCliFallback: true,
+    });
+    const page = await harness.context.newPage();
+    trackErrors(page, harness.pageErrors, harness.consoleErrors);
+    await page.addInitScript(() => {
+      Object.defineProperty(chrome.storage, "managed", {
+        configurable: true,
+        value: {
+          get: async () => ({ daemonAllowed: false }),
+          setAccessLevel: async () => undefined,
+        },
+      });
+    });
+    await page.goto(getExtensionUrl(harness, "options.html"), { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#tabs");
+
+    await expect(page.locator("#daemonStatus")).toContainText("Disabled by administrator");
+    await page.click("#tab-runtime");
+    await expect(page.locator("#daemonCapabilityStatus")).toHaveText("Disabled by administrator");
+    await expect(page.locator('#summaryRuntimeMode input[value="direct"]')).toBeChecked();
+    await expect(page.locator('#slideRuntimeMode input[value="browser"]')).toBeChecked();
+    await expect(page.locator('#summaryRuntimeMode input[value="daemon"]')).toBeDisabled();
+    await expect(page.locator('#slideRuntimeMode input[value="daemon"]')).toBeDisabled();
+    await expect(page.locator("#daemonPermissionEnable")).toBeHidden();
+    await expect(page.locator("#token")).toBeDisabled();
+    await expect(page.locator("#token")).toHaveValue("");
     assertNoErrors(harness);
   } finally {
     await closeExtension(harness.context, harness.userDataDir);
@@ -343,6 +378,8 @@ test("options persists direct provider credentials per provider", async ({
     await expect(page.locator("#providerApiKey")).toHaveValue("openai-key");
 
     await page.locator("#provider").selectOption("anthropic");
+    await expect(page.locator("#providerApiKey")).toHaveValue("");
+    await expect(page.locator("#providerBaseUrl")).toHaveValue("");
     await page.locator("#providerApiKey").fill("anthropic-key");
     await page.locator("#providerBaseUrl").fill("https://anthropic.test");
 

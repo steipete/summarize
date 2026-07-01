@@ -1,3 +1,4 @@
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
 
 const DAEMON_STATUS_TIMEOUT_MS = 5000;
@@ -14,7 +15,7 @@ function shouldRetryDaemon(err: unknown) {
 
 export function createDaemonStatusChecker({
   statusEl,
-  fetchImpl = fetch,
+  fetchImpl = daemonFetch,
   getExtensionVersion,
   isDaemonMode = () => true,
 }: {

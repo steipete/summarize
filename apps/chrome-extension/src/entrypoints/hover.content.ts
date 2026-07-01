@@ -1,5 +1,5 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
-import { META_SITE_EXCLUDE_MATCHES } from "../lib/content-script-matches";
+import { ALWAYS_ON_CONTENT_SCRIPT_EXCLUDE_MATCHES } from "../lib/content-script-matches";
 import { resolveCapabilityExecution } from "../lib/model-routing";
 import { mergeStreamingChunk } from "../lib/runtime-contracts";
 import { loadSettings, type Settings } from "../lib/settings";
@@ -224,7 +224,7 @@ function getAnchorFromEvent(event: Event): HTMLAnchorElement | null {
 
 export default defineContentScript({
   matches: ["<all_urls>"],
-  excludeMatches: META_SITE_EXCLUDE_MATCHES,
+  excludeMatches: ALWAYS_ON_CONTENT_SCRIPT_EXCLUDE_MATCHES,
   runAt: "document_idle",
   main() {
     const flag = "__summarize_hover_installed__";

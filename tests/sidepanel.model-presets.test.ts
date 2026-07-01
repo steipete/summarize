@@ -31,6 +31,7 @@ const createController = () => {
     defaultModel: "auto",
     loadSettings: async () => ({ token: "token" }) as Settings,
     friendlyFetchError: (error) => (error instanceof Error ? error.message : String(error)),
+    fetchImpl: (...args) => fetch(...args),
   });
   controller.setDefaultPresets();
   return { controller, modelPresetEl, modelCustomEl };

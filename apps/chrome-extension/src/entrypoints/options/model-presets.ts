@@ -1,10 +1,11 @@
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
 
 export function createModelPresetsController({
   presetEl,
   customEl,
   defaultValue,
-  fetchImpl = fetch,
+  fetchImpl = daemonFetch,
 }: {
   presetEl: HTMLSelectElement;
   customEl: HTMLInputElement;

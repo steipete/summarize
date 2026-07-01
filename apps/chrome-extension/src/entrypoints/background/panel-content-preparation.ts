@@ -50,6 +50,7 @@ export async function preparePanelContent({
   isSuperseded,
   signal,
   fetchImpl,
+  daemonFetchImpl = fetchImpl,
   extractFromTab,
   routeExtractImpl = routeExtract,
   sendStatus,
@@ -66,6 +67,7 @@ export async function preparePanelContent({
   isSuperseded: () => boolean;
   signal: AbortSignal;
   fetchImpl: typeof fetch;
+  daemonFetchImpl?: typeof fetch;
   extractFromTab: ExtractorContext["extractFromTab"];
   routeExtractImpl?: typeof routeExtract;
   extractYouTubeTranscript?: typeof extractYouTubeTranscriptInTab;
@@ -195,6 +197,7 @@ export async function preparePanelContent({
         includeDiagnostics: settings.extendedLogging,
         signal,
         fetchImpl,
+        daemonFetchImpl,
         extractFromTab,
         log: (event, detail) => {
           statusFromExtractEvent(event);

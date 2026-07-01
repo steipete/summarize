@@ -115,22 +115,24 @@ async function resolveTypeScriptRegisterPath(repoRoot: string): Promise<string> 
 
 export async function resolveDaemonProgramArguments({
   dev,
+  subcommand = "run",
 }: {
   dev: boolean;
+  subcommand?: "run" | "native-host";
 }): Promise<DaemonProgram> {
   const nodePath = process.execPath;
   if (!dev) {
     try {
       const cliEntrypointPath = await resolveCliEntrypointPathForService();
       return {
-        programArguments: [nodePath, cliEntrypointPath, "daemon", "run"],
+        programArguments: [nodePath, cliEntrypointPath, "daemon", subcommand],
         workingDirectory: undefined,
       };
     } catch (error) {
       const base = path.basename(nodePath).toLowerCase();
       if (base !== "node" && base !== "node.exe") {
         return {
-          programArguments: [nodePath, "daemon", "run"],
+          programArguments: [nodePath, "daemon", subcommand],
           workingDirectory: undefined,
         };
       }
@@ -142,7 +144,7 @@ export async function resolveDaemonProgramArguments({
   const devCliPath = path.join(repoRoot, "src", "cli.ts");
   await fs.access(devCliPath);
   return {
-    programArguments: [nodePath, "--import", registerPath, devCliPath, "daemon", "run"],
+    programArguments: [nodePath, "--import", registerPath, devCliPath, "daemon", subcommand],
     workingDirectory: repoRoot,
   };
 }

@@ -281,45 +281,55 @@
 
           <section class="section">
             <h2>Daemon</h2>
-            <label>
-              <span>Port</span>
-              <input
-                id="daemonPort"
-                type="number"
-                min="1"
-                max="65535"
-                inputmode="numeric"
-                placeholder="8787"
-              />
-            </label>
-            <div class="hint">
-              Local Summarize daemon port (default 8787). Must match the running daemon — see
-              <code>summarize daemon status</code>.
-            </div>
-            <label>
-              <span>Token</span>
-              <div class="inputRow">
-                <input id="token" type="text" placeholder="(generated in side panel)" />
-                <button
-                  id="tokenCopy"
-                  type="button"
-                  class="iconButton inputCopyButton"
-                  aria-label="Copy token"
-                  title="Copy token"
-                >
-                  <svg class="copyIcon" viewBox="0 0 16 16" aria-hidden="true">
-                    <path
-                      d="M5.5 3.5A2.5 2.5 0 0 1 8 1h4a2.5 2.5 0 0 1 2.5 2.5v6A2.5 2.5 0 0 1 12 12h-4A2.5 2.5 0 0 1 5.5 9.5v-6Z"
-                    />
-                    <path
-                      d="M1.5 6A2.5 2.5 0 0 1 4 3.5h1a.75.75 0 0 1 0 1.5H4A1 1 0 0 0 3 6v6a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1a.75.75 0 0 1 1.5 0v1A2.5 2.5 0 0 1 8 14H4a2.5 2.5 0 0 1-2.5-2.5V6Z"
-                    />
-                  </svg>
-                </button>
+            <div class="sectionTitleRow">
+              <div id="daemonCapabilityStatus" class="hint" role="status" aria-live="polite">
+                Checking local companion permission…
               </div>
-            </label>
-            <div class="hint">
-              Used only for Daemon mode or daemon-backed media. Direct mode does not need it.
+              <button id="daemonPermissionEnable" type="button" class="miniButton">
+                Enable local companion
+              </button>
+            </div>
+            <div id="daemonFields">
+              <label>
+                <span>Port</span>
+                <input
+                  id="daemonPort"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  inputmode="numeric"
+                  placeholder="8787"
+                />
+              </label>
+              <div class="hint">
+                Local Summarize daemon port (default 8787). Must match the running daemon — see
+                <code>summarize daemon status</code>.
+              </div>
+              <label>
+                <span>Token</span>
+                <div class="inputRow">
+                  <input id="token" type="text" placeholder="(generated in side panel)" />
+                  <button
+                    id="tokenCopy"
+                    type="button"
+                    class="iconButton inputCopyButton"
+                    aria-label="Copy token"
+                    title="Copy token"
+                  >
+                    <svg class="copyIcon" viewBox="0 0 16 16" aria-hidden="true">
+                      <path
+                        d="M5.5 3.5A2.5 2.5 0 0 1 8 1h4a2.5 2.5 0 0 1 2.5 2.5v6A2.5 2.5 0 0 1 12 12h-4A2.5 2.5 0 0 1 5.5 9.5v-6Z"
+                      />
+                      <path
+                        d="M1.5 6A2.5 2.5 0 0 1 4 3.5h1a.75.75 0 0 1 0 1.5H4A1 1 0 0 0 3 6v6a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1a.75.75 0 0 1 1.5 0v1A2.5 2.5 0 0 1 8 14H4a2.5 2.5 0 0 1-2.5-2.5V6Z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </label>
+              <div class="hint">
+                Used only for Daemon mode or daemon-backed media. Direct mode does not need it.
+              </div>
             </div>
           </section>
         </div>

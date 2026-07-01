@@ -1,4 +1,5 @@
 import type { SummarizeRequestOverrides } from "@steipete/summarize-core/runtime";
+import { enforceDaemonPolicy, readDaemonPolicy } from "./daemon-policy";
 import { readStoredSettings, writeStoredSettings } from "./settings-storage";
 import {
   type ColorMode,
@@ -57,6 +58,11 @@ export type Settings = {
   lineHeight: number;
   colorScheme: ColorScheme;
   colorMode: ColorMode;
+};
+
+export type EffectiveSettings = Settings & {
+  daemonAllowed: boolean;
+  daemonManaged: boolean;
 };
 
 export type SlidesLayout = "strip" | "gallery";
@@ -420,9 +426,9 @@ export const defaultSettings: Settings = {
   colorMode: defaultColorMode,
 };
 
-export async function loadSettings(): Promise<Settings> {
+export async function loadSettings(): Promise<EffectiveSettings> {
   const raw = (await readStoredSettings()) as Partial<Settings> & Record<string, unknown>;
-  return {
+  const normalized: Settings = {
     ...defaultSettings,
     ...raw,
     token: typeof raw.token === "string" ? raw.token : defaultSettings.token,
@@ -495,38 +501,49 @@ export async function loadSettings(): Promise<Settings> {
     colorScheme: normalizeColorScheme(raw.colorScheme),
     colorMode: normalizeColorMode(raw.colorMode),
   };
+  const policy = await readDaemonPolicy();
+  return {
+    ...enforceDaemonPolicy(normalized, policy),
+    daemonAllowed: policy.daemonAllowed,
+    daemonManaged: policy.managed,
+  };
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
+  const {
+    daemonAllowed: _daemonAllowed,
+    daemonManaged: _daemonManaged,
+    ...storedSettings
+  } = settings as EffectiveSettings;
   const normalized = {
-    ...settings,
-    daemonPort: normalizeDaemonPort(settings.daemonPort),
-    summaryRuntime: normalizeSummaryRuntime(settings.summaryRuntime),
-    provider: normalizeProvider(settings.provider),
-    providerApiKeys: normalizeProviderMap(settings.providerApiKeys),
-    providerBaseUrls: normalizeProviderMap(settings.providerBaseUrls),
-    model: normalizeModel(settings.model),
-    length: normalizeLength(settings.length),
-    language: normalizeLanguage(settings.language),
-    promptOverride: normalizePromptOverride(settings.promptOverride),
-    hoverPrompt: normalizeHoverPrompt(settings.hoverPrompt),
-    autoCliOrder: normalizeAutoCliOrder(settings.autoCliOrder),
-    requestMode: normalizeRequestMode(settings.requestMode),
-    slidesLayout: normalizeSlidesLayout(settings.slidesLayout),
-    firecrawlMode: normalizeFirecrawlMode(settings.firecrawlMode),
-    markdownMode: normalizeMarkdownMode(settings.markdownMode),
-    preprocessMode: normalizePreprocessMode(settings.preprocessMode),
-    youtubeMode: normalizeYoutubeMode(settings.youtubeMode),
-    timeout: normalizeTimeout(settings.timeout),
-    retries: normalizeRetries(settings.retries),
-    maxOutputTokens: normalizeMaxOutputTokens(settings.maxOutputTokens),
-    transcriber: normalizeTranscriber(settings.transcriber),
-    fontFamily: normalizeFontFamily(settings.fontFamily),
-    maxChars: normalizeMaxChars(settings.maxChars),
-    fontSize: normalizeFontSize(settings.fontSize),
-    lineHeight: normalizeLineHeight(settings.lineHeight),
-    colorScheme: normalizeColorScheme(settings.colorScheme),
-    colorMode: normalizeColorMode(settings.colorMode),
+    ...storedSettings,
+    daemonPort: normalizeDaemonPort(storedSettings.daemonPort),
+    summaryRuntime: normalizeSummaryRuntime(storedSettings.summaryRuntime),
+    provider: normalizeProvider(storedSettings.provider),
+    providerApiKeys: normalizeProviderMap(storedSettings.providerApiKeys),
+    providerBaseUrls: normalizeProviderMap(storedSettings.providerBaseUrls),
+    model: normalizeModel(storedSettings.model),
+    length: normalizeLength(storedSettings.length),
+    language: normalizeLanguage(storedSettings.language),
+    promptOverride: normalizePromptOverride(storedSettings.promptOverride),
+    hoverPrompt: normalizeHoverPrompt(storedSettings.hoverPrompt),
+    autoCliOrder: normalizeAutoCliOrder(storedSettings.autoCliOrder),
+    requestMode: normalizeRequestMode(storedSettings.requestMode),
+    slidesLayout: normalizeSlidesLayout(storedSettings.slidesLayout),
+    firecrawlMode: normalizeFirecrawlMode(storedSettings.firecrawlMode),
+    markdownMode: normalizeMarkdownMode(storedSettings.markdownMode),
+    preprocessMode: normalizePreprocessMode(storedSettings.preprocessMode),
+    youtubeMode: normalizeYoutubeMode(storedSettings.youtubeMode),
+    timeout: normalizeTimeout(storedSettings.timeout),
+    retries: normalizeRetries(storedSettings.retries),
+    maxOutputTokens: normalizeMaxOutputTokens(storedSettings.maxOutputTokens),
+    transcriber: normalizeTranscriber(storedSettings.transcriber),
+    fontFamily: normalizeFontFamily(storedSettings.fontFamily),
+    maxChars: normalizeMaxChars(storedSettings.maxChars),
+    fontSize: normalizeFontSize(storedSettings.fontSize),
+    lineHeight: normalizeLineHeight(storedSettings.lineHeight),
+    colorScheme: normalizeColorScheme(storedSettings.colorScheme),
+    colorMode: normalizeColorMode(storedSettings.colorMode),
   };
   await writeStoredSettings(normalized);
 }

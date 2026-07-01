@@ -1,3 +1,4 @@
+import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
 import { readExtensionLogs } from "../../lib/extension-logs";
 
@@ -341,7 +342,7 @@ export function createLogsViewer(options: LogsViewerOptions): LogsViewer {
       const url = new URL(`${origin}/v1/logs`);
       url.searchParams.set("source", source);
       url.searchParams.set("tail", String(tail));
-      const res = await (fetchImpl ?? fetch)(url.toString(), {
+      const res = await (fetchImpl ?? daemonFetch)(url.toString(), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {

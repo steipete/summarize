@@ -37,6 +37,9 @@ export default defineConfig({
     define: {
       __SUMMARIZE_VERSION__: JSON.stringify(extensionVersion),
       __SUMMARIZE_GIT_HASH__: JSON.stringify(gitHash),
+      __SUMMARIZE_E2E_HTTP_TRANSPORT__: JSON.stringify(
+        process.env.SUMMARIZE_E2E_HTTP_TRANSPORT === "1",
+      ),
     },
     plugins:
       targetBrowser === "chrome"
@@ -99,8 +102,18 @@ export default defineConfig({
         ...(browser === "firefox" ? [] : ["userScripts" as const]),
         ...(browser === "firefox" ? [] : ["debugger" as const]),
       ],
-      optional_permissions: browser === "firefox" ? ["userScripts"] : [],
-      host_permissions: ["<all_urls>", "http://127.0.0.1/*"],
+      optional_permissions: browser === "firefox" ? ["userScripts"] : ["nativeMessaging"],
+      host_permissions:
+        browser === "firefox"
+          ? ["<all_urls>", "http://127.0.0.1/*"]
+          : ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+      ...(browser === "firefox"
+        ? {}
+        : {
+            storage: {
+              managed_schema: "managed-storage-schema.json",
+            },
+          }),
       background: {
         type: "module",
         service_worker: "background.js",

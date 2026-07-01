@@ -22,6 +22,12 @@ import {
 import { DAEMON_HOST, DAEMON_PORT_DEFAULT } from "./constants.js";
 import { mergeDaemonEnv } from "./env-merge.js";
 import { buildEnvSnapshotFromEnv } from "./env-snapshot.js";
+import {
+  installNativeMessagingHost,
+  isNativeMessagingHostInstalled,
+  uninstallNativeMessagingHost,
+} from "./native-messaging-install.js";
+import { runNativeMessagingHost } from "./native-messaging.js";
 import { runDaemonServer } from "./server.js";
 import { isWindowsContainerEnvironment } from "./windows-container.js";
 
@@ -59,6 +65,13 @@ function readPortArg(argv: string[]): number | null {
   return Math.floor(port);
 }
 
+function readExtensionIdArg(argv: string[]): string | null {
+  const extensionId = readArgValue(argv, "--extension-id");
+  if (!extensionId) return null;
+  if (!/^[a-p]{32}$/.test(extensionId)) throw new Error("Invalid --extension-id");
+  return extensionId;
+}
+
 function writeWindowsContainerInstallInstructions({
   stdout,
   port,
@@ -82,7 +95,9 @@ function writeWindowsContainerInstallInstructions({
   stdout.write(
     "Run `summarize daemon install --token <TOKEN>` each time the container starts, or add that command to your container startup.\n",
   );
-  stdout.write(`Publish port ${port}:${port} so the host browser can reach the daemon.\n`);
+  stdout.write(
+    "Chrome Daemon mode also requires a packaged Windows native-host executable; use Direct/Browser modes until it is available.\n",
+  );
 }
 
 export async function handleDaemonRequest({
@@ -105,6 +120,8 @@ export async function handleDaemonRequest({
     if (!token) throw new Error("Missing --token");
     const requestedPort = readPortArg(normalizedArgv);
     const dev = hasArg(normalizedArgv, "--dev");
+    const extensionId = readExtensionIdArg(normalizedArgv);
+    if (extensionId && !dev) throw new Error("--extension-id is only available with --dev");
 
     const envSnapshot = buildEnvSnapshotFromEnv(envForRun);
     const existingConfig = await readDaemonConfig({ env: envForRun });
@@ -161,6 +178,13 @@ export async function handleDaemonRequest({
     const { programArguments, workingDirectory } = await resolveDaemonProgramArguments({ dev });
     const service = resolveDaemonService();
     await service.install({ env: envForRun, stdout, programArguments, workingDirectory });
+    const nativeProgram = await resolveDaemonProgramArguments({ dev, subcommand: "native-host" });
+    if (extensionId) nativeProgram.programArguments.push("--extension-id", extensionId);
+    const nativeHost = await installNativeMessagingHost({
+      env: envForRun,
+      program: nativeProgram,
+      extensionId: extensionId ?? undefined,
+    });
     await waitForHealthWithRetries({ fetchImpl, port, attempts: 5, timeoutMs: 5000, delayMs: 500 });
     const authed = await checkAuthWithRetries({
       fetchImpl,
@@ -172,6 +196,11 @@ export async function handleDaemonRequest({
     if (!authed) throw new Error("Daemon is up but auth failed (token mismatch?)");
 
     stdout.write(`Daemon config: ${configPath}\n`);
+    stdout.write(
+      nativeHost.installed
+        ? `Chrome native messaging host: ${nativeHost.manifestPath}\n`
+        : `Chrome native messaging host: unavailable (${nativeHost.reason})\n`,
+    );
     const installedCommand = await readInstalledDaemonCommand(envForRun);
     if (installedCommand?.programArguments?.length) {
       stdout.write(
@@ -211,6 +240,7 @@ export async function handleDaemonRequest({
     }
     const service = resolveDaemonService();
     const loaded = await service.isLoaded({ env: envForRun });
+    const nativeHostInstalled = await isNativeMessagingHostInstalled({ env: envForRun });
     const healthy = await (async () => {
       try {
         await waitForHealth({ fetchImpl, port: cfg.port, timeoutMs: 1000 });
@@ -224,6 +254,9 @@ export async function handleDaemonRequest({
       : false;
 
     stdout.write(`${service.label}: ${loaded ? service.loadedText : service.notLoadedText}\n`);
+    stdout.write(
+      `Chrome native messaging host: ${nativeHostInstalled ? "installed" : "missing"}\n`,
+    );
     stdout.write(`Daemon: ${healthy ? `up on ${DAEMON_HOST}:${cfg.port}` : "down"}\n`);
     stdout.write(`Auth: ${authed ? "ok" : "failed"}\n`);
     return true;
@@ -298,6 +331,7 @@ export async function handleDaemonRequest({
   }
 
   if (sub === "uninstall") {
+    await uninstallNativeMessagingHost({ env: envForRun });
     if (process.platform === "win32" && isWindowsContainerEnvironment(envForRun)) {
       stdout.write(
         "Uninstalled (Windows container mode does not register Scheduled Task autostart). Config left in ~/.summarize/daemon.json\n",
@@ -349,6 +383,19 @@ export async function handleDaemonRequest({
       }
     }
     await runDaemonServer({ env: mergedEnv, fetchImpl, config: cfg });
+    return true;
+  }
+
+  if (sub === "native-host") {
+    const extensionId = readExtensionIdArg(normalizedArgv.slice(2));
+    await runNativeMessagingHost({
+      env: envForRun,
+      argv: normalizedArgv.slice(2),
+      stdin: process.stdin,
+      stdout: process.stdout,
+      extensionId: extensionId ?? undefined,
+      fetchImpl,
+    });
     return true;
   }
 

@@ -100,7 +100,10 @@ jobs:
       - name: Extension E2E (Chromium)
         run: |
           xvfb-run --auto-servernum --server-args='-screen 0 1280x720x24' \
-            pnpm -C apps/chrome-extension exec playwright test -c playwright.config.ts --project=chromium
+            pnpm -C apps/chrome-extension exec playwright test -c playwright.config.ts --project=chromium tests/native-messaging.e2e.spec.ts
+          SUMMARIZE_E2E_HTTP_TRANSPORT=1 pnpm -C apps/chrome-extension build
+          xvfb-run --auto-servernum --server-args='-screen 0 1280x720x24' \
+            env SUMMARIZE_E2E_HTTP_TRANSPORT=1 pnpm -C apps/chrome-extension exec playwright test -c playwright.config.ts --project=chromium
 
   extension-firefox-smoke:
     runs-on: ubuntu-latest
