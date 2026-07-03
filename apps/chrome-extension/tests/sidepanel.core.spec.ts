@@ -227,6 +227,46 @@ test("sidepanel scheme picker applies overlay selection", async ({
   }
 });
 
+test("sidepanel font picker truncates its value on narrow panels", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+    await page.setViewportSize({ width: 360, height: 640 });
+    await waitForPanelPort(page);
+    await waitForSettingsHydratedHook(page);
+    await page.click("#drawerToggle");
+    await expect(page.locator("#drawer")).toBeVisible();
+
+    const fontTrigger = page.locator("label.font .pickerTrigger");
+    await fontTrigger.evaluate((element) => {
+      element.style.width = "70px";
+    });
+    const fontValue = fontTrigger.locator(":scope > span");
+    await expect(fontValue).toHaveText("San Francisco");
+    const layout = await fontValue.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        clientWidth: element.clientWidth,
+        overflow: style.overflow,
+        scrollWidth: element.scrollWidth,
+        textOverflow: style.textOverflow,
+        whiteSpace: style.whiteSpace,
+      };
+    });
+
+    expect(layout.whiteSpace).toBe("nowrap");
+    expect(layout.overflow).toBe("hidden");
+    expect(layout.textOverflow).toBe("ellipsis");
+    expect(layout.scrollWidth).toBeGreaterThan(layout.clientWidth);
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
 test("sidepanel refresh free models from advanced settings", async ({
   browserName: _browserName,
 }, testInfo) => {
