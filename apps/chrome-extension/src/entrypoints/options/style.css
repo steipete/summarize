@@ -1204,6 +1204,8 @@ label > span {
 
 input[type="text"],
 input[type="number"],
+input[type="password"],
+input[type="url"],
 textarea,
 select {
   border: 1px solid var(--border);
@@ -1220,6 +1222,8 @@ select {
 
 input[type="text"],
 input[type="number"],
+input[type="password"],
+input[type="url"],
 select {
   min-width: 0;
   overflow: hidden;

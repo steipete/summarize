@@ -53,6 +53,52 @@ test("options pickers apply overlay selection", async ({ browserName: _browserNa
   }
 });
 
+test("options themes password and URL fields like the provider control", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, {
+      colorMode: "dark",
+      colorScheme: "slate",
+      provider: "openai",
+      summaryRuntime: "daemon",
+    });
+    const page = await openExtensionPage(harness, "options.html", "#tabs");
+    await page.click("#tab-runtime");
+    await expect(page.locator("#panel-runtime")).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("data-mode", "dark");
+
+    const readControlStyle = (selector: string) =>
+      page.locator(selector).evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          backgroundColor: style.backgroundColor,
+          borderColor: style.borderColor,
+          borderRadius: style.borderRadius,
+          borderStyle: style.borderStyle,
+          borderWidth: style.borderWidth,
+          color: style.color,
+          fontFamily: style.fontFamily,
+          fontSize: style.fontSize,
+        };
+      });
+
+    const [providerStyle, apiKeyStyle, baseUrlStyle] = await Promise.all([
+      readControlStyle("#provider"),
+      readControlStyle("#providerApiKey"),
+      readControlStyle("#providerBaseUrl"),
+    ]);
+
+    expect(apiKeyStyle).toEqual(providerStyle);
+    expect(baseUrlStyle).toEqual(providerStyle);
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
 test("options keeps custom model selected while presets refresh", async ({
   browserName: _browserName,
 }, testInfo) => {
