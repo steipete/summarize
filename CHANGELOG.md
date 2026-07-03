@@ -5,6 +5,7 @@
 ### Fixes
 
 - Deepgram transcription: preserve full media across failed OpenAI fallbacks and retain timestamped utterances through podcast and native YouTube paths.
+- Dependencies: update the Node 24 typings after the stabilization window.
 
 ## 0.21.0 - 2026-07-03
 

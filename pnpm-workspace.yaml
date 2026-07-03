@@ -6,7 +6,6 @@ packages:
 minimumReleaseAge: 10080
 minimumReleaseAgeExclude:
   - "@earendil-works/pi-ai@0.79.1"
-  - "@types/node@24.13.1"
   - "@typescript/native-preview@7.0.0-dev.20260609.1"
   - "@typescript/native-preview-*"
   - "@oxfmt/*"

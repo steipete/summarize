@@ -73,7 +73,7 @@
     "undici": "8.5.0"
   },
   "devDependencies": {
-    "@types/node": "^24.13.1",
+    "@types/node": "^24.13.2",
     "@types/sanitize-html": "^2.16.1",
     "@typescript/native-preview": "7.0.0-dev.20260624.1",
     "@vitest/coverage-v8": "^4.1.9",
