@@ -171,7 +171,7 @@ export function resolveCachePath({
   const home = resolveHomeDir(env);
   const raw = cachePath?.trim();
   if (raw && raw.length > 0) {
-    if (raw.startsWith("~")) {
+    if (raw === "~" || raw.startsWith("~/")) {
       if (!home) return null;
       const expanded = raw === "~" ? home : join(home, raw.slice(2));
       return resolvePath(expanded);
