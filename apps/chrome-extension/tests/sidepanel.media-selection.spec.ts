@@ -397,7 +397,8 @@ test("sidepanel falls back to current YouTube transcript panel rows", async ({
       .toContain("Panel first caption");
 
     const body = (await getSummarizeLastBody(harness)) as Record<string, unknown>;
-    expect(body.mode).toBe("page");
+    expect(body.mode).toBe("url");
+    expect(body.slides).toBe(true);
     expect(body.text).toContain("[0:00] Panel first caption.");
     expect(body.text).toContain("[0:02] Panel second caption.");
     assertNoErrors(harness);

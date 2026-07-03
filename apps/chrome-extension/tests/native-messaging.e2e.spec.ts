@@ -8,13 +8,13 @@ import { chromium, expect, test } from "@playwright/test";
 import { NATIVE_MESSAGING_HOST_NAME } from "../../../src/daemon/constants.js";
 import { buildNativeMessagingManifest } from "../../../src/daemon/native-messaging-install.js";
 import {
-  buildUiState,
   closeExtension,
   getExtensionUrl,
   getExtensionPath,
   seedSettings,
-  sendBgMessage,
+  sendPanelMessage,
   trackErrors,
+  waitForExtractReady,
   waitForPanelPort,
   type ExtensionHarness,
 } from "./helpers/extension-harness";
@@ -166,12 +166,29 @@ test("installed native host carries status, models, and summary streaming end to
       );
       return;
     }
-    if (request.url === "/v1/summarize/native-run/events") {
+    if (request.url === "/article") {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      response.end(`<!doctype html><html><head><title>Native bridge article</title></head><body>
+        <main><article><h1>Native bridge article</h1>
+        <p>This article verifies that daemon requests originating in the extension service worker
+        connect directly to the installed native messaging host. The browser page supplies enough
+        readable content for the normal background extraction and summarization path.</p>
+        <p>A successful result proves both the background request and the side panel stream use the
+        native companion without relying on direct localhost access from the page.</p></article></main>
+      </body></html>`);
+      return;
+    }
+    if (request.url === "/v1/summarize" && request.method === "POST") {
+      request.resume();
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ ok: true, id: "native-background-run" }));
+      return;
+    }
+    if (request.url === "/v1/summarize/native-background-run/events") {
       response.writeHead(200, { "content-type": "text/event-stream" });
-      response.write('event: chunk\ndata: {"text":"Native "}\n\n');
-      setTimeout(() => {
-        response.end('event: chunk\ndata: {"text":"summary"}\n\nevent: done\ndata: {}\n\n');
-      }, 30);
+      response.end(
+        'event: chunk\ndata: {"text":"Background native summary"}\n\nevent: done\ndata: {}\n\n',
+      );
       return;
     }
     response.writeHead(404, { "content-type": "application/json" });
@@ -203,30 +220,13 @@ test("installed native host carries status, models, and summary streaming end to
     trackErrors(panel, harness.pageErrors, harness.consoleErrors);
     await panel.goto(getExtensionUrl(harness, "sidepanel.html"));
     await waitForPanelPort(panel);
-    await sendBgMessage(harness, {
-      type: "ui:state",
-      state: buildUiState({
-        tab: { id: 1, url: "https://example.com/native", title: "Native E2E" },
-        settings: {
-          summaryRuntime: "daemon",
-          slideRuntime: "browser",
-          autoSummarize: false,
-          tokenPresent: true,
-          slidesEnabled: false,
-        },
-      }),
-    });
-    await sendBgMessage(harness, {
-      type: "run:start",
-      run: {
-        id: "native-run",
-        url: "https://example.com/native",
-        title: "Native E2E",
-        model: "auto",
-        reason: "manual",
-      },
-    });
-    await expect(panel.locator("#render")).toContainText("Native summary");
+
+    const articleUrl = `http://localhost:${port}/article`;
+    const article = await harness.context.newPage();
+    await article.goto(articleUrl);
+    await waitForExtractReady(harness, articleUrl);
+    await sendPanelMessage(panel, { type: "panel:summarize", refresh: true, inputMode: "page" });
+    await expect(panel.locator("#render")).toContainText("Background native summary");
 
     expect(seen).toEqual(
       expect.arrayContaining([
@@ -240,7 +240,12 @@ test("installed native host carries status, models, and summary streaming end to
           authorization: "Bearer native-e2e-token",
         }),
         expect.objectContaining({
-          url: "/v1/summarize/native-run/events",
+          method: "POST",
+          url: "/v1/summarize",
+          authorization: "Bearer native-e2e-token",
+        }),
+        expect.objectContaining({
+          url: "/v1/summarize/native-background-run/events",
           authorization: "Bearer native-e2e-token",
         }),
       ]),

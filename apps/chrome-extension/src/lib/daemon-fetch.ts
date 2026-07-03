@@ -79,13 +79,18 @@ async function buildNativeRequest(
   return message;
 }
 
-async function nativeDaemonFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+async function nativeDaemonFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  connectPort: () => chrome.runtime.Port = () =>
+    chrome.runtime.connect({ name: DAEMON_BRIDGE_PORT_NAME }),
+): Promise<Response> {
   const requestMessage = await buildNativeRequest(input, init);
   const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
   if (signal?.aborted) throw new DOMException("The operation was aborted", "AbortError");
 
   return await new Promise<Response>((resolve, reject) => {
-    const port = chrome.runtime.connect({ name: DAEMON_BRIDGE_PORT_NAME });
+    const port = connectPort();
     let responseController: ReadableStreamDefaultController<Uint8Array> | null = null;
     let settled = false;
     let finished = false;
@@ -170,6 +175,18 @@ async function nativeDaemonFetch(input: RequestInfo | URL, init?: RequestInit): 
 export async function daemonFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   if (__SUMMARIZE_E2E_HTTP_TRANSPORT__) return await fetch(input, init);
   if (import.meta.env.BROWSER === "firefox") return await fetch(input, init);
+  // Chrome does not dispatch runtime.onConnect when an MV3 service worker connects
+  // back to its own extension. Background requests must open the native host directly;
+  // extension pages still use the bridge so nativeMessaging stays out of page contexts.
+  if (typeof document === "undefined") {
+    const policy = await readDaemonPolicy();
+    if (!policy.daemonAllowed) throw new Error("Local companion disabled by administrator");
+    const permitted = await chrome.permissions.contains({ permissions: ["nativeMessaging"] });
+    if (!permitted) throw new Error("Local companion permission is not enabled");
+    return await nativeDaemonFetch(input, init, () =>
+      chrome.runtime.connectNative(NATIVE_MESSAGING_HOST_NAME),
+    );
+  }
   return await nativeDaemonFetch(input, init);
 }
 

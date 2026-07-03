@@ -5,6 +5,8 @@
 ### Fixes
 
 - Chrome extension: keep the font picker value on one line with an ellipsis in narrow side panels and apply themed styles to password and URL fields.
+- Chrome extension: connect daemon requests from the MV3 service worker directly to the native host so daemon-mode summaries work from the side panel.
+- Chrome extension: keep YouTube requests on the daemon URL path when slides are enabled so browser transcripts do not suppress frame extraction.
 
 ## 0.21.1 - 2026-07-03
 

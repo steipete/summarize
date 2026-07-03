@@ -459,7 +459,7 @@ export async function summarizeActiveTab({
   let id: string;
   try {
     const requestInputMode =
-      browserTranscriptTimedText && resolvedPayload.text.trim().length > 0
+      browserTranscriptTimedText && resolvedPayload.text.trim().length > 0 && !wantsDaemonSlides
         ? "page"
         : effectiveInputMode;
     id = await startPanelDaemonSummary({

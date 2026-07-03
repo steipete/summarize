@@ -116,6 +116,31 @@ describe("chrome panel summarize", () => {
     expect(harness.session.lastSummarizedUrl).toBeNull();
   });
 
+  it("keeps daemon slides on YouTube URL mode when Chrome already has a transcript", async () => {
+    const harness = createHarness();
+
+    await harness.summarize({
+      extractYouTubeTranscript: vi.fn(async () => ({
+        ok: true as const,
+        url: youtubeUrl,
+        text: "Caption transcript.",
+        transcriptTimedText: "[0:00] Caption transcript.",
+        truncated: false,
+        durationSeconds: 42,
+      })),
+    });
+
+    expect(harness.fetchImpl).toHaveBeenCalledOnce();
+    const [, init] = harness.fetchImpl.mock.calls[0];
+    const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+    expect(body).toMatchObject({
+      url: youtubeUrl,
+      mode: "url",
+      timestamps: true,
+      slides: true,
+    });
+  });
+
   it("dedupes automatic starts for the current inflight URL", async () => {
     const harness = createHarness();
     harness.session.inflightUrl = youtubeUrl;
