@@ -17,6 +17,12 @@ describe("resolveCachePath", () => {
     expect(tilde).toBe(resolvePath(join(home, "cache.sqlite")));
   });
 
+  it("keeps non-slash tilde prefixes as relative paths", () => {
+    const home = "/tmp/summarize-home";
+    const resolved = resolveCachePath({ env: { HOME: home }, cachePath: "~somepath" });
+    expect(resolved).toBe(resolvePath(join(home, "~somepath")));
+  });
+
   it("returns null when no home is available", () => {
     expect(resolveCachePath({ env: {}, cachePath: null })).toBeNull();
   });
