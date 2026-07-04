@@ -244,7 +244,21 @@ test("installed native host carries status, models, and summary streaming end to
       }),
     });
     await sendPanelMessage(panel, { type: "panel:summarize", refresh: true, inputMode: "page" });
-    await expect(panel.locator("#render")).toContainText("Background native summary");
+    await expect
+      .poll(
+        () => seen.some((request) => request.method === "POST" && request.url === "/v1/summarize"),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    await expect
+      .poll(
+        () => seen.some((request) => request.url === "/v1/summarize/native-background-run/events"),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    await expect(panel.locator("#render")).toContainText("Background native summary", {
+      timeout: 30_000,
+    });
 
     expect(seen).toEqual(
       expect.arrayContaining([
