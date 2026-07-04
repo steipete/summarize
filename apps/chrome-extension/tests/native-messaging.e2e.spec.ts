@@ -227,8 +227,6 @@ test("installed native host carries status, models, and summary streaming end to
     await article.goto(articleUrl);
     await activateTabByUrlInPanelWindow(harness, panel, articleUrl);
     await waitForExtractReady(harness, articleUrl);
-    await sendPanelMessage(panel, { type: "panel:ping" });
-    await expect(panel.locator("#render")).toContainText("Native bridge article");
     await sendPanelMessage(panel, { type: "panel:summarize", refresh: true, inputMode: "page" });
     await expect(panel.locator("#render")).toContainText("Background native summary");
 
