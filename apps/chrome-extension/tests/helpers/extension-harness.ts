@@ -536,7 +536,7 @@ export async function activateTabByUrlInPanelWindow(
   if (!Number.isFinite(windowId)) throw new Error(`Invalid panel port name: ${portName ?? "none"}`);
 
   const background = await getBackground(harness);
-  await background.evaluate(
+  const tabId = await background.evaluate(
     async ({ prefix, targetWindowId }) => {
       const tabs = await chrome.tabs.query({});
       const target = tabs.find((tab) => tab.url?.startsWith(prefix));
@@ -546,6 +546,7 @@ export async function activateTabByUrlInPanelWindow(
       }
       await chrome.windows.update(targetWindowId, { focused: true }).catch(() => {});
       await chrome.tabs.update(target.id, { active: true });
+      return target.id;
     },
     { prefix: expectedPrefix, targetWindowId: windowId },
   );
@@ -557,6 +558,7 @@ export async function activateTabByUrlInPanelWindow(
       }, windowId);
     })
     .toContain(expectedPrefix);
+  return tabId;
 }
 
 export async function openExtensionPage(

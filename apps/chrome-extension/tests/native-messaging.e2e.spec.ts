@@ -9,10 +9,12 @@ import { NATIVE_MESSAGING_HOST_NAME } from "../../../src/daemon/constants.js";
 import { buildNativeMessagingManifest } from "../../../src/daemon/native-messaging-install.js";
 import {
   activateTabByUrlInPanelWindow,
+  buildUiState,
   closeExtension,
   getExtensionUrl,
   getExtensionPath,
   seedSettings,
+  sendBgMessage,
   sendPanelMessage,
   trackErrors,
   waitForExtractReady,
@@ -225,8 +227,22 @@ test("installed native host carries status, models, and summary streaming end to
     const articleUrl = `http://localhost:${port}/article`;
     const article = await harness.context.newPage();
     await article.goto(articleUrl);
-    await activateTabByUrlInPanelWindow(harness, panel, articleUrl);
+    const articleTabId = await activateTabByUrlInPanelWindow(harness, panel, articleUrl);
     await waitForExtractReady(harness, articleUrl);
+    await sendBgMessage(harness, {
+      type: "ui:state",
+      state: buildUiState({
+        tab: { id: articleTabId, url: articleUrl, title: "Native bridge article" },
+        settings: {
+          autoSummarize: false,
+          slidesEnabled: false,
+          slidesParallel: true,
+          slideRuntime: "browser",
+          summaryRuntime: "daemon",
+          tokenPresent: true,
+        },
+      }),
+    });
     await sendPanelMessage(panel, { type: "panel:summarize", refresh: true, inputMode: "page" });
     await expect(panel.locator("#render")).toContainText("Background native summary");
 
