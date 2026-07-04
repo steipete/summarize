@@ -515,6 +515,50 @@ export async function activateTabByUrl(harness: ExtensionHarness, expectedPrefix
   }, expectedPrefix);
 }
 
+export async function activateTabByUrlInPanelWindow(
+  harness: ExtensionHarness,
+  panel: Page,
+  expectedPrefix: string,
+) {
+  await waitForPanelPort(panel);
+  const portName = await panel.evaluate(
+    () =>
+      (
+        window as {
+          __summarizePanelPort?: { name?: string };
+        }
+      ).__summarizePanelPort?.name ?? null,
+  );
+  const windowId =
+    portName?.startsWith("sidepanel:") === true
+      ? Number.parseInt(portName.slice("sidepanel:".length), 10)
+      : Number.NaN;
+  if (!Number.isFinite(windowId)) throw new Error(`Invalid panel port name: ${portName ?? "none"}`);
+
+  const background = await getBackground(harness);
+  await background.evaluate(
+    async ({ prefix, targetWindowId }) => {
+      const tabs = await chrome.tabs.query({});
+      const target = tabs.find((tab) => tab.url?.startsWith(prefix));
+      if (!target?.id) throw new Error(`Tab not found: ${prefix}`);
+      if (target.windowId !== targetWindowId) {
+        await chrome.tabs.move(target.id, { windowId: targetWindowId, index: -1 });
+      }
+      await chrome.windows.update(targetWindowId, { focused: true }).catch(() => {});
+      await chrome.tabs.update(target.id, { active: true });
+    },
+    { prefix: expectedPrefix, targetWindowId: windowId },
+  );
+  await expect
+    .poll(async () => {
+      return await background.evaluate(async (targetWindowId) => {
+        const [tab] = await chrome.tabs.query({ active: true, windowId: targetWindowId });
+        return tab?.url ?? "";
+      }, windowId);
+    })
+    .toContain(expectedPrefix);
+}
+
 export async function openExtensionPage(
   harness: ExtensionHarness,
   pathname: string,
