@@ -8,12 +8,15 @@ import { chromium, expect, test } from "@playwright/test";
 import { NATIVE_MESSAGING_HOST_NAME } from "../../../src/daemon/constants.js";
 import { buildNativeMessagingManifest } from "../../../src/daemon/native-messaging-install.js";
 import {
+  activateTabByUrl,
   closeExtension,
   getExtensionUrl,
   getExtensionPath,
+  maybeBringToFront,
   seedSettings,
   sendPanelMessage,
   trackErrors,
+  waitForActiveTabUrl,
   waitForExtractReady,
   waitForPanelPort,
   type ExtensionHarness,
@@ -224,7 +227,11 @@ test("installed native host carries status, models, and summary streaming end to
     const articleUrl = `http://localhost:${port}/article`;
     const article = await harness.context.newPage();
     await article.goto(articleUrl);
+    await maybeBringToFront(article);
+    await activateTabByUrl(harness, articleUrl);
+    await waitForActiveTabUrl(harness, articleUrl);
     await waitForExtractReady(harness, articleUrl);
+    await expect(panel.locator("#render")).toContainText("Native bridge article");
     await sendPanelMessage(panel, { type: "panel:summarize", refresh: true, inputMode: "page" });
     await expect(panel.locator("#render")).toContainText("Background native summary");
 
