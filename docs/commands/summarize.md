@@ -62,7 +62,7 @@ If `[input]` is omitted, summarize prints concise help and exits.
 : `auto`, `web`, `apify`, `yt-dlp`, `no-auto` (skip auto-generated captions). Default `auto`.
 
 `--transcriber <name>`
-: `auto`, `whisper`, `parakeet`, `canary`. Default `auto` — Groq when keyed, else local ONNX or `whisper.cpp`, then cloud fallbacks.
+: Select the local transcription stage: `auto`, `whisper`, `parakeet`, `canary`. Default `auto` — Groq still runs first when keyed, then local ONNX/`whisper.cpp`, then cloud fallbacks.
 
 `--video-mode <mode>`
 : `auto`, `transcript`, `understand`. `understand` prefers vision/video understanding when supported.

@@ -59,7 +59,7 @@ These unlock media features but are not required for plain web pages.
 | `ffmpeg`                       | Faster extraction/transcoding and broader codecs than bundled WebAssembly |
 | `yt-dlp`                       | YouTube slide extraction and some remote media flows                      |
 | `tesseract`                    | OCR text on extracted slides via `--slides-ocr`                           |
-| `whisper.cpp` (binary on PATH) | Local audio transcription fallback (preferred over cloud when available)  |
+| `whisper.cpp` (binary on PATH) | Local audio transcription fallback after Groq and before other cloud APIs |
 
 ### macOS
 

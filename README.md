@@ -484,9 +484,10 @@ Non-YouTube URLs go through a fetch -> extract pipeline. When direct fetch/extra
 
 `--youtube auto` tries best-effort web transcript endpoints first. When captions are not available, it falls back to:
 
-1. yt-dlp + Whisper (if `yt-dlp` is available): downloads audio, then transcribes with local `whisper.cpp` when installed
-   (preferred), otherwise falls back to Groq (`GROQ_API_KEY`), AssemblyAI (`ASSEMBLYAI_API_KEY`), Gemini
-   (`GEMINI_API_KEY` / Google aliases), OpenAI (`OPENAI_API_KEY`), FAL (`FAL_KEY`), then Deepgram (`DEEPGRAM_API_KEY`)
+1. yt-dlp + Whisper (if `yt-dlp` is available): downloads audio, then tries Groq (`GROQ_API_KEY`)
+   first when configured. If Groq is unavailable or fails, it uses configured local ONNX/`whisper.cpp`,
+   then AssemblyAI (`ASSEMBLYAI_API_KEY`), Gemini (`GEMINI_API_KEY` / Google aliases), OpenAI
+   (`OPENAI_API_KEY`), FAL (`FAL_KEY`), then Deepgram (`DEEPGRAM_API_KEY`).
 2. Android VR direct audio + the same configured transcription chain when `yt-dlp` is unavailable or fails
 3. Apify (if `APIFY_API_TOKEN` is set): uses a scraping actor (`faVsWy9VTSNVIhWpR`)
 
@@ -499,6 +500,7 @@ Environment variables for yt-dlp mode:
 - `GROQ_API_KEY` - Groq Whisper transcription
 - `ASSEMBLYAI_API_KEY` - AssemblyAI transcription
 - `GEMINI_API_KEY` - Gemini transcription (`GOOGLE_GENERATIVE_AI_API_KEY` / `GOOGLE_API_KEY` also work)
+- `SUMMARIZE_GEMINI_TRANSCRIPTION_MODEL` - optional Gemini model override (default: `gemini-2.5-flash`)
 - `OPENAI_API_KEY` - OpenAI Whisper transcription
 - `OPENAI_WHISPER_BASE_URL` - optional OpenAI-compatible Whisper endpoint override
 - `FAL_KEY` - FAL AI Whisper fallback
@@ -576,19 +578,22 @@ summarize "https://www.youtube.com/watch?v=..." --extract --format md --markdown
 ### Media transcription (Whisper)
 
 Local audio/video files are transcribed first, then summarized. `--video-mode transcript` forces
-direct media URLs (and embedded media) through Whisper first. Prefers local `whisper.cpp` when available; otherwise requires
-one of `GROQ_API_KEY`, `ASSEMBLYAI_API_KEY`, `GEMINI_API_KEY` (or Google aliases), `OPENAI_API_KEY`, `FAL_KEY`, or `DEEPGRAM_API_KEY`.
+direct media URLs (and embedded media) through Whisper first. Auto mode tries Groq first when configured,
+then local ONNX/`whisper.cpp`, then cloud fallbacks. Configure local ONNX/`whisper.cpp` for local-only
+transcription; otherwise set one of `GROQ_API_KEY`, `ASSEMBLYAI_API_KEY`, `GEMINI_API_KEY` (or Google
+aliases), `OPENAI_API_KEY`, `FAL_KEY`, or `DEEPGRAM_API_KEY`.
 Use `--diarize [auto|elevenlabs|openai]` for speaker-labelled MP3/MP4 and other supported media;
 diarization requires `ELEVENLABS_API_KEY` or `OPENAI_API_KEY`.
 
 ### Local ONNX transcription (Parakeet/Canary)
 
-Summarize can use NVIDIA Parakeet/Canary ONNX models via a local CLI you provide. Auto selection (default) prefers ONNX when configured.
+Summarize can use NVIDIA Parakeet/Canary ONNX models via a local CLI you provide. Auto selection
+tries Groq first when configured, then ONNX before `whisper.cpp` and the remaining cloud fallbacks.
 
 - Setup helper: `summarize transcriber setup`
 - Install `sherpa-onnx` from upstream binaries/build (Homebrew may not have a formula)
 - Auto selection: set `SUMMARIZE_ONNX_PARAKEET_CMD` or `SUMMARIZE_ONNX_CANARY_CMD` (no flag needed)
-- Force a model: `--transcriber parakeet|canary|whisper|auto`
+- Select the local transcription stage: `--transcriber parakeet|canary|whisper|auto`
 - Docs: `docs/nvidia-onnx-transcription.md`
 
 ### Verified podcast services (2025-12-25)
@@ -603,7 +608,8 @@ Run: `summarize <url>`
 - RSS feeds (Podcasting 2.0 transcripts when available)
 - Embedded YouTube podcast pages (e.g. JREPodcast)
 
-Transcription: prefers local `whisper.cpp` when installed; otherwise uses Groq, AssemblyAI, Gemini, OpenAI, FAL, or Deepgram when keys are set.
+Transcription: tries Groq first when configured, then local ONNX/`whisper.cpp`, then AssemblyAI,
+Gemini, OpenAI, FAL, or Deepgram when keys are set.
 
 ### Translation paths
 
@@ -616,8 +622,9 @@ When the input is audio/video, the CLI needs a transcript first. The transcript 
    - Podcasts: uses Podcasting 2.0 RSS `<podcast:transcript>` (JSON/VTT) when the feed publishes it.
 2. Whisper transcription (fallback)
    - YouTube: prefers yt-dlp audio download, then Android VR direct audio, plus Whisper transcription when configured; Apify is a last resort.
-   - Prefers local `whisper.cpp` when installed + model available.
-   - Otherwise uses cloud transcription in this order: Groq (`GROQ_API_KEY`) → AssemblyAI (`ASSEMBLYAI_API_KEY`) → Gemini (`GEMINI_API_KEY` / Google aliases) → OpenAI (`OPENAI_API_KEY`) → FAL (`FAL_KEY`) → Deepgram (`DEEPGRAM_API_KEY`).
+   - Tries Groq (`GROQ_API_KEY`) first when configured.
+   - Then uses configured local ONNX/`whisper.cpp`.
+   - Then uses cloud transcription in this order: AssemblyAI (`ASSEMBLYAI_API_KEY`) → Gemini (`GEMINI_API_KEY` / Google aliases) → OpenAI (`OPENAI_API_KEY`) → FAL (`FAL_KEY`) → Deepgram (`DEEPGRAM_API_KEY`).
 
 For direct media URLs, use `--video-mode transcript` to force transcribe -> summarize:
 
@@ -821,6 +828,7 @@ Optional services:
 - `ASSEMBLYAI_API_KEY` (AssemblyAI transcription)
 - `ELEVENLABS_API_KEY` (ElevenLabs Scribe v2 speaker diarization)
 - `GEMINI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` / `GOOGLE_API_KEY` (Gemini transcription)
+- `SUMMARIZE_GEMINI_TRANSCRIPTION_MODEL` (optional Gemini model override; default `gemini-2.5-flash`)
 - `OPENAI_API_KEY` / `OPENAI_WHISPER_BASE_URL` (OpenAI Whisper transcription)
 - `FAL_KEY` (FAL AI API key for audio transcription via Whisper)
 - `DEEPGRAM_API_KEY` (Deepgram API key for Nova transcription)

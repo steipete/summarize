@@ -8,7 +8,7 @@ read_when:
 
 # NVIDIA Parakeet/Canary ONNX transcription
 
-Summarize can now run local transcription through NVIDIA's Parakeet-TDT 0.6B-v3 or Canary 1B-v2 ONNX exports by shelling out to a user-provided CLI. Auto selection prefers ONNX when configured; you can still force Whisper or a specific ONNX model.
+Summarize can now run local transcription through NVIDIA's Parakeet-TDT 0.6B-v3 or Canary 1B-v2 ONNX exports by shelling out to a user-provided CLI. Auto selection tries Groq first when configured, then ONNX before `whisper.cpp` and the remaining cloud fallbacks. You can still select `whisper.cpp` or a specific ONNX model for the local stage.
 
 ## How to enable
 

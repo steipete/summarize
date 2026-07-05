@@ -16,7 +16,7 @@ YouTube URLs use transcript-first extraction.
 - `web`: try `youtubei` → `captionTracks` only
 - `no-auto`: try creator captions only (skip auto-generated/ASR) → `yt-dlp` (if configured)
 - `apify`: Apify only
-- `yt-dlp`: download audio + transcribe (Groq first; then local `whisper.cpp`; then AssemblyAI/Gemini/OpenAI/FAL/Deepgram fallback)
+- `yt-dlp`: download audio + transcribe (Groq first; then local ONNX/`whisper.cpp`; then AssemblyAI/Gemini/OpenAI/FAL/Deepgram fallback)
 
 ## `youtubei` vs `captionTracks`
 
@@ -35,9 +35,9 @@ YouTube URLs use transcript-first extraction.
 - Apify is an optional fallback (needs `APIFY_API_TOKEN`).
   - By default, we use the actor id `faVsWy9VTSNVIhWpR` (Pinto Studio’s “Youtube Transcript Scraper”).
 - `yt-dlp` requires the `yt-dlp` binary (either set `YT_DLP_PATH` or have it on `PATH`) and either local `whisper.cpp` or one of `GROQ_API_KEY`, `ASSEMBLYAI_API_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY`, `FAL_KEY`, or `DEEPGRAM_API_KEY`.
-  - AssemblyAI is supported as a dedicated remote transcription provider in the fallback chain.
-  - Gemini is used automatically when available after AssemblyAI/local providers, and handles larger uploads via the Files API.
-  - If OpenAI transcription fails and `FAL_KEY` is set, we fall back to FAL automatically.
+  - Remote cloud fallback order after Groq/local providers is AssemblyAI, Gemini, OpenAI, FAL, then Deepgram.
+  - Gemini handles larger uploads via the Files API and defaults to `gemini-2.5-flash`; override with `SUMMARIZE_GEMINI_TRANSCRIPTION_MODEL`.
+  - Deepgram defaults to `nova-3`; override with `SUMMARIZE_DEEPGRAM_TRANSCRIPTION_MODEL`.
 
 ## Example
 

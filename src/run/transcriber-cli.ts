@@ -8,7 +8,7 @@ import {
   resolveThemeNameFromSources,
   resolveTrueColor,
 } from "../tty/theme.js";
-import { buildTranscriberHelp } from "./help.js";
+import { buildTranscriberHelp, TRANSCRIBER_AUTO_ORDER_DESCRIPTION } from "./help.js";
 import { supportsColor } from "./terminal.js";
 
 type TranscriberCliContext = {
@@ -149,9 +149,7 @@ export async function handleTranscriberCliRequest({
 
   stdout.write(`${heading("Transcriber setup")}\n`);
   stdout.write(`${label("Transcriber mode:")} ${value(transcriberEnv)}\n`);
-  stdout.write(
-    `${label("Auto order:")} ${value("Groq -> ONNX (parakeet then canary) -> whisper.cpp -> AssemblyAI -> Gemini -> OpenAI -> FAL")}\n`,
-  );
+  stdout.write(`${label("Auto order:")} ${value(TRANSCRIBER_AUTO_ORDER_DESCRIPTION)}\n`);
   stdout.write("\n");
   for (const entry of onnxStatus) {
     stdout.write(

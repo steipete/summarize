@@ -24,7 +24,7 @@ Use this for non-YouTube URLs.
   - Use `--firecrawl always` to try Firecrawl first for non-YouTube URLs.
 - With `--format md`, `--markdown-mode auto|llm|readability` can also convert HTML → Markdown via an LLM using the configured `--model` (no provider fallback).
 - With `--format md`, `--markdown-mode auto` may fall back to `uvx markitdown` when available (disable with `--preprocess off`).
-- For podcast URLs (Apple Podcasts, RSS, Spotify episodes), it downloads the episode audio and transcribes via Whisper (prefers local `whisper.cpp` when installed + model available); progress shows “Downloading audio …” then “Transcribing …” (duration uses RSS hints or `ffprobe` when available).
+- For podcast URLs (Apple Podcasts, RSS, Spotify episodes), it downloads the episode audio and transcribes via Whisper (Groq first when configured, then local ONNX/`whisper.cpp`, then cloud fallbacks); progress shows “Downloading audio …” then “Transcribing …” (duration uses RSS hints or `ffprobe` when available).
 
 Daemon note:
 

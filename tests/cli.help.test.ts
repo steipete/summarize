@@ -29,6 +29,9 @@ describe("--help output", () => {
     expect(out).toContain("Examples");
     expect(out).toContain('summarize "https://example.com"');
     expect(out).toContain("--embedded-video <mode>");
+    expect(out).toContain("Local transcription stage");
+    expect(out).toMatch(/Groq still runs\s+first when keyed/);
+    expect(out).not.toContain("Audio transcription backend");
     expect(out).toContain("default: long");
     expect(out).not.toContain("\u001b[");
   });

@@ -69,8 +69,9 @@ Goal: keep provider entrypoints thin; keep provider policy explicit.
 
 ## Current order
 
-- local ONNX / whisper.cpp before cloud
-- cloud bytes/file order:
+- Groq first when `GROQ_API_KEY` is set
+- local ONNX / whisper.cpp before the remaining cloud providers
+- remaining cloud bytes/file order:
   - AssemblyAI
   - Gemini
   - OpenAI

@@ -8,6 +8,9 @@ import {
 import { SUPPORT_URL } from "./constants.js";
 import { supportsColor } from "./terminal.js";
 
+export const TRANSCRIBER_AUTO_ORDER_DESCRIPTION =
+  "Groq -> ONNX (selected/configured parakeet or canary) -> whisper.cpp -> AssemblyAI -> Gemini -> OpenAI -> FAL -> Deepgram";
+
 const collectOption = (value: string, previous: string[] = []): string[] => [...previous, value];
 
 export function buildProgram() {
@@ -23,7 +26,7 @@ export function buildProgram() {
     .addOption(
       new Option(
         "--transcriber <name>",
-        "Audio transcription backend: auto (default), whisper, parakeet, canary",
+        "Local transcription stage: auto (default), whisper, parakeet, canary; Groq still runs first when keyed",
       ).choices(["auto", "whisper", "parakeet", "canary"]),
     )
     .addOption(
@@ -333,7 +336,7 @@ ${heading("Examples")}
 ${heading("Env Vars")}
   XAI_API_KEY           optional (required for xai/... models)
   XAI_BASE_URL          optional (override xAI API endpoint)
-  OPENAI_API_KEY        optional (required for openai/... models)
+  OPENAI_API_KEY        optional (required for openai/... models and OpenAI transcription)
   OPENAI_WHISPER_BASE_URL optional (OpenAI-compatible Whisper endpoint override)
   OPENAI_BASE_URL       optional (OpenAI-compatible API endpoint; e.g. OpenRouter)
   OPENAI_USE_CHAT_COMPLETIONS optional (force OpenAI chat completions)
@@ -346,7 +349,7 @@ ${heading("Env Vars")}
   GITHUB_TOKEN          optional (required for github-copilot/... models; GH_TOKEN also works)
   Z_AI_API_KEY          optional (required for zai/... models)
   Z_AI_BASE_URL         optional (override default Z.AI base URL)
-  GEMINI_API_KEY        optional (required for google/... models)
+  GEMINI_API_KEY        optional (required for google/... models and Gemini transcription)
   GOOGLE_BASE_URL       optional (override Google API endpoint; alias: GEMINI_BASE_URL)
   ANTHROPIC_API_KEY     optional (required for anthropic/... models)
   ANTHROPIC_BASE_URL    optional (override Anthropic API endpoint)
@@ -372,12 +375,15 @@ ${heading("Env Vars")}
   YT_DLP_PATH           optional path to yt-dlp binary for audio extraction
   SUMMARIZE_YT_DLP_COOKIES_FROM_BROWSER optional yt-dlp cookies source (e.g. chrome, chrome:Profile 1)
   GROQ_API_KEY          optional Groq API key for audio transcription (whisper-large-v3-turbo)
+  ASSEMBLYAI_API_KEY    optional AssemblyAI API key for audio transcription
+  SUMMARIZE_GEMINI_TRANSCRIPTION_MODEL optional Gemini transcription model override
   FAL_KEY               optional FAL AI API key for audio transcription
   DEEPGRAM_API_KEY      optional Deepgram API key for audio transcription
+  SUMMARIZE_DEEPGRAM_TRANSCRIPTION_MODEL optional Deepgram transcription model override
 
 ${heading("Hint")}
   ${cmd("summarize refresh-free")} ${dim("# refresh free-model candidates into ~/.summarize/config.json")}
-  ${cmd("summarize transcriber setup")} ${dim("# set up local ONNX transcription; auto prefers it when configured")}
+  ${cmd("summarize transcriber setup")} ${dim("# show local ONNX setup and transcription fallback order")}
 
 ${heading("Support")}
   ${SUPPORT_URL}
@@ -455,7 +461,7 @@ export function buildTranscriberHelp(): string {
     "Usage: summarize transcriber setup [--model parakeet|canary] [--theme <name>]",
     "",
     "Configures local ONNX transcription by printing the required env vars.",
-    "Auto selection prefers Groq first, then ONNX/whisper.cpp, then AssemblyAI/Gemini/OpenAI/FAL/Deepgram.",
+    `Auto selection: ${TRANSCRIBER_AUTO_ORDER_DESCRIPTION}.`,
     "",
     "Options:",
     "  --model <name>   parakeet (default) or canary",

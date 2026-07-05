@@ -11,17 +11,17 @@ summary: "Set up local ONNX transcription (Parakeet, Canary)."
 summarize transcriber setup [--model parakeet|canary] [--theme <name>]
 ```
 
-Configures local ONNX transcription. The command **prints the env vars** you need to export — it doesn't write to your shell config. Once those vars are exported, `--transcriber auto` (or `SUMMARIZE_TRANSCRIBER=auto`) prefers the local path.
+Configures local ONNX transcription. The command **prints the env vars** you need to export — it doesn't write to your shell config. Once those vars are exported, `--transcriber auto` (or `SUMMARIZE_TRANSCRIBER=auto`) uses ONNX after Groq and before `whisper.cpp` and the remaining cloud fallbacks.
 
 ## How auto picks a transcriber
 
 When `--transcriber auto` is set (default), summarize tries providers in this order:
 
 1. **Groq** — fastest cloud option. Needs `GROQ_API_KEY`.
-2. **Local ONNX** (Parakeet or Canary) or `whisper.cpp` — fully offline. Needs the env vars from this command.
+2. **Local ONNX** (Parakeet or Canary), then `whisper.cpp` — fully offline. ONNX needs the env vars from this command.
 3. **AssemblyAI / Gemini / OpenAI / FAL / Deepgram** — cloud fallbacks, in that order, gated by their respective API keys.
 
-Skipping all of those falls back to the OpenAI-compatible Whisper endpoint in `OPENAI_WHISPER_BASE_URL`.
+`OPENAI_WHISPER_BASE_URL` changes the endpoint used by the OpenAI transcription stage; it is not a separate provider in the order above.
 
 ## Subcommand
 
@@ -46,7 +46,7 @@ Set by the printed snippet:
 : Command to run Canary ONNX transcription. Use `{input}` as the audio-file placeholder.
 
 `SUMMARIZE_TRANSCRIBER`
-: Optional. Lock in `auto`, `whisper`, `parakeet`, or `canary` without passing `--transcriber` every time.
+: Optional. Select the local stage with `auto`, `whisper`, `parakeet`, or `canary` without passing `--transcriber` every time.
 
 ## Examples
 
