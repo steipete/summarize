@@ -50,8 +50,11 @@ export function sanitizeHtmlForMarkdownConversion(html: string): string {
   });
 }
 
-export function extractArticleContent(html: string): string {
-  const segments = collectSegmentsFromHtml(html);
+export function extractArticleContent(
+  html: string,
+  options?: { preserveShortSegments?: boolean },
+): string {
+  const segments = collectSegmentsFromHtml(html, options);
   if (segments.length > 0) {
     return segments.join("\n");
   }
@@ -59,7 +62,11 @@ export function extractArticleContent(html: string): string {
   return fallback ?? "";
 }
 
-export function collectSegmentsFromHtml(html: string): string[] {
+export function collectSegmentsFromHtml(
+  html: string,
+  options?: { preserveShortSegments?: boolean },
+): string[] {
+  const minimumSegmentLength = options?.preserveShortSegments ? 1 : MIN_SEGMENT_LENGTH;
   const sanitized = sanitizeHtml(stripHiddenHtml(html), {
     allowedTags: [
       "article",
@@ -117,11 +124,11 @@ export function collectSegmentsFromHtml(html: string): string[] {
       }
 
       if (tag === "li") {
-        if (text.length >= 20) segments.push(`• ${text}`);
+        if (text.length >= Math.min(20, minimumSegmentLength)) segments.push(`• ${text}`);
         continue;
       }
 
-      if (text.length >= MIN_SEGMENT_LENGTH) segments.push(text);
+      if (text.length >= minimumSegmentLength) segments.push(text);
     }
 
     if (segments.length === 0) {
