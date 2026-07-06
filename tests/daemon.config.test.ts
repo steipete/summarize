@@ -155,6 +155,7 @@ describe("daemon config", () => {
           ANTIGRAVITY_API_KEY: " test-key-123 ",
           PATH: "",
           SUMMARIZE_TRANSCRIBER: " parakeet ",
+          SUMMARIZE_GEMINI_TRANSCRIPTION_MODEL: " gemini-2.5-pro ",
           SUMMARIZE_ONNX_PARAKEET_CMD: " run-parakeet {input} ",
           SUMMARIZE_ONNX_CANARY_CMD: " run-canary {input}  ",
         }),
@@ -178,6 +179,7 @@ describe("daemon config", () => {
       AGY_PATH: "/opt/agy",
       ANTIGRAVITY_API_KEY: "test-key-123",
       SUMMARIZE_TRANSCRIBER: "parakeet",
+      SUMMARIZE_GEMINI_TRANSCRIPTION_MODEL: "gemini-2.5-pro",
       SUMMARIZE_ONNX_PARAKEET_CMD: "run-parakeet {input}",
       SUMMARIZE_ONNX_CANARY_CMD: "run-canary {input}",
     });

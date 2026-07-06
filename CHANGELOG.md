@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Transcription: align CLI/docs with the runtime fallback order and preserve Gemini model overrides in installed daemons (#344, thanks @vincent-peng).
 - Reddit extraction: retry verification-blocked threads through old Reddit and preserve the post plus comments in Markdown (#343, thanks @manfredlift).
 - CLI slides: accept `--no-slides` and `--no-slides-ocr` so configured slide defaults can be disabled per run (#345, thanks @vincent-peng).
 - Slides: bound optional calibration probes so the bundled FFmpeg fallback cannot stall for minutes when Node shutdown lingers.
