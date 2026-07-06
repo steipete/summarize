@@ -182,6 +182,13 @@ describe("package bin wrappers", () => {
     expect(slidesHelp).toMatch(/local\s+video\s+file/);
   });
 
+  it("accepts negated slides flags for configured defaults", () => {
+    const program = buildProgram();
+    program.parse(["--no-slides", "--no-slides-ocr"], { from: "user" });
+
+    expect(program.opts()).toMatchObject({ slides: false, slidesOcr: false });
+  });
+
   it("routes fish subcommands from the first CLI argument", async () => {
     const fish = await readFile("completions/summarize.fish", "utf8");
 

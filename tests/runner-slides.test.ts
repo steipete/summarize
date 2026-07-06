@@ -25,6 +25,53 @@ describe("resolveRunnerSlidesSettings", () => {
     expect(settings?.autoTuneThreshold).toBe(false);
   });
 
+  it("lets --no-slides disable configured slide extraction", () => {
+    const settings = resolveRunnerSlidesSettings({
+      normalizedArgv: ["--no-slides"],
+      programOpts: { slides: false },
+      config: { slides: { enabled: true, ocr: true } },
+      inputTarget: { kind: "url", url: "https://www.youtube.com/watch?v=EYSQGkpuzAA" },
+    });
+
+    expect(settings).toBeNull();
+  });
+
+  it("keeps --slides=false compatible with configured OCR defaults", () => {
+    const settings = resolveRunnerSlidesSettings({
+      normalizedArgv: ["--slides=false"],
+      programOpts: { slides: "false" },
+      config: { slides: { ocr: true } },
+      inputTarget: { kind: "file", filePath: "/tmp/video.webm" },
+    });
+
+    expect(settings?.enabled).toBe(true);
+    expect(settings?.ocr).toBe(true);
+  });
+
+  it("lets explicit --slides-ocr override --no-slides for the current run", () => {
+    const settings = resolveRunnerSlidesSettings({
+      normalizedArgv: ["--no-slides", "--slides-ocr"],
+      programOpts: { slides: false, slidesOcr: true },
+      config: { slides: { enabled: true, ocr: false } },
+      inputTarget: { kind: "file", filePath: "/tmp/video.webm" },
+    });
+
+    expect(settings?.enabled).toBe(true);
+    expect(settings?.ocr).toBe(true);
+  });
+
+  it("lets --no-slides-ocr disable configured OCR without disabling slides", () => {
+    const settings = resolveRunnerSlidesSettings({
+      normalizedArgv: ["--no-slides-ocr"],
+      programOpts: { slidesOcr: false },
+      config: { slides: { enabled: true, ocr: true } },
+      inputTarget: { kind: "file", filePath: "/tmp/video.webm" },
+    });
+
+    expect(settings?.enabled).toBe(true);
+    expect(settings?.ocr).toBe(false);
+  });
+
   it("rejects slides for stdin", () => {
     expect(() =>
       resolveRunnerSlidesSettings({

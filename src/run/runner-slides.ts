@@ -30,13 +30,18 @@ export function resolveRunnerSlidesSettings(options: {
     (arg) => arg === "--slides-min-duration" || arg.startsWith("--slides-min-duration="),
   );
   const slidesConfig = config?.slides;
+  const slidesValue = slidesExplicitlySet
+    ? programOpts.slides
+    : (slidesConfig?.enabled ?? programOpts.slides);
+  const slidesDisabledExplicitly = normalizedArgv.includes("--no-slides");
+  const slidesOcrValue = slidesOcrExplicitlySet
+    ? programOpts.slidesOcr
+    : slidesDisabledExplicitly
+      ? false
+      : (slidesConfig?.ocr ?? programOpts.slidesOcr);
   const slidesSettings = resolveSlideSettings({
-    slides: slidesExplicitlySet
-      ? programOpts.slides
-      : (slidesConfig?.enabled ?? programOpts.slides),
-    slidesOcr: slidesOcrExplicitlySet
-      ? programOpts.slidesOcr
-      : (slidesConfig?.ocr ?? programOpts.slidesOcr),
+    slides: slidesValue,
+    slidesOcr: slidesOcrValue,
     slidesDir: slidesDirExplicitlySet
       ? programOpts.slidesDir
       : (slidesConfig?.dir ?? programOpts.slidesDir),

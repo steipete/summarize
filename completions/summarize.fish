@@ -62,8 +62,10 @@ for cmd in summarize summarizer
 
     # Slides options
     complete -c $cmd -n '__summarize_no_subcommand' -l slides -d 'Extract slides for video URLs' -xa 'true false yes no on off 1 0'
+    complete -c $cmd -n '__summarize_no_subcommand' -l no-slides -d 'Disable configured slide extraction'
     complete -c $cmd -n '__summarize_no_subcommand' -l slides-debug -d 'Show slide image paths'
     complete -c $cmd -n '__summarize_no_subcommand' -l slides-ocr -d 'Run OCR on extracted slides'
+    complete -c $cmd -n '__summarize_no_subcommand' -l no-slides-ocr -d 'Disable configured slide OCR'
     complete -c $cmd -n '__summarize_no_subcommand' -l slides-dir -d 'Base output dir for slides' -rF
     complete -c $cmd -n '__summarize_no_subcommand' -l slides-scene-threshold -d 'Scene detection threshold (0.1-1.0)' -x
     complete -c $cmd -n '__summarize_no_subcommand' -l slides-max -d 'Maximum slides to extract' -x

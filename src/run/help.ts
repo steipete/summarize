@@ -81,8 +81,10 @@ export function buildProgram() {
       "--slides [value]",
       "Extract slides for YouTube/direct video URLs or local video files and render them inline inside the summary narrative (when supported). Combine with --extract to interleave slides in the full transcript.",
     )
+    .option("--no-slides", "Disable configured slide extraction for this run.")
     .option("--slides-debug", "Show slide image paths instead of rendering inline images.", false)
     .option("--slides-ocr", "Run OCR on extracted slides (requires tesseract).", false)
+    .option("--no-slides-ocr", "Disable configured slide OCR for this run.")
     .option("--slides-dir <dir>", "Base output dir for slides (default: ./slides).", "slides")
     .option(
       "--slides-scene-threshold <value>",
