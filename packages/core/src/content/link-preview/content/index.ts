@@ -9,6 +9,11 @@ import { fetchHtmlDocument, fetchWithFirecrawl, isAssetLikeHtmlFetchError } from
 import { buildResultFromFirecrawl, shouldFallbackToFirecrawl } from "./firecrawl.js";
 import { buildResultFromHtmlDocument } from "./html.js";
 import { extractReadabilityFromHtml } from "./readability.js";
+import {
+  isBlockedRedditThreadHtml,
+  normalizeOldRedditThreadHtml,
+  toOldRedditThreadUrl,
+} from "./reddit.js";
 import { tryTranscriptOnlyStrategy } from "./transcript-only-strategies.js";
 import {
   isAnubisHtml,
@@ -375,11 +380,58 @@ export async function fetchLinkContent(
     );
   }
 
-  const html = htmlResult.html;
+  let html = htmlResult.html;
   const effectiveUrl = htmlResult.finalUrl || url;
-  let readabilityCandidate: Awaited<ReturnType<typeof extractReadabilityFromHtml>> | null = null;
+  let mediaHtml = html;
+  let isNormalizedRedditThread = false;
+  const oldRedditUrl = toOldRedditThreadUrl(effectiveUrl);
+  if (
+    oldRedditUrl &&
+    oldRedditUrl !== effectiveUrl &&
+    isBlockedRedditThreadHtml(effectiveUrl, html)
+  ) {
+    try {
+      const oldRedditResult = await fetchHtmlDocument(deps.fetch, oldRedditUrl, {
+        timeoutMs,
+        onProgress: deps.onProgress ?? null,
+        rejectNonHtmlText: options?.throwOnAssetLikeHtmlError ?? false,
+      });
+      const oldRedditEffectiveUrl = oldRedditResult.finalUrl || oldRedditUrl;
+      const normalizedOldRedditHtml = normalizeOldRedditThreadHtml(
+        oldRedditEffectiveUrl,
+        oldRedditResult.html,
+        { canonicalUrl: effectiveUrl },
+      );
+      if (
+        normalizedOldRedditHtml &&
+        !isBlockedRedditThreadHtml(oldRedditEffectiveUrl, oldRedditResult.html)
+      ) {
+        html = normalizedOldRedditHtml;
+        mediaHtml = oldRedditResult.html;
+        isNormalizedRedditThread = true;
+      }
+    } catch {
+      // Keep the original verification response so Firecrawl can still handle it below.
+    }
+  }
 
-  if (firecrawlMode === "auto" && shouldFallbackToFirecrawl(html)) {
+  const normalizedRedditHtml = normalizeOldRedditThreadHtml(effectiveUrl, html);
+  if (normalizedRedditHtml) {
+    html = normalizedRedditHtml;
+    isNormalizedRedditThread = true;
+  }
+  let readabilityCandidate: Awaited<ReturnType<typeof extractReadabilityFromHtml>> | null = null;
+  const blockedRedditThread =
+    !isNormalizedRedditThread && isBlockedRedditThreadHtml(effectiveUrl, html);
+
+  if (firecrawlMode === "auto" && blockedRedditThread) {
+    const firecrawlResult = await attemptFirecrawl(
+      "Reddit returned a verification page; falling back to Firecrawl",
+    );
+    if (firecrawlResult) {
+      return firecrawlResult;
+    }
+  } else if (firecrawlMode === "auto" && shouldFallbackToFirecrawl(html)) {
     readabilityCandidate = await extractReadabilityFromHtml(html, effectiveUrl);
     const readabilityText = readabilityCandidate?.text
       ? normalizeForPrompt(readabilityCandidate.text)
@@ -392,6 +444,12 @@ export async function fetchLinkContent(
         return firecrawlResult;
       }
     }
+  }
+
+  if (blockedRedditThread) {
+    throw new Error(
+      "Unable to fetch Reddit thread content: Reddit returned a verification page and the old.reddit.com fallback was unavailable.",
+    );
   }
 
   const htmlExtracted = await buildResultFromHtmlDocument({
@@ -411,6 +469,8 @@ export async function fetchLinkContent(
     timeoutMs,
     deps,
     readabilityCandidate,
+    isNormalizedRedditThread,
+    mediaHtml,
   });
   if (twitterStatus && isBlockedTwitterContent(htmlExtracted.content)) {
     const birdNote = !deps.readTweetWithBird

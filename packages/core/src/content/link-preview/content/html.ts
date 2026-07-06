@@ -65,6 +65,8 @@ export async function buildResultFromHtmlDocument({
   timeoutMs,
   deps,
   readabilityCandidate,
+  isNormalizedRedditThread = false,
+  mediaHtml = html,
 }: {
   url: string;
   html: string;
@@ -82,6 +84,8 @@ export async function buildResultFromHtmlDocument({
   timeoutMs: number;
   deps: LinkPreviewDeps;
   readabilityCandidate: Awaited<ReturnType<typeof extractReadabilityFromHtml>> | null;
+  isNormalizedRedditThread?: boolean;
+  mediaHtml?: string;
 }): Promise<ExtractedLinkContent> {
   const extractionStartedAt = Date.now();
   if (isYouTubeVideoUrl(url) && !extractYouTubeVideoId(url)) {
@@ -97,11 +101,14 @@ export async function buildResultFromHtmlDocument({
   const readabilityText = readability?.text ? normalizeForPrompt(readability.text) : "";
   const readabilityHtml = toReadabilityHtml(readability);
 
-  const normalizedSegmentsFromHtml = normalizeForPrompt(extractArticleContent(html));
+  const normalizedSegmentsFromHtml = normalizeForPrompt(
+    extractArticleContent(html, { preserveShortSegments: isNormalizedRedditThread }),
+  );
   const normalizedSegmentsFromReadabilityHtml = readabilityHtml
     ? normalizeForPrompt(extractArticleContent(readabilityHtml))
     : "";
   const preferReadabilityHtml =
+    !isNormalizedRedditThread &&
     normalizedSegmentsFromReadabilityHtml.length >= MIN_READABILITY_CONTENT_CHARACTERS &&
     (normalizedSegmentsFromHtml.length < MIN_HTML_CONTENT_CHARACTERS ||
       normalizedSegmentsFromReadabilityHtml.length >=
@@ -111,6 +118,7 @@ export async function buildResultFromHtmlDocument({
     : normalizedSegmentsFromHtml;
 
   const preferReadabilityText =
+    !isNormalizedRedditThread &&
     !preferReadabilityHtml &&
     readabilityText.length >= MIN_READABILITY_CONTENT_CHARACTERS &&
     (normalizedSegmentsFromHtml.length < MIN_HTML_CONTENT_CHARACTERS ||
@@ -129,7 +137,7 @@ export async function buildResultFromHtmlDocument({
   const effectiveNormalizedWithDescription = preferDescription
     ? descriptionCandidate
     : effectiveNormalized;
-  const videoDetection = detectPrimaryVideoDetailsFromHtml(html, url);
+  const videoDetection = detectPrimaryVideoDetailsFromHtml(mediaHtml, url);
   const detectedVideo = videoDetection?.video ?? null;
   const resolvedEmbeddedVideoMode = embeddedVideoMode ?? "auto";
   const embeddedYoutube = resolveEmbeddedYoutubeDecision({
@@ -139,7 +147,7 @@ export async function buildResultFromHtmlDocument({
     youtubeTranscriptMode: youtubeTranscriptMode ?? "auto",
     mediaTranscriptMode: mediaTranscriptMode ?? "auto",
   });
-  const transcriptResolution = await resolveTranscriptForLink(url, html, deps, {
+  const transcriptResolution = await resolveTranscriptForLink(url, mediaHtml, deps, {
     timeoutMs,
     youtubeTranscriptMode: embeddedYoutube.youtubeTranscriptMode,
     mediaTranscriptMode: embeddedYoutube.mediaTranscriptMode,
@@ -151,7 +159,7 @@ export async function buildResultFromHtmlDocument({
   });
   await refreshYoutubeSourceMetrics({
     url,
-    html,
+    html: mediaHtml,
     detectedVideo,
     transcriptResolution,
     deps,
@@ -160,7 +168,7 @@ export async function buildResultFromHtmlDocument({
   });
 
   const youtubeDescription =
-    transcriptResolution.text === null ? extractYouTubeShortDescription(html) : null;
+    transcriptResolution.text === null ? extractYouTubeShortDescription(mediaHtml) : null;
   let articleContent = youtubeDescription
     ? normalizeForPrompt(youtubeDescription)
     : effectiveNormalizedWithDescription;
@@ -198,7 +206,9 @@ export async function buildResultFromHtmlDocument({
 
     try {
       const htmlForMarkdown =
-        markdownMode === "readability" && readabilityHtml ? readabilityHtml : html;
+        markdownMode === "readability" && readabilityHtml && !isNormalizedRedditThread
+          ? readabilityHtml
+          : html;
       const sanitizedHtml = sanitizeHtmlForMarkdownConversion(htmlForMarkdown);
       const markdown = await deps.convertHtmlToMarkdown({
         url,
@@ -223,7 +233,7 @@ export async function buildResultFromHtmlDocument({
         used: true,
         provider: "llm",
         notes:
-          markdownMode === "readability" && readabilityHtml
+          markdownMode === "readability" && readabilityHtml && !isNormalizedRedditThread
             ? "Readability HTML used for markdown input"
             : null,
       };
