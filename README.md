@@ -367,7 +367,9 @@ Use `summarize --help` or `summarize help` for the full help text.
 - `--extract`: print extracted content and exit (URLs, YouTube/direct media, local audio/video, and local PDFs; stdin `-` is not supported)
   - Deprecated alias: `--extract-only`
 - `--slides`: extract slides for YouTube, direct video URLs, or local video files and render them inline in the summary narrative (auto-renders inline in supported terminals)
+- `--no-slides`: disable slide extraction enabled in `~/.summarize/config.json` for one run
 - `--slides-ocr`: run OCR on extracted slides (requires `tesseract`)
+- `--no-slides-ocr`: disable slide OCR enabled in `~/.summarize/config.json` for one run
 - `--slides-dir <dir>`: base output dir for slide images (default `./slides`)
 - `--slides-scene-threshold <value>`: scene detection threshold (0.1-1.0)
 - `--slides-max <count>`: maximum slides to extract (default `6`)

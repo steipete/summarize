@@ -4,7 +4,7 @@
 
 ### Fixes
 
-- CLI slides: accept `--no-slides` and `--no-slides-ocr` so configured slide defaults can be disabled per run.
+- CLI slides: accept `--no-slides` and `--no-slides-ocr` so configured slide defaults can be disabled per run (#345, thanks @vincent-peng).
 - Slides: bound optional calibration probes so the bundled FFmpeg fallback cannot stall for minutes when Node shutdown lingers.
 - Daemon setup: report native messaging hosts installed for valid unpacked Chrome extension IDs instead of falsely marking them missing.
 
