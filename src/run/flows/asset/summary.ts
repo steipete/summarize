@@ -25,7 +25,11 @@ import { writeVerbose } from "../../logging.js";
 import { prepareMarkdownForTerminal } from "../../markdown.js";
 import { isRichTty, markdownRenderWidth, supportsColor } from "../../terminal.js";
 import { prepareAssetPrompt } from "./preprocess.js";
-import { buildAssetCliContext, buildAssetModelAttempts } from "./summary-attempts.js";
+import {
+  buildAssetCliContext,
+  buildAssetModelAttempts,
+  filterUnsafeRemoteAssetCliAttempts,
+} from "./summary-attempts.js";
 import type {
   AssetSummaryContext,
   AssetSummaryContextInput,
@@ -289,11 +293,17 @@ export async function executeAssetSummary(
     requiresVideoUnderstanding,
     lastSuccessfulCliProvider,
   });
+  const executableAttempts = filterUnsafeRemoteAssetCliAttempts({ attempts, args });
+  if (attempts.length > 0 && executableAttempts.length === 0) {
+    throw new Error(
+      "Remote image and binary file summaries cannot use CLI providers that require broad local tools. Choose a native model or summarize a local file instead.",
+    );
+  }
 
   const cliContext = await buildAssetCliContext({
     ctx,
     args,
-    attempts,
+    attempts: executableAttempts,
     attachmentsCount: attachments.length,
     summaryLengthTarget,
   });
@@ -312,7 +322,7 @@ export async function executeAssetSummary(
     : null;
 
   const execution = await executeSummaryAttempts({
-    attempts,
+    attempts: executableAttempts,
     isFallbackModel: ctx.isFallbackModel,
     isNamedModelSelection: ctx.isNamedModelSelection,
     wantsFreeNamedModel: ctx.wantsFreeNamedModel,
