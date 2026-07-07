@@ -2,6 +2,10 @@
 
 ## 0.21.4 - Unreleased
 
+### Fixes
+
+- Security: block private browser-media URLs in the extension and stop remote binary attachments from auto-enabling broad CLI tool permissions.
+
 ## 0.21.3 - 2026-07-06
 
 ### Fixes

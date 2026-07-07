@@ -18,6 +18,7 @@ vi.mock("../src/run/attachments.js", () => ({
 import {
   buildAssetCliContext,
   buildAssetModelAttempts,
+  filterUnsafeRemoteAssetCliAttempts,
 } from "../src/run/flows/asset/summary-attempts.js";
 
 function createContext(overrides: Record<string, unknown> = {}) {
@@ -307,6 +308,95 @@ describe("asset summary attempts", () => {
       cwd: "/tmp/assets",
       extraArgsByProvider: {
         gemini: ["--include-directories", "/tmp/assets"],
+        codex: ["-i", "/tmp/assets/file.png"],
+        opencode: ["--file", "/tmp/assets/file.png"],
+      },
+    });
+  });
+
+  it("removes unsafe CLI providers and tool approval for remote binary attachments", async () => {
+    const attempts = filterUnsafeRemoteAssetCliAttempts({
+      attempts: [
+        {
+          transport: "native",
+          userModelId: "openai/gpt-5.4",
+          llmModelId: "gpt-5.4",
+          openrouterProviders: null,
+          forceOpenRouter: false,
+          requiredEnv: "OPENAI_API_KEY",
+        },
+        {
+          transport: "cli",
+          userModelId: "cli/claude/sonnet",
+          llmModelId: null,
+          cliProvider: "claude",
+          cliModel: "sonnet",
+          openrouterProviders: null,
+          forceOpenRouter: false,
+          requiredEnv: "CLI_CLAUDE",
+        },
+        {
+          transport: "cli",
+          userModelId: "cli/codex/gpt-5.5",
+          llmModelId: null,
+          cliProvider: "codex",
+          cliModel: "gpt-5.5",
+          openrouterProviders: null,
+          forceOpenRouter: false,
+          requiredEnv: "CLI_CODEX",
+        },
+        {
+          transport: "cli",
+          userModelId: "cli/opencode",
+          llmModelId: null,
+          cliProvider: "opencode",
+          cliModel: null,
+          openrouterProviders: null,
+          forceOpenRouter: false,
+          requiredEnv: "CLI_OPENCODE",
+        },
+      ] as never,
+      args: {
+        sourceKind: "asset-url",
+        sourceLabel: "https://example.com/file.png",
+        attachment: {
+          kind: "image",
+          filename: "file.png",
+          mediaType: "image/png",
+          bytes: new Uint8Array([1]),
+        },
+      } as never,
+    });
+
+    expect(attempts.map((attempt) => attempt.userModelId)).toEqual([
+      "openai/gpt-5.4",
+      "cli/codex/gpt-5.5",
+      "cli/opencode",
+    ]);
+
+    const result = await buildAssetCliContext({
+      ctx: createContext() as never,
+      args: {
+        sourceKind: "asset-url",
+        sourceLabel: "https://example.com/file.png",
+        attachment: {
+          kind: "image",
+          filename: "file.png",
+          mediaType: "image/png",
+          bytes: new Uint8Array([1]),
+        },
+      } as never,
+      attempts,
+      attachmentsCount: 1,
+      summaryLengthTarget: { maxCharacters: 900 },
+    });
+
+    expect(result).toEqual({
+      promptOverride: "prompt",
+      allowTools: false,
+      cwd: undefined,
+      extraArgsByProvider: {
+        gemini: undefined,
         codex: ["-i", "/tmp/assets/file.png"],
         opencode: ["--file", "/tmp/assets/file.png"],
       },

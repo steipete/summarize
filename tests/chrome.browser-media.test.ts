@@ -22,6 +22,8 @@ describe("chrome browser media decoding", () => {
   it("accepts only fetchable HTTP media URLs", async () => {
     expect(isBrowserMediaUrl("https://example.com/video.mp4")).toBe(true);
     expect(isBrowserMediaUrl("http://example.com/video.mp4")).toBe(true);
+    expect(isBrowserMediaUrl("http://127.0.0.1/video.mp4")).toBe(false);
+    expect(isBrowserMediaUrl("http://10.0.0.1/video.mp4")).toBe(false);
     expect(isBrowserMediaUrl("blob:https://example.com/id")).toBe(false);
     expect(isBrowserMediaUrl("not a URL")).toBe(false);
 

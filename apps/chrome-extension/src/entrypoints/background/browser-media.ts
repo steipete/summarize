@@ -7,6 +7,7 @@ import {
   type WrappedCanvas,
   UrlSource,
 } from "mediabunny";
+import { isPublicBrowserUrl } from "../../lib/browser-url-content";
 import { BrowserPcmAccumulator } from "./browser-media-audio";
 
 const MAX_BROWSER_MEDIA_BYTES = 128 * 1024 * 1024;
@@ -45,12 +46,7 @@ export type BrowserAudioProcessResult = {
 };
 
 export function isBrowserMediaUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
+  return isPublicBrowserUrl(value);
 }
 
 export async function fetchBrowserMediaWithLimit(
@@ -295,7 +291,11 @@ function createMediaUrlInput(
 ): Input {
   return new Input({
     source: new UrlSource(mediaUrl, {
-      fetchFn: (input, init) => fetchBrowserMediaWithLimit(fetchImpl, input, init),
+      fetchFn: (input, init) =>
+        fetchBrowserMediaWithLimit(fetchImpl, input, {
+          ...(init ?? {}),
+          targetAddressSpace: "public",
+        } as RequestInit & { targetAddressSpace: "public" }),
       getRetryDelay: (previousAttempts, error) =>
         error instanceof BrowserMediaLimitError ? null : previousAttempts < 2 ? 0.1 : null,
       maxCacheSize: BROWSER_MEDIA_URL_CACHE_BYTES,

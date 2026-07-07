@@ -113,6 +113,8 @@ path-based prompt and enables the required tool flags:
 - Antigravity: `agy --print`; does not auto-approve tools for attachment prompts
 - pi: `pi --print --mode json`; passes `--system-prompt`, sends prompt over stdin, and uses `--no-tools` for isolated summaries
 
+Remote image and binary-file URLs are limited to native providers and CLI backends that can consume the staged attachment without broad tool approval. Local file inputs keep the existing path-based CLI behavior because they are operator-selected files rather than untrusted remote content.
+
 ## Config
 
 ```json

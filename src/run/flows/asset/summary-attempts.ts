@@ -6,6 +6,31 @@ import { buildPathSummaryPrompt } from "../../../prompts/index.js";
 import { ensureCliAttachmentPath } from "../../attachments.js";
 import type { AssetSummaryContext, SummarizeAssetArgs } from "./types.js";
 
+function isPathBasedAttachment(args: SummarizeAssetArgs): boolean {
+  return args.attachment.kind === "image" || args.attachment.kind === "file";
+}
+
+function isRemoteCliAttachmentProviderSafe(
+  attempt: ModelAttempt,
+  args: SummarizeAssetArgs,
+): boolean {
+  if (attempt.transport !== "cli") return true;
+  if (!attempt.cliProvider) return false;
+  if (attempt.cliProvider === "opencode") return true;
+  return attempt.cliProvider === "codex" && args.attachment.kind === "image";
+}
+
+export function filterUnsafeRemoteAssetCliAttempts({
+  attempts,
+  args,
+}: {
+  attempts: ModelAttempt[];
+  args: SummarizeAssetArgs;
+}): ModelAttempt[] {
+  if (args.sourceKind !== "asset-url" || !isPathBasedAttachment(args)) return attempts;
+  return attempts.filter((attempt) => isRemoteCliAttachmentProviderSafe(attempt, args));
+}
+
 export async function buildAssetModelAttempts({
   ctx,
   kind,
@@ -73,7 +98,7 @@ export async function buildAssetCliContext({
 }) {
   if (!attempts.some((attempt) => attempt.transport === "cli")) return null;
   if (attachmentsCount === 0) return null;
-  const needsPathPrompt = args.attachment.kind === "image" || args.attachment.kind === "file";
+  const needsPathPrompt = isPathBasedAttachment(args);
   if (!needsPathPrompt) return null;
 
   const filePath = await ensureCliAttachmentPath({
@@ -82,8 +107,9 @@ export async function buildAssetCliContext({
     attachment: args.attachment,
   });
   const dir = path.dirname(filePath);
+  const isRemoteAsset = args.sourceKind === "asset-url";
   const extraArgsByProvider: Partial<Record<CliProvider, string[]>> = {
-    gemini: ["--include-directories", dir],
+    gemini: isRemoteAsset ? undefined : ["--include-directories", dir],
     codex: args.attachment.kind === "image" ? ["-i", filePath] : undefined,
     opencode: ["--file", filePath],
   };
@@ -100,8 +126,8 @@ export async function buildAssetCliContext({
       lengthInstruction: ctx.lengthInstruction ?? null,
       languageInstruction: ctx.languageInstruction ?? null,
     }),
-    allowTools: true,
-    cwd: dir,
+    allowTools: !isRemoteAsset,
+    cwd: isRemoteAsset ? undefined : dir,
     extraArgsByProvider,
   };
 }
