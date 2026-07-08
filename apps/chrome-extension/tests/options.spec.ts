@@ -444,7 +444,7 @@ test("options persists direct provider credentials per provider", async ({
   }
 });
 
-test("options shows user scripts guidance when unavailable", async ({
+test("options labels unavailable automation permissions as optional", async ({
   browserName: _browserName,
 }, testInfo) => {
   const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
@@ -475,8 +475,12 @@ test("options shows user scripts guidance when unavailable", async ({
     await expect(page.locator("#automationPermissions")).toHaveText(
       "Enable automation permissions",
     );
+    await expect(page.locator(".permissionHint")).toContainText("Optional for summarization");
+    await expect(page.locator(".permissionHint")).toContainText("userScripts");
+    await expect(page.locator(".permissionHint")).toContainText("debugger");
     await expect(page.locator("#userScriptsNotice")).toBeVisible();
     await expect(page.locator("#userScriptsNotice")).toContainText(/User Scripts|chrome:\/\//);
+
     assertNoErrors(harness);
   } finally {
     await closeExtension(harness.context, harness.userDataDir);

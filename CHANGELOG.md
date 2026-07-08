@@ -5,6 +5,7 @@
 ### Fixes
 
 - Security: block private browser-media URLs in the extension and stop remote binary attachments from auto-enabling broad CLI tool permissions.
+- Chrome extension: make User Scripts optional, omit debugger access from summary builds, and provide a separate debugger-enabled automation build.
 
 ## 0.21.3 - 2026-07-06
 

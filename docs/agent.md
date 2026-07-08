@@ -47,12 +47,16 @@ The daemon **never** executes tools. It only returns the next assistant message.
 - Options UI provides the toggle.
 - When disabled, the tool list is empty and the daemon uses the **chat-only** prompt.
 
-### Optional Permissions
+### Automation Permissions
 
-Defined in `apps/chrome-extension/wxt.config.ts` and requested via Options:
+Defined in `apps/chrome-extension/wxt.config.ts`:
 
-- `debugger` – required for **native input** and the **debugger** tool.
-- `userScripts` – reserved for main-world script execution (not required for current REPL path).
+- `userScripts` – optional; requested via Options for `browserjs()` main-world script execution.
+- `debugger` – required only in `build:automation` for **native input** and the **debugger** tool.
+
+Neither permission is needed for summarization. The standard Chrome build omits `debugger` because
+[Chrome does not allow it to be optional](https://developer.chrome.com/docs/extensions/reference/api/permissions#optional_declarations),
+and it hides debugger-backed tools. The separate automation build declares it as required.
 
 #### Chrome: enable User Scripts (if needed)
 
@@ -196,8 +200,7 @@ REPL environment:
 
 - Runs in a **sandboxed iframe** (no DOM access to the panel).
 - `browserjs(fn, ...args)` runs the function **in the page context**.
-  - Uses `chrome.userScripts.execute` (main world) when available.
-  - Falls back to `chrome.scripting.executeScript` (isolated world).
+  - Uses `chrome.userScripts.execute` in the main world.
 - `navigate({ url })` available inside the REPL (always use for navigation).
 - `sleep(ms)` helper.
 - Console output is captured and returned; return values are appended as `=> value`.

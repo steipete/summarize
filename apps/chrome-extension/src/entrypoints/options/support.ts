@@ -1,5 +1,12 @@
 import { buildUserScriptsGuidance, getUserScriptsStatus } from "../../automation/userscripts";
 
+const AUTOMATION_PERMISSIONS = ["userScripts"] as const;
+
+export function getOptionalAutomationPermissions() {
+  const optionalPermissions = chrome.runtime?.getManifest?.().optional_permissions ?? [];
+  return AUTOMATION_PERMISSIONS.filter((permission) => optionalPermissions.includes(permission));
+}
+
 export function resolveBuildInfoText({
   injectedVersion,
   manifestVersion,
@@ -77,14 +84,19 @@ export function createAutomationPermissionsController(options: {
 
   const updateUi = async () => {
     const status = await getUserScriptsStatus();
-    const hasPermission = status.permissionGranted;
+    const optionalPermissions = getOptionalAutomationPermissions();
+    const hasPermissions = Boolean(
+      optionalPermissions.length > 0 &&
+      (await chrome.permissions?.contains?.({ permissions: optionalPermissions })),
+    );
     const apiAvailable = status.apiAvailable;
-    const needsChromeToggle = status.chromeVersion !== null && hasPermission && !apiAvailable;
+    const needsChromeToggle = status.chromeVersion !== null && hasPermissions && !apiAvailable;
 
-    automationPermissionsBtn.disabled = !chrome.permissions || (hasPermission && apiAvailable);
+    automationPermissionsBtn.disabled =
+      !chrome.permissions || optionalPermissions.length === 0 || (hasPermissions && apiAvailable);
     automationPermissionsBtn.textContent = needsChromeToggle
       ? "Open Chrome User Scripts settings"
-      : hasPermission
+      : hasPermissions
         ? "Automation permissions granted"
         : "Enable automation permissions";
 
@@ -93,7 +105,7 @@ export function createAutomationPermissionsController(options: {
       return;
     }
 
-    if (apiAvailable && hasPermission) {
+    if (apiAvailable && hasPermissions) {
       userScriptsNoticeEl.hidden = true;
       return;
     }
@@ -107,14 +119,19 @@ export function createAutomationPermissionsController(options: {
     if (!chrome.permissions) return;
     try {
       const status = await getUserScriptsStatus();
-      if (status.chromeVersion !== null && status.permissionGranted && !status.apiAvailable) {
+      const optionalPermissions = getOptionalAutomationPermissions();
+      if (optionalPermissions.length === 0) return;
+      const hasPermissions = Boolean(
+        await chrome.permissions.contains({ permissions: optionalPermissions }),
+      );
+      if (status.chromeVersion !== null && hasPermissions && !status.apiAvailable) {
         await chrome.tabs.create({
           url: `chrome://extensions/?id=${chrome.runtime.id}`,
         });
         return;
       }
       const ok = await chrome.permissions.request({
-        permissions: ["userScripts"],
+        permissions: optionalPermissions,
       });
       if (!ok) {
         flashStatus("Permission request denied");

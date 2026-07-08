@@ -96,10 +96,8 @@ chrome.debugger.detach({ tabId });
 
 **Firefox compatibility**: ✅ **Supported** but may have behavioral differences
 
-- Firefox has `browser.debugger` with same API surface
-- Used for automation features (CDP commands)
-- Requires `debugger` permission (already declared)
-- **Testing needed**: Verify CDP protocol compatibility
+- Firefox exposes a related debugger API, but the current Firefox build omits the permission.
+- Debugger-backed native input and the explicit debugger tool are unavailable in this build.
 
 #### 3. UserScripts API (Optional)
 
@@ -284,7 +282,7 @@ pnpm test:chrome
 3. **Content extraction**: Readability on various sites
 4. **Auto-summarize**: Navigation triggers
 5. **Settings persistence**: storage.local across restarts
-6. **Permissions**: Debugger and userScripts optional permissions
+6. **Permissions**: Optional userScripts access; debugger features unavailable
 
 ## Development Workflow
 
@@ -357,7 +355,7 @@ When ready for public distribution:
 - [x] Manual testing in Firefox Developer Edition
 - [x] Test sidebar rendering in Firefox
 - [x] Verify SSE streaming works
-- [x] Test debugger API for automation features
+- [x] Keep debugger-backed automation out of the Firefox manifest
 
 ## References
 

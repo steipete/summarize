@@ -2,6 +2,7 @@ import type {
   AgentToolCall as ToolCall,
   AgentToolResultMessage as ToolResultMessage,
 } from "@steipete/summarize-core/runtime";
+import { hasDebuggerCapability } from "../lib/automation-capabilities";
 import { executeAskUserWhichElementTool } from "./ask-user-which-element";
 import { executeNavigateTool } from "./navigate";
 import { executeReplTool } from "./repl";
@@ -24,7 +25,7 @@ const TOOL_NAMES = [
 export type AutomationToolName = (typeof TOOL_NAMES)[number];
 
 export function getAutomationToolNames(): AutomationToolName[] {
-  return [...TOOL_NAMES];
+  return TOOL_NAMES.filter((name) => name !== "debugger" || hasDebuggerCapability());
 }
 
 function buildToolResultMessage({
