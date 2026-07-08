@@ -1,3 +1,5 @@
+import { getLocalStorage } from "../../lib/local-storage";
+
 export function createOptionsTabs({
   root,
   buttons,
@@ -16,6 +18,7 @@ export function createOptionsTabs({
   onProcessesActiveChange: (active: boolean) => void;
 }) {
   const tabIds = new Set(buttons.map((button) => button.dataset.tab).filter(Boolean));
+  const storage = getLocalStorage();
 
   const resolveActiveTab = (): string | null => {
     const active = buttons.find((button) => button.getAttribute("aria-selected") === "true");
@@ -32,13 +35,13 @@ export function createOptionsTabs({
     for (const panel of panels) {
       panel.hidden = panel.dataset.tabPanel !== tabId;
     }
-    localStorage.setItem(storageKey, tabId);
+    storage?.setItem(storageKey, tabId);
     onTabActivated?.(tabId);
     onLogsActiveChange(tabId === "logs");
     onProcessesActiveChange(tabId === "processes");
   };
 
-  const storedTab = localStorage.getItem(storageKey);
+  const storedTab = storage?.getItem(storageKey) ?? null;
   setActiveTab(storedTab && tabIds.has(storedTab) ? storedTab : "general");
 
   for (const button of buttons) {

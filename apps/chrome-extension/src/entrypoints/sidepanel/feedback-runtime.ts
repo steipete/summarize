@@ -1,3 +1,4 @@
+import { getLocalStorage, type LocalStorageLike } from "../../lib/local-storage";
 import { createErrorController } from "./error-controller";
 import { createHeaderController } from "./header-controller";
 import type { PanelState } from "./types";
@@ -28,7 +29,7 @@ export function createSidepanelFeedbackRuntime({
   slideNoticeRetryBtn,
   sendOpenOptions,
   eventTarget = window,
-  storage = localStorage,
+  storage = getLocalStorage(),
 }: {
   panelState: PanelState;
   headerEl: HTMLElement;
@@ -49,7 +50,7 @@ export function createSidepanelFeedbackRuntime({
   slideNoticeRetryBtn: HTMLButtonElement;
   sendOpenOptions: () => void;
   eventTarget?: FeedbackEventTarget;
-  storage?: Pick<Storage, "setItem">;
+  storage?: Pick<LocalStorageLike, "setItem"> | null;
 }) {
   const headerController = createHeaderController({
     headerEl,
@@ -64,7 +65,7 @@ export function createSidepanelFeedbackRuntime({
 
   const openOptionsTab = (tabId: string) => {
     try {
-      storage.setItem(OPTIONS_TAB_STORAGE_KEY, tabId);
+      storage?.setItem(OPTIONS_TAB_STORAGE_KEY, tabId);
     } catch {
       // Continue opening options when local storage is unavailable.
     }

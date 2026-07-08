@@ -1,3 +1,5 @@
+import { getLocalStorage } from "./local-storage";
+
 const storageKey = "settings";
 const fallbackStorageKey = "summarize.settings";
 
@@ -7,7 +9,7 @@ function getLocalStorageArea(): chrome.storage.StorageArea | null {
 
 function loadFallbackSettings(): Record<string, unknown> {
   try {
-    const raw = globalThis.localStorage?.getItem(fallbackStorageKey);
+    const raw = getLocalStorage()?.getItem(fallbackStorageKey);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as unknown;
     return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
@@ -18,7 +20,7 @@ function loadFallbackSettings(): Record<string, unknown> {
 
 function saveFallbackSettings(settings: object): void {
   try {
-    globalThis.localStorage?.setItem(fallbackStorageKey, JSON.stringify(settings));
+    getLocalStorage()?.setItem(fallbackStorageKey, JSON.stringify(settings));
   } catch {
     // Best-effort fallback for non-extension previews.
   }

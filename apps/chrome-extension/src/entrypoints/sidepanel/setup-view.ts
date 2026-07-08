@@ -1,3 +1,4 @@
+import { getLocalStorage } from "../../lib/local-storage";
 import type { Settings } from "../../lib/settings";
 
 type PlatformKind = "mac" | "windows" | "linux" | "other";
@@ -149,12 +150,13 @@ export function wireSetupButtons({
   const daemonCmd = `summarize daemon install --token ${token} --port ${daemonPort}`;
   const isMac = platformKind === "mac";
   const installMethodKey = "summarize.installMethod";
+  const storage = getLocalStorage();
   type InstallMethod = "npm" | "brew";
 
   const resolveInstallMethod = (): InstallMethod => {
     if (!isMac) return "npm";
     try {
-      const stored = localStorage.getItem(installMethodKey);
+      const stored = storage?.getItem(installMethodKey);
       if (stored === "npm" || stored === "brew") return stored;
     } catch {
       // ignore
@@ -165,7 +167,7 @@ export function wireSetupButtons({
   const persistInstallMethod = (method: InstallMethod) => {
     if (!isMac) return;
     try {
-      localStorage.setItem(installMethodKey, method);
+      storage?.setItem(installMethodKey, method);
     } catch {
       // ignore
     }

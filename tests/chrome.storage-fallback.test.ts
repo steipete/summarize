@@ -46,4 +46,31 @@ describe("chrome storage fallback", () => {
     const skills = await listSkills();
     expect(skills.length).toBeGreaterThan(0);
   });
+
+  it("ignores getter-only localStorage globals without invoking them", async () => {
+    vi.resetModules();
+    vi.stubGlobal("chrome", {});
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    const getter = vi.fn(() => {
+      throw new Error("localStorage getter should not be touched");
+    });
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      get: getter,
+    });
+
+    try {
+      const { loadSettings } = await import("../apps/chrome-extension/src/lib/settings.js");
+
+      const settings = await loadSettings();
+      expect(settings.model).toBe("auto");
+      expect(getter).not.toHaveBeenCalled();
+    } finally {
+      if (descriptor) {
+        Object.defineProperty(globalThis, "localStorage", descriptor);
+      } else {
+        delete (globalThis as { localStorage?: unknown }).localStorage;
+      }
+    }
+  });
 });

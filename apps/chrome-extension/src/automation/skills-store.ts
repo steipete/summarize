@@ -1,3 +1,4 @@
+import { getLocalStorage } from "../lib/local-storage";
 import defaultSkillsRaw from "./default-skills.json";
 
 export type Skill = {
@@ -22,7 +23,7 @@ function getLocalStorageArea(): chrome.storage.StorageArea | null {
 
 function loadFallbackValue<T>(key: string, fallback: T): T {
   try {
-    const raw = globalThis.localStorage?.getItem(`${FALLBACK_PREFIX}${key}`);
+    const raw = getLocalStorage()?.getItem(`${FALLBACK_PREFIX}${key}`);
     if (!raw) return fallback;
     return JSON.parse(raw) as T;
   } catch {
@@ -32,7 +33,7 @@ function loadFallbackValue<T>(key: string, fallback: T): T {
 
 function saveFallbackValue(key: string, value: unknown): void {
   try {
-    globalThis.localStorage?.setItem(`${FALLBACK_PREFIX}${key}`, JSON.stringify(value));
+    getLocalStorage()?.setItem(`${FALLBACK_PREFIX}${key}`, JSON.stringify(value));
   } catch {
     // Best-effort fallback for non-extension previews.
   }
