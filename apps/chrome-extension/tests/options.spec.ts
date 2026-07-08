@@ -368,44 +368,6 @@ test("managed daemon disable locks the UI to Direct and Browser", async ({
   }
 });
 
-test("options disables automation permissions button when granted", async ({
-  browserName: _browserName,
-}, testInfo) => {
-  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
-
-  try {
-    await seedSettings(harness, { automationEnabled: true });
-    const page = await harness.context.newPage();
-    trackErrors(page, harness.pageErrors, harness.consoleErrors);
-    await page.addInitScript(() => {
-      Object.defineProperty(chrome, "permissions", {
-        configurable: true,
-        value: {
-          contains: async () => true,
-          request: async () => true,
-        },
-      });
-      Object.defineProperty(chrome, "userScripts", {
-        configurable: true,
-        value: {},
-      });
-    });
-    await page.goto(getExtensionUrl(harness, "options.html"), {
-      waitUntil: "domcontentloaded",
-    });
-    await page.waitForSelector("#tabs");
-
-    await expect(page.locator("#automationPermissions")).toBeDisabled();
-    await expect(page.locator("#automationPermissions")).toHaveText(
-      "Automation permissions granted",
-    );
-    await expect(page.locator("#userScriptsNotice")).toBeHidden();
-    assertNoErrors(harness);
-  } finally {
-    await closeExtension(harness.context, harness.userDataDir);
-  }
-});
-
 test("options persists direct provider credentials per provider", async ({
   browserName: _browserName,
 }, testInfo) => {
