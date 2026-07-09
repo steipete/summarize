@@ -90,6 +90,7 @@ export async function* streamOpenAiCompatible(
       ...(config.provider === "openai"
         ? { max_completion_tokens: options.maxTokens }
         : { max_tokens: options.maxTokens }),
+      ...(config.provider === "minimax" ? { reasoning_split: true } : {}),
       ...(options.tools.length > 0 ? { tools: toOpenAiTools(options.tools) } : {}),
     }),
     signal: options.signal,
