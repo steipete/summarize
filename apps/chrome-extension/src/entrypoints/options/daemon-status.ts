@@ -16,7 +16,19 @@ function shouldRetryDaemon(err: unknown) {
 function formatDaemonConnectionError(err: unknown) {
   const message = err instanceof Error ? err.message.trim() : "";
   const lower = message.toLowerCase();
-  if (lower.includes("native messaging") || lower.includes("native host")) {
+  if (
+    lower.includes("host exited") ||
+    lower.includes("host has exited") ||
+    lower.includes("connection closed unexpectedly")
+  ) {
+    return "Native host exited — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log";
+  }
+  if (
+    lower.includes("specified native messaging host not found") ||
+    lower.includes("native messaging host not found") ||
+    lower.includes("no such native application") ||
+    lower.includes("specified native messaging host is forbidden")
+  ) {
     return "Native host unavailable — rerun the install command, then reload the extension";
   }
   if (lower.includes("permission")) {

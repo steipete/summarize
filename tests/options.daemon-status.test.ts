@@ -107,6 +107,24 @@ describe("options daemon status", () => {
     expect(statusEl.dataset.state).toBe("error");
   });
 
+  it("preserves installed native host exit diagnostics instead of reinstall guidance", async () => {
+    const statusEl = document.createElement("div");
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl: async () => {
+        throw new Error("Native host has exited.");
+      },
+      getExtensionVersion: () => "0.17.0",
+    });
+
+    await checker.checkDaemonStatus("token");
+
+    expect(statusEl.textContent).toBe(
+      "Native host exited — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log",
+    );
+    expect(statusEl.dataset.state).toBe("error");
+  });
+
   it("maps missing native messaging permission to the Runtime setup action", async () => {
     const statusEl = document.createElement("div");
     const checker = createDaemonStatusChecker({
