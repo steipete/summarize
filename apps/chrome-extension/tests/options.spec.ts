@@ -277,6 +277,15 @@ test("options opens the requested runtime tab from the URL", async ({
 
     await expect(page.locator("#tab-runtime")).toHaveAttribute("aria-selected", "true");
     await expect(page.locator("#panel-runtime")).toBeVisible();
+
+    await page.click("#tab-general");
+    await expect(page).not.toHaveURL(/tab=runtime/);
+    await expect(page.locator("#tab-general")).toHaveAttribute("aria-selected", "true");
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#tabs");
+    await expect(page.locator("#tab-general")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("#panel-general")).toBeVisible();
     assertNoErrors(harness);
   } finally {
     await closeExtension(harness.context, harness.userDataDir);

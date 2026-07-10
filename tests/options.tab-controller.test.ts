@@ -59,6 +59,34 @@ describe("options tab controller", () => {
     expect(document.querySelector<HTMLElement>('[data-tab-panel="runtime"]')?.hidden).toBe(false);
   });
 
+  it("clears the requested tab after the user picks a different tab", () => {
+    storage.setItem(storageKey, "general");
+    window.history.replaceState(null, "", "/options.html?tab=runtime");
+    const harness = createHarness();
+
+    const tabs = createOptionsTabs({
+      ...harness,
+      storageKey,
+    });
+
+    expect(tabs.resolveActiveTab()).toBe("runtime");
+
+    harness.buttons.find((button) => button.dataset.tab === "logs")?.click();
+
+    expect(tabs.resolveActiveTab()).toBe("logs");
+    expect(storage.getItem(storageKey)).toBe("logs");
+    expect(window.location.search).toBe("");
+
+    const reloaded = createHarness();
+    const reloadedTabs = createOptionsTabs({
+      ...reloaded,
+      storageKey,
+    });
+
+    expect(reloadedTabs.resolveActiveTab()).toBe("logs");
+    expect(reloaded.onLogsActiveChange).toHaveBeenCalledWith(true);
+  });
+
   it("falls back to the stored tab when the requested tab is invalid", () => {
     storage.setItem(storageKey, "logs");
     window.history.replaceState(null, "", "/options.html?tab=missing");
