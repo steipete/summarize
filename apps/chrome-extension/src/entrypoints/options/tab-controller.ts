@@ -1,3 +1,13 @@
+import { isOptionsTab } from "../../lib/options-tabs";
+
+function getRequestedTab(tabIds: Set<string>): string | null {
+  const searchTab = new URLSearchParams(window.location.search).get("tab");
+  if (isOptionsTab(searchTab) && tabIds.has(searchTab)) return searchTab;
+  const hashTab = window.location.hash.replace(/^#/, "");
+  if (isOptionsTab(hashTab) && tabIds.has(hashTab)) return hashTab;
+  return null;
+}
+
 export function createOptionsTabs({
   root,
   buttons,
@@ -38,8 +48,9 @@ export function createOptionsTabs({
     onProcessesActiveChange(tabId === "processes");
   };
 
+  const requestedTab = getRequestedTab(tabIds);
   const storedTab = localStorage.getItem(storageKey);
-  setActiveTab(storedTab && tabIds.has(storedTab) ? storedTab : "general");
+  setActiveTab(requestedTab ?? (storedTab && tabIds.has(storedTab) ? storedTab : "general"));
 
   for (const button of buttons) {
     button.addEventListener("click", () => {
