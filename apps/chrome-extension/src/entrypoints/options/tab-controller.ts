@@ -38,7 +38,9 @@ export function createOptionsTabs({
   onLogsActiveChange: (active: boolean) => void;
   onProcessesActiveChange: (active: boolean) => void;
 }) {
-  const tabIds = new Set(buttons.map((button) => button.dataset.tab).filter(Boolean));
+  const tabIds = new Set(
+    buttons.map((button) => button.dataset.tab).filter((tab): tab is string => Boolean(tab)),
+  );
   const requestedTab = getRequestedTab(tabIds);
   let consumedRequestedTab = requestedTab;
 
