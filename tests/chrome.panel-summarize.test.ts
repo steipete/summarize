@@ -233,6 +233,78 @@ describe("chrome panel summarize", () => {
     expect(body.videoMode).toBeUndefined();
   });
 
+  it("does not infer Loom video mode from page media flags", async () => {
+    const harness = createHarness();
+    const url = "https://www.loom.com/share/ef3224a48a084371bd6d766ee81f083f";
+
+    await harness.summarize({
+      reason: "manual",
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "token",
+        autoSummarize: true,
+        slidesEnabled: false,
+        summaryRuntime: "daemon",
+      })),
+      getActiveTab: vi.fn(async () => ({ id: 7, windowId: 1, url, title: "Loom" })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url,
+          title: "Loom",
+          text: "Recording landing page",
+          truncated: false,
+          media: { hasVideo: true, hasAudio: true, hasCaptions: false },
+        },
+      })),
+    });
+
+    expect(harness.fetchImpl).toHaveBeenCalledOnce();
+    const body = JSON.parse(String(harness.fetchImpl.mock.calls[0]?.[1]?.body ?? "{}")) as Record<
+      string,
+      unknown
+    >;
+    expect(body.videoMode).toBeUndefined();
+    expect(body.mode).toBeUndefined();
+  });
+
+  it("sends explicit Loom video selection as transcript mode", async () => {
+    const harness = createHarness();
+    const url = "https://www.loom.com/share/ef3224a48a084371bd6d766ee81f083f";
+
+    await harness.summarize({
+      reason: "manual",
+      opts: { inputMode: "video" },
+      loadSettings: vi.fn(async () => ({
+        ...defaultSettings,
+        token: "token",
+        autoSummarize: true,
+        slidesEnabled: false,
+        summaryRuntime: "daemon",
+      })),
+      getActiveTab: vi.fn(async () => ({ id: 7, windowId: 1, url, title: "Loom" })),
+      extractFromTab: vi.fn(async () => ({
+        ok: true,
+        data: {
+          ok: true,
+          url,
+          title: "Loom",
+          text: "Recording landing page",
+          truncated: false,
+          media: { hasVideo: true, hasAudio: true, hasCaptions: false },
+        },
+      })),
+    });
+
+    expect(harness.fetchImpl).toHaveBeenCalledOnce();
+    const body = JSON.parse(String(harness.fetchImpl.mock.calls[0]?.[1]?.body ?? "{}")) as Record<
+      string,
+      unknown
+    >;
+    expect(body).toMatchObject({ mode: "url", videoMode: "transcript" });
+  });
+
   it("uses a local browser summary snapshot without a daemon token in browser runtime", async () => {
     const harness = createHarness();
     const url = "https://example.com/article";

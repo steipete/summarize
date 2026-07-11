@@ -5,6 +5,7 @@
 ### Fixes
 
 - Security: block private browser-media URLs in the extension and stop remote binary attachments from auto-enabling broad CLI tool permissions.
+- Loom: extract share/embed recording transcripts through yt-dlp with audio-capable format selection (#353, thanks @kartikkabadi).
 
 ## 0.21.3 - 2026-07-06
 

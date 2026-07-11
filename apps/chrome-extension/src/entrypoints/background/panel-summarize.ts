@@ -1,5 +1,6 @@
 import {
   isDirectMediaUrl,
+  isLoomVideoUrl,
   isYouTubeVideoUrl,
   shouldPreferUrlMode,
 } from "@steipete/summarize-core/content/url";
@@ -268,10 +269,11 @@ export async function summarizeActiveTab({
   }
   const effectiveInputMode =
     opts?.inputMode ??
+    (!isLoomVideoUrl(resolvedPayload.url) &&
     (resolvedPayload.media?.hasVideo === true ||
-    resolvedPayload.media?.hasAudio === true ||
-    resolvedPayload.media?.hasCaptions === true ||
-    (resolvedPayload.url && isYouTubeVideoUrl(resolvedPayload.url))
+      resolvedPayload.media?.hasAudio === true ||
+      resolvedPayload.media?.hasCaptions === true ||
+      (resolvedPayload.url && isYouTubeVideoUrl(resolvedPayload.url)))
       ? "video"
       : undefined);
   const wantsSummaryTimestamps =

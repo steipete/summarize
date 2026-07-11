@@ -4,6 +4,7 @@ import {
   inferDirectMediaKind,
   isDirectMediaExtension,
   isDirectMediaUrl,
+  isLoomVideoUrl,
   isPodcastHost,
   isTwitterBroadcastUrl,
   isTwitterStatusUrl,
@@ -50,6 +51,21 @@ describe("content/url", () => {
     expect(isTwitterBroadcastUrl("https://x.com/i/broadcasts/1PlJQOpPLXXKE")).toBe(true);
     expect(isTwitterBroadcastUrl("https://twitter.com/i/broadcasts/abc123")).toBe(true);
     expect(isTwitterBroadcastUrl("https://x.com/i/spaces/1")).toBe(false);
+  });
+
+  it("detects strict Loom recording URLs without changing shared URL preference", () => {
+    const id = "ef3224a48a084371bd6d766ee81f083f";
+    expect(isLoomVideoUrl(`https://www.loom.com/share/${id}`)).toBe(true);
+    expect(isLoomVideoUrl(`http://loom.com/embed/${id}?sid=abc#t=1`)).toBe(true);
+    expect(isLoomVideoUrl(`https://www.loom.com/share/${id}/`)).toBe(true);
+
+    expect(isLoomVideoUrl(`https://www.loom.com/share/${id.toUpperCase()}`)).toBe(false);
+    expect(isLoomVideoUrl(`https://user@loom.com/share/${id}`)).toBe(false);
+    expect(isLoomVideoUrl(`https://loom.com:8443/share/${id}`)).toBe(false);
+    expect(isLoomVideoUrl(`https://loom.com.evil.example/share/${id}`)).toBe(false);
+    expect(isLoomVideoUrl(`https://www.loom.com/community/${id}`)).toBe(false);
+    expect(isLoomVideoUrl(`https://www.loom.com/share/not-a-recording`)).toBe(false);
+    expect(shouldPreferUrlMode(`https://www.loom.com/share/${id}`)).toBe(false);
   });
 
   it("detects direct media URLs", () => {

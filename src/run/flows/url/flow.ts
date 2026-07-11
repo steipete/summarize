@@ -143,6 +143,7 @@ export async function executeUrlFlow({
 
   const extractionSession = createUrlExtractionSession({
     ctx: flowCtx,
+    targetUrl: url,
     markdown: {
       convertHtmlToMarkdown: markdown.convertHtmlToMarkdown,
       effectiveMarkdownMode: markdown.effectiveMarkdownMode,
