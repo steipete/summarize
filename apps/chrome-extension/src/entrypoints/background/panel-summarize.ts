@@ -267,9 +267,11 @@ export async function summarizeActiveTab({
       return;
     }
   }
+  const allowPageMediaInference =
+    !isLoomVideoUrl(resolvedPayload.url) || opts?.inputMode === "video";
   const effectiveInputMode =
     opts?.inputMode ??
-    (!isLoomVideoUrl(resolvedPayload.url) &&
+    (allowPageMediaInference &&
     (resolvedPayload.media?.hasVideo === true ||
       resolvedPayload.media?.hasAudio === true ||
       resolvedPayload.media?.hasCaptions === true ||
@@ -279,14 +281,15 @@ export async function summarizeActiveTab({
   const wantsSummaryTimestamps =
     settings.summaryTimestamps &&
     (effectiveInputMode === "video" ||
-      resolvedPayload.media?.hasVideo === true ||
-      resolvedPayload.media?.hasAudio === true ||
-      resolvedPayload.media?.hasCaptions === true ||
+      (allowPageMediaInference &&
+        (resolvedPayload.media?.hasVideo === true ||
+          resolvedPayload.media?.hasAudio === true ||
+          resolvedPayload.media?.hasCaptions === true)) ||
       shouldPreferUrlMode(resolvedPayload.url));
   const wantsSlides =
     settings.slidesEnabled &&
     (effectiveInputMode === "video" ||
-      resolvedPayload.media?.hasVideo === true ||
+      (allowPageMediaInference && resolvedPayload.media?.hasVideo === true) ||
       shouldPreferUrlMode(resolvedPayload.url));
   const wantsDaemonSlides = wantsSlides && settings.slideRuntime === "daemon";
   const summaryTimestamps = wantsSummaryTimestamps || wantsSlides;

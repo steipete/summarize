@@ -233,7 +233,7 @@ describe("chrome panel summarize", () => {
     expect(body.videoMode).toBeUndefined();
   });
 
-  it("does not infer Loom video mode from page media flags", async () => {
+  it("does not infer Loom video, timestamps, or slides from page media flags", async () => {
     const harness = createHarness();
     const url = "https://www.loom.com/share/ef3224a48a084371bd6d766ee81f083f";
 
@@ -243,8 +243,10 @@ describe("chrome panel summarize", () => {
         ...defaultSettings,
         token: "token",
         autoSummarize: true,
-        slidesEnabled: false,
+        slidesEnabled: true,
+        slideRuntime: "daemon",
         summaryRuntime: "daemon",
+        summaryTimestamps: true,
       })),
       getActiveTab: vi.fn(async () => ({ id: 7, windowId: 1, url, title: "Loom" })),
       extractFromTab: vi.fn(async () => ({
@@ -267,6 +269,8 @@ describe("chrome panel summarize", () => {
     >;
     expect(body.videoMode).toBeUndefined();
     expect(body.mode).toBeUndefined();
+    expect(body.timestamps).toBeUndefined();
+    expect(body.slides).toBeUndefined();
   });
 
   it("sends explicit Loom video selection as transcript mode", async () => {
