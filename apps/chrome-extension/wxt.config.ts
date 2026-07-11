@@ -4,6 +4,20 @@ import { defineConfig } from "wxt";
 import { resolveTransformersRuntimeAssets } from "./scripts/transformers-runtime-assets";
 
 const targetBrowser = process.env.BROWSER === "firefox" ? "firefox" : "chrome";
+const e2eHttpTransport = process.env.SUMMARIZE_E2E_HTTP_TRANSPORT === "1";
+
+export function resolveExtensionHostPermissions({
+  browser,
+  e2eHttpTransport: enableE2eHttpTransport,
+}: {
+  browser: "chrome" | "firefox";
+  e2eHttpTransport: boolean;
+}): string[] {
+  if (browser === "firefox" || enableE2eHttpTransport) {
+    return ["<all_urls>", "http://127.0.0.1/*"];
+  }
+  return ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"];
+}
 
 const extensionVersion = (() => {
   try {
@@ -37,9 +51,7 @@ export default defineConfig({
     define: {
       __SUMMARIZE_VERSION__: JSON.stringify(extensionVersion),
       __SUMMARIZE_GIT_HASH__: JSON.stringify(gitHash),
-      __SUMMARIZE_E2E_HTTP_TRANSPORT__: JSON.stringify(
-        process.env.SUMMARIZE_E2E_HTTP_TRANSPORT === "1",
-      ),
+      __SUMMARIZE_E2E_HTTP_TRANSPORT__: JSON.stringify(e2eHttpTransport),
     },
     plugins:
       targetBrowser === "chrome"
@@ -103,10 +115,10 @@ export default defineConfig({
         ...(browser === "firefox" ? [] : ["debugger" as const]),
       ],
       optional_permissions: browser === "firefox" ? ["userScripts"] : ["nativeMessaging"],
-      host_permissions:
-        browser === "firefox"
-          ? ["<all_urls>", "http://127.0.0.1/*"]
-          : ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+      host_permissions: resolveExtensionHostPermissions({
+        browser,
+        e2eHttpTransport,
+      }),
       ...(browser === "firefox"
         ? {}
         : {
