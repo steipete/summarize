@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   estimateWindowsCommandChars,
   resolveAgyMaxPrintArgLimit,
@@ -258,13 +258,14 @@ describe("runCliModel - agy provider", () => {
 
   it("redacts the agy prompt from non-timeout errors", async () => {
     const prompt = "super secret page content";
+    const transformedPromptExcerpt = "super\\nsecret";
     const execFileImpl: ExecFileFn = ((cmd, args, _options, cb) => {
       cb?.(
         Object.assign(new Error(`Command failed: ${[cmd, ...args].join(" ")}`), {
           code: 1,
         }),
         "",
-        `stderr includes ${prompt}`,
+        `stderr includes transformed prompt text: ${transformedPromptExcerpt}`,
       );
       return {
         stdin: { write: () => {}, end: () => {} },
@@ -284,8 +285,11 @@ describe("runCliModel - agy provider", () => {
 
     const error = await promise.catch((value: unknown) => value);
     expect(error).toBeInstanceOf(Error);
-    expect((error as Error).message).toMatch(/CLI command failed: agy .*--print \[prompt redacted\]/);
+    expect((error as Error).message).toMatch(
+      /CLI command failed: agy .*--print \[prompt redacted\]/,
+    );
     expect((error as Error).message).not.toContain(prompt);
+    expect((error as Error).message).not.toContain(transformedPromptExcerpt);
     expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
   });
 
@@ -312,6 +316,24 @@ describe("runCliModel - agy provider", () => {
       }),
     ).rejects.toThrow(/cannot safely receive large prompts over argv/);
     expect(called).toBe(false);
+  });
+
+  it("rejects NUL-containing agy prompts before passing them through argv", async () => {
+    const execFileImpl = vi.fn() as unknown as ExecFileFn;
+
+    await expect(
+      runCliModel({
+        provider: "agy",
+        prompt: "private\0content",
+        model: null,
+        allowTools: false,
+        timeoutMs: 1000,
+        env: {},
+        execFileImpl,
+        config: null,
+      }),
+    ).rejects.toThrow(/cannot receive prompts containing NUL characters/);
+    expect(execFileImpl).not.toHaveBeenCalled();
   });
 
   it("throws when agy returns empty output", async () => {

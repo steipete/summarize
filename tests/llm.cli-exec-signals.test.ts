@@ -180,44 +180,11 @@ describe("execCliWithInput signals", () => {
       timeoutMs: 2_000,
       env: {},
       redactedCommand: "cli --secret [redacted]",
-      redactText: secret,
     }).catch((value: unknown) => value);
 
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toContain("cli --secret [redacted]");
-    expect((error as Error).message).toContain("stderr [prompt redacted]");
-    expect((error as Error).message).not.toContain(secret);
-    expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
-  });
-
-  it("uses a generic timeout command when only redact text is provided", async () => {
-    const secret = "x";
-    const execError = Object.assign(new Error("timed out"), {
-      code: "ETIMEDOUT",
-      cmd: `cli --secret ${secret}`,
-    });
-    const execFileImpl: ExecFileFn = ((_cmd, _args, _options, cb) => {
-      cb?.(execError, "", "");
-      return {
-        stdin: {
-          write: vi.fn(),
-          end: vi.fn(),
-        },
-      } as unknown as ReturnType<ExecFileFn>;
-    }) as ExecFileFn;
-
-    const error = await execCliWithInput({
-      execFileImpl,
-      cmd: "cli",
-      args: ["--secret", secret],
-      input: "",
-      timeoutMs: 2_000,
-      env: {},
-      redactText: secret,
-    }).catch((value: unknown) => value);
-
-    expect(error).toBeInstanceOf(Error);
-    expect((error as Error).message).toContain("cli [arguments redacted]");
+    expect((error as Error).message).not.toContain("stderr");
     expect((error as Error).message).not.toContain(secret);
     expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
   });
@@ -247,6 +214,28 @@ describe("execCliWithInput signals", () => {
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toContain("cli --secret [redacted]");
     expect((error as Error).message).not.toContain("raw");
+    expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
+  });
+
+  it("sanitizes synchronous launch errors for redacted commands", async () => {
+    const secret = "raw secret";
+    const execFileImpl: ExecFileFn = (() => {
+      throw new TypeError(`The argument contains a null byte: ${secret}`);
+    }) as ExecFileFn;
+
+    const error = await execCliWithInput({
+      execFileImpl,
+      cmd: "cli",
+      args: ["--secret", secret],
+      input: "",
+      timeoutMs: 2_000,
+      env: {},
+      redactedCommand: "cli --secret [redacted]",
+    }).catch((value: unknown) => value);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe("CLI command failed: cli --secret [redacted]");
+    expect((error as Error).message).not.toContain(secret);
     expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
   });
 });

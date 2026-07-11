@@ -1,7 +1,7 @@
+import { Buffer } from "node:buffer";
 import fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Buffer } from "node:buffer";
 import { execCliWithInput } from "../cli-exec.js";
 import type { CliRunResult, ResolvedCliRunOptions } from "./types.js";
 
@@ -74,6 +74,12 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
   try {
     const args = [...options.providerExtraArgs];
     if (!options.allowTools && !hasAnyFlag(args, ["--sandbox"])) args.push("--sandbox");
+    if (options.prompt.includes("\0")) {
+      throw new Error(
+        "Antigravity CLI cannot receive prompts containing NUL characters over argv. " +
+          "Use a different CLI provider for this input or remove the NUL characters.",
+      );
+    }
     const { limit, type } = resolveAgyMaxPrintArgLimit(platform);
     const promptSize =
       type === "chars" ? options.prompt.length : Buffer.byteLength(options.prompt, "utf8");
@@ -114,7 +120,6 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
       cwd: isolatedCwd ?? options.cwd,
       signal: options.signal,
       redactedCommand,
-      redactText: options.prompt,
     });
     const text = stdout.trim();
     if (!text) throw new Error("CLI returned empty output");
