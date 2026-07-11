@@ -23,6 +23,12 @@ function formatDaemonConnectionError(err: unknown) {
   ) {
     return "Native host exited — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log";
   }
+  if (lower.includes("failed to start native messaging host")) {
+    return "Native host failed to start — rerun the install command and verify launcher permissions";
+  }
+  if (lower.includes("error when communicating with the native messaging host")) {
+    return "Native host communication failed — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log";
+  }
   if (
     lower.includes("specified native messaging host not found") ||
     lower.includes("native messaging host not found") ||

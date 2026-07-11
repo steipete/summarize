@@ -125,6 +125,42 @@ describe("options daemon status", () => {
     expect(statusEl.dataset.state).toBe("error");
   });
 
+  it("maps native host startup failures to install and launcher guidance", async () => {
+    const statusEl = document.createElement("div");
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl: async () => {
+        throw new Error("Failed to start native messaging host.");
+      },
+      getExtensionVersion: () => "0.17.0",
+    });
+
+    await checker.checkDaemonStatus("token");
+
+    expect(statusEl.textContent).toBe(
+      "Native host failed to start — rerun the install command and verify launcher permissions",
+    );
+    expect(statusEl.dataset.state).toBe("error");
+  });
+
+  it("maps native host protocol failures to status and log guidance", async () => {
+    const statusEl = document.createElement("div");
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl: async () => {
+        throw new Error("Error when communicating with the native messaging host.");
+      },
+      getExtensionVersion: () => "0.17.0",
+    });
+
+    await checker.checkDaemonStatus("token");
+
+    expect(statusEl.textContent).toBe(
+      "Native host communication failed — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log",
+    );
+    expect(statusEl.dataset.state).toBe("error");
+  });
+
   it("maps missing native messaging permission to the Runtime setup action", async () => {
     const statusEl = document.createElement("div");
     const checker = createDaemonStatusChecker({
