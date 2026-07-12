@@ -113,6 +113,48 @@ test("direct provider parses OpenAI-compatible streaming text", async () => {
   expect(result.text).toBe("Hello world");
   expect(requests[0]?.url).toBe("https://provider.test/chat/completions");
   expect(requests[0]?.body.model).toBe("test-model");
+  expect(requests[0]?.body.reasoning_split).toBeUndefined();
+});
+
+test("direct provider requests separated MiniMax reasoning", async () => {
+  const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
+  const result = await completeDirectText({
+    model: "minimax/MiniMax-M2.1",
+    providerSettings: providerSettings("minimax"),
+    system: "System",
+    prompt: "Prompt",
+    signal: new AbortController().signal,
+    fetchImpl: async (input, init) => {
+      requests.push({
+        url: String(input),
+        body: JSON.parse(String(init?.body)) as Record<string, unknown>,
+      });
+      return sseResponse([
+        `data: ${JSON.stringify({
+          choices: [
+            {
+              delta: {
+                reasoning_content: "hidden reasoning",
+                reasoning_details: [{ type: "text", text: "hidden reasoning" }],
+              },
+            },
+          ],
+        })}\n\n`,
+        `data: ${JSON.stringify({ choices: [{ delta: { content: "Visible" } }] })}\n\n`,
+        `data: ${JSON.stringify({ choices: [{ delta: { content: "Visible answer" } }] })}\n\n`,
+        `data: ${JSON.stringify({ choices: [{ delta: { content: "Visible answer" } }] })}\n\n`,
+        "data: [DONE]\n\n",
+      ]);
+    },
+  });
+
+  expect(result.text).toBe("Visible answer");
+  expect(requests[0]?.url).toBe("https://provider.test/chat/completions");
+  expect(requests[0]?.body).toMatchObject({
+    model: "MiniMax-M2.1",
+    reasoning_split: true,
+    stream: true,
+  });
 });
 
 test("direct provider parses Anthropic streaming text", async () => {

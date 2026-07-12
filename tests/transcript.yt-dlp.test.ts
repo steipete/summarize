@@ -382,6 +382,28 @@ describe("yt-dlp transcript helper", () => {
     );
   });
 
+  it("restricts transcription downloads to audio-capable formats", async () => {
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(JSON.stringify({ text: "OpenAI transcript" }), { status: 200 }),
+    );
+
+    await fetchTranscriptWithYtDlp({
+      ytDlpPath: "/usr/bin/yt-dlp",
+      openaiApiKey: "OPENAI",
+      url: "https://www.loom.com/share/ef3224a48a084371bd6d766ee81f083f",
+      service: "generic",
+      mediaKind: "video",
+    });
+
+    const args = spawnMock.mock.calls.find(([command]) => command === "/usr/bin/yt-dlp")?.[1] ?? [];
+    const formatIndex = args.indexOf("-f");
+    const formats = String(args[formatIndex + 1] ?? "").split("/");
+    expect(args).toEqual(expect.arrayContaining(["-x", "--audio-format", "mp3"]));
+    expect(formats[0]).toBe("bestaudio[vcodec=none]");
+    expect(formats.slice(1).every((format) => format.includes("[acodec!=none]"))).toBe(true);
+    expect(formats).not.toContain("best");
+  });
+
   it("emits download progress events from yt-dlp output", async () => {
     spawnMock.mockImplementation(() => {
       const proc = new EventEmitter() as unknown as {

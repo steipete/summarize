@@ -73,7 +73,8 @@ Media/slides can independently use **Browser** or **Daemon**. Browser media uses
    - `brew install summarize` (macOS, Linux)
 2. Under **Options → Runtime → Daemon**, click **Enable local companion** and approve Chrome's
    optional **Communicate with cooperating native applications** permission. Switching either
-   runtime to **Daemon** also starts this explicit permission flow.
+   runtime to **Daemon** also starts this explicit permission flow. The side panel's **Connect**
+   daemon hint opens this Runtime setup view directly.
 3. Switch the AI connection or media runtime to **Daemon**, then copy the pairing token and install command from the extension.
 4. Open Terminal:
    - macOS: Applications → Utilities → Terminal

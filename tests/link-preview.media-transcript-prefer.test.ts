@@ -77,4 +77,32 @@ describe("link preview media transcript preference", () => {
       expect.objectContaining({ mediaTranscriptMode: "prefer" }),
     );
   });
+
+  it("treats explicit Loom transcript requests as transcript-only", async () => {
+    mocks.resolveTranscriptForLink.mockClear();
+    const fetchMock = vi.fn(async () => {
+      throw new Error("Loom landing-page HTML must not be fetched");
+    });
+    const url = "https://www.loom.com/share/ef3224a48a084371bd6d766ee81f083f";
+
+    const result = await fetchLinkContent(
+      url,
+      { format: "text", mediaTranscript: "prefer" },
+      buildDeps(fetchMock as unknown as typeof fetch),
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.resolveTranscriptForLink).toHaveBeenCalledWith(
+      url,
+      null,
+      expect.any(Object),
+      expect.objectContaining({ mediaTranscriptMode: "prefer" }),
+    );
+    expect(result).toMatchObject({
+      content: "Transcript:\nTranscript text",
+      siteName: "Loom",
+      isVideoOnly: true,
+      video: { kind: "direct", url },
+    });
+  });
 });

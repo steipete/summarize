@@ -93,7 +93,7 @@ const daemonHintRuntime = createDaemonHintRuntime({
   closeBtn: dom.daemonHintCloseBtn,
   patchSettings,
   openOptions: () => {
-    void send({ type: "panel:openOptions" });
+    void send({ type: "panel:openOptions", tab: "runtime" });
   },
 });
 

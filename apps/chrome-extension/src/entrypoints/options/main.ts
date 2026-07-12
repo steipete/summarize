@@ -338,7 +338,7 @@ refreshRuntimeStatus = (token = tokenEl.value) => {
     return;
   }
   if (capability && !capability.permissionGranted) {
-    setDaemonStatus("Local companion not enabled", "warn");
+    setDaemonStatus("Local companion permission missing — enable it in Runtime settings", "warn");
     return;
   }
   void checkDaemonStatus(token);

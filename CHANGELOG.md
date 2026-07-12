@@ -4,7 +4,11 @@
 
 ### Fixes
 
+- Chrome extension: keep MiniMax Direct reasoning separate from visible streamed summaries (#354, thanks @vincent-peng).
+- Chrome extension: route daemon Connect to actionable Runtime diagnostics for permissions, native-host failures, ports, and reload state (#356, thanks @vincent-peng).
+- Antigravity CLI: pass prompts through the required print argument with platform-safe size limits and prompt-safe errors (#357, thanks @mvance).
 - Security: block private browser-media URLs in the extension and stop remote binary attachments from auto-enabling broad CLI tool permissions.
+- Loom: extract share/embed recording transcripts through yt-dlp with audio-capable format selection (#353, thanks @kartikkabadi).
 
 ## 0.21.3 - 2026-07-06
 

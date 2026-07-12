@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import extensionConfig from "../apps/chrome-extension/wxt.config.js";
+import extensionConfig, {
+  resolveExtensionHostPermissions,
+} from "../apps/chrome-extension/wxt.config.js";
 
 describe("firefox extension manifest", () => {
   it("uses Firefox-compatible permissions and metadata", () => {
@@ -43,5 +45,17 @@ describe("firefox extension manifest", () => {
     expect(permissions).not.toContain("windows");
     expect(manifest.optional_permissions).toEqual(["nativeMessaging"]);
     expect(manifest.minimum_chrome_version).toBe("120");
+  });
+
+  it("grants broad capture permission only to Firefox and HTTP E2E builds", () => {
+    expect(
+      resolveExtensionHostPermissions({ browser: "chrome", e2eHttpTransport: false }),
+    ).not.toContain("<all_urls>");
+    expect(
+      resolveExtensionHostPermissions({ browser: "chrome", e2eHttpTransport: true }),
+    ).toContain("<all_urls>");
+    expect(
+      resolveExtensionHostPermissions({ browser: "firefox", e2eHttpTransport: false }),
+    ).toContain("<all_urls>");
   });
 });
