@@ -129,4 +129,113 @@ describe("execCliWithInput signals", () => {
     });
     expect(kill).toHaveBeenCalledWith("SIGTERM");
   });
+
+  it("keeps the child-process cause when no redaction is requested", async () => {
+    const execError = Object.assign(new Error("boom"), { code: 1 });
+    const execFileImpl: ExecFileFn = ((_cmd, _args, _options, cb) => {
+      cb?.(execError, "", "");
+      return {
+        stdin: {
+          write: vi.fn(),
+          end: vi.fn(),
+        },
+      } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const error = await execCliWithInput({
+      execFileImpl,
+      cmd: "cli",
+      args: ["--flag"],
+      input: "",
+      timeoutMs: 10_000,
+      env: {},
+    }).catch((value: unknown) => value);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe("boom");
+    expect((error as Error & { cause?: unknown }).cause).toBe(execError);
+  });
+
+  it("uses a caller-provided redacted command for timeout errors", async () => {
+    const secret = "raw secret";
+    const execError = Object.assign(new Error("timed out"), {
+      code: "ETIMEDOUT",
+      cmd: `cli --secret ${secret}`,
+    });
+    const execFileImpl: ExecFileFn = ((_cmd, _args, _options, cb) => {
+      cb?.(execError, "", `stderr ${secret}`);
+      return {
+        stdin: {
+          write: vi.fn(),
+          end: vi.fn(),
+        },
+      } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const error = await execCliWithInput({
+      execFileImpl,
+      cmd: "cli",
+      args: ["--secret", secret],
+      input: "",
+      timeoutMs: 2_000,
+      env: {},
+      redactedCommand: "cli --secret [redacted]",
+    }).catch((value: unknown) => value);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain("cli --secret [redacted]");
+    expect((error as Error).message).not.toContain("stderr");
+    expect((error as Error).message).not.toContain(secret);
+    expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
+  });
+
+  it("omits the child-process cause when only a redacted command is provided", async () => {
+    const execError = Object.assign(new Error("Command failed: cli --secret raw"), { code: 1 });
+    const execFileImpl: ExecFileFn = ((_cmd, _args, _options, cb) => {
+      cb?.(execError, "", "");
+      return {
+        stdin: {
+          write: vi.fn(),
+          end: vi.fn(),
+        },
+      } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const error = await execCliWithInput({
+      execFileImpl,
+      cmd: "cli",
+      args: ["--secret", "raw"],
+      input: "",
+      timeoutMs: 2_000,
+      env: {},
+      redactedCommand: "cli --secret [redacted]",
+    }).catch((value: unknown) => value);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain("cli --secret [redacted]");
+    expect((error as Error).message).not.toContain("raw");
+    expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
+  });
+
+  it("sanitizes synchronous launch errors for redacted commands", async () => {
+    const secret = "raw secret";
+    const execFileImpl: ExecFileFn = (() => {
+      throw new TypeError(`The argument contains a null byte: ${secret}`);
+    }) as ExecFileFn;
+
+    const error = await execCliWithInput({
+      execFileImpl,
+      cmd: "cli",
+      args: ["--secret", secret],
+      input: "",
+      timeoutMs: 2_000,
+      env: {},
+      redactedCommand: "cli --secret [redacted]",
+    }).catch((value: unknown) => value);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe("CLI command failed: cli --secret [redacted]");
+    expect((error as Error).message).not.toContain(secret);
+    expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
+  });
 });

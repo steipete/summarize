@@ -2,6 +2,7 @@ import type {
   AgentAssistantMessage as AssistantMessage,
   AgentMessage as Message,
 } from "@steipete/summarize-core/runtime";
+import type { OptionsTab } from "./options-tabs";
 import type { SseSlidesData } from "./runtime-contracts";
 
 export type UiState = {
@@ -100,7 +101,7 @@ export type PanelToBg =
   | { type: "panel:slides-capture"; manual?: boolean }
   | { type: "panel:cache"; cache: PanelCachePayload }
   | { type: "panel:get-cache"; requestId: string; tabId: number; url: string }
-  | { type: "panel:openOptions" };
+  | { type: "panel:openOptions"; tab?: OptionsTab };
 
 export type BgToPanel =
   | { type: "ui:state"; state: UiState }

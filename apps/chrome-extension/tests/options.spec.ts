@@ -252,7 +252,7 @@ test("options exposes two AI connections and independent slide runtimes", async 
     await seedSettings(harness, { summaryRuntime: "direct", slideRuntime: "browser" });
     const page = await openExtensionPage(harness, "options.html", "#tabs");
 
-    await expect(page.locator("#daemonStatus")).toContainText("Local companion not enabled");
+    await expect(page.locator("#daemonStatus")).toContainText("Local companion permission missing");
     await expect(page.locator("#panel-general")).not.toContainText("Token");
 
     await page.click("#tab-runtime");
@@ -287,6 +287,31 @@ test("options exposes two AI connections and independent slide runtimes", async 
   }
 });
 
+test("options opens the requested runtime tab from the URL", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    const page = await openExtensionPage(harness, "options.html?tab=runtime", "#tabs");
+
+    await expect(page.locator("#tab-runtime")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("#panel-runtime")).toBeVisible();
+
+    await page.click("#tab-general");
+    await expect(page).not.toHaveURL(/tab=runtime/);
+    await expect(page.locator("#tab-general")).toHaveAttribute("aria-selected", "true");
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#tabs");
+    await expect(page.locator("#tab-general")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("#panel-general")).toBeVisible();
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
 test("options stores an OpenAI key for direct mode without requiring the daemon", async ({
   browserName: _browserName,
 }, testInfo) => {
@@ -301,7 +326,7 @@ test("options stores an OpenAI key for direct mode without requiring the daemon"
     });
     const page = await openExtensionPage(harness, "options.html", "#tabs");
 
-    await expect(page.locator("#daemonStatus")).toContainText("Local companion not enabled");
+    await expect(page.locator("#daemonStatus")).toContainText("Local companion permission missing");
     await page.click("#tab-runtime");
     await page.locator('#summaryRuntimeMode input[value="direct"]').click();
     await page.locator('#slideRuntimeMode input[value="browser"]').click();
@@ -338,7 +363,7 @@ test("options stores an OpenAI key for direct mode without requiring the daemon"
     await expect(page.locator('#slideRuntimeMode input[value="browser"]')).toBeChecked();
     await expect(page.locator("#provider")).toHaveValue("openai");
     await expect(page.locator("#providerApiKey")).toHaveValue("sk-test-direct-openai");
-    await expect(page.locator("#daemonStatus")).toContainText("Local companion not enabled");
+    await expect(page.locator("#daemonStatus")).toContainText("Local companion permission missing");
 
     assertNoErrors(harness);
   } finally {
@@ -388,44 +413,6 @@ test("managed daemon disable locks the UI to Direct and Browser", async ({
   }
 });
 
-test("options disables automation permissions button when granted", async ({
-  browserName: _browserName,
-}, testInfo) => {
-  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
-
-  try {
-    await seedSettings(harness, { automationEnabled: true });
-    const page = await harness.context.newPage();
-    trackErrors(page, harness.pageErrors, harness.consoleErrors);
-    await page.addInitScript(() => {
-      Object.defineProperty(chrome, "permissions", {
-        configurable: true,
-        value: {
-          contains: async () => true,
-          request: async () => true,
-        },
-      });
-      Object.defineProperty(chrome, "userScripts", {
-        configurable: true,
-        value: {},
-      });
-    });
-    await page.goto(getExtensionUrl(harness, "options.html"), {
-      waitUntil: "domcontentloaded",
-    });
-    await page.waitForSelector("#tabs");
-
-    await expect(page.locator("#automationPermissions")).toBeDisabled();
-    await expect(page.locator("#automationPermissions")).toHaveText(
-      "Automation permissions granted",
-    );
-    await expect(page.locator("#userScriptsNotice")).toBeHidden();
-    assertNoErrors(harness);
-  } finally {
-    await closeExtension(harness.context, harness.userDataDir);
-  }
-});
-
 test("options persists direct provider credentials per provider", async ({
   browserName: _browserName,
 }, testInfo) => {
@@ -464,7 +451,7 @@ test("options persists direct provider credentials per provider", async ({
   }
 });
 
-test("options shows user scripts guidance when unavailable", async ({
+test("options labels unavailable automation permissions as optional", async ({
   browserName: _browserName,
 }, testInfo) => {
   const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
@@ -495,8 +482,33 @@ test("options shows user scripts guidance when unavailable", async ({
     await expect(page.locator("#automationPermissions")).toHaveText(
       "Enable automation permissions",
     );
+    await expect(page.locator(".permissionHint")).toContainText("Optional for summarization");
+    await expect(page.locator(".permissionHint")).toContainText("userScripts");
+    await expect(page.locator(".permissionHint")).toContainText("debugger");
     await expect(page.locator("#userScriptsNotice")).toBeVisible();
     await expect(page.locator("#userScriptsNotice")).toContainText(/User Scripts|chrome:\/\//);
+
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
+test("options grants User Scripts only after the explicit automation action", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, { automationEnabled: true });
+    const page = await openExtensionPage(harness, "options.html", "#tabs");
+    const hasUserScripts = () =>
+      page.evaluate(() => chrome.permissions.contains({ permissions: ["userScripts"] }));
+
+    await expect.poll(hasUserScripts).toBe(false);
+    await page.locator("#automationPermissions").click();
+    await expect.poll(hasUserScripts).toBe(true);
+
     assertNoErrors(harness);
   } finally {
     await closeExtension(harness.context, harness.userDataDir);

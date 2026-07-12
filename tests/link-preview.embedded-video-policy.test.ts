@@ -62,12 +62,13 @@ async function extract(
   html: string,
   options: Parameters<typeof fetchLinkContent>[1] = { format: "text" },
   convertHtmlToMarkdown: ((args: never) => Promise<string>) | null = null,
+  url = "https://example.com/article",
 ) {
   const fetchMock = vi.fn(
     async () => new Response(html, { status: 200, headers: { "content-type": "text/html" } }),
   );
   return fetchLinkContent(
-    "https://example.com/article",
+    url,
     options,
     buildDeps(fetchMock as unknown as typeof fetch, convertHtmlToMarkdown),
   );
@@ -165,6 +166,31 @@ describe("embedded YouTube policy", () => {
     expect(result.video).toBeNull();
     expect(result.content).not.toContain("Video transcript text.");
     expect(result.diagnostics.embeddedVideo?.detected).toBe(false);
+  });
+
+  it("does not compose a Loom transcript as incidental embedded YouTube content", async () => {
+    const loomUrl = "https://www.loom.com/share/ef3224a48a084371bd6d766ee81f083f";
+    mocks.resolveTranscriptForLink.mockResolvedValueOnce(
+      transcriptResolution("Loom transcript text."),
+    );
+
+    const result = await extract(
+      buildHtml("Recording landing page. ".repeat(180)),
+      { format: "text" },
+      null,
+      loomUrl,
+    );
+
+    expect(result.content).toContain("Loom transcript text.");
+    expect(result.content).not.toContain("Embedded video transcript");
+    expect(result.video).toBeNull();
+    expect(result.diagnostics.embeddedVideo).toMatchObject({ detected: false, used: false });
+    expect(mocks.resolveTranscriptForLink).toHaveBeenCalledWith(
+      loomUrl,
+      expect.any(String),
+      expect.any(Object),
+      expect.objectContaining({ embeddedMediaUrl: null }),
+    );
   });
 
   it("preserves both sources under an extraction character budget", async () => {

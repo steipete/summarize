@@ -25,11 +25,11 @@ Goal: keep provider entrypoints thin; keep provider policy explicit.
 - `packages/core/src/content/transcript/providers/generic.ts`
   Thin orchestration only.
   Embedded tracks first.
-  Direct-media / X media fallback next.
+  Direct-media / Loom / X media fallback next.
 - `packages/core/src/content/transcript/providers/generic-embedded.ts`
   Embedded media detection + caption-track parsing only.
 - `packages/core/src/content/transcript/providers/generic-direct-media.ts`
-  Direct-media yt-dlp/transcription fallback only.
+  Direct-media and Loom yt-dlp/transcription fallback only.
 - `packages/core/src/content/transcript/providers/generic-twitter.ts`
   X/Twitter cookies + yt-dlp orchestration only.
 

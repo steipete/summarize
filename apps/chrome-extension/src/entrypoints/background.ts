@@ -277,8 +277,8 @@ export default defineBackground(() => {
         reason: message.manual ? "slides-capture" : "cache-restore",
       });
     },
-    openOptions: () => {
-      void openOptionsWindow();
+    openOptions: (options) => {
+      void openOptionsWindow(options?.tab);
     },
     seek: (session, seconds) => {
       void (async () => {

@@ -9,7 +9,7 @@ import { resolveLocalDirectMediaSource, type LocalDirectMediaSource } from "../.
 import { runYtDlpDownload } from "./yt-dlp-process.js";
 
 const DEFAULT_AUDIO_FORMAT =
-  "bestaudio[vcodec=none]/best[height<=360]/best[height<=480]/best[height<=720]/best";
+  "bestaudio[vcodec=none]/best[height<=360][acodec!=none]/best[height<=480][acodec!=none]/best[height<=720][acodec!=none]/best[acodec!=none]";
 const DEFAULT_SHARED_VIDEO_FORMAT =
   "bestvideo[height<=720][vcodec^=avc1][ext=mp4]/bestvideo[height<=720][ext=mp4]/bestvideo[height<=720],bestaudio[vcodec=none]";
 

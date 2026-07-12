@@ -90,7 +90,7 @@ test("manifest excludes Meta sites and the local companion from always-on conten
   }
 });
 
-test("Chromium manifest keeps native companion access optional", () => {
+test("Chromium manifest scopes broad host access to the HTTP E2E build", () => {
   const manifestPath = path.resolve(__dirname, "..", ".output", "chrome-mv3", "manifest.json");
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
     host_permissions?: string[];
@@ -102,7 +102,11 @@ test("Chromium manifest keeps native companion access optional", () => {
 
   expect(manifest.permissions ?? []).not.toContain("nativeMessaging");
   expect(manifest.optional_permissions ?? []).toContain("nativeMessaging");
-  expect(manifest.host_permissions ?? []).not.toContain("<all_urls>");
+  if (process.env.SUMMARIZE_E2E_HTTP_TRANSPORT === "1") {
+    expect(manifest.host_permissions ?? []).toContain("<all_urls>");
+  } else {
+    expect(manifest.host_permissions ?? []).not.toContain("<all_urls>");
+  }
   expect(manifest.host_permissions ?? []).toContain("http://127.0.0.1/*");
   expect(manifest.optional_host_permissions ?? []).toEqual([]);
   expect(manifest.storage?.managed_schema).toBe("managed-storage-schema.json");
@@ -110,22 +114,26 @@ test("Chromium manifest keeps native companion access optional", () => {
   expect(META_SITE_EXCLUDE_MATCHES.length).toBeGreaterThan(0);
 });
 
-test("fresh Chromium install has no native companion grant", async ({
+test("fresh Chromium install has no optional companion or automation grants", async ({
   browserName: _browserName,
 }, testInfo) => {
   const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
   try {
     const background = await getBackground(harness);
-    const granted = await background.evaluate(async () => {
-      return await chrome.permissions.contains({ permissions: ["nativeMessaging"] });
+    const grants = await background.evaluate(async () => {
+      return {
+        nativeMessaging: await chrome.permissions.contains({ permissions: ["nativeMessaging"] }),
+        userScripts: await chrome.permissions.contains({ permissions: ["userScripts"] }),
+        debugger: await chrome.permissions.contains({ permissions: ["debugger"] }),
+      };
     });
-    expect(granted).toBe(false);
+    expect(grants).toEqual({ nativeMessaging: false, userScripts: false, debugger: false });
   } finally {
     await closeExtension(harness.context, harness.userDataDir);
   }
 });
 
-test("Chromium manifest grants User Scripts as a required permission", () => {
+test("Chromium summary manifest keeps User Scripts optional and omits debugger", () => {
   const manifestPath = path.resolve(__dirname, "..", ".output", "chrome-mv3", "manifest.json");
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
     minimum_chrome_version?: string;
@@ -134,9 +142,13 @@ test("Chromium manifest grants User Scripts as a required permission", () => {
   };
 
   expect(manifest.minimum_chrome_version).toBe("120");
-  expect(manifest.permissions).toContain("userScripts");
+  expect(manifest.permissions).not.toContain("userScripts");
+  expect(manifest.permissions).not.toContain("debugger");
   expect(manifest.permissions).not.toContain("windows");
-  expect(manifest.optional_permissions).not.toContain("userScripts");
+  expect(manifest.optional_permissions).toEqual(
+    expect.arrayContaining(["userScripts", "nativeMessaging"]),
+  );
+  expect(manifest.optional_permissions).not.toContain("debugger");
 });
 
 test("sidepanel shows a ready state instead of going blank when switching tabs manually", async ({

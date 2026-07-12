@@ -1,3 +1,4 @@
+import type { OptionsTab } from "../../lib/options-tabs";
 import type { SummaryLength } from "../../lib/runtime-contracts";
 import {
   buildSlideTextFallback,
@@ -96,9 +97,11 @@ export function buildSlidesText(
   return null;
 }
 
-export function resolveOptionsUrl(): string {
+export function resolveOptionsUrl(tab?: OptionsTab): string {
   const page = chrome.runtime.getManifest().options_ui?.page ?? "options.html";
-  return chrome.runtime.getURL(page);
+  const url = new URL(chrome.runtime.getURL(page));
+  if (tab) url.searchParams.set("tab", tab);
+  return url.toString();
 }
 
 function isContentTabUrl(url: string | null | undefined): url is string {
@@ -112,8 +115,8 @@ function isContentTabUrl(url: string | null | undefined): url is string {
   );
 }
 
-export async function openOptionsWindow() {
-  const url = resolveOptionsUrl();
+export async function openOptionsWindow(tab?: OptionsTab) {
+  const url = resolveOptionsUrl(tab);
   try {
     if (chrome.windows?.create) {
       const current = await chrome.windows.getCurrent();
@@ -134,6 +137,14 @@ export async function openOptionsWindow() {
     }
   } catch {
     // ignore and fall back
+  }
+  if (tab && chrome.tabs?.create) {
+    try {
+      await chrome.tabs.create({ url });
+      return;
+    } catch {
+      // ignore and fall back to the browser's generic options opener
+    }
   }
   void chrome.runtime.openOptionsPage();
 }

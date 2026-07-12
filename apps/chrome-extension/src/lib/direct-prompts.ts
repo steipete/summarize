@@ -5,6 +5,7 @@ import {
   type SummaryLength,
 } from "@steipete/summarize-core/prompts";
 import type { AgentMessage as Message, AgentTool as Tool } from "@steipete/summarize-core/runtime";
+import { hasDebuggerCapability } from "./automation-capabilities";
 import type { Settings } from "./settings";
 
 const SUMMARY_LENGTHS = new Set<SummaryLength>(["short", "medium", "long", "xl", "xxl"]);
@@ -187,5 +188,8 @@ const TOOL_DEFINITIONS: Record<string, Tool> = {
 
 export function resolveDirectTools(automationEnabled: boolean, names: string[]): Tool[] {
   if (!automationEnabled) return [];
-  return names.map((name) => TOOL_DEFINITIONS[name]).filter((tool): tool is Tool => Boolean(tool));
+  return names
+    .filter((name) => name !== "debugger" || hasDebuggerCapability())
+    .map((name) => TOOL_DEFINITIONS[name])
+    .filter((tool): tool is Tool => Boolean(tool));
 }

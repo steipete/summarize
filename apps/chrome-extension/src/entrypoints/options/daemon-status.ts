@@ -13,6 +13,36 @@ function shouldRetryDaemon(err: unknown) {
   return message.toLowerCase() === "failed to fetch";
 }
 
+function formatDaemonConnectionError(err: unknown) {
+  const message = err instanceof Error ? err.message.trim() : "";
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("host exited") ||
+    lower.includes("host has exited") ||
+    lower.includes("connection closed unexpectedly")
+  ) {
+    return "Native host exited — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log";
+  }
+  if (lower.includes("failed to start native messaging host")) {
+    return "Native host failed to start — rerun the install command and verify launcher permissions";
+  }
+  if (lower.includes("error when communicating with the native messaging host")) {
+    return "Native host communication failed — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log";
+  }
+  if (
+    lower.includes("specified native messaging host not found") ||
+    lower.includes("native messaging host not found") ||
+    lower.includes("no such native application") ||
+    lower.includes("specified native messaging host is forbidden")
+  ) {
+    return "Native host unavailable — rerun the install command, then reload the extension";
+  }
+  if (lower.includes("permission")) {
+    return "Local companion permission missing — enable it in Runtime settings";
+  }
+  return "Daemon unreachable — run `summarize daemon status`, verify the port, then reload the extension";
+}
+
 export function createDaemonStatusChecker({
   statusEl,
   fetchImpl = daemonFetch,
@@ -42,7 +72,7 @@ export function createDaemonStatusChecker({
 
   const setBrowserStatus = () => {
     daemonCheckId += 1;
-    setDaemonStatus("Daemon not selected", "ok");
+    setDaemonStatus("Daemon runtime off — choose Daemon for AI or media to connect", "warn");
   };
 
   const fetchWithRetry = async (url: string, options: RequestInit = {}) => {
@@ -123,12 +153,9 @@ export function createDaemonStatusChecker({
       }
 
       setDaemonStatus(`Daemon ${versionNote} connected`, "ok");
-    } catch {
+    } catch (error) {
       if (checkId !== daemonCheckId) return;
-      setDaemonStatus(
-        "Daemon unreachable — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log",
-        "error",
-      );
+      setDaemonStatus(formatDaemonConnectionError(error), "error");
     }
   };
 

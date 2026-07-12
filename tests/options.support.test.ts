@@ -18,6 +18,7 @@ import {
   copyTokenToClipboard,
   createAutomationPermissionsController,
   createStatusController,
+  getOptionalAutomationPermissions,
   resolveBuildInfoText,
 } from "../apps/chrome-extension/src/entrypoints/options/support.js";
 
@@ -160,14 +161,31 @@ describe("options support", () => {
     expect(flashStatus).toHaveBeenLastCalledWith("Copy failed");
   });
 
+  it("uses only automation permissions declared optional by the browser build", () => {
+    vi.stubGlobal("chrome", {
+      runtime: {
+        getManifest: () => ({ optional_permissions: ["nativeMessaging", "userScripts"] }),
+      },
+    });
+
+    expect(getOptionalAutomationPermissions()).toEqual(["userScripts"]);
+  });
+
   it("updates automation permissions ui for disabled and satisfied states", async () => {
     const automationPermissionsBtn = {
       disabled: false,
       textContent: "",
     } as HTMLButtonElement;
     const userScriptsNoticeEl = createFakeElement();
+    const contains = vi
+      .fn<(permissions: chrome.permissions.Permissions) => Promise<boolean>>()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
     vi.stubGlobal("chrome", {
-      permissions: { request: vi.fn(async () => true) },
+      permissions: { contains, request: vi.fn(async () => true) },
+      runtime: {
+        getManifest: () => ({ optional_permissions: ["userScripts"] }),
+      },
     });
     vi.mocked(getUserScriptsStatus).mockResolvedValueOnce({
       apiAvailable: false,
@@ -212,7 +230,10 @@ describe("options support", () => {
     const flashStatus = vi.fn();
     const request = vi.fn(async () => false);
     vi.stubGlobal("chrome", {
-      permissions: { request },
+      permissions: { contains: vi.fn(async () => false), request },
+      runtime: {
+        getManifest: () => ({ optional_permissions: ["userScripts"] }),
+      },
     });
     vi.mocked(getUserScriptsStatus)
       .mockResolvedValueOnce({
@@ -251,8 +272,11 @@ describe("options support", () => {
     const createTab = vi.fn(async () => undefined);
     const request = vi.fn(async () => true);
     vi.stubGlobal("chrome", {
-      permissions: { request },
-      runtime: { id: "extension-id" },
+      permissions: { contains: vi.fn(async () => true), request },
+      runtime: {
+        id: "extension-id",
+        getManifest: () => ({ optional_permissions: ["userScripts"] }),
+      },
       tabs: { create: createTab },
     });
     vi.mocked(getUserScriptsStatus)
@@ -304,9 +328,13 @@ describe("options support", () => {
 
     vi.stubGlobal("chrome", {
       permissions: {
+        contains: vi.fn(async () => false),
         request: vi.fn(async () => {
           throw new Error("boom");
         }),
+      },
+      runtime: {
+        getManifest: () => ({ optional_permissions: ["userScripts"] }),
       },
     });
     vi.mocked(getUserScriptsStatus).mockResolvedValueOnce({

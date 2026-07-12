@@ -83,6 +83,36 @@ export function extractYouTubeVideoId(rawUrl: string): string | null {
   return null;
 }
 
+const LOOM_VIDEO_ID_PATTERN = /^[a-f0-9]{32}$/;
+
+export function isLoomVideoUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    if (
+      (url.protocol !== "http:" && url.protocol !== "https:") ||
+      url.port !== "" ||
+      url.username !== "" ||
+      url.password !== ""
+    ) {
+      return false;
+    }
+
+    const hostname = url.hostname.toLowerCase();
+    if (hostname !== "loom.com" && hostname !== "www.loom.com") {
+      return false;
+    }
+
+    const parts = url.pathname.split("/").filter(Boolean);
+    return (
+      parts.length === 2 &&
+      (parts[0] === "share" || parts[0] === "embed") &&
+      LOOM_VIDEO_ID_PATTERN.test(parts[1] ?? "")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function shouldPreferUrlMode(url: string): boolean {
   return (
     isYouTubeVideoUrl(url) ||

@@ -15,6 +15,7 @@ Docs + setup: `https://summarize.sh`
 - Chrome dev: `pnpm -C apps/chrome-extension dev`
 - Firefox dev: `pnpm -C apps/chrome-extension dev:firefox`
 - Prod build (Chrome): `pnpm -C apps/chrome-extension build`
+- Debugger-enabled automation build (Chrome): `pnpm -C apps/chrome-extension build:automation`
 - Prod build (Firefox): `pnpm -C apps/chrome-extension build:firefox`
 - Build both: `pnpm -C apps/chrome-extension build:all`
 
@@ -73,7 +74,8 @@ Media/slides can independently use **Browser** or **Daemon**. Browser media uses
    - `brew install summarize` (macOS, Linux)
 2. Under **Options → Runtime → Daemon**, click **Enable local companion** and approve Chrome's
    optional **Communicate with cooperating native applications** permission. Switching either
-   runtime to **Daemon** also starts this explicit permission flow.
+   runtime to **Daemon** also starts this explicit permission flow. The side panel's **Connect**
+   daemon hint opens this Runtime setup view directly.
 3. Switch the AI connection or media runtime to **Daemon**, then copy the pairing token and install command from the extension.
 4. Open Terminal:
    - macOS: Applications → Utilities → Terminal
@@ -96,6 +98,19 @@ can work there. Direct and Browser modes are unaffected.
 
 Company administrators can keep Direct and Browser modes available while blocking all daemon
 access with Chrome policy; see [`docs/chrome-enterprise.md`](../../docs/chrome-enterprise.md).
+
+## Optional Website Automation
+
+Summarization, chat, and browser media do not require Chrome's `userScripts` or `debugger`
+permissions. Website automation is off by default. **Options → Enable automation permissions**
+requests optional `userScripts` access from an explicit user click so user-requested `browserjs()` /
+REPL code can run in the page's main world.
+
+Chrome does not allow `debugger` to be declared optional. The standard Chrome build omits it and
+hides the debugger tool; `pnpm -C apps/chrome-extension build:automation` creates the separate
+debugger-enabled build for native click/type/key input and the explicit debugger tool. That build
+declares `debugger` as required, attaches only while executing a debugger-backed command, and then
+detaches.
 
 ## Length Presets
 

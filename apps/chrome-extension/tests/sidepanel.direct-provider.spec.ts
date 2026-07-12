@@ -38,7 +38,7 @@ test("sidepanel summarizes and chats through a local direct provider without dae
       model: "openai/test-model",
       autoSummarize: false,
       chatEnabled: true,
-      automationEnabled: false,
+      automationEnabled: true,
     });
     const contentPage = await harness.context.newPage();
     await contentPage.goto("https://example.com/direct-provider", {
@@ -86,6 +86,18 @@ test("sidepanel summarizes and chats through a local direct provider without dae
     await panel.locator("#chatSend").click();
     await expect(panel.locator("#chatMessages")).toContainText("Direct chat reply");
     await expect.poll(() => requestCount).toBe(2);
+
+    const advertisedTools = requestBodies.flatMap((body) => {
+      if (!Array.isArray(body.tools)) return [];
+      return body.tools
+        .map((tool) => (tool as { function?: { name?: string } }).function?.name)
+        .filter((name): name is string => Boolean(name));
+    });
+    const debuggerEnabled = await panel.evaluate(() =>
+      chrome.runtime.getManifest().permissions?.includes("debugger"),
+    );
+    expect(advertisedTools).toContain("navigate");
+    expect(advertisedTools.includes("debugger")).toBe(debuggerEnabled);
 
     assertNoErrors(harness);
   } finally {

@@ -91,6 +91,7 @@ export {
   isDirectMediaExtension,
   isDirectMediaUrl,
   isDirectVideoInput,
+  isLoomVideoUrl,
   isPodcastHost,
   isTwitterBroadcastUrl,
   isTwitterStatusUrl,

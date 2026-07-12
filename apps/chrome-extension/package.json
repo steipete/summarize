@@ -6,8 +6,10 @@
   "scripts": {
     "build": "wxt build",
     "build:all": "pnpm build && pnpm build:firefox",
+    "build:automation": "SUMMARIZE_EXTENSION_DEBUGGER=1 wxt build",
     "build:firefox": "BROWSER=firefox wxt build",
     "dev": "wxt dev",
+    "dev:automation": "SUMMARIZE_EXTENSION_DEBUGGER=1 wxt dev",
     "dev:firefox": "BROWSER=firefox wxt dev",
     "lint": "oxlint --type-aware --tsconfig tsconfig.json --config ../../.oxlintrc.json .",
     "test": "pnpm test:e2e",
