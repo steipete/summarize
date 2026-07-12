@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Chrome extension: keep MiniMax Direct reasoning separate from visible streamed summaries (#354, thanks @vincent-peng).
 - Security: block private browser-media URLs in the extension and stop remote binary attachments from auto-enabling broad CLI tool permissions.
 
 ## 0.21.3 - 2026-07-06
