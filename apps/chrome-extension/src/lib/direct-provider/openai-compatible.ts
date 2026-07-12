@@ -110,8 +110,13 @@ export async function* streamOpenAiCompatible(
         ? (choice.delta as Record<string, unknown>)
         : {};
     if (typeof delta.content === "string" && delta.content) {
-      text += delta.content;
-      yield { type: "text", text: delta.content };
+      const isCumulativeMiniMaxContent =
+        config.provider === "minimax" && delta.content.startsWith(text);
+      const visibleDelta = isCumulativeMiniMaxContent
+        ? delta.content.slice(text.length)
+        : delta.content;
+      text = isCumulativeMiniMaxContent ? delta.content : text + delta.content;
+      if (visibleDelta) yield { type: "text", text: visibleDelta };
     }
     if (Array.isArray(delta.tool_calls)) {
       for (const rawCall of delta.tool_calls) {

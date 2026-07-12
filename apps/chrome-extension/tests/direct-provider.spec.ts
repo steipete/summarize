@@ -140,6 +140,8 @@ test("direct provider requests separated MiniMax reasoning", async () => {
             },
           ],
         })}\n\n`,
+        `data: ${JSON.stringify({ choices: [{ delta: { content: "Visible" } }] })}\n\n`,
+        `data: ${JSON.stringify({ choices: [{ delta: { content: "Visible answer" } }] })}\n\n`,
         `data: ${JSON.stringify({ choices: [{ delta: { content: "Visible answer" } }] })}\n\n`,
         "data: [DONE]\n\n",
       ]);
