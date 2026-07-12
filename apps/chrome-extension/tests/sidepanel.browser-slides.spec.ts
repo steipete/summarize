@@ -22,7 +22,7 @@ import {
 } from "./helpers/extension-harness";
 import { getPanelSlidesTimeline, waitForSettingsHydratedHook } from "./helpers/panel-hooks";
 
-test("sidepanel captures local video slides in browser runtime", async ({
+test("sidepanel captures local video slides through the visible-tab fallback", async ({
   browserName: _browserName,
 }, testInfo) => {
   test.setTimeout(90_000);
@@ -186,12 +186,7 @@ test("sidepanel captures local video slides in browser runtime", async ({
     }
     const slideSourceKind = (browserSlidesResult as { slides?: { sourceKind?: string } }).slides
       ?.sourceKind;
-    if (slideSourceKind !== "browser-mediabunny") {
-      const fallback = await background.evaluate(
-        () => globalThis.__summarizeBrowserMediaFallback ?? null,
-      );
-      throw new Error(`Expected MediaBunny slides, got ${slideSourceKind}: ${fallback}`);
-    }
+    expect(slideSourceKind).toBe("browser-capture");
 
     await expect
       .poll(async () => (await getPanelSlidesTimeline(panel)).length, { timeout: 120_000 })

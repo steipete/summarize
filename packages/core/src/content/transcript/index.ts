@@ -32,6 +32,7 @@ import type {
 } from "./types.js";
 import {
   extractYouTubeVideoId as extractYouTubeVideoIdInternal,
+  isLoomVideoUrl,
   isYouTubeUrl as isYouTubeUrlInternal,
 } from "./utils.js";
 
@@ -79,6 +80,7 @@ export const resolveTranscriptForLink = async (
       : embeddedMediaUrl;
   const embeddedYoutubeUrl =
     !isYouTubeUrlInternal(normalizedUrl) &&
+    !isLoomVideoUrl(normalizedUrl) &&
     typeof detectedEmbeddedMediaUrl === "string" &&
     isYouTubeUrlInternal(detectedEmbeddedMediaUrl)
       ? detectedEmbeddedMediaUrl.trim()

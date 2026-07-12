@@ -1,3 +1,4 @@
+import { isOptionsTab, type OptionsTab } from "../../lib/options-tabs";
 import type { PanelToBg } from "../../lib/panel-contracts";
 
 type RouterSession = {
@@ -31,7 +32,7 @@ type PanelMessageHandlers<Session> = {
     session: Session,
     message: Extract<PanelToBg, { type: "panel:slides-capture" }>,
   ): void;
-  openOptions(): void;
+  openOptions(options?: { tab?: OptionsTab }): void;
   seek(session: Session, seconds: number): void;
 };
 
@@ -95,7 +96,7 @@ export function createPanelMessageRouter<Session extends RouterSession>(
         handlers.slidesCapture(session, raw);
         break;
       case "panel:openOptions":
-        handlers.openOptions();
+        handlers.openOptions(isOptionsTab(raw.tab) ? { tab: raw.tab } : undefined);
         break;
       case "panel:seek":
         if (Number.isFinite(raw.seconds) && raw.seconds >= 0) {

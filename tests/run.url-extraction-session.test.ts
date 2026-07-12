@@ -171,6 +171,50 @@ describe("createUrlExtractionSession", () => {
     );
   });
 
+  it("allows guarded yt-dlp only for explicit Loom transcript requests", () => {
+    const ctx = createCtx();
+    ctx.io.urlFetch = vi.fn() as unknown as typeof fetch;
+    ctx.flags.videoMode = "transcript";
+    ctx.model.apiStatus.ytDlpPath = "/usr/bin/yt-dlp";
+
+    createUrlExtractionSession({
+      ctx: ctx as never,
+      targetUrl: "https://www.loom.com/share/ef3224a48a084371bd6d766ee81f083f",
+      markdown: {
+        convertHtmlToMarkdown: vi.fn(),
+        effectiveMarkdownMode: "off",
+        markdownRequested: false,
+      },
+      onProgress: null,
+    });
+
+    expect(createLinkPreviewClient).toHaveBeenCalledWith(
+      expect.objectContaining({ ytDlpPath: "/usr/bin/yt-dlp" }),
+    );
+  });
+
+  it("keeps guarded yt-dlp disabled for Loom auto mode", () => {
+    const ctx = createCtx();
+    ctx.io.urlFetch = vi.fn() as unknown as typeof fetch;
+    ctx.flags.videoMode = "auto";
+    ctx.model.apiStatus.ytDlpPath = "/usr/bin/yt-dlp";
+
+    createUrlExtractionSession({
+      ctx: ctx as never,
+      targetUrl: "https://www.loom.com/share/ef3224a48a084371bd6d766ee81f083f",
+      markdown: {
+        convertHtmlToMarkdown: vi.fn(),
+        effectiveMarkdownMode: "off",
+        markdownRequested: false,
+      },
+      onProgress: null,
+    });
+
+    expect(createLinkPreviewClient).toHaveBeenCalledWith(
+      expect.objectContaining({ ytDlpPath: null }),
+    );
+  });
+
   it("keeps remember-speakers out of earlier identity cache entries", async () => {
     const ctx = createCtx();
     ctx.flags.speakerIdentification = {

@@ -51,10 +51,12 @@ export type UrlExtractionSession = {
 
 export function createUrlExtractionSession({
   ctx,
+  targetUrl,
   markdown,
   onProgress,
 }: {
   ctx: UrlFlowContext;
+  targetUrl?: string;
   markdown: {
     convertHtmlToMarkdown: ConvertHtmlToMarkdown;
     effectiveMarkdownMode: "off" | "auto" | "llm" | "readability";
@@ -87,6 +89,9 @@ export function createUrlExtractionSession({
     ytDlpPath: resolveUrlFlowYtDlpPath({
       urlFetch: io.urlFetch,
       ytDlpPath: model.apiStatus.ytDlpPath,
+      allowGuardedExternalDownloader: Boolean(
+        targetUrl && flags.videoMode === "transcript" && urlUtils.isLoomVideoUrl(targetUrl),
+      ),
     }),
     transcription: {
       env: io.envForRun,

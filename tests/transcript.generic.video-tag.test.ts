@@ -3,14 +3,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import { resolveTranscriptForLink } from "../packages/core/src/content/transcript/index.js";
 import { fetchTranscript } from "../packages/core/src/content/transcript/providers/generic.js";
 
-const fetchTranscriptWithYtDlp = vi.fn(async () => ({
-  text: "yt-dlp transcript",
-  provider: "openai",
-  notes: [],
-  error: null,
-  segments: [{ startMs: 0, endMs: 1000, speaker: "Speaker A", text: "Hello" }],
+const { fetchTranscriptWithYtDlp } = vi.hoisted(() => ({
+  fetchTranscriptWithYtDlp: vi.fn(async () => ({
+    text: "yt-dlp transcript",
+    provider: "openai",
+    notes: [],
+    error: null,
+    segments: [{ startMs: 0, endMs: 1000, speaker: "Speaker A", text: "Hello" }],
+  })),
 }));
 
 vi.mock("../packages/core/src/content/transcript/providers/youtube/yt-dlp.js", () => ({
@@ -146,5 +149,59 @@ describe("generic transcript provider (video tag fallback)", () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  it("routes Loom through yt-dlp in auto mode using the original recording URL", async () => {
+    fetchTranscriptWithYtDlp.mockClear();
+    const loomUrl = "https://www.loom.com/share/ef3224a48a084371bd6d766ee81f083f";
+
+    const result = await fetchTranscript(
+      {
+        url: loomUrl,
+        html: '<video src="https://cdn.example.com/video-only.mp4"></video>',
+        resourceKey: null,
+      },
+      buildOptions({ mediaTranscriptMode: "auto" }),
+    );
+
+    expect(fetchTranscriptWithYtDlp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: loomUrl,
+        service: "generic",
+        mediaKind: "video",
+      }),
+    );
+    expect(result).toMatchObject({
+      source: "yt-dlp",
+      text: "yt-dlp transcript",
+      metadata: { provider: "generic", kind: "video", transcriptionProvider: "openai" },
+    });
+  });
+
+  it("preserves Loom identity when HTML contains an incidental YouTube embed", async () => {
+    fetchTranscriptWithYtDlp.mockClear();
+    const loomUrl = "https://www.loom.com/share/ef3224a48a084371bd6d766ee81f083f";
+
+    await resolveTranscriptForLink(
+      loomUrl,
+      '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
+      {
+        fetch,
+        scrapeWithFirecrawl: null,
+        apifyApiToken: null,
+        ytDlpPath: "/usr/bin/yt-dlp",
+        groqApiKey: null,
+        falApiKey: null,
+        openaiApiKey: "test",
+        transcriptCache: null,
+        resolveTwitterCookies: null,
+        onProgress: null,
+      },
+      { mediaTranscriptMode: "auto" },
+    );
+
+    expect(fetchTranscriptWithYtDlp).toHaveBeenCalledWith(
+      expect.objectContaining({ url: loomUrl, service: "generic", mediaKind: "video" }),
+    );
   });
 });
