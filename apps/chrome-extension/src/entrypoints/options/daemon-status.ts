@@ -17,6 +17,13 @@ function formatDaemonConnectionError(err: unknown) {
   const message = err instanceof Error ? err.message.trim() : "";
   const lower = message.toLowerCase();
   if (
+    lower.includes("receiving end does not exist") ||
+    lower.includes("extension context invalidated") ||
+    lower.includes("message port closed")
+  ) {
+    return "Extension context stale — reload the extension, then reopen the side panel";
+  }
+  if (
     lower.includes("host exited") ||
     lower.includes("host has exited") ||
     lower.includes("connection closed unexpectedly")

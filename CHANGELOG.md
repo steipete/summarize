@@ -6,7 +6,7 @@
 
 - Dependencies: update the policy-eligible type-aware Oxlint release.
 - Chrome extension: keep MiniMax Direct reasoning separate from visible streamed summaries (#354, thanks @vincent-peng).
-- Chrome extension: route daemon Connect to actionable Runtime diagnostics for permissions, native-host failures, ports, and reload state (#356, thanks @vincent-peng).
+- Chrome extension: route daemon Connect to actionable Runtime diagnostics for permissions, native-host failures, ports, and stale extension state (#352, #356; thanks @buhusa and @vincent-peng).
 - Antigravity CLI: pass prompts through the required print argument with platform-safe size limits and prompt-safe errors (#357, thanks @mvance).
 - Security: block private browser-media URLs in the extension and stop remote binary attachments from auto-enabling broad CLI tool permissions.
 - Chrome extension: make User Scripts optional, omit debugger access from summary builds, and provide a separate debugger-enabled automation build.

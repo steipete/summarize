@@ -107,6 +107,24 @@ describe("options daemon status", () => {
     expect(statusEl.dataset.state).toBe("error");
   });
 
+  it("maps a disconnected extension context to targeted reload guidance", async () => {
+    const statusEl = document.createElement("div");
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl: async () => {
+        throw new Error("Could not establish connection. Receiving end does not exist.");
+      },
+      getExtensionVersion: () => "0.21.3",
+    });
+
+    await checker.checkDaemonStatus("token");
+
+    expect(statusEl.textContent).toBe(
+      "Extension context stale — reload the extension, then reopen the side panel",
+    );
+    expect(statusEl.dataset.state).toBe("error");
+  });
+
   it("preserves installed native host exit diagnostics instead of reinstall guidance", async () => {
     const statusEl = document.createElement("div");
     const checker = createDaemonStatusChecker({
