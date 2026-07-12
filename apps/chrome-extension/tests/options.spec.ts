@@ -232,7 +232,7 @@ test("options exposes two AI connections and independent slide runtimes", async 
     await seedSettings(harness, { summaryRuntime: "direct", slideRuntime: "browser" });
     const page = await openExtensionPage(harness, "options.html", "#tabs");
 
-    await expect(page.locator("#daemonStatus")).toContainText("Local companion not enabled");
+    await expect(page.locator("#daemonStatus")).toContainText("Local companion permission missing");
     await expect(page.locator("#panel-general")).not.toContainText("Token");
 
     await page.click("#tab-runtime");
@@ -267,6 +267,31 @@ test("options exposes two AI connections and independent slide runtimes", async 
   }
 });
 
+test("options opens the requested runtime tab from the URL", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    const page = await openExtensionPage(harness, "options.html?tab=runtime", "#tabs");
+
+    await expect(page.locator("#tab-runtime")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("#panel-runtime")).toBeVisible();
+
+    await page.click("#tab-general");
+    await expect(page).not.toHaveURL(/tab=runtime/);
+    await expect(page.locator("#tab-general")).toHaveAttribute("aria-selected", "true");
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#tabs");
+    await expect(page.locator("#tab-general")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("#panel-general")).toBeVisible();
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
 test("options stores an OpenAI key for direct mode without requiring the daemon", async ({
   browserName: _browserName,
 }, testInfo) => {
@@ -281,7 +306,7 @@ test("options stores an OpenAI key for direct mode without requiring the daemon"
     });
     const page = await openExtensionPage(harness, "options.html", "#tabs");
 
-    await expect(page.locator("#daemonStatus")).toContainText("Local companion not enabled");
+    await expect(page.locator("#daemonStatus")).toContainText("Local companion permission missing");
     await page.click("#tab-runtime");
     await page.locator('#summaryRuntimeMode input[value="direct"]').click();
     await page.locator('#slideRuntimeMode input[value="browser"]').click();
@@ -318,7 +343,7 @@ test("options stores an OpenAI key for direct mode without requiring the daemon"
     await expect(page.locator('#slideRuntimeMode input[value="browser"]')).toBeChecked();
     await expect(page.locator("#provider")).toHaveValue("openai");
     await expect(page.locator("#providerApiKey")).toHaveValue("sk-test-direct-openai");
-    await expect(page.locator("#daemonStatus")).toContainText("Local companion not enabled");
+    await expect(page.locator("#daemonStatus")).toContainText("Local companion permission missing");
 
     assertNoErrors(harness);
   } finally {

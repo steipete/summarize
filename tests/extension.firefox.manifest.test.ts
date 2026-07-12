@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import extensionConfig from "../apps/chrome-extension/wxt.config.js";
+import extensionConfig, {
+  resolveExtensionHostPermissions,
+} from "../apps/chrome-extension/wxt.config.js";
 
 describe("firefox extension manifest", () => {
   it("uses Firefox-compatible permissions and metadata", () => {
@@ -63,5 +65,17 @@ describe("firefox extension manifest", () => {
       if (previous === undefined) delete process.env.SUMMARIZE_EXTENSION_DEBUGGER;
       else process.env.SUMMARIZE_EXTENSION_DEBUGGER = previous;
     }
+  });
+
+  it("grants broad capture permission only to Firefox and HTTP E2E builds", () => {
+    expect(
+      resolveExtensionHostPermissions({ browser: "chrome", e2eHttpTransport: false }),
+    ).not.toContain("<all_urls>");
+    expect(
+      resolveExtensionHostPermissions({ browser: "chrome", e2eHttpTransport: true }),
+    ).toContain("<all_urls>");
+    expect(
+      resolveExtensionHostPermissions({ browser: "firefox", e2eHttpTransport: false }),
+    ).toContain("<all_urls>");
   });
 });

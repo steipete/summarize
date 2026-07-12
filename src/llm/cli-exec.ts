@@ -61,7 +61,15 @@ function getExecErrorMessage(error: CliExecError): string {
     : "CLI command failed";
 }
 
-function getExecCommand(error: CliExecError, cmd: string, args: string[]): string {
+function getExecCommand(
+  error: CliExecError,
+  cmd: string,
+  args: string[],
+  redactedCommand?: string,
+): string {
+  if (typeof redactedCommand === "string" && redactedCommand.trim().length > 0) {
+    return redactedCommand.trim();
+  }
   return typeof error.cmd === "string" && error.cmd.trim().length > 0
     ? error.cmd.trim()
     : [cmd, ...args].join(" ");
@@ -73,6 +81,10 @@ function abortReason(signal: AbortSignal): Error {
     : new DOMException("This operation was aborted", "AbortError");
 }
 
+function errorOptions(error: CliExecError, redactedCommand?: string): ErrorOptions | undefined {
+  return redactedCommand ? undefined : { cause: error };
+}
+
 export async function execCliWithInput({
   execFileImpl,
   cmd,
@@ -82,6 +94,7 @@ export async function execCliWithInput({
   env,
   cwd,
   signal,
+  redactedCommand,
 }: {
   execFileImpl: ExecFileFn;
   cmd: string;
@@ -91,6 +104,7 @@ export async function execCliWithInput({
   env: Record<string, string | undefined>;
   cwd?: string;
   signal?: AbortSignal;
+  redactedCommand?: string;
 }): Promise<{ stdout: string; stderr: string }> {
   return await new Promise((resolve, reject) => {
     let interruptedSignal: NodeJS.Signals | null = null;
@@ -132,48 +146,61 @@ export async function execCliWithInput({
     process.prependOnceListener("SIGTERM", handleSigterm);
     signal?.addEventListener("abort", handleAbort, { once: true });
 
-    child = execFileImpl(
-      cmd,
-      args,
-      {
-        timeout: timeoutMs,
-        env: { ...process.env, ...env },
-        cwd,
-        maxBuffer: 50 * 1024 * 1024,
-      },
-      (error, stdout, stderr) => {
-        cleanupSignalHandlers();
-        const stderrText = toUtf8String(stderr);
-        if (aborted && signal) {
-          reject(abortReason(signal));
-          return;
-        }
-        if (interruptedSignal) {
-          reject(new CliInterruptedError(interruptedSignal));
-          return;
-        }
-        if (error) {
-          if (isExecTimeoutError(error)) {
-            const timeoutMessage =
-              `CLI command timed out after ${formatTimeoutLabel(timeoutMs)}: ${getExecCommand(error, cmd, args)}. ` +
-              "Increase --timeout (e.g. 5m).";
+    try {
+      child = execFileImpl(
+        cmd,
+        args,
+        {
+          timeout: timeoutMs,
+          env: { ...process.env, ...env },
+          cwd,
+          maxBuffer: 50 * 1024 * 1024,
+        },
+        (error, stdout, stderr) => {
+          cleanupSignalHandlers();
+          // A sensitive argv value may be transformed or truncated before a CLI echoes it.
+          // Suppress all child diagnostics instead of attempting unsafe substring redaction.
+          const stderrText = redactedCommand ? "" : toUtf8String(stderr);
+          if (aborted && signal) {
+            reject(abortReason(signal));
+            return;
+          }
+          if (interruptedSignal) {
+            reject(new CliInterruptedError(interruptedSignal));
+            return;
+          }
+          if (error) {
+            if (isExecTimeoutError(error)) {
+              const timeoutMessage =
+                `CLI command timed out after ${formatTimeoutLabel(timeoutMs)}: ${getExecCommand(error, cmd, args, redactedCommand)}. ` +
+                "Increase --timeout (e.g. 5m).";
+              reject(
+                new Error(
+                  formatErrorMessageWithStderr(timeoutMessage, stderrText, "\n"),
+                  errorOptions(error, redactedCommand),
+                ),
+              );
+              return;
+            }
+            const errorMessage = redactedCommand
+              ? `CLI command failed: ${redactedCommand}`
+              : getExecErrorMessage(error);
             reject(
-              new Error(formatErrorMessageWithStderr(timeoutMessage, stderrText, "\n"), {
-                cause: error,
-              }),
+              new Error(
+                formatErrorMessageWithStderr(errorMessage, stderrText),
+                errorOptions(error, redactedCommand),
+              ),
             );
             return;
           }
-          reject(
-            new Error(formatErrorMessageWithStderr(getExecErrorMessage(error), stderrText), {
-              cause: error,
-            }),
-          );
-          return;
-        }
-        resolve({ stdout: toUtf8String(stdout), stderr: stderrText });
-      },
-    );
+          resolve({ stdout: toUtf8String(stdout), stderr: stderrText });
+        },
+      );
+    } catch (error) {
+      cleanupSignalHandlers();
+      reject(redactedCommand ? new Error(`CLI command failed: ${redactedCommand}`) : error);
+      return;
+    }
 
     if (aborted) {
       try {

@@ -29,8 +29,10 @@ describe("options daemon status", () => {
 
     await checker.checkDaemonStatus("token");
 
-    expect(statusEl.textContent).toBe("Daemon not selected");
-    expect(statusEl.dataset.state).toBe("ok");
+    expect(statusEl.textContent).toBe(
+      "Daemon runtime off — choose Daemon for AI or media to connect",
+    );
+    expect(statusEl.dataset.state).toBe("warn");
     expect(fetchCalls).toBe(0);
   });
 
@@ -81,7 +83,120 @@ describe("options daemon status", () => {
     health.resolve(jsonResponse({ version: "0.17.0" }));
     await staleCheck;
 
-    expect(statusEl.textContent).toBe("Daemon not selected");
-    expect(statusEl.dataset.state).toBe("ok");
+    expect(statusEl.textContent).toBe(
+      "Daemon runtime off — choose Daemon for AI or media to connect",
+    );
+    expect(statusEl.dataset.state).toBe("warn");
+  });
+
+  it("maps native host failures to an actionable reload/install hint", async () => {
+    const statusEl = document.createElement("div");
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl: async () => {
+        throw new Error("Specified native messaging host not found.");
+      },
+      getExtensionVersion: () => "0.17.0",
+    });
+
+    await checker.checkDaemonStatus("token");
+
+    expect(statusEl.textContent).toBe(
+      "Native host unavailable — rerun the install command, then reload the extension",
+    );
+    expect(statusEl.dataset.state).toBe("error");
+  });
+
+  it("preserves installed native host exit diagnostics instead of reinstall guidance", async () => {
+    const statusEl = document.createElement("div");
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl: async () => {
+        throw new Error("Native host has exited.");
+      },
+      getExtensionVersion: () => "0.17.0",
+    });
+
+    await checker.checkDaemonStatus("token");
+
+    expect(statusEl.textContent).toBe(
+      "Native host exited — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log",
+    );
+    expect(statusEl.dataset.state).toBe("error");
+  });
+
+  it("maps native host startup failures to install and launcher guidance", async () => {
+    const statusEl = document.createElement("div");
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl: async () => {
+        throw new Error("Failed to start native messaging host.");
+      },
+      getExtensionVersion: () => "0.17.0",
+    });
+
+    await checker.checkDaemonStatus("token");
+
+    expect(statusEl.textContent).toBe(
+      "Native host failed to start — rerun the install command and verify launcher permissions",
+    );
+    expect(statusEl.dataset.state).toBe("error");
+  });
+
+  it("maps native host protocol failures to status and log guidance", async () => {
+    const statusEl = document.createElement("div");
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl: async () => {
+        throw new Error("Error when communicating with the native messaging host.");
+      },
+      getExtensionVersion: () => "0.17.0",
+    });
+
+    await checker.checkDaemonStatus("token");
+
+    expect(statusEl.textContent).toBe(
+      "Native host communication failed — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log",
+    );
+    expect(statusEl.dataset.state).toBe("error");
+  });
+
+  it("maps missing native messaging permission to the Runtime setup action", async () => {
+    const statusEl = document.createElement("div");
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl: async () => {
+        throw new Error("Local companion permission is not enabled");
+      },
+      getExtensionVersion: () => "0.17.0",
+    });
+
+    await checker.checkDaemonStatus("token");
+
+    expect(statusEl.textContent).toBe(
+      "Local companion permission missing — enable it in Runtime settings",
+    );
+    expect(statusEl.dataset.state).toBe("error");
+  });
+
+  it("maps generic fetch failures to daemon status, port, and reload guidance", async () => {
+    const statusEl = document.createElement("div");
+    let fetchCalls = 0;
+    const checker = createDaemonStatusChecker({
+      statusEl,
+      fetchImpl: async () => {
+        fetchCalls += 1;
+        throw new Error("Failed to fetch");
+      },
+      getExtensionVersion: () => "0.17.0",
+    });
+
+    await checker.checkDaemonStatus("token");
+
+    expect(statusEl.textContent).toBe(
+      "Daemon unreachable — run `summarize daemon status`, verify the port, then reload the extension",
+    );
+    expect(statusEl.dataset.state).toBe("error");
+    expect(fetchCalls).toBe(2);
   });
 });

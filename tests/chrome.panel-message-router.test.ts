@@ -91,7 +91,17 @@ describe("chrome panel message router", () => {
     expect(harness.handlers.slidesContext).toHaveBeenCalledWith(harness.session, messages[7]);
     expect(harness.handlers.slidesLocal).toHaveBeenCalledWith(harness.session, messages[8]);
     expect(harness.handlers.slidesCapture).toHaveBeenCalledWith(harness.session, messages[9]);
-    expect(harness.handlers.openOptions).toHaveBeenCalledOnce();
+    expect(harness.handlers.openOptions).toHaveBeenCalledWith(undefined);
+  });
+
+  it("routes targeted options tabs and ignores invalid tab targets", () => {
+    const harness = createHarness();
+
+    harness.router(harness.session, { type: "panel:openOptions", tab: "runtime" });
+    harness.router(harness.session, { type: "panel:openOptions", tab: "missing" });
+
+    expect(harness.handlers.openOptions).toHaveBeenNthCalledWith(1, { tab: "runtime" });
+    expect(harness.handlers.openOptions).toHaveBeenNthCalledWith(2, undefined);
   });
 
   it("derives summarize reason and options", () => {

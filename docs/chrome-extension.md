@@ -27,6 +27,8 @@ Quickstart:
   runtime. Retained loopback host access serves configured Direct local providers only, not daemon
   traffic. Managed deployments can browser-disable both boundaries; see
   [Chrome enterprise policy](chrome-enterprise.md).
+- The side panel's daemon **Connect** hint opens **Options → Runtime** so users can verify the
+  permission, token, port, and native-host setup in one place.
 - Verify:
   - `summarize daemon status`
   - Restart (if needed): `summarize daemon restart`
@@ -51,6 +53,7 @@ Dev (repo checkout):
   - `summarize daemon status`
   - Confirm the native host is reported as installed and Chrome granted the optional companion permission.
   - If the daemon uses a non-default port, confirm **Options → Runtime → Daemon → Port** matches the daemon configuration.
+  - If the native host was just reinstalled for an unpacked extension ID, reload the extension and reopen the side panel.
   - Logs: `~/.summarize/logs/daemon.err.log`
 - Windows install:
   - `summarize daemon install` registers a Scheduled Task via `schtasks /Create /XML`, which requires an **elevated** shell. Run it from an Administrator PowerShell/cmd; otherwise you'll see `schtasks create failed: ERROR: Access is denied.`

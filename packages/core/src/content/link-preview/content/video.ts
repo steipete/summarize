@@ -1,5 +1,5 @@
 import { parseHtmlDocument } from "../../html-document.js";
-import { extractYouTubeVideoId, isYouTubeUrl } from "../../url.js";
+import { extractYouTubeVideoId, isLoomVideoUrl, isYouTubeUrl } from "../../url.js";
 import type { EmbeddedVideoMode, MediaTranscriptMode, YoutubeTranscriptMode } from "./types.js";
 
 export type DetectedVideo = {
@@ -84,6 +84,7 @@ export function detectPrimaryVideoDetailsFromHtml(
   html: string,
   url: string,
 ): PrimaryVideoDetection | null {
+  if (isLoomVideoUrl(url)) return null;
   const parsed = parseHtmlDocument(html);
   const { document } = parsed;
 

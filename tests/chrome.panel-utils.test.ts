@@ -17,6 +17,7 @@ describe("chrome panel utils", () => {
         openOptionsPage: vi.fn(async () => {}),
       },
       tabs: {
+        create: vi.fn(async () => {}),
         query: vi.fn(async () => [{ id: 1, url: "https://example.com" }]),
       },
       windows: {
@@ -97,6 +98,7 @@ describe("chrome panel utils", () => {
 
   it("resolves and opens the options popup with a fallback", async () => {
     expect(resolveOptionsUrl()).toBe("chrome-extension://test/advanced.html");
+    expect(resolveOptionsUrl("runtime")).toBe("chrome-extension://test/advanced.html?tab=runtime");
     await openOptionsWindow();
 
     expect(chrome.windows.create).toHaveBeenCalledWith({
@@ -108,6 +110,29 @@ describe("chrome panel utils", () => {
 
     vi.mocked(chrome.windows.create).mockRejectedValueOnce(new Error("boom"));
     await openOptionsWindow();
+    expect(chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the requested options tab when falling back from popup creation", async () => {
+    vi.mocked(chrome.windows.create).mockRejectedValueOnce(new Error("boom"));
+
+    await openOptionsWindow("runtime");
+
+    expect(chrome.tabs.create).toHaveBeenCalledWith({
+      url: "chrome-extension://test/advanced.html?tab=runtime",
+    });
+    expect(chrome.runtime.openOptionsPage).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the generic options opener when the targeted tab cannot open", async () => {
+    vi.mocked(chrome.windows.create).mockRejectedValueOnce(new Error("popup failed"));
+    vi.mocked(chrome.tabs.create).mockRejectedValueOnce(new Error("tab failed"));
+
+    await openOptionsWindow("runtime");
+
+    expect(chrome.tabs.create).toHaveBeenCalledWith({
+      url: "chrome-extension://test/advanced.html?tab=runtime",
+    });
     expect(chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(1);
   });
 

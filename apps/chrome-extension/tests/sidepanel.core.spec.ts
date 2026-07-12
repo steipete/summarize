@@ -189,6 +189,55 @@ test("sidepanel default stays usable with a dismissible daemon hint", async ({
   }
 });
 
+test("sidepanel daemon Connect opens Runtime setup with permission diagnostics", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, {
+      token: "",
+      summaryRuntime: "direct",
+      slideRuntime: "browser",
+      model: "auto",
+    });
+    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+    await waitForPanelPort(page);
+    await sendBgMessage(harness, {
+      type: "ui:state",
+      state: buildUiState({
+        daemon: { ok: false, authed: false },
+        settings: {
+          summaryRuntime: "direct",
+          slideRuntime: "browser",
+          providerConfigured: false,
+          daemonHintDismissed: false,
+          model: "auto",
+          tokenPresent: false,
+        },
+      }),
+    });
+
+    await expect(page.locator("#daemonHint")).toBeVisible();
+    const optionsPromise = harness.context.waitForEvent("page");
+    await page.locator("#daemonHintAction").click();
+    const options = await optionsPromise;
+    trackErrors(options, harness.pageErrors, harness.consoleErrors);
+
+    await options.waitForSelector("#tabs");
+    await expect(options).toHaveURL(/options\.html\?tab=runtime/);
+    await expect(options.locator("#tab-runtime")).toHaveAttribute("aria-selected", "true");
+    await expect(options.locator("#panel-runtime")).toBeVisible();
+    await expect(options.locator("#daemonStatus")).toContainText(
+      "Local companion permission missing",
+    );
+    await expect(options.locator("#daemonStatus")).toContainText("Runtime settings");
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
 test("sidepanel scheme picker applies overlay selection", async ({
   browserName: _browserName,
 }, testInfo) => {
