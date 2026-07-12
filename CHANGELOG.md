@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Dependencies: update the policy-eligible type-aware Oxlint release.
 - Chrome extension: keep MiniMax Direct reasoning separate from visible streamed summaries (#354, thanks @vincent-peng).
 - Chrome extension: route daemon Connect to actionable Runtime diagnostics for permissions, native-host failures, ports, and reload state (#356, thanks @vincent-peng).
 - Antigravity CLI: pass prompts through the required print argument with platform-safe size limits and prompt-safe errors (#357, thanks @mvance).
