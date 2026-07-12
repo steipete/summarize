@@ -173,7 +173,7 @@ Notes:
 - If a CLI call fails, auto mode falls back to the next candidate.
 - Cursor Agent CLI uses the `agent` binary and relies on Cursor CLI auth (login or `CURSOR_API_KEY`).
 - Antigravity CLI uses the active agy session model; `cli.agy.model` is ignored by runtime selection.
-- Antigravity normal text summaries run `agy --print` with no prompt argument in a temporary cwd with `--sandbox`, streaming the prompt over stdin so extracted content is not exposed in argv. Attachment prompts keep the caller cwd so agy can inspect the requested path but do not auto-approve tools.
+- Antigravity normal text summaries run `agy --print <prompt>` in a temporary cwd with `--sandbox`. Because current agy print mode requires the prompt in argv, large prompts are rejected before launch using platform-specific argv limits; use another CLI/provider for large or sensitive extracted content. Attachment prompts keep the caller cwd so agy can inspect the requested path but do not auto-approve tools.
 - pi runs in JSON mode (`--print --mode json`) with `--no-tools`, `--no-context-files`, `--no-extensions`, `--no-skills`, `--no-session` for isolated summarization. It receives the summarize system prompt via `--system-prompt`, the summarize prompt over stdin, and reports usage/cost via JSONL events. Use `PI_PATH` to override the binary path.
 - Codex CLI normal text summaries run isolated by default: `codex exec --ephemeral --ignore-user-config --ignore-rules -C <temp-dir> ...` with a sanitized temporary `CODEX_HOME` that carries auth only. Set `cli.codex.isolated` to `false` only when you intentionally need Codex to inherit local config/rules.
 - Gemini CLI is invoked in headless mode with `--prompt` for compatibility with current Gemini CLI releases.

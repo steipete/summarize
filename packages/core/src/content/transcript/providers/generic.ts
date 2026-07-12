@@ -2,7 +2,7 @@ import {
   isTwitterBroadcastUrl,
   isTwitterStatusUrl,
 } from "../../link-preview/content/twitter-utils.js";
-import { inferDirectMediaKind, isDirectMediaUrl } from "../../url.js";
+import { inferDirectMediaKind, isDirectMediaUrl, isLoomVideoUrl } from "../../url.js";
 import { normalizeTranscriptText } from "../normalize.js";
 import { resolveTranscriptionConfig } from "../transcription-config.js";
 import type { ProviderContext, ProviderFetchOptions, ProviderResult } from "../types.js";
@@ -23,6 +23,7 @@ export const fetchTranscript = async (
   const embedded = context.html ? detectEmbeddedMedia(context.html, context.url) : null;
   const twitterStatus = isTwitterStatusUrl(context.url);
   const twitterMedia = twitterStatus || isTwitterBroadcastUrl(context.url);
+  const loomVideo = isLoomVideoUrl(context.url);
   const hasEmbeddedMedia = Boolean(embedded?.mediaUrl || embedded?.kind);
   const mediaKindHint =
     options.mediaKindHint ?? embedded?.kind ?? inferDirectMediaKind(context.url) ?? null;
@@ -53,14 +54,16 @@ export const fetchTranscript = async (
   }
 
   const shouldAttemptMediaTranscript =
-    options.mediaTranscriptMode === "prefer" || (twitterStatus && hasEmbeddedMedia);
+    options.mediaTranscriptMode === "prefer" || (twitterStatus && hasEmbeddedMedia) || loomVideo;
   const mediaUrl = shouldAttemptMediaTranscript
-    ? (embedded?.mediaUrl ?? (isDirectMediaUrl(context.url) ? context.url : null))
+    ? loomVideo
+      ? context.url
+      : (embedded?.mediaUrl ?? (isDirectMediaUrl(context.url) ? context.url : null))
     : null;
 
   if (
     shouldAttemptMediaTranscript &&
-    (mediaUrl || embedded?.kind || isDirectMediaUrl(context.url))
+    (mediaUrl || embedded?.kind || isDirectMediaUrl(context.url) || loomVideo)
   ) {
     const result = await fetchDirectMediaTranscript({
       url: mediaUrl ?? context.url,
@@ -68,7 +71,9 @@ export const fetchTranscript = async (
       transcription,
       notes,
       attemptedProviders,
-      kind: embedded?.kind ?? inferDirectMediaKind(mediaUrl ?? context.url) ?? null,
+      kind: loomVideo
+        ? "video"
+        : (embedded?.kind ?? inferDirectMediaKind(mediaUrl ?? context.url) ?? null),
     });
     if (result) return result;
   }

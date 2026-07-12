@@ -90,7 +90,7 @@ test("manifest excludes Meta sites and the local companion from always-on conten
   }
 });
 
-test("Chromium manifest keeps native companion access optional", () => {
+test("Chromium manifest scopes broad host access to the HTTP E2E build", () => {
   const manifestPath = path.resolve(__dirname, "..", ".output", "chrome-mv3", "manifest.json");
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
     host_permissions?: string[];
@@ -102,7 +102,11 @@ test("Chromium manifest keeps native companion access optional", () => {
 
   expect(manifest.permissions ?? []).not.toContain("nativeMessaging");
   expect(manifest.optional_permissions ?? []).toContain("nativeMessaging");
-  expect(manifest.host_permissions ?? []).not.toContain("<all_urls>");
+  if (process.env.SUMMARIZE_E2E_HTTP_TRANSPORT === "1") {
+    expect(manifest.host_permissions ?? []).toContain("<all_urls>");
+  } else {
+    expect(manifest.host_permissions ?? []).not.toContain("<all_urls>");
+  }
   expect(manifest.host_permissions ?? []).toContain("http://127.0.0.1/*");
   expect(manifest.optional_host_permissions ?? []).toEqual([]);
   expect(manifest.storage?.managed_schema).toBe("managed-storage-schema.json");

@@ -1,7 +1,7 @@
 import { parseHtmlDocument } from "../html-document.js";
 import { extractYouTubeVideoId } from "../url.js";
 
-export { extractYouTubeVideoId, isYouTubeUrl, isYouTubeVideoUrl } from "../url.js";
+export { extractYouTubeVideoId, isLoomVideoUrl, isYouTubeUrl, isYouTubeVideoUrl } from "../url.js";
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

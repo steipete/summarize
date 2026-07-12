@@ -121,6 +121,16 @@ describe("detectPrimaryVideoFromHtml", () => {
     });
   });
 
+  it("ignores incidental embedded media on Loom recording pages", () => {
+    const html = `<iframe src="https://www.youtube.com/embed/${YT_ID}"></iframe>`;
+    expect(
+      detectPrimaryVideoDetailsFromHtml(
+        html,
+        "https://www.loom.com/share/ef3224a48a084371bd6d766ee81f083f",
+      ),
+    ).toBeNull();
+  });
+
   it("marks unrelated multiple iframe videos as ambiguous", () => {
     const html = `
       <iframe src="https://www.youtube.com/embed/${YT_ID}"></iframe>
