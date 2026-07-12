@@ -449,6 +449,27 @@ test("options labels unavailable automation permissions as optional", async ({
   }
 });
 
+test("options grants User Scripts only after the explicit automation action", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    await seedSettings(harness, { automationEnabled: true });
+    const page = await openExtensionPage(harness, "options.html", "#tabs");
+    const hasUserScripts = () =>
+      page.evaluate(() => chrome.permissions.contains({ permissions: ["userScripts"] }));
+
+    await expect.poll(hasUserScripts).toBe(false);
+    await page.locator("#automationPermissions").click();
+    await expect.poll(hasUserScripts).toBe(true);
+
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
 test("options scheme list renders chips", async ({ browserName: _browserName }, testInfo) => {
   const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
 
