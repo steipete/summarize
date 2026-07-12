@@ -53,6 +53,26 @@ test("options pickers apply overlay selection", async ({ browserName: _browserNa
   }
 });
 
+test("options restores the active tab from browser local storage", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    const page = await openExtensionPage(harness, "options.html", "#tabs");
+    await page.click("#tab-runtime");
+    await expect(page.locator("#panel-runtime")).toBeVisible();
+
+    await page.reload();
+    await expect(page.locator("#tab-runtime")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("#panel-runtime")).toBeVisible();
+
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
 test("options themes password and URL fields like the provider control", async ({
   browserName: _browserName,
 }, testInfo) => {
