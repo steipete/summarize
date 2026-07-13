@@ -93,6 +93,8 @@ Binary lookup:
 - `OPENCLAW_PATH` (optional override)
 - `OPENCODE_PATH` (optional override)
 - `COPILOT_PATH` (optional override)
+- `AGY_PATH` (optional override)
+- `PI_PATH` (optional override)
 - Otherwise uses `PATH`
 
 Run `summarize status` to list enabled CLI providers whose executable is currently available.
@@ -195,6 +197,7 @@ summarize --cli agent --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli openclaw --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli opencode --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli copilot --plain --timeout 2m /tmp/summarize-cli-smoke.txt
+summarize --cli agy --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli pi --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 ```
 

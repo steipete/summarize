@@ -7,7 +7,7 @@ Fast summaries from URLs, files, and media. Works in the terminal, a Chrome Side
 - Chrome Side Panel **chat** (streaming agent + history) inside the sidebar.
 - **Video slides**: screenshots + OCR + transcript cards for YouTube, direct video URLs, and local video files.
 - Media-aware summaries: auto‑detect video/audio vs page content.
-- Coding CLI backends: Codex, Claude, Gemini, Cursor Agent, OpenClaw, OpenCode.
+- Coding CLI backends: Codex, Claude, Gemini, Cursor Agent, OpenClaw, OpenCode, GitHub Copilot, Antigravity, pi.
 - Streaming Markdown + metrics + cache‑aware status.
 - CLI supports URLs, files, podcasts, YouTube, audio/video, PDFs.
 
@@ -388,6 +388,7 @@ Summarize can use common coding CLIs as local model backends:
 - `agent` (Cursor Agent CLI) -> `--cli agent` / `--model cli/agent/<model>`
 - `openclaw` -> `--cli openclaw` / `--model cli/openclaw/<model>` or `--model openclaw/<model>`
 - `opencode` -> `--cli opencode` / `--model cli/opencode/<model>` (`--model cli/opencode` uses the OpenCode runtime default)
+- `copilot` (GitHub Copilot CLI) -> `--cli copilot` / `--model cli/copilot/<model>` (`--model cli/copilot` uses the Copilot runtime default)
 - `agy` (Antigravity CLI) -> `--cli agy` / `--model cli/agy` (uses agy's active session model; per-call model selection is not supported by agy print mode)
 - `pi` (Pi Coding Agent) -> `--cli pi` / `--model cli/pi` or `--model cli/pi/<model>`
 
@@ -397,8 +398,8 @@ Built-in preset:
 
 Requirements:
 
-- Binary installed and on `PATH` (or set `CODEX_PATH`, `CLAUDE_PATH`, `GEMINI_PATH`, `AGENT_PATH`, `OPENCLAW_PATH`, `OPENCODE_PATH`, `AGY_PATH`, `PI_PATH`)
-- Provider authenticated (`codex login`, `claude auth`, `gemini` login flow, `agent login` or `CURSOR_API_KEY`, `opencode auth login`, `agy` login flow or `ANTIGRAVITY_API_KEY`, `pi` uses configured provider API keys)
+- Binary installed and on `PATH` (or set `CODEX_PATH`, `CLAUDE_PATH`, `GEMINI_PATH`, `AGENT_PATH`, `OPENCLAW_PATH`, `OPENCODE_PATH`, `COPILOT_PATH`, `AGY_PATH`, `PI_PATH`)
+- Provider authenticated (`codex login`, `claude auth`, `gemini` login flow, `agent login` or `CURSOR_API_KEY`, `opencode auth login`, GitHub Copilot CLI authenticated, `agy` login flow or `ANTIGRAVITY_API_KEY`, `pi` uses configured provider API keys)
 
 Quick smoke test:
 
@@ -411,6 +412,7 @@ summarize --cli gemini --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli agent --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli openclaw --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli opencode --plain --timeout 2m /tmp/summarize-cli-smoke.txt
+summarize --cli copilot --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli agy --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli pi --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 ```
@@ -419,7 +421,19 @@ Set explicit CLI allowlist/order:
 
 ```json
 {
-  "cli": { "enabled": ["codex", "claude", "gemini", "agent", "openclaw", "opencode", "agy", "pi"] }
+  "cli": {
+    "enabled": [
+      "codex",
+      "claude",
+      "gemini",
+      "agent",
+      "openclaw",
+      "opencode",
+      "copilot",
+      "agy",
+      "pi"
+    ]
+  }
 }
 ```
 
@@ -431,7 +445,7 @@ Configure implicit auto CLI fallback:
     "autoFallback": {
       "enabled": true,
       "onlyWhenNoApiKeys": true,
-      "order": ["claude", "gemini", "codex", "agent", "openclaw", "opencode"]
+      "order": ["claude", "gemini", "codex", "agent", "openclaw", "opencode", "copilot"]
     }
   }
 }
