@@ -1,11 +1,12 @@
 # Changelog
 
-## 0.21.4 - Unreleased
+## 0.21.4 - 2026-07-16
 
 ### Fixes
 
 - URL routing: classify YouTube inputs by hostname so lookalike domains use normal website extraction and labels.
 - CLI arguments: preserve `--` so dash-prefixed local paths remain valid positional inputs.
+- CLI providers: synchronize Copilot, Antigravity, and pi setup, overrides, fallback order, and smoke-test documentation (#359, thanks @vincent-peng).
 - Dependencies: update the policy-eligible type-aware Oxlint release.
 - Chrome extension: keep MiniMax Direct reasoning separate from visible streamed summaries (#354, thanks @vincent-peng).
 - Chrome extension: route daemon Connect to actionable Runtime diagnostics for permissions, native-host failures, ports, and stale extension state (#352, #356; thanks @buhusa and @vincent-peng).
