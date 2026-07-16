@@ -57,6 +57,10 @@ describe("transcription/whisper local whisper.cpp", () => {
           return proc;
         }
 
+        const maxContextIdx = args.indexOf("-mc");
+        expect(maxContextIdx).toBeGreaterThanOrEqual(0);
+        expect(args[maxContextIdx + 1]).toBe("0");
+
         // transcription run: create output file and close 0
         const outIdx = args.indexOf("--output-file");
         const base = outIdx >= 0 ? args[outIdx + 1] : null;

@@ -2,6 +2,10 @@
 
 ## 0.21.5 - Unreleased
 
+### Fixes
+
+- whisper.cpp: disable cross-window text context to prevent cascading repetition and truncated long-form transcripts (#363, thanks @Owengogogo).
+
 ## 0.21.4 - 2026-07-16
 
 ### Fixes

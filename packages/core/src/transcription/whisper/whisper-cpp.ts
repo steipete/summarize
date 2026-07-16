@@ -111,6 +111,9 @@ export async function transcribeWithWhisperCppFile({
       modelPath,
       "--language",
       "auto",
+      // Prevent one bad long-form window from seeding cascading repetition in later windows.
+      "-mc",
+      "0",
       "--no-timestamps",
       "--no-prints",
       "--print-progress",
