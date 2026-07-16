@@ -38,13 +38,14 @@ export async function runCli(
   const runStdout = perfTrace?.wrapStdout(stdout) ?? stdout;
 
   try {
-    const { normalizedArgv, envForRun } = prepareRunEnvironment(argv, inputEnv);
+    const { normalizedArgv, preSeparatorArgv, envForRun } = prepareRunEnvironment(argv, inputEnv);
     perfTrace?.mark("cli:environment");
     const env = envForRun;
 
     if (
       await handleImmediateCliRequests({
         normalizedArgv,
+        preSeparatorArgv,
         envForRun,
         fetchImpl: fetch,
         stdout: runStdout,
@@ -78,7 +79,7 @@ export async function runCli(
 
     if (
       await handleCacheUtilityFlags({
-        normalizedArgv,
+        normalizedArgv: preSeparatorArgv,
         envForRun,
         stdout: runStdout,
       })
@@ -86,7 +87,7 @@ export async function runCli(
       return;
     }
     await executeCliSummarizeCommand({
-      normalizedArgv,
+      normalizedArgv: preSeparatorArgv,
       program,
       env,
       envForRun,
@@ -105,28 +106,59 @@ export async function runCli(
 
 async function handleImmediateCliRequests(options: {
   normalizedArgv: string[];
+  preSeparatorArgv: string[];
   envForRun: Record<string, string | undefined>;
   fetchImpl: typeof fetch;
   stdout: NodeJS.WritableStream;
   stderr: NodeJS.WritableStream;
 }) {
-  const { normalizedArgv, envForRun, fetchImpl, stdout, stderr } = options;
-  if (handleHelpRequest({ normalizedArgv, envForRun, stdout, stderr })) {
+  const { normalizedArgv, preSeparatorArgv, envForRun, fetchImpl, stdout, stderr } = options;
+  if (handleHelpRequest({ normalizedArgv: preSeparatorArgv, envForRun, stdout, stderr })) {
     return true;
   }
-  if (await handleRefreshFreeRequest({ normalizedArgv, envForRun, fetchImpl, stdout, stderr })) {
+  if (
+    await handleRefreshFreeRequest({
+      normalizedArgv: preSeparatorArgv,
+      envForRun,
+      fetchImpl,
+      stdout,
+      stderr,
+    })
+  ) {
     return true;
   }
-  if (await handleStatusCliRequest({ normalizedArgv, envForRun, fetchImpl, stdout })) {
+  if (
+    await handleStatusCliRequest({
+      normalizedArgv: preSeparatorArgv,
+      envForRun,
+      fetchImpl,
+      stdout,
+    })
+  ) {
     return true;
   }
-  if (await handleDaemonCliRequest({ normalizedArgv, envForRun, fetchImpl, stdout, stderr })) {
+  if (
+    await handleDaemonCliRequest({
+      normalizedArgv: preSeparatorArgv,
+      envForRun,
+      fetchImpl,
+      stdout,
+      stderr,
+    })
+  ) {
     return true;
   }
   if (await handleSlidesCliRequest({ normalizedArgv, envForRun, fetchImpl, stdout, stderr })) {
     return true;
   }
-  if (await handleTranscriberCliRequest({ normalizedArgv, envForRun, stdout, stderr })) {
+  if (
+    await handleTranscriberCliRequest({
+      normalizedArgv: preSeparatorArgv,
+      envForRun,
+      stdout,
+      stderr,
+    })
+  ) {
     return true;
   }
   return false;

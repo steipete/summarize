@@ -23,8 +23,8 @@ function collectStream() {
 
 describe("runner setup", () => {
   it("normalizes bare diarize URLs and honors --no-color", () => {
-    const { normalizedArgv, envForRun } = prepareRunEnvironment(
-      ["--", "--diarize", "https://www.youtube.com/watch?v=abcdefghijk", "--no-color"],
+    const { normalizedArgv, preSeparatorArgv, envForRun } = prepareRunEnvironment(
+      ["--diarize", "https://www.youtube.com/watch?v=abcdefghijk", "--no-color"],
       { HOME: mkdtempSync(join(tmpdir(), "summarize-runner-setup-")) },
     );
 
@@ -33,8 +33,23 @@ describe("runner setup", () => {
       "https://www.youtube.com/watch?v=abcdefghijk",
       "--no-color",
     ]);
+    expect(preSeparatorArgv).toEqual(normalizedArgv);
     expect(envForRun.NO_COLOR).toBe("1");
     expect(envForRun.FORCE_COLOR).toBe("0");
+  });
+
+  it("preserves the end-of-options separator and positional values after it", () => {
+    const { normalizedArgv, preSeparatorArgv, envForRun } = prepareRunEnvironment(
+      ["--", "--diarize", "--no-color"],
+      {
+        HOME: mkdtempSync(join(tmpdir(), "summarize-runner-setup-")),
+      },
+    );
+
+    expect(normalizedArgv).toEqual(["--", "--diarize", "--no-color"]);
+    expect(preSeparatorArgv).toEqual([]);
+    expect(envForRun.NO_COLOR).toBeUndefined();
+    expect(envForRun.FORCE_COLOR).toBeUndefined();
   });
 
   it("leaves color env untouched when --no-color is absent", () => {

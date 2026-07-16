@@ -1,3 +1,4 @@
+import { isYouTubeUrl } from "../../url.js";
 import { resolveTranscriptionConfig } from "../transcription-config.js";
 import type { ProviderContext, ProviderFetchOptions, ProviderResult } from "../types.js";
 import { resolveTranscriptProviderCapabilities } from "./transcription-capability.js";
@@ -13,9 +14,7 @@ import {
   tryYtDlpTranscript,
 } from "./youtube/provider-flow.js";
 
-const YOUTUBE_URL_PATTERN = /youtube\.com|youtu\.be/i;
-
-export const canHandle = ({ url }: ProviderContext): boolean => YOUTUBE_URL_PATTERN.test(url);
+export const canHandle = ({ url }: ProviderContext): boolean => isYouTubeUrl(url);
 
 export const fetchTranscript = async (
   context: ProviderContext,

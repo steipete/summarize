@@ -1,3 +1,4 @@
+import { isYouTubeUrl } from "@steipete/summarize-core/content/url";
 import {
   type FirecrawlMode,
   type DiarizationMode,
@@ -135,7 +136,7 @@ export function resolveRunnerFlags({
         : undefined,
   );
 
-  const isYoutubeUrl = typeof url === "string" ? /youtube\.com|youtu\.be/i.test(url) : false;
+  const isYoutubeUrl = typeof url === "string" ? isYouTubeUrl(url) : false;
   const formatExplicitlySet = hasFlag(normalizedArgv, "--format");
   const rawFormatOpt = typeof programOpts.format === "string" ? programOpts.format : null;
   const format = parseExtractFormat(

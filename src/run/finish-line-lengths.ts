@@ -1,3 +1,4 @@
+import { isYouTubeUrl } from "@steipete/summarize-core/content/url";
 import {
   formatCompactCount,
   formatDurationSecondsSmart,
@@ -23,7 +24,7 @@ export type ExtractedForLengths = {
 function inferMediaKindLabelForFinishLine(
   extracted: ExtractedForLengths,
 ): "audio" | "video" | null {
-  if (extracted.siteName === "YouTube" || /youtube\.com|youtu\.be/i.test(extracted.url)) {
+  if (extracted.siteName === "YouTube" || isYouTubeUrl(extracted.url)) {
     return "video";
   }
   if (extracted.isVideoOnly || extracted.video) {
@@ -37,8 +38,7 @@ function inferMediaKindLabelForFinishLine(
 }
 
 function buildCompactTranscriptPart(extracted: ExtractedForLengths): string | null {
-  const isYouTube =
-    extracted.siteName === "YouTube" || /youtube\.com|youtu\.be/i.test(extracted.url);
+  const isYouTube = extracted.siteName === "YouTube" || isYouTubeUrl(extracted.url);
   if (!isYouTube && !extracted.transcriptCharacters) return null;
 
   const transcriptChars = extracted.transcriptCharacters;
@@ -71,8 +71,7 @@ function buildCompactTranscriptPart(extracted: ExtractedForLengths): string | nu
 
 function buildDetailedLengthPartsForExtracted(extracted: ExtractedForLengths): string[] {
   const parts: string[] = [];
-  const isYouTube =
-    extracted.siteName === "YouTube" || /youtube\.com|youtu\.be/i.test(extracted.url);
+  const isYouTube = extracted.siteName === "YouTube" || isYouTubeUrl(extracted.url);
   if (!isYouTube && !extracted.transcriptCharacters) return parts;
 
   const transcriptChars = extracted.transcriptCharacters;

@@ -41,6 +41,16 @@ describe("placeholder transcript providers", () => {
     expect(generic.canHandle(contextFor("https://example.com/article"))).toBe(true);
   });
 
+  it("matches YouTube by hostname instead of a lookalike substring", async () => {
+    const youtube = await import("../packages/core/src/content/transcript/providers/youtube.js");
+    expect(youtube.canHandle(contextFor("https://www.youtube.com/watch?v=abcdefghijk"))).toBe(true);
+    expect(youtube.canHandle(contextFor("https://youtu.be/abcdefghijk"))).toBe(true);
+    expect(youtube.canHandle(contextFor("https://notyoutube.com/watch?v=abcdefghijk"))).toBe(false);
+    expect(youtube.canHandle(contextFor("https://youtube.com.example/watch?v=abcdefghijk"))).toBe(
+      false,
+    );
+  });
+
   it("returns not_implemented provider metadata", async () => {
     const podcast = await import("../packages/core/src/content/transcript/providers/podcast.js");
     const generic = await import("../packages/core/src/content/transcript/providers/generic.js");

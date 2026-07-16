@@ -8,18 +8,26 @@ export function prepareRunEnvironment(
   argv: string[],
   inputEnv: Record<string, string | undefined>,
 ) {
-  const normalizedArgv = normalizeDiarizeArgv(argv.filter((arg) => arg !== "--"));
-  const noColorFlag = normalizedArgv.includes("--no-color");
+  const normalizedArgv = normalizeDiarizeArgv(argv);
+  const preSeparatorArgv = argvBeforeSeparator(normalizedArgv);
+  const noColorFlag = preSeparatorArgv.includes("--no-color");
   let envForRun: Record<string, string | undefined> = noColorFlag
     ? { ...inputEnv, NO_COLOR: "1", FORCE_COLOR: "0" }
     : { ...inputEnv };
   const { config: bootstrapConfig } = loadSummarizeConfig({ env: envForRun });
   envForRun = mergeConfigEnv({ env: envForRun, config: bootstrapConfig });
-  return { normalizedArgv, envForRun };
+  return { normalizedArgv, preSeparatorArgv, envForRun };
+}
+
+export function argvBeforeSeparator(argv: readonly string[]): string[] {
+  const separatorIndex = argv.indexOf("--");
+  return separatorIndex === -1 ? [...argv] : argv.slice(0, separatorIndex);
 }
 
 export function normalizeDiarizeArgv(argv: string[]): string[] {
+  const separatorIndex = argv.indexOf("--");
   return argv.map((arg, index) => {
+    if (separatorIndex !== -1 && index > separatorIndex) return arg;
     if (arg !== "--diarize") return arg;
     const next = argv[index + 1];
     if (!next || next.startsWith("-")) return arg;

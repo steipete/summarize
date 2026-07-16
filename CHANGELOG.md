@@ -4,6 +4,8 @@
 
 ### Fixes
 
+- URL routing: classify YouTube inputs by hostname so lookalike domains use normal website extraction and labels.
+- CLI arguments: preserve `--` so dash-prefixed local paths remain valid positional inputs.
 - Dependencies: update the policy-eligible type-aware Oxlint release.
 - Chrome extension: keep MiniMax Direct reasoning separate from visible streamed summaries (#354, thanks @vincent-peng).
 - Chrome extension: route daemon Connect to actionable Runtime diagnostics for permissions, native-host failures, ports, and stale extension state (#352, #356; thanks @buhusa and @vincent-peng).

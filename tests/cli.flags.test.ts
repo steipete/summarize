@@ -16,7 +16,8 @@ import {
   parseYoutubeMode,
 } from "../src/flags.js";
 import { buildProgram } from "../src/run/help.js";
-import { normalizeDiarizeArgv } from "../src/run/runner-setup.js";
+import { resolveRunnerFlags } from "../src/run/runner-flags.js";
+import { normalizeDiarizeArgv, prepareRunEnvironment } from "../src/run/runner-setup.js";
 
 describe("cli flag parsing", () => {
   it("defaults summary length to long", () => {
@@ -216,5 +217,41 @@ describe("cli flag parsing", () => {
     expect(() => parseRetriesArg("0x2")).toThrow(/Unsupported --retries/);
     expect(() => parseRetriesArg("2.0")).toThrow(/Unsupported --retries/);
     expect(() => parseRetriesArg("-1")).toThrow(/Unsupported --retries/);
+  });
+
+  it("does not apply YouTube defaults to lookalike hostnames", () => {
+    const url = "https://notyoutube.com/watch?v=abcdefghijk";
+    const normalizedArgv = ["--extract", url];
+    const program = buildProgram();
+    program.parse(normalizedArgv, { from: "user" });
+
+    const flags = resolveRunnerFlags({
+      normalizedArgv,
+      programOpts: program.opts() as Record<string, unknown>,
+      envForRun: {},
+      url,
+    });
+
+    expect(flags.isYoutubeUrl).toBe(false);
+    expect(flags.format).toBe("markdown");
+  });
+
+  it("accepts dash-prefixed inputs after the end-of-options separator", () => {
+    const { normalizedArgv, preSeparatorArgv } = prepareRunEnvironment(
+      ["--extract", "--", "--format=.pdf"],
+      {},
+    );
+    const program = buildProgram();
+    program.parse(normalizedArgv, { from: "user" });
+
+    expect(program.args).toEqual(["--format=.pdf"]);
+    expect(
+      resolveRunnerFlags({
+        normalizedArgv: preSeparatorArgv,
+        programOpts: program.opts() as Record<string, unknown>,
+        envForRun: {},
+        url: null,
+      }).format,
+    ).toBe("markdown");
   });
 });

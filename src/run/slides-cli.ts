@@ -19,6 +19,7 @@ import { formatVersionLine } from "../version.js";
 import { applyHelpStyle, buildSlidesProgram } from "./help.js";
 import { writeVerbose } from "./logging.js";
 import { createMediaCacheFromConfig } from "./media-cache-state.js";
+import { argvBeforeSeparator } from "./runner-setup.js";
 import { renderSlidesInline, type SlidesRenderMode } from "./slides-render.js";
 import { isRichTty, supportsColor } from "./terminal.js";
 
@@ -103,6 +104,7 @@ export async function handleSlidesCliRequest({
     verbose?: boolean;
     debug?: boolean;
   };
+  const preSeparatorArgv = argvBeforeSeparator(normalizedArgv);
 
   const renderMode = parseRenderMode(opts.render);
   if (opts.json && renderMode !== "none") {
@@ -114,7 +116,7 @@ export async function handleSlidesCliRequest({
     slidesOcr: opts.slidesOcr ?? false,
     slidesDir: opts.output ?? opts.slidesDir,
     slidesSceneThreshold: opts.slidesSceneThreshold,
-    slidesSceneThresholdExplicit: normalizedArgv.some(
+    slidesSceneThresholdExplicit: preSeparatorArgv.some(
       (arg) => arg === "--slides-scene-threshold" || arg.startsWith("--slides-scene-threshold="),
     ),
     slidesMax: opts.slidesMax,
