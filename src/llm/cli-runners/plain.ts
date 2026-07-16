@@ -83,7 +83,7 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
     let prompt = options.prompt;
     if (!options.allowTools) {
       prompt +=
-        "\n\nIMPORTANT: Do not use any tools (such as write_file or command), do not create files, and do not output any local file links. Return only the final text response directly.";
+        "\n\nIMPORTANT: Do not use tools or create files. Do not include local file links or work-log narration. Return only the final text response.";
     }
     const { limit, type } = resolveAgyMaxPrintArgLimit(platform);
     const promptSize = type === "chars" ? prompt.length : Buffer.byteLength(prompt, "utf8");

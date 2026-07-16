@@ -315,8 +315,9 @@ describe("runCliModel - agy provider", () => {
     const printIdx = args.indexOf("--print");
     const sentPrompt = args[printIdx + 1];
     expect(sentPrompt).toContain("Summarize this page.");
-    expect(sentPrompt).toMatch(/do not use any tools/i);
-    expect(sentPrompt).toMatch(/do not output any local file links/i);
+    expect(sentPrompt).toMatch(/do not use tools/i);
+    expect(sentPrompt).toMatch(/do not include local file links/i);
+    expect(sentPrompt).toMatch(/work-log narration/i);
   });
 
   it("does not append the no-tools instruction when allowTools is true", async () => {
@@ -355,7 +356,8 @@ describe("runCliModel - agy provider", () => {
     await expect(
       runCliModel({
         provider: "agy",
-        prompt: "x".repeat(resolveAgyMaxPrintArgLimit().limit + 1),
+        // The original prompt fits; the text-only guidance pushes the sent prompt over the limit.
+        prompt: "x".repeat(resolveAgyMaxPrintArgLimit().limit - 1),
         model: null,
         allowTools: false,
         timeoutMs: 1000,
