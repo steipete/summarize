@@ -4,7 +4,11 @@ import type { resolveTranscriptionConfig } from "../../transcript/transcription-
 import { isDirectMediaUrl, isLoomVideoUrl } from "../../url.js";
 import type { LinkPreviewDeps } from "../deps.js";
 import type { CacheMode } from "../types.js";
-import { extractApplePodcastIds, extractSpotifyEpisodeId } from "./podcast-utils.js";
+import {
+  extractApplePodcastIds,
+  extractSpotifyEpisodeId,
+  extractXiaoyuzhouEpisodeId,
+} from "./podcast-utils.js";
 import { isTwitterBroadcastUrl } from "./twitter-utils.js";
 import type { ExtractedLinkContent, MediaTranscriptMode, YoutubeTranscriptMode } from "./types.js";
 import {
@@ -29,6 +33,20 @@ type TranscriptOnlyStrategy = {
 };
 
 const TRANSCRIPT_ONLY_STRATEGIES: readonly TranscriptOnlyStrategy[] = [
+  {
+    matches: (url) => Boolean(extractXiaoyuzhouEpisodeId(url)),
+    requiresTranscriptionProvider: true,
+    availabilityError:
+      "Xiaoyuzhou episode transcription requires a transcription provider (install whisper-cpp or set GROQ_API_KEY, ASSEMBLYAI_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, FAL_KEY, or DEEPGRAM_API_KEY).",
+    transcriptMode: (mode) => mode,
+    failureLabel: "Xiaoyuzhou episode",
+    transcriptNote: "Xiaoyuzhou episode: resolved guarded og:audio media",
+    firecrawlNote: "Xiaoyuzhou short-circuit skipped generic HTML/Firecrawl extraction",
+    markdownNote: "Xiaoyuzhou short-circuit uses transcript content",
+    siteName: "Xiaoyuzhou",
+    video: () => null,
+    isVideoOnly: false,
+  },
   {
     matches: (url) => Boolean(extractSpotifyEpisodeId(url)),
     requiresTranscriptionProvider: true,

@@ -2,6 +2,10 @@
 
 ## 0.21.6 - Unreleased
 
+### Features
+
+- Podcasts: resolve Xiaoyuzhou episode pages through validated audio metadata (#364, thanks @Owengogogo).
+
 ## 0.21.5 - 2026-07-16
 
 ### Fixes

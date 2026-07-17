@@ -52,6 +52,10 @@ export function extractApplePodcastIds(
   }
 }
 
+export function extractXiaoyuzhouEpisodeId(url: string): string | null {
+  return url.match(/^https:\/\/www\.xiaoyuzhoufm\.com\/episode\/([a-f0-9]{24})$/)?.[1] ?? null;
+}
+
 export function isPodcastLikeJsonLdType(type: string | null | undefined): boolean {
   if (!type) return false;
   const normalized = type.toLowerCase();
@@ -66,6 +70,7 @@ export function isPodcastLikeJsonLdType(type: string | null | undefined): boolea
 
 export function isPodcastHost(url: string): boolean {
   try {
+    if (extractXiaoyuzhouEpisodeId(url)) return true;
     const parsed = new URL(url);
     const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
     if (host.startsWith("music.amazon.") && parsed.pathname.includes("/podcasts/")) {

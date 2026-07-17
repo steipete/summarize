@@ -610,12 +610,13 @@ tries Groq first when configured, then ONNX before `whisper.cpp` and the remaini
 - Select the local transcription stage: `--transcriber parakeet|canary|whisper|auto`
 - Docs: `docs/nvidia-onnx-transcription.md`
 
-### Verified podcast services (2025-12-25)
+### Verified podcast services (2026-07-17)
 
 Run: `summarize <url>`
 
 - Apple Podcasts
 - Spotify
+- Xiaoyuzhou
 - Amazon Music / Audible podcast pages
 - Podbean
 - Podchaser

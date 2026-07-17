@@ -41,6 +41,7 @@ export {
 } from "./media-download.js";
 
 export type TranscribeRequest = {
+  fetchImpl?: typeof fetch;
   url: string;
   filenameHint: string;
   durationSecondsHint: number | null;

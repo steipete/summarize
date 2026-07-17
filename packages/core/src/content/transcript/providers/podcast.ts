@@ -1,3 +1,4 @@
+import { extractXiaoyuzhouEpisodeId } from "../../link-preview/content/podcast-utils.js";
 import { isDirectMediaUrl } from "../../url.js";
 import { resolveTranscriptionConfig } from "../transcription-config.js";
 import type { ProviderContext, ProviderFetchOptions, ProviderResult } from "../types.js";
@@ -35,6 +36,7 @@ import {
 } from "./podcast/rss.js";
 import { fetchSpotifyTranscript } from "./podcast/spotify-flow.js";
 import { looksLikeBlockedHtml } from "./podcast/spotify.js";
+import { fetchXiaoyuzhouTranscript } from "./podcast/xiaoyuzhou.js";
 import {
   buildMissingTranscriptionProviderResult,
   resolveTranscriptProviderCapabilities,
@@ -45,6 +47,7 @@ export const canHandle = ({ url, html }: ProviderContext): boolean => {
   // even if the URL contains "podcast" in the path (like "rt_podcast996.mp3")
   if (isDirectMediaUrl(url)) return false;
   if (typeof html === "string" && looksLikeRssOrAtomFeed(html)) return true;
+  if (extractXiaoyuzhouEpisodeId(url)) return true;
   if (PODCAST_PLATFORM_HOST_PATTERN.test(url)) return true;
   return FEED_HINT_URL_PATTERN.test(url);
 };
@@ -81,9 +84,12 @@ export const fetchTranscript = async (
     onProgress: options.onProgress ?? null,
   };
 
-  const transcribe = (request: TranscribeRequest): Promise<TranscriptionResult> =>
+  const transcribe = ({
+    fetchImpl = options.fetch,
+    ...request
+  }: TranscribeRequest): Promise<TranscriptionResult> =>
     transcribeMediaUrl({
-      fetchImpl: options.fetch,
+      fetchImpl,
       transcription,
       notes,
       progress,
@@ -104,6 +110,9 @@ export const fetchTranscript = async (
 
   const directResult = await tryPodcastTranscriptFromFeed(flow);
   if (directResult) return directResult;
+
+  const xiaoyuzhouResult = await fetchXiaoyuzhouTranscript(flow);
+  if (xiaoyuzhouResult) return xiaoyuzhouResult;
 
   const spotifyResult = await fetchSpotifyTranscript(flow);
   if (spotifyResult) return spotifyResult;
