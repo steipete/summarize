@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractApplePodcastIds,
   extractSpotifyEpisodeId,
+  extractXiaoyuzhouEpisodeId,
   isPodcastHost,
   isPodcastLikeJsonLdType,
 } from "../packages/core/src/content/link-preview/content/podcast-utils.js";
@@ -27,6 +28,25 @@ describe("podcast utils", () => {
     expect(extractApplePodcastIds("https://example.com/us/podcast/foo/id12345?i=678")).toBeNull();
   });
 
+  it("matches only canonical Xiaoyuzhou episode URLs", () => {
+    const id = "6a55a96dca0de6c44ae6bb29";
+    expect(extractXiaoyuzhouEpisodeId(`https://www.xiaoyuzhoufm.com/episode/${id}`)).toBe(id);
+
+    for (const url of [
+      `http://www.xiaoyuzhoufm.com/episode/${id}`,
+      `https://xiaoyuzhoufm.com/episode/${id}`,
+      `https://www.xiaoyuzhoufm.com:443/episode/${id}`,
+      `https://www.xiaoyuzhoufm.com/episode/${id}/`,
+      `https://www.xiaoyuzhoufm.com/episode/${id}?from=share`,
+      `https://www.xiaoyuzhoufm.com/episode/${id}#player`,
+      `https://www.xiaoyuzhoufm.com/episode/${id}/extra`,
+      "https://www.xiaoyuzhoufm.com/episode/not-an-id",
+      `https://www.xiaoyuzhoufm.com.evil.example/episode/${id}`,
+    ]) {
+      expect(extractXiaoyuzhouEpisodeId(url), url).toBeNull();
+    }
+  });
+
   it("recognizes podcast-like json ld types and hostnames", () => {
     expect(isPodcastLikeJsonLdType("PodcastEpisode")).toBe(true);
     expect(isPodcastLikeJsonLdType("AudioObject")).toBe(true);
@@ -36,6 +56,10 @@ describe("podcast utils", () => {
     expect(isPodcastHost("https://subdomain.simplecast.com/episodes/foo")).toBe(true);
     expect(isPodcastHost("https://music.amazon.co.uk/podcasts/foo")).toBe(true);
     expect(isPodcastHost("https://music.amazon.co.uk/music/foo")).toBe(false);
+    expect(isPodcastHost("https://www.xiaoyuzhoufm.com/episode/6a55a96dca0de6c44ae6bb29")).toBe(
+      true,
+    );
+    expect(isPodcastHost("https://www.xiaoyuzhoufm.com/podcast/foo")).toBe(false);
     expect(isPodcastHost("bad url")).toBe(false);
   });
 });

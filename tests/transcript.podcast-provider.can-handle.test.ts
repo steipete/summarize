@@ -45,6 +45,20 @@ describe("podcast transcript provider - canHandle + RSS detection branches", () 
         resourceKey: null,
       }),
     ).toBe(true);
+    expect(
+      canHandle({
+        url: "https://www.xiaoyuzhoufm.com/episode/6a55a96dca0de6c44ae6bb29",
+        html: null,
+        resourceKey: null,
+      }),
+    ).toBe(true);
+    expect(
+      canHandle({
+        url: "https://www.xiaoyuzhoufm.com/episode/not-an-id",
+        html: null,
+        resourceKey: null,
+      }),
+    ).toBe(false);
 
     expect(canHandle({ url: "https://example.com/podcast", html: null, resourceKey: null })).toBe(
       true,
