@@ -1,10 +1,19 @@
 # Changelog
 
-## 0.21.6 - Unreleased
+## 0.21.6 - 2026-07-18
+
+### Highlights
+
+- Xiaoyuzhou podcast pages now resolve their validated episode audio automatically for extraction and summaries.
 
 ### Features
 
 - Podcasts: resolve Xiaoyuzhou episode pages through validated audio metadata (#364, thanks @Owengogogo).
+
+### Dependencies and maintenance
+
+- Refresh policy-eligible runtime, test, type, formatting, and lint dependencies.
+- Pin patched `adm-zip` metadata handling for the extension's ONNX runtime toolchain.
 
 ## 0.21.5 - 2026-07-16
 

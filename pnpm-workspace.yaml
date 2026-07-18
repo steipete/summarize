@@ -17,6 +17,7 @@ minimumReleaseAgeExclude:
   - "undici@8.4.1"
 
 overrides:
+  adm-zip: 0.6.0
   protobufjs: 7.6.3
   shell-quote: 1.8.4
   tmp: 0.2.7

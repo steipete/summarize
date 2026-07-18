@@ -111,7 +111,7 @@ function extractBalancedJsonObject(source: string, startAt: number): string | nu
 function parseBootstrapFromScript(source: string): Record<string, unknown> | null {
   const sanitizedSource = sanitizeYoutubeJsonResponse(source.trimStart());
 
-  for (let index = 0; index >= 0; ) {
+  for (let index = 0; index >= 0;) {
     index = sanitizedSource.indexOf(YTCFG_SET_TOKEN, index);
     if (index < 0) {
       break;

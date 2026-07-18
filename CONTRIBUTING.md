@@ -14,7 +14,7 @@ Requirements:
 git clone https://github.com/<your-user>/summarize.git
 cd summarize
 corepack enable
-corepack prepare pnpm@10.33.2 --activate
+corepack prepare pnpm@10.34.5 --activate
 pnpm install --frozen-lockfile
 pnpm -s build
 pnpm -s check

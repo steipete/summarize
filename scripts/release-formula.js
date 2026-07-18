@@ -26,7 +26,7 @@ function stripExistingPlatformConfig(data) {
   const lines = data.split("\n");
   const next = [];
 
-  for (let index = 0; index < lines.length; ) {
+  for (let index = 0; index < lines.length;) {
     const line = lines[index];
     if (/^  on_(macos|linux|arm|intel) do$/.test(line)) {
       index = skipDoBlock(lines, index);

@@ -37,9 +37,9 @@ describe("MiniMax provider", () => {
       input: ["text"],
       contextWindow: 1_000_000,
       cost: {
-        input: 0.6,
-        output: 2.4,
-        cacheRead: 0.12,
+        input: 0.3,
+        output: 1.2,
+        cacheRead: 0.06,
       },
       compat: {
         supportsStore: false,

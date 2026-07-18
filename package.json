@@ -1,6 +1,6 @@
 {
   "name": "@steipete/summarize",
-  "version": "0.21.5",
+  "version": "0.21.6",
   "description": "Link → clean text → summary.",
   "bin": {
     "summarize": "./dist/cli.js",
@@ -60,33 +60,33 @@
     "typecheck": "pnpm -C packages/core typecheck && tsgo -p tsconfig.build.json --noEmit"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^0.80.2",
+    "@earendil-works/pi-ai": "^0.80.6",
     "@steipete/summarize-core": "workspace:*",
     "bpe-lite": "^0.5.2",
     "commander": "^15.0.0",
     "file-type": "^22.0.1",
     "json5": "^2.2.3",
-    "markdansi": "^0.3.1",
+    "markdansi": "^0.3.2",
     "mime": "^4.1.0",
-    "osc-progress": "^0.3.1",
-    "tokentally": "^0.1.1",
+    "osc-progress": "^0.3.2",
+    "tokentally": "^0.1.2",
     "undici": "8.5.0"
   },
   "devDependencies": {
-    "@types/node": "^24.13.2",
+    "@types/node": "^24.13.3",
     "@types/sanitize-html": "^2.16.1",
-    "@typescript/native-preview": "7.0.0-dev.20260626.1",
-    "@vitest/coverage-v8": "^4.1.9",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
+    "@vitest/coverage-v8": "^4.1.10",
     "happy-dom": "^20.10.6",
-    "oxfmt": "0.56.0",
-    "oxlint": "^1.71.0",
+    "oxfmt": "0.58.0",
+    "oxlint": "^1.73.0",
     "oxlint-tsgolint": "^0.24.0",
     "rimraf": "^6.1.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@10.33.2"
+  "packageManager": "pnpm@10.34.5"
 }

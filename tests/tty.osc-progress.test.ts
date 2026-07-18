@@ -27,8 +27,8 @@ describe("osc-progress", () => {
     stop();
 
     expect(writes.length).toBe(2);
-    expect(writes[0]).toContain("\u001b]9;4;3;;Load[31m  file\u001b\\");
-    expect(writes[1]).toContain("\u001b]9;4;0;0;Load[31m  file\u001b\\");
+    expect(writes[0]).toContain("\u001b]9;4;3;;Load[31m]  file\u001b\\");
+    expect(writes[1]).toContain("\u001b]9;4;0;0;Load[31m]  file\u001b\\");
   });
 
   it("writes determinate updates and stops cleanly", () => {
