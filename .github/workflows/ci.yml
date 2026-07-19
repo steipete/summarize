@@ -41,6 +41,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: macOS release contract
+        run: scripts/test-macos-release.sh
+
       - name: Pack
         run: |
           set -euo pipefail

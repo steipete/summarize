@@ -320,32 +320,34 @@ phase_tag() {
 }
 
 phase_github() {
-  banner "GitHub release"
+  banner "Verify CI-published GitHub release"
   require_clean_git
   require_lockstep_versions
-  local version root_dir notes_file
+  local version asset_names expected_asset
   version="$(node -p 'require("./package.json").version')"
-  root_dir="$(pwd)"
-  local assets=(
-    "${root_dir}/dist-bun/summarize-macos-arm64-v${version}.tar.gz"
-    "${root_dir}/dist-bun/summarize-macos-x64-v${version}.tar.gz"
-    "${root_dir}/dist-chrome/summarize-chrome-extension-v${version}.zip"
-    "${root_dir}/dist-firefox/summarize-firefox-extension-v${version}.zip"
-  )
-  for asset in "${assets[@]}"; do
-    if [ ! -f "${asset}" ]; then
-      echo "Missing release asset: ${asset}"
-      exit 1
-    fi
-  done
   if ! git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
     echo "Missing tag v${version}. Run: scripts/release.sh tag"
     exit 1
   fi
-  notes_file="$(mktemp)"
-  write_release_notes "${version}" "${notes_file}"
-  run gh release create "v${version}" "${assets[@]}" --verify-tag --title "v${version}" --notes-file "${notes_file}"
+  if ! asset_names="$(gh release view "v${version}" --json assets --jq '.assets[].name')"; then
+    echo "GitHub Release v${version} is not published yet. The tag-triggered Release workflow owns signing, notarization, verification, and publication."
+    exit 1
+  fi
+  local expected_assets=(
+    "summarize-macos-arm64-v${version}.tar.gz"
+    "summarize-macos-x64-v${version}.tar.gz"
+    "summarize-chrome-extension-v${version}.zip"
+    "summarize-firefox-extension-v${version}.zip"
+    "SHA256SUMS"
+  )
+  for expected_asset in "${expected_assets[@]}"; do
+    if ! grep -Fxq "$expected_asset" <<<"$asset_names"; then
+      echo "GitHub Release v${version} is missing ${expected_asset}"
+      exit 1
+    fi
+  done
   run gh release view "v${version}" --json body --jq .body >/dev/null
+  echo "ok"
 }
 
 phase_homebrew() {
@@ -399,7 +401,7 @@ case "$PHASE" in
     phase_build
     phase_publish
     phase_tag
-    phase_github
+    echo "Tag pushed. The Release workflow now builds, signs, notarizes, verifies, and publishes the GitHub Release."
     ;;
   *)
     echo "Usage: scripts/release.sh [phase]"
@@ -414,11 +416,11 @@ case "$PHASE" in
     echo "  promote   npm dist-tag add current version as latest"
     echo "  deprecate deprecate @steipete/summarize@BAD_VERSION"
     echo "  tag       git tag vX.Y.Z + push tags"
-    echo "  github    create GitHub Release + upload release assets"
+    echo "  github    verify the CI-published GitHub Release and required assets"
     echo "  homebrew  verify Homebrew/core formula has current version"
     echo "  chrome    build + zip Chrome extension"
     echo "  firefox   build + zip Firefox extension"
-    echo "  all       gates + build + verify + publish + tag + github"
+    echo "  all       gates + build + verify + publish + tag (CI publishes GitHub Release)"
     exit 2
     ;;
 esac

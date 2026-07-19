@@ -79,7 +79,7 @@ function chmodX(path) {
   run("chmod", ["+x", path]);
 }
 
-function buildOne({ target, outName, version, gitSha }) {
+function buildOne({ arch, target, outName, version, gitSha }) {
   const outPath = join(distDir, outName);
   console.log(`\n🔨 Building ${outName} (target=${target}, bytecode)…`);
   const env = { ...process.env };
@@ -102,6 +102,7 @@ function buildOne({ target, outName, version, gitSha }) {
     { env },
   );
   chmodX(outPath);
+  run(join(projectRoot, "scripts", "codesign-macos.sh"), [outPath, arch]);
 
   try {
     const st = statSync(outPath);
@@ -151,7 +152,7 @@ function buildMacosTargets({ version }) {
   buildFfmpegWasmRunner();
 
   for (const { arch, target, outName } of MAC_TARGETS) {
-    const binary = buildOne({ target, outName, version, gitSha });
+    const binary = buildOne({ arch, target, outName, version, gitSha });
     const tarPath = packageTarball({ binaryPath: binary, version, arch });
     builds[arch] = { binary, tarPath };
   }

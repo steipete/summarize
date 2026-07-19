@@ -1,0 +1,323 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  validate:
+    name: Validate frozen release
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      target-sha: ${{ steps.release.outputs.target-sha }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Checkout frozen tag
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag, source, npm, and CI
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version=${RELEASE_TAG#v}
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "release tag must be v-prefixed SemVer" >&2
+            exit 1
+          fi
+          if [[ "$(git cat-file -t "refs/tags/$RELEASE_TAG")" != tag ]]; then
+            echo "release tag must be annotated" >&2
+            exit 1
+          fi
+          tag_object=$(git rev-parse "refs/tags/$RELEASE_TAG")
+          target_sha=$(git rev-parse "refs/tags/$RELEASE_TAG^{}")
+          if [[ "$RELEASE_SHA" != "$tag_object" && "$RELEASE_SHA" != "$target_sha" ]]; then
+            echo "release event does not match the annotated tag object or its commit" >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$target_sha" origin/main || {
+            echo "release commit is not reachable from main" >&2
+            exit 1
+          }
+          root_version=$(node -p 'require("./package.json").version')
+          core_version=$(node -p 'require("./packages/core/package.json").version')
+          fallback_version=$(sed -nE 's/^export const FALLBACK_VERSION = "([^"]+)";.*/\1/p' src/version.ts)
+          if [[ "$root_version" != "$version" || "$core_version" != "$version" || "$fallback_version" != "$version" ]]; then
+            echo "release version metadata does not match $version" >&2
+            exit 1
+          fi
+          grep -Eq "^## ${version} - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md || {
+            echo "CHANGELOG.md lacks a dated $version section" >&2
+            exit 1
+          }
+          [[ "$(npm view "@steipete/summarize@$version" version)" == "$version" ]]
+          [[ "$(npm view "@steipete/summarize-core@$version" version)" == "$version" ]]
+          successful_ci=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$target_sha&status=completed&per_page=100" \
+            --jq '[.workflow_runs[] | select(.event == "push" and .conclusion == "success")] | length')
+          if [[ "$successful_ci" -lt 1 ]]; then
+            echo "release commit has no successful push CI run" >&2
+            exit 1
+          fi
+          if gh release view "$RELEASE_TAG" --json tagName >/dev/null 2>&1; then
+            echo "GitHub Release $RELEASE_TAG already exists" >&2
+            exit 1
+          fi
+          echo "target-sha=$target_sha" >>"$GITHUB_OUTPUT"
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+
+  build:
+    name: Build, sign, and notarize
+    needs: validate
+    runs-on: macos-15
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout frozen tag
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.validate.outputs.target-sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.34.5 --activate
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build signed and notarized macOS archives
+        env:
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_PRIVATE_KEY_P8: ${{ secrets.ASC_PRIVATE_KEY_P8 }}
+          MACOS_SIGNING_P12: ${{ secrets.MACOS_SIGNING_P12 }}
+          MACOS_SIGNING_P12_PASSWORD: ${{ secrets.MACOS_SIGNING_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          expected_identity='Developer ID Application: Peter Steinberger (Y5PE65HELJ)'
+          keychain="$RUNNER_TEMP/summarize-release.keychain-db"
+          keychain_phrase=$(openssl rand -hex 24)
+          p12="$RUNNER_TEMP/summarize-release.p12"
+          p8="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          original_keychains="$RUNNER_TEMP/original-keychains.txt"
+          security list-keychains -d user >"$original_keychains"
+          cleanup() {
+            set +e
+            restored=()
+            while IFS= read -r entry; do
+              entry=${entry#"${entry%%[![:space:]]*}"}
+              entry=${entry#\"}
+              entry=${entry%\"}
+              [[ -n "$entry" ]] && restored+=("$entry")
+            done <"$original_keychains"
+            [[ ${#restored[@]} -eq 0 ]] || security list-keychains -d user -s "${restored[@]}"
+            security delete-keychain "$keychain" >/dev/null 2>&1 || true
+            rm -f "$p12" "$p8" "$original_keychains"
+          }
+          trap cleanup EXIT
+
+          printf %s "$MACOS_SIGNING_P12" | base64 -D >"$p12"
+          printf %s "$ASC_PRIVATE_KEY_P8" >"$p8"
+          chmod 600 "$p12" "$p8"
+          security create-keychain -p "$keychain_phrase" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_phrase" "$keychain"
+          security import "$p12" \
+            -k "$keychain" \
+            -P "$MACOS_SIGNING_P12_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$keychain_phrase" \
+            "$keychain" >/dev/null
+          current=()
+          while IFS= read -r entry; do
+            entry=${entry#"${entry%%[![:space:]]*}"}
+            entry=${entry#\"}
+            entry=${entry%\"}
+            [[ -n "$entry" ]] && current+=("$entry")
+          done <"$original_keychains"
+          security list-keychains -d user -s "$keychain" "${current[@]}"
+          identities=$(security find-identity -v -p codesigning "$keychain")
+          [[ "$(grep -F -c "$expected_identity" <<<"$identities")" == 1 ]] || {
+            echo "CI keychain does not contain exactly one policy identity" >&2
+            exit 1
+          }
+
+          env \
+            SUMMARIZE_OFFICIAL_RELEASE=1 \
+            CODESIGN_IDENTITY="$expected_identity" \
+            CODESIGN_KEYCHAIN="$keychain" \
+            ASC_KEY_ID="$ASC_KEY_ID" \
+            ASC_ISSUER_ID="$ASC_ISSUER_ID" \
+            ASC_PRIVATE_KEY_PATH="$p8" \
+            pnpm -s build:bun:test
+
+      - name: Build browser extension archives
+        run: |
+          scripts/release.sh chrome
+          scripts/release.sh firefox
+
+      - name: Freeze release payload
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-payload/assets
+          cp \
+            "dist-bun/summarize-macos-arm64-v${VERSION}.tar.gz" \
+            "dist-bun/summarize-macos-x64-v${VERSION}.tar.gz" \
+            "dist-chrome/summarize-chrome-extension-v${VERSION}.zip" \
+            "dist-firefox/summarize-firefox-extension-v${VERSION}.zip" \
+            release-payload/assets/
+          awk -v start="$VERSION" '
+            BEGIN { p=0 }
+            $0 ~ ("^## " start "([ -]|$)") { p=1; next }
+            p && $0 ~ /^## / { exit }
+            p { print }
+          ' CHANGELOG.md >release-payload/RELEASE-NOTES.md
+          grep -q '[^[:space:]]' release-payload/RELEASE-NOTES.md
+          cd release-payload/assets
+          shasum -a 256 summarize-* >SHA256SUMS
+          shasum -a 256 -c SHA256SUMS
+
+      - name: Upload immutable release payload
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: release-${{ needs.validate.outputs.target-sha }}
+          path: release-payload
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  verify:
+    name: Verify notarized macOS archive (${{ matrix.arch }})
+    needs: [validate, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+            archive_arch: arm64
+          - arch: x86_64
+            runner: macos-15-intel
+            archive_arch: x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout frozen tag
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ needs.validate.outputs.target-sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+
+      - name: Download immutable release payload
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: release-${{ needs.validate.outputs.target-sha }}
+          path: release-payload
+
+      - name: Verify checksums, signature, notarization, and execution
+        env:
+          ARCH: ${{ matrix.arch }}
+          ARCHIVE_ARCH: ${{ matrix.archive_arch }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd release-payload/assets
+          shasum -a 256 -c SHA256SUMS
+          cd ../..
+          scripts/verify-macos-release.sh \
+            "release-payload/assets/summarize-macos-${ARCHIVE_ARCH}-v${VERSION}.tar.gz" \
+            "$ARCH" \
+            "$VERSION"
+
+  publish:
+    name: Publish verified GitHub Release
+    needs: [validate, build, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Download verified release payload
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: release-${{ needs.validate.outputs.target-sha }}
+          path: release-payload
+
+      - name: Publish exact verified bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          TARGET_SHA: ${{ needs.validate.outputs.target-sha }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd release-payload/assets
+          sha256sum -c SHA256SUMS
+          cd ../..
+
+          object=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '"\(.object.type) \(.object.sha)"')
+          object_type=
+          object_sha=
+          for _ in {1..8}; do
+            read -r object_type object_sha <<<"$object"
+            [[ "$object_type" == tag ]] || break
+            object=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$object_sha" --jq '"\(.object.type) \(.object.sha)"')
+          done
+          if [[ "$object_type" != commit || "$object_sha" != "$TARGET_SHA" ]]; then
+            echo "release tag moved away from the validated commit" >&2
+            exit 1
+          fi
+
+          release_flags=()
+          if [[ "$VERSION" == *-* ]]; then
+            release_flags+=(--prerelease --latest=false)
+          fi
+          gh release create "$RELEASE_TAG" \
+            release-payload/assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "$RELEASE_TAG" \
+            --notes-file release-payload/RELEASE-NOTES.md \
+            "${release_flags[@]}"

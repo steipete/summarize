@@ -3,9 +3,10 @@
 Ship is **not done** until:
 
 - npm is published
-- GitHub Release has the Bun tarball asset
+- GitHub Release has both Developer ID-signed and Apple-notarized Bun tarball assets
 - GitHub Release has the Chrome extension zip
 - GitHub Release has the Firefox extension zip
+- GitHub Release has `SHA256SUMS` for the exact CI-verified assets
 - Homebrew/core formula is updated + `brew install summarize` verifies
 
 ## Version sources (keep in sync)
@@ -33,9 +34,10 @@ Ship is **not done** until:
    - `pnpm -s check`
    - `pnpm -s build`
 
-3. Build Bun artifact (prints sha256 + creates tarball)
+3. Build Bun artifact locally (unsigned smoke proof only)
    - `pnpm -s build:bun:test`
    - Artifacts: `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`, `dist-bun/summarize-macos-x64-v<ver>.tar.gz`
+   - Local artifacts are not releasable. The tag-triggered Release workflow rebuilds the frozen source, signs and notarizes both Mach-O executables, and packages those CI-produced bytes.
 
 4. Build Chrome extension artifact
    - `pnpm -C apps/chrome-extension build`
@@ -68,33 +70,18 @@ Ship is **not done** until:
    git push --tags
    ```
 
+   - The tag must be annotated, match all three version sources, point to a commit reachable from `main`, and already have successful push CI.
+   - Pushing the tag triggers `.github/workflows/release.yml`. Do not upload local `dist-bun` artifacts.
+
 8. GitHub Release + assets
 
    ```bash
-   ver="$(node -p 'require(\"./package.json\").version')"
-
-   # Notes = full changelog section(s), but without a duplicated version header.
-   # If you skipped GitHub Releases for some versions, set prev to the last released version
-   # and include all sections since then.
-   prev="0.6.1"
-
-   awk -v start="$ver" -v stop="$prev" '
-     BEGIN { p=0 }
-     $0 ~ ("^## " start " ") { p=1; next }
-     $0 ~ ("^## " stop " ") { p=0 }
-     p { print }
-   ' CHANGELOG.md >"/tmp/summarize-v${ver}-notes.md"
-
-   gh release create "v${ver}" \
-     "dist-bun/summarize-macos-arm64-v${ver}.tar.gz" \
-     "dist-bun/summarize-macos-x64-v${ver}.tar.gz" \
-     "dist-chrome/summarize-chrome-extension-v${ver}.zip" \
-     "dist-firefox/summarize-firefox-extension-v${ver}.zip" \
-     --title "v${ver}" \
-     --notes-file "/tmp/summarize-v${ver}-notes.md"
+   scripts/release.sh github
    ```
 
-   - Verify notes render (real newlines): `gh release view v<ver> --json body --jq .body`
+   - The Release workflow imports the personal Developer ID p12 into an ephemeral keychain, builds and notarizes both Bun executables, freezes all four archives plus checksums into one Actions artifact, and verifies each macOS archive on its native architecture without signing credentials.
+   - A separate publisher creates the GitHub Release only after both verifiers pass. `scripts/release.sh github` is verification-only and refuses a missing or incomplete CI-published release.
+   - Verify notes render with real newlines: `gh release view v<ver> --json body --jq .body`.
 
 9. Homebrew/core verify
    - Homebrew/core is autobumped from the GitHub Release; this can lag the npm/GitHub release.
@@ -111,7 +98,7 @@ Notes:
 
 - npm may prompt for browser auth when `npm config get auth-type` is `web`. For scripted publishes, create auth in the `$npm` tmux/1Password workflow and pass OTP as `NPM_OTP` only when needed.
 - Publishing with raw `npm publish` is forbidden here. Use `pnpm publish` only; it rewrites `workspace:*` dependencies in the packed CLI metadata.
-- `scripts/release.sh publish` uses `next` first, then exact-version smoke, then `latest`. Tag/GitHub release come after that smoke passes.
+- `scripts/release.sh publish` uses `next` first, then exact-version smoke, then `latest`. The annotated tag comes after that smoke passes; CI owns the GitHub Release.
 - `prepare` runs `pnpm build` automatically during publish.
 
 Helper: `scripts/release.sh` (phases: `gates|build|bun|chrome|firefox|verify|publish|smoke|promote|tag|github|homebrew|deprecate|all`).
@@ -128,7 +115,7 @@ Goal:
 
 1. Build the Bun artifact
    - `pnpm build:bun:test`
-   - This uses `bun build --compile --bytecode`, prints tarball sha256s, and smokes the host binary.
+   - This uses `bun build --compile --bytecode`, prints tarball sha256s, and smokes the host binary. Without `SUMMARIZE_OFFICIAL_RELEASE=1`, these are local proof artifacts only.
 
 2. Smoke test locally (before uploading)
    - `dist-bun/summarize --version`
@@ -136,13 +123,11 @@ Goal:
    - Optional: run one real file/link summary.
 
 3. GitHub Release (when approved)
-   - Create a release for tag `v<ver>` with clean notes (no duplicated version header inside the notes body):
-     - Prefer `--title "v<ver>"` and `--notes-file …` (avoid pasting text with escaped `\\n`)
-     - Notes should start with sections like `### Changes`, not `## v<ver>` (the release already has a title)
-   - Upload `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`
-   - Upload `dist-bun/summarize-macos-x64-v<ver>.tar.gz`
-   - Verify notes render correctly:
-     - `gh release view v<ver> --json body --jq .body` (should show real newlines, not literal `\\n`)
+   - Push the annotated `v<ver>` tag. The Release workflow is the only supported publisher.
+   - Each Bun executable is signed after compilation with `Developer ID Application: Peter Steinberger (Y5PE65HELJ)`, identifier `com.steipete.summarize.cli`, hardened runtime, a trusted timestamp, and the two Bun JIT entitlements in `scripts/macos-release.entitlements`.
+   - Apple notarization is submitted for each signed executable. Raw Mach-O files cannot carry stapled tickets, so both CI verifiers require `codesign --check-notarization -R=notarized` online.
+   - The browser extension zips and npm tarballs contain no Mach-O and stay outside Apple signing.
+   - Repository secrets are `MACOS_SIGNING_P12`, `MACOS_SIGNING_P12_PASSWORD`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `ASC_PRIVATE_KEY_P8`. Never pass them to verifier jobs.
 
 4. Homebrew/core verification (after autobump)
    ```bash
