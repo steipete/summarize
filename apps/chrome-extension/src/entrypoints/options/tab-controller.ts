@@ -66,9 +66,22 @@ export function createOptionsTabs({
       clearRequestedTab(tabIds);
       consumedRequestedTab = null;
     }
-    onTabActivated?.(tabId);
-    onLogsActiveChange(tabId === "logs");
-    onProcessesActiveChange(tabId === "processes");
+    const notifyActivation = () => {
+      onTabActivated?.(tabId);
+      onLogsActiveChange(tabId === "logs");
+      onProcessesActiveChange(tabId === "processes");
+    };
+    // The initial call runs while the caller is still destructuring the
+    // createOptionsTabs return value, so synchronous callbacks can observe a
+    // half-initialized module: with a persisted "logs"/"processes" tab the
+    // viewers' isActive() reads resolveActiveTab before it is assigned and the
+    // options page crashes during load. Defer only the initial notification by
+    // one microtask; tab DOM state is still applied synchronously.
+    if (options.initial) {
+      queueMicrotask(notifyActivation);
+    } else {
+      notifyActivation();
+    }
   };
 
   const storedTab = storage?.getItem(storageKey) ?? null;
