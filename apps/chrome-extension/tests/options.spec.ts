@@ -73,6 +73,26 @@ test("options restores the active tab from browser local storage", async ({
   }
 });
 
+test("options restores the Logs tab without aborting startup", async ({
+  browserName: _browserName,
+}, testInfo) => {
+  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+
+  try {
+    const page = await openExtensionPage(harness, "options.html", "#tabs");
+    await page.click("#tab-logs");
+    await expect(page.locator("#panel-logs")).toBeVisible();
+
+    await page.reload();
+    await expect(page.locator("#tab-logs")).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("#panel-logs")).toBeVisible();
+
+    assertNoErrors(harness);
+  } finally {
+    await closeExtension(harness.context, harness.userDataDir);
+  }
+});
+
 test("options themes password and URL fields like the provider control", async ({
   browserName: _browserName,
 }, testInfo) => {

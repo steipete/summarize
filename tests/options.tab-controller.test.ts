@@ -1,6 +1,9 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createOptionsTabs } from "../apps/chrome-extension/src/entrypoints/options/tab-controller.js";
+import {
+  createOptionsTabs,
+  resolveActiveOptionsTab,
+} from "../apps/chrome-extension/src/entrypoints/options/tab-controller.js";
 
 const storageKey = "summarize:options-tab";
 
@@ -91,6 +94,22 @@ describe("options tab controller", () => {
     storage.setItem(storageKey, "logs");
     window.history.replaceState(null, "", "/options.html?tab=missing");
     const harness = createHarness();
+
+    const tabs = createOptionsTabs({
+      ...harness,
+      storageKey,
+    });
+
+    expect(tabs.resolveActiveTab()).toBe("logs");
+    expect(harness.onLogsActiveChange).toHaveBeenCalledWith(true);
+  });
+
+  it("lets initial callbacks resolve the active tab during controller creation", () => {
+    storage.setItem(storageKey, "logs");
+    const harness = createHarness();
+    harness.onLogsActiveChange.mockImplementation((active) => {
+      if (active) expect(resolveActiveOptionsTab(harness.buttons)).toBe("logs");
+    });
 
     const tabs = createOptionsTabs({
       ...harness,

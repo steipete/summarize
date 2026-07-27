@@ -4,6 +4,7 @@
 
 - Release pipeline: sign the Bun macOS executables with the personal Developer ID, notarize them with Apple, verify both architectures without signing credentials, and publish only the verified artifacts.
 - Dependencies: refresh the policy-eligible CLI, browser-media, test, formatting, and lint toolchain, including patched protobufjs and sharp transitive releases.
+- Chrome extension: restore persisted Logs and Processes tabs without aborting options-page startup (#370, #371; thanks @ostehost).
 
 ## 0.21.6 - 2026-07-18
 

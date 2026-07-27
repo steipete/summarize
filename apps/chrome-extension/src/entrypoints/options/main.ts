@@ -20,7 +20,7 @@ import {
   createAutomationPermissionsController,
   createStatusController,
 } from "./support";
-import { createOptionsTabs } from "./tab-controller";
+import { createOptionsTabs, resolveActiveOptionsTab } from "./tab-controller";
 
 declare const __SUMMARIZE_GIT_HASH__: string;
 declare const __SUMMARIZE_VERSION__: string;
@@ -106,6 +106,8 @@ const {
   tabPanels,
   logsLevelInputs,
 } = getOptionsElements();
+
+const resolveActiveTab = () => resolveActiveOptionsTab(tabButtons);
 
 let isInitializing = true;
 const { setStatus, flashStatus } = createStatusController(statusEl);
@@ -197,7 +199,7 @@ const processesViewer = createProcessesViewer({
 
 let refreshBrowserCacheStatus = () => {};
 
-const { resolveActiveTab } = createOptionsTabs({
+createOptionsTabs({
   root: tabsRoot,
   buttons: tabButtons,
   panels: tabPanels,

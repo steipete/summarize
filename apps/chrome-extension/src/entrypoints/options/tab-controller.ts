@@ -22,6 +22,11 @@ function clearRequestedTab(tabIds: Set<string>) {
   window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
+export function resolveActiveOptionsTab(buttons: readonly HTMLButtonElement[]): string | null {
+  const active = buttons.find((button) => button.getAttribute("aria-selected") === "true");
+  return active?.dataset.tab ?? null;
+}
+
 export function createOptionsTabs({
   root,
   buttons,
@@ -46,10 +51,7 @@ export function createOptionsTabs({
   const requestedTab = getRequestedTab(tabIds);
   let consumedRequestedTab = requestedTab;
 
-  const resolveActiveTab = (): string | null => {
-    const active = buttons.find((button) => button.getAttribute("aria-selected") === "true");
-    return active?.dataset.tab ?? null;
-  };
+  const resolveActiveTab = () => resolveActiveOptionsTab(buttons);
 
   const setActiveTab = (tabId: string, options: { initial?: boolean } = {}) => {
     if (!tabIds.has(tabId)) return;
