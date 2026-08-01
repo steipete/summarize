@@ -4,6 +4,7 @@ const LEGACY_API_KEY_ENV_MAP = {
   openai: "OPENAI_API_KEY",
   nvidia: "NVIDIA_API_KEY",
   minimax: "MINIMAX_API_KEY",
+  orcarouter: "ORCAROUTER_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
   google: "GEMINI_API_KEY",
   xai: "XAI_API_KEY",

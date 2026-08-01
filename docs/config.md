@@ -474,19 +474,21 @@ Override API endpoints for any provider to use proxies, gateways, or compatible 
   "xai": { "baseUrl": "https://my-xai-proxy.example.com" },
   "zai": { "baseUrl": "https://api.zhipuai.cn/paas/v4" },
   "minimax": { "baseUrl": "https://api.minimax.io/v1" },
+  "orcarouter": { "baseUrl": "https://api.orcarouter.ai/v1" },
   "ollama": { "baseUrl": "http://localhost:11434/v1" }
 }
 ```
 
 Or via environment variables (which take precedence over config):
 
-| Provider  | Environment Variable(s)                      |
-| --------- | -------------------------------------------- |
-| OpenAI    | `OPENAI_BASE_URL`                            |
-| NVIDIA    | `NVIDIA_BASE_URL`                            |
-| Anthropic | `ANTHROPIC_BASE_URL`                         |
-| Google    | `GOOGLE_BASE_URL` (alias: `GEMINI_BASE_URL`) |
-| xAI       | `XAI_BASE_URL`                               |
-| Z.AI      | `Z_AI_BASE_URL` (alias: `ZAI_BASE_URL`)      |
-| MiniMax   | `MINIMAX_BASE_URL`                           |
-| Ollama    | `OLLAMA_BASE_URL`                            |
+| Provider   | Environment Variable(s)                      |
+| ---------- | -------------------------------------------- |
+| OpenAI     | `OPENAI_BASE_URL`                            |
+| NVIDIA     | `NVIDIA_BASE_URL`                            |
+| Anthropic  | `ANTHROPIC_BASE_URL`                         |
+| Google     | `GOOGLE_BASE_URL` (alias: `GEMINI_BASE_URL`) |
+| xAI        | `XAI_BASE_URL`                               |
+| Z.AI       | `Z_AI_BASE_URL` (alias: `ZAI_BASE_URL`)      |
+| MiniMax    | `MINIMAX_BASE_URL`                           |
+| OrcaRouter | `ORCAROUTER_BASE_URL`                        |
+| Ollama     | `OLLAMA_BASE_URL`                            |

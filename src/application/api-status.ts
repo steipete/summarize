@@ -20,6 +20,8 @@ export function resolveRunApiStatus(envState: EnvState): RunApiStatus {
     nvidiaBaseUrl: envState.nvidiaBaseUrl,
     minimaxApiKey: envState.minimaxApiKey,
     minimaxBaseUrl: envState.minimaxBaseUrl,
+    orcarouterApiKey: envState.orcarouterApiKey,
+    orcarouterBaseUrl: envState.orcarouterBaseUrl,
     ollamaBaseUrl: envState.ollamaBaseUrl,
     firecrawlApiKey: envState.firecrawlApiKey,
     firecrawlConfigured: envState.firecrawlConfigured,

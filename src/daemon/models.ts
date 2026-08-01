@@ -16,6 +16,7 @@ type ModelPickerProviders = {
   openai: boolean;
   nvidia: boolean;
   minimax: boolean;
+  orcarouter: boolean;
   google: boolean;
   anthropic: boolean;
   openrouter: boolean;
@@ -140,7 +141,7 @@ async function appendDiscoveredOpenAiCompatibleModels({
   timeoutMs,
 }: {
   options: ModelPickerOption[];
-  provider: Extract<GatewayProvider, "openai" | "nvidia" | "minimax" | "ollama">;
+  provider: Extract<GatewayProvider, "openai" | "nvidia" | "minimax" | "orcarouter" | "ollama">;
   label: string;
   baseUrl: string;
   apiKey: string | null;
@@ -187,6 +188,7 @@ export async function buildModelPickerOptions({
     openai: Boolean(envState.apiKey),
     nvidia: Boolean(envState.nvidiaApiKey),
     minimax: Boolean(envState.minimaxApiKey),
+    orcarouter: Boolean(envState.orcarouterApiKey),
     google: envState.googleConfigured,
     anthropic: envState.anthropicConfigured,
     openrouter: envState.openrouterConfigured,
@@ -245,6 +247,13 @@ export async function buildModelPickerOptions({
       enabled: providers.minimax,
       baseUrl: envState.minimaxBaseUrl,
       apiKey: envState.minimaxApiKey,
+    },
+    {
+      provider: "orcarouter",
+      label: "OrcaRouter",
+      enabled: providers.orcarouter,
+      baseUrl: envState.orcarouterBaseUrl,
+      apiKey: envState.orcarouterApiKey,
     },
   ] as const;
   for (const entry of discoveryProviders) {

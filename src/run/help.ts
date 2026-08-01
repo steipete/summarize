@@ -164,7 +164,7 @@ export function buildProgram() {
     )
     .option(
       "--model <model>",
-      "LLM model id: auto, <name>, cli/<provider>/<model>, xai/..., openai/..., nvidia/..., minimax/..., google/..., anthropic/..., zai/... or openrouter/<author>/<slug> (default: auto)",
+      "LLM model id: auto, <name>, cli/<provider>/<model>, xai/..., openai/..., nvidia/..., minimax/..., orcarouter/..., google/..., anthropic/..., zai/... or openrouter/<author>/<slug> (default: auto)",
       undefined,
     )
     .option(
@@ -345,6 +345,8 @@ ${heading("Env Vars")}
   NVIDIA_BASE_URL       optional (override NVIDIA OpenAI-compatible API endpoint)
   MINIMAX_API_KEY       optional (required for minimax/... models)
   MINIMAX_BASE_URL      optional (override MiniMax OpenAI-compatible API endpoint)
+  ORCAROUTER_API_KEY    optional (required for orcarouter/... models)
+  ORCAROUTER_BASE_URL   optional (override OrcaRouter OpenAI-compatible API endpoint)
   OPENROUTER_API_KEY    optional (routes openai/... models through OpenRouter)
   GITHUB_TOKEN          optional (required for github-copilot/... models; GH_TOKEN also works)
   Z_AI_API_KEY          optional (required for zai/... models)

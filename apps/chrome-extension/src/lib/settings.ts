@@ -77,6 +77,7 @@ export type DirectProvider =
   | "zai"
   | "nvidia"
   | "minimax"
+  | "orcarouter"
   | "github"
   | "ollama";
 
@@ -239,6 +240,7 @@ const directProviders = new Set<DirectProvider>([
   "zai",
   "nvidia",
   "minimax",
+  "orcarouter",
   "github",
   "ollama",
 ]);

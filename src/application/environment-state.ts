@@ -1,6 +1,10 @@
 import { isOpenRouterBaseUrl, resolveConfiguredBaseUrl } from "@steipete/summarize-core";
 import type { CliProvider, SummarizeConfig } from "../config.js";
-import { DEFAULT_MINIMAX_BASE_URL, DEFAULT_OLLAMA_BASE_URL } from "../llm/provider-profile.js";
+import {
+  DEFAULT_MINIMAX_BASE_URL,
+  DEFAULT_OLLAMA_BASE_URL,
+  DEFAULT_ORCAROUTER_BASE_URL,
+} from "../llm/provider-profile.js";
 import { resolveCliAvailability, resolveExecutableInPath } from "./environment.js";
 
 export type EnvState = {
@@ -21,6 +25,8 @@ export type EnvState = {
   nvidiaBaseUrl: string;
   minimaxApiKey: string | null;
   minimaxBaseUrl: string;
+  orcarouterApiKey: string | null;
+  orcarouterBaseUrl: string;
   ollamaBaseUrl: string;
   firecrawlApiKey: string | null;
   firecrawlConfigured: boolean;
@@ -84,6 +90,10 @@ export function resolveEnvState({
     envValue: envForRun.MINIMAX_BASE_URL,
     configValue: configForCli?.minimax?.baseUrl,
   });
+  const orcarouterBaseUrl = resolveConfiguredBaseUrl({
+    envValue: envForRun.ORCAROUTER_BASE_URL,
+    configValue: configForCli?.orcarouter?.baseUrl,
+  });
   const ollamaBaseUrl = resolveConfiguredBaseUrl({
     envValue: envForRun.OLLAMA_BASE_URL,
     configValue: configForCli?.ollama?.baseUrl,
@@ -106,6 +116,8 @@ export function resolveEnvState({
         : null;
   const minimaxKeyRaw =
     typeof envForRun.MINIMAX_API_KEY === "string" ? envForRun.MINIMAX_API_KEY : null;
+  const orcarouterKeyRaw =
+    typeof envForRun.ORCAROUTER_API_KEY === "string" ? envForRun.ORCAROUTER_API_KEY : null;
   const apiKey =
     typeof openaiBaseUrl === "string" && isOpenRouterBaseUrl(openaiBaseUrl)
       ? (openRouterKeyRaw ?? openaiKeyRaw)
@@ -165,6 +177,9 @@ export function resolveEnvState({
     (nvidiaBaseUrl?.trim() ?? "") || "https://integrate.api.nvidia.com/v1";
   const minimaxApiKey = minimaxKeyRaw?.trim() ?? null;
   const minimaxBaseUrlEffective = (minimaxBaseUrl?.trim() ?? "") || DEFAULT_MINIMAX_BASE_URL;
+  const orcarouterApiKey = orcarouterKeyRaw?.trim() ?? null;
+  const orcarouterBaseUrlEffective =
+    (orcarouterBaseUrl?.trim() ?? "") || DEFAULT_ORCAROUTER_BASE_URL;
   const ollamaBaseUrlEffective = (ollamaBaseUrl?.trim() ?? "") || DEFAULT_OLLAMA_BASE_URL;
   const googleApiKey = googleKeyRaw?.trim() ?? null;
   const anthropicApiKey = anthropicKeyRaw?.trim() ?? null;
@@ -212,6 +227,8 @@ export function resolveEnvState({
     nvidiaBaseUrl: nvidiaBaseUrlEffective,
     minimaxApiKey,
     minimaxBaseUrl: minimaxBaseUrlEffective,
+    orcarouterApiKey,
+    orcarouterBaseUrl: orcarouterBaseUrlEffective,
     ollamaBaseUrl: ollamaBaseUrlEffective,
     firecrawlApiKey,
     firecrawlConfigured,

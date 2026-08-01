@@ -16,6 +16,7 @@ const DEFAULT_MODELS: Record<DirectProvider, string> = {
   zai: "glm-4.5-flash",
   nvidia: "meta/llama-3.3-70b-instruct",
   minimax: "MiniMax-M2.1",
+  orcarouter: "openai/gpt-5.5",
   github: "openai/gpt-5-mini",
   ollama: "llama3.2",
 };
@@ -29,6 +30,7 @@ const DEFAULT_BASE_URLS: Record<DirectProvider, string> = {
   zai: "https://api.z.ai/api/paas/v4",
   nvidia: "https://integrate.api.nvidia.com/v1",
   minimax: "https://api.minimax.io/v1",
+  orcarouter: "https://api.orcarouter.ai/v1",
   github: "https://models.github.ai/inference",
   ollama: "http://localhost:11434/v1",
 };
@@ -42,6 +44,7 @@ const PROVIDER_LABELS: Record<DirectProvider, string> = {
   zai: "Z.AI",
   nvidia: "NVIDIA",
   minimax: "MiniMax",
+  orcarouter: "OrcaRouter",
   github: "GitHub Models",
   ollama: "Ollama",
 };

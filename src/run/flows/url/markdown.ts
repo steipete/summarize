@@ -31,6 +31,7 @@ export type MarkdownConverters = {
     | "zai"
     | "nvidia"
     | "minimax"
+    | "orcarouter"
     | "github-copilot"
     | "ollama";
   markdownModel: MarkdownModel | null;

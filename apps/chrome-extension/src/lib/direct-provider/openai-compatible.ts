@@ -72,7 +72,7 @@ export async function* streamOpenAiCompatible(
     Authorization: `Bearer ${config.apiKey}`,
     "content-type": "application/json",
   };
-  if (config.provider === "openrouter") {
+  if (config.provider === "openrouter" || config.provider === "orcarouter") {
     headers["HTTP-Referer"] = "https://summarize.sh";
     headers["X-Title"] = "Summarize";
   }

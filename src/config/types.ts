@@ -141,6 +141,7 @@ export type ApiKeysConfig = {
   openai?: string;
   nvidia?: string;
   minimax?: string;
+  orcarouter?: string;
   anthropic?: string;
   google?: string;
   xai?: string;
@@ -207,6 +208,17 @@ export type MinimaxConfig = {
    * Default: https://api.minimax.io/v1
    *
    * Prefer env `MINIMAX_BASE_URL` when you need per-run overrides.
+   */
+  baseUrl?: string;
+};
+
+export type OrcarouterConfig = {
+  /**
+   * Override the OrcaRouter OpenAI-compatible API base URL.
+   *
+   * Default: https://api.orcarouter.ai/v1
+   *
+   * Prefer env `ORCAROUTER_BASE_URL` when you need per-run overrides.
    */
   baseUrl?: string;
 };
@@ -318,6 +330,7 @@ export type SummarizeConfig = {
   openai?: OpenAiConfig;
   nvidia?: NvidiaConfig;
   minimax?: MinimaxConfig;
+  orcarouter?: OrcarouterConfig;
   anthropic?: AnthropicConfig;
   google?: GoogleConfig;
   xai?: XaiConfig;

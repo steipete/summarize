@@ -21,7 +21,7 @@ import {
   requiredEnvForGatewayProvider,
   type GatewayProvider,
 } from "../llm/provider-capabilities.js";
-import { resolveMinimaxModel } from "../llm/providers/models.js";
+import { resolveMinimaxModel, resolveOrcarouterModel } from "../llm/providers/models.js";
 import { createSyntheticModel } from "../llm/providers/shared.js";
 import type { AutoModelAttempt } from "../model-auto.js";
 import { resolveRunOverrides } from "../run/run-settings.js";
@@ -35,6 +35,7 @@ type AgentApiKeys = {
   zaiApiKey: string | null;
   nvidiaApiKey: string | null;
   minimaxApiKey: string | null;
+  orcarouterApiKey: string | null;
   githubApiKey: string | null;
 };
 
@@ -156,6 +157,7 @@ export function resolveApiKeyForModel({
     zai: apiKeys.zaiApiKey,
     nvidia: apiKeys.nvidiaApiKey,
     minimax: apiKeys.minimaxApiKey,
+    orcarouter: apiKeys.orcarouterApiKey,
     "github-copilot": apiKeys.githubApiKey,
     ollama: apiKeys.openaiApiKey ?? "ollama",
   };
@@ -231,6 +233,7 @@ export async function resolveAgentModel({
     zaiApiKey,
     nvidiaApiKey,
     minimaxApiKey,
+    orcarouterApiKey,
     envForAuto,
     cliAvailability,
   } = context;
@@ -244,6 +247,7 @@ export async function resolveAgentModel({
     zaiApiKey,
     nvidiaApiKey,
     minimaxApiKey,
+    orcarouterApiKey,
     githubApiKey: resolveGitHubModelsApiKey(env),
   };
 
@@ -280,6 +284,18 @@ export async function resolveAgentModel({
         provider,
         model: resolveMinimaxModel({
           modelId: modelId,
+          context: {
+            messages: [{ role: "user", content: pageContent, timestamp: Date.now() }],
+          },
+          openaiBaseUrlOverride: baseUrl,
+        }),
+      };
+    }
+    if (provider === "orcarouter") {
+      return {
+        provider,
+        model: resolveOrcarouterModel({
+          modelId,
           context: {
             messages: [{ role: "user", content: pageContent, timestamp: Date.now() }],
           },

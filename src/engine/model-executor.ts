@@ -49,6 +49,7 @@ export type ModelExecutorDeps = {
       | "zai"
       | "nvidia"
       | "minimax"
+      | "orcarouter"
       | "github-copilot"
       | "ollama"
       | "cli";

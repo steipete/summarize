@@ -45,7 +45,7 @@ YouTube slide screenshots (from the browser):
 
 Why a daemon/service?
 
-- Direct mode works without the daemon. Auto uses a configured OpenAI, OpenRouter, Anthropic, Gemini, xAI, Z.AI, NVIDIA, MiniMax, GitHub Models, or Ollama provider, otherwise Gemini Nano on-device; keys remain in extension-local storage.
+- Direct mode works without the daemon. Auto uses a configured OpenAI, OpenRouter, Anthropic, Gemini, xAI, Z.AI, NVIDIA, MiniMax, OrcaRouter, GitHub Models, or Ollama provider, otherwise Gemini Nano on-device; keys remain in extension-local storage.
 - The optional daemon adds CLI model fallbacks, shared caches/diagnostics, native ffmpeg, configurable transcription providers, OCR, and broader media support. Chrome reaches it through an explicitly enabled Native Messaging host; retained loopback network access is used only by configured Direct local providers.
 - The service autostarts (launchd/systemd/Scheduled Task) so the Side Panel is always ready.
 
@@ -297,6 +297,7 @@ Examples:
 - `google/gemini-3-flash`
 - `zai/glm-4.7`
 - `minimax/MiniMax-M3`
+- `orcarouter/openai/gpt-5.5`
 - `openrouter/openai/gpt-5-mini` (force OpenRouter)
 
 Note: some models/providers do not support streaming or certain file media types. When that happens, the CLI prints a friendly error (or auto-disables streaming for that model when supported by the provider).
@@ -739,6 +740,7 @@ Set the key matching your chosen `--model`:
 - `OPENAI_API_KEY` (for `openai/...`)
 - `NVIDIA_API_KEY` (for `nvidia/...`)
 - `MINIMAX_API_KEY` (for `minimax/...`)
+- `ORCAROUTER_API_KEY` (for `orcarouter/...`)
 - `ANTHROPIC_API_KEY` (for `anthropic/...`)
 - `XAI_API_KEY` (for `xai/...`)
 - `Z_AI_API_KEY` (for `zai/...`; supports `ZAI_API_KEY` alias)
@@ -833,6 +835,19 @@ MiniMax (OpenAI-compatible):
 ```bash
 export MINIMAX_API_KEY="..."
 summarize "https://example.com" --model minimax/MiniMax-M3
+```
+
+[OrcaRouter](https://www.orcarouter.ai) (OpenAI-compatible routing gateway):
+
+- Set `ORCAROUTER_API_KEY=...`
+- Optional base URL override: `ORCAROUTER_BASE_URL=...` (default `https://api.orcarouter.ai/v1`)
+- Model ids keep their upstream namespace, so pass them exactly as OrcaRouter lists them (e.g.
+  `openai/gpt-5.5`, `anthropic/claude-sonnet-4.6`); `orcarouter/auto` picks the upstream per request
+- With the key set, the model picker and `summarize status` list the gateway's models
+
+```bash
+export ORCAROUTER_API_KEY="sk-orca-..."
+summarize "https://example.com" --model orcarouter/openai/gpt-5.5
 ```
 
 Optional services:

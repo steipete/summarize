@@ -1,5 +1,10 @@
 import type { Api, Context, Model } from "@earendil-works/pi-ai";
-import { DEFAULT_MINIMAX_BASE_URL, DEFAULT_OLLAMA_BASE_URL } from "../provider-profile.js";
+import {
+  DEFAULT_MINIMAX_BASE_URL,
+  DEFAULT_OLLAMA_BASE_URL,
+  DEFAULT_ORCAROUTER_BASE_URL,
+  ORCAROUTER_ATTRIBUTION_HEADERS,
+} from "../provider-profile.js";
 import {
   createSyntheticModel,
   resolveBaseUrlOverride,
@@ -121,6 +126,31 @@ export function resolveMinimaxModel({
   };
 }
 
+export function resolveOrcarouterModel({
+  modelId,
+  context,
+  openaiBaseUrlOverride,
+}: {
+  modelId: string;
+  context: Context;
+  openaiBaseUrlOverride?: string | null;
+}): Model<Api> {
+  const allowImages = wantsImages(context);
+  // OrcaRouter is an OpenAI-compatible routing gateway; treat it like an OpenAI gateway.
+  // Model ids keep their upstream namespace (e.g. `openai/gpt-5.5`, `orcarouter/auto`),
+  // so they never match the pi-ai OpenAI catalog and always resolve synthetically.
+  const api = "openai-completions";
+  const baseUrl = openaiBaseUrlOverride ?? DEFAULT_ORCAROUTER_BASE_URL;
+  return createSyntheticModel({
+    provider: "openai",
+    modelId,
+    api,
+    baseUrl,
+    allowImages,
+    headers: ORCAROUTER_ATTRIBUTION_HEADERS,
+  });
+}
+
 export function resolveOllamaModel({
   modelId,
   context,
@@ -149,7 +179,7 @@ export function resolveOpenAiCompatibleGatewayModel({
   context,
   openaiConfig,
 }: {
-  provider: "zai" | "nvidia" | "minimax" | "ollama";
+  provider: "zai" | "nvidia" | "minimax" | "orcarouter" | "ollama";
   modelId: string;
   context: Context;
   openaiConfig: OpenAiClientConfig;
@@ -169,6 +199,12 @@ export function resolveOpenAiCompatibleGatewayModel({
       });
     case "minimax":
       return resolveMinimaxModel({
+        modelId,
+        context,
+        openaiBaseUrlOverride: openaiConfig.baseURL,
+      });
+    case "orcarouter":
+      return resolveOrcarouterModel({
         modelId,
         context,
         openaiBaseUrlOverride: openaiConfig.baseURL,

@@ -8,7 +8,7 @@ import {
   requiredEnvForCliProvider,
   resolveRequiredEnvForModelId,
 } from "./llm/provider-capabilities.js";
-import { DEFAULT_OLLAMA_BASE_URL } from "./llm/provider-profile.js";
+import { DEFAULT_OLLAMA_BASE_URL, DEFAULT_ORCAROUTER_BASE_URL } from "./llm/provider-profile.js";
 
 export type FixedModelSpec =
   | {
@@ -26,6 +26,7 @@ export type FixedModelSpec =
         | "Z_AI_API_KEY"
         | "NVIDIA_API_KEY"
         | "MINIMAX_API_KEY"
+        | "ORCAROUTER_API_KEY"
         | "GITHUB_TOKEN"
         | "OLLAMA_BASE_URL";
       openaiBaseUrlOverride?: string | null;
@@ -161,6 +162,26 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     };
   }
 
+  if (lower.startsWith("orcarouter/")) {
+    const model = trimmed.slice("orcarouter/".length).trim();
+    if (model.length === 0) {
+      throw new Error("Invalid model id: orcarouter/… is missing the model id");
+    }
+    return {
+      kind: "fixed",
+      transport: "native",
+      userModelId: `orcarouter/${model}`,
+      llmModelId: `orcarouter/${model}`,
+      provider: "orcarouter",
+      openrouterProviders: null,
+      forceOpenRouter: false,
+      requiredEnv: "ORCAROUTER_API_KEY",
+      // Default; can be overridden at runtime via ORCAROUTER_BASE_URL / config.orcarouter.baseUrl.
+      openaiBaseUrlOverride: DEFAULT_ORCAROUTER_BASE_URL,
+      forceChatCompletions: true,
+    };
+  }
+
   if (lower.startsWith("ollama/")) {
     const model = trimmed.slice("ollama/".length).trim();
     if (model.length === 0) {
@@ -285,7 +306,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       };
     }
     throw new Error(
-      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., anthropic/..., xai/..., zai/..., nvidia/..., minimax/..., openrouter/... or cli/....`,
+      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., anthropic/..., xai/..., zai/..., nvidia/..., minimax/..., orcarouter/..., openrouter/... or cli/....`,
     );
   }
 
@@ -302,6 +323,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     | "Z_AI_API_KEY"
     | "NVIDIA_API_KEY"
     | "MINIMAX_API_KEY"
+    | "ORCAROUTER_API_KEY"
     | "GITHUB_TOKEN"
     | "OLLAMA_BASE_URL"
   >;

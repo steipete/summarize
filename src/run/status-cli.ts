@@ -86,6 +86,12 @@ const API_STATUS_PROVIDERS = [
     sources: ["MINIMAX_API_KEY"],
   },
   {
+    provider: "orcarouter",
+    id: "orcarouter",
+    label: "OrcaRouter API",
+    sources: ["ORCAROUTER_API_KEY"],
+  },
+  {
     provider: "github-copilot",
     id: "github-models",
     label: "GitHub Models API",
@@ -321,6 +327,7 @@ async function applyProviderProbes({
     ["ollama", discoveredModels(result.options, "Ollama (")],
     ["nvidia", discoveredModels(result.options, "NVIDIA (")],
     ["minimax", discoveredModels(result.options, "MiniMax (")],
+    ["orcarouter", discoveredModels(result.options, "OrcaRouter (")],
   ]);
 
   for (const provider of providers) {

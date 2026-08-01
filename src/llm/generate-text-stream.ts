@@ -403,6 +403,7 @@ export async function streamTextWithContext({
         | "zai"
         | "nvidia"
         | "minimax"
+        | "orcarouter"
         | "github-copilot"
         | "ollama";
       const openaiConfig: OpenAiClientConfig = resolveOpenAiCompatibleClientConfigForProvider({

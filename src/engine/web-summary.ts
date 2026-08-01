@@ -70,6 +70,8 @@ export type WebSummaryContext = {
       | "nvidiaBaseUrl"
       | "minimaxApiKey"
       | "minimaxBaseUrl"
+      | "orcarouterApiKey"
+      | "orcarouterBaseUrl"
       | "ollamaBaseUrl"
     >;
     summaryEngine: ReturnType<typeof createModelExecutor>;

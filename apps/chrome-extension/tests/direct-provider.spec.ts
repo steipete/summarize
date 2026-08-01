@@ -43,6 +43,7 @@ test("direct provider resolves all supported gateways", () => {
     "zai",
     "nvidia",
     "minimax",
+    "orcarouter",
     "github",
     "ollama",
   ];
@@ -155,6 +156,40 @@ test("direct provider requests separated MiniMax reasoning", async () => {
     reasoning_split: true,
     stream: true,
   });
+});
+
+test("direct provider keeps the OrcaRouter upstream namespace and sends attribution", async () => {
+  const requests: Array<{
+    url: string;
+    headers: Headers;
+    body: Record<string, unknown>;
+  }> = [];
+  const result = await completeDirectText({
+    model: "orcarouter/openai/gpt-5.5",
+    providerSettings: providerSettings("orcarouter"),
+    system: "System",
+    prompt: "Prompt",
+    signal: new AbortController().signal,
+    fetchImpl: async (input, init) => {
+      requests.push({
+        url: String(input),
+        headers: new Headers(init?.headers),
+        body: JSON.parse(String(init?.body)) as Record<string, unknown>,
+      });
+      return sseResponse([
+        `data: ${JSON.stringify({ choices: [{ delta: { content: "Routed" } }] })}\n\n`,
+        "data: [DONE]\n\n",
+      ]);
+    },
+  });
+
+  expect(result.text).toBe("Routed");
+  expect(requests[0]?.url).toBe("https://provider.test/chat/completions");
+  // OrcaRouter routes by namespaced upstream id, so the `openai/` prefix must survive.
+  expect(requests[0]?.body).toMatchObject({ model: "openai/gpt-5.5", stream: true });
+  expect(requests[0]?.body.reasoning_split).toBeUndefined();
+  expect(requests[0]?.headers.get("HTTP-Referer")).toBe("https://summarize.sh");
+  expect(requests[0]?.headers.get("X-Title")).toBe("Summarize");
 });
 
 test("direct provider parses Anthropic streaming text", async () => {

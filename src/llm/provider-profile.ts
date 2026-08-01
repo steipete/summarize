@@ -17,6 +17,7 @@ export type GatewayProvider =
   | "zai"
   | "nvidia"
   | "minimax"
+  | "orcarouter"
   | "github-copilot"
   | "ollama";
 
@@ -29,6 +30,7 @@ export type RequiredModelEnv =
   | "OPENROUTER_API_KEY"
   | "Z_AI_API_KEY"
   | "MINIMAX_API_KEY"
+  | "ORCAROUTER_API_KEY"
   | "GITHUB_TOKEN"
   | "OLLAMA_BASE_URL"
   | "CLI_CLAUDE"
@@ -61,6 +63,17 @@ export type GatewayProviderProfile = {
 export const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434/v1";
 
 export const DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1";
+
+export const DEFAULT_ORCAROUTER_BASE_URL = "https://api.orcarouter.ai/v1";
+
+/**
+ * OrcaRouter is a routing gateway and reports client attribution the same way
+ * OpenRouter does, so send the same headers we already send for OpenRouter.
+ */
+export const ORCAROUTER_ATTRIBUTION_HEADERS: Record<string, string> = {
+  "HTTP-Referer": "https://github.com/steipete/summarize",
+  "X-Title": "summarize",
+};
 
 const GATEWAY_PROVIDER_PROFILES: Record<GatewayProvider, GatewayProviderProfile> = {
   xai: {
@@ -116,6 +129,15 @@ const GATEWAY_PROVIDER_PROFILES: Record<GatewayProvider, GatewayProviderProfile>
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
     defaultBaseUrl: DEFAULT_MINIMAX_BASE_URL,
+    forceChatCompletions: true,
+  },
+  orcarouter: {
+    requiredEnv: "ORCAROUTER_API_KEY",
+    execution: "openai-compatible",
+    supportsDocuments: false,
+    supportsStreaming: true,
+    supportsVideoUnderstanding: false,
+    defaultBaseUrl: DEFAULT_ORCAROUTER_BASE_URL,
     forceChatCompletions: true,
   },
   "github-copilot": {
@@ -340,7 +362,7 @@ export function supportsStreaming(provider: GatewayProvider): boolean {
 
 export function isOpenAiCompatibleProvider(
   provider: GatewayProvider,
-): provider is "zai" | "nvidia" | "minimax" | "ollama" {
+): provider is "zai" | "nvidia" | "minimax" | "orcarouter" | "ollama" {
   return getGatewayProviderProfile(provider).execution === "openai-compatible";
 }
 
@@ -402,7 +424,7 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
   forceChatCompletions,
   requestOptions,
 }: {
-  provider: "openai" | "zai" | "nvidia" | "minimax" | "github-copilot" | "ollama";
+  provider: "openai" | "zai" | "nvidia" | "minimax" | "orcarouter" | "github-copilot" | "ollama";
   openaiApiKey: string | null;
   openrouterApiKey: string | null;
   forceOpenRouter?: boolean;
@@ -452,7 +474,9 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
         ? "Missing Z_AI_API_KEY for zai/... model"
         : provider === "minimax"
           ? "Missing MINIMAX_API_KEY for minimax/... model"
-          : "Missing NVIDIA_API_KEY for nvidia/... model",
+          : provider === "orcarouter"
+            ? "Missing ORCAROUTER_API_KEY for orcarouter/... model"
+            : "Missing NVIDIA_API_KEY for nvidia/... model",
     );
   }
 
@@ -461,7 +485,9 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
       ? "https://api.z.ai/api/paas/v4"
       : provider === "minimax"
         ? DEFAULT_MINIMAX_BASE_URL
-        : "https://integrate.api.nvidia.com/v1";
+        : provider === "orcarouter"
+          ? DEFAULT_ORCAROUTER_BASE_URL
+          : "https://integrate.api.nvidia.com/v1";
 
   return {
     apiKey,

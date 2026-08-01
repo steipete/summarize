@@ -507,6 +507,7 @@ export function parseApiKeysConfig(
     "openai",
     "nvidia",
     "minimax",
+    "orcarouter",
     "anthropic",
     "google",
     "xai",

@@ -30,6 +30,8 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
 - `NVIDIA_BASE_URL` (optional; override NVIDIA OpenAI-compatible API endpoint; default: `https://integrate.api.nvidia.com/v1`)
 - `MINIMAX_API_KEY` (required for `minimax/...` models)
 - `MINIMAX_BASE_URL` (optional; override MiniMax OpenAI-compatible API endpoint; default: `https://api.minimax.io/v1`)
+- `ORCAROUTER_API_KEY` (required for `orcarouter/...` models)
+- `ORCAROUTER_BASE_URL` (optional; override OrcaRouter OpenAI-compatible API endpoint; default: `https://api.orcarouter.ai/v1`)
 - `OPENROUTER_API_KEY` (optional; required for `openrouter/...` models; also used when `OPENAI_BASE_URL` points to OpenRouter)
 - `GITHUB_TOKEN` / `GH_TOKEN` (required for `github-copilot/...` models via GitHub Models)
 - `Z_AI_API_KEY` (required for `zai/...` models; supports `ZAI_API_KEY` alias)
@@ -66,6 +68,7 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
     - `github-copilot/gpt-5.4`
     - `nvidia/z-ai/glm5`
     - `minimax/MiniMax-M3`
+    - `orcarouter/openai/gpt-5.5`
     - `zai/glm-4.7`
     - `ollama/qwen3:14b`
     - `ollama/llama3.1:8b`
@@ -134,6 +137,30 @@ MiniMax’s OpenAI-compatible base URL (`https://api.minimax.io/v1`) and uses ch
 Override the endpoint with `MINIMAX_BASE_URL` or `minimax.baseUrl` in config (e.g. the China
 endpoint). The model id is passed through verbatim, so use MiniMax’s exact casing (e.g. `MiniMax-M3`).
 Reasoning is requested through MiniMax’s separated response fields and omitted from summary text.
+
+## OrcaRouter
+
+Use `--model orcarouter/<upstream>/<model>` (e.g. `orcarouter/openai/gpt-5.5`,
+`orcarouter/anthropic/claude-sonnet-4.6`). Requires `ORCAROUTER_API_KEY`. Defaults to
+[OrcaRouter](https://www.orcarouter.ai)’s OpenAI-compatible base URL (`https://api.orcarouter.ai/v1`)
+and uses chat completions. Override the endpoint with `ORCAROUTER_BASE_URL` or `orcarouter.baseUrl`
+in config.
+
+Notes:
+
+- Model ids keep their upstream namespace, so pass the id exactly as OrcaRouter lists it
+  (`openai/gpt-5.5`, not `gpt-5.5`). Bare ids without a namespace are rejected by the gateway.
+- `orcarouter/orcarouter/auto` selects OrcaRouter's adaptive router instead of a fixed model; the
+  upstream it picks per request is configured server-side.
+- When `ORCAROUTER_API_KEY` is set, the extension model picker and `summarize status` list the
+  models the gateway reports at `/v1/models`.
+- Requests carry the same `HTTP-Referer` / `X-Title` attribution headers `summarize` already sends
+  to OpenRouter.
+
+```bash
+export ORCAROUTER_API_KEY="sk-orca-..."
+summarize "https://example.com" --model orcarouter/openai/gpt-5.5
+```
 
 ## Ollama
 
