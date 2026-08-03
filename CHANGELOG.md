@@ -2,6 +2,10 @@
 
 ## 0.21.9 - Unreleased
 
+### Documentation
+
+- Rewrite the README as a concise front door to the CLI, browser extension, and task-focused guides.
+
 ## 0.21.8 - 2026-08-01
 
 ### Fixes
