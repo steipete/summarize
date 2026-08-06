@@ -55,7 +55,7 @@ export async function resolveInitialUrlInput({
   const route = await resolveUrlAssetRoute({
     url: input.url,
     isYoutubeUrl,
-    fetchImpl: ctx.io.fetch,
+    fetchImpl: ctx.io.urlFetch ?? ctx.io.fetch,
     timeoutMs: ctx.flags.timeoutMs,
     detectUnknownAssetUrls: false,
   });
@@ -71,7 +71,7 @@ export async function resolveInitialUrlInput({
     emitLoading(input, emit);
     const acquired = await acquireRemoteAssetInput({
       url: input.url,
-      fetchImpl: ctx.io.fetch,
+      fetchImpl: ctx.io.urlFetch ?? ctx.io.fetch,
       timeoutMs: ctx.flags.timeoutMs,
     });
     if (acquired) {
@@ -119,7 +119,7 @@ export async function executeUrlWithAssetFallback({
     const fallbackRoute = await resolveUrlAssetRoute({
       url: rawUrlInput.url,
       isYoutubeUrl,
-      fetchImpl: ctx.io.fetch,
+      fetchImpl: ctx.io.urlFetch ?? ctx.io.fetch,
       timeoutMs: ctx.flags.timeoutMs,
       detectUnknownAssetUrls: true,
       assumeAsset: true,
@@ -135,7 +135,7 @@ export async function executeUrlWithAssetFallback({
     if (fallbackRoute === "asset" || (fallbackRoute === "video" && request.slides)) {
       const acquired = await acquireRemoteAssetInput({
         url: rawUrlInput.url,
-        fetchImpl: ctx.io.fetch,
+        fetchImpl: ctx.io.urlFetch ?? ctx.io.fetch,
         timeoutMs: ctx.flags.timeoutMs,
       });
       if (acquired) {
