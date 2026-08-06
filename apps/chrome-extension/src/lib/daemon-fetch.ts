@@ -212,10 +212,10 @@ export function bindNativeDaemonBridge(): void {
     if (clientPort.name !== DAEMON_BRIDGE_PORT_NAME) return;
     let nativePort: chrome.runtime.Port | null = null;
     let started = false;
-    let disconnected = false;
+    let stopped = false;
 
     const sendError = (message: string) => {
-      if (disconnected) return;
+      if (stopped) return;
       try {
         clientPort.postMessage({ type: "error", message });
       } catch {
@@ -236,19 +236,22 @@ export function bindNativeDaemonBridge(): void {
       if (!raw || typeof raw !== "object") return;
       const message = raw as NativeRequestMessage | { type?: string };
       if (message.type === "cancel") {
+        stopped = true;
         nativePort?.postMessage({ type: "cancel" });
         disconnectNative();
         return;
       }
-      if (message.type !== "request" || started) return;
+      if (message.type !== "request" || started || stopped) return;
       started = true;
       void (async () => {
         const policy = await readDaemonPolicy();
+        if (stopped) return;
         if (!policy.daemonAllowed) {
           sendError("Local companion disabled by administrator");
           return;
         }
         const permitted = await chrome.permissions.contains({ permissions: ["nativeMessaging"] });
+        if (stopped) return;
         if (!permitted) {
           sendError("Local companion permission is not enabled");
           return;
@@ -260,7 +263,7 @@ export function bindNativeDaemonBridge(): void {
           return;
         }
         nativePort.onMessage.addListener((nativeMessage: unknown) => {
-          if (disconnected) return;
+          if (stopped) return;
           try {
             clientPort.postMessage(nativeMessage);
           } catch {
@@ -276,7 +279,7 @@ export function bindNativeDaemonBridge(): void {
       })();
     });
     clientPort.onDisconnect.addListener(() => {
-      disconnected = true;
+      stopped = true;
       disconnectNative();
     });
   });
