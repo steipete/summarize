@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { chromium, expect, test } from "@playwright/test";
 import { NATIVE_MESSAGING_HOST_NAME } from "../../../src/daemon/constants.js";
 import { buildNativeMessagingManifest } from "../../../src/daemon/native-messaging-install.js";
+import { DAEMON_BRIDGE_PORT_NAME } from "../src/lib/daemon-fetch.js";
 import {
   activateTabByUrlInPanelWindow,
   buildUiState,
@@ -51,7 +52,10 @@ async function closeServer(server: Server): Promise<void> {
   });
 }
 
-type NativeMessagingHarness = ExtensionHarness & { nativeManifestPaths: string[] };
+type NativeMessagingHarness = ExtensionHarness & {
+  nativeLaunchMarkerPath: string;
+  nativeManifestPaths: string[];
+};
 
 async function launchNativeMessagingHarness(port: number): Promise<NativeMessagingHarness> {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "summarize-native-home-"));
@@ -87,6 +91,7 @@ async function launchNativeMessagingHarness(port: number): Promise<NativeMessagi
   );
 
   const launcherPath = path.join(configDir, "native-host-e2e");
+  const nativeLaunchMarkerPath = path.join(configDir, "native-host-launches.log");
   const userDataDir = path.join(home, "profile");
   const registerPath = path.join(repoRoot, "scripts", "register-typescript.mjs");
   const cliPath = path.join(repoRoot, "src", "cli.ts");
@@ -104,7 +109,11 @@ async function launchNativeMessagingHarness(port: number): Promise<NativeMessagi
   ]
     .map(shellQuote)
     .join(" ");
-  fs.writeFileSync(launcherPath, `#!/bin/sh\nexec ${command} "$@"\n`, { mode: 0o700 });
+  fs.writeFileSync(
+    launcherPath,
+    `#!/bin/sh\nprintf 'launch\\n' >> ${shellQuote(nativeLaunchMarkerPath)}\nexec ${command} "$@"\n`,
+    { mode: 0o700 },
+  );
 
   const nativeManifestDirs = [path.join(userDataDir, "NativeMessagingHosts")];
   const nativeManifestPaths = nativeManifestDirs.map((directory) => {
@@ -136,9 +145,111 @@ async function launchNativeMessagingHarness(port: number): Promise<NativeMessagi
     consoleErrors: [],
     userDataDir: home,
     browser: "chromium",
+    nativeLaunchMarkerPath,
     nativeManifestPaths,
   };
 }
+
+test("disconnected bridge does not start the native host after delayed permission", async () => {
+  const seen: string[] = [];
+  const server = createServer((request, response) => {
+    seen.push(request.url ?? "/");
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ ok: true }));
+  });
+  const port = await listen(server);
+  const harness = await launchNativeMessagingHarness(port);
+
+  try {
+    await seedSettings(harness, {
+      token: "native-e2e-token",
+      daemonPort: String(port),
+      summaryRuntime: "daemon",
+    });
+    const background = harness.context.serviceWorkers()[0];
+    if (!background) throw new Error("Missing extension service worker");
+    await background.evaluate(() => {
+      const proof = globalThis as typeof globalThis & {
+        __summarizePermissionCompleted?: boolean;
+        __summarizePermissionReached?: boolean;
+        __summarizeReleasePermission?: () => void;
+      };
+      const contains = chrome.permissions.contains.bind(chrome.permissions);
+      chrome.permissions.contains = async (permissions) => {
+        if (permissions.permissions?.includes("nativeMessaging")) {
+          proof.__summarizePermissionReached = true;
+          await new Promise<void>((resolve) => {
+            proof.__summarizeReleasePermission = resolve;
+          });
+        }
+        const permitted = await contains(permissions);
+        proof.__summarizePermissionCompleted = true;
+        return permitted;
+      };
+    });
+
+    const extensionPage = await harness.context.newPage();
+    await extensionPage.goto(getExtensionUrl(harness, "offscreen.html"));
+    await extensionPage.evaluate(
+      ({ bridgeName, daemonPort }) => {
+        const bridge = chrome.runtime.connect({ name: bridgeName });
+        bridge.postMessage({
+          type: "request",
+          method: "GET",
+          path: "/health",
+          port: daemonPort,
+          headers: {},
+        });
+      },
+      { bridgeName: DAEMON_BRIDGE_PORT_NAME, daemonPort: port },
+    );
+    await expect
+      .poll(() =>
+        background.evaluate(() =>
+          Boolean(
+            (
+              globalThis as typeof globalThis & {
+                __summarizePermissionReached?: boolean;
+              }
+            ).__summarizePermissionReached,
+          ),
+        ),
+      )
+      .toBe(true);
+
+    await extensionPage.close();
+    await background.evaluate(() => {
+      (
+        globalThis as typeof globalThis & {
+          __summarizeReleasePermission?: () => void;
+        }
+      ).__summarizeReleasePermission?.();
+    });
+    await expect
+      .poll(() =>
+        background.evaluate(() =>
+          Boolean(
+            (
+              globalThis as typeof globalThis & {
+                __summarizePermissionCompleted?: boolean;
+              }
+            ).__summarizePermissionCompleted,
+          ),
+        ),
+      )
+      .toBe(true);
+    await background.evaluate(() => new Promise((resolve) => setTimeout(resolve, 500)));
+
+    expect(fs.existsSync(harness.nativeLaunchMarkerPath)).toBe(false);
+    expect(seen).toEqual([]);
+  } finally {
+    for (const manifestPath of harness.nativeManifestPaths) {
+      fs.rmSync(manifestPath, { force: true });
+    }
+    await closeExtension(harness.context, harness.userDataDir);
+    await closeServer(server);
+  }
+});
 
 test("installed native host carries status, models, and summary streaming end to end", async () => {
   const seen: Array<{ method: string; url: string; authorization?: string }> = [];
