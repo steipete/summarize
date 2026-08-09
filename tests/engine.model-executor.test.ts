@@ -191,6 +191,27 @@ describe("model executor OpenAI chat-completions routing", () => {
   });
 });
 
+describe("model executor Google routing", () => {
+  it("passes the configured Google base URL to model resolution", async () => {
+    const engine = createTestModelExecutor(undefined);
+    engine.providerRuntime.apiKeys.google = "google-key";
+    engine.providerRuntime.baseUrls.google = "https://google-proxy.example.com";
+    const attempt = resolveTestFixedAttempt(engine, "google/gemini-custom-preview");
+
+    await engine.runSummaryAttempt({
+      attempt,
+      prompt: { userText: "Summarize this." } as Prompt,
+      allowStreaming: false,
+    });
+
+    expect(mocks.resolveModelIdForLlmCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        googleBaseUrlOverride: "https://google-proxy.example.com",
+      }),
+    );
+  });
+});
+
 describe("model executor credential availability", () => {
   it("reads gateway, OpenRouter, Ollama, and CLI availability from resolved runtime inputs", () => {
     const engine = createTestModelExecutor(undefined);

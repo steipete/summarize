@@ -8,6 +8,7 @@ import type { Prompt } from "../llm/prompt.js";
 export async function resolveModelIdForLlmCall({
   parsedModel,
   apiKeys,
+  googleBaseUrlOverride,
   fetchImpl,
   timeoutMs,
 }: {
@@ -15,6 +16,7 @@ export async function resolveModelIdForLlmCall({
   apiKeys: {
     googleApiKey: string | null;
   };
+  googleBaseUrlOverride?: string | null;
   fetchImpl: typeof fetch;
   timeoutMs: number;
 }): Promise<{ modelId: string; note: string | null; forceStreamOff: boolean }> {
@@ -24,6 +26,10 @@ export async function resolveModelIdForLlmCall({
 
   const key = apiKeys.googleApiKey;
   if (!key) {
+    return { modelId: parsedModel.canonical, note: null, forceStreamOff: false };
+  }
+
+  if (googleBaseUrlOverride?.trim()) {
     return { modelId: parsedModel.canonical, note: null, forceStreamOff: false };
   }
 

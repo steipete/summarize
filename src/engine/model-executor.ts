@@ -207,6 +207,7 @@ export function createModelExecutor(deps: ModelExecutorDeps) {
     const modelResolution = await resolveModelIdForLlmCall({
       parsedModel,
       apiKeys: { googleApiKey: apiKeysForLlm.googleApiKey },
+      googleBaseUrlOverride: providerRuntime.baseUrls.google,
       fetchImpl: deps.trackedFetch,
       timeoutMs: deps.timeoutMs,
     });
