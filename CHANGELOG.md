@@ -6,6 +6,12 @@
 
 - Chrome extension: restore Video + Slides capture from toolbar-opened side panels by granting production builds the visible-tab access Chrome requires.
 - Summaries: structure multi-point pages and discussion threads as scannable Markdown blocks instead of dense prose.
+- Security: route remote asset classification and downloads through the daemon's SSRF-guarded fetcher (#380, thanks @bunlongheng).
+- Chrome extension: stop cancelled or disconnected native-companion bridge requests before they can launch a stale native host (#379, thanks @vincent-peng).
+
+### Dependencies and maintenance
+
+- Refresh policy-eligible runtime, extension, browser media, test, formatting, lint, and type dependencies.
 
 ### Documentation
 
