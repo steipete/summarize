@@ -22,7 +22,14 @@ describe("model call resolution", () => {
     });
   });
 
-  it("keeps Developer API model discovery for the default Google endpoint", async () => {
+  it.each([
+    ["an unset base URL", undefined],
+    ["the explicit Developer API base URL", "https://generativelanguage.googleapis.com/v1beta"],
+    [
+      "the explicit Developer API base URL with a trailing slash",
+      "https://generativelanguage.googleapis.com/v1beta/",
+    ],
+  ])("keeps Developer API model discovery for %s", async (_description, googleBaseUrlOverride) => {
     const fetchMock = vi.fn(async () => {
       return new Response(
         JSON.stringify({
@@ -35,6 +42,7 @@ describe("model call resolution", () => {
     const result = await resolveModelIdForLlmCall({
       parsedModel: parseGatewayStyleModelId("google/gemini-custom-preview"),
       apiKeys: { googleApiKey: "test" },
+      googleBaseUrlOverride,
       fetchImpl: fetchMock as unknown as typeof fetch,
       timeoutMs: 2000,
     });
