@@ -157,8 +157,8 @@ describe("cache store", () => {
       slidesDir,
       slides: [{ index: 1, timestamp: 0, imagePath: "slide_0001_0.00s.png" }],
     };
-    store.setJson("slides", "old-settings", payload, 10);
     store.setJson("slides", "new-settings", payload, null);
+    store.setJson("slides", "old-settings", payload, 10);
     await new Promise((resolve) => setTimeout(resolve, 50));
     store.setText("summary", "trigger-expiry-sweep", "x", null);
 
