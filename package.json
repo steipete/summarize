@@ -37,7 +37,7 @@
     "build:bun": "pnpm -C packages/core build && bun scripts/build-bun.js",
     "build:bun:test": "pnpm -C packages/core build && bun scripts/build-bun.js --test",
     "build:cli": "node scripts/build-cli.mjs",
-    "build:lib": "tsgo -p tsconfig.build.json",
+    "build:lib": "tsc -p tsconfig.build.json",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:coverage",
     "clean": "node scripts/clean.mjs dist packages/core/dist",
     "dev:cli": "node --import ./scripts/register-typescript.mjs src/cli.ts",
@@ -57,7 +57,7 @@
     "test:coverage": "vitest run --coverage",
     "test:coverage:build": "pnpm build && pnpm test:coverage",
     "test:extension-e2e": "pnpm -C apps/chrome-extension test:e2e",
-    "typecheck": "pnpm -C packages/core typecheck && tsgo -p tsconfig.build.json --noEmit"
+    "typecheck": "pnpm -C packages/core typecheck && tsc -p tsconfig.build.json --noEmit"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "^0.83.0",
@@ -70,18 +70,18 @@
     "mime": "^4.1.0",
     "osc-progress": "^0.3.2",
     "tokentally": "^0.1.3",
-    "undici": "8.9.0"
+    "undici": "8.10.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@types/sanitize-html": "^2.16.1",
-    "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "@vitest/coverage-v8": "^4.1.10",
     "happy-dom": "^20.11.1",
+    "oxc-parser": "^0.143.0",
     "oxfmt": "0.62.0",
     "oxlint": "^1.77.0",
     "oxlint-tsgolint": "^7.0.2001",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "engines": {

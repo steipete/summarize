@@ -9,6 +9,7 @@ const rootPackage = JSON.parse(readFileSync(resolve("package.json"), "utf8")) as
   engines: Record<string, string>;
 };
 const corePackage = JSON.parse(readFileSync(resolve("packages/core/package.json"), "utf8")) as {
+  scripts: Record<string, string>;
   devDependencies: Record<string, string>;
   engines: Record<string, string>;
 };
@@ -67,8 +68,9 @@ describe("package scripts", () => {
 
   it("typechecks both workspace layers from the root script", () => {
     expect(rootPackage.scripts.typecheck).toBe(
-      "pnpm -C packages/core typecheck && tsgo -p tsconfig.build.json --noEmit",
+      "pnpm -C packages/core typecheck && tsc -p tsconfig.build.json --noEmit",
     );
+    expect(corePackage.scripts.typecheck).toBe("tsc -p tsconfig.build.json --noEmit");
   });
 
   it("runs vitest in non-watch mode from the root test script", () => {

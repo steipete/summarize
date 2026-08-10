@@ -69,21 +69,21 @@
     }
   },
   "scripts": {
-    "build": "pnpm clean && tsgo -p tsconfig.build.json && node scripts/package-ffmpeg-wasm.mjs",
+    "build": "pnpm clean && tsc -p tsconfig.build.json && node scripts/package-ffmpeg-wasm.mjs",
     "clean": "node ../../scripts/clean.mjs dist",
     "prepublishOnly": "node ../../scripts/require-pnpm-publish.mjs",
-    "typecheck": "tsgo -p tsconfig.build.json --noEmit"
+    "typecheck": "tsc -p tsconfig.build.json --noEmit"
   },
   "dependencies": {
     "@mozilla/readability": "0.6.0",
     "linkedom": "^0.18.13",
     "sanitize-html": "^2.17.6",
-    "undici": "8.9.0"
+    "undici": "8.10.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@types/sanitize-html": "^2.16.1",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "engines": {
     "node": ">=24"

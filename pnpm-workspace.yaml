@@ -6,8 +6,6 @@ packages:
 minimumReleaseAge: 10080
 minimumReleaseAgeExclude:
   - "@earendil-works/pi-ai@0.79.1"
-  - "@typescript/native-preview@7.0.0-dev.20260609.1"
-  - "@typescript/native-preview-*"
   - "@oxfmt/*"
   - "@oxlint/*"
   - "markdansi@0.3.1"
@@ -24,10 +22,13 @@ overrides:
   tmp: 0.2.7
   uuid: 14.0.0
   vite: 8.0.16
+  # Vite 8 uses Rolldown/Oxc here; do not auto-install its legacy optional peers.
+  "vite>esbuild": "-"
+  "vite>tsx": "-"
   # Vitest tests use happy-dom; do not install its unused optional jsdom peer.
   "vitest>jsdom": "-"
   # WXT 0.20.26 declares esbuild but its shipped runtime does not import it.
   "wxt>esbuild": "-"
-  # Vite 8 uses Rolldown/Oxc here; do not auto-install its legacy optional peers.
-  "vite>esbuild": "-"
-  "vite>tsx": "-"
+# Upstream has no patched release; fix GHSA-w3rx-r6r6-pgpr and GHSA-5p2g-fcmc-qvqq.
+patchedDependencies:
+  image-size@2.0.2: patches/image-size@2.0.2.patch

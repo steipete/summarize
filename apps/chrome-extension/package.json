@@ -31,7 +31,7 @@
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@types/chrome": "^0.2.5",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "web-ext": "10.5.0",
     "wxt": "0.21.3"
   }

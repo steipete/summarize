@@ -1,6 +1,7 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import ts from "typescript";
+import { parseSync, Visitor } from "oxc-parser";
 import { describe, expect, it } from "vitest";
 
 const sourceRoots = [
@@ -60,40 +61,40 @@ function collectSourceFiles(directory: string): string[] {
 }
 
 function moduleSpecifiers(file: string): string[] {
-  const source = ts.createSourceFile(
-    file,
-    readFileSync(file, "utf8"),
-    ts.ScriptTarget.Latest,
-    true,
-    file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-  );
+  const sourceText = readFileSync(file, "utf8");
+  const parsed = parseSync(file, sourceText);
+  if (parsed.errors.length > 0) {
+    throw new Error(
+      `Failed to parse ${displayPath(file)}:\n${parsed.errors
+        .map((error) => error.codeframe ?? error.message)
+        .join("\n")}`,
+    );
+  }
   const specifiers: string[] = [];
 
-  function visit(node: ts.Node): void {
-    if (
-      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
-      node.moduleSpecifier &&
-      ts.isStringLiteral(node.moduleSpecifier)
-    ) {
-      specifiers.push(node.moduleSpecifier.text);
-    } else if (
-      ts.isCallExpression(node) &&
-      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-      node.arguments.length === 1 &&
-      ts.isStringLiteral(node.arguments[0])
-    ) {
-      specifiers.push(node.arguments[0].text);
-    } else if (
-      ts.isImportTypeNode(node) &&
-      ts.isLiteralTypeNode(node.argument) &&
-      ts.isStringLiteral(node.argument.literal)
-    ) {
-      specifiers.push(node.argument.literal.text);
-    }
-    ts.forEachChild(node, visit);
-  }
-
-  visit(source);
+  new Visitor({
+    ImportDeclaration(node) {
+      specifiers.push(node.source.value);
+    },
+    ExportNamedDeclaration(node) {
+      if (node.source) specifiers.push(node.source.value);
+    },
+    ExportAllDeclaration(node) {
+      specifiers.push(node.source.value);
+    },
+    ImportExpression(node) {
+      if (
+        node.options === null &&
+        node.source.type === "Literal" &&
+        typeof node.source.value === "string"
+      ) {
+        specifiers.push(node.source.value);
+      }
+    },
+    TSImportType(node) {
+      specifiers.push(node.source.value);
+    },
+  }).visit(parsed.program);
   return specifiers;
 }
 
@@ -217,5 +218,56 @@ describe("production import graph", () => {
     }
 
     expect(violations).toEqual([]);
+  });
+});
+
+describe("import graph parser", () => {
+  it("preserves every module-reference form covered by the cycle gate", () => {
+    const directory = mkdtempSync(join(tmpdir(), "summarize-import-forms-"));
+    const file = join(directory, "references.ts");
+    try {
+      writeFileSync(
+        file,
+        [
+          'import "./side-effect.js";',
+          'import type { StaticType } from "./static-type.js";',
+          'export { value } from "./named-export.js";',
+          'export * from "./star-export.js";',
+          'const dynamic = import("./dynamic.js");',
+          'type Imported = import("./type-import.js").Imported;',
+          'const ignored = "./not-an-import.js";',
+          'const ignoredOptions = import("./with-options.js", { with: { type: "json" } });',
+        ].join("\n"),
+      );
+
+      expect(moduleSpecifiers(file)).toEqual([
+        "./side-effect.js",
+        "./static-type.js",
+        "./named-export.js",
+        "./star-export.js",
+        "./dynamic.js",
+        "./type-import.js",
+      ]);
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
+  });
+
+  it("detects a deliberately introduced TypeScript import cycle", () => {
+    const directory = mkdtempSync(join(tmpdir(), "summarize-import-cycle-"));
+    const first = join(directory, "first.ts");
+    const second = join(directory, "second.ts");
+    try {
+      writeFileSync(first, 'import "./second.js";\n');
+      writeFileSync(second, 'export * from "./first.js";\n');
+
+      const cycles = findImportCycles(buildImportGraph([first, second])).map((cycle) =>
+        cycle.map((file) => relative(directory, file)),
+      );
+
+      expect(cycles).toEqual([["first.ts", "second.ts", "first.ts"]]);
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
   });
 });
