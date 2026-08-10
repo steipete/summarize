@@ -2,6 +2,10 @@
 
 ## 0.21.10 - Unreleased
 
+### Fixes
+
+- Google custom endpoints: skip Gemini Developer API model discovery before inference so endpoint-scoped credentials reach the configured provider (#384, thanks @alfozan).
+
 ## 0.21.9 - 2026-08-08
 
 ### Fixes
