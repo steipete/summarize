@@ -52,6 +52,17 @@ describe("daemon URL fetch guard", () => {
     expect(lookup).not.toHaveBeenCalled();
   });
 
+  it("blocks backslash authority forms before they reach fetch", async () => {
+    const fetchImpl = vi.fn(async () => new Response("unexpected", { status: 200 }));
+    const guarded = createDaemonUrlFetchGuard(fetchImpl as unknown as typeof fetch);
+
+    for (const rawUrl of [String.raw`http:\\127.0.0.1\admin`, String.raw`http:/\127.0.0.1/admin`]) {
+      await expect(guarded(rawUrl)).rejects.toThrow(/blocked local network address/);
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("pins fetch DNS resolution to the validated address", async () => {
     const fetchImpl = markFetchAsDnsPinned(
       vi.fn(async () => new Response("ok", { status: 200 })) as unknown as typeof fetch,

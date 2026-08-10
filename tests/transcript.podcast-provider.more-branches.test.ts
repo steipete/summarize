@@ -10,22 +10,18 @@ type WhisperResult = {
 async function importPodcastProvider({ ffmpegAvailable }: { ffmpegAvailable: boolean }) {
   vi.resetModules();
 
-  const transcribeMediaWithWhisper = vi.fn(
-    async (): Promise<WhisperResult> => ({
-      text: "ok",
-      provider: "openai",
-      notes: [],
-      error: null,
-    }),
-  );
-  const transcribeMediaFileWithWhisper = vi.fn(
-    async (): Promise<WhisperResult> => ({
-      text: "ok",
-      provider: "openai",
-      notes: [],
-      error: null,
-    }),
-  );
+  const transcribeMediaWithWhisper = vi.fn(async (): Promise<WhisperResult> => ({
+    text: "ok",
+    provider: "openai",
+    notes: [],
+    error: null,
+  }));
+  const transcribeMediaFileWithWhisper = vi.fn(async (): Promise<WhisperResult> => ({
+    text: "ok",
+    provider: "openai",
+    notes: [],
+    error: null,
+  }));
 
   vi.doMock("../packages/core/src/transcription/whisper.js", () => ({
     MAX_OPENAI_UPLOAD_BYTES: 25 * 1024 * 1024,
