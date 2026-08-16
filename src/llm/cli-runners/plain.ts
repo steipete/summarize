@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { execCliWithInput } from "../cli-exec.js";
 import type { CliRunResult, ResolvedCliRunOptions } from "./types.js";
 
@@ -71,6 +72,7 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
   const isolatedCwd = !options.allowTools
     ? await fs.mkdtemp(path.join(tmpdir(), "summarize-agy-"))
     : null;
+  let promptDir: string | null = null;
   try {
     const args = [...options.providerExtraArgs];
     if (!options.allowTools && !hasAnyFlag(args, ["--sandbox"])) args.push("--sandbox");
@@ -80,15 +82,6 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
           "Use a different CLI provider for this input or remove the NUL characters.",
       );
     }
-    const { limit, type } = resolveAgyMaxPrintArgLimit(platform);
-    const promptSize =
-      type === "chars" ? options.prompt.length : Buffer.byteLength(options.prompt, "utf8");
-    if (promptSize > limit) {
-      throw new Error(
-        `Antigravity CLI requires --print <prompt> and cannot safely receive large prompts over argv (${promptSize} ${type}). ` +
-          "Use a different CLI provider for this input, reduce extracted content, or update agy to support stdin/file input.",
-      );
-    }
     if (
       Number.isFinite(options.timeoutMs) &&
       options.timeoutMs > 0 &&
@@ -96,16 +89,38 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
     ) {
       args.push("--print-timeout", `${Math.max(1, Math.ceil(options.timeoutMs / 1000))}s`);
     }
-    args.push("--print", options.prompt);
-    if (platform === "win32") {
-      const commandChars = estimateWindowsCommandChars([options.binary, ...args]);
-      if (commandChars > limit) {
-        throw new Error(
-          `Antigravity CLI requires --print <prompt> and cannot safely receive large prompts over argv (${commandChars} escaped chars). ` +
-            "Use a different CLI provider for this input, reduce extracted content, or update agy to support stdin/file input.",
-        );
-      }
+
+    const { limit, type } = resolveAgyMaxPrintArgLimit(platform);
+    const promptSize =
+      type === "chars" ? options.prompt.length : Buffer.byteLength(options.prompt, "utf8");
+
+    let printPrompt = options.prompt;
+    const isWindows = platform === "win32";
+    const estimatedChars = isWindows
+      ? estimateWindowsCommandChars([options.binary, ...args, "--print", options.prompt])
+      : 0;
+
+    if (promptSize > limit || (isWindows && estimatedChars > limit)) {
+      promptDir = await fs.mkdtemp(path.join(isolatedCwd ?? tmpdir(), "summarize-agy-prompt-"));
+      const promptPath = path.join(promptDir, "prompt.txt");
+      await fs.writeFile(promptPath, options.prompt, { mode: 0o600, encoding: "utf-8" });
+      const promptUrl = pathToFileURL(promptPath).href;
+      printPrompt = `Read and summarize the content in ${promptUrl}`;
     }
+
+    const finalCommandSize = isWindows
+      ? estimateWindowsCommandChars([options.binary, ...args, "--print", printPrompt])
+      : Buffer.byteLength([options.binary, ...args, "--print", printPrompt].join(" "), "utf-8");
+
+    if (finalCommandSize > limit) {
+      throw new Error(
+        `Antigravity CLI requires --print <prompt> and cannot safely receive large prompts over argv (${finalCommandSize} ${type}). ` +
+          "Use a different CLI provider for this input, reduce extracted content, or update agy to support stdin/file input.",
+      );
+    }
+
+    args.push("--print", printPrompt);
+
     const redactedCommand = [
       options.binary,
       ...args.map((arg, index) => (args[index - 1] === "--print" ? "[prompt redacted]" : arg)),
@@ -125,6 +140,7 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
     if (!text) throw new Error("CLI returned empty output");
     return { text, usage: null, costUsd: null };
   } finally {
+    if (promptDir) await fs.rm(promptDir, { recursive: true, force: true }).catch(() => {});
     if (isolatedCwd) await fs.rm(isolatedCwd, { recursive: true, force: true }).catch(() => {});
   }
 }

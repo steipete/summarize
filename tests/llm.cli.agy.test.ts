@@ -1,3 +1,5 @@
+import fsSync from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
   estimateWindowsCommandChars,
@@ -293,20 +295,91 @@ describe("runCliModel - agy provider", () => {
     expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
   });
 
-  it("rejects oversized agy prompts before passing them through argv", async () => {
-    let called = false;
-    const execFileImpl: ExecFileFn = ((_cmd, _args, _options, cb) => {
-      called = true;
-      cb?.(null, "ok", "");
+  it("offloads oversized agy prompts (>120 KB) to a temp file with file:// reference", async () => {
+    let seenArgs: string[] = [];
+    let seenCwd = "";
+    const largePrompt = "A".repeat(resolveAgyMaxPrintArgLimit().limit + 100);
+    const execFileImpl: ExecFileFn = ((_cmd, args, options, cb) => {
+      seenArgs = args as string[];
+      seenCwd = typeof options?.cwd === "string" ? options.cwd : "";
+      cb?.(null, "Summary of large prompt", "");
       return {
         stdin: { write: () => {}, end: () => {} },
       } as unknown as ReturnType<ExecFileFn>;
     }) as ExecFileFn;
 
+    const result = await runCliModel({
+      provider: "agy",
+      prompt: largePrompt,
+      model: null,
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+
+    expect(result.text).toBe("Summary of large prompt");
+    const printIdx = seenArgs.indexOf("--print");
+    expect(printIdx).toBeGreaterThanOrEqual(0);
+    const printVal = seenArgs[printIdx + 1];
+    expect(printVal).toMatch(/^Read and summarize the content in file:\/\/\/.+\/prompt\.txt$/);
+    expect(seenCwd).toContain("summarize-agy-");
+  });
+
+  it("writes prompt file with mode 0o600 and cleans up prompt directory afterwards", async () => {
+    let promptFilePath = "";
+    let fileContentReadDuringExec = "";
+    let fileStatModeDuringExec = 0;
+
+    const largePrompt = "B".repeat(150 * 1024);
+    const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+      const printIdx = args.indexOf("--print");
+      const printVal = args[printIdx + 1];
+      const match = printVal.match(/^Read and summarize the content in (file:\/\/.+)$/);
+      if (match) {
+        promptFilePath = fileURLToPath(match[1]);
+        fileContentReadDuringExec = fsSync.readFileSync(promptFilePath, "utf-8");
+        fileStatModeDuringExec = fsSync.statSync(promptFilePath).mode & 0o777;
+      }
+      cb?.(null, "ok", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    await runCliModel({
+      provider: "agy",
+      prompt: largePrompt,
+      model: null,
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+
+    expect(fileContentReadDuringExec).toBe(largePrompt);
+    expect(fileStatModeDuringExec).toBe(0o600);
+    expect(fsSync.existsSync(promptFilePath)).toBe(false);
+  });
+
+  it("cleans up temp prompt file directory even when agy command fails", async () => {
+    let promptFilePath = "";
+    const largePrompt = "C".repeat(150 * 1024);
+    const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+      const printIdx = args.indexOf("--print");
+      const printVal = args[printIdx + 1];
+      const match = printVal.match(/^Read and summarize the content in (file:\/\/.+)$/);
+      if (match) {
+        promptFilePath = fileURLToPath(match[1]);
+      }
+      cb?.(new Error("agy execution failed"), "", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
     await expect(
       runCliModel({
         provider: "agy",
-        prompt: "x".repeat(resolveAgyMaxPrintArgLimit().limit + 1),
+        prompt: largePrompt,
         model: null,
         allowTools: false,
         timeoutMs: 1000,
@@ -314,8 +387,39 @@ describe("runCliModel - agy provider", () => {
         execFileImpl,
         config: null,
       }),
-    ).rejects.toThrow(/cannot safely receive large prompts over argv/);
-    expect(called).toBe(false);
+    ).rejects.toThrow();
+
+    expect(promptFilePath).not.toBe("");
+    expect(fsSync.existsSync(promptFilePath)).toBe(false);
+  });
+
+  it("offloads large agy prompts to system temp dir when allowTools is true", async () => {
+    let promptFilePath = "";
+    const largePrompt = "D".repeat(150 * 1024);
+    const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+      const printIdx = args.indexOf("--print");
+      const printVal = args[printIdx + 1];
+      const match = printVal.match(/^Read and summarize the content in (file:\/\/.+)$/);
+      if (match) {
+        promptFilePath = fileURLToPath(match[1]);
+      }
+      cb?.(null, "ok", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    await runCliModel({
+      provider: "agy",
+      prompt: largePrompt,
+      model: null,
+      allowTools: true,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+
+    expect(promptFilePath).toContain("summarize-agy-prompt-");
+    expect(fsSync.existsSync(promptFilePath)).toBe(false);
   });
 
   it("rejects NUL-containing agy prompts before passing them through argv", async () => {
@@ -373,5 +477,24 @@ describe("runCliModel - agy provider", () => {
       config: { agy: { extraArgs: ["--no-color"] } },
     });
     expect(seen[0]?.[0]).toBe("--no-color");
+  });
+
+  it("throws limit error if extraArgs alone exceed command limit after offload", async () => {
+    const execFileImpl = vi.fn() as unknown as ExecFileFn;
+    const hugeExtraArgs = ["--extra-flag=" + "x".repeat(150 * 1024)];
+
+    await expect(
+      runCliModel({
+        provider: "agy",
+        prompt: "short prompt",
+        model: null,
+        allowTools: false,
+        timeoutMs: 1000,
+        env: {},
+        execFileImpl,
+        config: { agy: { extraArgs: hugeExtraArgs } },
+      }),
+    ).rejects.toThrow(/cannot safely receive large prompts over argv/);
+    expect(execFileImpl).not.toHaveBeenCalled();
   });
 });
