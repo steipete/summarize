@@ -84,7 +84,7 @@ describe("runCliModel - agy provider", () => {
     expect(seenCmd).toBe("agy");
     const printIdx = seen[0].indexOf("--print");
     expect(printIdx).toBeGreaterThanOrEqual(0);
-    expect(seen[0][printIdx + 1]).toBe("Summarize this.");
+    expect(seen[0][printIdx + 1]).toMatch(/^Summarize this\./);
     expect(seen[0]).toContain("--sandbox");
     expect(seen[0]).toContain("--print-timeout");
     expect(seen[0]).toContain("1s");
@@ -219,7 +219,7 @@ describe("runCliModel - agy provider", () => {
     const printIdx = args.indexOf("--print");
     expect(timeoutIdx).toBeGreaterThanOrEqual(0);
     expect(printIdx).toBeGreaterThan(timeoutIdx);
-    expect(args[printIdx + 1]).toBe("--print-timeout should be summarized");
+    expect(args[printIdx + 1]).toMatch(/^--print-timeout should be summarized/);
   });
 
   it("redacts the agy prompt from timeout errors", async () => {
@@ -293,6 +293,56 @@ describe("runCliModel - agy provider", () => {
     expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
   });
 
+  it("instructs agy not to use tools or emit file links when allowTools is false", async () => {
+    const seen: string[][] = [];
+    const execFileImpl = makeStub((args) => {
+      seen.push(args);
+      return { stdout: "ok" };
+    });
+
+    await runCliModel({
+      provider: "agy",
+      prompt: "Summarize this page.",
+      model: null,
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+
+    const args = seen[0];
+    const printIdx = args.indexOf("--print");
+    const sentPrompt = args[printIdx + 1];
+    expect(sentPrompt).toContain("Summarize this page.");
+    expect(sentPrompt).toMatch(/do not use tools/i);
+    expect(sentPrompt).toMatch(/do not include local file links/i);
+    expect(sentPrompt).toMatch(/work-log narration/i);
+  });
+
+  it("does not append the no-tools instruction when allowTools is true", async () => {
+    const seen: string[][] = [];
+    const execFileImpl = makeStub((args) => {
+      seen.push(args);
+      return { stdout: "ok" };
+    });
+
+    await runCliModel({
+      provider: "agy",
+      prompt: "Summarize this page.",
+      model: null,
+      allowTools: true,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+
+    const args = seen[0];
+    const printIdx = args.indexOf("--print");
+    expect(args[printIdx + 1]).toBe("Summarize this page.");
+  });
+
   it("rejects oversized agy prompts before passing them through argv", async () => {
     let called = false;
     const execFileImpl: ExecFileFn = ((_cmd, _args, _options, cb) => {
@@ -306,7 +356,8 @@ describe("runCliModel - agy provider", () => {
     await expect(
       runCliModel({
         provider: "agy",
-        prompt: "x".repeat(resolveAgyMaxPrintArgLimit().limit + 1),
+        // The original prompt fits; the text-only guidance pushes the sent prompt over the limit.
+        prompt: "x".repeat(resolveAgyMaxPrintArgLimit().limit - 1),
         model: null,
         allowTools: false,
         timeoutMs: 1000,
