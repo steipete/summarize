@@ -40,6 +40,18 @@ describe("content cleaner utilities", () => {
     expect(clipAtSentenceBoundary(input, 200)).toBe(input);
   });
 
+  it("keeps clipped content well-formed at a surrogate pair", () => {
+    const input = `${"x".repeat(80)}\u{1F600} and more trailing text here`;
+    const result = clipAtSentenceBoundary(input, 81);
+    expect(result.isWellFormed()).toBe(true);
+    expect(result).toBe("x".repeat(80));
+    expect(clipAtSentenceBoundary(input, 82)).toBe(`${"x".repeat(80)}\u{1F600}`);
+  });
+
+  it("preserves plain BMP truncation", () => {
+    expect(clipAtSentenceBoundary("abcdefgh", 5)).toBe("abcde");
+  });
+
   it("applies a content budget and counts words", () => {
     const content = "Hello world. This is a test.";
     const result = applyContentBudget(content, 10);
@@ -47,6 +59,11 @@ describe("content cleaner utilities", () => {
     expect(result.totalCharacters).toBe(content.length);
     expect(result.content.length).toBeLessThanOrEqual(10);
     expect(result.wordCount).toBeGreaterThan(0);
+  });
+
+  it("keeps budgeted content well-formed at a surrogate pair", () => {
+    const input = `${"x".repeat(80)}\u{1F600} and more trailing text here`;
+    expect(applyContentBudget(input, 81).content.isWellFormed()).toBe(true);
   });
 
   it("keeps content when under budget and reports empty word count", () => {
