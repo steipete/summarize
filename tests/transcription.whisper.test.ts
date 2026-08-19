@@ -874,52 +874,99 @@ describe("transcription/whisper", () => {
   });
 
   it("extracts FAL text from data.text", async () => {
+    vi.useFakeTimers();
     falMocks.createFalClient.mockReset().mockReturnValue({
       storage: { upload: vi.fn(async () => "https://fal.example/audio") },
       subscribe: vi.fn(async () => ({ data: { text: "  hello fal  " } })),
     });
 
-    const { transcribeMediaWithWhisper } =
-      await import("../packages/core/src/transcription/whisper.js");
-    const result = await transcribeMediaWithWhisper({
-      bytes: new Uint8Array([1, 2, 3]),
-      mediaType: "audio/mpeg",
-      filename: "audio.mp3",
-      groqApiKey: null,
-      openaiApiKey: null,
-      falApiKey: "FAL",
+    try {
+      const { transcribeMediaWithWhisper } =
+        await import("../packages/core/src/transcription/whisper.js");
+      const result = await transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: "audio/mpeg",
+        filename: "audio.mp3",
+        groqApiKey: null,
+        openaiApiKey: null,
+        falApiKey: "FAL",
+      });
+
+      expect(result.text).toBe("hello fal");
+      expect(result.provider).toBe("fal");
+      expect(result.error).toBeNull();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears the FAL timeout when the subscription fails", async () => {
+    vi.useFakeTimers();
+    falMocks.createFalClient.mockReset().mockReturnValue({
+      storage: { upload: vi.fn(async () => "https://fal.example/audio") },
+      subscribe: vi.fn(async () => {
+        throw new Error("subscription failed");
+      }),
     });
 
-    expect(result.text).toBe("hello fal");
-    expect(result.provider).toBe("fal");
-    expect(result.error).toBeNull();
+    try {
+      const { transcribeMediaWithWhisper } =
+        await import("../packages/core/src/transcription/whisper.js");
+      const result = await transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: "audio/mpeg",
+        filename: "audio.mp3",
+        groqApiKey: null,
+        openaiApiKey: null,
+        falApiKey: "FAL",
+      });
+
+      expect(result.error?.message).toContain("subscription failed");
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("times out FAL subscriptions", async () => {
     vi.useFakeTimers();
+    const subscribe = vi.fn(
+      async (_endpoint: string, options: { signal?: AbortSignal }) =>
+        await new Promise((_, reject) => {
+          options.signal?.addEventListener("abort", () => reject(options.signal?.reason), {
+            once: true,
+          });
+        }),
+    );
     falMocks.createFalClient.mockReset().mockReturnValue({
       storage: { upload: vi.fn(async () => "https://fal.example/audio") },
-      subscribe: vi.fn(async () => new Promise(() => {})),
+      subscribe,
     });
 
-    const { transcribeMediaWithWhisper } =
-      await import("../packages/core/src/transcription/whisper.js");
-    const promise = transcribeMediaWithWhisper({
-      bytes: new Uint8Array([1, 2, 3]),
-      mediaType: "audio/mpeg",
-      filename: "audio.mp3",
-      groqApiKey: null,
-      openaiApiKey: null,
-      falApiKey: "FAL",
-    });
+    try {
+      const { transcribeMediaWithWhisper } =
+        await import("../packages/core/src/transcription/whisper.js");
+      const promise = transcribeMediaWithWhisper({
+        bytes: new Uint8Array([1, 2, 3]),
+        mediaType: "audio/mpeg",
+        filename: "audio.mp3",
+        groqApiKey: null,
+        openaiApiKey: null,
+        falApiKey: "FAL",
+      });
 
-    await vi.advanceTimersByTimeAsync(600_000);
-    const result = await promise;
+      await vi.advanceTimersByTimeAsync(600_000);
+      const result = await promise;
 
-    expect(result.text).toBeNull();
-    expect(result.provider).toBe("fal");
-    expect(result.error?.message.toLowerCase()).toContain("timeout");
-    vi.useRealTimers();
+      expect(result.text).toBeNull();
+      expect(result.provider).toBe("fal");
+      expect(result.error?.message).toContain("FAL transcription timeout");
+      expect(subscribe.mock.calls[0]?.[1].signal?.aborted).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("prefers Groq over OpenAI when groqApiKey is provided", async () => {

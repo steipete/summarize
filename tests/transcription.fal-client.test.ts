@@ -222,6 +222,78 @@ describe("FAL REST client", () => {
     }
   });
 
+  it("stops polling when the subscription is aborted", async () => {
+    vi.useFakeTimers();
+    let statusChecks = 0;
+    const controller = new AbortController();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      expect(init?.signal).toBe(controller.signal);
+      if (url === "https://queue.fal.run/fal-ai/wizper") {
+        return jsonResponse({ request_id: "request-abort" });
+      }
+      if (url.endsWith("/requests/request-abort/status")) {
+        statusChecks += 1;
+        return jsonResponse({ status: "IN_PROGRESS" });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    }) as typeof fetch;
+
+    try {
+      const fal = createFalClient({ credentials: "FAL", fetchImpl: fetchMock });
+      const pending = fal.subscribe("fal-ai/wizper", {
+        input: {},
+        signal: controller.signal,
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(statusChecks).toBe(1);
+
+      const abortError = new Error("subscription cancelled");
+      controller.abort(abortError);
+      await expect(pending).rejects.toBe(abortError);
+      expect(vi.getTimerCount()).toBe(0);
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(statusChecks).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not retry after aborting during backoff", async () => {
+    vi.useFakeTimers();
+    let submissions = 0;
+    const controller = new AbortController();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "https://queue.fal.run/fal-ai/wizper") {
+        submissions += 1;
+        return jsonResponse({ detail: "try again" }, 503);
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    }) as typeof fetch;
+
+    try {
+      const fal = createFalClient({ credentials: "FAL", fetchImpl: fetchMock });
+      const pending = fal.subscribe("fal-ai/wizper", {
+        input: {},
+        signal: controller.signal,
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(submissions).toBe(1);
+
+      const abortError = new Error("subscription cancelled");
+      controller.abort(abortError);
+      await expect(pending).rejects.toBe(abortError);
+      expect(vi.getTimerCount()).toBe(0);
+
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(submissions).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("reports malformed and failed queue responses", async () => {
     const missingRequestId = createFalClient({
       credentials: "FAL",
