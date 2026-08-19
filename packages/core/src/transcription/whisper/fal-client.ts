@@ -29,6 +29,7 @@ type FalClientOptions = {
 
 type FalSubscribeOptions = {
   input: Record<string, unknown>;
+  signal?: AbortSignal;
 };
 
 type FalQueueStatus = {
@@ -78,6 +79,23 @@ function isRetryableNetworkError(error: unknown): boolean {
   return error instanceof TypeError && /fetch failed/i.test(error.message);
 }
 
+function abortableDelay(ms: number, signal?: AbortSignal | null): Promise<void> {
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, ms));
+  if (signal.aborted) return Promise.reject(signal.reason);
+
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 async function fetchWithRetry(
   fetchImpl: typeof fetch,
   input: string,
@@ -97,7 +115,7 @@ async function fetchWithRetry(
     } catch (error) {
       if (attempt >= FAL_MAX_RETRIES || !isRetryableNetworkError(error)) throw error;
     }
-    await new Promise((resolve) => setTimeout(resolve, FAL_RETRY_BASE_DELAY_MS * 2 ** attempt));
+    await abortableDelay(FAL_RETRY_BASE_DELAY_MS * 2 ** attempt, init.signal);
   }
 }
 
@@ -254,16 +272,19 @@ async function waitForQueueResult({
   credentials,
   statusUrl,
   responseUrl,
+  signal,
 }: {
   fetchImpl: typeof fetch;
   credentials: string;
   statusUrl: string;
   responseUrl: string;
+  signal?: AbortSignal;
 }): Promise<Record<string, unknown>> {
   while (true) {
     const status = (await fetchJson(fetchImpl, statusUrl, {
       method: "GET",
       headers: authHeaders(credentials),
+      signal,
     })) as FalQueueStatus;
     if (status.status === "COMPLETED") {
       if (status.error) {
@@ -272,12 +293,13 @@ async function waitForQueueResult({
       return await fetchJson(fetchImpl, responseUrl, {
         method: "GET",
         headers: authHeaders(credentials),
+        signal,
       });
     }
     if (status.status !== "IN_QUEUE" && status.status !== "IN_PROGRESS") {
       throw new Error(`FAL returned an unknown queue status: ${String(status.status)}`);
     }
-    await new Promise((resolve) => setTimeout(resolve, FAL_POLL_INTERVAL_MS));
+    await abortableDelay(FAL_POLL_INTERVAL_MS, signal);
   }
 }
 
@@ -310,6 +332,7 @@ export function createFalClient({
           "X-Fal-Queue-Priority": "normal",
         },
         body: JSON.stringify(options.input),
+        signal: options.signal,
       });
       const requestId = typeof submitted.request_id === "string" ? submitted.request_id.trim() : "";
       if (!requestId) throw new Error("FAL queue submission returned no request ID");
@@ -322,6 +345,7 @@ export function createFalClient({
         credentials,
         statusUrl: `${requestBase}/status`,
         responseUrl: requestBase,
+        signal: options.signal,
       });
       return { data, requestId };
     },

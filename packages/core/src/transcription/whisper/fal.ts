@@ -11,14 +11,26 @@ export async function transcribeWithFal(
   const blob = new Blob([toArrayBuffer(bytes)], { type: mediaType });
   const audioUrl = await fal.storage.upload(blob);
 
-  const result = await Promise.race([
-    fal.subscribe("fal-ai/wizper", {
-      input: { audio_url: audioUrl, language: "en" },
-    }),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("FAL transcription timeout")), TRANSCRIPTION_TIMEOUT_MS),
-    ),
-  ]);
+  const controller = new AbortController();
+  const timeoutError = new Error("FAL transcription timeout");
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  let result: unknown;
+  try {
+    result = await Promise.race([
+      fal.subscribe("fal-ai/wizper", {
+        input: { audio_url: audioUrl, language: "en" },
+        signal: controller.signal,
+      }),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => {
+          reject(timeoutError);
+          controller.abort(timeoutError);
+        }, TRANSCRIPTION_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeout !== null) clearTimeout(timeout);
+  }
 
   return extractText(result);
 }
