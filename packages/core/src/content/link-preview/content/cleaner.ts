@@ -65,6 +65,10 @@ export function clipAtSentenceBoundary(input: string, maxLength: number): string
   if (lastSentenceBreak > maxLength * 0.5) {
     return slice.slice(0, lastSentenceBreak + 1);
   }
+  const lastCodeUnit = slice.charCodeAt(slice.length - 1);
+  if (lastCodeUnit >= 0xd800 && lastCodeUnit <= 0xdbff) {
+    return slice.slice(0, -1);
+  }
   return slice;
 }
 
