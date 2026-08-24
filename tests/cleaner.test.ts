@@ -27,6 +27,17 @@ describe("content cleaner utilities", () => {
     expect(decodeHtmlEntities("&lt;tag&gt; &amp; &#39;x&#39;")).toBe("<tag> & 'x'");
   });
 
+  it("decodes each entity once, so an escaped entity stays escaped", () => {
+    expect(decodeHtmlEntities("&amp;lt;div&amp;gt;")).toBe("&lt;div&gt;");
+    expect(decodeHtmlEntities("&amp;quot;x&amp;quot;")).toBe("&quot;x&quot;");
+    expect(decodeHtmlEntities("&amp;nbsp;")).toBe("&nbsp;");
+    expect(decodeHtmlEntities("&amp;amp;")).toBe("&amp;");
+  });
+
+  it("leaves unknown entities untouched", () => {
+    expect(decodeHtmlEntities("&copy; &unknown; 5 &lt; 6")).toBe("&copy; &unknown; 5 < 6");
+  });
+
   it("normalizes candidates", () => {
     expect(normalizeCandidate(null)).toBeNull();
     expect(normalizeCandidate("   ")).toBeNull();
