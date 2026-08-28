@@ -7,14 +7,14 @@ Focused fixes, tests, and documentation improvements are welcome.
 Requirements:
 
 - Node.js 24 or newer
-- pnpm 10.33.2 through Corepack
+- pnpm 11.22.0 through Corepack
 - Git
 
 ```bash
 git clone https://github.com/<your-user>/summarize.git
 cd summarize
 corepack enable
-corepack prepare pnpm@10.34.5 --activate
+corepack install
 pnpm install --frozen-lockfile
 pnpm -s build
 pnpm -s check

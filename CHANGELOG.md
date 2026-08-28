@@ -8,6 +8,7 @@
 
 ### Dependencies and maintenance
 
+- Refresh the test, lint, parser, browser media, and transitive dependencies; update the Bun builder to 1.4.0, pin CI actions by commit, and align Corepack setup with the workspace's pnpm version.
 - Refresh policy-eligible CLI, core, extension, media, test, lint, and transitive dependencies without bypassing the seven-day stabilization window.
 
 ## 0.21.11 - 2026-08-10

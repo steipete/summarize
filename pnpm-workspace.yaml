@@ -26,8 +26,8 @@ overrides:
   sharp: 0.35.3
   shell-quote: 1.10.0
   tmp: 0.2.7
-  uuid: 14.0.1
-  vite: 8.2.1
+  uuid: 14.0.2
+  vite: 8.2.2
   # Vite 8 uses Rolldown/Oxc here; do not auto-install its legacy optional peers.
   "vite>esbuild": "-"
   "vite>tsx": "-"

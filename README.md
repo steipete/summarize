@@ -121,7 +121,7 @@ Start with the [documentation index](docs/README.md), then follow the guide for 
 
 ## Development
 
-Requires Node.js 24 and pnpm 10.34.5.
+Requires Node.js 24 and pnpm 11.22.0.
 
 ```bash
 pnpm install --frozen-lockfile

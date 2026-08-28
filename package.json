@@ -75,17 +75,17 @@
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@types/sanitize-html": "^2.16.1",
-    "@vitest/coverage-v8": "^4.1.10",
-    "happy-dom": "^20.11.2",
-    "oxc-parser": "^0.144.0",
-    "oxfmt": "0.63.0",
-    "oxlint": "^1.78.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "happy-dom": "^20.11.6",
+    "oxc-parser": "^0.146.0",
+    "oxfmt": "0.64.0",
+    "oxlint": "^1.79.0",
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@11.20.0"
+  "packageManager": "pnpm@11.22.0"
 }
