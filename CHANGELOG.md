@@ -8,6 +8,7 @@
 
 ### Dependencies and maintenance
 
+- Align Dependabot's npm cooldown with pnpm's seven-day stabilization window so automated updates do not select versions the install gate rejects.
 - Refresh the test, lint, parser, browser media, and transitive dependencies; update the Bun builder to 1.4.0, pin CI actions by commit, and align Corepack setup with the workspace's pnpm version.
 - Refresh policy-eligible CLI, core, extension, media, test, lint, and transitive dependencies without bypassing the seven-day stabilization window.
 

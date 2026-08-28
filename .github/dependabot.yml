@@ -4,6 +4,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Match pnpm's minimumReleaseAge before selecting version updates.
+    cooldown:
+      default-days: 7
     groups:
       dependencies:
         patterns: ["*"]
