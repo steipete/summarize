@@ -48,6 +48,7 @@ read_when:
 - Selection is not stored.
 - Chrome Browser mode transcribes fetchable direct and embedded media in bounded MediaBunny/WebCodecs chunks with browser-cached multilingual Whisper Tiny. YouTube prefers active-player/watch-page direct audio, then Android VR, buffered direct audio, and captured SABR.
 - Browser slide extraction uses ranged MediaBunny URL reads instead of buffering the complete video. The Whisper runtime is disposed after an idle period while the downloaded model remains in browser cache.
+- Browser media supports MP4 files carrying Annex B AVC/HEVC. WebCodecs requires a secure browser context; unavailable-codec errors identify insecure contexts when applicable.
 
 ## Known limits
 

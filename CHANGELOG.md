@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Browser media: support MP4 files carrying Annex B AVC/HEVC and clarify missing WebCodecs errors in insecure contexts with MediaBunny 1.55.2.
 - FAL transcription: clear settled deadlines and stop local queue polling and retries after timeout (#392, thanks @vincent-peng).
 - Content extraction: decode HTML entities once so deliberately escaped markup remains literal text (#394, thanks @devYRPauli).
 - Content extraction: avoid splitting UTF-16 surrogate pairs when clipping to a character budget (#391, thanks @devYRPauli).

@@ -25,12 +25,12 @@
     "@steipete/summarize-core": "workspace:*",
     "googlevideo": "4.1.1",
     "markdown-it": "^15.0.0",
-    "mediabunny": "1.55.1",
+    "mediabunny": "1.55.2",
     "preact": "10.29.8"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
-    "@types/chrome": "^0.2.6",
+    "@types/chrome": "^0.2.7",
     "typescript": "^7.0.2",
     "web-ext": "10.6.0",
     "wxt": "0.21.4"
