@@ -446,6 +446,29 @@ describe("runCliModel - agy provider", () => {
     expect(execFileImpl).not.toHaveBeenCalled();
   });
 
+  it("rejects command when --print-timeout pushes extraArgs boundary over limit", async () => {
+    const execFileImpl = vi.fn() as unknown as ExecFileFn;
+    const limit = resolveAgyMaxPrintArgLimit().limit;
+    // Calculate extraArgs size to sit right near the boundary such that --print-timeout pushes it over limit
+    const paddingSize = limit - 200;
+    const boundaryExtraArgs = ["--flag=" + "y".repeat(paddingSize)];
+    const largePrompt = "Z".repeat(150 * 1024);
+
+    await expect(
+      runCliModel({
+        provider: "agy",
+        prompt: largePrompt,
+        model: null,
+        allowTools: false,
+        timeoutMs: 125_000,
+        env: {},
+        execFileImpl,
+        config: { agy: { extraArgs: boundaryExtraArgs } },
+      }),
+    ).rejects.toThrow(/cannot safely receive large command arguments over argv/);
+    expect(execFileImpl).not.toHaveBeenCalled();
+  });
+
   it("rejects NUL-containing agy prompts before passing them through argv", async () => {
     const execFileImpl = vi.fn() as unknown as ExecFileFn;
 

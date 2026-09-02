@@ -86,6 +86,14 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
     const { limit, type } = resolveAgyMaxPrintArgLimit(platform);
     const promptSize =
       type === "chars" ? options.prompt.length : Buffer.byteLength(options.prompt, "utf8");
+    if (
+      Number.isFinite(options.timeoutMs) &&
+      options.timeoutMs > 0 &&
+      !hasAnyFlag(args, ["--print-timeout", "-print-timeout"])
+    ) {
+      args.push("--print-timeout", `${Math.max(1, Math.ceil(options.timeoutMs / 1000))}s`);
+    }
+
     const initialCommandSize = isWindows
       ? estimateWindowsCommandChars([options.binary, ...args, "--print", options.prompt])
       : Buffer.byteLength([options.binary, ...args, "--print", options.prompt].join(" "), "utf-8");
@@ -114,14 +122,6 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
         `Antigravity CLI requires --print <prompt> and cannot safely receive large command arguments over argv (${finalCommandSize} ${type}). ` +
           "Use a different CLI provider for this input, reduce extra args or extracted content, or update agy to support stdin/file input.",
       );
-    }
-
-    if (
-      Number.isFinite(options.timeoutMs) &&
-      options.timeoutMs > 0 &&
-      !hasAnyFlag(args, ["--print-timeout", "-print-timeout"])
-    ) {
-      args.push("--print-timeout", `${Math.max(1, Math.ceil(options.timeoutMs / 1000))}s`);
     }
 
     args.push("--print", printPrompt);
