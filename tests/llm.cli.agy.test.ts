@@ -327,8 +327,47 @@ describe("runCliModel - agy provider", () => {
     const printIdx = seenArgs.indexOf("--print");
     expect(printIdx).toBeGreaterThanOrEqual(0);
     const printVal = seenArgs[printIdx + 1];
-    expect(printVal).toMatch(/^Summarize the content in file:\/\/\/.+\/document\.txt/);
+    expect(printVal).toMatch(/Summarize the content in file:\/\/\/.+\/document\.txt/);
     expect(seenCwd).toContain("summarize-agy-");
+  });
+
+  it("splits XML-tagged prompt payload into document.txt while retaining instructions in --print", async () => {
+    let sentPrintArg = "";
+    let fileContentRead = "";
+    const instructions = "<instructions>\nSummarize carefully.\n</instructions>\n\n<context>\nFilename: test.txt\n</context>";
+    const largeContent = "<content>\n" + "X".repeat(150 * 1024) + "\n</content>";
+    const fullTaggedPrompt = `${instructions}\n\n${largeContent}`;
+
+    const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+      const printIdx = args.indexOf("--print");
+      sentPrintArg = args[printIdx + 1];
+      const match = sentPrintArg.match(/file:\/\/.+?\bdocument\.txt/);
+      if (match) {
+        fileContentRead = fsSync.readFileSync(fileURLToPath(match[0]), "utf-8");
+      }
+      cb?.(null, "Summary of tagged content", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const result = await runCliModel({
+      provider: "agy",
+      prompt: fullTaggedPrompt,
+      model: null,
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+
+    expect(result.text).toBe("Summary of tagged content");
+    // Verify that instructions are retained in the --print argument
+    expect(sentPrintArg).toContain("<instructions>\nSummarize carefully.\n</instructions>");
+    expect(sentPrintArg).toContain("<context>\nFilename: test.txt\n</context>");
+    expect(sentPrintArg).toMatch(/Summarize the content in file:\/\/\/.+\/document\.txt/);
+    // Verify that only the <content> payload is written to the file
+    expect(fileContentRead).toBe(largeContent);
+    expect(fileContentRead).not.toContain("<instructions>");
   });
 
   it("writes prompt file with mode 0o600 and cleans up prompt directory afterwards", async () => {

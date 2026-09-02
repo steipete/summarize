@@ -84,8 +84,6 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
       );
     }
     const { limit, type } = resolveAgyMaxPrintArgLimit(platform);
-    const promptSize =
-      type === "chars" ? options.prompt.length : Buffer.byteLength(options.prompt, "utf8");
     if (
       Number.isFinite(options.timeoutMs) &&
       options.timeoutMs > 0 &&
@@ -94,23 +92,41 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
       args.push("--print-timeout", `${Math.max(1, Math.ceil(options.timeoutMs / 1000))}s`);
     }
 
-    const initialCommandSize = isWindows
-      ? estimateWindowsCommandChars([options.binary, ...args, "--print", options.prompt])
-      : Buffer.byteLength([options.binary, ...args, "--print", options.prompt].join(" "), "utf-8");
+    let noToolsGuidance = "";
+    if (!options.allowTools) {
+      noToolsGuidance =
+        "\n\nIMPORTANT: Do not create or edit files. Do not include local file links or work-log narration. Return only the final text response.";
+    }
 
-    let printPrompt = options.prompt;
+    const fullPrompt = options.prompt + noToolsGuidance;
+    const promptSize =
+      type === "chars" ? fullPrompt.length : Buffer.byteLength(fullPrompt, "utf8");
+    const initialCommandSize = isWindows
+      ? estimateWindowsCommandChars([options.binary, ...args, "--print", fullPrompt])
+      : Buffer.byteLength([options.binary, ...args, "--print", fullPrompt].join(" "), "utf-8");
+
+    let printPrompt = fullPrompt;
 
     if (promptSize > limit || initialCommandSize > limit) {
       promptDir = await fs.mkdtemp(path.join(isolatedCwd ?? tmpdir(), "summarize-agy-prompt-"));
       const documentPath = path.join(promptDir, "document.txt");
-      await fs.writeFile(documentPath, options.prompt, { mode: 0o600, encoding: "utf-8" });
-      const documentUrl = pathToFileURL(documentPath).href;
-      printPrompt = `Summarize the content in ${documentUrl}`;
-    }
 
-    if (!options.allowTools) {
-      printPrompt +=
-        "\n\nIMPORTANT: Do not create or edit files. Do not include local file links or work-log narration. Return only the final text response.";
+      const contentMatch = options.prompt.match(/(<content>[\s\S]*?<\/content>)/i);
+      let payloadToSave = options.prompt;
+      let promptInstructions = "";
+
+      if (contentMatch && contentMatch.index !== undefined) {
+        promptInstructions = options.prompt.slice(0, contentMatch.index).trim();
+        payloadToSave = contentMatch[1];
+      }
+
+      await fs.writeFile(documentPath, payloadToSave, { mode: 0o600, encoding: "utf-8" });
+      const documentUrl = pathToFileURL(documentPath).href;
+
+      const fileInstruction = `Summarize the content in ${documentUrl}`;
+      printPrompt = promptInstructions
+        ? `${promptInstructions}\n\n${fileInstruction}${noToolsGuidance}`
+        : `${fileInstruction}${noToolsGuidance}`;
     }
 
     const finalCommandSize = isWindows
