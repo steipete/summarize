@@ -24,6 +24,9 @@ describe("Twitter Syndication API Extraction", () => {
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }
+      if (url === tweetUrl) {
+        return new Response("Not found", { status: 404 });
+      }
       throw new Error(`Unexpected fetch URL: ${url}`);
     });
 
@@ -98,5 +101,44 @@ describe("Twitter Syndication API Extraction", () => {
 
     expect(result.diagnostics.strategy).toBe("nitter");
     expect(result.content).toContain("Content from Nitter");
+  });
+
+  it("emits exactly one twitter-syndication-done event with ok:false when post-fetch extraction throws", async () => {
+    const tweetUrl = "https://x.com/user/status/55555";
+    const syndicationUrl = "https://cdn.syndication.twimg.com/tweet-result?id=55555&token=123";
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url === syndicationUrl) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => {
+            throw new Error("Corrupted JSON payload");
+          },
+        } as unknown as Response;
+      }
+      return new Response("Not found", { status: 404 });
+    });
+
+    const progressEvents: Array<{ kind: string; ok?: boolean }> = [];
+    await fetchLinkContent(
+      tweetUrl,
+      {},
+      {
+        env: {},
+        fetch: fetchMock as unknown as typeof fetch,
+        scrapeWithFirecrawl: null,
+        apifyApiToken: null,
+        ytDlpPath: null,
+        convertHtmlToMarkdown: null,
+        transcriptCache: null,
+        onProgress: (e) => progressEvents.push({ kind: e.kind, ok: (e as any).ok }),
+      },
+    ).catch(() => {});
+
+    const doneEvents = progressEvents.filter((e) => e.kind === "twitter-syndication-done");
+    expect(doneEvents).toHaveLength(1);
+    expect(doneEvents[0].ok).toBe(false);
   });
 });

@@ -355,14 +355,6 @@ export async function fetchLinkContent(
       }
 
       const formattedContent = authorHeader ? `${authorHeader}\n\n${bodyText}` : bodyText;
-
-      deps.onProgress?.({
-        kind: ProgressKind.TwitterSyndicationDone,
-        url: syndicationUrl,
-        ok: true,
-        textBytes: Buffer.byteLength(formattedContent, "utf8"),
-      });
-
       const syntheticHtml = `<html><head><title>Tweet by ${screenName || "Twitter User"}</title></head><body><article>${formattedContent}</article></body></html>`;
       const result = await buildResultFromHtmlDocument({
         url,
@@ -384,6 +376,14 @@ export async function fetchLinkContent(
       });
       result.diagnostics.strategy = "twitter-syndication";
       result.content = formattedContent;
+
+      deps.onProgress?.({
+        kind: ProgressKind.TwitterSyndicationDone,
+        url: syndicationUrl,
+        ok: true,
+        textBytes: Buffer.byteLength(formattedContent, "utf8"),
+      });
+
       return result;
     } catch (error) {
       syndicationError = error;

@@ -16,8 +16,9 @@ describe("extractTweetId", () => {
     expect(extractTweetId("https://mobile.twitter.com/user/status/9876543210")).toBe("9876543210");
   });
 
-  it("returns null for non-status or invalid URLs", () => {
+  it("returns null for non-status, invalid, or alphanumeric status segment URLs", () => {
     expect(extractTweetId("https://x.com/user")).toBeNull();
+    expect(extractTweetId("https://x.com/user/status/123abc")).toBeNull();
     expect(extractTweetId("https://example.com/user/status/123")).toBeNull();
     expect(extractTweetId("not-a-url")).toBeNull();
   });
@@ -34,7 +35,7 @@ describe("toTwitterSyndicationUrl", () => {
 describe("isBlockedTwitterContent", () => {
   it("detects Nitter C&D and offline landing pages", () => {
     expect(isBlockedTwitterContent("nitter.net is offline")).toBe(true);
-    expect(isBlockedTwitterContent("Received cease-and-desist notice")).toBe(true);
+    expect(isBlockedTwitterContent("nitter notice: cease-and-desist received")).toBe(true);
     expect(isBlockedTwitterContent("Nitter development stopped due to Twitter API changes")).toBe(
       true,
     );
@@ -42,6 +43,11 @@ describe("isBlockedTwitterContent", () => {
 
   it("returns false for legitimate tweet content", () => {
     expect(isBlockedTwitterContent("This is a legitimate summary of a tweet.")).toBe(false);
+    expect(
+      isBlockedTwitterContent(
+        "The company sent a formal cease-and-desist letter regarding patent infringement.",
+      ),
+    ).toBe(false);
   });
 });
 
