@@ -111,13 +111,19 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
       promptDir = await fs.mkdtemp(path.join(isolatedCwd ?? tmpdir(), "summarize-agy-prompt-"));
       const documentPath = path.join(promptDir, "document.txt");
 
-      const contentMatch = options.prompt.match(/(?:\n\n|^)(<content>[\s\S]*?<\/content>)\s*$/i);
+      const lowerPrompt = options.prompt.toLowerCase();
+      const lastContentIdx = lowerPrompt.lastIndexOf("<content");
+      const lastEndIdx = lowerPrompt.lastIndexOf("</content>");
+
       let payloadToSave = options.prompt;
       let promptInstructions = "";
 
-      if (contentMatch && contentMatch.index !== undefined) {
-        promptInstructions = options.prompt.slice(0, contentMatch.index).trim();
-        payloadToSave = contentMatch[1];
+      if (lastContentIdx !== -1 && lastEndIdx > lastContentIdx) {
+        const endTagLength = "</content>".length;
+        const beforeContent = options.prompt.slice(0, lastContentIdx).trim();
+        const afterContent = options.prompt.slice(lastEndIdx + endTagLength).trim();
+        promptInstructions = [beforeContent, afterContent].filter(Boolean).join("\n\n");
+        payloadToSave = options.prompt.slice(lastContentIdx, lastEndIdx + endTagLength);
       }
 
       await fs.writeFile(documentPath, payloadToSave, { mode: 0o600, encoding: "utf-8" });

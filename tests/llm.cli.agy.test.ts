@@ -407,6 +407,45 @@ describe("runCliModel - agy provider", () => {
     expect(fileContentRead).not.toContain("Refer to the <content> tag");
   });
 
+  it("preserves instructions both before and after </content> block when offloading to temp file", async () => {
+    let sentPrintArg = "";
+    let fileContentRead = "";
+    const prefixInstructions = "<instructions>\nHeader instruction\n</instructions>";
+    const largeContent = "<content>\n" + "PAYLOAD_CONTENT_".repeat(10 * 1024) + "\n</content>";
+    const suffixInstructions = "IMPORTANT_FOOTER: Follow formatting strictly.";
+    const fullPrompt = `${prefixInstructions}\n\n${largeContent}\n\n${suffixInstructions}`;
+
+    const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+      const printIdx = args.indexOf("--print");
+      sentPrintArg = args[printIdx + 1];
+      const match = sentPrintArg.match(/file:\/\/.+?\bdocument\.txt/);
+      if (match) {
+        fileContentRead = fsSync.readFileSync(fileURLToPath(match[0]), "utf-8");
+      }
+      cb?.(null, "Summary of full prompt", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const result = await runCliModel({
+      provider: "agy",
+      prompt: fullPrompt,
+      model: null,
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+
+    expect(result.text).toBe("Summary of full prompt");
+    expect(sentPrintArg).toContain("Header instruction");
+    expect(sentPrintArg).toContain("IMPORTANT_FOOTER: Follow formatting strictly.");
+    expect(sentPrintArg).toMatch(/Summarize the content in file:\/\/\/.+\/document\.txt/);
+    expect(fileContentRead).toBe(largeContent);
+    expect(fileContentRead).not.toContain("Header instruction");
+    expect(fileContentRead).not.toContain("IMPORTANT_FOOTER");
+  });
+
   it("writes prompt file with mode 0o600 and cleans up prompt directory afterwards", async () => {
     let promptFilePath = "";
     let fileContentReadDuringExec = "";
