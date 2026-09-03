@@ -446,6 +446,42 @@ describe("runCliModel - agy provider", () => {
     expect(fileContentRead).not.toContain("IMPORTANT_FOOTER");
   });
 
+  it("correctly extracts XML content block without index shift when prompt contains UTF-16 length-changing characters", async () => {
+    let sentPrintArg = "";
+    let fileContentRead = "";
+    // Dotted capital I (İ, U+0130) expands to two chars (i + combining dot) when lowercased
+    const unicodeInstructions = "<instructions>\nTurkish characters: İİİİİİİİİİ\n</instructions>";
+    const largeContent = "<content>\n" + "UNICODE_PAYLOAD_".repeat(10 * 1024) + "\n</content>";
+    const fullPrompt = `${unicodeInstructions}\n\n${largeContent}`;
+
+    const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+      const printIdx = args.indexOf("--print");
+      sentPrintArg = args[printIdx + 1];
+      const match = sentPrintArg.match(/file:\/\/.+?\bdocument\.txt/);
+      if (match) {
+        fileContentRead = fsSync.readFileSync(fileURLToPath(match[0]), "utf-8");
+      }
+      cb?.(null, "Summary of unicode payload", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const result = await runCliModel({
+      provider: "agy",
+      prompt: fullPrompt,
+      model: null,
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+
+    expect(result.text).toBe("Summary of unicode payload");
+    expect(sentPrintArg).toContain("Turkish characters: İİİİİİİİİİ");
+    expect(fileContentRead).toBe(largeContent);
+    expect(fileContentRead).not.toContain("Turkish characters");
+  });
+
   it("writes prompt file with mode 0o600 and cleans up prompt directory afterwards", async () => {
     let promptFilePath = "";
     let fileContentReadDuringExec = "";

@@ -67,6 +67,16 @@ export async function runCopilotCli(options: ResolvedCliRunOptions): Promise<Cli
   return { text, usage: null, costUsd: null };
 }
 
+function lastIndexOfCaseInsensitive(str: string, target: string): number {
+  const targetLower = target.toLowerCase();
+  for (let index = str.length - target.length; index >= 0; index -= 1) {
+    if (str.slice(index, index + target.length).toLowerCase() === targetLower) {
+      return index;
+    }
+  }
+  return -1;
+}
+
 export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunResult> {
   const platform = typeof process !== "undefined" ? process.platform : "linux";
   const isWindows = platform === "win32";
@@ -111,9 +121,8 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
       promptDir = await fs.mkdtemp(path.join(isolatedCwd ?? tmpdir(), "summarize-agy-prompt-"));
       const documentPath = path.join(promptDir, "document.txt");
 
-      const lowerPrompt = options.prompt.toLowerCase();
-      const lastContentIdx = lowerPrompt.lastIndexOf("<content");
-      const lastEndIdx = lowerPrompt.lastIndexOf("</content>");
+      const lastContentIdx = lastIndexOfCaseInsensitive(options.prompt, "<content");
+      const lastEndIdx = lastIndexOfCaseInsensitive(options.prompt, "</content>");
 
       let payloadToSave = options.prompt;
       let promptInstructions = "";
