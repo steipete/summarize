@@ -335,7 +335,8 @@ describe("runCliModel - agy provider", () => {
   it("splits XML-tagged prompt payload into document.txt while retaining instructions in --print", async () => {
     let sentPrintArg = "";
     let fileContentRead = "";
-    const instructions = "<instructions>\nSummarize carefully.\n</instructions>\n\n<context>\nFilename: test.txt\n</context>";
+    const instructions =
+      "<instructions>\nSummarize carefully.\n</instructions>\n\n<context>\nFilename: test.txt\n</context>";
     const largeContent = "<content>\n" + "X".repeat(150 * 1024) + "\n</content>";
     const fullTaggedPrompt = `${instructions}\n\n${largeContent}`;
 
@@ -608,7 +609,13 @@ describe("runCliModel - agy provider", () => {
 
     const limit = resolveAgyMaxPrintArgLimit().limit;
     const baseOverhead =
-      "agy".length + 1 + "--sandbox".length + 1 + "--print".length + 1 + AGY_NO_TOOLS_GUIDANCE.length;
+      "agy".length +
+      1 +
+      "--sandbox".length +
+      1 +
+      "--print".length +
+      1 +
+      AGY_NO_TOOLS_GUIDANCE.length;
     const promptLength = limit - baseOverhead - 10;
     const nearLimitPrompt = "P".repeat(promptLength);
 

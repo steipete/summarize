@@ -108,8 +108,7 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
     const noToolsGuidance = !options.allowTools ? AGY_NO_TOOLS_GUIDANCE : "";
 
     const fullPrompt = options.prompt + noToolsGuidance;
-    const promptSize =
-      type === "chars" ? fullPrompt.length : Buffer.byteLength(fullPrompt, "utf8");
+    const promptSize = type === "chars" ? fullPrompt.length : Buffer.byteLength(fullPrompt, "utf8");
     const initialCommandSize = isWindows
       ? estimateWindowsCommandChars([options.binary, ...args, "--print", fullPrompt])
       : Buffer.byteLength([options.binary, ...args, "--print", fullPrompt].join(" "), "utf-8");
