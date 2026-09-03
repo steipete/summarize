@@ -77,6 +77,9 @@ function lastIndexOfCaseInsensitive(str: string, target: string): number {
   return -1;
 }
 
+export const AGY_NO_TOOLS_GUIDANCE =
+  "\n\nIMPORTANT: Do not create or edit files. Do not include local file links or work-log narration. Return only the final text response.";
+
 export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunResult> {
   const platform = typeof process !== "undefined" ? process.platform : "linux";
   const isWindows = platform === "win32";
@@ -102,11 +105,7 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
       args.push("--print-timeout", `${Math.max(1, Math.ceil(options.timeoutMs / 1000))}s`);
     }
 
-    let noToolsGuidance = "";
-    if (!options.allowTools) {
-      noToolsGuidance =
-        "\n\nIMPORTANT: Do not create or edit files. Do not include local file links or work-log narration. Return only the final text response.";
-    }
+    const noToolsGuidance = !options.allowTools ? AGY_NO_TOOLS_GUIDANCE : "";
 
     const fullPrompt = options.prompt + noToolsGuidance;
     const promptSize =

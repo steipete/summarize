@@ -2,6 +2,7 @@ import fsSync from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
+  AGY_NO_TOOLS_GUIDANCE,
   estimateWindowsCommandChars,
   resolveAgyMaxPrintArgLimit,
 } from "../src/llm/cli-runners/plain.js";
@@ -606,10 +607,8 @@ describe("runCliModel - agy provider", () => {
     }) as ExecFileFn;
 
     const limit = resolveAgyMaxPrintArgLimit().limit;
-    const noToolsGuidance =
-      "\n\nIMPORTANT: Do not create or edit files. Do not include local file links or work-log narration. Return only the final text response.";
     const baseOverhead =
-      "agy".length + 1 + "--sandbox".length + 1 + "--print".length + 1 + noToolsGuidance.length;
+      "agy".length + 1 + "--sandbox".length + 1 + "--print".length + 1 + AGY_NO_TOOLS_GUIDANCE.length;
     const promptLength = limit - baseOverhead - 10;
     const nearLimitPrompt = "P".repeat(promptLength);
 
@@ -652,12 +651,18 @@ describe("runCliModel - agy provider", () => {
 
     const limit = resolveAgyMaxPrintArgLimit().limit;
     const shortPrompt = "Short prompt";
-    const noToolsGuidance =
-      "\n\nIMPORTANT: Do not create or edit files. Do not include local file links or work-log narration. Return only the final text response.";
     const baseOverhead =
-      "agy".length + 1 + "--sandbox".length + 1 + "--print".length + 1 + shortPrompt.length + noToolsGuidance.length;
+      "agy".length +
+      1 +
+      "--sandbox".length +
+      1 +
+      "--print".length +
+      1 +
+      shortPrompt.length +
+      AGY_NO_TOOLS_GUIDANCE.length;
 
-    // Fill extraArgs to leave 5 bytes of headroom below limit without timeout
+    // Fill extraArgs to leave 7 bytes of headroom below limit without timeout;
+    // --print-timeout 125s (21 bytes) pushes command size over limit
     const paddingSize = limit - baseOverhead - 15;
     const boundaryExtraArgs = ["--flag=" + "y".repeat(paddingSize)];
 
