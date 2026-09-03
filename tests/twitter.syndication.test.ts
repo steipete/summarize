@@ -105,18 +105,18 @@ describe("Twitter Syndication API Extraction", () => {
 
   it("emits exactly one twitter-syndication-done event with ok:false when post-fetch extraction throws", async () => {
     const tweetUrl = "https://x.com/user/status/55555";
-    const syndicationUrl = "https://cdn.syndication.twimg.com/tweet-result?id=55555&token=123";
+    const syndicationUrl = toTwitterSyndicationUrl("55555");
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.url;
       if (url === syndicationUrl) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => {
-            throw new Error("Corrupted JSON payload");
-          },
-        } as unknown as Response;
+        return new Response(
+          JSON.stringify({
+            text: "Valid tweet text",
+            user: { screen_name: "testuser" },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
       return new Response("Not found", { status: 404 });
     });
@@ -132,7 +132,12 @@ describe("Twitter Syndication API Extraction", () => {
         apifyApiToken: null,
         ytDlpPath: null,
         convertHtmlToMarkdown: null,
-        transcriptCache: null,
+        transcriptCache: {
+          get: () => {
+            throw new Error("Transcript cache error inside buildResultFromHtmlDocument");
+          },
+          set: () => {},
+        } as any,
         onProgress: (e) => progressEvents.push({ kind: e.kind, ok: (e as any).ok }),
       },
     ).catch(() => {});
