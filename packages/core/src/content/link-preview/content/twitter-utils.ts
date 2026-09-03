@@ -36,14 +36,10 @@ export function extractTweetId(url: string): string | null {
 
 export function toTwitterSyndicationUrl(tweetId: string): string {
   let token = "123";
-  try {
-    const num = Number(tweetId);
-    if (Number.isFinite(num)) {
-      const calculated = ((num / 1e15) * Math.PI).toString(36).replace(/(0+|\.)/g, "");
-      if (calculated) token = calculated;
-    }
-  } catch {
-    // fallback to default token
+  const num = Number(tweetId);
+  if (Number.isFinite(num)) {
+    const calculated = ((num / 1e15) * Math.PI).toString(36).replace(/(0+|\.)/g, "");
+    if (calculated) token = calculated;
   }
   return `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&token=${token}`;
 }
