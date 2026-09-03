@@ -485,18 +485,89 @@ describe("runCliModel - agy provider", () => {
     expect(execFileImpl).not.toHaveBeenCalled();
   });
 
-  it("rejects command when --print-timeout pushes extraArgs boundary over limit", async () => {
-    const execFileImpl = vi.fn() as unknown as ExecFileFn;
-    const limit = resolveAgyMaxPrintArgLimit().limit;
-    // Calculate extraArgs size to sit right near the boundary such that --print-timeout pushes it over limit
-    const paddingSize = limit - 200;
-    const boundaryExtraArgs = ["--flag=" + "y".repeat(paddingSize)];
-    const largePrompt = "Z".repeat(150 * 1024);
+  it("triggers offload when --print-timeout pushes command length over limit", async () => {
+    let seenArgs: string[] = [];
+    const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+      seenArgs = args as string[];
+      cb?.(null, "ok", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
 
+    const limit = resolveAgyMaxPrintArgLimit().limit;
+    const noToolsGuidance =
+      "\n\nIMPORTANT: Do not create or edit files. Do not include local file links or work-log narration. Return only the final text response.";
+    const baseOverhead =
+      "agy".length + 1 + "--sandbox".length + 1 + "--print".length + 1 + noToolsGuidance.length;
+    const promptLength = limit - baseOverhead - 10;
+    const nearLimitPrompt = "P".repeat(promptLength);
+
+    // 1. Without timeout: command fits within limit without offload
+    await runCliModel({
+      provider: "agy",
+      prompt: nearLimitPrompt,
+      model: null,
+      allowTools: false,
+      timeoutMs: 0,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+    expect(seenArgs).not.toContain("--print-timeout");
+    expect(seenArgs[seenArgs.indexOf("--print") + 1]).not.toContain("file://");
+
+    // 2. With timeout: --print-timeout 125s pushes initialCommandSize over limit, triggering offload
+    await runCliModel({
+      provider: "agy",
+      prompt: nearLimitPrompt,
+      model: null,
+      allowTools: false,
+      timeoutMs: 125_000,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+    expect(seenArgs).toContain("--print-timeout");
+    expect(seenArgs[seenArgs.indexOf("--print") + 1]).toContain("file://");
+  });
+
+  it("rejects command when --print-timeout pushes extraArgs boundary over limit", async () => {
+    let called = false;
+    const execFileImpl: ExecFileFn = ((_cmd, _args, _options, cb) => {
+      called = true;
+      cb?.(null, "ok", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const limit = resolveAgyMaxPrintArgLimit().limit;
+    const shortPrompt = "Short prompt";
+    const noToolsGuidance =
+      "\n\nIMPORTANT: Do not create or edit files. Do not include local file links or work-log narration. Return only the final text response.";
+    const baseOverhead =
+      "agy".length + 1 + "--sandbox".length + 1 + "--print".length + 1 + shortPrompt.length + noToolsGuidance.length;
+
+    // Fill extraArgs to leave 5 bytes of headroom below limit without timeout
+    const paddingSize = limit - baseOverhead - 15;
+    const boundaryExtraArgs = ["--flag=" + "y".repeat(paddingSize)];
+
+    // 1. Without timeout: command fits within limit and executes
+    await runCliModel({
+      provider: "agy",
+      prompt: shortPrompt,
+      model: null,
+      allowTools: false,
+      timeoutMs: 0,
+      env: {},
+      execFileImpl,
+      config: { agy: { extraArgs: boundaryExtraArgs } },
+    });
+    expect(called).toBe(true);
+
+    // 2. With timeout: --print-timeout 125s (22 bytes) pushes command size over limit, causing rejection
+    called = false;
     await expect(
       runCliModel({
         provider: "agy",
-        prompt: largePrompt,
+        prompt: shortPrompt,
         model: null,
         allowTools: false,
         timeoutMs: 125_000,
@@ -505,7 +576,7 @@ describe("runCliModel - agy provider", () => {
         config: { agy: { extraArgs: boundaryExtraArgs } },
       }),
     ).rejects.toThrow(/cannot safely receive large command arguments over argv/);
-    expect(execFileImpl).not.toHaveBeenCalled();
+    expect(called).toBe(false);
   });
 
   it("rejects NUL-containing agy prompts before passing them through argv", async () => {
