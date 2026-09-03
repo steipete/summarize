@@ -25,9 +25,9 @@ describe("extractTweetId", () => {
 });
 
 describe("toTwitterSyndicationUrl", () => {
-  it("builds expected syndication API endpoint URL", () => {
+  it("builds expected syndication API endpoint URL with derived token", () => {
     expect(toTwitterSyndicationUrl("2094533934960758909")).toBe(
-      "https://cdn.syndication.twimg.com/tweet-result?id=2094533934960758909&token=123",
+      "https://cdn.syndication.twimg.com/tweet-result?id=2094533934960758909&token=52qhtjhtvyx",
     );
   });
 });

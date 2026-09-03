@@ -375,13 +375,12 @@ export async function fetchLinkContent(
         readabilityCandidate: null,
       });
       result.diagnostics.strategy = "twitter-syndication";
-      result.content = formattedContent;
 
       deps.onProgress?.({
         kind: ProgressKind.TwitterSyndicationDone,
         url: syndicationUrl,
         ok: true,
-        textBytes: Buffer.byteLength(formattedContent, "utf8"),
+        textBytes: Buffer.byteLength(result.content, "utf8"),
       });
 
       return result;

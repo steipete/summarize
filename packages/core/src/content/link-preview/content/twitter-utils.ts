@@ -35,7 +35,17 @@ export function extractTweetId(url: string): string | null {
 }
 
 export function toTwitterSyndicationUrl(tweetId: string): string {
-  return `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&token=123`;
+  let token = "123";
+  try {
+    const idBig = BigInt(tweetId);
+    const calculated = (Number(idBig / 1000000000000000n) * Math.PI)
+      .toString(36)
+      .replace(/(0+|\.)/g, "");
+    if (calculated) token = calculated;
+  } catch {
+    // fallback to default token
+  }
+  return `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&token=${token}`;
 }
 
 export function isTwitterBroadcastUrl(url: string): boolean {

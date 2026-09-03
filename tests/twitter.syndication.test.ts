@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { fetchLinkContent } from "../packages/core/src/content/link-preview/content/index.js";
+import { toTwitterSyndicationUrl } from "../packages/core/src/content/link-preview/content/twitter-utils.js";
 import { buildExtractFinishLabel } from "../src/run/finish-line-labels.js";
 
 describe("Twitter Syndication API Extraction", () => {
   it("extracts tweet text, author header, quoted tweet, and photos from syndication API", async () => {
     const tweetUrl = "https://x.com/0xLupenn/status/2094533934960758909";
-    const syndicationUrl =
-      "https://cdn.syndication.twimg.com/tweet-result?id=2094533934960758909&token=123";
+    const syndicationUrl = toTwitterSyndicationUrl("2094533934960758909");
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.url;
