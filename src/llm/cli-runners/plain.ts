@@ -111,7 +111,7 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
       promptDir = await fs.mkdtemp(path.join(isolatedCwd ?? tmpdir(), "summarize-agy-prompt-"));
       const documentPath = path.join(promptDir, "document.txt");
 
-      const contentMatch = options.prompt.match(/(<content>[\s\S]*?<\/content>)/i);
+      const contentMatch = options.prompt.match(/(?:\n\n|^)(<content>[\s\S]*?<\/content>)\s*$/i);
       let payloadToSave = options.prompt;
       let promptInstructions = "";
 

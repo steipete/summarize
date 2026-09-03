@@ -370,6 +370,43 @@ describe("runCliModel - agy provider", () => {
     expect(fileContentRead).not.toContain("<instructions>");
   });
 
+  it("anchors XML content match to final <content> block when instructions contain literal <content> examples", async () => {
+    let sentPrintArg = "";
+    let fileContentRead = "";
+    const instructionsWithLiteralContent =
+      "<instructions>\nRefer to the <content> tag below when summarizing.\n</instructions>\n\n<context>\nExample tag: <content>example</content>\n</context>";
+    const largeContent = "<content>\n" + "REAL_PAYLOAD_".repeat(10 * 1024) + "\n</content>";
+    const fullTaggedPrompt = `${instructionsWithLiteralContent}\n\n${largeContent}`;
+
+    const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+      const printIdx = args.indexOf("--print");
+      sentPrintArg = args[printIdx + 1];
+      const match = sentPrintArg.match(/file:\/\/.+?\bdocument\.txt/);
+      if (match) {
+        fileContentRead = fsSync.readFileSync(fileURLToPath(match[0]), "utf-8");
+      }
+      cb?.(null, "Summary of real payload", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const result = await runCliModel({
+      provider: "agy",
+      prompt: fullTaggedPrompt,
+      model: null,
+      allowTools: false,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: null,
+    });
+
+    expect(result.text).toBe("Summary of real payload");
+    expect(sentPrintArg).toContain("Refer to the <content> tag below");
+    expect(sentPrintArg).toContain("Example tag: <content>example</content>");
+    expect(fileContentRead).toBe(largeContent);
+    expect(fileContentRead).not.toContain("Refer to the <content> tag");
+  });
+
   it("writes prompt file with mode 0o600 and cleans up prompt directory afterwards", async () => {
     let promptFilePath = "";
     let fileContentReadDuringExec = "";
