@@ -59,7 +59,7 @@ export interface EmbeddedVideoDiagnostics {
 }
 
 export interface ContentFetchDiagnostics {
-  strategy: "bird" | "xurl" | "firecrawl" | "html" | "nitter";
+  strategy: "bird" | "xurl" | "twitter-syndication" | "nitter" | "firecrawl" | "html";
   firecrawl: FirecrawlDiagnostics;
   markdown: MarkdownDiagnostics;
   transcript: TranscriptDiagnostics;

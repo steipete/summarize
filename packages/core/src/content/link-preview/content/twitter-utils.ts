@@ -7,7 +7,7 @@ const NITTER_HOSTS = [
   "nitter.1d4.us",
 ];
 const TWITTER_BLOCKED_TEXT_PATTERN =
-  /something went wrong|try again|privacy related extensions|please disable them and try again/i;
+  /something went wrong|try again|privacy related extensions|please disable them and try again|nitter\.net is offline|cease[- ]and[- ]desist|nitter development stopped/i;
 const ANUBIS_TOKENS = ["anubis", "proof-of-work", "proof of work", "hashcash", "jshelter"];
 const TWITTER_BROADCAST_PATH_PATTERN = /^\/i\/broadcasts\/[^/?#]+/i;
 
@@ -20,6 +20,22 @@ export function isTwitterStatusUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function extractTweetId(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    if (!TWITTER_HOSTS.has(host)) return null;
+    const match = /\/status\/(\d+)/.exec(parsed.pathname);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+export function toTwitterSyndicationUrl(tweetId: string): string {
+  return `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&token=123`;
 }
 
 export function isTwitterBroadcastUrl(url: string): boolean {

@@ -1,7 +1,7 @@
 import { resolveTranscriptForLink } from "../../transcript/index.js";
 import { resolveTranscriptionConfig } from "../../transcript/transcription-config.js";
 import { isYouTubeUrl } from "../../url.js";
-import type { FirecrawlScrapeResult, LinkPreviewDeps } from "../deps.js";
+import { type FirecrawlScrapeResult, type LinkPreviewDeps, ProgressKind } from "../deps.js";
 import type { CacheMode, FirecrawlDiagnostics, TranscriptResolution } from "../types.js";
 import { normalizeForPrompt } from "./cleaner.js";
 import { MIN_READABILITY_CONTENT_CHARACTERS } from "./constants.js";
@@ -16,10 +16,12 @@ import {
 } from "./reddit.js";
 import { tryTranscriptOnlyStrategy } from "./transcript-only-strategies.js";
 import {
+  extractTweetId,
   isAnubisHtml,
   isBlockedTwitterContent,
   isTwitterStatusUrl,
   toNitterUrls,
+  toTwitterSyndicationUrl,
 } from "./twitter-utils.js";
 import type { ExtractedLinkContent, FetchLinkContentOptions, MarkdownMode } from "./types.js";
 import {
@@ -272,6 +274,132 @@ export async function fetchLinkContent(
   const birdResult = await attemptBird();
   if (birdResult) {
     return birdResult;
+  }
+
+  let syndicationError: unknown = null;
+
+  const attemptTwitterSyndication = async (): Promise<ExtractedLinkContent | null> => {
+    const tweetId = extractTweetId(url);
+    if (!tweetId) return null;
+
+    const syndicationUrl = toTwitterSyndicationUrl(tweetId);
+    deps.onProgress?.({ kind: ProgressKind.TwitterSyndicationStart, url: syndicationUrl });
+
+    try {
+      const response = await deps.fetch(syndicationUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+
+      if (!response.ok) {
+        syndicationError = new Error(`Twitter syndication returned HTTP ${response.status}`);
+        deps.onProgress?.({
+          kind: ProgressKind.TwitterSyndicationDone,
+          url: syndicationUrl,
+          ok: false,
+          textBytes: null,
+        });
+        return null;
+      }
+
+      const data = (await response.json()) as Record<string, unknown> | null;
+      const text = typeof data?.text === "string" ? data.text : null;
+      if (!data || !text) {
+        syndicationError = new Error("Twitter syndication returned empty payload");
+        deps.onProgress?.({
+          kind: ProgressKind.TwitterSyndicationDone,
+          url: syndicationUrl,
+          ok: false,
+          textBytes: null,
+        });
+        return null;
+      }
+
+      const user = data.user as { name?: string; screen_name?: string } | undefined;
+      const authorName = user?.name ?? "";
+      const screenName = user?.screen_name ?? "";
+      const authorHeader = screenName
+        ? authorName
+          ? `**${authorName} (@${screenName})**`
+          : `**@${screenName}**`
+        : "";
+
+      let bodyText = text;
+      const quoted = data.quoted_tweet as
+        | {
+            text?: string;
+            user?: { screen_name?: string };
+            article?: { title?: string; preview_text?: string };
+          }
+        | undefined;
+      if (quoted?.text) {
+        const qAuthor = quoted.user?.screen_name ?? "";
+        bodyText += `\n\n> Quoted ${qAuthor ? `@${qAuthor}: ` : ""}${quoted.text}`;
+      } else if (quoted?.article?.title) {
+        bodyText += `\n\n> Quoted Article: **${quoted.article.title}** - ${quoted.article.preview_text ?? ""}`;
+      }
+
+      const photos = Array.isArray(data.photos) ? (data.photos as Array<{ url?: string }>) : [];
+      if (photos.length > 0) {
+        const photoLinks = photos
+          .map((p) => p.url)
+          .filter((u): u is string => Boolean(u))
+          .map((u) => `![photo](${u})`)
+          .join("\n");
+        if (photoLinks) {
+          bodyText += `\n\n${photoLinks}`;
+        }
+      }
+
+      const formattedContent = authorHeader ? `${authorHeader}\n\n${bodyText}` : bodyText;
+
+      deps.onProgress?.({
+        kind: ProgressKind.TwitterSyndicationDone,
+        url: syndicationUrl,
+        ok: true,
+        textBytes: Buffer.byteLength(formattedContent, "utf8"),
+      });
+
+      const syntheticHtml = `<html><head><title>Tweet by ${screenName || "Twitter User"}</title></head><body><article>${formattedContent}</article></body></html>`;
+      const result = await buildResultFromHtmlDocument({
+        url,
+        html: syntheticHtml,
+        cacheMode,
+        maxCharacters,
+        youtubeTranscriptMode,
+        mediaTranscriptMode,
+        embeddedVideoMode,
+        transcriptTimestamps,
+        transcriptDiarization,
+        transcriptVideoDownload,
+        firecrawlDiagnostics,
+        markdownRequested,
+        markdownMode,
+        timeoutMs,
+        deps,
+        readabilityCandidate: null,
+      });
+      result.diagnostics.strategy = "twitter-syndication";
+      result.content = formattedContent;
+      return result;
+    } catch (error) {
+      syndicationError = error;
+      deps.onProgress?.({
+        kind: ProgressKind.TwitterSyndicationDone,
+        url: syndicationUrl,
+        ok: false,
+        textBytes: null,
+      });
+      return null;
+    }
+  };
+
+  const syndicationResult = await attemptTwitterSyndication();
+  if (syndicationResult && !isBlockedTwitterContent(syndicationResult.content)) {
+    return syndicationResult;
   }
 
   const attemptNitter = async (): Promise<string | null> => {
