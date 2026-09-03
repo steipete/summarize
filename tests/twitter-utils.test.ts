@@ -27,7 +27,13 @@ describe("extractTweetId", () => {
 describe("toTwitterSyndicationUrl", () => {
   it("builds expected syndication API endpoint URL with derived token", () => {
     expect(toTwitterSyndicationUrl("2094533934960758909")).toBe(
-      "https://cdn.syndication.twimg.com/tweet-result?id=2094533934960758909&token=52qhtjhtvyx",
+      "https://cdn.syndication.twimg.com/tweet-result?id=2094533934960758909&token=52s67gk1e2",
+    );
+    expect(toTwitterSyndicationUrl("1288158940940222464")).toBe(
+      "https://cdn.syndication.twimg.com/tweet-result?id=1288158940940222464&token=34evcdrq711",
+    );
+    expect(toTwitterSyndicationUrl("1668680561921038336")).toBe(
+      "https://cdn.syndication.twimg.com/tweet-result?id=1668680561921038336&token=41mbbppzkg",
     );
   });
 });

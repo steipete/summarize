@@ -37,11 +37,11 @@ export function extractTweetId(url: string): string | null {
 export function toTwitterSyndicationUrl(tweetId: string): string {
   let token = "123";
   try {
-    const idBig = BigInt(tweetId);
-    const calculated = (Number(idBig / 1000000000000000n) * Math.PI)
-      .toString(36)
-      .replace(/(0+|\.)/g, "");
-    if (calculated) token = calculated;
+    const num = Number(tweetId);
+    if (Number.isFinite(num)) {
+      const calculated = ((num / 1e15) * Math.PI).toString(36).replace(/(0+|\.)/g, "");
+      if (calculated) token = calculated;
+    }
   } catch {
     // fallback to default token
   }
