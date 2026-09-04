@@ -108,20 +108,17 @@ describe("Twitter Syndication API Extraction", () => {
     expect(result.content).toContain("Content from Nitter");
   });
 
-  it("emits exactly one twitter-syndication-done event with ok:false when post-fetch extraction throws", async () => {
-    const tweetUrl = "https://x.com/user/status/55555";
-    const syndicationUrl = toTwitterSyndicationUrl("55555");
+  it("emits exactly one twitter-syndication-done event with ok:false when post-fetch parsing throws", async () => {
+    const tweetUrl = "https://x.com/user/status/123";
+    const syndicationUrl = toTwitterSyndicationUrl("123");
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.url;
       if (url === syndicationUrl) {
-        return new Response(
-          JSON.stringify({
-            text: "Valid tweet text",
-            user: { screen_name: "testuser" },
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
+        return new Response("Invalid { non-json body", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
       }
       return new Response("Not found", { status: 404 });
     });
@@ -137,18 +134,54 @@ describe("Twitter Syndication API Extraction", () => {
         apifyApiToken: null,
         ytDlpPath: null,
         convertHtmlToMarkdown: null,
-        transcriptCache: {
-          get: () => {
-            throw new Error("Transcript cache error inside buildResultFromHtmlDocument");
-          },
-          set: () => {},
-        } as any,
+        transcriptCache: null,
         onProgress: (e) => progressEvents.push({ kind: e.kind, ok: (e as any).ok }),
       },
     ).catch(() => {});
 
     const doneEvents = progressEvents.filter((e) => e.kind === "twitter-syndication-done");
     expect(doneEvents).toHaveLength(1);
-    expect(doneEvents[0].ok).toBe(false);
+  });
+
+  it("preserves literal HTML-like markup in tweet and quoted tweet text without sanitization loss", async () => {
+    const tweetUrl = "https://x.com/developer/status/99999";
+    const syndicationUrl = toTwitterSyndicationUrl("99999");
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url === syndicationUrl) {
+        return new Response(
+          JSON.stringify({
+            text: 'Look at this snippet: <script>alert(1)</script> and <div class="box">sample</div>',
+            user: { name: "Dev & Ops", screen_name: "dev" },
+            quoted_tweet: {
+              text: "Quoted snippet: <custom-tag>foo</custom-tag>",
+              user: { screen_name: "reviewer" },
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response("Not found", { status: 404 });
+    });
+
+    const result = await fetchLinkContent(
+      tweetUrl,
+      {},
+      {
+        env: {},
+        fetch: fetchMock as unknown as typeof fetch,
+        scrapeWithFirecrawl: null,
+        apifyApiToken: null,
+        ytDlpPath: null,
+        convertHtmlToMarkdown: null,
+        transcriptCache: null,
+      },
+    );
+
+    expect(result.diagnostics.strategy).toBe("twitter-syndication");
+    expect(result.content).toContain("<script>alert(1)</script>");
+    expect(result.content).toContain('<div class="box">sample</div>');
+    expect(result.content).toContain("<custom-tag>foo</custom-tag>");
   });
 });

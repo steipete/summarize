@@ -35,6 +35,15 @@ import {
   selectBaseContent,
 } from "./utils.js";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const MAX_TWITTER_TEXT_FOR_TRANSCRIPT = 500;
 
 const buildSkippedTwitterTranscript = (
@@ -355,26 +364,53 @@ export async function fetchLinkContent(
       }
 
       const formattedContent = authorHeader ? `${authorHeader}\n\n${bodyText}` : bodyText;
-      const syntheticHtml = `<html><head><title>Tweet by ${screenName || "Twitter User"}</title></head><body><article>${formattedContent}</article></body></html>`;
-      const result = await buildResultFromHtmlDocument({
+      const title = screenName || authorName ? `Tweet by ${authorName || screenName}` : "Tweet";
+
+      const result = finalizeExtractedLinkContent({
         url,
-        html: syntheticHtml,
-        cacheMode,
+        baseContent: formattedContent,
+        contentSections: [],
         maxCharacters,
-        youtubeTranscriptMode,
-        mediaTranscriptMode,
-        embeddedVideoMode,
-        transcriptTimestamps,
-        transcriptDiarization,
-        transcriptVideoDownload,
-        firecrawlDiagnostics,
-        markdownRequested,
-        markdownMode,
-        timeoutMs,
-        deps,
-        readabilityCandidate: null,
+        title,
+        description: text,
+        siteName: "x.com",
+        transcriptResolution: {
+          text: null,
+          source: null,
+          metadata: { provider: "twitter-syndication" },
+        },
+        video: null,
+        isVideoOnly: false,
+        diagnostics: {
+          strategy: "twitter-syndication",
+          firecrawl: firecrawlDiagnostics,
+          markdown: {
+            requested: markdownRequested,
+            used: false,
+            provider: null,
+            notes: null,
+          },
+          transcript: {
+            cacheMode,
+            cacheStatus: "miss",
+            textProvided: false,
+            provider: null,
+            attemptedProviders: [],
+            notes:
+              "Twitter transcript skipped (media transcript mode is auto; enable --video-mode transcript to force audio).",
+          },
+          embeddedVideo: {
+            mode: embeddedVideoMode ?? "auto",
+            detected: false,
+            used: false,
+            url: null,
+            source: null,
+            confidence: null,
+            composition: "article",
+            notes: null,
+          },
+        },
       });
-      result.diagnostics.strategy = "twitter-syndication";
 
       deps.onProgress?.({
         kind: ProgressKind.TwitterSyndicationDone,
