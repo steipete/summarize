@@ -627,7 +627,8 @@ export async function closeExtension(context: BrowserContext, userDataDir: strin
       await context.browser()?.close();
     } catch {}
   }
-  fs.rmSync(userDataDir, { recursive: true, force: true });
+  // Chromium can finish writing its profile just after context shutdown.
+  fs.rmSync(userDataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
 export type ChatLikeMessage = Message;

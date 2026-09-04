@@ -7,16 +7,19 @@ const rootPackage = JSON.parse(readFileSync(resolve("package.json"), "utf8")) as
   scripts: Record<string, string>;
   devDependencies: Record<string, string>;
   engines: Record<string, string>;
+  packageManager: string;
 };
 const corePackage = JSON.parse(readFileSync(resolve("packages/core/package.json"), "utf8")) as {
   scripts: Record<string, string>;
   devDependencies: Record<string, string>;
   engines: Record<string, string>;
+  packageManager: string;
 };
 const releaseScript = readFileSync(resolve("scripts/release.sh"), "utf8");
 const registerTypeScript = readFileSync(resolve("scripts/register-typescript.mjs"), "utf8");
 const pnpmWorkspace = readFileSync(resolve("pnpm-workspace.yaml"), "utf8");
 const pnpmLockfile = readFileSync(resolve("pnpm-lock.yaml"), "utf8");
+const testDockerfile = readFileSync(resolve("Dockerfile.test"), "utf8");
 const oxfmtConfig = JSON5.parse(readFileSync(resolve(".oxfmtrc.jsonc"), "utf8")) as {
   ignorePatterns?: string[];
 };
@@ -89,5 +92,11 @@ describe("package scripts", () => {
     const rootNodeMajor = majorFromRange(rootPackage.engines.node);
     expect(majorFromRange(rootPackage.devDependencies["@types/node"])).toBe(rootNodeMajor);
     expect(majorFromRange(corePackage.devDependencies["@types/node"])).toBe(rootNodeMajor);
+  });
+
+  it("keeps the test container and core package aligned with the root runtime and toolchain", () => {
+    const imageNodeMajor = testDockerfile.match(/^FROM node:(\d+)-/mu)?.[1];
+    expect(Number(imageNodeMajor)).toBe(majorFromRange(rootPackage.engines.node));
+    expect(corePackage.packageManager).toBe(rootPackage.packageManager);
   });
 });
