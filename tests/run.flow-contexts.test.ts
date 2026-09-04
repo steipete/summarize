@@ -12,10 +12,11 @@ const createWritable = () =>
   });
 
 describe("run flow contexts", () => {
-  it("derives asset and URL contexts from one model/runtime contract", () => {
+  it.each([false, true])("derives asset and URL contexts with cache hook=%s", (withCacheHook) => {
     const cacheState = { mode: "off", store: null } as unknown as CacheState;
     const summaryEngine = {} as UrlFlowContext["model"]["summaryEngine"];
     const onModelChosen = vi.fn();
+    const onSummaryCached = withCacheHook ? vi.fn() : undefined;
     const runtimeHooks = {
       setTranscriptionCost: vi.fn(),
       writeViaFooter: vi.fn(),
@@ -82,13 +83,22 @@ describe("run flow contexts", () => {
         apiStatus: {},
       } as unknown as UrlFlowContext["model"],
       runtimeHooks,
-      eventHooks: { onModelChosen },
-      assetSummaryOverrides: { format: "text" },
+      eventHooks: { onModelChosen, onSummaryCached },
+      assetFormat: "text",
     });
 
     expect(assetSummaryContext.format).toBe("text");
     expect(assetSummaryContext.summaryEngine).toBe(summaryEngine);
     expect(assetSummaryContext.cache).toBe(cacheState);
+    expect(assetSummaryContext.trackedFetch).toBe(urlFlowContext.io.fetch);
+    expect(assetSummaryContext.envForRun).toBe(urlFlowContext.io.envForRun);
+    expect(assetSummaryContext.onSummaryCached).toBe(onSummaryCached ?? null);
+    expect(assetSummaryContext.writeViaFooter).toBe(runtimeHooks.writeViaFooter);
+    expect(assetSummaryContext.restoreProgressAfterStdout).toBe(
+      runtimeHooks.restoreProgressAfterStdout,
+    );
+    expect(assetSummaryContext.timeoutMs).toBe(1_000);
+    expect(assetSummaryContext.streamingEnabled).toBe(true);
     expect(urlFlowContext.flags.format).toBe("markdown");
     expect(urlFlowContext.model.summaryEngine).toBe(summaryEngine);
     expect(urlFlowContext.cache).toBe(cacheState);

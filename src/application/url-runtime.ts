@@ -98,7 +98,7 @@ export function createSummarizeRuntimeResources(args: {
       setClearProgressBeforeStdout: () => {},
       clearProgressIfCurrent: () => {},
     },
-    assetSummaryOverrides: { format: directAssetInput ? request.format : "text" },
+    assetFormat: directAssetInput ? request.format : "text",
   });
 
   return bindSummarizeExecutionEvents(resources, emit);

@@ -72,6 +72,8 @@ The user-facing error text remains descriptive, but it is not a control-flow con
 
 ## Adapter ownership
 
+`src/application/flow-contexts.ts` composes asset and URL contexts from the same IO, flags, model, and runtime hooks. Asset execution receives its flat context directly; `assetFormat` is the explicit asset-only override. Fetch tracking, shared caches, and summary-cache notifications stay wired at this application boundary.
+
 Adapters own:
 
 - stdout/stderr

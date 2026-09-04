@@ -263,7 +263,7 @@ export function createSummarizeExecutionResources(options: {
   flow: SummarizeFlowOptions;
   adapterHooks: SummarizeFlowAdapterHooks;
   eventHooks?: Partial<UrlFlowEventHooks>;
-  assetSummaryOverrides?: Parameters<typeof createRunFlowContexts>[0]["assetSummaryOverrides"];
+  assetFormat?: Parameters<typeof createRunFlowContexts>[0]["assetFormat"];
   perfTrace?: PerfTrace | null;
 }): SummarizeExecutionResources {
   const { resolvedRun, flow } = options;
@@ -307,7 +307,7 @@ export function createSummarizeExecutionResources(options: {
       estimateCostUsd: metrics.estimateCostUsd,
     },
     eventHooks: options.eventHooks,
-    assetSummaryOverrides: options.assetSummaryOverrides,
+    assetFormat: options.assetFormat,
     perfTrace: options.perfTrace,
   });
 

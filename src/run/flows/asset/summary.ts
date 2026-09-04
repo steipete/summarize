@@ -32,7 +32,6 @@ import {
 } from "./summary-attempts.js";
 import type {
   AssetSummaryContext,
-  AssetSummaryContextInput,
   AssetSummaryResult,
   PresentAssetSummaryArgs,
   SummarizeAssetArgs,
@@ -185,18 +184,6 @@ export async function presentAssetSummary(
   if (result.outcome !== "token-fit") {
     await writeAssetMetrics(ctx, result);
   }
-}
-
-export function createAssetSummaryContext(input: AssetSummaryContextInput): AssetSummaryContext {
-  return {
-    ...input.io,
-    ...input.summary,
-    ...input.model,
-    ...input.output,
-    ...input.hooks,
-    ...input.cache,
-    apiStatus: input.apiStatus,
-  };
 }
 
 export async function executeAssetSummary(
