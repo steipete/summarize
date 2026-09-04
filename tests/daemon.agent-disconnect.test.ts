@@ -38,11 +38,11 @@ describe("daemon agent disconnect", () => {
       `#!/usr/bin/env node
 const fs = require("node:fs");
 const marker = process.env.CANCEL_MARKER;
-fs.writeFileSync(marker, "started");
 process.on("SIGTERM", () => {
   fs.writeFileSync(marker, "interrupted");
   process.exit(0);
 });
+fs.writeFileSync(marker, "started");
 setTimeout(() => {
   fs.writeFileSync(marker, "completed");
   process.stdout.write('{"result":{"payloads":[{"text":"late"}]}}\\n');
