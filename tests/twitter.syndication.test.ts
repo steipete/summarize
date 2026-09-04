@@ -184,4 +184,41 @@ describe("Twitter Syndication API Extraction", () => {
     expect(result.content).toContain('<div class="box">sample</div>');
     expect(result.content).toContain("<custom-tag>foo</custom-tag>");
   });
+
+  it("extracts tweets containing ordinary block-page phrases without false-positive rejection", async () => {
+    const tweetUrl = "https://x.com/status_bot/status/88888";
+    const syndicationUrl = toTwitterSyndicationUrl("88888");
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url === syndicationUrl) {
+        return new Response(
+          JSON.stringify({
+            text: "Something went wrong with the server deployment. Please try again later.",
+            user: { name: "Status Bot", screen_name: "status_bot" },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response("Not found", { status: 404 });
+    });
+
+    const result = await fetchLinkContent(
+      tweetUrl,
+      {},
+      {
+        env: {},
+        fetch: fetchMock as unknown as typeof fetch,
+        scrapeWithFirecrawl: null,
+        apifyApiToken: null,
+        ytDlpPath: null,
+        convertHtmlToMarkdown: null,
+        transcriptCache: null,
+      },
+    );
+
+    expect(result.diagnostics.strategy).toBe("twitter-syndication");
+    expect(result.content).toContain("Something went wrong with the server deployment.");
+    expect(result.content).toContain("Please try again later.");
+  });
 });
