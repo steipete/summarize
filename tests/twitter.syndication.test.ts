@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fetchLinkContent } from "../packages/core/src/content/link-preview/content/index.js";
 import { toTwitterSyndicationUrl } from "../packages/core/src/content/link-preview/content/twitter-utils.js";
 import { buildExtractFinishLabel } from "../src/run/finish-line-labels.js";
+import { deriveExtractionUi } from "../src/run/flows/url/extract.js";
 
 describe("Twitter Syndication API Extraction", () => {
   it("extracts tweet text, author header, quoted tweet, and photos from syndication API", async () => {
@@ -64,6 +65,10 @@ describe("Twitter Syndication API Extraction", () => {
       hasMarkdownLlmCall: false,
     });
     expect(label).toBe("text via twitter-syndication");
+
+    const extractionUi = deriveExtractionUi(result);
+    expect(extractionUi.viaSourceLabel).toBe(", twitter-syndication");
+    expect(extractionUi.footerParts).toContain("twitter-syndication");
   });
 
   it("falls back to Nitter when Twitter Syndication API fails with HTTP 404", async () => {
