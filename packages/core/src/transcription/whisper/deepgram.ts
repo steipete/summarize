@@ -1,8 +1,8 @@
 import { openAsBlob } from "node:fs";
-import { MAX_ERROR_DETAIL_CHARS, TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
+import { TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
 import { resolveDeepgramTranscriptionModel } from "./provider-setup.js";
 import type { TranscriptionSegment } from "./types.js";
-import { toArrayBuffer } from "./utils.js";
+import { readErrorDetail, toArrayBuffer } from "./utils.js";
 
 type Env = Record<string, string | undefined>;
 
@@ -140,16 +140,4 @@ function secondsToMs(value: unknown): number | null {
 
 function normalizeMediaType(value: string): string {
   return value.trim() || "application/octet-stream";
-}
-
-async function readErrorDetail(response: Response): Promise<string | null> {
-  try {
-    const text = (await response.text()).trim();
-    if (!text) return null;
-    return text.length > MAX_ERROR_DETAIL_CHARS
-      ? `${text.slice(0, MAX_ERROR_DETAIL_CHARS)}…`
-      : text;
-  } catch {
-    return null;
-  }
 }

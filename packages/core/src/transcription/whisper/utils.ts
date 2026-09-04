@@ -1,4 +1,17 @@
 import { promises as fs } from "node:fs";
+import { MAX_ERROR_DETAIL_CHARS } from "./constants.js";
+
+export async function readErrorDetail(response: Response): Promise<string | null> {
+  try {
+    const text = (await response.text()).trim();
+    if (!text) return null;
+    return text.length > MAX_ERROR_DETAIL_CHARS
+      ? `${text.slice(0, MAX_ERROR_DETAIL_CHARS)}…`
+      : text;
+  } catch {
+    return null;
+  }
+}
 
 export function wrapError(prefix: string, error: unknown): Error {
   if (error instanceof Error) {

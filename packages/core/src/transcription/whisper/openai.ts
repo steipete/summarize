@@ -1,10 +1,10 @@
 import { openAsBlob } from "node:fs";
 import { basename } from "node:path";
 import { resolveOpenAiWhisperBaseUrl } from "../../openai/base-url.js";
-import { MAX_ERROR_DETAIL_CHARS, TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
+import { TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
 import { formatDiarizedTranscript, formatSpeakerLabel } from "./diarization-format.js";
 import type { TranscriptionSegment, WhisperTranscriptionResult } from "./types.js";
-import { ensureWhisperFilenameExtension, toArrayBuffer } from "./utils.js";
+import { ensureWhisperFilenameExtension, readErrorDetail, toArrayBuffer } from "./utils.js";
 
 type Env = Record<string, string | undefined>;
 export const OPENAI_DIARIZATION_MODEL = "gpt-4o-transcribe-diarize";
@@ -244,17 +244,4 @@ function parseRateLimitDurationMs(value: string | null): number | null {
       amount * (unit === "ms" ? 1 : unit === "s" ? 1_000 : unit === "m" ? 60_000 : 3_600_000);
   }
   return consumed === trimmed && total >= 0 ? total : null;
-}
-
-async function readErrorDetail(response: Response): Promise<string | null> {
-  try {
-    const text = await response.text();
-    const trimmed = text.trim();
-    if (!trimmed) return null;
-    return trimmed.length > MAX_ERROR_DETAIL_CHARS
-      ? `${trimmed.slice(0, MAX_ERROR_DETAIL_CHARS)}…`
-      : trimmed;
-  } catch {
-    return null;
-  }
 }

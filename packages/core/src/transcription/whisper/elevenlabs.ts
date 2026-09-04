@@ -1,8 +1,9 @@
 import { openAsBlob } from "node:fs";
 import { basename } from "node:path";
-import { MAX_ERROR_DETAIL_CHARS, TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
+import { TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
 import { appendTranscriptToken, formatDiarizedTranscript } from "./diarization-format.js";
 import type { TranscriptionSegment, WhisperTranscriptionResult } from "./types.js";
+import { readErrorDetail } from "./utils.js";
 
 const ELEVENLABS_TRANSCRIPTION_URL = "https://api.elevenlabs.io/v1/speech-to-text";
 export const ELEVENLABS_DIARIZATION_MODEL = "scribe_v2";
@@ -144,16 +145,4 @@ function resolveSpeakerLabel(labels: Map<string, string>, rawSpeaker: string): s
 function parseSecondsToMs(value: unknown): number | null {
   const numeric = typeof value === "number" ? value : Number.NaN;
   return Number.isFinite(numeric) && numeric >= 0 ? Math.round(numeric * 1000) : null;
-}
-
-async function readErrorDetail(response: Response): Promise<string | null> {
-  try {
-    const text = (await response.text()).trim();
-    if (!text) return null;
-    return text.length > MAX_ERROR_DETAIL_CHARS
-      ? `${text.slice(0, MAX_ERROR_DETAIL_CHARS)}…`
-      : text;
-  } catch {
-    return null;
-  }
 }
