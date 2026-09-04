@@ -90,6 +90,8 @@ The engine owns:
 - timestamp validation
 - retry/fallback outcomes
 
+Provider transport lives in `src/llm`. Generation and streaming share `LlmRequestOptions`, so prompt conversion and fallback attempts retain the original request settings. SDK-backed streaming providers share delta collection, deadlines, usage, and final-text handling; provider branches own model configuration and error normalization. OpenAI's HTTP transport keeps its separate response handling.
+
 ## Tests
 
 Key coverage:

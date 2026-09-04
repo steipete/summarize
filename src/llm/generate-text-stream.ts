@@ -6,10 +6,9 @@ import {
   streamUsageWithTimeout,
   withTimeoutFallback,
 } from "./generate-text-shared.js";
-import type { LlmApiKeys } from "./generate-text-types.js";
+import type { LlmRequestOptions } from "./generate-text-types.js";
 import { parseGatewayStyleModelId } from "./model-id.js";
 import type { LlmProvider } from "./model-id.js";
-import type { ModelRequestOptions } from "./model-options.js";
 import {
   getGatewayProviderProfile,
   isOpenAiCompatibleProvider,
@@ -34,22 +33,8 @@ import { extractText } from "./providers/shared.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
 import type { LlmTokenUsage } from "./types.js";
 
-export type StreamTextWithContextArgs = {
-  modelId: string;
-  apiKeys: LlmApiKeys;
+export type StreamTextWithContextArgs = LlmRequestOptions & {
   context: Context;
-  temperature?: number;
-  maxOutputTokens?: number;
-  timeoutMs: number;
-  fetchImpl: typeof fetch;
-  forceOpenRouter?: boolean;
-  openaiBaseUrlOverride?: string | null;
-  anthropicBaseUrlOverride?: string | null;
-  googleBaseUrlOverride?: string | null;
-  xaiBaseUrlOverride?: string | null;
-  ollamaBaseUrlOverride?: string | null;
-  forceChatCompletions?: boolean;
-  requestOptions?: ModelRequestOptions;
 };
 
 export type StreamTextResult = {
@@ -269,13 +254,41 @@ export async function streamTextWithContext({
     model: parsed.model,
     temperature,
   });
-  void fetchImpl;
-
   const controller = new AbortController();
   let lastError: unknown = null;
   const setLastError = (error: unknown) => {
     if ((lastError as Error | null)?.message === "LLM request timed out") return;
     lastError = error;
+  };
+
+  const streamSimpleText = (
+    model: Parameters<typeof streamSimple>[0],
+    options: Parameters<typeof streamSimple>[2],
+    normalizeError: (error: unknown) => unknown = (error) => error,
+  ): StreamTextResult => {
+    const stream = streamSimple(model, context, {
+      ...(typeof effectiveTemperature === "number" ? { temperature: effectiveTemperature } : {}),
+      ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),
+      ...options,
+      signal: controller.signal,
+    });
+    return {
+      textStream: createTimedTextStream({
+        textStream: collectTextDeltas({
+          stream,
+          onError: (error) => {
+            lastError = normalizeError(error);
+          },
+        }),
+        timeoutMs,
+        controller,
+        setLastError,
+      }),
+      canonicalModelId: parsed.canonical,
+      provider: parsed.provider,
+      ...resolveStreamCompletion(stream, timeoutMs),
+      lastError: () => lastError,
+    };
   };
 
   try {
@@ -287,30 +300,7 @@ export async function streamTextWithContext({
         context,
         xaiBaseUrlOverride,
       });
-      const stream = streamSimple(model, context, {
-        ...(typeof effectiveTemperature === "number" ? { temperature: effectiveTemperature } : {}),
-        ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),
-        apiKey,
-        signal: controller.signal,
-      });
-      const textDeltas = collectTextDeltas({
-        stream,
-        onError: (error) => {
-          lastError = error;
-        },
-      });
-      return {
-        textStream: createTimedTextStream({
-          textStream: textDeltas,
-          timeoutMs,
-          controller,
-          setLastError,
-        }),
-        canonicalModelId: parsed.canonical,
-        provider: parsed.provider,
-        ...resolveStreamCompletion(stream, timeoutMs),
-        lastError: () => lastError,
-      };
+      return streamSimpleText(model, { apiKey });
     }
 
     if (providerProfile.execution === "google") {
@@ -325,34 +315,15 @@ export async function streamTextWithContext({
         context,
         googleBaseUrlOverride,
       });
-      const stream = streamSimple(model, context, {
-        ...(typeof effectiveTemperature === "number" ? { temperature: effectiveTemperature } : {}),
-        ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),
-        apiKey,
-        signal: controller.signal,
-      });
-      const textDeltas = collectTextDeltas({
-        stream,
-        onError: (error) => {
-          lastError =
-            normalizeGoogleAssistantError(
-              error as { stopReason?: string; errorMessage?: string },
-              parsed.model,
-            ) ?? error;
-        },
-      });
-      return {
-        textStream: createTimedTextStream({
-          textStream: textDeltas,
-          timeoutMs,
-          controller,
-          setLastError,
-        }),
-        canonicalModelId: parsed.canonical,
-        provider: parsed.provider,
-        ...resolveStreamCompletion(stream, timeoutMs),
-        lastError: () => lastError,
-      };
+      return streamSimpleText(
+        model,
+        { apiKey },
+        (error) =>
+          normalizeGoogleAssistantError(
+            error as { stopReason?: string; errorMessage?: string },
+            parsed.model,
+          ) ?? error,
+      );
     }
 
     if (providerProfile.execution === "anthropic") {
@@ -368,30 +339,11 @@ export async function streamTextWithContext({
         isSyntheticCustomGateway,
         reasoningEffort: requestOptions?.reasoningEffort,
       });
-      const stream = streamSimple(model, context, {
-        ...(typeof effectiveTemperature === "number" ? { temperature: effectiveTemperature } : {}),
-        ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),
-        ...(reasoning ? { reasoning } : {}),
-        apiKey,
-        signal: controller.signal,
-      });
-      return {
-        textStream: createTimedTextStream({
-          textStream: collectTextDeltas({
-            stream,
-            onError: (error) => {
-              lastError = normalizeAnthropicModelAccessError(error, parsed.model) ?? error;
-            },
-          }),
-          timeoutMs,
-          controller,
-          setLastError,
-        }),
-        canonicalModelId: parsed.canonical,
-        provider: parsed.provider,
-        ...resolveStreamCompletion(stream, timeoutMs),
-        lastError: () => lastError,
-      };
+      return streamSimpleText(
+        model,
+        { apiKey, ...(reasoning ? { reasoning } : {}) },
+        (error) => normalizeAnthropicModelAccessError(error, parsed.model) ?? error,
+      );
     }
 
     if (
@@ -492,31 +444,10 @@ export async function streamTextWithContext({
             openaiConfig,
           })
         : resolveOpenAiModel({ modelId: parsed.model, context, openaiConfig });
-      const stream = streamSimple(model, context, {
-        ...(typeof effectiveTemperature === "number" ? { temperature: effectiveTemperature } : {}),
-        ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),
+      return streamSimpleText(model, {
         ...(parsed.provider === "minimax" ? { onPayload: enableMinimaxReasoningSplit } : {}),
         apiKey: openaiConfig.apiKey,
-        signal: controller.signal,
       });
-      const textDeltas = collectTextDeltas({
-        stream,
-        onError: (error) => {
-          lastError = error;
-        },
-      });
-      return {
-        textStream: createTimedTextStream({
-          textStream: textDeltas,
-          timeoutMs,
-          controller,
-          setLastError,
-        }),
-        canonicalModelId: parsed.canonical,
-        provider: parsed.provider,
-        ...resolveStreamCompletion(stream, timeoutMs),
-        lastError: () => lastError,
-      };
     }
 
     throw new Error(`Unknown provider ${parsed.provider}`);

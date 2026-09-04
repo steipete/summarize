@@ -15,6 +15,7 @@
 
 ### Dependencies and maintenance
 
+- Consolidate LLM request options and SDK stream handling while preserving provider-specific configuration, errors, and fallback behavior.
 - Refresh stabilized DOM, Markdown, browser media, image, protobuf, and pnpm dependencies; repair the Node 24 test container's workspace build and preserve local security patches (#403, thanks @dependabot).
 - Refresh Pi AI and Oxc tooling while keeping Node typings aligned with the supported Node 24 runtime (#399, thanks @dependabot).
 - Align Dependabot's npm cooldown with pnpm's seven-day stabilization window so automated updates do not select versions the install gate rejects.
