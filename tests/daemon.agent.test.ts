@@ -498,33 +498,51 @@ describe("daemon/agent", () => {
     }
   });
 
-  it("runs fixed CLI agent models through the CLI transport", async () => {
-    const home = makeTempHome();
+  it.each(["complete", "stream"] as const)(
+    "runs %s CLI agent models through the CLI transport",
+    async (mode) => {
+      const home = makeTempHome();
+      const signal = new AbortController().signal;
+      const request = {
+        env: { HOME: home },
+        pageUrl: "https://example.com",
+        pageTitle: "Example",
+        pageContent: "Hello world",
+        messages: [{ role: "user", content: "Hi" }],
+        modelOverride: "cli/codex/gpt-5.2",
+        tools: [],
+        automationEnabled: false,
+        signal,
+      };
+      if (mode === "complete") {
+        expect((await completeAgentResponse(request)).content).toBe("cli agent");
+      } else {
+        const onChunk = vi.fn();
+        const onAssistant = vi.fn();
+        await streamAgentResponse({ ...request, onChunk, onAssistant });
+        expect(onChunk).toHaveBeenCalledExactlyOnceWith("cli agent");
+        expect(onAssistant).toHaveBeenCalledExactlyOnceWith({
+          role: "assistant",
+          content: "cli agent",
+        });
+      }
 
-    const assistant = await completeAgentResponse({
-      env: { HOME: home },
-      pageUrl: "https://example.com",
-      pageTitle: "Example",
-      pageContent: "Hello world",
-      messages: [{ role: "user", content: "Hi" }],
-      modelOverride: "cli/codex/gpt-5.2",
-      tools: [],
-      automationEnabled: false,
-    });
-
-    expect(runCliModel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: "codex",
-        model: "gpt-5.2",
-        allowTools: false,
-      }),
-    );
-    const args = vi.mocked(runCliModel).mock.calls[0]?.[0] as { prompt: string };
-    expect(args.prompt).toContain("You are Summarize Chat, not Claude.");
-    expect(args.prompt).toContain("User: Hi");
-    expect(mockCompleteSimple).not.toHaveBeenCalled();
-    expect(assistant.content).toBe("cli agent");
-  });
+      expect(runCliModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "codex",
+          model: "gpt-5.2",
+          allowTools: false,
+          signal,
+          timeoutMs: 120_000,
+        }),
+      );
+      const args = vi.mocked(runCliModel).mock.calls[0]?.[0] as { prompt: string };
+      expect(args.prompt).toContain("You are Summarize Chat, not Claude.");
+      expect(args.prompt).toContain("User: Hi");
+      expect(mockCompleteSimple).not.toHaveBeenCalled();
+      expect(mockStreamSimple).not.toHaveBeenCalled();
+    },
+  );
 
   it("falls back to CLI auto attempts when no API-key agent model is available", async () => {
     const home = makeTempHome();

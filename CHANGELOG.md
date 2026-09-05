@@ -19,6 +19,7 @@
 
 ### Dependencies and maintenance
 
+- Share asset text validation and Markdown conversion across extraction and summaries; simplify prompt construction and prepare daemon agent requests once for streaming and completion without changing retry boundaries.
 - Share podcast feed transcript resolution, media download/progress completion, and Apple URL parsing; collapse Spotify's duplicated episode-search fallback while preserving provider order and failure metadata.
 - Type-check the entire extension in the local gate and CI using browser/bundler settings; remove stale copies of session, settings, API, and callback contracts.
 - Share model discovery, selection preservation, and refresh throttling between Options and the side panel while retaining their distinct presets and provider hints.

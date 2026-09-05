@@ -103,6 +103,8 @@ Missing or disabled providers are omitted.
 
 ## Attachments (images/files)
 
+Asset extraction and summary preparation share text-size validation and Markdown conversion in `src/run/flows/asset/content.ts`. Summary preparation retains provider-specific native attachment selection and returns either an attachment prompt or inline text; extraction applies its character budget after conversion.
+
 When a CLI attempt is used for an image or non-text file, Summarize switches to a
 path-based prompt and enables the required tool flags:
 

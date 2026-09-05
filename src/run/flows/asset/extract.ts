@@ -1,23 +1,13 @@
 import { applyContentBudget } from "@steipete/summarize-core/content";
-import type { ExecFileFn } from "../../../markitdown.js";
-import { convertToMarkdownWithMarkitdown } from "../../../markitdown.js";
-import { formatBytes } from "../../../tty/format.js";
 import {
   type AssetAttachment,
   getFileBytesFromAttachment,
-  getTextContentFromAttachment,
   shouldMarkitdownConvertMediaType,
 } from "../../attachments.js";
-import { MAX_TEXT_BYTES_DEFAULT } from "../../constants.js";
-import { hasUvxCli } from "../../env.js";
 import type { ExtractDiagnosticsForFinishLine } from "../../finish-line.js";
-import { withUvxTip } from "../../tips.js";
+import { type AssetConversionContext, convertAssetToMarkdown, readAssetText } from "./content.js";
 
-export type AssetExtractContext = {
-  env: Record<string, string | undefined>;
-  envForRun: Record<string, string | undefined>;
-  execFileImpl: ExecFileFn;
-  timeoutMs: number;
+export type AssetExtractContext = AssetConversionContext & {
   preprocessMode: "off" | "auto" | "always";
 };
 
@@ -42,13 +32,8 @@ export async function extractAssetContent({
   attachment: AssetAttachment;
   maxCharacters?: number | null;
 }): Promise<AssetExtractResult> {
-  const textContent = getTextContentFromAttachment(attachment);
+  const textContent = readAssetText(attachment);
   if (textContent) {
-    if (textContent.bytes > MAX_TEXT_BYTES_DEFAULT) {
-      throw new Error(
-        `Text file too large (${formatBytes(textContent.bytes)}). Limit is ${formatBytes(MAX_TEXT_BYTES_DEFAULT)}.`,
-      );
-    }
     return {
       content:
         typeof maxCharacters === "number"
@@ -80,36 +65,7 @@ export async function extractAssetContent({
         `This build can only extract text-like files. Convert this file to text first.`,
     );
   }
-  if (!hasUvxCli(ctx.env)) {
-    throw withUvxTip(
-      new Error(`Missing uvx/markitdown for preprocessing ${attachment.mediaType}.`),
-      ctx.env,
-    );
-  }
-
-  let markdown: string;
-  let usedOcr = false;
-  try {
-    ({ markdown, usedOcr } = await convertToMarkdownWithMarkitdown({
-      bytes: fileBytes,
-      filenameHint: attachment.filename,
-      mediaTypeHint: attachment.mediaType,
-      uvxCommand: ctx.envForRun.UVX_PATH,
-      timeoutMs: ctx.timeoutMs,
-      env: ctx.env,
-      execFileImpl: ctx.execFileImpl,
-      ocrFallback: true,
-    }));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to preprocess ${attachment.mediaType} with markitdown: ${message}.`);
-  }
-
-  if (Buffer.byteLength(markdown, "utf8") > MAX_TEXT_BYTES_DEFAULT) {
-    throw new Error(
-      `Preprocessed Markdown too large (${formatBytes(Buffer.byteLength(markdown, "utf8"))}). Limit is ${formatBytes(MAX_TEXT_BYTES_DEFAULT)}.`,
-    );
-  }
+  const { markdown, usedOcr } = await convertAssetToMarkdown(ctx, attachment, fileBytes);
 
   return {
     content:

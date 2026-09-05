@@ -297,19 +297,7 @@ const TOOL_DEFINITIONS: Record<string, Tool> = {
   },
 };
 
-export async function streamAgentResponse({
-  env,
-  pageUrl,
-  pageTitle,
-  pageContent,
-  messages,
-  modelOverride,
-  tools,
-  automationEnabled,
-  onChunk,
-  onAssistant,
-  signal,
-}: {
+type AgentRequest = {
   env: Record<string, string | undefined>;
   pageUrl: string;
   pageTitle: string | null;
@@ -318,10 +306,20 @@ export async function streamAgentResponse({
   modelOverride: string | null;
   tools: string[];
   automationEnabled: boolean;
-  onChunk: (text: string) => void;
-  onAssistant: (assistant: AssistantMessage) => void;
   signal?: AbortSignal;
-}): Promise<void> {
+};
+
+async function prepareAgentRequest({
+  env,
+  pageUrl,
+  pageTitle,
+  pageContent,
+  messages,
+  modelOverride,
+  tools,
+  automationEnabled,
+  signal,
+}: AgentRequest) {
   const normalizedMessages = normalizeMessages(messages);
   const toolList = resolveToolList(automationEnabled, tools, TOOL_DEFINITIONS);
 
@@ -352,9 +350,7 @@ export async function streamAgentResponse({
         signal,
       }),
     );
-    onChunk(result.text);
-    onAssistant({ role: "assistant", content: result.text } as unknown as AssistantMessage);
-    return;
+    return { transport: "cli" as const, text: result.text };
   }
 
   const { provider, model, maxOutputTokens, apiKeys } = resolved;
@@ -367,6 +363,23 @@ export async function streamAgentResponse({
     apiKey,
     signal,
   };
+  return { transport: "native" as const, provider, model, context, options };
+}
+
+export async function streamAgentResponse(
+  request: AgentRequest & {
+    onChunk: (text: string) => void;
+    onAssistant: (assistant: AssistantMessage) => void;
+  },
+): Promise<void> {
+  const { onChunk, onAssistant } = request;
+  const prepared = await prepareAgentRequest(request);
+  if (prepared.transport === "cli") {
+    onChunk(prepared.text);
+    onAssistant({ role: "assistant", content: prepared.text } as unknown as AssistantMessage);
+    return;
+  }
+  const { provider, model, context, options } = prepared;
   let activeModel = model;
   let usedCompatFallback = false;
 
@@ -407,70 +420,12 @@ export async function streamAgentResponse({
   }
 }
 
-export async function completeAgentResponse({
-  env,
-  pageUrl,
-  pageTitle,
-  pageContent,
-  messages,
-  modelOverride,
-  tools,
-  automationEnabled,
-  signal,
-}: {
-  env: Record<string, string | undefined>;
-  pageUrl: string;
-  pageTitle: string | null;
-  pageContent: string;
-  messages: unknown;
-  modelOverride: string | null;
-  tools: string[];
-  automationEnabled: boolean;
-  signal?: AbortSignal;
-}): Promise<AssistantMessage> {
-  const normalizedMessages = normalizeMessages(messages);
-  const toolList = resolveToolList(automationEnabled, tools, TOOL_DEFINITIONS);
-
-  const systemPrompt = buildSystemPrompt({
-    pageUrl,
-    pageTitle,
-    pageContent,
-    automationEnabled,
-  });
-
-  const resolved = await resolveAgentModel({
-    env,
-    pageContent,
-    modelOverride,
-  });
-
-  if ("transport" in resolved && resolved.transport === "cli") {
-    const prompt = flattenAgentForCli({ systemPrompt, messages: normalizedMessages });
-    const result = await import("../llm/cli.js").then(({ runCliModel }) =>
-      runCliModel({
-        provider: resolved.cliProvider,
-        prompt,
-        model: resolved.cliModel,
-        allowTools: false,
-        timeoutMs: 120_000,
-        env,
-        config: resolved.cliConfig,
-        signal,
-      }),
-    );
-    return { role: "assistant", content: result.text } as unknown as AssistantMessage;
+export async function completeAgentResponse(request: AgentRequest): Promise<AssistantMessage> {
+  const prepared = await prepareAgentRequest(request);
+  if (prepared.transport === "cli") {
+    return { role: "assistant", content: prepared.text } as unknown as AssistantMessage;
   }
-
-  const { provider, model, maxOutputTokens, apiKeys } = resolved;
-  const apiKey = resolveApiKeyForModel({ provider, apiKeys });
-
-  const context = { systemPrompt, messages: normalizedMessages, tools: toolList };
-  const options = {
-    maxTokens: maxOutputTokens,
-    ...resolveProviderPayloadOptions(provider),
-    apiKey,
-    signal,
-  };
+  const { provider, model, context, options } = prepared;
   const assistant = await completeSimple(model, context, options);
   if (assistant.stopReason !== "error" && assistant.stopReason !== "aborted") return assistant;
 
