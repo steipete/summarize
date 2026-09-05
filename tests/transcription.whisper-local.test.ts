@@ -1,5 +1,10 @@
 import { access } from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  transcribeWithLocalOnnx,
+  transcribeWithLocalWhisper,
+} from "../packages/core/src/transcription/whisper/local.js";
+import { createTranscriptionRun } from "../packages/core/src/transcription/whisper/request.js";
 
 const mocks = vi.hoisted(() => ({
   resolveOnnxModelPreference: vi.fn(),
@@ -8,220 +13,134 @@ const mocks = vi.hoisted(() => ({
   isWhisperCppReady: vi.fn(),
   transcribeWithWhisperCppFile: vi.fn(),
 }));
-
 vi.mock("../packages/core/src/transcription/onnx-cli.js", () => ({
   transcribeWithOnnxCli: mocks.transcribeWithOnnxCli,
   transcribeWithOnnxCliFile: mocks.transcribeWithOnnxCliFile,
 }));
-
 vi.mock("../packages/core/src/transcription/whisper/preferences.js", () => ({
   resolveOnnxModelPreference: mocks.resolveOnnxModelPreference,
 }));
-
 vi.mock("../packages/core/src/transcription/whisper/whisper-cpp.js", () => ({
   isWhisperCppReady: mocks.isWhisperCppReady,
   transcribeWithWhisperCppFile: mocks.transcribeWithWhisperCppFile,
 }));
 
-import {
-  transcribeWithLocalOnnx,
-  transcribeWithLocalOnnxFile,
-  transcribeWithLocalWhisperBytes,
-  transcribeWithLocalWhisperFile,
-} from "../packages/core/src/transcription/whisper/local.js";
+function createRun(kind: "bytes" | "file", filename: string | null = "audio") {
+  return createTranscriptionRun(
+    kind === "bytes"
+      ? { kind, bytes: new Uint8Array([1, 2, 3]), mediaType: "audio/mpeg", filename }
+      : { kind, filePath: "/unused/audio.mp3", mediaType: "audio/mpeg", filename },
+    {
+      groqApiKey: null,
+      openaiApiKey: null,
+      falApiKey: null,
+      env: {},
+      totalDurationSeconds: 4,
+      onProgress: vi.fn(),
+    },
+  );
+}
 
-describe("local Whisper adapters", () => {
+describe.each(["bytes", "file"] as const)("local Whisper adapters (%s)", (kind) => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mocks.resolveOnnxModelPreference.mockReturnValue(null);
     mocks.isWhisperCppReady.mockResolvedValue(false);
   });
 
-  it("skips unconfigured ONNX byte and file adapters", async () => {
-    const notes: string[] = [];
-    await expect(
-      transcribeWithLocalOnnx({
-        bytes: new Uint8Array([1]),
-        mediaType: "audio/mpeg",
-        filename: "audio.mp3",
-        totalDurationSeconds: null,
-        env: {},
-        notes,
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      transcribeWithLocalOnnxFile({
-        filePath: "/unused/audio.mp3",
-        mediaType: "audio/mpeg",
-        totalDurationSeconds: null,
-        env: {},
-        notes,
-      }),
-    ).resolves.toBeNull();
+  it("skips unconfigured ONNX without emitting progress", async () => {
+    const run = createRun(kind);
+    await expect(transcribeWithLocalOnnx(run)).resolves.toBeNull();
+    expect(run.options.onProgress).not.toHaveBeenCalled();
+    expect(mocks.transcribeWithOnnxCli).not.toHaveBeenCalled();
+    expect(mocks.transcribeWithOnnxCliFile).not.toHaveBeenCalled();
   });
 
-  it("merges ONNX success notes for byte and file inputs", async () => {
+  it("keeps source dispatch, progress, and accumulated ONNX notes", async () => {
     mocks.resolveOnnxModelPreference.mockReturnValue("parakeet");
-    mocks.transcribeWithOnnxCli.mockResolvedValue({
-      text: "bytes result",
+    const transcribe =
+      kind === "bytes" ? mocks.transcribeWithOnnxCli : mocks.transcribeWithOnnxCliFile;
+    transcribe.mockResolvedValue({
+      text: "result",
       provider: "onnx-parakeet",
       error: null,
-      notes: ["bytes note"],
+      notes: ["engine note"],
     });
-    mocks.transcribeWithOnnxCliFile.mockResolvedValue({
-      text: "file result",
-      provider: "onnx-parakeet",
-      error: null,
-      notes: ["file note"],
-    });
-    const notes: string[] = [];
-    const progress = vi.fn();
-
-    await expect(
-      transcribeWithLocalOnnx({
-        bytes: new Uint8Array([1]),
-        mediaType: "audio/mpeg",
-        filename: "audio.mp3",
+    const run = createRun(kind);
+    run.notes.push("earlier");
+    const result = await transcribeWithLocalOnnx(run);
+    expect(result).toMatchObject({ text: "result", notes: ["earlier", "engine note"] });
+    expect(result?.notes).toBe(run.notes);
+    expect(transcribe).toHaveBeenCalledOnce();
+    if (kind === "file") {
+      expect(run.options.onProgress).toHaveBeenCalledExactlyOnceWith({
+        partIndex: null,
+        parts: null,
+        processedDurationSeconds: null,
         totalDurationSeconds: 4,
-        env: {},
-        notes,
-      }),
-    ).resolves.toMatchObject({ text: "bytes result", notes: ["bytes note"] });
-    await expect(
-      transcribeWithLocalOnnxFile({
-        filePath: "/unused/audio.mp3",
-        mediaType: "audio/mpeg",
-        totalDurationSeconds: 4,
-        onProgress: progress,
-        env: {},
-        notes,
-      }),
-    ).resolves.toMatchObject({ text: "file result", notes: ["bytes note", "file note"] });
-    expect(progress).toHaveBeenCalledWith({
-      partIndex: null,
-      parts: null,
-      processedDurationSeconds: null,
-      totalDurationSeconds: 4,
-    });
+      });
+    } else {
+      expect(run.options.onProgress).not.toHaveBeenCalled();
+    }
   });
 
   it("records ONNX failures and allows provider fallback", async () => {
     mocks.resolveOnnxModelPreference.mockReturnValue("canary");
-    mocks.transcribeWithOnnxCli.mockResolvedValue({
+    const transcribe =
+      kind === "bytes" ? mocks.transcribeWithOnnxCli : mocks.transcribeWithOnnxCliFile;
+    const provider = kind === "file" ? "onnx-canary" : null;
+    transcribe.mockResolvedValue({
       text: null,
-      provider: null,
-      error: new Error("bytes failed"),
-      notes: ["bytes diagnostic"],
+      provider,
+      error: new Error("failed"),
+      notes: ["diagnostic"],
     });
-    mocks.transcribeWithOnnxCliFile.mockResolvedValue({
-      text: null,
-      provider: "onnx-canary",
-      error: new Error("file failed"),
-      notes: [],
-    });
-    const notes: string[] = [];
-
-    await transcribeWithLocalOnnx({
-      bytes: new Uint8Array([1]),
-      mediaType: "audio/mpeg",
-      filename: null,
-      totalDurationSeconds: null,
-      env: {},
-      notes,
-    });
-    await transcribeWithLocalOnnxFile({
-      filePath: "/unused/audio.mp3",
-      mediaType: "audio/mpeg",
-      totalDurationSeconds: null,
-      env: {},
-      notes,
-    });
-
-    expect(notes).toEqual([
-      "bytes diagnostic",
-      "onnx failed; falling back to Whisper: bytes failed",
-      "onnx-canary failed; falling back to Whisper: file failed",
+    const run = createRun(kind);
+    await expect(transcribeWithLocalOnnx(run)).resolves.toBeNull();
+    expect(run.notes).toEqual([
+      "diagnostic",
+      `${provider ?? "onnx"} failed; falling back to Whisper: failed`,
     ]);
   });
 
   it("passes through empty ONNX results without manufacturing diagnostics", async () => {
     mocks.resolveOnnxModelPreference.mockReturnValue("parakeet");
-    const empty = { text: null, provider: "onnx-parakeet", error: null, notes: [] };
-    mocks.transcribeWithOnnxCli.mockResolvedValue(empty);
-    mocks.transcribeWithOnnxCliFile.mockResolvedValue(empty);
-    const notes: string[] = [];
-
-    await expect(
-      transcribeWithLocalOnnx({
-        bytes: new Uint8Array([1]),
-        mediaType: "audio/mpeg",
-        filename: null,
-        totalDurationSeconds: null,
-        env: {},
-        notes,
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      transcribeWithLocalOnnxFile({
-        filePath: "/unused/audio.mp3",
-        mediaType: "audio/mpeg",
-        totalDurationSeconds: null,
-        env: {},
-        notes,
-      }),
-    ).resolves.toBeNull();
-    expect(notes).toEqual([]);
+    const transcribe =
+      kind === "bytes" ? mocks.transcribeWithOnnxCli : mocks.transcribeWithOnnxCliFile;
+    transcribe.mockResolvedValue({ text: null, provider: "onnx-parakeet", error: null, notes: [] });
+    const run = createRun(kind);
+    await expect(transcribeWithLocalOnnx(run)).resolves.toBeNull();
+    expect(run.notes).toEqual([]);
   });
 
-  it("skips whisper.cpp when the local engine is unavailable", async () => {
-    const notes: string[] = [];
-    await expect(
-      transcribeWithLocalWhisperBytes({
-        bytes: new Uint8Array([1]),
-        mediaType: "audio/mpeg",
-        filename: null,
-        totalDurationSeconds: null,
-        env: {},
-        notes,
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      transcribeWithLocalWhisperFile({
-        filePath: "/unused/audio.mp3",
-        mediaType: "audio/mpeg",
-        totalDurationSeconds: null,
-        env: {},
-        notes,
-      }),
-    ).resolves.toBeNull();
+  it("skips unavailable whisper.cpp without emitting progress", async () => {
+    const run = createRun(kind);
+    await expect(transcribeWithLocalWhisper(run)).resolves.toBeNull();
+    expect(run.options.onProgress).not.toHaveBeenCalled();
+    expect(mocks.transcribeWithWhisperCppFile).not.toHaveBeenCalled();
   });
 
-  it("transcribes byte input through a cleaned-up whisper.cpp temp file", async () => {
+  it("preserves whisper.cpp results and cleans temporary input", async () => {
     mocks.isWhisperCppReady.mockResolvedValue(true);
-    let tempFile = "";
+    let inputPath = "";
     mocks.transcribeWithWhisperCppFile.mockImplementation(async ({ filePath }) => {
-      tempFile = filePath;
-      await expect(access(filePath)).resolves.toBeUndefined();
-      return {
-        text: "local result",
-        provider: "whisper.cpp",
-        error: null,
-        notes: ["local note"],
-      };
+      inputPath = filePath;
+      if (kind === "bytes") await expect(access(filePath)).resolves.toBeUndefined();
+      return { text: "local result", provider: "whisper.cpp", error: null, notes: ["local note"] };
     });
-    const notes: string[] = [];
-
-    await expect(
-      transcribeWithLocalWhisperBytes({
-        bytes: new Uint8Array([1, 2, 3]),
-        mediaType: "audio/mpeg",
-        filename: "audio",
-        totalDurationSeconds: 3,
-        env: {},
-        notes,
-      }),
-    ).resolves.toMatchObject({ text: "local result", notes: ["local note"] });
-    await expect(access(tempFile)).rejects.toMatchObject({ code: "ENOENT" });
+    const run = createRun(kind, "../audio");
+    await expect(transcribeWithLocalWhisper(run)).resolves.toMatchObject({
+      text: "local result",
+      notes: ["local note"],
+    });
+    if (kind === "bytes") {
+      expect(inputPath).toMatch(/-audio\.mp3$/);
+      await expect(access(inputPath)).rejects.toMatchObject({ code: "ENOENT" });
+      expect(run.options.onProgress).not.toHaveBeenCalled();
+    } else {
+      expect(inputPath).toBe("/unused/audio.mp3");
+      expect(run.options.onProgress).toHaveBeenCalledOnce();
+    }
   });
 
   it("converts thrown and returned whisper.cpp failures into fallback notes", async () => {
@@ -234,72 +153,26 @@ describe("local Whisper adapters", () => {
         error: new Error("empty"),
         notes: ["engine note"],
       });
-    const notes: string[] = [];
-    const progress = vi.fn();
-
-    await expect(
-      transcribeWithLocalWhisperFile({
-        filePath: "/unused/one.mp3",
-        mediaType: "audio/mpeg",
-        totalDurationSeconds: 10,
-        onProgress: progress,
-        env: {},
-        notes,
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      transcribeWithLocalWhisperFile({
-        filePath: "/unused/two.mp3",
-        mediaType: "audio/mpeg",
-        totalDurationSeconds: 10,
-        env: {},
-        notes,
-      }),
-    ).resolves.toBeNull();
-
-    expect(notes).toEqual([
+    const run = createRun(kind);
+    await expect(transcribeWithLocalWhisper(run)).resolves.toBeNull();
+    await expect(transcribeWithLocalWhisper(run)).resolves.toBeNull();
+    expect(run.notes).toEqual([
       "whisper.cpp failed; falling back to remote Whisper: whisper.cpp failed: crashed",
       "engine note",
       "whisper.cpp failed; falling back to remote Whisper: empty",
     ]);
-    expect(progress).toHaveBeenCalled();
   });
 
-  it("handles default byte filenames and note-free whisper.cpp results", async () => {
+  it("handles default filenames and note-free results", async () => {
     mocks.isWhisperCppReady.mockResolvedValue(true);
     mocks.transcribeWithWhisperCppFile
-      .mockResolvedValueOnce({
-        text: null,
-        provider: "whisper.cpp",
-        error: null,
-        notes: [],
-      })
-      .mockResolvedValueOnce({
-        text: "file success",
-        provider: "whisper.cpp",
-        error: null,
-        notes: [],
-      });
-    const notes: string[] = [];
-
-    await expect(
-      transcribeWithLocalWhisperBytes({
-        bytes: new Uint8Array([1]),
-        mediaType: "audio/mpeg",
-        filename: null,
-        totalDurationSeconds: null,
-        env: {},
-        notes,
-      }),
-    ).resolves.toBeNull();
-    await expect(
-      transcribeWithLocalWhisperFile({
-        filePath: "/unused/audio.mp3",
-        mediaType: "audio/mpeg",
-        totalDurationSeconds: null,
-        env: {},
-        notes,
-      }),
-    ).resolves.toMatchObject({ text: "file success", notes: [] });
+      .mockResolvedValueOnce({ text: null, provider: "whisper.cpp", error: null, notes: [] })
+      .mockResolvedValueOnce({ text: "success", provider: "whisper.cpp", error: null, notes: [] });
+    const run = createRun(kind, null);
+    await expect(transcribeWithLocalWhisper(run)).resolves.toBeNull();
+    await expect(transcribeWithLocalWhisper(run)).resolves.toMatchObject({
+      text: "success",
+      notes: [],
+    });
   });
 });

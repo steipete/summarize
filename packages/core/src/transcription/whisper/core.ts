@@ -1,389 +1,164 @@
+import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { transcribeChunkedFile } from "./chunking.js";
 import { DEFAULT_SEGMENT_SECONDS, MAX_OPENAI_UPLOAD_BYTES } from "./constants.js";
+import { transcribeWithDecodeRetry } from "./decode-retry.js";
 import {
   transcribeMediaBytesWithDiarization,
   transcribeMediaFileWithDiarization,
 } from "./diarization.js";
-import { isFfmpegAvailable, transcodeBytesToMp3 } from "./ffmpeg.js";
+import { isFfmpegAvailable } from "./ffmpeg.js";
 import { shouldRetryGroqViaFfmpeg, transcribeWithGroq } from "./groq.js";
+import { transcribeWithLocalOnnx, transcribeWithLocalWhisper } from "./local.js";
+import { transcribeWithRemoteFallbacks } from "./remote.js";
 import {
-  transcribeWithLocalOnnx,
-  transcribeWithLocalOnnxFile,
-  transcribeWithLocalWhisperBytes,
-  transcribeWithLocalWhisperFile,
-} from "./local.js";
-import {
-  transcribeBytesWithRemoteFallbacks,
-  transcribeFileWithRemoteFallbacks,
-  transcribeOversizedBytesViaTempFile,
-} from "./remote.js";
-import type {
-  DiarizationPreference,
-  WhisperProgressEvent,
-  WhisperTranscriptionResult,
-} from "./types.js";
+  createTranscriptionRun,
+  type TranscriptionChunking,
+  type TranscriptionFile,
+  type TranscriptionOptions,
+  type TranscriptionRun,
+  type TranscriptionSource,
+} from "./request.js";
+import type { WhisperTranscriptionResult } from "./types.js";
 import { formatBytes, wrapError } from "./utils.js";
 
-type Env = Record<string, string | undefined>;
-
-type MediaRequest = {
-  groqApiKey: string | null;
-  assemblyaiApiKey?: string | null;
-  elevenlabsApiKey?: string | null;
-  geminiApiKey?: string | null;
-  openaiApiKey: string | null;
-  falApiKey: string | null;
-  deepgramApiKey?: string | null;
-  diarization?: DiarizationPreference | null;
-  totalDurationSeconds?: number | null;
-  onProgress?: ((event: WhisperProgressEvent) => void) | null;
-  env?: Env;
-};
-
-export async function transcribeMediaWithWhisper({
+export function transcribeMediaWithWhisper({
   bytes,
   mediaType,
   filename,
-  groqApiKey,
   skipGroq = false,
-  assemblyaiApiKey = null,
-  elevenlabsApiKey = null,
-  geminiApiKey = null,
-  openaiApiKey,
-  falApiKey,
-  deepgramApiKey = null,
-  diarization = null,
-  totalDurationSeconds = null,
-  onProgress,
-  env = process.env,
+  ...options
 }: {
   bytes: Uint8Array;
   mediaType: string;
   filename: string | null;
   skipGroq?: boolean;
-} & MediaRequest): Promise<WhisperTranscriptionResult> {
-  if (diarization) {
-    return await transcribeMediaBytesWithDiarization({
-      bytes,
-      mediaType,
-      filename,
-      preference: diarization,
-      elevenlabsApiKey,
-      openaiApiKey,
-      env,
-      totalDurationSeconds,
-      onProgress,
-    });
-  }
-
-  const notes: string[] = [];
-
-  let groqError: Error | null = null;
-  if (groqApiKey && !skipGroq) {
-    const groqResult = await transcribeWithGroqFirst({
-      bytes,
-      mediaType,
-      filename,
-      groqApiKey,
-      notes,
-    });
-    bytes = groqResult.bytes;
-    mediaType = groqResult.mediaType;
-    filename = groqResult.filename;
-    if (groqResult.text) {
-      return { text: groqResult.text, provider: "groq", error: null, notes };
-    }
-    groqError = groqResult.error;
-  }
-
-  if (groqError) {
-    notes.push(
-      `Groq transcription failed; falling back to local/AssemblyAI/Gemini/OpenAI/FAL/Deepgram: ${groqError.message}`,
-    );
-  }
-
-  const onnx = await transcribeWithLocalOnnx({
-    bytes,
-    mediaType,
-    filename,
-    totalDurationSeconds,
-    onProgress,
-    env,
-    notes,
-  });
-  if (onnx) return onnx;
-
-  const local = await transcribeWithLocalWhisperBytes({
-    bytes,
-    mediaType,
-    filename,
-    totalDurationSeconds,
-    onProgress,
-    env,
-    notes,
-  });
-  if (local) return local;
-
-  return await transcribeBytesWithRemoteFallbacks({
-    bytes,
-    mediaType,
-    filename,
-    notes,
-    groqApiKey,
-    groqError,
-    assemblyaiApiKey,
-    geminiApiKey,
-    openaiApiKey,
-    falApiKey,
-    deepgramApiKey,
-    env,
-    onProgress,
-    transcribeOversizedBytesWithChunking: ({ bytes, mediaType, filename, onProgress }) =>
-      transcribeOversizedBytesViaTempFile({
-        bytes,
-        mediaType,
-        filename,
-        onProgress,
-        transcribeFile: ({ filePath, mediaType, filename, onProgress }) =>
-          transcribeMediaFileWithWhisper({
-            filePath,
-            mediaType,
-            filename,
-            groqApiKey,
-            assemblyaiApiKey,
-            geminiApiKey,
-            openaiApiKey,
-            falApiKey,
-            deepgramApiKey,
-            segmentSeconds: DEFAULT_SEGMENT_SECONDS,
-            onProgress,
-            env,
-          }),
-      }),
-  });
+} & TranscriptionOptions): Promise<WhisperTranscriptionResult> {
+  return transcribe({ kind: "bytes", bytes, mediaType, filename }, options, skipGroq);
 }
 
-export async function transcribeMediaFileWithWhisper({
+export function transcribeMediaFileWithWhisper({
   filePath,
   mediaType,
   filename,
-  groqApiKey,
-  assemblyaiApiKey = null,
-  elevenlabsApiKey = null,
-  geminiApiKey = null,
-  openaiApiKey,
-  falApiKey,
-  deepgramApiKey = null,
-  diarization = null,
-  segmentSeconds = DEFAULT_SEGMENT_SECONDS,
-  totalDurationSeconds = null,
   onProgress = null,
-  env = process.env,
+  ...options
 }: {
   filePath: string;
   mediaType: string;
   filename: string | null;
-  segmentSeconds?: number;
-} & MediaRequest): Promise<WhisperTranscriptionResult> {
-  if (diarization) {
-    return await transcribeMediaFileWithDiarization({
-      filePath,
-      mediaType,
-      filename,
-      preference: diarization,
-      elevenlabsApiKey,
-      openaiApiKey,
-      env,
-      totalDurationSeconds,
-      onProgress,
-    });
+} & TranscriptionOptions): Promise<WhisperTranscriptionResult> {
+  return transcribe({ kind: "file", filePath, mediaType, filename }, { ...options, onProgress });
+}
+
+async function transcribe(
+  source: TranscriptionSource,
+  options: TranscriptionOptions,
+  skipGroq = false,
+): Promise<WhisperTranscriptionResult> {
+  const run = createTranscriptionRun(source, options);
+  const settings = run.options;
+  if (settings.diarization) {
+    const request = {
+      mediaType: source.mediaType,
+      filename: source.filename,
+      preference: settings.diarization,
+      elevenlabsApiKey: settings.elevenlabsApiKey ?? null,
+      openaiApiKey: settings.openaiApiKey,
+      env: settings.env,
+      totalDurationSeconds: settings.totalDurationSeconds,
+      onProgress: settings.onProgress,
+    };
+    return source.kind === "bytes"
+      ? transcribeMediaBytesWithDiarization({ ...request, bytes: source.bytes })
+      : transcribeMediaFileWithDiarization({ ...request, filePath: source.filePath });
   }
 
-  const notes: string[] = [];
-
-  let skipGroqInNestedCalls = false;
-  let groqError: Error | null = null;
-  if (groqApiKey) {
-    skipGroqInNestedCalls = true;
-    const groqResult = await transcribeGroqFileFirst({
-      filePath,
-      mediaType,
-      filename,
-      groqApiKey,
-      assemblyaiApiKey,
-      geminiApiKey,
-      openaiApiKey,
-      falApiKey,
-      deepgramApiKey,
-      segmentSeconds,
-      totalDurationSeconds,
-      onProgress,
-      env,
-      notes,
-    });
-    if (groqResult.text) return groqResult;
-    groqError = groqResult.error;
-  }
-
-  const onnx = await transcribeWithLocalOnnxFile({
-    filePath,
-    mediaType,
-    totalDurationSeconds,
-    onProgress,
-    env,
-    notes,
-  });
-  if (onnx) return onnx;
-
-  const local = await transcribeWithLocalWhisperFile({
-    filePath,
-    mediaType,
-    totalDurationSeconds,
-    onProgress,
-    env,
-    notes,
-  });
-  if (local) return local;
-
-  return await transcribeFileWithRemoteFallbacks({
-    filePath,
-    mediaType,
-    filename,
-    notes,
-    groqApiKey,
-    groqError,
-    assemblyaiApiKey,
-    geminiApiKey,
-    openaiApiKey,
-    falApiKey,
-    deepgramApiKey,
-    env,
-    totalDurationSeconds,
-    onProgress,
-    transcribeChunkedFile: ({ filePath, segmentSeconds, totalDurationSeconds, onProgress }) =>
+  const chunking: TranscriptionChunking = {
+    file: (filePath, segmentSeconds, skipGroq) =>
       transcribeChunkedFile({
         filePath,
         segmentSeconds,
-        totalDurationSeconds,
-        onProgress,
+        totalDurationSeconds: settings.totalDurationSeconds,
+        onProgress: settings.onProgress,
         transcribeSegment: ({ bytes, filename }) =>
           transcribeMediaWithWhisper({
+            ...settings,
             bytes,
             mediaType: "audio/mpeg",
             filename,
-            groqApiKey,
-            skipGroq: skipGroqInNestedCalls,
-            assemblyaiApiKey,
-            geminiApiKey,
-            openaiApiKey,
-            falApiKey,
-            deepgramApiKey,
-            env,
+            skipGroq,
+            diarization: null,
+            totalDurationSeconds: null,
+            onProgress: undefined,
           }),
       }),
-  });
-}
-
-async function transcribeWithGroqFirst({
-  bytes,
-  mediaType,
-  filename,
-  groqApiKey,
-  notes,
-}: {
-  bytes: Uint8Array;
-  mediaType: string;
-  filename: string | null;
-  groqApiKey: string;
-  notes: string[];
-}): Promise<{
-  text: string | null;
-  error: Error | null;
-  bytes: Uint8Array;
-  mediaType: string;
-  filename: string | null;
-}> {
-  let groqError: Error | null = null;
-  try {
-    const text = await transcribeWithGroq(bytes, mediaType, filename, groqApiKey);
-    if (text) return { text, error: null, bytes, mediaType, filename };
-    groqError = new Error("Groq transcription returned empty text");
-  } catch (error) {
-    groqError = wrapError("Groq transcription failed", error);
-  }
-
-  if (groqError && shouldRetryGroqViaFfmpeg(groqError)) {
-    const canTranscode = await isFfmpegAvailable();
-    if (canTranscode) {
+    bytes: async (input) => {
+      const filePath = join(tmpdir(), `summarize-whisper-${randomUUID()}`);
       try {
-        notes.push("Groq could not decode media; transcoding via ffmpeg and retrying");
-        const mp3Bytes = await transcodeBytesToMp3(bytes);
-        const retried = await transcribeWithGroq(mp3Bytes, "audio/mpeg", "audio.mp3", groqApiKey);
-        if (retried) {
-          return {
-            text: retried,
-            error: null,
-            bytes: mp3Bytes,
-            mediaType: "audio/mpeg",
-            filename: "audio.mp3",
-          };
-        }
-        groqError = new Error("Groq transcription returned empty text after ffmpeg transcode");
-        bytes = mp3Bytes;
-        mediaType = "audio/mpeg";
-        filename = "audio.mp3";
-      } catch (error) {
-        notes.push(
-          `ffmpeg transcode failed; cannot retry Groq decode error: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
+        await fs.writeFile(filePath, input.bytes);
+        return await transcribeMediaFileWithWhisper({
+          ...settings,
+          filePath,
+          mediaType: input.mediaType,
+          filename: input.filename,
+          segmentSeconds: DEFAULT_SEGMENT_SECONDS,
+          diarization: null,
+          totalDurationSeconds: null,
+        });
+      } finally {
+        await fs.unlink(filePath).catch(() => {});
       }
+    },
+  };
+
+  if (settings.groqApiKey && !skipGroq) {
+    if (source.kind === "file") {
+      const result = await transcribeGroqFileFirst(source, run, chunking);
+      if (result.text) return result;
+      run.groqError = result.error;
     } else {
-      notes.push("Groq could not decode media; install ffmpeg to enable transcoding retry");
+      const attempt = await transcribeWithDecodeRetry({
+        source,
+        provider: "groq",
+        notes: run.notes,
+        transcribe: (input) =>
+          transcribeWithGroq(input.bytes, input.mediaType, input.filename, settings.groqApiKey!),
+        shouldRetry: shouldRetryGroqViaFfmpeg,
+      });
+      run.source = attempt.source;
+      if (attempt.kind === "result") return { ...attempt.result, notes: run.notes };
+      run.groqError = attempt.error;
+      run.notes.push(
+        `Groq transcription failed; falling back to local/AssemblyAI/Gemini/OpenAI/FAL/Deepgram: ${attempt.error.message}`,
+      );
     }
   }
 
-  return { text: null, error: groqError, bytes, mediaType, filename };
+  return (
+    (await transcribeWithLocalOnnx(run)) ??
+    (await transcribeWithLocalWhisper(run)) ??
+    transcribeWithRemoteFallbacks(run, chunking)
+  );
 }
 
-async function transcribeGroqFileFirst({
-  filePath,
-  mediaType,
-  filename,
-  groqApiKey,
-  assemblyaiApiKey,
-  geminiApiKey,
-  openaiApiKey,
-  falApiKey,
-  deepgramApiKey,
-  segmentSeconds,
-  totalDurationSeconds,
-  onProgress,
-  env,
-  notes,
-}: {
-  filePath: string;
-  mediaType: string;
-  filename: string | null;
-  groqApiKey: string;
-  assemblyaiApiKey: string | null;
-  geminiApiKey: string | null;
-  openaiApiKey: string | null;
-  falApiKey: string | null;
-  deepgramApiKey: string | null;
-  segmentSeconds: number;
-  totalDurationSeconds: number | null;
-  onProgress?: ((event: WhisperProgressEvent) => void) | null;
-  env: Env;
-  notes: string[];
-}): Promise<WhisperTranscriptionResult> {
-  const stat = await fs.stat(filePath);
+async function transcribeGroqFileFirst(
+  source: TranscriptionFile,
+  { options, notes }: TranscriptionRun,
+  chunking: TranscriptionChunking,
+): Promise<WhisperTranscriptionResult> {
+  const stat = await fs.stat(source.filePath);
   if (stat.size <= MAX_OPENAI_UPLOAD_BYTES) {
-    const fileBytes = new Uint8Array(await fs.readFile(filePath));
+    const bytes = new Uint8Array(await fs.readFile(source.filePath));
     try {
-      const text = await transcribeWithGroq(fileBytes, mediaType, filename, groqApiKey);
+      const text = await transcribeWithGroq(
+        bytes,
+        source.mediaType,
+        source.filename,
+        options.groqApiKey!,
+      );
       if (text) return { text, provider: "groq", error: null, notes };
       const error = new Error("Groq transcription returned empty text");
       notes.push(
@@ -391,18 +166,19 @@ async function transcribeGroqFileFirst({
       );
       return { text: null, provider: "groq", error, notes };
     } catch (error) {
-      const wrapped = wrapError("Groq transcription failed", error);
       notes.push(
-        `Groq transcription failed; falling back to local/AssemblyAI/Gemini/OpenAI/FAL/Deepgram: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `Groq transcription failed; falling back to local/AssemblyAI/Gemini/OpenAI/FAL/Deepgram: ${error instanceof Error ? error.message : String(error)}`,
       );
-      return { text: null, provider: "groq", error: wrapped, notes };
+      return {
+        text: null,
+        provider: "groq",
+        error: wrapError("Groq transcription failed", error),
+        notes,
+      };
     }
   }
 
-  const canChunk = await isFfmpegAvailable();
-  if (!canChunk) {
+  if (!(await isFfmpegAvailable())) {
     const error = new Error(
       `File too large for Groq upload (${formatBytes(stat.size)}); trying local providers`,
     );
@@ -410,26 +186,8 @@ async function transcribeGroqFileFirst({
     return { text: null, provider: "groq", error, notes };
   }
 
-  const chunked = await transcribeChunkedFile({
-    filePath,
-    segmentSeconds,
-    totalDurationSeconds,
-    onProgress,
-    transcribeSegment: ({ bytes, filename }) =>
-      transcribeMediaWithWhisper({
-        bytes,
-        mediaType: "audio/mpeg",
-        filename,
-        groqApiKey,
-        assemblyaiApiKey,
-        geminiApiKey,
-        openaiApiKey,
-        falApiKey,
-        deepgramApiKey,
-        env,
-      }),
-  });
-  if (chunked.notes.length > 0) notes.push(...chunked.notes);
+  const chunked = await chunking.file(source.filePath, options.segmentSeconds, false);
+  notes.push(...chunked.notes);
   if (chunked.text) return { ...chunked, notes };
   const error = chunked.error ?? new Error("Groq chunked transcription failed");
   notes.push(

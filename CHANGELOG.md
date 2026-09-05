@@ -15,6 +15,7 @@
 
 ### Dependencies and maintenance
 
+- Replace duplicated file/byte transcription orchestration with one source-aware runner, shared local/provider handling, and common decode retries while preserving lazy file uploads and full-input fallback.
 - Unify model execution around one resolved request and completion path; centralize stream consumption while preserving output-failure and retry boundaries.
 - Consolidate LLM request options and SDK stream handling while preserving provider-specific configuration, errors, and fallback behavior.
 - Build asset summary contexts directly from shared application state, removing redundant context wrappers and narrowing the asset-only format override.
