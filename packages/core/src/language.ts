@@ -67,6 +67,8 @@ const LANGUAGE_ALIASES: Record<string, { tag: string; label: string }> = {
 
   tr: { tag: "tr", label: "Turkish" },
   turkish: { tag: "tr", label: "Turkish" },
+  turkce: { tag: "tr", label: "Turkish" },
+  "tr-tr": { tag: "tr-TR", label: "Turkish" },
 
   ru: { tag: "ru", label: "Russian" },
   russian: { tag: "ru", label: "Russian" },
@@ -125,6 +127,9 @@ export function parseOutputLanguage(raw: string): OutputLanguage {
     throw new Error("Invalid --language: must not be empty.");
   }
   const compact = trimmed
+    .normalize("NFKD")
+    .replaceAll(/[\u0300-\u036f]/g, "")
+    .replaceAll("ı", "i")
     .toLowerCase()
     .replaceAll("_", "-")
     .replaceAll(NORMALIZE_PATTERN, "-")

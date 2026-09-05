@@ -10,6 +10,7 @@ export {
   type ExtractDiagnosticsForFinishLine,
 } from "./finish-line-labels.js";
 export { buildLengthPartsForFinishLine, type ExtractedForLengths } from "./finish-line-lengths.js";
+import { resolveCliLocaleFromEnv, translateCliText } from "../locale.js";
 import { formatUSD, sumNumbersOrNull } from "./format.js";
 
 export type FinishLineText = {
@@ -89,11 +90,15 @@ export function writeFinishLine({
     detailedExtraParts: extraParts,
   });
   const text = detailed ? detailedText : compact;
+  const locale = resolveCliLocaleFromEnv(env ?? {});
 
   stderr.write("\n");
-  stderr.write(`${theme ? theme.success(text.line) : text.line}\n`);
-  if (detailed && text.details) {
-    stderr.write(`${theme ? theme.dim(text.details) : text.details}\n`);
+  const protectedValues = model ? [formatModelLabelForDisplay(model)] : [];
+  const line = translateCliText(text.line, locale, protectedValues);
+  const details = text.details ? translateCliText(text.details, locale, protectedValues) : null;
+  stderr.write(`${theme ? theme.success(line) : line}\n`);
+  if (detailed && details) {
+    stderr.write(`${theme ? theme.dim(details) : details}\n`);
   }
 }
 

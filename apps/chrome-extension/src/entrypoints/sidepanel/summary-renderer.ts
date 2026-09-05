@@ -184,6 +184,7 @@ export function renderSummaryMarkdownDisplay({
       hostEl.innerHTML = "";
       const markdownHost = document.createElement("div");
       markdownHost.className = "render__markdownBody";
+      markdownHost.dataset.localeIgnore = "true";
       markdownHost.innerHTML = md.render(linkifyTimestamps(displayMarkdown));
       if (copyButtonEl) {
         configureCopyButton({ button: copyButtonEl, text: displayMarkdown, headerSetStatus });

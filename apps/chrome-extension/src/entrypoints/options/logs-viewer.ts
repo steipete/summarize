@@ -263,6 +263,7 @@ export function createLogsViewer(options: LogsViewerOptions): LogsViewer {
     for (const entry of entries) {
       if (!activeLevels.has(entry.level)) continue;
       const row = document.createElement("tr");
+      row.dataset.localeIgnore = "true";
       const timeCell = document.createElement("td");
       timeCell.textContent = entry.time || "—";
       const levelCell = document.createElement("td");

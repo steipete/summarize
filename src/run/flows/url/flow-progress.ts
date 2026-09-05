@@ -1,3 +1,8 @@
+import {
+  hasTurkishTranslation,
+  resolveCliLocaleFromEnv,
+  translateCliText,
+} from "../../../locale.js";
 import { createOscProgressController } from "../../../tty/osc-progress.js";
 import { startSpinner } from "../../../tty/spinner.js";
 import type { createThemeRenderer } from "../../../tty/theme.js";
@@ -27,12 +32,13 @@ export function writeSlidesBackgroundFailureWarning({
 }) {
   if (ctx.flags.json || ctx.flags.extractMode) return;
   ctx.hooks.clearProgressForStdout();
+  const locale = resolveCliLocaleFromEnv(ctx.io.env);
   ctx.io.stderr.write(
-    `${theme.warning("Warning:")} --slides could not extract slide images: ${message}\n`,
+    `${theme.warning(translateCliText("Warning:", locale))} ${translateCliText("--slides could not extract slide images:", locale)} ${message}\n`,
   );
   if (isMissingSlidesDependencyError(message)) {
     ctx.io.stderr.write(
-      `${theme.dim("Install ffmpeg + yt-dlp for --slides, and tesseract for --slides-ocr.")}\n`,
+      `${theme.dim(translateCliText("Install ffmpeg + yt-dlp for --slides, and tesseract for --slides-ocr.", locale))}\n`,
     );
   }
   ctx.hooks.restoreProgressAfterStdout?.();
@@ -46,28 +52,31 @@ export function createUrlFlowProgress({
   theme: ReturnType<typeof createThemeRenderer>;
 }) {
   const { io, flags, hooks } = ctx;
+  const locale = resolveCliLocaleFromEnv(io.env);
+  const localize = (text: string) => translateCliText(text, locale);
   const oscProgress = createOscProgressController({
-    label: "Fetching website",
+    label: localize("Fetching website"),
     env: io.env,
     isTty: flags.progressEnabled,
     write: (data: string) => io.stderr.write(data),
   });
-  oscProgress.setIndeterminate("Fetching website");
+  oscProgress.setIndeterminate(localize("Fetching website"));
   const spinner = startSpinner({
-    text: `${theme.label("Fetching website")}${theme.dim(" (connecting)…")}`,
+    text: `${theme.label(localize("Fetching website"))}${theme.dim(` (${localize("connecting")}…)`)}`,
     enabled: flags.progressEnabled,
     stream: io.stderr,
     color: theme.palette.spinner,
   });
   const styleLabel = (text: string) => theme.label(text);
   const styleDim = (text: string) => theme.dim(text);
-  const renderStatus = (label: string, detail = "…") => `${styleLabel(label)}${styleDim(detail)}`;
+  const renderStatus = (label: string, detail = "…") =>
+    `${styleLabel(localize(label))}${styleDim(detail)}`;
   const renderStatusWithMeta = (label: string, meta: string, suffix = "…") =>
-    `${styleLabel(label)} ${meta}${styleDim(suffix)}`;
+    `${styleLabel(localize(label))} ${meta}${styleDim(suffix)}`;
   const renderStatusFromText = (text: string) => {
     const match = text.match(/^([^:]+):(.*)$/);
-    if (!match) return styleLabel(text);
-    return `${styleLabel(match[1])}${styleDim(`:${match[2]}`)}`;
+    if (!match) return styleLabel(hasTurkishTranslation(text) ? localize(text) : text);
+    return `${styleLabel(hasTurkishTranslation(match[1]) ? localize(match[1]) : match[1])}${styleDim(`:${match[2]}`)}`;
   };
   const progressStatus = createUrlProgressStatus({
     enabled: flags.progressEnabled,

@@ -73,9 +73,58 @@ vi.mock("../src/run/slides-render.js", async () => {
 });
 
 describe("cli slides mode", () => {
+  it("strips the locale option before parsing slides arguments", async () => {
+    const stdout = collectStream({ isTTY: false });
+    const stderr = collectStream({ isTTY: false });
+    await runCli(["slides", "https://example.com/video.mp4", "--locale", "tr"], {
+      env: {},
+      fetch: vi.fn() as unknown as typeof fetch,
+      stdout: stdout.stream,
+      stderr: stderr.stream,
+    });
+
+    expect(mocks.extractSlidesForSource).toHaveBeenCalled();
+  });
+
   afterEach(() => {
     renderMocks.renderSlidesInline.mockClear();
     mocks.extractSlidesForSource.mockClear();
+    mocks.resolveSlideSourceFromUrl.mockClear();
+  });
+
+  it.each(["./video.mp4", "--locale=en"])(
+    "preserves a slide source after --: %s",
+    async (source) => {
+      const stdout = collectStream({ isTTY: false });
+      const stderr = collectStream({ isTTY: false });
+      await runCli(["slides", "--locale", "tr", "--", source], {
+        env: {},
+        fetch: vi.fn() as unknown as typeof fetch,
+        stdout: stdout.stream,
+        stderr: stderr.stream,
+      });
+      expect(mocks.resolveSlideSourceFromUrl).toHaveBeenCalledWith(source);
+      expect(stdout.getText()).toContain("Çıkarılan slayt:");
+    },
+  );
+
+  it("localizes inline slide labels without translating interpolated file paths", async () => {
+    const stdout = collectStream({ isTTY: true });
+    const stderr = collectStream({ isTTY: true });
+    await runCli(
+      ["slides", "https://example.com/video.mp4", "--render", "auto", "--locale", "tr"],
+      {
+        env: { HOME: "/tmp", TERM_PROGRAM: "iTerm.app" },
+        fetch: vi.fn() as unknown as typeof fetch,
+        stdout: stdout.stream,
+        stderr: stderr.stream,
+      },
+    );
+    const call = renderMocks.renderSlidesInline.mock.calls[0]?.[0];
+    const imagePath = "/home/me/Copy failed/slide.png";
+    expect(call?.labelForSlide?.({ index: 1, timestamp: 1, imagePath })).toBe(
+      `Slayt 1 · 0:01 (${imagePath})`,
+    );
   });
 
   it("prints slide paths in text mode", async () => {

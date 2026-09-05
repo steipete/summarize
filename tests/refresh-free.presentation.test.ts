@@ -34,6 +34,23 @@ function model(): BenchmarkedOpenRouterModel {
 }
 
 describe("refresh-free presentation", () => {
+  it("preserves provider errors and model IDs in Turkish mode", () => {
+    const capture = createCaptureStream();
+    const reporter = new RefreshFreeReporter({
+      stderr: capture.stream,
+      env: { SUMMARIZE_LOCALE: "tr" },
+      verbose: true,
+    });
+    reporter.benchmarkFailure({
+      modelId: "old:free",
+      kind: "providerError",
+      message: "Copy failed: /Projects (old)/cache.json",
+    });
+    expect(capture.output()).toContain(
+      "old:free (providerError): Copy failed: /Projects (old)/cache.json",
+    );
+  });
+
   it("formats benchmark durations", () => {
     expect(formatRefreshFreeDuration(149)).toBe("149ms");
     expect(formatRefreshFreeDuration(1550)).toBe("1.6s");

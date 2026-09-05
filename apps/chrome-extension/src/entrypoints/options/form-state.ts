@@ -26,6 +26,7 @@ type FormElements = {
   maxOutputTokensEl: HTMLInputElement;
   fontFamilyEl: HTMLInputElement;
   fontSizeEl: HTMLInputElement;
+  uiLocaleEl: HTMLSelectElement;
 };
 
 type BooleanFormState = {
@@ -60,6 +61,7 @@ export function buildSavedOptionsSettings({
   currentMode: ColorMode;
 }): Settings {
   return {
+    uiLocale: elements.uiLocaleEl.value as Settings["uiLocale"],
     token: elements.tokenEl.value || defaults.token,
     daemonPort: elements.daemonPortEl.value || defaults.daemonPort,
     summaryRuntime: booleans.summaryRuntime,
@@ -157,6 +159,7 @@ export function applyLoadedOptionsSettings({
   elements.maxOutputTokensEl.value = settings.maxOutputTokens;
   elements.fontFamilyEl.value = settings.fontFamily;
   elements.fontSizeEl.value = String(settings.fontSize);
+  elements.uiLocaleEl.value = settings.uiLocale;
 
   return {
     booleans: {

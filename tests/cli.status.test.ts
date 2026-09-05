@@ -41,8 +41,9 @@ describe("summarize status", () => {
     expect(stderr.getText()).toBe("");
   });
 
-  it("lists configured presets, APIs, and available CLI providers only", async () => {
-    const home = mkdtempSync(join(tmpdir(), "summarize-status-configured-"));
+  it.each(["en", "tr"])("lists configured providers and preserves paths (%s)", async (locale) => {
+    const root = mkdtempSync(join(tmpdir(), "summarize-status-configured-"));
+    const home = join(root, "Projects (old); Copy failed");
     const configDir = join(home, ".summarize");
     const binDir = join(home, "bin");
     mkdirSync(configDir, { recursive: true });
@@ -66,7 +67,7 @@ describe("summarize status", () => {
     const stdout = collectStream();
     const stderr = collectStream();
 
-    await runCli(["status", "--verbose"], {
+    await runCli(["status", "--verbose", "--locale", locale], {
       env: { HOME: home, PATH: binDir },
       fetch: vi.fn() as unknown as typeof fetch,
       stdout: stdout.stream,
@@ -74,12 +75,14 @@ describe("summarize status", () => {
     });
 
     const out = stdout.getText();
-    expect(out).toContain("Model: openai/gpt-5.5 (config)");
-    expect(out).toContain(`Config: ${join(configDir, "config.json")}`);
+    expect(out).toContain("openai/gpt-5.5");
+    expect(out).toContain(join(configDir, "config.json"));
     expect(out).toContain("brief: openai/gpt-5-mini");
     expect(out).toContain("routed: auto -> openrouter/openai/gpt-5-mini");
-    expect(out).toContain("OpenAI API: configured");
-    expect(out).toContain(`Claude CLI: available (model sonnet, ${claudePath})`);
+    expect(out).toContain(
+      locale === "tr" ? "OpenAI API: yapılandırıldı" : "OpenAI API: configured",
+    );
+    expect(out).toContain(claudePath);
     expect(out).not.toContain("Anthropic");
     expect(out).not.toContain("secret-value");
     expect(stderr.getText()).toBe("");

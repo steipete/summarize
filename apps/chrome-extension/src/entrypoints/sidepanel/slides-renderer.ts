@@ -176,6 +176,7 @@ export function createSlidesRenderer({
 
         const meta = document.createElement("div");
         meta.className = "slideStrip__meta";
+        meta.dataset.localeIgnore = "true";
 
         button.append(thumb, meta);
         grid.appendChild(button);
@@ -202,6 +203,7 @@ export function createSlidesRenderer({
           (() => {
             const description = document.createElement("div");
             description.className = "slideStrip__text";
+            description.dataset.localeIgnore = "true";
             button.appendChild(description);
             return description;
           })();
@@ -289,8 +291,10 @@ export function createSlidesRenderer({
         body.className = "slideGallery__body";
         const meta = document.createElement("div");
         meta.className = "slideGallery__meta";
+        meta.dataset.localeIgnore = "true";
         const text = document.createElement("div");
         text.className = "slideGallery__text";
+        text.dataset.localeIgnore = "true";
         body.append(meta, text);
 
         item.append(media, body);
@@ -348,6 +352,7 @@ export function createSlidesRenderer({
       updateThumb(img, thumb, slide.imageUrl);
       const caption = document.createElement("div");
       caption.className = "slideCaption";
+      caption.dataset.localeIgnore = "true";
       updateMeta(caption, index, slide.timestamp, state.titles.get(index) ?? null, slideTotal);
       thumb.appendChild(img);
       button.append(thumb, caption);

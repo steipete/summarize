@@ -189,11 +189,13 @@ export function bindSettingsStorage({
   panelState,
   dispatchPanelState,
   applyChatEnabled,
+  applyLocale,
   hideAutomationNotice,
 }: {
   panelState: PanelState;
   dispatchPanelState?: (action: PanelStateAction) => void;
   applyChatEnabled: () => void;
+  applyLocale: (locale: Settings["uiLocale"]) => void;
   hideAutomationNotice: () => void;
 }) {
   const dispatch = (action: PanelStateAction) => {
@@ -218,6 +220,15 @@ export function bindSettingsStorage({
           },
         },
       });
+    }
+    const nextUiLocale = (nextSettings as Partial<Settings>).uiLocale;
+    const previousUiLocale = (changes.settings?.oldValue as Partial<Settings> | undefined)
+      ?.uiLocale;
+    if (
+      (nextUiLocale === "en" || nextUiLocale === "tr" || nextUiLocale === "auto") &&
+      nextUiLocale !== previousUiLocale
+    ) {
+      applyLocale(nextUiLocale);
     }
     const nextChatEnabled = (nextSettings as { chatEnabled?: unknown }).chatEnabled;
     if (typeof nextChatEnabled === "boolean") {

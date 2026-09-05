@@ -8,6 +8,7 @@ import { discoverOpenAiCompatibleModels } from "../daemon/model-discovery.js";
 import { buildModelPickerOptions } from "../daemon/models.js";
 import { resolveCliBinary } from "../llm/cli.js";
 import { getGatewayProviderProfile, type GatewayProvider } from "../llm/provider-capabilities.js";
+import { resolveCliLocaleFromArgs, translateCliText } from "../locale.js";
 import { buildStatusHelp } from "./help.js";
 
 type StatusModel = {
@@ -424,12 +425,13 @@ export async function handleStatusCliRequest({
 }): Promise<boolean> {
   if (normalizedArgv[0]?.toLowerCase() !== "status") return false;
 
+  const locale = resolveCliLocaleFromArgs(normalizedArgv, envForRun);
   const help =
     normalizedArgv.includes("--help") ||
     normalizedArgv.includes("-h") ||
     normalizedArgv.includes("help");
   if (help) {
-    stdout.write(`${buildStatusHelp()}\n`);
+    stdout.write(`${translateCliText(buildStatusHelp(), locale)}\n`);
     return true;
   }
 
@@ -445,7 +447,29 @@ export async function handleStatusCliRequest({
   if (normalizedArgv.includes("--json")) {
     stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
-    stdout.write(formatHumanStatus(report, normalizedArgv.includes("--verbose")));
+    const protectedValues = [
+      report.model.selection,
+      report.config?.path,
+      ...report.presets.flatMap((preset) => [
+        preset.name,
+        preset.model,
+        ...(preset.candidates ?? []),
+      ]),
+      ...report.providers.flatMap((provider) => [
+        provider.path,
+        provider.model,
+        provider.endpoint,
+        provider.source,
+        ...(provider.models ?? []),
+      ]),
+    ].filter((value): value is string => typeof value === "string");
+    stdout.write(
+      translateCliText(
+        formatHumanStatus(report, normalizedArgv.includes("--verbose")),
+        locale,
+        protectedValues,
+      ),
+    );
   }
   return true;
 }

@@ -24,8 +24,11 @@ vi.mock("../src/llm/generate-text.js", () => ({
 }));
 
 describe("refresh-free", () => {
-  it("writes models.free and shows total runs (1 + runs)", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-refresh-free-"));
+  it.each(["en", "tr"])("writes models.free without translating its path (%s)", async (locale) => {
+    const root = join(
+      mkdtempSync(join(tmpdir(), "summarize-refresh-free-")),
+      "Projects (old); Copy failed",
+    );
     mkdirSync(join(root, ".summarize"), { recursive: true });
 
     const stdout = collectStream();
@@ -49,20 +52,22 @@ describe("refresh-free", () => {
       );
     });
 
-    await runCli(["refresh-free", "--min-params", "0b"], {
+    await runCli(["refresh-free", "--min-params", "0b", "--locale", locale], {
       env: { HOME: root, OPENROUTER_API_KEY: "test" },
       fetch: fetchMock as unknown as typeof fetch,
       stdout: stdout.stream,
       stderr: stderr.stream,
     });
 
-    expect(stderr.getText()).toMatch(/Refresh Free: found 2 :free models; testing \(runs=3/i);
+    expect(stderr.getText()).toContain("runs=3");
     const configPath = join(root, ".summarize", "config.json");
     const config = JSON.parse(readFileSync(configPath, "utf8")) as {
       models?: { free?: { rules?: Array<{ candidates?: string[] }> } };
     };
     expect(config.models?.free?.rules?.[0]?.candidates?.length).toBeGreaterThan(0);
-    expect(stdout.getText()).toMatch(/Wrote .*config\.json/i);
+    expect(stdout.getText()).toBe(
+      `${locale === "tr" ? "Yazıldı:" : "Wrote"} ${configPath} (models.free)\n`,
+    );
   });
 
   it("accepts --runs 0 (no refine pass)", async () => {

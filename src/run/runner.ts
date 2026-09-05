@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { CommanderError, type Command } from "commander";
+import { resolveCliLocaleFromArgs, translateCliText } from "../locale.js";
 import type { ExecFileFn } from "../markitdown.js";
 import {
   handleDaemonCliRequest,
@@ -15,6 +16,7 @@ import {
   handleVersionFlag,
   prepareRunEnvironment,
   resolvePromptOverride,
+  stripCliLocaleArgs,
 } from "./runner-setup.js";
 import { handleSlidesCliRequest } from "./slides-cli.js";
 import { handleStatusCliRequest } from "./status-cli.js";
@@ -41,11 +43,13 @@ export async function runCli(
     const { normalizedArgv, preSeparatorArgv, envForRun } = prepareRunEnvironment(argv, inputEnv);
     perfTrace?.mark("cli:environment");
     const env = envForRun;
+    env.SUMMARIZE_LOCALE = resolveCliLocaleFromArgs(normalizedArgv, env);
+    const preflightArgv = stripCliLocaleArgs(preSeparatorArgv);
 
     if (
       await handleImmediateCliRequests({
         normalizedArgv,
-        preSeparatorArgv,
+        preSeparatorArgv: preflightArgv,
         envForRun,
         fetchImpl: fetch,
         stdout: runStdout,
@@ -79,7 +83,7 @@ export async function runCli(
 
     if (
       await handleCacheUtilityFlags({
-        normalizedArgv: preSeparatorArgv,
+        normalizedArgv: preflightArgv,
         envForRun,
         stdout: runStdout,
       })
@@ -87,7 +91,7 @@ export async function runCli(
       return;
     }
     await executeCliSummarizeCommand({
-      normalizedArgv: preSeparatorArgv,
+      normalizedArgv: preflightArgv,
       program,
       env,
       envForRun,
@@ -148,7 +152,15 @@ async function handleImmediateCliRequests(options: {
   ) {
     return true;
   }
-  if (await handleSlidesCliRequest({ normalizedArgv, envForRun, fetchImpl, stdout, stderr })) {
+  if (
+    await handleSlidesCliRequest({
+      normalizedArgv: stripCliLocaleArgs(normalizedArgv),
+      envForRun,
+      fetchImpl,
+      stdout,
+      stderr,
+    })
+  ) {
     return true;
   }
   if (
@@ -172,9 +184,10 @@ function buildCliProgram(options: {
 }): Command | null {
   const { normalizedArgv, envForRun, stdout, stderr } = options;
   const program = buildProgram();
+  const locale = resolveCliLocaleFromArgs(normalizedArgv, envForRun);
   program.configureOutput({
     writeOut(str) {
-      stdout.write(str);
+      stdout.write(translateCliText(str, locale));
     },
     writeErr(str) {
       stderr.write(str);

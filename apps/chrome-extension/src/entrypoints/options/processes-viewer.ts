@@ -167,9 +167,11 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
       if (selectedId === item.id) row.classList.add("selected");
 
       const toolCell = document.createElement("td");
+      toolCell.dataset.localeIgnore = "true";
       toolCell.textContent = item.label || item.kind || item.command;
 
       const pidCell = document.createElement("td");
+      pidCell.dataset.localeIgnore = "true";
       pidCell.textContent = item.pid ? String(item.pid) : "—";
 
       const statusCell = document.createElement("td");
@@ -180,12 +182,15 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
       elapsedCell.textContent = formatElapsed(item.elapsedMs);
 
       const progressCell = document.createElement("td");
+      progressCell.dataset.localeIgnore = "true";
       progressCell.textContent = formatProgress(item) || "—";
 
       const runCell = document.createElement("td");
+      runCell.dataset.localeIgnore = "true";
       runCell.textContent = item.runId ? item.runId.slice(0, 8) : "—";
 
       const cmdCell = document.createElement("td");
+      cmdCell.dataset.localeIgnore = "true";
       const cmd = buildCommandLabel(item);
       cmdCell.textContent = cmd.length > 120 ? `${cmd.slice(0, 120)}…` : cmd;
       cmdCell.title = cmd;

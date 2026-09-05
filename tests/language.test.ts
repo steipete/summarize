@@ -16,6 +16,17 @@ describe("output language", () => {
     expect(parseOutputLanguage("English")).toEqual({ kind: "fixed", tag: "en", label: "English" });
     expect(parseOutputLanguage("de")).toEqual({ kind: "fixed", tag: "de", label: "German" });
     expect(parseOutputLanguage("Deutsch")).toEqual({ kind: "fixed", tag: "de", label: "German" });
+    expect(parseOutputLanguage("tr")).toEqual({ kind: "fixed", tag: "tr", label: "Turkish" });
+    expect(parseOutputLanguage("turkish")).toEqual({
+      kind: "fixed",
+      tag: "tr",
+      label: "Turkish",
+    });
+    expect(parseOutputLanguage("Türkçe")).toEqual({
+      kind: "fixed",
+      tag: "tr",
+      label: "Turkish",
+    });
     expect(parseOutputLanguage("pt-BR")).toEqual({
       kind: "fixed",
       tag: "pt-BR",

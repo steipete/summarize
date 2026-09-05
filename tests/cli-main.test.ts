@@ -18,8 +18,15 @@ vi.mock("../src/processes.js", () => ({
 describe("cli main wiring", async () => {
   const { handlePipeErrors, runCliMain } = await import("../src/cli-main.js");
 
-  it("sets exit code and prints error when runCli throws", async () => {
-    runCliMock.mockReset().mockRejectedValue(new Error("boom"));
+  it.each([
+    ["boom", "boom"],
+    ["Copy failed: /Projects (old)/cache.json", "Copy failed: /Projects (old)/cache.json"],
+    [
+      "summarize slides requires a URL or local video file.",
+      "summarize slides için bir URL veya yerel video dosyası gerekir.",
+    ],
+  ])("prints opaque errors verbatim in Turkish mode: %s", async (message, expected) => {
+    runCliMock.mockReset().mockRejectedValue(new Error(message));
 
     let stderrText = "";
     const stderr = new Writable({
@@ -31,7 +38,7 @@ describe("cli main wiring", async () => {
 
     let exitCode: number | null = null;
     await runCliMain({
-      argv: [],
+      argv: ["--locale", "tr"],
       env: {},
       fetch: globalThis.fetch.bind(globalThis),
       stdout: new Writable({
@@ -47,7 +54,7 @@ describe("cli main wiring", async () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(stderrText.trim()).toBe("boom");
+    expect(stderrText.trim()).toBe(expected);
   });
 
   it("uses silent interrupt exit codes without printing noise", async () => {

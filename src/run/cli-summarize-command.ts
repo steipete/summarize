@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { createSummarizeExecutionResources } from "../application/execution-resources.js";
 import { isTranscribableAssetPath } from "../application/input-acquisition.js";
 import { resolveSummarizeRun } from "../application/run-spec.js";
+import { resolveCliLocaleFromEnv, translateCliText } from "../locale.js";
 import type { ExecFileFn } from "../markitdown.js";
 import { resolveSpeakerIdentificationSettings } from "../speaker-identification/index.js";
 import {
@@ -59,6 +60,7 @@ export async function executeCliSummarizeCommand(options: {
     program,
     cliFlagPresent,
     cliProviderArgRaw,
+    env: envForRun,
     stdout,
   });
   perfTrace?.mark("plan:input");
@@ -106,7 +108,9 @@ export async function executeCliSummarizeCommand(options: {
   perfTrace?.mark("plan:flags");
 
   if (extractMode && lengthExplicitlySet && !json && isRichTty(stderr)) {
-    stderr.write("Warning: --length is ignored with --extract (no summary is generated).\n");
+    stderr.write(
+      `${translateCliText("Warning: --length is ignored with --extract (no summary is generated).", resolveCliLocaleFromEnv(envForRun))}\n`,
+    );
   }
   const isDirectMediaInput =
     (inputTarget.kind === "file" && isTranscribableAssetPath(inputTarget.filePath)) ||
@@ -259,7 +263,9 @@ export async function executeCliSummarizeCommand(options: {
       const filtered = parts.map((part) => part.trim()).filter(Boolean);
       if (filtered.length === 0) return;
       clearProgressForStdout();
-      stderr.write(`${themeForStderr.dim(`via ${filtered.join(", ")}`)}\n`);
+      stderr.write(
+        `${themeForStderr.dim(translateCliText(`via ${filtered.join(", ")}`, resolveCliLocaleFromEnv(envForRun)))}\n`,
+      );
       restoreProgressAfterStdout?.();
     };
     const executionResources = createSummarizeExecutionResources({

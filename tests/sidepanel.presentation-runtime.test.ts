@@ -26,8 +26,9 @@ const sidepanelHtml = readFileSync(
   "utf8",
 );
 const sidepanelBody =
-  sidepanelHtml.match(/<body>([\s\S]*)<\/body>/)?.[1]?.replace(/<script[\s\S]*?<\/script>/g, "") ??
-  "";
+  sidepanelHtml
+    .match(/<body[^>]*>([\s\S]*)<\/body>/)?.[1]
+    ?.replace(/<script[\s\S]*?<\/script>/g, "") ?? "";
 
 describe("sidepanel presentation runtime", () => {
   beforeEach(() => {

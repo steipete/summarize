@@ -6,7 +6,7 @@
     <title>Summarize</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
-  <body>
+  <body data-locale-ui>
     <header>
       <div class="headerRow">
         <div class="brand">
@@ -195,7 +195,7 @@
       </div>
 
       <section id="chatContainer" class="chatContainer">
-        <div id="chatMessages" class="chatMessages isHidden"></div>
+        <div id="chatMessages" class="chatMessages isHidden" data-locale-ignore="true"></div>
         <div id="chatContextStatus" class="chatContextStatus isHidden"></div>
         <div id="automationNotice" class="automationNotice hidden" role="status" aria-live="polite">
           <div id="automationNoticeTitle" class="automationNotice__title"></div>

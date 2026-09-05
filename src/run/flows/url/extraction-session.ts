@@ -7,6 +7,7 @@ import {
   type LinkPreviewProgressEvent,
 } from "../../../content/index.js";
 import { createFirecrawlScraper } from "../../../firecrawl.js";
+import { resolveCliLocaleFromEnv, translateCliText } from "../../../locale.js";
 import { resolveSlideSource } from "../../../slides/index.js";
 import {
   identifySpeakersInExtractedContent,
@@ -297,7 +298,8 @@ export function createUrlExtractionSession({
             flags.verboseColor,
             io.envForRun,
           );
-          io.stderr.write(`Warning: ${identified.warning}\n`);
+          const locale = resolveCliLocaleFromEnv(io.envForRun);
+          io.stderr.write(`${translateCliText("Warning:", locale)} ${identified.warning}\n`);
         }
         if (flags.speakerIdentification.remember) {
           if (!flags.configPath || !identified.transcriptHash) {

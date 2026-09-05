@@ -143,6 +143,11 @@ export function buildProgram() {
       undefined,
     )
     .option(
+      "--locale <locale>",
+      "CLI interface language: auto/en or tr/turkish (default: en; also SUMMARIZE_LOCALE)",
+      undefined,
+    )
+    .option(
       "--max-output-tokens <count>",
       "Hard cap for LLM output tokens (e.g. 2000, 2k). Overrides provider defaults.",
       undefined,

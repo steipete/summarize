@@ -1,3 +1,4 @@
+import { resolveCliLocaleFromEnv, translateCliText } from "../locale.js";
 import { buildDaemonHelp } from "../run/help.js";
 import {
   checkAuth,
@@ -109,9 +110,11 @@ export async function handleDaemonRequest({
 }: DaemonCliContext): Promise<boolean> {
   if (normalizedArgv[0]?.toLowerCase() !== "daemon") return false;
 
+  const locale = resolveCliLocaleFromEnv(envForRun);
+  const localize = (text: string) => translateCliText(text, locale);
   const sub = normalizedArgv[1]?.toLowerCase() ?? null;
   if (!sub || wantHelp(normalizedArgv)) {
-    stdout.write(`${buildDaemonHelp()}\n`);
+    stdout.write(`${localize(buildDaemonHelp())}\n`);
     return true;
   }
 
@@ -217,8 +220,8 @@ export async function handleDaemonRequest({
   if (sub === "status") {
     const cfg = await readDaemonConfig({ env: envForRun });
     if (!cfg) {
-      stdout.write("Daemon not installed (missing ~/.summarize/daemon.json)\n");
-      stdout.write("Run: summarize daemon install --token <token>\n");
+      stdout.write(`${localize("Daemon not installed (missing ~/.summarize/daemon.json)")}\n`);
+      stdout.write(`${localize("Run: summarize daemon install --token <token>")}\n`);
       return true;
     }
     if (process.platform === "win32" && isWindowsContainerEnvironment(envForRun)) {
@@ -233,9 +236,13 @@ export async function handleDaemonRequest({
       const authed = healthy
         ? await checkAuth({ fetchImpl, token: daemonConfigPrimaryToken(cfg), port: cfg.port })
         : false;
-      stdout.write("Autostart: manual (Windows container mode; no Scheduled Task)\n");
-      stdout.write(`Daemon: ${healthy ? `up on ${DAEMON_HOST}:${cfg.port}` : "down"}\n`);
-      stdout.write(`Auth: ${authed ? "ok" : "failed"}\n`);
+      stdout.write(
+        `${localize("Autostart: manual (Windows container mode; no Scheduled Task)")}\n`,
+      );
+      stdout.write(
+        localize(`Daemon: ${healthy ? `up on ${DAEMON_HOST}:${cfg.port}` : "down"}`) + "\n",
+      );
+      stdout.write(localize(`Auth: ${authed ? "ok" : "failed"}`) + "\n");
       return true;
     }
     const service = resolveDaemonService();
@@ -253,20 +260,25 @@ export async function handleDaemonRequest({
       ? await checkAuth({ fetchImpl, token: daemonConfigPrimaryToken(cfg), port: cfg.port })
       : false;
 
-    stdout.write(`${service.label}: ${loaded ? service.loadedText : service.notLoadedText}\n`);
     stdout.write(
-      `Chrome native messaging host: ${nativeHostInstalled ? "installed" : "missing"}\n`,
+      localize(`${service.label}: ${loaded ? service.loadedText : service.notLoadedText}`) + "\n",
     );
-    stdout.write(`Daemon: ${healthy ? `up on ${DAEMON_HOST}:${cfg.port}` : "down"}\n`);
-    stdout.write(`Auth: ${authed ? "ok" : "failed"}\n`);
+    stdout.write(
+      localize(`Chrome native messaging host: ${nativeHostInstalled ? "installed" : "missing"}`) +
+        "\n",
+    );
+    stdout.write(
+      localize(`Daemon: ${healthy ? `up on ${DAEMON_HOST}:${cfg.port}` : "down"}`) + "\n",
+    );
+    stdout.write(localize(`Auth: ${authed ? "ok" : "failed"}`) + "\n");
     return true;
   }
 
   if (sub === "restart") {
     const cfg = await readDaemonConfig({ env: envForRun });
     if (!cfg) {
-      stdout.write("Daemon not installed (missing ~/.summarize/daemon.json)\n");
-      stdout.write("Run: summarize daemon install --token <token>\n");
+      stdout.write(`${localize("Daemon not installed (missing ~/.summarize/daemon.json)")}\n`);
+      stdout.write(`${localize("Run: summarize daemon install --token <token>")}\n`);
       return true;
     }
     if (process.platform === "win32" && isWindowsContainerEnvironment(envForRun)) {
@@ -399,6 +411,6 @@ export async function handleDaemonRequest({
     return true;
   }
 
-  stdout.write(`${buildDaemonHelp()}\n`);
+  stdout.write(`${localize(buildDaemonHelp())}\n`);
   return true;
 }

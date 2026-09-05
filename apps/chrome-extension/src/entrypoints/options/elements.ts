@@ -57,6 +57,7 @@ export function getOptionsElements() {
     retriesEl: byId<HTMLInputElement>("retries"),
     maxOutputTokensEl: byId<HTMLInputElement>("maxOutputTokens"),
     pickersRoot: byId<HTMLDivElement>("pickersRoot"),
+    uiLocaleEl: byId<HTMLSelectElement>("uiLocale"),
     fontFamilyEl: byId<HTMLInputElement>("fontFamily"),
     fontSizeEl: byId<HTMLInputElement>("fontSize"),
     buildInfoEl: document.getElementById("buildInfo"),

@@ -9,6 +9,10 @@ Browser extension for Chrome and Firefox that streams AI-powered summaries direc
 
 Docs + setup: `https://summarize.sh`
 
+The output language setting accepts `tr`/`Turkish` for Turkish summaries. In
+Options → UI, set Interface language to Automatic (browser), English, or
+Turkish for the extension interface.
+
 ## Build
 
 - From repo root: `pnpm install`

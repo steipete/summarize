@@ -4,6 +4,7 @@ import {
   createProcessesViewer,
   type ProcessesViewerElements,
 } from "../apps/chrome-extension/src/entrypoints/options/processes-viewer.js";
+import { applyExtensionLocale } from "../apps/chrome-extension/src/lib/i18n.js";
 
 const jsonResponse = (body: unknown) =>
   new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
@@ -66,6 +67,44 @@ const processItem = (id: string) => ({
 });
 
 describe("options processes viewer", () => {
+  it("preserves process labels, progress, and commands while localizing surrounding UI", async () => {
+    const elements = createElements();
+    document.body.replaceChildren(elements.tableEl);
+    document.body.dataset.localeUi = "true";
+    const viewer = createProcessesViewer({
+      elements,
+      getToken: () => "synthetic-token",
+      isActive: () => true,
+      fetchImpl: async () =>
+        jsonResponse({
+          ok: true,
+          nowMs: 0,
+          processes: [
+            {
+              ...processItem("synthetic"),
+              label: "Try again",
+              command: "Error: synthetic command",
+              progressPercent: 50,
+              progressDetail: "Error: synthetic progress",
+            },
+          ],
+        }),
+    });
+    const stop = applyExtensionLocale("tr");
+    try {
+      await viewer.refresh();
+      await flushAsyncWork();
+      const cells = elements.tableEl.querySelectorAll("tbody tr:first-child td");
+      expect(cells[0]?.textContent).toBe("Try again");
+      expect(cells[4]?.textContent).toContain("Error: synthetic progress");
+      expect(cells[6]?.textContent).toBe("Error: synthetic command");
+    } finally {
+      stop();
+      document.body.removeAttribute("data-locale-ui");
+      document.body.replaceChildren();
+    }
+  });
+
   it("ignores stale log responses after selecting another process", async () => {
     const elements = createElements();
     const alphaLogs = createDeferred<Response>();

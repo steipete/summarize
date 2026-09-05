@@ -6,7 +6,7 @@
     <title>Summarize Settings</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
-  <body>
+  <body data-locale-ui>
     <main>
       <div class="top">
         <h1>Summarize Settings</h1>
@@ -347,6 +347,14 @@
             <h2>UI</h2>
             <div class="uiGrid">
               <div id="pickersRoot"></div>
+              <label>
+                <span>Interface language</span>
+                <select id="uiLocale">
+                  <option value="auto">Automatic (browser)</option>
+                  <option value="en">English</option>
+                  <option value="tr">Turkish</option>
+                </select>
+              </label>
               <label>
                 <span>Font family (CSS)</span>
                 <input id="fontFamily" type="text" />

@@ -1,3 +1,4 @@
+import { applyExtensionLocale, resolveExtensionLocale } from "../../lib/i18n";
 import type { BgToPanel } from "../../lib/panel-contracts";
 import { defaultSettings, loadSettings, patchSettings } from "../../lib/settings";
 import { generateToken } from "../../lib/token";
@@ -309,6 +310,7 @@ bindSidepanelUiEvents({
 bootstrapSidepanel({
   ensurePanelPort: () => panelMessagingRuntime.ensure(),
   loadSettings,
+  applyLocale: (locale) => applyExtensionLocale(resolveExtensionLocale(locale)),
   panelState,
   dispatchPanelState: panelStateStore.dispatch,
   typographyController,

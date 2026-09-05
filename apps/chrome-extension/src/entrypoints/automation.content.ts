@@ -1,5 +1,7 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { ALWAYS_ON_CONTENT_SCRIPT_EXCLUDE_MATCHES } from "../lib/content-script-matches";
+import { resolveExtensionLocale, translateExtensionText } from "../lib/i18n";
+import { loadSettings } from "../lib/settings";
 
 export type ElementInfo = {
   selector: string;
@@ -89,7 +91,10 @@ function getElementInfo(element: Element): ElementInfo {
   };
 }
 
-async function createElementPicker(message?: string): Promise<ElementInfo> {
+async function createElementPicker(
+  message: string | undefined,
+  locale: "en" | "tr",
+): Promise<ElementInfo> {
   if (window.__summarizeElementPicker) {
     throw new Error("Element picker already active");
   }
@@ -136,11 +141,14 @@ async function createElementPicker(message?: string): Promise<ElementInfo> {
     `;
 
     const bannerText = document.createElement("span");
-    bannerText.textContent = message || "Click an element to select • ↑↓ to change depth";
+    bannerText.textContent = translateExtensionText(
+      message || "Click an element to select • ↑↓ to change depth",
+      locale,
+    );
     banner.appendChild(bannerText);
 
     const cancelButton = document.createElement("button");
-    cancelButton.textContent = "Cancel (Esc)";
+    cancelButton.textContent = translateExtensionText("Cancel (Esc)", locale);
     cancelButton.style.cssText = `
       background: #1f2937;
       border: none;
@@ -230,7 +238,7 @@ async function createElementPicker(message?: string): Promise<ElementInfo> {
   });
 }
 
-function showReplOverlay(message?: string) {
+function showReplOverlay(message: string | undefined, locale: "en" | "tr") {
   if (window.__summarizeReplOverlay) return;
   window.__summarizeReplOverlay = true;
 
@@ -287,11 +295,14 @@ function showReplOverlay(message?: string) {
   card.appendChild(spinner);
 
   const text = document.createElement("span");
-  text.textContent = message ? `Running: ${message}` : "Running automation…";
+  text.textContent = translateExtensionText(
+    message ? `Running: ${message}` : "Running automation…",
+    locale,
+  );
   card.appendChild(text);
 
   const abortBtn = document.createElement("button");
-  abortBtn.textContent = "Abort (Esc)";
+  abortBtn.textContent = translateExtensionText("Abort (Esc)", locale);
   abortBtn.style.cssText = `
     background: #1f2937;
     border: none;
@@ -376,6 +387,13 @@ export default defineContentScript({
     if ((globalThis as unknown as Record<string, unknown>)[flag]) return;
     (globalThis as unknown as Record<string, unknown>)[flag] = true;
 
+    let locale = resolveExtensionLocale();
+    void loadSettings()
+      .then((settings) => {
+        locale = resolveExtensionLocale(settings.uiLocale);
+      })
+      .catch(() => undefined);
+
     handleNativeInputBridge();
 
     chrome.runtime.onMessage.addListener(
@@ -387,7 +405,7 @@ export default defineContentScript({
         if (raw?.type === "automation:pick-element") {
           void (async () => {
             try {
-              const result = await createElementPicker(raw.message ?? undefined);
+              const result = await createElementPicker(raw.message ?? undefined, locale);
               sendResponse({ ok: true, result });
             } catch (error) {
               const message = error instanceof Error ? error.message : String(error);
@@ -398,7 +416,7 @@ export default defineContentScript({
         }
         if (raw?.type === "automation:repl-overlay") {
           if (raw.action === "show") {
-            showReplOverlay(raw.message ?? undefined);
+            showReplOverlay(raw.message ?? undefined, locale);
           } else if (raw.action === "hide") {
             hideReplOverlay();
           }

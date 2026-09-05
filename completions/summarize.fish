@@ -81,7 +81,8 @@ for cmd in summarize summarizer
     # Summary options
     complete -c $cmd -n '__summarize_no_subcommand' -l length -d 'Summary length' -xa 'short s medium m long l xl xxl'
     complete -c $cmd -n '__summarize_no_subcommand' -l max-extract-characters -d 'Max characters in --extract' -x
-    complete -c $cmd -n '__summarize_no_subcommand' -l language -l lang -d 'Output language' -xa 'auto en de english german'
+    complete -c $cmd -n '__summarize_no_subcommand' -l language -l lang -d 'Output language' -xa 'auto en de tr english german turkish'
+    complete -c $cmd -n '__summarize_no_subcommand' -l locale -d 'CLI interface language' -xa 'auto en tr english turkish'
     complete -c $cmd -n '__summarize_no_subcommand' -l max-output-tokens -d 'Hard cap for LLM output tokens' -x
     complete -c $cmd -n '__summarize_no_subcommand' -l force-summary -d 'Force LLM summary even for short content'
     complete -c $cmd -n '__summarize_no_subcommand' -l timeout -d 'Timeout for fetching/LLM' -x

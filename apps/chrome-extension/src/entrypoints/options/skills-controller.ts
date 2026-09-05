@@ -5,6 +5,7 @@ import {
   type Skill,
   saveSkill,
 } from "../../automation/skills-store";
+import { getActiveExtensionLocale, translateExtensionText } from "../../lib/i18n";
 
 type SkillConflict = { skill: Skill; selected: boolean };
 
@@ -49,7 +50,10 @@ export function createSkillsController({
   };
 
   const deleteSkillWithPrompt = async (skill: Skill) => {
-    if (!confirm(`Delete skill "${skill.name}"?`)) return;
+    if (
+      !confirm(translateExtensionText(`Delete skill "${skill.name}"?`, getActiveExtensionLocale()))
+    )
+      return;
     await deleteSkill(skill.name);
     editingSkill = null;
     await loadSkills();
@@ -112,14 +116,17 @@ export function createSkillsController({
 
         const name = document.createElement("div");
         name.className = "skillName";
+        name.dataset.localeIgnore = "true";
         name.textContent = conflict.skill.name;
 
         const domains = document.createElement("div");
         domains.className = "skillDomains";
+        domains.dataset.localeIgnore = "true";
         domains.textContent = conflict.skill.domainPatterns.join(", ");
 
         const desc = document.createElement("div");
         desc.className = "skillDescription";
+        desc.dataset.localeIgnore = "true";
         desc.textContent = conflict.skill.shortDescription;
 
         content.append(name, domains, desc);
@@ -161,6 +168,7 @@ export function createSkillsController({
 
         const heading = document.createElement("div");
         heading.className = "skillName";
+        heading.dataset.localeIgnore = "true";
         heading.textContent = `Edit skill: ${editingSkill.name}`;
 
         const nameLabel = document.createElement("label");
@@ -272,16 +280,19 @@ export function createSkillsController({
 
       const name = document.createElement("div");
       name.className = "skillName";
+      name.dataset.localeIgnore = "true";
       name.textContent = skill.name;
 
       const domains = document.createElement("div");
       domains.className = "skillDomains";
+      domains.dataset.localeIgnore = "true";
       domains.textContent = skill.domainPatterns.join(", ");
 
       header.append(name, domains);
 
       const desc = document.createElement("div");
       desc.className = "skillDescription";
+      desc.dataset.localeIgnore = "true";
       desc.textContent = skill.shortDescription;
 
       const actions = document.createElement("div");

@@ -51,6 +51,18 @@ summarize "https://example.com" --cli codex
 
 The default `auto` model chooses among configured providers. The [five-minute quickstart](docs/quickstart.md) covers API keys, local models, files, YouTube, podcasts, and JSON output.
 
+### Turkish
+
+Select Turkish summaries with either spelling:
+
+```bash
+summarize "https://example.com" --language tr
+summarize "https://example.com" --language turkish
+```
+
+For Turkish CLI help and progress text, use `--locale tr` or set
+`SUMMARIZE_LOCALE=tr`. English remains the default interface language.
+
 ## What it handles
 
 | Input                        | Processing path                                                        |

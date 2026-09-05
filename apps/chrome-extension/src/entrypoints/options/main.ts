@@ -1,4 +1,5 @@
 import type { CacheStats } from "@steipete/summarize-core/runtime";
+import { applyExtensionLocale, resolveExtensionLocale } from "../../lib/i18n";
 import { defaultSettings, loadSettings, saveSettings } from "../../lib/settings";
 import { applyTheme, type ColorMode, type ColorScheme } from "../../lib/theme";
 import { bindOptionsInputs } from "./bindings";
@@ -77,6 +78,7 @@ const {
   pickersRoot,
   fontFamilyEl,
   fontSizeEl,
+  uiLocaleEl,
   buildInfoEl,
   daemonStatusEl,
   browserCacheStatusEl,
@@ -250,6 +252,7 @@ const settingsElements = {
   maxOutputTokensEl,
   fontFamilyEl,
   fontSizeEl,
+  uiLocaleEl,
 };
 
 const { saveNow, scheduleAutoSave } = createOptionsSaveRuntime({
@@ -452,6 +455,7 @@ automationPermissionsBtn.addEventListener("click", () => {
 
 async function load() {
   const [s] = await Promise.all([loadSettings(), daemonCapability?.initialize()]);
+  applyExtensionLocale(resolveExtensionLocale(s.uiLocale));
   activeProvider = s.provider;
   await modelPresets.refreshPresets(s.token);
   modelPresets.setValue(s.model);
@@ -542,6 +546,7 @@ bindOptionsInputs({
     autoCliOrderEl,
     fontFamilyEl,
     fontSizeEl,
+    uiLocaleEl,
     logsSourceEl,
     logsTailEl,
     logsParsedEl,
@@ -557,6 +562,10 @@ bindOptionsInputs({
   copyToken,
   refreshModelsIfStale,
   defaultHoverPrompt: defaultSettings.hoverPrompt,
+});
+
+uiLocaleEl.addEventListener("change", () => {
+  applyExtensionLocale(resolveExtensionLocale(uiLocaleEl.value as "auto" | "en" | "tr"));
 });
 
 applyBuildInfo(buildInfoEl, {

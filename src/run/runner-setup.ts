@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import { isDirectMediaUrl } from "@steipete/summarize-core/content/url";
 import { clearCacheFiles, DEFAULT_CACHE_MAX_MB, resolveCachePath } from "../cache.js";
 import { loadSummarizeConfig, mergeConfigEnv } from "../config.js";
+import { resolveCliLocaleFromEnv, translateCliText } from "../locale.js";
 import { formatVersionLine } from "../version.js";
 
 export function prepareRunEnvironment(
@@ -22,6 +23,24 @@ export function prepareRunEnvironment(
 export function argvBeforeSeparator(argv: readonly string[]): string[] {
   const separatorIndex = argv.indexOf("--");
   return separatorIndex === -1 ? [...argv] : argv.slice(0, separatorIndex);
+}
+
+export function stripCliLocaleArgs(argv: readonly string[]): string[] {
+  const stripped: string[] = [];
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--") {
+      stripped.push(...argv.slice(index));
+      break;
+    }
+    if (arg === "--locale") {
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--locale=")) continue;
+    stripped.push(arg);
+  }
+  return stripped;
 }
 
 export function normalizeDiarizeArgv(argv: string[]): string[] {
@@ -125,7 +144,7 @@ export async function handleCacheUtilityFlags({
       throw new Error("Unable to resolve cache path (missing HOME).");
     }
     clearCacheFiles(cachePath);
-    stdout.write("Cache cleared.\n");
+    stdout.write(`${translateCliText("Cache cleared.", resolveCliLocaleFromEnv(envForRun))}\n`);
     return true;
   }
 
@@ -150,16 +169,17 @@ export async function handleCacheUtilityFlags({
   const { readCacheStats } = await import("../cache.js");
   const { formatBytes } = await import("../tty/format.js");
   const stats = await readCacheStats(cachePath);
-  stdout.write(`Cache path: ${cachePath}\n`);
+  const locale = resolveCliLocaleFromEnv(envForRun);
+  stdout.write(`${translateCliText("Cache path:", locale)} ${cachePath}\n`);
   if (!stats) {
-    stdout.write("Cache is empty.\n");
+    stdout.write(`${translateCliText("Cache is empty.", locale)}\n`);
     return true;
   }
   const sizeLabel = formatBytes(stats.sizeBytes);
   const maxLabel = cacheMaxBytes > 0 ? formatBytes(cacheMaxBytes) : "disabled";
-  stdout.write(`Size: ${sizeLabel} (max ${maxLabel})\n`);
+  stdout.write(`${translateCliText("Size:", locale)} ${sizeLabel} (max ${maxLabel})\n`);
   stdout.write(
-    `Entries: total=${stats.totalEntries} extract=${stats.counts.extract} summary=${stats.counts.summary} transcript=${stats.counts.transcript}\n`,
+    `${translateCliText("Entries:", locale)} total=${stats.totalEntries} extract=${stats.counts.extract} summary=${stats.counts.summary} transcript=${stats.counts.transcript}\n`,
   );
   return true;
 }

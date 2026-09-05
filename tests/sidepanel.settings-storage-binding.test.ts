@@ -31,6 +31,7 @@ describe("sidepanel settings storage binding", () => {
       panelState: panelStateStore.state,
       dispatchPanelState: panelStateStore.dispatch,
       applyChatEnabled,
+      applyLocale: vi.fn(),
       hideAutomationNotice,
     });
 
@@ -68,6 +69,7 @@ describe("sidepanel settings storage binding", () => {
       panelState: panelStateStore.state,
       dispatchPanelState: panelStateStore.dispatch,
       applyChatEnabled: vi.fn(),
+      applyLocale: vi.fn(),
       hideAutomationNotice: vi.fn(),
     });
 
@@ -82,5 +84,35 @@ describe("sidepanel settings storage binding", () => {
 
     expect(panelStateStore.state.panelSession.pendingSettingsSnapshot).toBeNull();
     expect(panelStateStore.state.panelSession.chatEnabled).toBe(true);
+  });
+
+  it("applies locale changes to an already hydrated panel without reapplying unchanged settings", () => {
+    const panelState = createInitialPanelState();
+    panelState.panelSession.settingsHydrated = true;
+    const applyLocale = vi.fn();
+    bindSettingsStorage({
+      panelState,
+      applyChatEnabled: vi.fn(),
+      applyLocale,
+      hideAutomationNotice: vi.fn(),
+    });
+
+    onChanged(
+      { settings: { oldValue: { uiLocale: "en" }, newValue: { uiLocale: "tr" } } },
+      "local",
+    );
+    expect(applyLocale).toHaveBeenLastCalledWith("tr");
+    onChanged(
+      { settings: { oldValue: { uiLocale: "tr" }, newValue: { uiLocale: "en" } } },
+      "local",
+    );
+    expect(applyLocale).toHaveBeenLastCalledWith("en");
+    onChanged(
+      { settings: { oldValue: { uiLocale: "en" }, newValue: { uiLocale: "en", model: "other" } } },
+      "local",
+    );
+    onChanged({ settings: { newValue: { uiLocale: "fr" } } }, "local");
+    onChanged({ settings: { newValue: { uiLocale: "tr" } } }, "session");
+    expect(applyLocale).toHaveBeenCalledTimes(2);
   });
 });

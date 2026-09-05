@@ -29,6 +29,7 @@ type OptionsBindingsArgs = {
     autoCliOrderEl: HTMLInputElement;
     fontFamilyEl: HTMLInputElement;
     fontSizeEl: HTMLInputElement;
+    uiLocaleEl: HTMLSelectElement;
     logsSourceEl: HTMLSelectElement;
     logsTailEl: HTMLInputElement;
     logsParsedEl: HTMLInputElement;
@@ -100,6 +101,10 @@ export function bindOptionsInputs({
     elements.languageCustomEl.hidden = elements.languagePresetEl.value !== "custom";
     if (!elements.languageCustomEl.hidden) elements.languageCustomEl.focus();
     scheduleAutoSave(200);
+  });
+
+  elements.uiLocaleEl.addEventListener("change", () => {
+    scheduleAutoSave(0);
   });
 
   elements.hoverPromptResetBtn.addEventListener("click", () => {

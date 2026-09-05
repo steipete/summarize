@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFinishLineText } from "../src/run/finish-line.js";
+import { buildFinishLineText, writeFinishLine } from "../src/run/finish-line.js";
 
 const baseReport = {
   llm: [{ promptTokens: 1, completionTokens: 1, totalTokens: 2, calls: 1 }],
@@ -7,6 +7,28 @@ const baseReport = {
 };
 
 describe("finish line elapsed label", () => {
+  it("preserves model identifiers while translating the finish line", () => {
+    let output = "";
+    writeFinishLine({
+      stderr: {
+        write: (text: string) => {
+          output += text;
+        },
+      } as NodeJS.WritableStream,
+      elapsedMs: 1000,
+      elapsedLabel: "Cached",
+      label: "Slides",
+      model: "old",
+      report: baseReport,
+      costUsd: null,
+      detailed: false,
+      color: false,
+      env: { SUMMARIZE_LOCALE: "tr" },
+    });
+    expect(output).toContain("old");
+    expect(output).toContain("Slaytlar");
+  });
+
   it("uses custom elapsed label when provided", () => {
     const text = buildFinishLineText({
       elapsedMs: 0,

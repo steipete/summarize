@@ -1,3 +1,4 @@
+import type { ExtensionLocaleSetting } from "../../lib/i18n";
 import type { Settings } from "../../lib/settings";
 import { bindSettingsStorage, bindSidepanelLifecycle } from "./bindings";
 import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
@@ -14,6 +15,7 @@ type LoadedSettings = Pick<
   | "fontFamily"
   | "model"
   | "token"
+  | "uiLocale"
 >;
 
 function dispatchPanelState(
@@ -33,6 +35,7 @@ function dispatchPanelState(
 export function bootstrapSidepanel(options: {
   ensurePanelPort: () => Promise<void>;
   loadSettings: () => Promise<LoadedSettings>;
+  applyLocale: (locale: ExtensionLocaleSetting) => void;
   panelState: PanelState;
   dispatchPanelState?: (action: PanelStateAction) => void;
   typographyController: {
@@ -66,6 +69,7 @@ export function bootstrapSidepanel(options: {
     const settings = pendingSettingsSnapshot
       ? { ...loadedSettings, ...pendingSettingsSnapshot }
       : loadedSettings;
+    options.applyLocale(settings.uiLocale);
     dispatchPanelState(options, {
       type: "panel-session-update",
       value: {
@@ -112,6 +116,7 @@ export function bootstrapSidepanel(options: {
     panelState: options.panelState,
     dispatchPanelState: options.dispatchPanelState,
     applyChatEnabled: options.applyChatEnabled,
+    applyLocale: options.applyLocale,
     hideAutomationNotice: options.hideAutomationNotice,
   });
   bindSidepanelLifecycle(options.bindSidepanelLifecycle);

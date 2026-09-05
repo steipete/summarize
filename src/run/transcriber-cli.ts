@@ -3,6 +3,7 @@ import { access } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { loadSummarizeConfig } from "../config.js";
+import { resolveCliLocaleFromArgs, translateCliText } from "../locale.js";
 import {
   createThemeRenderer,
   resolveThemeNameFromSources,
@@ -98,12 +99,14 @@ export async function handleTranscriberCliRequest({
 }: TranscriberCliContext): Promise<boolean> {
   if (normalizedArgv[0]?.toLowerCase() !== "transcriber") return false;
 
+  const locale = resolveCliLocaleFromArgs(normalizedArgv, envForRun);
+  const localize = (text: string) => translateCliText(text, locale);
   const subcommand = normalizedArgv[1]?.toLowerCase() ?? "help";
   const help =
     subcommand === "help" || normalizedArgv.includes("--help") || normalizedArgv.includes("-h");
 
   if (help) {
-    stdout.write(`${buildTranscriberHelp()}\n`);
+    stdout.write(`${localize(buildTranscriberHelp())}\n`);
     return true;
   }
 
@@ -124,8 +127,8 @@ export async function handleTranscriberCliRequest({
     enabled: supportsColor(stdout, envForRun),
     trueColor: resolveTrueColor(envForRun),
   });
-  const heading = (text: string) => theme.heading(text);
-  const label = (text: string) => theme.label(text);
+  const heading = (text: string) => theme.heading(localize(text));
+  const label = (text: string) => theme.label(localize(text));
   const value = (text: string) => theme.value(text);
   const dim = (text: string) => theme.dim(text);
   const transcriberEnv = envForRun.SUMMARIZE_TRANSCRIBER?.trim() || "auto";
@@ -149,28 +152,28 @@ export async function handleTranscriberCliRequest({
 
   stdout.write(`${heading("Transcriber setup")}\n`);
   stdout.write(`${label("Transcriber mode:")} ${value(transcriberEnv)}\n`);
-  stdout.write(`${label("Auto order:")} ${value(TRANSCRIBER_AUTO_ORDER_DESCRIPTION)}\n`);
+  stdout.write(`${label("Auto order:")} ${value(localize(TRANSCRIBER_AUTO_ORDER_DESCRIPTION))}\n`);
   stdout.write("\n");
   for (const entry of onnxStatus) {
     stdout.write(
       `${label(`ONNX ${entry.model}:`)} ${value(
-        entry.configured ? "configured" : "not configured",
+        localize(entry.configured ? "configured" : "not configured"),
       )} ${dim(`(${entry.envKey})`)}\n`,
     );
   }
   stdout.write(`${label("ONNX cache:")} ${value(onnxCacheDir)}\n`);
   stdout.write(
-    `${label(`ONNX ${model} artifacts:`)} ${value(modelReady ? "present" : "missing")}\n`,
+    `${label(`ONNX ${model} artifacts:`)} ${value(localize(modelReady ? "present" : "missing"))}\n`,
   );
   stdout.write("\n");
   stdout.write(
-    `${label("whisper.cpp:")} ${value(whisperCliReady ? "binary ok" : "binary missing")} ${dim(
+    `${label("whisper.cpp:")} ${value(localize(whisperCliReady ? "binary ok" : "binary missing"))} ${dim(
       `(${whisperBinary})`,
     )}\n`,
   );
   stdout.write(
     `${label("whisper.cpp model:")} ${value(
-      whisperModelReady ? "present" : "missing",
+      localize(whisperModelReady ? "present" : "missing"),
     )} ${dim(`(${whisperModelPath})`)}\n`,
   );
   stdout.write("\n");
@@ -178,13 +181,13 @@ export async function handleTranscriberCliRequest({
   if (!onnxStatus.some((entry) => entry.configured)) {
     stdout.write(`${heading("To enable ONNX locally:")}\n`);
     stdout.write(
-      `  ${dim("Install sherpa-onnx from upstream binaries or build; Homebrew may not have a formula.")}\n`,
+      `  ${dim(localize("Install sherpa-onnx from upstream binaries or build; Homebrew may not have a formula."))}\n`,
     );
     for (const line of renderOnnxEnvExample(model)) {
       stdout.write(`  ${line}\n`);
     }
     stdout.write(
-      "  # placeholders: {input}, {model}, {vocab}, {model_dir} (see docs/nvidia-onnx-transcription.md)\n",
+      `  ${localize(`# ${localize("placeholders:")} {input}, {model}, {vocab}, {model_dir} (see docs/nvidia-onnx-transcription.md)`)}\n`,
     );
     stdout.write(`  ${dim("# docs: docs/nvidia-onnx-transcription.md")}\n`);
     stdout.write("\n");
