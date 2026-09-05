@@ -1,7 +1,7 @@
 import { resolveTranscriptForLink } from "../../transcript/index.js";
 import { resolveTranscriptionConfig } from "../../transcript/transcription-config.js";
 import { isYouTubeUrl } from "../../url.js";
-import type { FirecrawlScrapeResult, LinkPreviewDeps } from "../deps.js";
+import { type FirecrawlScrapeResult, type LinkPreviewDeps, ProgressKind } from "../deps.js";
 import type { CacheMode, FirecrawlDiagnostics, TranscriptResolution } from "../types.js";
 import { normalizeForPrompt } from "./cleaner.js";
 import { MIN_READABILITY_CONTENT_CHARACTERS } from "./constants.js";
@@ -16,10 +16,12 @@ import {
 } from "./reddit.js";
 import { tryTranscriptOnlyStrategy } from "./transcript-only-strategies.js";
 import {
+  extractTweetId,
   isAnubisHtml,
   isBlockedTwitterContent,
   isTwitterStatusUrl,
   toNitterUrls,
+  toTwitterSyndicationUrl,
 } from "./twitter-utils.js";
 import type { ExtractedLinkContent, FetchLinkContentOptions, MarkdownMode } from "./types.js";
 import {
@@ -272,6 +274,162 @@ export async function fetchLinkContent(
   const birdResult = await attemptBird();
   if (birdResult) {
     return birdResult;
+  }
+
+  const attemptTwitterSyndication = async (): Promise<ExtractedLinkContent | null> => {
+    const tweetId = extractTweetId(url);
+    if (!tweetId) return null;
+
+    const syndicationUrl = toTwitterSyndicationUrl(tweetId);
+    deps.onProgress?.({ kind: ProgressKind.TwitterSyndicationStart, url: syndicationUrl });
+
+    try {
+      const response = await deps.fetch(syndicationUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+
+      if (!response.ok) {
+        deps.onProgress?.({
+          kind: ProgressKind.TwitterSyndicationDone,
+          url: syndicationUrl,
+          ok: false,
+          textBytes: null,
+        });
+        return null;
+      }
+
+      const data = (await response.json()) as Record<string, unknown> | null;
+      const text = typeof data?.text === "string" ? data.text : null;
+      const quoted = data?.quoted_tweet as
+        | {
+            text?: string;
+            user?: { screen_name?: string };
+            article?: { title?: string; preview_text?: string };
+            note_tweet?: unknown;
+          }
+        | undefined;
+      // Syndication marks long-form previews; later extractors may return the full text.
+      if (!data || !text?.trim() || data.note_tweet != null || quoted?.note_tweet != null) {
+        deps.onProgress?.({
+          kind: ProgressKind.TwitterSyndicationDone,
+          url: syndicationUrl,
+          ok: false,
+          textBytes: null,
+        });
+        return null;
+      }
+
+      const user = data.user as { name?: string; screen_name?: string } | undefined;
+      const authorName = user?.name ?? "";
+      const screenName = user?.screen_name ?? "";
+      const authorHeader = screenName
+        ? authorName
+          ? `**${authorName} (@${screenName})**`
+          : `**@${screenName}**`
+        : "";
+
+      let bodyText = text;
+      if (quoted?.text) {
+        const qAuthor = quoted.user?.screen_name ?? "";
+        bodyText += `\n\n> Quoted ${qAuthor ? `@${qAuthor}: ` : ""}${quoted.text}`;
+      } else if (quoted?.article?.title) {
+        bodyText += `\n\n> Quoted Article: **${quoted.article.title}** - ${quoted.article.preview_text ?? ""}`;
+      }
+
+      const photos = Array.isArray(data.photos) ? (data.photos as Array<{ url?: string }>) : [];
+      if (photos.length > 0) {
+        const photoLinks = photos
+          .map((p) => p.url)
+          .filter((u): u is string => Boolean(u))
+          .map((u) => `![photo](${u})`)
+          .join("\n");
+        if (photoLinks) {
+          bodyText += `\n\n${photoLinks}`;
+        }
+      }
+
+      const formattedContent = authorHeader ? `${authorHeader}\n\n${bodyText}` : bodyText;
+      const title = screenName || authorName ? `Tweet by ${authorName || screenName}` : "Tweet";
+      const transcriptResolution =
+        mediaTranscriptMode === "prefer"
+          ? await resolveTranscriptForLink(url, null, deps, {
+              youtubeTranscriptMode,
+              mediaTranscriptMode,
+              transcriptTimestamps,
+              transcriptDiarization,
+              transcriptVideoDownload,
+              cacheMode,
+              fileMtime,
+            })
+          : buildSkippedTwitterTranscript(
+              cacheMode,
+              "Skipped tweet transcript (media transcript mode is auto; enable --video-mode transcript to force audio).",
+            );
+
+      const result = finalizeExtractedLinkContent({
+        url,
+        baseContent: selectBaseContent(
+          formattedContent,
+          transcriptResolution.text,
+          transcriptResolution.segments,
+        ),
+        contentSections: [],
+        maxCharacters,
+        title,
+        description: text,
+        siteName: "x.com",
+        transcriptResolution,
+        video: null,
+        isVideoOnly: false,
+        diagnostics: {
+          strategy: "twitter-syndication",
+          firecrawl: firecrawlDiagnostics,
+          markdown: {
+            requested: markdownRequested,
+            used: false,
+            provider: null,
+            notes: null,
+          },
+          transcript: ensureTranscriptDiagnostics(transcriptResolution, cacheMode),
+          embeddedVideo: {
+            mode: embeddedVideoMode ?? "auto",
+            detected: false,
+            used: false,
+            url: null,
+            source: null,
+            confidence: null,
+            composition: "article",
+            notes: null,
+          },
+        },
+      });
+
+      deps.onProgress?.({
+        kind: ProgressKind.TwitterSyndicationDone,
+        url: syndicationUrl,
+        ok: true,
+        textBytes: Buffer.byteLength(result.content, "utf8"),
+      });
+
+      return result;
+    } catch {
+      deps.onProgress?.({
+        kind: ProgressKind.TwitterSyndicationDone,
+        url: syndicationUrl,
+        ok: false,
+        textBytes: null,
+      });
+      return null;
+    }
+  };
+
+  const syndicationResult = await attemptTwitterSyndication();
+  if (syndicationResult) {
+    return syndicationResult;
   }
 
   const attemptNitter = async (): Promise<string | null> => {

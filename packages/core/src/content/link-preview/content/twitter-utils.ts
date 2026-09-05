@@ -16,10 +16,32 @@ export function isTwitterStatusUrl(url: string): boolean {
     const parsed = new URL(url);
     const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
     if (!TWITTER_HOSTS.has(host)) return false;
-    return /\/status\/\d+/.test(parsed.pathname);
+    return /\/status\/\d+(?:[/?#]|$)/.test(parsed.pathname);
   } catch {
     return false;
   }
+}
+
+export function extractTweetId(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    if (!TWITTER_HOSTS.has(host)) return null;
+    const match = /\/status\/(\d+)(?:[/?#]|$)/.exec(parsed.pathname);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+export function toTwitterSyndicationUrl(tweetId: string): string {
+  let token = "123";
+  const num = Number(tweetId);
+  if (Number.isFinite(num)) {
+    const calculated = ((num / 1e15) * Math.PI).toString(36).replace(/(0+|\.)/g, "");
+    if (calculated) token = calculated;
+  }
+  return `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&token=${token}`;
 }
 
 export function isTwitterBroadcastUrl(url: string): boolean {
