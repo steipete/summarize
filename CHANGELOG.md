@@ -16,6 +16,7 @@
 
 ### Dependencies and maintenance
 
+- Build model resources once from resolved run intent; remove intermediate factories while keeping selection separate from provider, metrics, and stream state.
 - Make Options use one element collection and declarative checkbox bindings; share settings normalization between load and save without mixing legacy migrations or managed policy into persistence.
 - Share page-media resolution and embedded transcript composition across HTML and Firecrawl extraction, keeping source-specific metadata, Markdown, and timeout policies separate.
 - Delete the unreachable daemon chat pipeline and unused browser media adapters; keep chat on the agent endpoint and audio on the bounded chunked decoder.

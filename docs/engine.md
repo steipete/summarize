@@ -74,6 +74,8 @@ The user-facing error text remains descriptive, but it is not a control-flow con
 
 ## Adapter ownership
 
+Model selection resolves intent without creating process resources. `src/application/model-runtime.ts` then builds metrics, provider bindings, and the executable model in one factory; URL and asset flows share those same instances. Execution resources compose the flow contexts rather than rebuilding model options through intermediate factories.
+
 `src/application/flow-contexts.ts` composes asset and URL contexts from the same IO, flags, model, and runtime hooks. Asset execution receives its flat context directly; `assetFormat` is the explicit asset-only override. Fetch tracking, shared caches, and summary-cache notifications stay wired at this application boundary.
 
 Adapters own:

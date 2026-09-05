@@ -19,7 +19,7 @@ import {
 } from "../run/run-settings.js";
 import { createRunConfigInput, type RunConfigInput } from "./config-state.js";
 import { resolveRunContextState, type RunContextState } from "./context.js";
-import { resolveRunModelSpec, type RunModelSpec } from "./model-runtime.js";
+import { resolveRunModelSpec, type RunModelSpec } from "./model-selection.js";
 import type { SummarizeRequest } from "./summarize-contracts.js";
 
 export type SummarizeRunInput = SummarizeRequest["input"];

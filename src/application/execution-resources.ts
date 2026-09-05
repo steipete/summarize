@@ -1,8 +1,5 @@
 import type { CacheState } from "../cache.js";
 import type { MediaCache } from "../content/index.js";
-import type { SummaryStreamHandler } from "../engine/events.js";
-import type { ModelExecutorDeps } from "../engine/model-executor.js";
-import type { ExecFileFn } from "../markitdown.js";
 import { executeAssetSummary } from "../run/flows/asset/summary.js";
 import type { AssetSummaryContext } from "../run/flows/asset/types.js";
 import type {
@@ -14,22 +11,9 @@ import type {
 import type { PerfTrace } from "../run/perf-trace.js";
 import { scopeTranscriptCacheForDiarization } from "../shared/transcript-diarization-cache-scope.js";
 import { createRunFlowContexts } from "./flow-contexts.js";
-import {
-  createExecutableRunModel,
-  createRunModelRuntime,
-  type ExecutableRunModel,
-  type ModelExecutorRequestOptions,
-  type RunModelRuntime,
-} from "./model-runtime.js";
-import type { ResolvedSummarizeRun, ResolvedSummarizeSpec } from "./run-spec.js";
+import { createSummarizeModelResources, type SummarizeModelResources } from "./model-runtime.js";
+import type { ResolvedSummarizeSpec } from "./run-spec.js";
 import type { SummarizeEventSink } from "./summarize-contracts.js";
-
-export type SummarizeModelResources = {
-  context: ResolvedSummarizeRun["bindings"]["context"];
-  envForRun: Record<string, string | undefined>;
-  runtime: RunModelRuntime;
-  model: ExecutableRunModel;
-};
 
 type SummarizeFlowAdapterHooks = Pick<
   UrlFlowRuntimeHooks,
@@ -193,92 +177,25 @@ export function createSummarizeFlowFlags(
   };
 }
 
-export function createSummarizeModelResources(options: {
-  resolvedRun: ResolvedSummarizeRun;
-  env: Record<string, string | undefined>;
-  metricsEnv?: Record<string, string | undefined>;
-  fetchImpl: typeof fetch;
-  execFileImpl: ExecFileFn;
-  streamingEnabled: boolean;
-  summaryStream: SummaryStreamHandler | null;
-  requestOptions?: ModelExecutorRequestOptions;
-  log?: ModelExecutorDeps["log"];
-  trace?: ModelExecutorDeps["trace"];
-}): SummarizeModelResources {
-  const {
-    resolvedRun,
-    env,
-    metricsEnv = env,
-    fetchImpl,
-    execFileImpl,
-    streamingEnabled,
-    summaryStream,
-    requestOptions,
-    log,
-    trace,
-  } = options;
-  const { context, envForRun } = resolvedRun.bindings;
-  const runtime = createRunModelRuntime({
-    context,
-    env,
-    envForRun,
-    metricsEnv,
-    fetchImpl,
-    execFileImpl,
-    maxOutputTokensArg: resolvedRun.spec.maxOutputTokensArg,
-    timeoutMs: resolvedRun.spec.timeoutMs,
-    retries: resolvedRun.spec.retries,
-    streamingEnabled,
-    requestOptions,
-    log,
-    trace,
-  });
-  const model = createExecutableRunModel({
-    spec: resolvedRun.bindings.model,
-    runtime,
-    context,
-    allowAutoCliFallback: resolvedRun.spec.allowAutoCliFallback,
-    summaryStream,
-    requestOptions,
-  });
-
-  return { context, envForRun, runtime, model };
-}
-
-export function createSummarizeExecutionResources(options: {
-  resolvedRun: ResolvedSummarizeRun;
-  env: Record<string, string | undefined>;
-  metricsEnv?: Record<string, string | undefined>;
-  fetchImpl: typeof fetch;
-  execFileImpl: ExecFileFn;
-  cacheState: CacheState;
-  mediaCache: MediaCache | null;
-  stdout: NodeJS.WritableStream;
-  stderr: NodeJS.WritableStream;
-  urlFetch?: typeof fetch | null;
-  summaryStream: SummaryStreamHandler | null;
-  requestOptions?: ModelExecutorRequestOptions;
-  log?: ModelExecutorDeps["log"];
-  trace?: ModelExecutorDeps["trace"];
-  flow: SummarizeFlowOptions;
-  adapterHooks: SummarizeFlowAdapterHooks;
-  eventHooks?: Partial<UrlFlowEventHooks>;
-  assetFormat?: Parameters<typeof createRunFlowContexts>[0]["assetFormat"];
-  perfTrace?: PerfTrace | null;
-}): SummarizeExecutionResources {
+export function createSummarizeExecutionResources(
+  options: Omit<Parameters<typeof createSummarizeModelResources>[0], "streamingEnabled"> & {
+    cacheState: CacheState;
+    mediaCache: MediaCache | null;
+    stdout: NodeJS.WritableStream;
+    stderr: NodeJS.WritableStream;
+    urlFetch?: typeof fetch | null;
+    flow: SummarizeFlowOptions;
+    adapterHooks: SummarizeFlowAdapterHooks;
+    eventHooks?: Partial<UrlFlowEventHooks>;
+    assetFormat?: Parameters<typeof createRunFlowContexts>[0]["assetFormat"];
+    perfTrace?: PerfTrace | null;
+  },
+): SummarizeExecutionResources {
   const { resolvedRun, flow } = options;
   const { spec } = resolvedRun;
   const modelResources = createSummarizeModelResources({
-    resolvedRun,
-    env: options.env,
-    metricsEnv: options.metricsEnv,
-    fetchImpl: options.fetchImpl,
-    execFileImpl: options.execFileImpl,
+    ...options,
     streamingEnabled: flow.streamingEnabled,
-    summaryStream: options.summaryStream,
-    requestOptions: options.requestOptions,
-    log: options.log,
-    trace: options.trace,
   });
   const { metrics } = modelResources.runtime;
   const cacheState = scopeTranscriptCacheForDiarization(
