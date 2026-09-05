@@ -1,13 +1,14 @@
-import { parseSseStream, type RawSseMessage } from "@steipete/summarize-core/runtime";
+import { parseSseStream } from "@steipete/summarize-core/runtime";
 import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
-import { parseSseEvent, type SseMetaData, type SseSlidesData } from "../../lib/runtime-contracts";
 import {
-  accumulateChatChunk,
-  accumulateSummarizeChunk,
-  getTerminalStreamError,
-  shouldSurfaceStreamingStatus,
-} from "./stream-controller-policy";
+  mergeStreamingChunk,
+  parseSseEvent,
+  type SseMetaData,
+  type SseSlidesData,
+} from "../../lib/runtime-contracts";
+import { nextSseMessage } from "../../lib/sse-reader";
+import { getTerminalStreamError, shouldSurfaceStreamingStatus } from "./stream-controller-policy";
 import type { PanelPhase, RunStart } from "./types";
 
 export type StreamController = {
@@ -26,7 +27,6 @@ export type StreamControllerOptions = {
   fetchImpl?: typeof fetch;
   idleTimeoutMs?: number;
   idleTimeoutMessage?: string;
-  // Summarize mode callbacks (optional for chat mode)
   onReset?: (() => void) | null;
   onBaseTitle?: ((text: string) => void) | null;
   onBaseSubtitle?: ((text: string) => void) | null;
@@ -35,12 +35,7 @@ export type StreamControllerOptions = {
   onMetrics?: ((summary: string) => void) | null;
   onRender?: ((markdown: string) => void) | null;
   onSyncWithActiveTab?: (() => Promise<void>) | null;
-  // Chat mode callbacks (optional for summarize mode)
-  onChunk?: ((accumulatedContent: string) => void) | null;
   onDone?: (() => void) | null;
-  // Mode-specific options
-  mode?: "summarize" | "chat";
-  streamingStatusText?: string;
 };
 
 export function createStreamController(options: StreamControllerOptions): StreamController {
@@ -60,17 +55,13 @@ export function createStreamController(options: StreamControllerOptions): Stream
     onMetrics,
     onRender,
     onSyncWithActiveTab,
-    onChunk,
     onDone,
-    mode = "summarize",
-    streamingStatusText,
     idleTimeoutMs = 120_000,
     idleTimeoutMessage = "No response from the daemon for a while. It may have stopped. Click “Try again”.",
   } = options;
   let controller: AbortController | null = null;
   let activeAbortState: { reason: "manual" | "timeout" | null } | null = null;
   let markdown = "";
-  let chatContent = "";
   let renderQueued = 0;
   let streamedAnyNonWhitespace = false;
   let rememberedUrl = false;
@@ -88,14 +79,6 @@ export function createStreamController(options: StreamControllerOptions): Stream
     }, 80);
   };
 
-  const queueChunkUpdate = () => {
-    if (renderQueued || !onChunk) return;
-    renderQueued = window.setTimeout(() => {
-      renderQueued = 0;
-      onChunk(chatContent);
-    }, 80);
-  };
-
   const clearQueuedRender = () => {
     if (!renderQueued) return;
     window.clearTimeout(renderQueued);
@@ -106,10 +89,6 @@ export function createStreamController(options: StreamControllerOptions): Stream
     if (!renderQueued) return;
     window.clearTimeout(renderQueued);
     renderQueued = 0;
-    if (mode === "chat") {
-      onChunk?.(chatContent);
-      return;
-    }
     onRender?.(markdown);
   };
 
@@ -166,7 +145,6 @@ export function createStreamController(options: StreamControllerOptions): Stream
     rememberedUrl = false;
     sawDone = false;
     markdown = "";
-    chatContent = "";
     onPhaseChange("connecting");
     onSummaryFromCache?.(null);
     onReset?.();
@@ -185,30 +163,16 @@ export function createStreamController(options: StreamControllerOptions): Stream
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       if (!res.body) throw new Error("Missing stream body");
 
-      onStatus(streamingStatusText ?? (mode === "chat" ? "" : "Summarizing…"));
+      onStatus("Summarizing…");
       onPhaseChange("streaming");
 
       const iterator = parseSseStream(res.body);
-      const useIdleTimeout = Number.isFinite(idleTimeoutMs) && idleTimeoutMs > 0;
-      const nextWithTimeout = async () => {
-        if (!useIdleTimeout) return iterator.next();
-        let timer: ReturnType<typeof setTimeout> | null = null;
-        const timeoutPromise = new Promise<IteratorResult<RawSseMessage>>((_, reject) => {
-          timer = setTimeout(() => {
-            const error = new Error(idleTimeoutMessage);
-            error.name = "IdleTimeoutError";
-            reject(error);
-          }, idleTimeoutMs);
-        });
-        try {
-          return await Promise.race([iterator.next(), timeoutPromise]);
-        } finally {
-          if (timer) clearTimeout(timer);
-        }
-      };
-
       while (true) {
-        const { value: msg, done } = await nextWithTimeout();
+        const { value: msg, done } = await nextSseMessage(
+          iterator,
+          idleTimeoutMs,
+          idleTimeoutMessage,
+        );
         if (done) break;
         if (generation !== activeGeneration) return;
         if (nextController.signal.aborted) return;
@@ -217,15 +181,10 @@ export function createStreamController(options: StreamControllerOptions): Stream
         if (!event) continue;
 
         if (event.event === "chunk") {
-          if (mode === "chat") {
-            chatContent = accumulateChatChunk(chatContent, event.data.text);
-            queueChunkUpdate();
-          } else {
-            const merged = accumulateSummarizeChunk(markdown, event.data.text);
-            if (merged !== markdown) {
-              markdown = merged;
-              queueRender();
-            }
+          const merged = mergeStreamingChunk(markdown, event.data.text).next;
+          if (merged !== markdown) {
+            markdown = merged;
+            queueRender();
           }
 
           if (!streamedAnyNonWhitespace && event.data.text.trim().length > 0) {

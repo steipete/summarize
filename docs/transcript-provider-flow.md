@@ -48,6 +48,7 @@ Goal: keep provider entrypoints thin; keep provider policy explicit.
 - `transcription-start.ts`
   Runtime availability only.
   Local whisper, ONNX, cloud presence, display hints.
+- Local Whisper readiness checks for a usable model before starting the executable probe. FFmpeg segmentation and transcoding share process completion/error handling; MP3/WAV and lenient recovery retain their own arguments. OpenAI plain and diarized transcripts share HTTP submission but keep separate payload validation.
 
 ## Remote fallback
 

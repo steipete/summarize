@@ -350,19 +350,8 @@ describe("transcription/whisper local whisper.cpp", () => {
     vi.stubEnv("SUMMARIZE_WHISPER_CPP_MODEL_PATH", "/nope/does-not-exist.bin");
     vi.stubEnv("SUMMARIZE_WHISPER_CPP_BINARY", "whisper-cli");
 
-    const spawn = vi.fn((_cmd: string, args: string[]) => {
-      if (_cmd !== "whisper-cli" || !args.includes("--help")) {
-        throw new Error(`Unexpected spawn: ${_cmd} ${args.join(" ")}`);
-      }
-      const handlers = new Map<string, (value?: unknown) => void>();
-      const proc = {
-        on(event: string, handler: (value?: unknown) => void) {
-          handlers.set(event, handler);
-          if (event === "close") queueMicrotask(() => handler(0));
-          return proc;
-        },
-      } as unknown;
-      return proc;
+    const spawn = vi.fn(() => {
+      throw new Error("No process should start without a model");
     });
     vi.doMock("node:child_process", () => ({ spawn }));
 
@@ -382,7 +371,7 @@ describe("transcription/whisper local whisper.cpp", () => {
     expect(result.error?.message).toContain(
       "GROQ_API_KEY, ASSEMBLYAI_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, FAL_KEY, or DEEPGRAM_API_KEY",
     );
-    expect(spawn).toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
   });
 
   it("falls back to OpenAI when mediaType is unsupported and ffmpeg is missing", async () => {
@@ -700,21 +689,9 @@ describe("transcription/whisper local whisper.cpp", () => {
     vi.stubEnv("SUMMARIZE_WHISPER_CPP_MODEL_PATH", root);
     vi.stubEnv("SUMMARIZE_WHISPER_CPP_BINARY", "whisper-cli");
 
-    const spawn = vi.fn((_cmd: string, args: string[]) => {
-      if (_cmd !== "whisper-cli" || !args.includes("--help")) {
-        throw new Error(`Unexpected spawn: ${_cmd} ${args.join(" ")}`);
-      }
-      const handlers = new Map<string, (value?: unknown) => void>();
-      const proc = {
-        on(event: string, handler: (value?: unknown) => void) {
-          handlers.set(event, handler);
-          if (event === "close") queueMicrotask(() => handler(0));
-          return proc;
-        },
-      } as unknown;
-      return proc;
+    const spawn = vi.fn(() => {
+      throw new Error("No process should start without a model");
     });
-
     vi.doMock("node:child_process", () => ({ spawn }));
 
     const { isWhisperCppReady, transcribeMediaWithWhisper } =
@@ -735,6 +712,6 @@ describe("transcription/whisper local whisper.cpp", () => {
     expect(result.error?.message).toContain(
       "GROQ_API_KEY, ASSEMBLYAI_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, FAL_KEY, or DEEPGRAM_API_KEY",
     );
-    expect(spawn).toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
   });
 });

@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Transcription: skip probing the local Whisper executable when no usable model is installed, avoiding unnecessary process startup and delays on cloud-only or unconfigured systems.
 - Browser settings: retain a dismissed local-companion hint when saving other Options preferences.
 - Browser chat: normalize partial or malformed saved usage metadata and unknown stop reasons when restoring assistant history.
 - Slides: drain ignored subprocess output so a verbose media tool cannot stall on a full stdout pipe.
@@ -19,6 +20,7 @@
 
 ### Dependencies and maintenance
 
+- Remove the unused chat mode from summary streaming, share SSE idle deadlines, and consolidate FFmpeg execution and OpenAI transcription HTTP handling while retaining format and response-specific policy.
 - Share asset text validation and Markdown conversion across extraction and summaries; simplify prompt construction and prepare daemon agent requests once for streaming and completion without changing retry boundaries.
 - Share podcast feed transcript resolution, media download/progress completion, and Apple URL parsing; collapse Spotify's duplicated episode-search fallback while preserving provider order and failure metadata.
 - Type-check the entire extension in the local gate and CI using browser/bundler settings; remove stale copies of session, settings, API, and callback contracts.

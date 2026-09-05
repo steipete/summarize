@@ -82,65 +82,8 @@ export async function runFfmpegSegment({
   outputPattern: string;
   segmentSeconds: number;
 }): Promise<void> {
-  const resolved = await resolvePreferredTool("ffmpeg", [
-    "-hide_banner",
-    "-loglevel",
-    "error",
-    "-i",
-    inputPath,
-    "-vn",
-    "-ac",
-    "1",
-    "-ar",
-    "16000",
-    "-b:a",
-    "32k",
-    "-f",
-    "segment",
-    "-segment_time",
-    String(segmentSeconds),
-    "-reset_timestamps",
-    "1",
-    outputPattern,
-  ]);
-  const { proc } = spawnTracked(resolved.command, resolved.args, {
-    stdio: ["ignore", "ignore", "pipe"],
-    label: "ffmpeg",
-    kind: "ffmpeg",
-  });
-  await new Promise<void>((resolve, reject) => {
-    let stderr = "";
-    proc.stderr?.setEncoding("utf8");
-    proc.stderr?.on("data", (chunk: string) => {
-      if (stderr.length > 8192) return;
-      stderr += chunk;
-    });
-    proc.on("error", (error) => reject(error));
-    proc.on("close", (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-      const detail = stderr.trim();
-      reject(new Error(`ffmpeg failed (${code ?? "unknown"}): ${detail || "unknown error"}`));
-    });
-  });
-}
-
-export async function runFfmpegTranscodeToMp3({
-  inputPath,
-  outputPath,
-  bitrateKbps = 64,
-}: {
-  inputPath: string;
-  outputPath: string;
-  bitrateKbps?: number;
-}): Promise<void> {
-  await runFfmpegTranscode({
-    inputPath,
-    outputPath,
-    mode: "strict",
-    args: [
+  await runFfmpeg(
+    [
       "-hide_banner",
       "-loglevel",
       "error",
@@ -152,76 +95,51 @@ export async function runFfmpegTranscodeToMp3({
       "-ar",
       "16000",
       "-b:a",
-      `${bitrateKbps}k`,
-      outputPath,
+      "32k",
+      "-f",
+      "segment",
+      "-segment_time",
+      String(segmentSeconds),
+      "-reset_timestamps",
+      "1",
+      outputPattern,
     ],
+    (code, detail) => `ffmpeg failed (${code ?? "unknown"}): ${detail}`,
+  );
+}
+
+type TranscodePaths = { inputPath: string; outputPath: string };
+
+export async function runFfmpegTranscodeToMp3({
+  inputPath,
+  outputPath,
+  bitrateKbps = 64,
+}: TranscodePaths & { bitrateKbps?: number }): Promise<void> {
+  await runFfmpegTranscode({
+    inputPath,
+    outputPath,
+    mode: "strict",
+    audioArgs: ["-b:a", `${bitrateKbps}k`],
   });
 }
 
 export async function runFfmpegTranscodeToWav({
   inputPath,
   outputPath,
-}: {
-  inputPath: string;
-  outputPath: string;
-}): Promise<void> {
+}: TranscodePaths): Promise<void> {
   await runFfmpegTranscode({
     inputPath,
     outputPath,
     mode: "strict",
-    args: [
-      "-hide_banner",
-      "-loglevel",
-      "error",
-      "-i",
-      inputPath,
-      "-vn",
-      "-ac",
-      "1",
-      "-ar",
-      "16000",
-      "-sample_fmt",
-      "s16",
-      outputPath,
-    ],
+    audioArgs: ["-sample_fmt", "s16"],
   });
 }
 
 export async function runFfmpegTranscodeToMp3Lenient({
   inputPath,
   outputPath,
-}: {
-  inputPath: string;
-  outputPath: string;
-}): Promise<void> {
-  await runFfmpegTranscode({
-    inputPath,
-    outputPath,
-    mode: "lenient",
-    args: [
-      "-hide_banner",
-      "-loglevel",
-      "error",
-      "-err_detect",
-      "ignore_err",
-      "-fflags",
-      "+genpts",
-      "-i",
-      inputPath,
-      "-vn",
-      "-sn",
-      "-dn",
-      "-map",
-      "0:a:0?",
-      "-ac",
-      "1",
-      "-ar",
-      "16000",
-      "-b:a",
-      "64k",
-      outputPath,
-    ],
-  });
+}: TranscodePaths): Promise<void> {
+  await runFfmpegTranscode({ inputPath, outputPath, mode: "lenient", audioArgs: ["-b:a", "64k"] });
 }
 
 export async function transcodeBytesToMp3(bytes: Uint8Array): Promise<Uint8Array> {
@@ -245,13 +163,37 @@ async function runFfmpegTranscode({
   inputPath,
   outputPath,
   mode,
-  args,
-}: {
-  inputPath: string;
-  outputPath: string;
+  audioArgs,
+}: TranscodePaths & {
   mode: "strict" | "lenient";
-  args: string[];
+  audioArgs: string[];
 }): Promise<void> {
+  await runFfmpeg(
+    [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      ...(mode === "lenient" ? ["-err_detect", "ignore_err", "-fflags", "+genpts"] : []),
+      "-i",
+      inputPath,
+      "-vn",
+      ...(mode === "lenient" ? ["-sn", "-dn", "-map", "0:a:0?"] : []),
+      "-ac",
+      "1",
+      "-ar",
+      "16000",
+      ...audioArgs,
+      outputPath,
+    ],
+    (code, detail) =>
+      `ffmpeg ${mode} transcode failed (${code ?? "unknown"}) for ${inputPath} -> ${outputPath}: ${detail}`,
+  );
+}
+
+async function runFfmpeg(
+  args: string[],
+  errorMessage: (code: number | null, detail: string) => string,
+): Promise<void> {
   const resolved = await resolvePreferredTool("ffmpeg", args);
   const { proc } = spawnTracked(resolved.command, resolved.args, {
     stdio: ["ignore", "ignore", "pipe"],
@@ -271,14 +213,7 @@ async function runFfmpegTranscode({
         resolve();
         return;
       }
-      const detail = stderr.trim();
-      reject(
-        new Error(
-          `ffmpeg ${mode} transcode failed (${code ?? "unknown"}) for ${inputPath} -> ${outputPath}: ${
-            detail || "unknown error"
-          }`,
-        ),
-      );
+      reject(new Error(errorMessage(code, stderr.trim() || "unknown error")));
     });
   });
 }

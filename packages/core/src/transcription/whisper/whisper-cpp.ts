@@ -20,9 +20,8 @@ export async function isWhisperCppReady(
   env?: Record<string, string | undefined>,
 ): Promise<boolean> {
   if (!isWhisperCppEnabled(env)) return false;
-  if (!(await isWhisperCliAvailable(env))) return false;
   const model = await resolveWhisperCppModelPath(env);
-  return Boolean(model);
+  return Boolean(model) && (await isWhisperCliAvailable(env));
 }
 
 export async function resolveWhisperCppModelNameForDisplay(

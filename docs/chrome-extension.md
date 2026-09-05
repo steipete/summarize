@@ -92,6 +92,8 @@ Dev (repo checkout):
 
 The sidepanel owns one plain `PanelState` object. Simple fields update directly; phase, run attachment, restoration, and reset use named transitions in `panel-state-store.ts`. Nested-slice updates replace the slice so previously captured navigation/chat/slide snapshots remain unchanged. There is no secondary action bus or optional dispatch path.
 
+Summary and slide streams share SSE idle-deadline reads, including keepalive comments, but retain separate rendering, cancellation, and completion policies. Chat runs through the agent loop, not a second mode in the summary stream controller.
+
 - **Extension (MV3, WXT)**
   - Side Panel UI: length + typography controls (font family + size), auto/manual toggle.
   - Background service worker: tab + navigation tracking, content extraction, starts summarize runs.

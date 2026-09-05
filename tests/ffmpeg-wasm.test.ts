@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveBundledFfmpegCommand } from "../packages/core/src/ffmpeg.js";
-import { runFfmpegTranscodeToMp3 } from "../packages/core/src/transcription/whisper/ffmpeg.js";
+import {
+  runFfmpegTranscodeToMp3,
+  runFfmpegTranscodeToMp3Lenient,
+  runFfmpegTranscodeToWav,
+} from "../packages/core/src/transcription/whisper/ffmpeg.js";
 import { runProcess, runProcessCapture } from "../src/slides/process.js";
 
 const fixture = resolve(
@@ -71,17 +75,28 @@ describe("bundled ffmpeg wasm", () => {
     expect((await stat(outputPath)).size).toBeGreaterThan(0);
   }, 60_000);
 
-  it("extracts diarization audio without a native ffmpeg command", async () => {
-    const outputDir = await mkdtemp(join(tmpdir(), "summarize-ffmpeg-wasm-audio-"));
-    const outputPath = join(outputDir, "audio.mp3");
-    vi.stubEnv("PATH", outputDir);
-    await runFfmpegTranscodeToMp3({
-      inputPath: fixture,
-      outputPath,
-      bitrateKbps: 24,
-    });
-    const output = await stat(outputPath);
-    expect(output.size).toBeGreaterThan(0);
-    expect(output.size).toBeLessThan((await stat(fixture)).size);
-  }, 60_000);
+  it.each(["mp3", "wav", "lenient"] as const)(
+    "extracts %s audio without a native ffmpeg command",
+    async (format) => {
+      const outputDir = await mkdtemp(join(tmpdir(), "summarize-ffmpeg-wasm-audio-"));
+      const outputPath = join(outputDir, format === "wav" ? "audio.wav" : "audio.mp3");
+      vi.stubEnv("PATH", outputDir);
+      const transcode =
+        format === "wav"
+          ? runFfmpegTranscodeToWav
+          : format === "lenient"
+            ? runFfmpegTranscodeToMp3Lenient
+            : runFfmpegTranscodeToMp3;
+      const options = {
+        inputPath: fixture,
+        outputPath,
+        bitrateKbps: 24,
+      };
+      await transcode(options);
+      const output = await stat(outputPath);
+      expect(output.size).toBeGreaterThan(0);
+      if (format !== "wav") expect(output.size).toBeLessThan((await stat(fixture)).size);
+    },
+    60_000,
+  );
 });

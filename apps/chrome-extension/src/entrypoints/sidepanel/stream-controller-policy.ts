@@ -1,13 +1,3 @@
-import { mergeStreamingChunk } from "../../lib/runtime-contracts";
-
-export function accumulateSummarizeChunk(markdown: string, chunk: string): string {
-  return mergeStreamingChunk(markdown, chunk).next;
-}
-
-export function accumulateChatChunk(chatContent: string, chunk: string): string {
-  return `${chatContent}${chunk}`;
-}
-
 export function shouldSurfaceStreamingStatus({
   streamedAnyNonWhitespace,
   statusText,
