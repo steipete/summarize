@@ -16,6 +16,7 @@
 
 ### Dependencies and maintenance
 
+- Share page-media resolution and embedded transcript composition across HTML and Firecrawl extraction, keeping source-specific metadata, Markdown, and timeout policies separate.
 - Delete the unreachable daemon chat pipeline and unused browser media adapters; keep chat on the agent endpoint and audio on the bounded chunked decoder.
 - Use one slide-download/cache/progress workflow with source-specific download and stream-fallback policies instead of three copied pipelines.
 - Return DOM documents directly instead of exposing no-op cleanup lifecycles, and share YouTube player-response parsing across captions, metadata, and page extraction.

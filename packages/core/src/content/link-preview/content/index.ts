@@ -8,6 +8,7 @@ import { MIN_READABILITY_CONTENT_CHARACTERS } from "./constants.js";
 import { fetchHtmlDocument, fetchWithFirecrawl, isAssetLikeHtmlFetchError } from "./fetcher.js";
 import { buildResultFromFirecrawl, shouldFallbackToFirecrawl } from "./firecrawl.js";
 import { buildResultFromHtmlDocument } from "./html.js";
+import type { PageExtractionContext } from "./page-media.js";
 import { extractReadabilityFromHtml } from "./readability.js";
 import {
   isBlockedRedditThreadHtml,
@@ -109,6 +110,22 @@ export async function fetchLinkContent(
     notes: null,
   };
 
+  const pageContext: PageExtractionContext = {
+    url,
+    deps,
+    timeoutMs,
+    cacheMode,
+    maxCharacters,
+    youtubeTranscriptMode,
+    mediaTranscriptMode,
+    embeddedVideoMode,
+    transcriptTimestamps,
+    transcriptDiarization,
+    transcriptVideoDownload,
+    firecrawlDiagnostics,
+    markdownRequested,
+  };
+
   const twitterStatus = isTwitterStatusUrl(url);
   const nitterUrls = twitterStatus ? toNitterUrls(url) : [];
   let birdError: unknown = null;
@@ -142,20 +159,8 @@ export async function fetchLinkContent(
     }
 
     const firecrawlResult = await buildResultFromFirecrawl({
-      url,
+      ...pageContext,
       payload: firecrawlPayload,
-      cacheMode,
-      maxCharacters,
-      youtubeTranscriptMode,
-      mediaTranscriptMode,
-      embeddedVideoMode,
-      transcriptTimestamps,
-      transcriptDiarization,
-      transcriptVideoDownload,
-      firecrawlDiagnostics,
-      markdownRequested,
-      timeoutMs,
-      deps,
     });
     if (firecrawlResult) {
       return firecrawlResult;
@@ -313,21 +318,9 @@ export async function fetchLinkContent(
   const nitterHtml = await attemptNitter();
   if (nitterHtml) {
     const nitterResult = await buildResultFromHtmlDocument({
-      url,
+      ...pageContext,
       html: nitterHtml,
-      cacheMode,
-      maxCharacters,
-      youtubeTranscriptMode,
-      mediaTranscriptMode,
-      embeddedVideoMode,
-      transcriptTimestamps,
-      transcriptDiarization,
-      transcriptVideoDownload,
-      firecrawlDiagnostics,
-      markdownRequested,
       markdownMode,
-      timeoutMs,
-      deps,
       readabilityCandidate: null,
     });
     if (!isBlockedTwitterContent(nitterResult.content)) {
@@ -453,21 +446,10 @@ export async function fetchLinkContent(
   }
 
   const htmlExtracted = await buildResultFromHtmlDocument({
+    ...pageContext,
     url: effectiveUrl,
     html,
-    cacheMode,
-    maxCharacters,
-    youtubeTranscriptMode,
-    mediaTranscriptMode,
-    embeddedVideoMode,
-    transcriptTimestamps,
-    transcriptDiarization,
-    transcriptVideoDownload,
-    firecrawlDiagnostics,
-    markdownRequested,
     markdownMode,
-    timeoutMs,
-    deps,
     readabilityCandidate,
     isNormalizedRedditThread,
     mediaHtml,

@@ -35,6 +35,8 @@ Goal: keep provider entrypoints thin; keep provider policy explicit.
 
 ## Shared policy
 
+- `content/link-preview/content/page-media.ts`
+  HTML and Firecrawl share media detection, transcript resolution, source-metric refresh, and embedded article/transcript composition. Each page builder retains its metadata and Markdown policy; metric deadlines still start at builder entry.
 - `transcription-capability.ts`
   One place for:
   - `resolveTranscriptProviderCapabilities`
