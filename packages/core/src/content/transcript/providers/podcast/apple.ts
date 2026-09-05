@@ -19,20 +19,3 @@ export function extractEmbeddedJsonUrl(html: string, field: string): string | nu
     return null;
   }
 }
-
-export function extractApplePodcastIds(
-  url: string,
-): { showId: string; episodeId: string | null } | null {
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
-    if (host !== "podcasts.apple.com") return null;
-    const showId = parsed.pathname.match(/\/id(\d+)(?:\/|$)/)?.[1] ?? null;
-    if (!showId) return null;
-    const episodeIdRaw = parsed.searchParams.get("i");
-    const episodeId = episodeIdRaw && /^\d+$/.test(episodeIdRaw) ? episodeIdRaw : null;
-    return { showId, episodeId };
-  } catch {
-    return null;
-  }
-}

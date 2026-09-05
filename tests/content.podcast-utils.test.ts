@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  extractApplePodcastIds,
   extractSpotifyEpisodeId,
   extractXiaoyuzhouEpisodeId,
   isPodcastHost,
   isPodcastLikeJsonLdType,
 } from "../packages/core/src/content/link-preview/content/podcast-utils.js";
+import { extractApplePodcastIds } from "../packages/core/src/content/url.js";
 
 describe("podcast utils", () => {
   it("extracts spotify episode ids only from valid spotify urls", () => {

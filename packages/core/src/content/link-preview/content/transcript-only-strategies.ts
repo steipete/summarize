@@ -1,14 +1,10 @@
 import { resolveTranscriptForLink } from "../../transcript/index.js";
 import { resolveTranscriptionAvailability } from "../../transcript/providers/transcription-start.js";
 import type { resolveTranscriptionConfig } from "../../transcript/transcription-config.js";
-import { isDirectMediaUrl, isLoomVideoUrl } from "../../url.js";
+import { extractApplePodcastIds, isDirectMediaUrl, isLoomVideoUrl } from "../../url.js";
 import type { LinkPreviewDeps } from "../deps.js";
 import type { CacheMode } from "../types.js";
-import {
-  extractApplePodcastIds,
-  extractSpotifyEpisodeId,
-  extractXiaoyuzhouEpisodeId,
-} from "./podcast-utils.js";
+import { extractSpotifyEpisodeId, extractXiaoyuzhouEpisodeId } from "./podcast-utils.js";
 import { isTwitterBroadcastUrl } from "./twitter-utils.js";
 import type { ExtractedLinkContent, MediaTranscriptMode, YoutubeTranscriptMode } from "./types.js";
 import {

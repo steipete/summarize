@@ -163,90 +163,96 @@ describe("podcast transcript provider - Spotify iTunes feed resolution", () => {
     }
   });
 
-  it("falls back to iTunes episode search when feed lacks enclosure", async () => {
-    const showTitle = "Show Name";
-    const episodeTitle = "Episode Missing in Feed";
-    const feedUrl = "https://example.com/feed.xml";
-    const episodeUrl = "https://example.com/episode.mp3";
+  it.each([false, true])(
+    "falls back to iTunes episode search (feed available: %s)",
+    async (hasFeed) => {
+      const showTitle = "Show Name";
+      const episodeTitle = "Episode Missing in Feed";
+      const feedUrl = "https://example.com/feed.xml";
+      const episodeUrl = "https://example.com/episode.mp3";
 
-    const embedHtml = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
-      props: {
-        pageProps: { state: { data: { entity: { title: episodeTitle, subtitle: showTitle } } } },
-      },
-    })}</script>`;
+      const embedHtml = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+        props: {
+          pageProps: { state: { data: { entity: { title: episodeTitle, subtitle: showTitle } } } },
+        },
+      })}</script>`;
 
-    const feedXml = `<rss><channel><item><title>Other episode</title></item></channel></rss>`;
+      const feedXml = `<rss><channel><item><title>Other episode</title></item></channel></rss>`;
 
-    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url =
-        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-      const method = (init?.method ?? "GET").toUpperCase();
+      const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+          typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        const method = (init?.method ?? "GET").toUpperCase();
 
-      if (url === "https://open.spotify.com/embed/episode/abc") {
-        return new Response(embedHtml, { status: 200, headers: { "content-type": "text/html" } });
-      }
-      if (url.startsWith("https://itunes.apple.com/search")) {
-        if (url.includes("entity=podcastEpisode")) {
+        if (url === "https://open.spotify.com/embed/episode/abc") {
+          return new Response(embedHtml, { status: 200, headers: { "content-type": "text/html" } });
+        }
+        if (url.startsWith("https://itunes.apple.com/search")) {
+          if (url.includes("entity=podcastEpisode")) {
+            return new Response(
+              JSON.stringify({
+                resultCount: 1,
+                results: [
+                  {
+                    trackName: episodeTitle,
+                    collectionName: showTitle,
+                    episodeUrl,
+                    trackTimeMillis: 90000,
+                  },
+                ],
+              }),
+              { status: 200, headers: { "content-type": "application/json" } },
+            );
+          }
           return new Response(
-            JSON.stringify({
-              resultCount: 1,
-              results: [
-                {
-                  trackName: episodeTitle,
-                  collectionName: showTitle,
-                  episodeUrl,
-                  trackTimeMillis: 90000,
-                },
-              ],
-            }),
+            JSON.stringify({ results: hasFeed ? [{ collectionName: showTitle, feedUrl }] : [] }),
             { status: 200, headers: { "content-type": "application/json" } },
           );
         }
-        return new Response(
-          JSON.stringify({ resultCount: 1, results: [{ collectionName: showTitle, feedUrl }] }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        );
-      }
-      if (url === feedUrl) {
-        return new Response(feedXml, {
-          status: 200,
-          headers: { "content-type": "application/xml" },
-        });
-      }
-      if (url === episodeUrl) {
-        if (method === "HEAD") {
-          return new Response(null, {
+        if (url === feedUrl) {
+          return new Response(feedXml, {
+            status: 200,
+            headers: { "content-type": "application/xml" },
+          });
+        }
+        if (url === episodeUrl) {
+          if (method === "HEAD") {
+            return new Response(null, {
+              status: 200,
+              headers: { "content-type": "audio/mpeg", "content-length": "4" },
+            });
+          }
+          return new Response(new Uint8Array([0, 1, 2, 3]), {
             status: 200,
             headers: { "content-type": "audio/mpeg", "content-length": "4" },
           });
         }
-        return new Response(new Uint8Array([0, 1, 2, 3]), {
-          status: 200,
-          headers: { "content-type": "audio/mpeg", "content-length": "4" },
-        });
-      }
-      throw new Error(`Unexpected fetch: ${method} ${url}`);
-    });
-
-    const openaiFetch = vi.fn(async () => {
-      return new Response(JSON.stringify({ text: "ok" }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
+        throw new Error(`Unexpected fetch: ${method} ${url}`);
       });
-    });
 
-    try {
-      vi.stubGlobal("fetch", openaiFetch);
-      const result = await fetchTranscript(
-        { url: "https://open.spotify.com/episode/abc", html: "<html/>", resourceKey: null },
-        { ...baseOptions, fetch: fetchImpl as unknown as typeof fetch },
-      );
+      const openaiFetch = vi.fn(async () => {
+        return new Response(JSON.stringify({ text: "ok" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      });
 
-      expect(result.source).toBe("whisper");
-      expect(result.metadata?.kind).toBe("spotify_itunes_search_episode");
-      expect(result.metadata?.episodeUrl).toBe(episodeUrl);
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
+      try {
+        vi.stubGlobal("fetch", openaiFetch);
+        const result = await fetchTranscript(
+          { url: "https://open.spotify.com/episode/abc", html: "<html/>", resourceKey: null },
+          { ...baseOptions, fetch: fetchImpl as unknown as typeof fetch },
+        );
+
+        expect(result.source).toBe("whisper");
+        expect(result.metadata?.kind).toBe("spotify_itunes_search_episode");
+        expect(result.metadata?.episodeUrl).toBe(episodeUrl);
+        expect(
+          fetchImpl.mock.calls.filter(([input]) => String(input).includes("entity=podcastEpisode")),
+        ).toHaveLength(1);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    },
+  );
 });
