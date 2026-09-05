@@ -13,15 +13,19 @@ Goal: reduce implicit provider knowledge.
 
 ## Shared capability registry
 
-- `src/llm/provider-capabilities.ts`
-  Source of truth for:
+- `src/llm/provider-registry.ts` is a dependency-free registry consumed by configuration, model parsing, and runtime capability helpers.
+  It owns:
   - required env per provider
   - CLI default models
   - auto CLI order
   - document support
   - streaming support
+  - provider names and their TypeScript unions
+  - default endpoints and transport selection
 
-If a provider rule changes, update this file first.
+If provider metadata changes, update the registry first. `src/llm/provider-profile.ts` owns runtime environment aliases and client configuration; `src/llm/provider-capabilities.ts` exposes their combined capability surface.
+
+Configuration-only allowlists stay separate: legacy `apiKeys` names belong to `src/config/legacy-api-keys.ts`, and provider base-URL sections remain an explicit supported configuration surface. Adding a model provider must not implicitly expand either.
 
 ## Auto model selection
 

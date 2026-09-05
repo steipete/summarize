@@ -1,6 +1,4 @@
-import { parseOpenAiReasoningEffort, parseOpenAiTextVerbosity } from "../llm/model-options.js";
-import type { ModelRequestOptions } from "../llm/model-options.js";
-import { isRecord } from "./parse-helpers.js";
+import { isRecord, parseModelRequestOptions } from "./parse-helpers.js";
 import type { AutoRule, AutoRuleKind, ModelConfig } from "./types.js";
 
 function parseAutoRuleKind(value: unknown): AutoRuleKind | null {
@@ -56,45 +54,6 @@ function parseModelCandidates(raw: unknown, path: string): string[] {
     throw new Error(`Invalid config file ${path}: "model.rules[].candidates" must not be empty.`);
   }
   return candidates;
-}
-
-function parseModelRequestOptions(
-  raw: Record<string, unknown>,
-  path: string,
-  label: string,
-): ModelRequestOptions {
-  const serviceTier =
-    typeof raw.serviceTier === "string" && raw.serviceTier.trim().length > 0
-      ? raw.serviceTier.trim()
-      : undefined;
-  const reasoningRaw =
-    typeof raw.reasoningEffort === "string"
-      ? raw.reasoningEffort
-      : typeof raw.thinking === "string"
-        ? raw.thinking
-        : undefined;
-  if (
-    typeof raw.reasoningEffort !== "undefined" &&
-    typeof raw.thinking !== "undefined" &&
-    String(raw.reasoningEffort).trim().toLowerCase() !== String(raw.thinking).trim().toLowerCase()
-  ) {
-    throw new Error(
-      `Invalid config file ${path}: "${label}.reasoningEffort" and "${label}.thinking" must not conflict.`,
-    );
-  }
-  const reasoningEffort =
-    typeof reasoningRaw === "string"
-      ? parseOpenAiReasoningEffort(reasoningRaw, `${label}.reasoningEffort`)
-      : undefined;
-  const textVerbosity =
-    typeof raw.textVerbosity === "string"
-      ? parseOpenAiTextVerbosity(raw.textVerbosity, `${label}.textVerbosity`)
-      : undefined;
-  return {
-    ...(serviceTier ? { serviceTier } : {}),
-    ...(reasoningEffort ? { reasoningEffort } : {}),
-    ...(textVerbosity ? { textVerbosity } : {}),
-  };
 }
 
 function parseTokenBand(

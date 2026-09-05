@@ -1,23 +1,16 @@
+import type {
+  ModelRequestOptions,
+  OpenAiReasoningEffort,
+  OpenAiTextVerbosity,
+} from "../llm/model-options.js";
+import type { CliProvider } from "../llm/provider-registry.js";
+import type { LEGACY_API_KEY_ENV_MAP } from "./legacy-api-keys.js";
+
+export type { CliProvider, ModelRequestOptions, OpenAiReasoningEffort, OpenAiTextVerbosity };
+
 export type AutoRuleKind = "text" | "website" | "youtube" | "image" | "video" | "file";
 export type VideoMode = "auto" | "transcript" | "understand";
 export type EmbeddedVideoMode = "auto" | "off" | "prefer" | "both";
-export type CliProvider =
-  | "claude"
-  | "codex"
-  | "gemini"
-  | "agent"
-  | "openclaw"
-  | "opencode"
-  | "copilot"
-  | "agy"
-  | "pi";
-export type OpenAiReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh";
-export type OpenAiTextVerbosity = "low" | "medium" | "high";
-export type ModelRequestOptions = {
-  serviceTier?: string;
-  reasoningEffort?: OpenAiReasoningEffort;
-  textVerbosity?: OpenAiTextVerbosity;
-};
 export type CliProviderConfig = {
   binary?: string;
   extraArgs?: string[];
@@ -30,17 +23,8 @@ export type CliAutoFallbackConfig = {
   order?: CliProvider[];
 };
 export type CliMagicAutoConfig = CliAutoFallbackConfig;
-export type CliConfig = {
+export type CliConfig = Partial<Record<CliProvider, CliProviderConfig>> & {
   enabled?: CliProvider[];
-  claude?: CliProviderConfig;
-  codex?: CliProviderConfig;
-  gemini?: CliProviderConfig;
-  agent?: CliProviderConfig;
-  openclaw?: CliProviderConfig;
-  opencode?: CliProviderConfig;
-  copilot?: CliProviderConfig;
-  agy?: CliProviderConfig;
-  pi?: CliProviderConfig;
   autoFallback?: CliAutoFallbackConfig;
   magicAuto?: CliAutoFallbackConfig;
   promptOverride?: string;
@@ -137,22 +121,7 @@ export type NvidiaConfig = {
   baseUrl?: string;
 };
 
-export type ApiKeysConfig = {
-  openai?: string;
-  nvidia?: string;
-  minimax?: string;
-  anthropic?: string;
-  google?: string;
-  xai?: string;
-  openrouter?: string;
-  zai?: string;
-  apify?: string;
-  firecrawl?: string;
-  fal?: string;
-  groq?: string;
-  assemblyai?: string;
-  elevenlabs?: string;
-};
+export type ApiKeysConfig = Partial<Record<keyof typeof LEGACY_API_KEY_ENV_MAP, string>>;
 
 export type EnvConfig = Record<string, string>;
 

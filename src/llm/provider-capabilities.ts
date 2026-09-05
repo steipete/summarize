@@ -1,17 +1,11 @@
 export {
-  DEFAULT_AUTO_CLI_ORDER,
-  DEFAULT_CLI_MODELS,
   cliProviderForRequiredEnv,
   envHasRequiredKey,
   formatMissingCliModelError,
   gatewayProviderForRequiredEnv,
-  getCliProviderProfile,
-  getGatewayProviderProfile,
-  isGatewayProvider,
   isVideoUnderstandingCapableModelId,
   isVideoUnderstandingCapableProvider,
   isOpenAiCompatibleProvider,
-  parseCliProviderName,
   requiredEnvForCliProvider,
   requiredEnvForGatewayProvider,
   resolveOpenAiCompatibleClientConfigForProvider,
@@ -21,12 +15,21 @@ export {
   supportsStreaming,
 } from "./provider-profile.js";
 
+export type { ProviderOpenAiOverrides, ProviderRuntimeBindings } from "./provider-profile.js";
+
+export {
+  DEFAULT_AUTO_CLI_ORDER,
+  DEFAULT_CLI_MODELS,
+  getCliProviderProfile,
+  getGatewayProviderProfile,
+  isGatewayProvider,
+  parseCliProviderName,
+} from "./provider-registry.js";
+
 export type {
   GatewayProvider,
   GatewayProviderProfile,
   CliProviderProfile,
-  ProviderOpenAiOverrides,
   ProviderExecution,
-  ProviderRuntimeBindings,
   RequiredModelEnv,
-} from "./provider-profile.js";
+} from "./provider-registry.js";

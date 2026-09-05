@@ -1,4 +1,4 @@
-export const GITHUB_MODELS_BASE_URL = "https://models.github.ai/inference";
+export { GITHUB_MODELS_BASE_URL } from "./provider-registry.js";
 export const GITHUB_MODELS_API_VERSION = "2026-03-10";
 
 const GITHUB_COPILOT_PROVIDER_PATTERNS = {

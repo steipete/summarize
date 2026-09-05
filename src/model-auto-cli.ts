@@ -101,24 +101,7 @@ export function prependCliCandidates({
   };
 
   for (const provider of providerOrder) {
-    const modelOverride =
-      provider === "gemini"
-        ? cli?.gemini?.model
-        : provider === "codex"
-          ? cli?.codex?.model
-          : provider === "agent"
-            ? cli?.agent?.model
-            : provider === "openclaw"
-              ? cli?.openclaw?.model
-              : provider === "opencode"
-                ? cli?.opencode?.model
-                : provider === "copilot"
-                  ? cli?.copilot?.model
-                  : provider === "agy"
-                    ? undefined
-                    : provider === "pi"
-                      ? cli?.pi?.model
-                      : cli?.claude?.model;
+    const modelOverride = provider === "agy" ? undefined : cli?.[provider]?.model;
     add(provider, modelOverride);
   }
 

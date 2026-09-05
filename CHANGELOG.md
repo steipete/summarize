@@ -15,6 +15,7 @@
 
 ### Dependencies and maintenance
 
+- Make provider metadata the shared source for configuration and model parsing; remove duplicated provider inventories, native model constructors, client defaults, and request-option parsing.
 - Replace duplicated file/byte transcription orchestration with one source-aware runner, shared local/provider handling, and common decode retries while preserving lazy file uploads and full-input fallback.
 - Unify model execution around one resolved request and completion path; centralize stream consumption while preserving output-failure and retry boundaries.
 - Consolidate LLM request options and SDK stream handling while preserving provider-specific configuration, errors, and fallback behavior.

@@ -1,15 +1,7 @@
 import { resolveGitHubCopilotBackendModelId } from "./github-models.js";
+import { isGatewayProvider, type GatewayProvider } from "./provider-registry.js";
 
-export type LlmProvider =
-  | "xai"
-  | "openai"
-  | "google"
-  | "anthropic"
-  | "zai"
-  | "nvidia"
-  | "minimax"
-  | "github-copilot"
-  | "ollama";
+export type LlmProvider = GatewayProvider;
 
 export type ParsedModelId = {
   provider: LlmProvider;
@@ -22,18 +14,6 @@ export type ParsedModelId = {
    */
   canonical: string;
 };
-
-const PROVIDERS: LlmProvider[] = [
-  "xai",
-  "openai",
-  "google",
-  "anthropic",
-  "zai",
-  "nvidia",
-  "minimax",
-  "github-copilot",
-  "ollama",
-];
 
 /**
  * Anthropic short model aliases that are NOT valid API model identifiers.
@@ -90,7 +70,7 @@ export function normalizeGatewayStyleModelId(raw: string): string {
     }
     return `github-copilot/${resolved}`;
   }
-  if (!PROVIDERS.includes(provider as LlmProvider)) {
+  if (!isGatewayProvider(provider)) {
     throw new Error(
       `Unsupported model provider "${provider}". Use xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/..., or ollama/...`,
     );

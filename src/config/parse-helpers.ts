@@ -1,7 +1,52 @@
+import {
+  parseOpenAiReasoningEffort,
+  parseOpenAiTextVerbosity,
+  type ModelRequestOptions,
+} from "../llm/model-options.js";
+import { parseCliProviderName } from "../llm/provider-registry.js";
 import type { CliProvider, LoggingFormat, LoggingLevel } from "./types.js";
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function parseModelRequestOptions(
+  raw: Record<string, unknown>,
+  path: string,
+  label: string,
+): ModelRequestOptions {
+  const serviceTier =
+    typeof raw.serviceTier === "string" && raw.serviceTier.trim().length > 0
+      ? raw.serviceTier.trim()
+      : undefined;
+  const reasoningRaw =
+    typeof raw.reasoningEffort === "string"
+      ? raw.reasoningEffort
+      : typeof raw.thinking === "string"
+        ? raw.thinking
+        : undefined;
+  if (
+    typeof raw.reasoningEffort !== "undefined" &&
+    typeof raw.thinking !== "undefined" &&
+    String(raw.reasoningEffort).trim().toLowerCase() !== String(raw.thinking).trim().toLowerCase()
+  ) {
+    throw new Error(
+      `Invalid config file ${path}: "${label}.reasoningEffort" and "${label}.thinking" must not conflict.`,
+    );
+  }
+  const reasoningEffort =
+    typeof reasoningRaw === "string"
+      ? parseOpenAiReasoningEffort(reasoningRaw, `${label}.reasoningEffort`)
+      : undefined;
+  const textVerbosity =
+    typeof raw.textVerbosity === "string"
+      ? parseOpenAiTextVerbosity(raw.textVerbosity, `${label}.textVerbosity`)
+      : undefined;
+  return {
+    ...(serviceTier ? { serviceTier } : {}),
+    ...(reasoningEffort ? { reasoningEffort } : {}),
+    ...(textVerbosity ? { textVerbosity } : {}),
+  };
 }
 
 export function parseOptionalBaseUrl(raw: unknown): string | undefined {
@@ -47,20 +92,8 @@ export function parseOptionalNumber(
 }
 
 export function parseCliProvider(value: unknown, path: string): CliProvider {
-  const trimmed = typeof value === "string" ? value.trim().toLowerCase() : "";
-  if (
-    trimmed === "claude" ||
-    trimmed === "codex" ||
-    trimmed === "gemini" ||
-    trimmed === "agent" ||
-    trimmed === "openclaw" ||
-    trimmed === "opencode" ||
-    trimmed === "copilot" ||
-    trimmed === "agy" ||
-    trimmed === "pi"
-  ) {
-    return trimmed as CliProvider;
-  }
+  const provider = typeof value === "string" ? parseCliProviderName(value) : null;
+  if (provider) return provider;
   throw new Error(`Invalid config file ${path}: unknown CLI provider "${String(value)}".`);
 }
 

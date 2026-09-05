@@ -97,25 +97,19 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
   const logging = parseLoggingConfig(parsed, path);
   const openai = parseOpenAiConfig(parsed, path);
 
-  const nvidia = parseProviderBaseUrlConfig(
-    (parsed as Record<string, unknown>).nvidia,
-    path,
+  const providerConfigs: Partial<SummarizeConfig> = {};
+  for (const provider of [
     "nvidia",
-  );
-  const minimax = parseProviderBaseUrlConfig(
-    (parsed as Record<string, unknown>).minimax,
-    path,
     "minimax",
-  );
-  const anthropic = parseProviderBaseUrlConfig(parsed.anthropic, path, "anthropic");
-  const google = parseProviderBaseUrlConfig(parsed.google, path, "google");
-  const xai = parseProviderBaseUrlConfig(parsed.xai, path, "xai");
-  const zai = parseProviderBaseUrlConfig((parsed as Record<string, unknown>).zai, path, "zai");
-  const ollama = parseProviderBaseUrlConfig(
-    (parsed as Record<string, unknown>).ollama,
-    path,
+    "anthropic",
+    "google",
+    "xai",
+    "zai",
     "ollama",
-  );
+  ] as const) {
+    const providerConfig = parseProviderBaseUrlConfig(parsed[provider], path, provider);
+    if (providerConfig) providerConfigs[provider] = providerConfig;
+  }
 
   const configEnv = parseEnvConfig(parsed, path);
   const apiKeys = parseApiKeysConfig(parsed, path);
@@ -134,13 +128,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       ...(ui ? { ui } : {}),
       ...(cli ? { cli } : {}),
       ...(openai ? { openai } : {}),
-      ...(nvidia ? { nvidia } : {}),
-      ...(minimax ? { minimax } : {}),
-      ...(anthropic ? { anthropic } : {}),
-      ...(google ? { google } : {}),
-      ...(xai ? { xai } : {}),
-      ...(zai ? { zai } : {}),
-      ...(ollama ? { ollama } : {}),
+      ...providerConfigs,
       ...(logging ? { logging } : {}),
       ...(configEnv ? { env: configEnv } : {}),
       ...(apiKeys ? { apiKeys } : {}),
