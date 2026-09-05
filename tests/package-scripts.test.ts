@@ -69,9 +69,9 @@ describe("package scripts", () => {
     expect(pnpmLockfile).not.toMatch(/^\s{2}(?:esbuild|tsx)@/mu);
   });
 
-  it("typechecks both workspace layers from the root script", () => {
+  it("typechecks all workspace layers from the root script", () => {
     expect(rootPackage.scripts.typecheck).toBe(
-      "pnpm -C packages/core typecheck && tsc -p tsconfig.build.json --noEmit",
+      "pnpm -C packages/core typecheck && tsc -p tsconfig.build.json --noEmit && pnpm -C apps/chrome-extension typecheck",
     );
     expect(corePackage.scripts.typecheck).toBe("tsc -p tsconfig.build.json --noEmit");
   });

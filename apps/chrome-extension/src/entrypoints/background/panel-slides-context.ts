@@ -64,7 +64,8 @@ export async function handlePanelSlidesContextRequest<Recovery, Status>(options:
   }
 
   const canUseCache = Boolean(tab?.id && tabUrl && urlsMatch(tabUrl, targetUrl));
-  let cached = canUseCache ? panelSessionStore.getCachedExtract(tab.id, tabUrl ?? null) : null;
+  let cached =
+    canUseCache && tab?.id ? panelSessionStore.getCachedExtract(tab.id, tabUrl ?? null) : null;
   let transcriptTimedText = cached?.transcriptTimedText ?? null;
 
   if (!transcriptTimedText && settings.token.trim()) {

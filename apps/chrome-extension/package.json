@@ -17,7 +17,8 @@
     "test:e2e": "pnpm test:chrome",
     "test:firefox": "env -u NO_COLOR pnpm build:firefox && env -u NO_COLOR node scripts/firefox-smoke.mjs",
     "test:firefox:force": "env -u NO_COLOR ALLOW_FIREFOX_EXTENSION_TESTS=1 pnpm build:firefox && env -u NO_COLOR ALLOW_FIREFOX_EXTENSION_TESTS=1 playwright test -c playwright.config.ts --project=firefox",
-    "test:firefox:lint": "env -u NO_COLOR pnpm build:firefox && env -u NO_COLOR web-ext lint --source-dir .output/firefox-mv3 --self-hosted --boring"
+    "test:firefox:lint": "env -u NO_COLOR pnpm build:firefox && env -u NO_COLOR web-ext lint --source-dir .output/firefox-mv3 --self-hosted --boring",
+    "typecheck": "wxt prepare && tsc --noEmit"
   },
   "dependencies": {
     "@huggingface/transformers": "4.2.0",

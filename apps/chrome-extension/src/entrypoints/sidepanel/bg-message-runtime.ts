@@ -118,12 +118,12 @@ export function createSidepanelBgMessageRuntime(options: {
   rememberPendingSummarySnapshot: (payload: SummarySnapshotPayload) => void;
   attachSummaryRun: (run: RunStart) => void;
   applySummarySnapshot: (payload: SummarySnapshotPayload) => void;
-  handleChatHistory: (msg: Extract<BgMessage, { type: "chat:history" }>) => void;
-  handleAgentChunk: (msg: Extract<BgMessage, { type: "agent:chunk" }>) => void;
-  handleAgentResponse: (msg: Extract<BgMessage, { type: "agent:response" }>) => void;
+  handleChatHistory: (msg: Extract<BgToPanel, { type: "chat:history" }>) => void;
+  handleAgentChunk: (msg: Extract<BgToPanel, { type: "agent:chunk" }>) => void;
+  handleAgentResponse: (msg: Extract<BgToPanel, { type: "agent:response" }>) => void;
 }) {
   return {
-    handle(msg: BgMessage) {
+    handle(msg: BgToPanel) {
       handleSidepanelBgMessage({
         msg,
         applyUiState: (state) => {

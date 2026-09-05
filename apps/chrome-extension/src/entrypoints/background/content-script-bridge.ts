@@ -25,7 +25,7 @@ export type ExtractResponse =
       text: string;
       truncated: boolean;
       mediaDurationSeconds?: number | null;
-      media?: { hasVideo: boolean; hasAudio: boolean; hasCaptions: boolean };
+      media?: { hasVideo: boolean; hasAudio: boolean; hasCaptions: boolean } | null;
     }
   | { ok: false; error: string };
 
@@ -83,7 +83,7 @@ async function injectExtractScript(
   }
 }
 
-export function canSummarizeUrl(url: string | undefined): url is string {
+export function canSummarizeUrl(url: string | null | undefined): url is string {
   if (!url) return false;
   if (url.startsWith("chrome://")) return false;
   if (url.startsWith("chrome-extension://")) return false;

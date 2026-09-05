@@ -17,11 +17,12 @@ export async function executeAskUserWhichElementTool(
 ): Promise<ElementInfo> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) throw new Error("No active tab");
+  const tabId = tab.id;
 
   const ensureInjected = async () => {
     try {
       await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
+        target: { tabId },
         files: ["content-scripts/automation.js"],
       });
     } catch (err) {

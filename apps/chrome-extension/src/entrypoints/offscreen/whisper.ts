@@ -2,7 +2,7 @@ import {
   env,
   pipeline,
   type AutomaticSpeechRecognitionOutput,
-  type AutomaticSpeechRecognitionPipelineType,
+  type AutomaticSpeechRecognitionPipeline,
 } from "@huggingface/transformers";
 
 const WHISPER_MODEL = "onnx-community/whisper-tiny";
@@ -13,11 +13,11 @@ type WhisperDevice = "webgpu" | "wasm";
 type WhisperPipelineFactory = (
   device: WhisperDevice,
   onStatus: (status: string) => void,
-) => Promise<AutomaticSpeechRecognitionPipelineType>;
+) => Promise<AutomaticSpeechRecognitionPipeline>;
 type WhisperRuntime = {
   device: WhisperDevice;
   loadMs: number;
-  transcriber: AutomaticSpeechRecognitionPipelineType;
+  transcriber: AutomaticSpeechRecognitionPipeline;
 };
 
 export type WhisperRuntimeDiagnostics = {
@@ -87,7 +87,7 @@ export async function transcribePcmChunkWithWhisper({
 
 async function getTranscriber(onStatus: (status: string) => void): Promise<{
   diagnostics: WhisperRuntimeDiagnostics;
-  transcriber: AutomaticSpeechRecognitionPipelineType;
+  transcriber: AutomaticSpeechRecognitionPipeline;
 }> {
   const reused = Boolean(transcriberPromise);
   if (!transcriberPromise) {
@@ -151,7 +151,7 @@ export async function loadWhisperTranscriber({
   webGpuTimeoutMs?: number;
   wasmTimeoutMs?: number;
   onDevice?: (device: WhisperDevice) => void;
-}): Promise<AutomaticSpeechRecognitionPipelineType> {
+}): Promise<AutomaticSpeechRecognitionPipeline> {
   let activeAttempt = 0;
   const load = async (device: WhisperDevice, timeoutMs: number, timeoutMessage: string) => {
     const attempt = ++activeAttempt;
@@ -190,7 +190,7 @@ export async function loadWhisperTranscriber({
 async function createWhisperPipeline(
   device: WhisperDevice,
   onStatus: (status: string) => void,
-): Promise<AutomaticSpeechRecognitionPipelineType> {
+): Promise<AutomaticSpeechRecognitionPipeline> {
   return await pipeline("automatic-speech-recognition", WHISPER_MODEL, {
     device,
     dtype:

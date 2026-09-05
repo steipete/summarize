@@ -1,23 +1,12 @@
-import type { Settings } from "../../lib/settings";
+import type { loadSettings } from "../../lib/settings";
 import { bindSettingsStorage, bindSidepanelLifecycle } from "./bindings";
 import { patchPanelState } from "./panel-state-store";
 import type { PanelState } from "./types";
 
-type LoadedSettings = Pick<
-  Settings,
-  | "autoSummarize"
-  | "chatEnabled"
-  | "automationEnabled"
-  | "slidesLayout"
-  | "fontSize"
-  | "lineHeight"
-  | "fontFamily"
-  | "model"
-  | "token"
->;
+type LoadedSettings = Awaited<ReturnType<typeof loadSettings>>;
 
 export function bootstrapSidepanel(options: {
-  ensurePanelPort: () => Promise<void>;
+  ensurePanelPort: () => Promise<unknown>;
   loadSettings: () => Promise<LoadedSettings>;
   panelState: PanelState;
 

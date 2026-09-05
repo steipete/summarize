@@ -255,8 +255,10 @@ export function createSlidesRenderer({
     const list = root.querySelector<HTMLDivElement>(".slideGallery__list");
     if (!list) return;
 
-    const existingItems = new Map<number, HTMLElement>();
-    for (const item of Array.from(list.querySelectorAll<HTMLElement>(".slideGallery__item"))) {
+    const existingItems = new Map<number, HTMLButtonElement>();
+    for (const item of Array.from(
+      list.querySelectorAll<HTMLButtonElement>(".slideGallery__item"),
+    )) {
       const idx = Number(item.dataset.slideIndex);
       if (Number.isFinite(idx)) existingItems.set(idx, item);
     }

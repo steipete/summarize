@@ -10,22 +10,6 @@ export type BrowserJsResult = {
   error?: string;
 };
 
-type UserScriptsApi = {
-  execute?: (options: {
-    target: { tabId: number; allFrames?: boolean };
-    world: "USER_SCRIPT";
-    worldId?: string;
-    injectImmediately?: boolean;
-    js: Array<{ code: string }>;
-    executionId?: string;
-  }) => Promise<Array<{ result?: unknown }>>;
-  configureWorld?: (options: {
-    worldId: string;
-    messaging?: boolean;
-    csp?: string;
-  }) => Promise<void>;
-};
-
 export async function ensureAutomationContentScript(tabId: number): Promise<void> {
   try {
     await chrome.scripting.executeScript({
@@ -49,12 +33,13 @@ export async function runBrowserJs(
   if (signal?.aborted) return { ok: false, error: "Execution aborted" };
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) throw new Error("No active tab");
+  const tabId = tab.id;
 
   await ensureAutomationContentScript(tab.id);
   const skills = await listSkills(tab.url ?? undefined);
   const libraries = skills.map((skill) => skill.library).filter(Boolean);
   const nativeInputEnabled = await hasDebuggerPermission();
-  const userScripts = chrome.userScripts as UserScriptsApi | undefined;
+  const userScripts = chrome.userScripts;
   const status = await getUserScriptsStatus();
   if (!userScripts?.execute || !status.apiAvailable || !status.permissionGranted) {
     throw new Error(buildUserScriptsGuidance(status));
@@ -102,17 +87,17 @@ export async function runBrowserJs(
   try {
     return await withArtifactsArmedTab({
       enabled: true,
-      tabId: tab.id,
+      tabId,
       sendMessage: (message) => chrome.runtime.sendMessage(message),
       run: async () =>
         withNativeInputArmedTab({
           enabled: nativeInputEnabled,
-          tabId: tab.id,
+          tabId,
           sendMessage: (message) => chrome.runtime.sendMessage(message),
           capability: nativeInputCapability,
           run: async () => {
             const results = await userScripts.execute!({
-              target: { tabId: tab.id },
+              target: { tabId },
               world: "USER_SCRIPT",
               worldId: "summarize-browserjs",
               injectImmediately: true,

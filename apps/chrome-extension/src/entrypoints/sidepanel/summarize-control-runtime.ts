@@ -17,7 +17,7 @@ type SummarizeControlRuntimeOptions = {
   slidesTextController: SlidesTextControllerLike;
   panelState: PanelState;
 
-  patchSettings: (patch: Partial<Settings>) => Promise<void>;
+  patchSettings: (patch: Partial<Settings>) => Promise<unknown>;
   loadSettings: () => Promise<Pick<Settings, "slideRuntime" | "token">>;
   showSlideNotice: (message: string) => void;
   hideSlideNotice: () => void;

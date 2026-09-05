@@ -31,8 +31,8 @@ import {
 import type { BrowserYoutubeLocalTranscript } from "./youtube-local-transcript";
 import { extractYouTubeTranscriptInTab } from "./youtube-transcript";
 
-type StoreLike = {
-  isPanelOpen: (session: BackgroundSummarizeSession) => boolean;
+type StoreLike<Session extends BackgroundSummarizeSession> = {
+  isPanelOpen: (session: Session) => boolean;
   setCachedExtract: (tabId: number, value: CachedExtract) => void;
 };
 
@@ -61,7 +61,7 @@ function resolveBrowserAiLength(value: string): "short" | "medium" | "long" {
   return "long";
 }
 
-export async function summarizeActiveTab({
+export async function summarizeActiveTab<Session extends BackgroundSummarizeSession>({
   session,
   reason,
   opts,
@@ -91,14 +91,14 @@ export async function summarizeActiveTab({
   extractYouTubeTranscript = extractYouTubeTranscriptInTab,
   youtubeTranscriptTimeoutMs = 12_000,
 }: {
-  session: BackgroundSummarizeSession;
+  session: Session;
   reason: string;
   opts?: { refresh?: boolean; inputMode?: "page" | "video" };
   loadSettings: () => Promise<Settings>;
-  emitState: (session: BackgroundSummarizeSession, status: string) => Promise<void>;
+  emitState: (session: Session, status: string) => Promise<void>;
   getActiveTab: (windowId?: number) => Promise<chrome.tabs.Tab | null>;
   canSummarizeUrl: (url?: string | null) => boolean;
-  panelSessionStore: StoreLike;
+  panelSessionStore: StoreLike<Session>;
   sendStatus: (status: string) => void;
   send: SendFn;
   fetchImpl: typeof fetch;
@@ -155,6 +155,7 @@ export async function summarizeActiveTab({
 
   const tab = await getActiveTab(session.windowId);
   if (!tab?.id || !canSummarizeUrl(tab.url)) return;
+  const tabId = tab.id;
   const tabUrl = tab.url ?? "";
   const extractionPlan = planMediaExtraction({
     url: tabUrl,
@@ -225,7 +226,7 @@ export async function summarizeActiveTab({
   const ensureLocalBrowserTranscript = async () => {
     preparedContent = await ensurePreparedPanelTranscript({
       content: preparedContent,
-      tab: { id: tab.id, url: tabUrl, title: tab.title },
+      tab: { id: tabId, url: tabUrl, title: tab.title },
       tabUrl,
       settings,
       requestedInputMode,
@@ -308,7 +309,7 @@ export async function summarizeActiveTab({
 
   const cacheResolvedPayload = () => {
     panelSessionStore.setCachedExtract(
-      tab.id,
+      tabId,
       createCachedExtract({
         extracted: resolvedPayload,
         source: preparedContent.source,

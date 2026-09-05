@@ -21,7 +21,7 @@ export function createPanelCacheRuntime<Session extends PanelCacheSession>(optio
   startBrowserSlides: (
     session: Session,
     options: { inputMode: "video"; reason: "cache-restore" },
-  ) => void;
+  ) => void | Promise<void>;
 }) {
   const { panelSessionStore, getActiveTab, urlsMatch, send, startBrowserSlides } = options;
 
@@ -60,7 +60,7 @@ export function createPanelCacheRuntime<Session extends PanelCacheSession>(optio
       cached.url &&
       isYouTubeVideoUrl(cached.url)
     ) {
-      startBrowserSlides(session, { inputMode: "video", reason: "cache-restore" });
+      void startBrowserSlides(session, { inputMode: "video", reason: "cache-restore" });
     }
   };
 

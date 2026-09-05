@@ -41,6 +41,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Typecheck extension
+        run: pnpm -C apps/chrome-extension typecheck
+
       - name: macOS release contract
         run: scripts/test-macos-release.sh
 

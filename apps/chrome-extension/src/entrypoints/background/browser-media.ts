@@ -40,7 +40,7 @@ export type BrowserAudioChunk = {
 
 export type BrowserAudioProcessResult = {
   chunkCount: number;
-  codec: string;
+  codec: string | null;
   durationSeconds: number;
 };
 
@@ -327,7 +327,7 @@ async function processBrowserAudioInput({
 }
 
 export async function browserMediaCanvasToDataUrl({ canvas }: WrappedCanvas): Promise<string> {
-  if (!(typeof OffscreenCanvas !== "undefined" && canvas instanceof OffscreenCanvas)) {
+  if ("toDataURL" in canvas) {
     // Chrome throttles HTMLCanvasElement.toBlob() to roughly one callback per second in offscreen documents.
     return canvas.toDataURL(FRAME_IMAGE_TYPE, FRAME_IMAGE_QUALITY);
   }

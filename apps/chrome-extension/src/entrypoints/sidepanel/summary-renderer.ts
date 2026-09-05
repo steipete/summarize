@@ -1,6 +1,7 @@
 import { selectMarkdownForLayout } from "./slides-state";
 import { buildSummaryEmptyState } from "./summary-empty-state";
 import { linkifyTimestamps } from "./timestamp-links";
+import type { PanelPhase } from "./types";
 
 const scrollRestoreVersions = new WeakMap<HTMLElement, number>();
 
@@ -151,7 +152,7 @@ export function renderSummaryMarkdownDisplay({
   inputMode: "page" | "video";
   markdown: string;
   md: { render: (value: string) => string };
-  phase: string;
+  phase: PanelPhase;
   renderInlineSlides: (container: HTMLElement, opts?: { fallback?: boolean }) => void;
   slidesEnabled: boolean;
   slidesLayout: string;

@@ -12,6 +12,7 @@ import {
 import { createSlidesRenderer } from "./slides-renderer";
 import { resolveSlidesInputMode } from "./slides-session-state";
 import { formatSlideTimestamp } from "./slides-state";
+import type { createSlidesTextController } from "./slides-text-controller";
 import { renderSummaryMarkdownDisplay } from "./summary-renderer";
 import type { PanelState, SlideSummarySource } from "./types";
 
@@ -36,22 +37,20 @@ export function createSlidesViewRuntime({
   renderSlidesHostEl: HTMLElement;
   summaryCopyBtn: HTMLButtonElement;
   chatMessagesEl: HTMLElement;
-  md: MarkdownIt;
+  md: InstanceType<typeof MarkdownIt>;
   headerSetStatus: (text: string) => void;
   headerSetProgressOverride: (busy: boolean) => void;
-  slidesTextController: {
-    hasSummaryTitles: () => boolean;
-    updateSummaryFromMarkdown: (
-      markdown: string,
-      opts?: { preserveIfEmpty?: boolean; source?: "summary" | "slides" },
-    ) => boolean;
-    rebuildDescriptions: () => void;
-    syncTextState: () => void;
-    getDescriptions: () => Map<number, string>;
-    getTitles: () => Map<number, string>;
-    getDescriptionEntries: () => Array<[number, string]>;
-    getTranscriptTimedText: () => string | null;
-  };
+  slidesTextController: Pick<
+    ReturnType<typeof createSlidesTextController>,
+    | "hasSummaryTitles"
+    | "updateSummaryFromMarkdown"
+    | "rebuildDescriptions"
+    | "syncTextState"
+    | "getDescriptions"
+    | "getTitles"
+    | "getDescriptionEntries"
+    | "getTranscriptTimedText"
+  >;
   panelCacheController: { scheduleSync: () => void };
   send: (
     message:

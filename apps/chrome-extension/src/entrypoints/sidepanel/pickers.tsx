@@ -1,6 +1,6 @@
 import type { SummaryLength } from "@steipete/summarize-core";
 import { SUMMARY_LENGTH_SPECS } from "@steipete/summarize-core/prompts";
-import { render } from "preact";
+import { render, type JSX } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { readPresetOrCustomValue, resolvePresetOrCustom } from "../../lib/combo";
@@ -355,7 +355,7 @@ function LengthField({
                 placeholder="Custom (e.g. 20k)"
                 autocapitalize="off"
                 autocomplete="off"
-                spellcheck="false"
+                spellcheck={false}
                 value={customValue}
                 onInput={(event) => setCustomValue(event.currentTarget.value)}
                 onBlur={commitCustom}
@@ -607,7 +607,6 @@ function SummarizeControl(props: SummarizeControlProps) {
     <div className="summarizeControlGroup">
       <div className="picker summarizePicker" {...api.getRootProps()}>
         <button
-          type="button"
           className="ghost summarizeButton isDropdown"
           aria-label={`Summarize (${selectedLabel})`}
           data-busy={props.busy ? "true" : "false"}

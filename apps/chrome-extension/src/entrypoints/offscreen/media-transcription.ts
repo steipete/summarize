@@ -13,7 +13,7 @@ import {
 export type BrowserMediaTranscriptionDiagnostics = {
   chunksProcessed: number;
   chunksTotal: number;
-  codec: string;
+  codec: BrowserAudioProcessResult["codec"];
   decoder: "mediabunny-webcodecs";
   durationSeconds: number;
   input: "buffer" | "url-range";

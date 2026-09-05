@@ -131,6 +131,6 @@ export function resolveSlidesPayload(
     appliedSlidesRunId?: string | null;
   } = {},
 ): SlidesPayload {
-  if (shouldReplaceSlidesPayload(prev, next, opts)) return next;
+  if (!prev || shouldReplaceSlidesPayload(prev, next, opts)) return next;
   return mergeSlidesPayload(prev, next);
 }

@@ -13,7 +13,7 @@ const MAX_LOG_LINES = 4000;
 const FLUSH_DELAY_MS = 250;
 const FLUSH_BATCH = 50;
 
-let flushTimer = 0;
+let flushTimer: ReturnType<typeof globalThis.setTimeout> | 0 = 0;
 let flushInFlight = false;
 let pendingLines: string[] = [];
 

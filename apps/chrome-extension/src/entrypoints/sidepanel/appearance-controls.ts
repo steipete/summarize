@@ -1,5 +1,5 @@
-import { defaultSettings } from "../../lib/settings";
-import { applyTheme } from "../../lib/theme";
+import { defaultSettings, type Settings } from "../../lib/settings";
+import { applyTheme, type ColorMode, type ColorScheme } from "../../lib/theme";
 import { mountCheckbox } from "../../ui/checkbox";
 import { mountSidepanelLengthPicker, mountSidepanelPickers } from "./pickers";
 
@@ -34,14 +34,14 @@ export function createAppearanceControls(options: {
   };
 
   const pickerHandlers = {
-    onSchemeChange: (value: string) => {
+    onSchemeChange: (value: ColorScheme) => {
       void (async () => {
         const next = await options.patchSettings({ colorScheme: value });
         pickerSettings = { ...pickerSettings, scheme: next.colorScheme, mode: next.colorMode };
         applyTheme({ scheme: next.colorScheme, mode: next.colorMode });
       })();
     },
-    onModeChange: (value: string) => {
+    onModeChange: (value: ColorMode) => {
       void (async () => {
         const next = await options.patchSettings({ colorMode: value });
         pickerSettings = { ...pickerSettings, scheme: next.colorScheme, mode: next.colorMode };
@@ -102,15 +102,18 @@ export function createAppearanceControls(options: {
       });
       return true;
     },
-    initializeFromSettings: (settings: {
-      autoSummarize: boolean;
-      colorScheme: string;
-      colorMode: string;
-      fontFamily: string;
-      length: string;
-      fontSize: number;
-      lineHeight: number;
-    }) => {
+    initializeFromSettings: (
+      settings: Pick<
+        Settings,
+        | "autoSummarize"
+        | "colorScheme"
+        | "colorMode"
+        | "fontFamily"
+        | "length"
+        | "fontSize"
+        | "lineHeight"
+      >,
+    ) => {
       autoValue = settings.autoSummarize;
       updateAutoToggle();
       pickerSettings = {

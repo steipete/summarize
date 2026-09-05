@@ -242,7 +242,7 @@ function findBestVideo(): HTMLVideoElement | null {
 
 function waitForEventOrTimeout(target: EventTarget, eventName: string, timeoutMs: number) {
   return new Promise<void>((resolve) => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    let timer: number | null = null;
     const cleanup = () => {
       if (timer) window.clearTimeout(timer);
       target.removeEventListener(eventName, onEvent);

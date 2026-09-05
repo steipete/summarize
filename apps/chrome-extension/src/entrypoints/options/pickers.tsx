@@ -1,4 +1,4 @@
-import { render } from "preact";
+import { render, type JSX } from "preact";
 import { createPortal } from "preact/compat";
 import type { ColorMode, ColorScheme } from "../../lib/theme";
 import { getOverlayRoot } from "../../ui/portal";

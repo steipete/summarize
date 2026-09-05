@@ -4,6 +4,8 @@
 
 ### Fixes
 
+- Browser settings: retain a dismissed local-companion hint when saving other Options preferences.
+- Browser chat: normalize partial or malformed saved usage metadata and unknown stop reasons when restoring assistant history.
 - Slides: drain ignored subprocess output so a verbose media tool cannot stall on a full stdout pipe.
 - Transcript cache: preserve embedded-caption and native YouTube media source metadata across cache hits instead of losing it to duplicated source lists.
 - Browser media: support MP4 files carrying Annex B AVC/HEVC and clarify missing WebCodecs errors in insecure contexts with MediaBunny 1.55.2.
@@ -17,6 +19,7 @@
 
 ### Dependencies and maintenance
 
+- Type-check the entire extension in the local gate and CI using browser/bundler settings; remove stale copies of session, settings, API, and callback contracts.
 - Share model discovery, selection preservation, and refresh throttling between Options and the side panel while retaining their distinct presets and provider hints.
 - Build HTML and transcript LLM Markdown converters from one model configuration and generation path; preserve their separate prompts, input limits, and usage callbacks.
 - Share content-script message retries across extraction, seeking, and slide preparation while retaining operation-specific timeouts and reinjection policies.

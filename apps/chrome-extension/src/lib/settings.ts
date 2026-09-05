@@ -377,26 +377,25 @@ function normalizeChoice<Value extends string>(
   return choices.find((choice) => choice === normalized) ?? fallback;
 }
 
-function normalizeSettings(settings: Settings): Settings {
+type ChoiceSettings = Pick<
+  Settings,
+  | "requestMode"
+  | "firecrawlMode"
+  | "markdownMode"
+  | "preprocessMode"
+  | "youtubeMode"
+  | "transcriber"
+>;
+
+export function normalizeSettingChoices(
+  settings: Record<keyof ChoiceSettings, unknown>,
+): ChoiceSettings {
   return {
-    ...settings,
-    daemonPort: normalizeDaemonPort(settings.daemonPort),
-    summaryRuntime: normalizeSummaryRuntime(settings.summaryRuntime),
-    provider: normalizeProvider(settings.provider),
-    providerApiKeys: normalizeProviderMap(settings.providerApiKeys),
-    providerBaseUrls: normalizeProviderMap(settings.providerBaseUrls),
-    model: normalizeModel(settings.model),
-    length: normalizeLength(settings.length),
-    language: normalizeLanguage(settings.language),
-    promptOverride: normalizePromptOverride(settings.promptOverride),
-    hoverPrompt: normalizeHoverPrompt(settings.hoverPrompt),
-    autoCliOrder: normalizeAutoCliOrder(settings.autoCliOrder),
     requestMode: normalizeChoice(
       settings.requestMode,
       ["page", "url"],
       defaultSettings.requestMode,
     ),
-    slidesLayout: normalizeSlidesLayout(settings.slidesLayout),
     firecrawlMode: normalizeChoice(
       settings.firecrawlMode,
       ["off", "auto", "always"],
@@ -417,14 +416,33 @@ function normalizeSettings(settings: Settings): Settings {
       ["auto", "web", "apify", "yt-dlp", "no-auto"],
       defaultSettings.youtubeMode,
     ),
-    timeout: normalizeTimeout(settings.timeout),
-    retries: normalizeRetries(settings.retries),
-    maxOutputTokens: normalizeMaxOutputTokens(settings.maxOutputTokens),
     transcriber: normalizeChoice(
       settings.transcriber,
       ["whisper", "parakeet", "canary"],
       defaultSettings.transcriber,
     ),
+  };
+}
+
+function normalizeSettings(settings: Settings): Settings {
+  return {
+    ...settings,
+    ...normalizeSettingChoices(settings),
+    daemonPort: normalizeDaemonPort(settings.daemonPort),
+    summaryRuntime: normalizeSummaryRuntime(settings.summaryRuntime),
+    provider: normalizeProvider(settings.provider),
+    providerApiKeys: normalizeProviderMap(settings.providerApiKeys),
+    providerBaseUrls: normalizeProviderMap(settings.providerBaseUrls),
+    model: normalizeModel(settings.model),
+    length: normalizeLength(settings.length),
+    language: normalizeLanguage(settings.language),
+    promptOverride: normalizePromptOverride(settings.promptOverride),
+    hoverPrompt: normalizeHoverPrompt(settings.hoverPrompt),
+    autoCliOrder: normalizeAutoCliOrder(settings.autoCliOrder),
+    slidesLayout: normalizeSlidesLayout(settings.slidesLayout),
+    timeout: normalizeTimeout(settings.timeout),
+    retries: normalizeRetries(settings.retries),
+    maxOutputTokens: normalizeMaxOutputTokens(settings.maxOutputTokens),
     fontFamily: normalizeFontFamily(settings.fontFamily),
     maxChars: normalizeMaxChars(settings.maxChars),
     fontSize: normalizeFontSize(settings.fontSize),

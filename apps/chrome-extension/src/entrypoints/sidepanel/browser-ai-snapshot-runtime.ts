@@ -24,11 +24,12 @@ export function createBrowserAiSnapshotRuntime(options: {
       options.browserAi.cancel("summary");
       return;
     }
+    const browserAi = snapshot.browserAi;
     const runId = snapshot.run.id;
     const runUrl = snapshot.run.url;
     void options.browserAi
       .summarize({
-        input: snapshot.browserAi,
+        input: browserAi,
         context: snapshot.run.title
           ? `Summarize the page or media titled "${snapshot.run.title}".`
           : undefined,
@@ -63,7 +64,7 @@ export function createBrowserAiSnapshotRuntime(options: {
           buildBrowserAiSummaryMarkdown({
             title: snapshot.run.title,
             summary,
-            keyMoments: snapshot.browserAi.keyMoments,
+            keyMoments: browserAi.keyMoments,
           }),
         );
       });

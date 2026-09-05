@@ -65,7 +65,7 @@ export function createPanelCacheController(
 ): PanelCacheController {
   const { getSnapshot, sendCache, sendRequest } = options;
   const cacheByKey = new Map<string, PanelCachePayload>();
-  let syncTimer = 0;
+  let syncTimer: ReturnType<typeof globalThis.setTimeout> | 0 = 0;
   let requestCounter = 0;
   let pendingRequest: {
     requestId: string;

@@ -59,7 +59,7 @@ export function createSidepanelChatRuntime({
 }: {
   panelState: PanelState;
 
-  markdown: MarkdownIt;
+  markdown: InstanceType<typeof MarkdownIt>;
   mainEl: HTMLElement;
   renderEl: HTMLElement;
   chatContainerEl: HTMLElement;

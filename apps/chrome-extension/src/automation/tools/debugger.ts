@@ -20,10 +20,10 @@ export async function executeDebuggerTool(args: { action?: string; code?: string
   }
 
   try {
-    const result = await chrome.debugger.sendCommand({ tabId }, "Runtime.evaluate", {
+    const result = (await chrome.debugger.sendCommand({ tabId }, "Runtime.evaluate", {
       expression: args.code,
       returnByValue: true,
-    });
+    })) as { result?: { value?: unknown } } | undefined;
     const value = result?.result?.value ?? result?.result ?? null;
     const text =
       value == null ? "null" : typeof value === "string" ? value : JSON.stringify(value, null, 2);

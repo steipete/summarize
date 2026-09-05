@@ -1,6 +1,6 @@
 import { readPresetOrCustomValue, resolvePresetOrCustom } from "../../lib/combo";
 import type { createModelPresetsController } from "../../lib/model-presets";
-import type { DirectProvider, Settings } from "../../lib/settings";
+import { normalizeSettingChoices, type DirectProvider, type Settings } from "../../lib/settings";
 import type { ColorMode, ColorScheme } from "../../lib/theme";
 import type { BooleanSettingsState } from "./boolean-settings";
 
@@ -49,6 +49,7 @@ export function buildSavedOptionsSettings({
   return {
     token: elements.tokenEl.value || defaults.token,
     daemonPort: elements.daemonPortEl.value || defaults.daemonPort,
+    daemonHintDismissed: current.daemonHintDismissed,
     summaryRuntime: booleans.summaryRuntime,
     provider: elements.providerEl.value as DirectProvider,
     providerApiKeys: {
@@ -82,12 +83,14 @@ export function buildSavedOptionsSettings({
     autoCliFallback: booleans.autoCliFallback,
     autoCliOrder: elements.autoCliOrderEl.value || defaults.autoCliOrder,
     maxChars: Number(elements.maxCharsEl.value) || defaults.maxChars,
-    requestMode: elements.requestModeEl.value || defaults.requestMode,
-    firecrawlMode: elements.firecrawlModeEl.value || defaults.firecrawlMode,
-    markdownMode: elements.markdownModeEl.value || defaults.markdownMode,
-    preprocessMode: elements.preprocessModeEl.value || defaults.preprocessMode,
-    youtubeMode: elements.youtubeModeEl.value || defaults.youtubeMode,
-    transcriber: elements.transcriberEl.value || defaults.transcriber,
+    ...normalizeSettingChoices({
+      requestMode: elements.requestModeEl.value || defaults.requestMode,
+      firecrawlMode: elements.firecrawlModeEl.value || defaults.firecrawlMode,
+      markdownMode: elements.markdownModeEl.value || defaults.markdownMode,
+      preprocessMode: elements.preprocessModeEl.value || defaults.preprocessMode,
+      youtubeMode: elements.youtubeModeEl.value || defaults.youtubeMode,
+      transcriber: elements.transcriberEl.value || defaults.transcriber,
+    }),
     timeout: elements.timeoutEl.value || defaults.timeout,
     retries: (() => {
       const raw = elements.retriesEl.value.trim();
@@ -112,7 +115,7 @@ export function applyLoadedOptionsSettings({
 }: {
   settings: Settings;
   defaults: Settings;
-  languagePresets: string[];
+  languagePresets: readonly string[];
   elements: FormElements;
 }) {
   elements.tokenEl.value = settings.token;

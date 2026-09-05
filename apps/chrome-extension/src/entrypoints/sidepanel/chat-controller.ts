@@ -16,7 +16,7 @@ export type ChatControllerOptions = {
   inputEl: HTMLTextAreaElement;
   sendBtn: HTMLButtonElement;
   contextEl: HTMLDivElement;
-  markdown: MarkdownIt;
+  markdown: InstanceType<typeof MarkdownIt>;
   limits: ChatHistoryLimits;
   panelState: PanelState;
 
@@ -29,7 +29,7 @@ export class ChatController {
   private readonly inputEl: HTMLTextAreaElement;
   private readonly sendBtn: HTMLButtonElement;
   private readonly contextEl: HTMLDivElement;
-  private readonly markdown: MarkdownIt;
+  private readonly markdown: InstanceType<typeof MarkdownIt>;
   private readonly limits: ChatHistoryLimits;
   private readonly panelState: PanelState;
 
@@ -139,7 +139,7 @@ export class ChatController {
         ...lastMsg,
         content: [{ type: "text", text: content }],
       });
-      const msgEl = this.messagesEl.querySelector(`[data-id="${lastMsg.id}"]`);
+      const msgEl = this.messagesEl.querySelector<HTMLElement>(`[data-id="${lastMsg.id}"]`);
       if (msgEl) {
         if (content.trim()) {
           msgEl.innerHTML = this.markdown.render(this.linkifyTimestamps(content));

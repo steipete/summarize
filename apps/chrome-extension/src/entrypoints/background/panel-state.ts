@@ -31,30 +31,7 @@ type SessionLike = {
   };
 };
 
-type SettingsLike = {
-  token: string;
-  autoSummarize: boolean;
-  hoverSummaries: boolean;
-  chatEnabled: boolean;
-  automationEnabled: boolean;
-  slidesEnabled: boolean;
-  slidesParallel: boolean;
-  slidesOcrEnabled: boolean;
-  slidesLayout: "strip" | "gallery";
-  slideRuntime: "browser" | "daemon";
-  summaryRuntime: "direct" | "daemon";
-  provider: string;
-  providerApiKeys: Record<string, string | undefined>;
-  daemonAllowed?: boolean;
-  daemonManaged?: boolean;
-  daemonHintDismissed: boolean;
-  fontSize: number;
-  lineHeight: number;
-  model: string;
-  length: string;
-};
-
-export async function resolvePanelState({
+export async function resolvePanelState<Session extends SessionLike>({
   session,
   status,
   checkRecovery,
@@ -66,15 +43,15 @@ export async function resolvePanelState({
   urlsMatch,
   canSummarizeUrl,
 }: {
-  session: SessionLike;
+  session: Session;
   status: string;
   checkRecovery?: boolean;
-  loadSettings: () => Promise<SettingsLike>;
+  loadSettings: typeof import("../../lib/settings").loadSettings;
   getActiveTab: (windowId: number) => Promise<chrome.tabs.Tab | null>;
   daemonHealth: () => Promise<{ ok: boolean; error?: string }>;
   daemonPing: (token: string) => Promise<{ ok: boolean; error?: string }>;
   panelSessionStore: {
-    isPanelOpen: (session: SessionLike) => boolean;
+    isPanelOpen: (session: Session) => boolean;
     getCachedExtract: (tabId: number, url?: string | null) => CachedExtractLike | null;
   };
   urlsMatch: (a: string, b: string) => boolean;

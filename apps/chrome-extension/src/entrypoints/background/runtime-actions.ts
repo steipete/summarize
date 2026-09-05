@@ -201,10 +201,10 @@ export function createRuntimeActionsHandler({
           senderTabId: tabId,
           capability: msg.capability,
         });
-        if (guardError) {
+        if (guardError || typeof tabId !== "number") {
           safeSendResponse(sendResponse, {
             ok: false,
-            error: guardError,
+            error: guardError ?? "Missing sender tab",
           } satisfies NativeInputResponse);
           return;
         }
@@ -223,8 +223,8 @@ export function createRuntimeActionsHandler({
         armedTabs: artifactsArmedTabs,
         senderTabId: tabId,
       });
-      if (guardError) {
-        safeSendResponse(sendResponse, { ok: false, error: guardError });
+      if (guardError || typeof tabId !== "number") {
+        safeSendResponse(sendResponse, { ok: false, error: guardError ?? "Missing sender tab" });
         return;
       }
 

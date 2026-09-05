@@ -15,7 +15,7 @@ type SlidesSummaryControllerOptions = {
   getToken: () => Promise<string>;
 
   friendlyFetchError: (error: unknown, fallback: string) => string;
-  panelUrlsMatch: (left: string | null | undefined, right: string | null | undefined) => boolean;
+  panelUrlsMatch: (left: string, right: string) => boolean;
   getPanelState: () => PanelState;
   getUiState: () => UiState | null;
   getActiveTabUrl: () => string | null;

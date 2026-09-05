@@ -32,7 +32,7 @@ export async function readStoredSettings(): Promise<Record<string, unknown>> {
 
   const result = await new Promise<Record<string, unknown>>((resolve, reject) => {
     let settled = false;
-    const maybePromise = storage.get(storageKey, (value) => {
+    const maybePromise: unknown = storage.get(storageKey, (value) => {
       settled = true;
       resolve(value as Record<string, unknown>);
     });

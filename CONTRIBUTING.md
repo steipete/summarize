@@ -48,12 +48,15 @@ pnpm -s format
 Extension:
 
 ```bash
+pnpm -C apps/chrome-extension typecheck
 pnpm -C apps/chrome-extension build
 pnpm -C apps/chrome-extension test:chrome
 pnpm -C apps/chrome-extension test:firefox
 ```
 
 The supported automated browser path is `test:chrome`. Firefox uses a temporary-install smoke test because Playwright cannot reliably drive `moz-extension://` pages.
+
+The root `check` gate also type-checks the extension with bundler module resolution and WXT's generated browser declarations. Keep callback, settings, and message types tied to their owning modules so changes are checked across runtime boundaries.
 
 Build and run the Node 24 CLI test container, including `ffmpeg` and `yt-dlp`:
 

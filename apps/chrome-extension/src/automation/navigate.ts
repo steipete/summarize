@@ -21,7 +21,7 @@ export type SkillInfo = {
 };
 
 export type NavigateResult = {
-  finalUrl?: string;
+  finalUrl?: string | null;
   title?: string | null;
   tabId?: number;
   tabs?: TabInfo[];
@@ -36,7 +36,7 @@ async function waitForTabComplete(tabId: number, timeoutMs = 15_000): Promise<ch
       reject(new Error("Navigation timed out"));
     }, timeoutMs);
 
-    const onUpdated = (updatedTabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+    const onUpdated = (updatedTabId: number, changeInfo: chrome.tabs.OnUpdatedInfo) => {
       if (updatedTabId !== tabId) return;
       if (changeInfo.status !== "complete") return;
       void chrome.tabs.get(tabId).then(

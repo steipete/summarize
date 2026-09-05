@@ -244,7 +244,7 @@ const interactionRuntime = createSidepanelInteractionRuntime({
   typographyController,
   patchSettings,
   updateModelRowUI,
-  isCustomModelHidden: () => modelCustomEl.hidden,
+  isCustomModelHidden: () => Boolean(modelCustomEl.hidden),
   focusCustomModel: () => {
     modelCustomEl.focus();
   },

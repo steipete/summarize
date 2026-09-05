@@ -144,7 +144,6 @@ createOptionsTabs({
   },
 });
 
-let booleanSettings: ReturnType<typeof createBooleanSettingsRuntime> | null = null;
 let daemonCapability: ReturnType<typeof createDaemonCapabilityController> | null = null;
 let refreshRuntimeStatus = (_token = elements.tokenEl.value) => {};
 
@@ -160,7 +159,7 @@ const { saveNow, scheduleAutoSave } = createOptionsSaveRuntime({
         defaults: defaultSettings,
         elements,
         modelPresets,
-        booleans: booleanSettings?.getState() ?? defaultSettings,
+        booleans: booleanSettings.getState(),
         currentScheme,
         currentMode,
       }),
@@ -168,7 +167,7 @@ const { saveNow, scheduleAutoSave } = createOptionsSaveRuntime({
   },
 });
 
-booleanSettings = createBooleanSettingsRuntime({
+const booleanSettings = createBooleanSettingsRuntime({
   defaults: defaultSettings,
   roots: elements,
   scheduleAutoSave,
@@ -191,8 +190,8 @@ const { checkDaemonStatus, setDaemonStatus } = createDaemonStatusChecker({
   statusEl: elements.daemonStatusEl,
   getExtensionVersion: resolveExtensionVersion,
   isDaemonMode: () => {
-    const state = booleanSettings?.getState();
-    return state?.summaryRuntime === "daemon" || state?.slideRuntime === "daemon";
+    const state = booleanSettings.getState();
+    return state.summaryRuntime === "daemon" || state.slideRuntime === "daemon";
   },
 });
 

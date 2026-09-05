@@ -241,7 +241,7 @@ export function useSelect({ id, items, value, onValueChange }: UseSelectArgs) {
     getTriggerProps: () => ({
       id: `${id}-trigger`,
       type: "button" as const,
-      role: "combobox",
+      role: "combobox" as const,
       "aria-controls": `${id}-listbox`,
       "aria-expanded": open,
       "aria-haspopup": "listbox" as const,
@@ -265,7 +265,7 @@ export function useSelect({ id, items, value, onValueChange }: UseSelectArgs) {
     }),
     getListProps: () => ({
       id: `${id}-listbox`,
-      role: "listbox",
+      role: "listbox" as const,
       "aria-labelledby": `${id}-trigger`,
     }),
     getItemProps: ({ item }: { item: SelectItem }) => {
@@ -274,7 +274,7 @@ export function useSelect({ id, items, value, onValueChange }: UseSelectArgs) {
       return {
         id: `${id}-option-${index}`,
         type: "button" as const,
-        role: "option",
+        role: "option" as const,
         "aria-selected": selected,
         disabled: item.disabled,
         tabIndex: highlightedIndex === index ? 0 : -1,

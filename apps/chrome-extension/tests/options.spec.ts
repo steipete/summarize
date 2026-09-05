@@ -45,6 +45,16 @@ test("options checkbox controllers persist only their own setting", async ({ har
   }
 });
 
+test("options saves preserve a dismissed companion hint", async ({ harness }) => {
+  await seedSettings(harness, { daemonHintDismissed: true, autoSummarize: true });
+  const page = await openExtensionPage(harness, "options.html", "#tabs");
+  await expect(page.locator("html")).toHaveAttribute("data-settings-ready", "true");
+  await page.locator("#options-auto").setChecked(false, { force: true });
+  await expect
+    .poll(async () => await getSettings(harness))
+    .toMatchObject({ autoSummarize: false, daemonHintDismissed: true });
+});
+
 test("options pickers apply overlay selection", async ({ harness }) => {
   const page = await openExtensionPage(harness, "options.html", "#tabs");
   await page.click("#tab-ui");

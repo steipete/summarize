@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { extractYouTubeTranscriptInTab } from "../apps/chrome-extension/src/entrypoints/background/youtube-transcript";
+import {
+  extractYouTubeTranscriptInTab,
+  hasYouTubeCaptionTracksInTab,
+} from "../apps/chrome-extension/src/entrypoints/background/youtube-transcript";
 import { extractYouTubePageTranscript } from "../apps/chrome-extension/src/lib/youtube-page-transcript";
 
 type ExecuteScriptOptions = {
@@ -45,6 +48,19 @@ function installExecuteScriptStub() {
 }
 
 describe("chrome youtube transcript extraction", () => {
+  it.each([
+    { response: [], expected: false },
+    { response: [{}], expected: true },
+    { response: [{ result: { tracks: [] } }], expected: false },
+    { response: [{ result: { tracks: [{}] } }], expected: true },
+  ])("preserves caption availability for $response", async ({ response, expected }) => {
+    Object.defineProperty(globalThis, "chrome", {
+      configurable: true,
+      value: { scripting: { executeScript: async () => response } },
+    });
+    expect(await hasYouTubeCaptionTracksInTab(7)).toBe(expected);
+  });
+
   beforeEach(() => {
     installDocumentStub();
     installExecuteScriptStub();

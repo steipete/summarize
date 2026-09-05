@@ -287,10 +287,11 @@ export async function handlePanelChatHistoryRequest({
       }),
     });
     const rawText = await res.text();
-    let json: { ok?: boolean; messages?: Message[]; error?: string } | null = null;
+    type HistoryResponse = { ok?: boolean; messages?: Message[]; error?: string };
+    let json: HistoryResponse | null = null;
     if (rawText) {
       try {
-        json = JSON.parse(rawText) as typeof json;
+        json = JSON.parse(rawText) as HistoryResponse;
       } catch {
         json = null;
       }

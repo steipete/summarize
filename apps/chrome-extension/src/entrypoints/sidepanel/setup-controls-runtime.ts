@@ -21,22 +21,22 @@ export function createSetupControlsRuntime({
   patchSettings,
   setupEl,
 }: {
-  advancedSettingsBodyEl: HTMLDivElement;
+  advancedSettingsBodyEl: HTMLElement;
   advancedSettingsEl: HTMLDetailsElement;
   defaultModel: string;
-  drawerEl: HTMLDivElement;
+  drawerEl: HTMLElement;
   drawerToggleBtn: HTMLButtonElement;
   friendlyFetchError: (error: unknown, fallback: string) => string;
   generateToken: () => string;
   getStatusResetText: () => string;
   headerSetStatus: (text: string) => void;
-  loadSettings: () => Promise<{ token: string }>;
+  loadSettings: typeof import("../../lib/settings").loadSettings;
   modelCustomEl: HTMLInputElement;
   modelPresetEl: HTMLSelectElement;
   modelRefreshBtn: HTMLButtonElement;
   modelRowEl: HTMLDivElement;
   modelStatusEl: HTMLSpanElement;
-  patchSettings: (patch: Record<string, unknown>) => Promise<unknown>;
+  patchSettings: typeof import("../../lib/settings").patchSettings;
   setupEl: HTMLDivElement;
 }) {
   const modelPresetsController = createModelPresetsController({
