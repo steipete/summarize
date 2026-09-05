@@ -1,8 +1,8 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Writable } from "node:stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
   execFile: vi.fn(),
@@ -16,17 +16,6 @@ import {
   resolveLaunchctlDomains,
   resolveLaunchctlTargetUid,
 } from "../src/daemon/launchd.js";
-
-function collectStream(): { stream: Writable; getText: () => string } {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 describe("daemon/launchd domain resolution", () => {
   it("resolves target uid with sudo fallback for root", () => {

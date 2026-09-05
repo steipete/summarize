@@ -1,9 +1,9 @@
 import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 vi.mock("../packages/core/src/content/transcript/providers/youtube/yt-dlp.js", () => ({
   fetchMediaMetadataWithYtDlp: vi.fn(async () => null),
@@ -12,17 +12,6 @@ vi.mock("../packages/core/src/content/transcript/providers/youtube/yt-dlp.js", (
     return { text: "hello from ytdlp", provider: "cpp", error: null, notes: [] };
   }),
 }));
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 describe("cli YouTube auto transcript yt-dlp fallback", () => {
   it("falls back to yt-dlp when captions are unavailable", async () => {

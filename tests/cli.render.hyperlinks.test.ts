@@ -1,11 +1,11 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import type { Api } from "@earendil-works/pi-ai";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
 import { makeAssistantMessage } from "./helpers/pi-ai-mock.js";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 type MockModel = { provider: string; id: string; api: Api };
 
@@ -30,17 +30,6 @@ mocks.completeSimple.mockImplementation(async (model: MockModel) =>
     usage: { input: 1, output: 1, totalTokens: 2 },
   }),
 );
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 describe("cli markdown hyperlinks", () => {
   it("uses OSC-8 hyperlinks for markdown links on a TTY", async () => {

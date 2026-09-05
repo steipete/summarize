@@ -1,10 +1,10 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
 import { makeAssistantMessage, makeTextDeltaStream } from "./helpers/pi-ai-mock.js";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const TARGET_URL = "https://example.com";
 
@@ -13,17 +13,6 @@ const htmlResponse = (html: string, status = 200) =>
     status,
     headers: { "Content-Type": "text/html" },
   });
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 function requestUrl(input: RequestInfo | URL): string {
   return typeof input === "string" ? input : input instanceof URL ? input.href : input.url;

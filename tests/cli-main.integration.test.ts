@@ -1,20 +1,9 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { runCliMain } from "../src/cli-main.js";
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 async function run(argv: string[]) {
   const stdout = collectStream();

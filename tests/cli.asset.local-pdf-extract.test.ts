@@ -2,21 +2,10 @@ import type { ChildProcess } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import type { ExecFileFn } from "../src/markitdown.js";
 import { runCli } from "../src/run.js";
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
   streamSimple: vi.fn(),

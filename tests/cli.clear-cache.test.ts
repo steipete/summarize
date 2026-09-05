@@ -1,23 +1,15 @@
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
+import { discardStream as noopStream } from "./helpers/streams.js";
 
 const htmlResponse = (html: string, status = 200) =>
   new Response(html, {
     status,
     headers: { "Content-Type": "text/html" },
   });
-
-function noopStream(): Writable {
-  return new Writable({
-    write(_chunk, _encoding, callback) {
-      callback();
-    },
-  });
-}
 
 describe("--clear-cache", () => {
   it("clears the cache database and exits", async () => {

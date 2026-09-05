@@ -15,6 +15,7 @@
 
 ### Dependencies and maintenance
 
+- Centralize test output streams and browser-extension lifecycles while preserving isolated profiles, runtime-error checks, and scenario coverage.
 - Remove the sidepanel's redundant action/reducer/dispatch layer; use one state object with explicit lifecycle transitions while preserving navigation, chat, and slide restoration.
 - Make provider metadata the shared source for configuration and model parsing; remove duplicated provider inventories, native model constructors, client defaults, and request-option parsing.
 - Replace duplicated file/byte transcription orchestration with one source-aware runner, shared local/provider handling, and common decode retries while preserving lazy file uploads and full-input fallback.

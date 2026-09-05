@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { pathToFileURL } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const createLinkPreviewClient = vi.hoisted(() => vi.fn());
 const fetchLinkContent = vi.hoisted(() => vi.fn());
@@ -14,17 +14,6 @@ vi.mock("../src/content/index.js", () => ({
 }));
 
 import { runCli } from "../src/run.js";
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 describe("cli media file path and cache wiring", () => {
   beforeEach(() => {

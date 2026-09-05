@@ -2,11 +2,11 @@ import type { ChildProcess } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import type { ExecFileFn } from "../src/markitdown.js";
 import { runCli } from "../src/run.js";
 import { makeAssistantMessage, makeTextDeltaStream } from "./helpers/pi-ai-mock.js";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
   completeSimple: vi.fn(),
@@ -46,17 +46,6 @@ mocks.streamSimple.mockImplementation(() => {
   });
   throw error;
 });
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 const execFileMock: ExecFileFn = ((file, args, _options, callback) => {
   void file;

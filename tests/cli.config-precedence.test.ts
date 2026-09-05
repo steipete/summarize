@@ -1,11 +1,11 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import type { Api } from "@earendil-works/pi-ai";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
 import { makeAssistantMessage } from "./helpers/pi-ai-mock.js";
+import { captureStream, discardStream as noopStream } from "./helpers/streams.js";
 
 type MockModel = { provider: string; id: string; api: Api };
 
@@ -32,25 +32,6 @@ vi.mock("@earendil-works/pi-ai/compat", () => ({
   streamSimple: mocks.streamSimple,
   getModel: mocks.getModel,
 }));
-
-function noopStream(): Writable {
-  return new Writable({
-    write(_chunk, _encoding, callback) {
-      callback();
-    },
-  });
-}
-
-function captureStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 function resolveFetchUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;

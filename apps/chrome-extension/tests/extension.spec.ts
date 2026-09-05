@@ -3,7 +3,7 @@ import { createServer as createHttpServer } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { runDaemonServer } from "../../../src/daemon/server.js";
 import {
   ALWAYS_ON_CONTENT_SCRIPT_EXCLUDE_MATCHES,
@@ -34,19 +34,16 @@ import {
   startDaemonSummaryRun,
   waitForSlidesSnapshot,
 } from "./helpers/daemon-fixtures";
+import { test } from "./helpers/extension-fixtures";
 import {
   activateTabByUrl,
-  assertNoErrors,
   buildAgentStream,
   buildUiState,
-  closeExtension,
   getActiveTabId,
   getActiveTabUrl,
   getBackground,
-  getBrowserFromProject,
   getSettings,
   injectContentScript,
-  launchExtension,
   maybeBringToFront,
   openExtensionPage,
   seedSettings,
@@ -111,22 +108,17 @@ test("Chromium manifest grants visible-tab capture and keeps companion access op
 });
 
 test("fresh Chromium install has no optional companion or automation grants", async ({
-  browserName: _browserName,
-}, testInfo) => {
-  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
-  try {
-    const background = await getBackground(harness);
-    const grants = await background.evaluate(async () => {
-      return {
-        nativeMessaging: await chrome.permissions.contains({ permissions: ["nativeMessaging"] }),
-        userScripts: await chrome.permissions.contains({ permissions: ["userScripts"] }),
-        debugger: await chrome.permissions.contains({ permissions: ["debugger"] }),
-      };
-    });
-    expect(grants).toEqual({ nativeMessaging: false, userScripts: false, debugger: false });
-  } finally {
-    await closeExtension(harness.context, harness.userDataDir);
-  }
+  harness,
+}) => {
+  const background = await getBackground(harness);
+  const grants = await background.evaluate(async () => {
+    return {
+      nativeMessaging: await chrome.permissions.contains({ permissions: ["nativeMessaging"] }),
+      userScripts: await chrome.permissions.contains({ permissions: ["userScripts"] }),
+      debugger: await chrome.permissions.contains({ permissions: ["debugger"] }),
+    };
+  });
+  expect(grants).toEqual({ nativeMessaging: false, userScripts: false, debugger: false });
 });
 
 test("Chromium summary manifest keeps User Scripts optional and omits debugger", () => {
@@ -148,452 +140,388 @@ test("Chromium summary manifest keeps User Scripts optional and omits debugger",
 });
 
 test("sidepanel shows a ready state instead of going blank when switching tabs manually", async ({
-  browserName: _browserName,
-}, testInfo) => {
-  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+  harness,
+}) => {
+  await seedSettings(harness, {
+    token: "test-token",
+    autoSummarize: false,
+    slidesEnabled: false,
+  });
+  const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+  await waitForPanelPort(page);
 
-  try {
-    await seedSettings(harness, {
-      token: "test-token",
-      autoSummarize: false,
-      slidesEnabled: false,
+  const sseBody = (text: string) =>
+    ["event: chunk", `data: ${JSON.stringify({ text })}`, "", "event: done", "data: {}", ""].join(
+      "\n",
+    );
+  await page.route("http://127.0.0.1:8787/v1/summarize/run-a/events", async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+      body: sseBody("Summary A"),
     });
-    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
-    await waitForPanelPort(page);
+  });
 
-    const sseBody = (text: string) =>
-      ["event: chunk", `data: ${JSON.stringify({ text })}`, "", "event: done", "data: {}", ""].join(
-        "\n",
-      );
-    await page.route("http://127.0.0.1:8787/v1/summarize/run-a/events", async (route) => {
-      await route.fulfill({
-        status: 200,
-        headers: { "content-type": "text/event-stream" },
-        body: sseBody("Summary A"),
-      });
-    });
+  await sendBgMessage(harness, {
+    type: "ui:state",
+    state: buildUiState({
+      tab: { id: 1, url: "https://www.youtube.com/watch?v=alpha123", title: "Alpha Tab" },
+      settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
+      status: "",
+    }),
+  });
+  await sendBgMessage(harness, {
+    type: "run:start",
+    run: {
+      id: "run-a",
+      url: "https://www.youtube.com/watch?v=alpha123",
+      title: "Alpha Tab",
+      model: "auto",
+      reason: "manual",
+    },
+  });
+  await expect(page.locator("#render")).toContainText("Summary A");
 
-    await sendBgMessage(harness, {
-      type: "ui:state",
-      state: buildUiState({
-        tab: { id: 1, url: "https://www.youtube.com/watch?v=alpha123", title: "Alpha Tab" },
-        settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
-        status: "",
-      }),
-    });
-    await sendBgMessage(harness, {
-      type: "run:start",
-      run: {
-        id: "run-a",
-        url: "https://www.youtube.com/watch?v=alpha123",
-        title: "Alpha Tab",
-        model: "auto",
-        reason: "manual",
-      },
-    });
-    await expect(page.locator("#render")).toContainText("Summary A");
+  await sendBgMessage(harness, {
+    type: "ui:state",
+    state: buildUiState({
+      tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
+      settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
+      status: "",
+    }),
+  });
 
-    await sendBgMessage(harness, {
-      type: "ui:state",
-      state: buildUiState({
-        tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
-        settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
-        status: "",
-      }),
-    });
-
-    await expect(page.locator("#render")).toContainText("Click Summarize to start.");
-    await expect(page.locator("#render")).toContainText("Bravo Tab");
-    await expect(page.locator("#render")).not.toContainText("Summary A");
-
-    assertNoErrors(harness);
-  } finally {
-    await closeExtension(harness.context, harness.userDataDir);
-  }
+  await expect(page.locator("#render")).toContainText("Click Summarize to start.");
+  await expect(page.locator("#render")).toContainText("Bravo Tab");
+  await expect(page.locator("#render")).not.toContainText("Summary A");
 });
 
 test("sidepanel shows a loading state instead of going blank while waiting for auto summarize", async ({
-  browserName: _browserName,
-}, testInfo) => {
-  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+  harness,
+}) => {
+  await seedSettings(harness, { token: "test-token", autoSummarize: true, slidesEnabled: false });
+  const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+  await waitForPanelPort(page);
 
-  try {
-    await seedSettings(harness, { token: "test-token", autoSummarize: true, slidesEnabled: false });
-    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
-    await waitForPanelPort(page);
+  await sendBgMessage(harness, {
+    type: "ui:state",
+    state: buildUiState({
+      tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
+      settings: { autoSummarize: true, tokenPresent: true, slidesEnabled: false },
+      status: "",
+    }),
+  });
 
-    await sendBgMessage(harness, {
-      type: "ui:state",
-      state: buildUiState({
-        tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
-        settings: { autoSummarize: true, tokenPresent: true, slidesEnabled: false },
-        status: "",
-      }),
-    });
-
-    await expect(page.locator("#render")).toContainText("Preparing summary");
-    await expect(page.locator(".renderEmpty__label")).toHaveText("Loading");
-
-    assertNoErrors(harness);
-  } finally {
-    await closeExtension(harness.context, harness.userDataDir);
-  }
+  await expect(page.locator("#render")).toContainText("Preparing summary");
+  await expect(page.locator(".renderEmpty__label")).toHaveText("Loading");
 });
 
 test("sidepanel drops an active summary stream when the active tab changes before content arrives", async ({
-  browserName: _browserName,
-}, testInfo) => {
-  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+  harness,
+}) => {
+  await seedSettings(harness, {
+    token: "test-token",
+    autoSummarize: false,
+    slidesEnabled: false,
+  });
+  const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+  await waitForPanelPort(page);
 
-  try {
-    await seedSettings(harness, {
-      token: "test-token",
-      autoSummarize: false,
-      slidesEnabled: false,
+  const delay = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
+  const sseBody = (text: string) =>
+    ["event: chunk", `data: ${JSON.stringify({ text })}`, "", "event: done", "data: {}", ""].join(
+      "\n",
+    );
+  await page.route("http://127.0.0.1:8787/v1/summarize/run-a/events", async (route) => {
+    await delay(250);
+    await route.fulfill({
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+      body: sseBody("Stale Summary A"),
     });
-    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
-    await waitForPanelPort(page);
+  });
 
-    const delay = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
-    const sseBody = (text: string) =>
-      ["event: chunk", `data: ${JSON.stringify({ text })}`, "", "event: done", "data: {}", ""].join(
-        "\n",
-      );
-    await page.route("http://127.0.0.1:8787/v1/summarize/run-a/events", async (route) => {
-      await delay(250);
-      await route.fulfill({
-        status: 200,
-        headers: { "content-type": "text/event-stream" },
-        body: sseBody("Stale Summary A"),
-      });
-    });
+  await sendBgMessage(harness, {
+    type: "ui:state",
+    state: buildUiState({
+      tab: { id: 1, url: "https://www.youtube.com/watch?v=alpha123", title: "Alpha Tab" },
+      settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
+      status: "",
+    }),
+  });
+  await sendBgMessage(harness, {
+    type: "run:start",
+    run: {
+      id: "run-a",
+      url: "https://www.youtube.com/watch?v=alpha123",
+      title: "Alpha Tab",
+      model: "auto",
+      reason: "manual",
+    },
+  });
 
-    await sendBgMessage(harness, {
-      type: "ui:state",
-      state: buildUiState({
-        tab: { id: 1, url: "https://www.youtube.com/watch?v=alpha123", title: "Alpha Tab" },
-        settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
-        status: "",
-      }),
-    });
-    await sendBgMessage(harness, {
-      type: "run:start",
-      run: {
-        id: "run-a",
-        url: "https://www.youtube.com/watch?v=alpha123",
-        title: "Alpha Tab",
-        model: "auto",
-        reason: "manual",
-      },
-    });
+  await sendBgMessage(harness, {
+    type: "ui:state",
+    state: buildUiState({
+      tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
+      settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
+      status: "",
+    }),
+  });
 
-    await sendBgMessage(harness, {
-      type: "ui:state",
-      state: buildUiState({
-        tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
-        settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
-        status: "",
-      }),
-    });
-
-    await expect(page.locator("#render")).toContainText("Click Summarize to start.");
-    await page.waitForTimeout(350);
-    await expect(page.locator("#title")).toHaveText("Bravo Tab");
-    await expect(page.locator("#render")).not.toContainText("Stale Summary A");
-
-    assertNoErrors(harness);
-  } finally {
-    await closeExtension(harness.context, harness.userDataDir);
-  }
+  await expect(page.locator("#render")).toContainText("Click Summarize to start.");
+  await page.waitForTimeout(350);
+  await expect(page.locator("#title")).toHaveText("Bravo Tab");
+  await expect(page.locator("#render")).not.toContainText("Stale Summary A");
 });
 
 test("sidepanel starts a queued pending run after aborting a previous tab stream", async ({
-  browserName: _browserName,
-}, testInfo) => {
-  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+  harness,
+}) => {
+  await seedSettings(harness, {
+    token: "test-token",
+    autoSummarize: false,
+    slidesEnabled: false,
+  });
+  const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+  await waitForPanelPort(page);
 
-  try {
-    await seedSettings(harness, {
-      token: "test-token",
-      autoSummarize: false,
-      slidesEnabled: false,
+  const delay = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
+  const sseBody = (text: string) =>
+    ["event: chunk", `data: ${JSON.stringify({ text })}`, "", "event: done", "data: {}", ""].join(
+      "\n",
+    );
+  await page.route("http://127.0.0.1:8787/v1/summarize/run-a/events", async (route) => {
+    await delay(500);
+    await route.fulfill({
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+      body: sseBody("Stale Summary A"),
     });
-    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
-    await waitForPanelPort(page);
+  });
+  await page.route("http://127.0.0.1:8787/v1/summarize/run-b/events", async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+      body: sseBody("Summary B"),
+    });
+  });
 
-    const delay = async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms));
-    const sseBody = (text: string) =>
-      ["event: chunk", `data: ${JSON.stringify({ text })}`, "", "event: done", "data: {}", ""].join(
-        "\n",
-      );
-    await page.route("http://127.0.0.1:8787/v1/summarize/run-a/events", async (route) => {
-      await delay(500);
-      await route.fulfill({
-        status: 200,
-        headers: { "content-type": "text/event-stream" },
-        body: sseBody("Stale Summary A"),
-      });
-    });
-    await page.route("http://127.0.0.1:8787/v1/summarize/run-b/events", async (route) => {
-      await route.fulfill({
-        status: 200,
-        headers: { "content-type": "text/event-stream" },
-        body: sseBody("Summary B"),
-      });
-    });
+  const tabAState = buildUiState({
+    tab: { id: 1, url: "https://www.youtube.com/watch?v=alpha123", title: "Alpha Tab" },
+    settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
+    status: "",
+  });
+  const tabBState = buildUiState({
+    tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
+    settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
+    status: "",
+  });
 
-    const tabAState = buildUiState({
-      tab: { id: 1, url: "https://www.youtube.com/watch?v=alpha123", title: "Alpha Tab" },
-      settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
-      status: "",
-    });
-    const tabBState = buildUiState({
-      tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
-      settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
-      status: "",
-    });
+  await sendBgMessage(harness, { type: "ui:state", state: tabAState });
+  await sendBgMessage(harness, {
+    type: "run:start",
+    run: {
+      id: "run-a",
+      url: "https://www.youtube.com/watch?v=alpha123",
+      title: "Alpha Tab",
+      model: "auto",
+      reason: "manual",
+    },
+  });
+  await page.waitForTimeout(50);
+  await sendBgMessage(harness, {
+    type: "run:start",
+    run: {
+      id: "run-b",
+      url: "https://www.youtube.com/watch?v=bravo456",
+      title: "Bravo Tab",
+      model: "auto",
+      reason: "manual",
+    },
+  });
 
-    await sendBgMessage(harness, { type: "ui:state", state: tabAState });
-    await sendBgMessage(harness, {
-      type: "run:start",
-      run: {
-        id: "run-a",
-        url: "https://www.youtube.com/watch?v=alpha123",
-        title: "Alpha Tab",
-        model: "auto",
-        reason: "manual",
-      },
-    });
-    await page.waitForTimeout(50);
-    await sendBgMessage(harness, {
-      type: "run:start",
-      run: {
-        id: "run-b",
-        url: "https://www.youtube.com/watch?v=bravo456",
-        title: "Bravo Tab",
-        model: "auto",
-        reason: "manual",
-      },
-    });
+  await sendBgMessage(harness, { type: "ui:state", state: tabBState });
 
-    await sendBgMessage(harness, { type: "ui:state", state: tabBState });
-
-    await expect(page.locator("#title")).toHaveText("Bravo Tab");
-    await expect(page.locator("#render")).toContainText("Summary B");
-    await expect(page.locator("#render")).not.toContainText("Stale Summary A");
-
-    assertNoErrors(harness);
-  } finally {
-    await closeExtension(harness.context, harness.userDataDir);
-  }
+  await expect(page.locator("#title")).toHaveText("Bravo Tab");
+  await expect(page.locator("#render")).toContainText("Summary B");
+  await expect(page.locator("#render")).not.toContainText("Stale Summary A");
 });
 
 test("sidepanel resumes a pending summary run when returning to the original tab", async ({
-  browserName: _browserName,
-}, testInfo) => {
-  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+  harness,
+}) => {
+  await seedSettings(harness, {
+    token: "test-token",
+    autoSummarize: false,
+    slidesEnabled: false,
+  });
+  const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+  await waitForPanelPort(page);
 
-  try {
-    await seedSettings(harness, {
-      token: "test-token",
-      autoSummarize: false,
-      slidesEnabled: false,
+  const sseBody = [
+    "event: chunk",
+    `data: ${JSON.stringify({ text: "Summary A" })}`,
+    "",
+    "event: done",
+    "data: {}",
+    "",
+  ].join("\n");
+  await page.route("http://127.0.0.1:8787/v1/summarize/run-a/events", async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+      body: sseBody,
     });
-    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
-    await waitForPanelPort(page);
+  });
 
-    const sseBody = [
-      "event: chunk",
-      `data: ${JSON.stringify({ text: "Summary A" })}`,
-      "",
-      "event: done",
-      "data: {}",
-      "",
-    ].join("\n");
-    await page.route("http://127.0.0.1:8787/v1/summarize/run-a/events", async (route) => {
-      await route.fulfill({
-        status: 200,
-        headers: { "content-type": "text/event-stream" },
-        body: sseBody,
-      });
-    });
+  const tabAState = buildUiState({
+    tab: { id: 1, url: "https://www.youtube.com/watch?v=alpha123", title: "Alpha Tab" },
+    settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
+    status: "",
+  });
+  const tabBState = buildUiState({
+    tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
+    settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
+    status: "",
+  });
 
-    const tabAState = buildUiState({
-      tab: { id: 1, url: "https://www.youtube.com/watch?v=alpha123", title: "Alpha Tab" },
-      settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
-      status: "",
-    });
-    const tabBState = buildUiState({
-      tab: { id: 2, url: "https://www.youtube.com/watch?v=bravo456", title: "Bravo Tab" },
-      settings: { autoSummarize: false, tokenPresent: true, slidesEnabled: false },
-      status: "",
-    });
+  await sendBgMessage(harness, { type: "ui:state", state: tabAState });
+  await sendBgMessage(harness, { type: "ui:state", state: tabBState });
+  await sendBgMessage(harness, {
+    type: "run:start",
+    run: {
+      id: "run-a",
+      url: "https://www.youtube.com/watch?v=alpha123",
+      title: "Alpha Tab",
+      model: "auto",
+      reason: "manual",
+    },
+  });
 
-    await sendBgMessage(harness, { type: "ui:state", state: tabAState });
-    await sendBgMessage(harness, { type: "ui:state", state: tabBState });
-    await sendBgMessage(harness, {
-      type: "run:start",
-      run: {
-        id: "run-a",
-        url: "https://www.youtube.com/watch?v=alpha123",
-        title: "Alpha Tab",
-        model: "auto",
-        reason: "manual",
-      },
-    });
+  await expect(page.locator("#render")).toContainText("Click Summarize to start.");
+  await expect(page.locator("#render")).toContainText("Bravo Tab");
+  await expect(page.locator("#render")).not.toContainText("Summary A");
 
-    await expect(page.locator("#render")).toContainText("Click Summarize to start.");
-    await expect(page.locator("#render")).toContainText("Bravo Tab");
-    await expect(page.locator("#render")).not.toContainText("Summary A");
-
-    await sendBgMessage(harness, { type: "ui:state", state: tabAState });
-    await expect(page.locator("#render")).toContainText("Summary A");
-
-    assertNoErrors(harness);
-  } finally {
-    await closeExtension(harness.context, harness.userDataDir);
-  }
+  await sendBgMessage(harness, { type: "ui:state", state: tabAState });
+  await expect(page.locator("#render")).toContainText("Summary A");
 });
 
-test("sidepanel switches between page, video, and slides modes", async ({
-  browserName: _browserName,
-}, testInfo) => {
-  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
+test("sidepanel switches between page, video, and slides modes", async ({ harness }) => {
+  await seedSettings(harness, {
+    token: "test-token",
+    autoSummarize: false,
+    slidesEnabled: false,
+    slidesLayout: "gallery",
+    slidesOcrEnabled: true,
+  });
+  const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+  await waitForPanelPort(page);
+  await page.evaluate(() => {
+    const global = window as typeof globalThis & {
+      __summarizePanelPort?: { disconnect?: () => void } | undefined;
+    };
+    global.__summarizePanelPort?.disconnect?.();
+    global.__summarizePanelPort = undefined;
+  });
 
-  try {
-    await seedSettings(harness, {
-      token: "test-token",
+  await page.route("http://127.0.0.1:8787/v1/tools", async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ok: true,
+        tools: {
+          ytDlp: { available: true },
+          ffmpeg: { available: true },
+          tesseract: { available: true },
+        },
+      }),
+    });
+  });
+
+  const sseBody = (text: string) =>
+    ["event: chunk", `data: ${JSON.stringify({ text })}`, "", "event: done", "data: {}", ""].join(
+      "\n",
+    );
+  await page.route("http://127.0.0.1:8787/v1/summarize/**/events", async (route) => {
+    const url = route.request().url();
+    const match = url.match(/summarize\/([^/]+)\/events/);
+    const runId = match ? (match[1] ?? "") : "";
+    const text =
+      runId === "run-page"
+        ? "Page summary"
+        : runId === "run-video"
+          ? "Video summary"
+          : runId === "run-slides"
+            ? "Slides summary"
+            : "Back summary";
+    await route.fulfill({
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+      body: sseBody(text),
+    });
+  });
+  const placeholderPng = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO3kq0cAAAAASUVORK5CYII=",
+    "base64",
+  );
+  await page.route("http://127.0.0.1:8787/v1/slides/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "image/png",
+        "x-summarize-slide-ready": "1",
+      },
+      body: placeholderPng,
+    });
+  });
+
+  const uiState = buildUiState({
+    tab: { id: 1, url: "https://example.com/video", title: "Example Video" },
+    media: { hasVideo: true, hasAudio: true, hasCaptions: false },
+    stats: { pageWords: 120, videoDurationSeconds: 120 },
+    settings: {
       autoSummarize: false,
       slidesEnabled: false,
+      slidesParallel: true,
       slidesLayout: "gallery",
       slidesOcrEnabled: true,
-    });
-    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
-    await waitForPanelPort(page);
-    await page.evaluate(() => {
-      const global = window as typeof globalThis & {
-        __summarizePanelPort?: { disconnect?: () => void } | undefined;
-      };
-      global.__summarizePanelPort?.disconnect?.();
-      global.__summarizePanelPort = undefined;
-    });
+      tokenPresent: true,
+    },
+    status: "",
+  });
+  const summarizeButton = page.locator(".summarizeButton");
+  await expect(summarizeButton).toBeVisible();
 
-    await page.route("http://127.0.0.1:8787/v1/tools", async (route) => {
-      await route.fulfill({
-        status: 200,
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          ok: true,
-          tools: {
-            ytDlp: { available: true },
-            ffmpeg: { available: true },
-            tesseract: { available: true },
-          },
-        }),
-      });
-    });
-
-    const sseBody = (text: string) =>
-      ["event: chunk", `data: ${JSON.stringify({ text })}`, "", "event: done", "data: {}", ""].join(
-        "\n",
+  await page.waitForFunction(
+    () => {
+      const hooks = (
+        window as typeof globalThis & {
+          __summarizeTestHooks?: {
+            setSummarizeMode?: unknown;
+            applyUiState?: unknown;
+          };
+        }
+      ).__summarizeTestHooks;
+      return (
+        typeof hooks?.setSummarizeMode === "function" && typeof hooks?.applyUiState === "function"
       );
-    await page.route("http://127.0.0.1:8787/v1/summarize/**/events", async (route) => {
-      const url = route.request().url();
-      const match = url.match(/summarize\/([^/]+)\/events/);
-      const runId = match ? (match[1] ?? "") : "";
-      const text =
-        runId === "run-page"
-          ? "Page summary"
-          : runId === "run-video"
-            ? "Video summary"
-            : runId === "run-slides"
-              ? "Slides summary"
-              : "Back summary";
-      await route.fulfill({
-        status: 200,
-        headers: { "content-type": "text/event-stream" },
-        body: sseBody(text),
-      });
-    });
-    const placeholderPng = Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO3kq0cAAAAASUVORK5CYII=",
-      "base64",
-    );
-    await page.route("http://127.0.0.1:8787/v1/slides/**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        headers: {
-          "content-type": "image/png",
-          "x-summarize-slide-ready": "1",
-        },
-        body: placeholderPng,
-      });
-    });
+    },
+    null,
+    { timeout: 5_000 },
+  );
 
-    const uiState = buildUiState({
-      tab: { id: 1, url: "https://example.com/video", title: "Example Video" },
-      media: { hasVideo: true, hasAudio: true, hasCaptions: false },
-      stats: { pageWords: 120, videoDurationSeconds: 120 },
-      settings: {
-        autoSummarize: false,
-        slidesEnabled: false,
-        slidesParallel: true,
-        slidesLayout: "gallery",
-        slidesOcrEnabled: true,
-        tokenPresent: true,
-      },
-      status: "",
-    });
-    const summarizeButton = page.locator(".summarizeButton");
-    await expect(summarizeButton).toBeVisible();
-
-    await page.waitForFunction(
-      () => {
+  const setSummarizeMode = async (mode: "page" | "video", slides: boolean) => {
+    await page.evaluate(
+      async (payload) => {
         const hooks = (
           window as typeof globalThis & {
             __summarizeTestHooks?: {
-              setSummarizeMode?: unknown;
-              applyUiState?: unknown;
-            };
-          }
-        ).__summarizeTestHooks;
-        return (
-          typeof hooks?.setSummarizeMode === "function" && typeof hooks?.applyUiState === "function"
-        );
-      },
-      null,
-      { timeout: 5_000 },
-    );
-
-    const setSummarizeMode = async (mode: "page" | "video", slides: boolean) => {
-      await page.evaluate(
-        async (payload) => {
-          const hooks = (
-            window as typeof globalThis & {
-              __summarizeTestHooks?: {
-                setSummarizeMode?: (payload: {
-                  mode: "page" | "video";
-                  slides: boolean;
-                }) => Promise<void>;
-                getSummarizeMode?: () => {
-                  mode: "page" | "video";
-                  slides: boolean;
-                  mediaAvailable: boolean;
-                };
-              };
-            }
-          ).__summarizeTestHooks;
-          await hooks?.setSummarizeMode?.(payload);
-        },
-        { mode, slides },
-      );
-    };
-
-    const getSummarizeMode = async () =>
-      await page.evaluate(() => {
-        const hooks = (
-          window as typeof globalThis & {
-            __summarizeTestHooks?: {
+              setSummarizeMode?: (payload: {
+                mode: "page" | "video";
+                slides: boolean;
+              }) => Promise<void>;
               getSummarizeMode?: () => {
                 mode: "page" | "video";
                 slides: boolean;
@@ -602,143 +530,147 @@ test("sidepanel switches between page, video, and slides modes", async ({
             };
           }
         ).__summarizeTestHooks;
-        return hooks?.getSummarizeMode?.() ?? null;
-      });
-
-    const expectSummarizeMode = async (mode: "page" | "video", slides: boolean) => {
-      await expect
-        .poll(async () => {
-          const current = await getSummarizeMode();
-          return current ? { mode: current.mode, slides: current.slides } : null;
-        })
-        .toEqual({ mode, slides });
-    };
-
-    const applyUiState = async (state: UiState) => {
-      await page.evaluate((payload) => {
-        const hooks = (
-          window as typeof globalThis & {
-            __summarizeTestHooks?: { applyUiState?: (state: UiState) => void };
-          }
-        ).__summarizeTestHooks;
-        hooks?.applyUiState?.(payload);
-      }, state);
-    };
-
-    const ensureMediaAvailable = async (slidesEnabled: boolean) => {
-      const state = buildUiState({
-        ...uiState,
-        settings: { ...uiState.settings, slidesEnabled },
-      });
-      await applyUiState(state);
-      await expect.poll(async () => (await getSummarizeMode())?.mediaAvailable ?? false).toBe(true);
-    };
-
-    await ensureMediaAvailable(false);
-    await expect(summarizeButton).toHaveAttribute("aria-label", /Page(?: · 120 words)?/);
-
-    await setSummarizeMode("page", false);
-    await expectSummarizeMode("page", false);
-    await expect(summarizeButton).toHaveAttribute("aria-label", /Page/);
-    await expect(
-      page.locator("img.slideStrip__thumbImage, img.slideInline__thumbImage"),
-    ).toHaveCount(0);
-
-    await ensureMediaAvailable(false);
-    await setSummarizeMode("video", false);
-    await expectSummarizeMode("video", false);
-    await expect(summarizeButton).toHaveAttribute("aria-label", /Video/);
-    await expect(
-      page.locator("img.slideStrip__thumbImage, img.slideInline__thumbImage"),
-    ).toHaveCount(0);
-
-    await ensureMediaAvailable(true);
-    await setSummarizeMode("video", true);
-    await expectSummarizeMode("video", true);
-    await expect.poll(async () => (await getSummarizeMode())?.slides ?? false).toBe(true);
-    await expect(summarizeButton).toHaveAttribute("aria-label", /Slides/);
-
-    await ensureMediaAvailable(false);
-    await setSummarizeMode("page", false);
-    await expectSummarizeMode("page", false);
-    await expect(summarizeButton).toHaveAttribute("aria-label", /Page/);
-    await sendBgMessage(harness, {
-      type: "run:start",
-      run: {
-        id: "run-back",
-        url: "https://example.com/video",
-        title: "Example Video",
-        model: "auto",
-        reason: "manual",
+        await hooks?.setSummarizeMode?.(payload);
       },
-    });
-    await expect(
-      page.locator("img.slideStrip__thumbImage, img.slideInline__thumbImage"),
-    ).toHaveCount(0);
+      { mode, slides },
+    );
+  };
 
-    assertNoErrors(harness);
-  } finally {
-    await closeExtension(harness.context, harness.userDataDir);
-  }
+  const getSummarizeMode = async () =>
+    await page.evaluate(() => {
+      const hooks = (
+        window as typeof globalThis & {
+          __summarizeTestHooks?: {
+            getSummarizeMode?: () => {
+              mode: "page" | "video";
+              slides: boolean;
+              mediaAvailable: boolean;
+            };
+          };
+        }
+      ).__summarizeTestHooks;
+      return hooks?.getSummarizeMode?.() ?? null;
+    });
+
+  const expectSummarizeMode = async (mode: "page" | "video", slides: boolean) => {
+    await expect
+      .poll(async () => {
+        const current = await getSummarizeMode();
+        return current ? { mode: current.mode, slides: current.slides } : null;
+      })
+      .toEqual({ mode, slides });
+  };
+
+  const applyUiState = async (state: UiState) => {
+    await page.evaluate((payload) => {
+      const hooks = (
+        window as typeof globalThis & {
+          __summarizeTestHooks?: { applyUiState?: (state: UiState) => void };
+        }
+      ).__summarizeTestHooks;
+      hooks?.applyUiState?.(payload);
+    }, state);
+  };
+
+  const ensureMediaAvailable = async (slidesEnabled: boolean) => {
+    const state = buildUiState({
+      ...uiState,
+      settings: { ...uiState.settings, slidesEnabled },
+    });
+    await applyUiState(state);
+    await expect.poll(async () => (await getSummarizeMode())?.mediaAvailable ?? false).toBe(true);
+  };
+
+  await ensureMediaAvailable(false);
+  await expect(summarizeButton).toHaveAttribute("aria-label", /Page(?: · 120 words)?/);
+
+  await setSummarizeMode("page", false);
+  await expectSummarizeMode("page", false);
+  await expect(summarizeButton).toHaveAttribute("aria-label", /Page/);
+  await expect(page.locator("img.slideStrip__thumbImage, img.slideInline__thumbImage")).toHaveCount(
+    0,
+  );
+
+  await ensureMediaAvailable(false);
+  await setSummarizeMode("video", false);
+  await expectSummarizeMode("video", false);
+  await expect(summarizeButton).toHaveAttribute("aria-label", /Video/);
+  await expect(page.locator("img.slideStrip__thumbImage, img.slideInline__thumbImage")).toHaveCount(
+    0,
+  );
+
+  await ensureMediaAvailable(true);
+  await setSummarizeMode("video", true);
+  await expectSummarizeMode("video", true);
+  await expect.poll(async () => (await getSummarizeMode())?.slides ?? false).toBe(true);
+  await expect(summarizeButton).toHaveAttribute("aria-label", /Slides/);
+
+  await ensureMediaAvailable(false);
+  await setSummarizeMode("page", false);
+  await expectSummarizeMode("page", false);
+  await expect(summarizeButton).toHaveAttribute("aria-label", /Page/);
+  await sendBgMessage(harness, {
+    type: "run:start",
+    run: {
+      id: "run-back",
+      url: "https://example.com/video",
+      title: "Example Video",
+      model: "auto",
+      reason: "manual",
+    },
+  });
+  await expect(page.locator("img.slideStrip__thumbImage, img.slideInline__thumbImage")).toHaveCount(
+    0,
+  );
 });
 
-test("sidepanel auto summarize toggle stays inline", async ({
-  browserName: _browserName,
-}, testInfo) => {
-  const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
-
-  try {
-    await seedSettings(harness, { token: "test-token" });
-    await harness.context.route("http://127.0.0.1:8787/v1/models", async (route) => {
-      await route.fulfill({
-        status: 200,
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          ok: true,
-          options: [],
-          providers: {},
-          localModelsSource: null,
-        }),
-      });
+test("sidepanel auto summarize toggle stays inline", async ({ harness }) => {
+  await seedSettings(harness, { token: "test-token" });
+  await harness.context.route("http://127.0.0.1:8787/v1/models", async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ok: true,
+        options: [],
+        providers: {},
+        localModelsSource: null,
+      }),
     });
-    const page = await openExtensionPage(harness, "sidepanel.html", "#title");
-    await page.click("#drawerToggle");
-    await expect(page.locator("#drawer")).toBeVisible();
-    await page.click("#advancedSettings > summary");
-    await expect(page.locator("#advancedSettings")).toHaveJSProperty("open", true);
+  });
+  const page = await openExtensionPage(harness, "sidepanel.html", "#title");
+  await page.click("#drawerToggle");
+  await expect(page.locator("#drawer")).toBeVisible();
+  await page.click("#advancedSettings > summary");
+  await expect(page.locator("#advancedSettings")).toHaveJSProperty("open", true);
 
-    const label = page.locator("#autoToggle .checkboxRoot");
-    await expect(label).toBeVisible();
-    const layout = await label.evaluate((element) => {
-      const control = element.querySelector(".checkboxControl");
-      const text = element.querySelector(".checkboxLabel");
-      if (!(control instanceof HTMLElement) || !(text instanceof HTMLElement)) return null;
-      const labelRect = element.getBoundingClientRect();
-      const controlRect = control.getBoundingClientRect();
-      const textRect = text.getBoundingClientRect();
-      return {
-        labelTop: labelRect.top,
-        labelBottom: labelRect.bottom,
-        controlTop: controlRect.top,
-        controlBottom: controlRect.bottom,
-        controlCenter: controlRect.top + controlRect.height / 2,
-        textTop: textRect.top,
-        textBottom: textRect.bottom,
-        textCenter: textRect.top + textRect.height / 2,
-      };
-    });
+  const label = page.locator("#autoToggle .checkboxRoot");
+  await expect(label).toBeVisible();
+  const layout = await label.evaluate((element) => {
+    const control = element.querySelector(".checkboxControl");
+    const text = element.querySelector(".checkboxLabel");
+    if (!(control instanceof HTMLElement) || !(text instanceof HTMLElement)) return null;
+    const labelRect = element.getBoundingClientRect();
+    const controlRect = control.getBoundingClientRect();
+    const textRect = text.getBoundingClientRect();
+    return {
+      labelTop: labelRect.top,
+      labelBottom: labelRect.bottom,
+      controlTop: controlRect.top,
+      controlBottom: controlRect.bottom,
+      controlCenter: controlRect.top + controlRect.height / 2,
+      textTop: textRect.top,
+      textBottom: textRect.bottom,
+      textCenter: textRect.top + textRect.height / 2,
+    };
+  });
 
-    expect(layout).not.toBeNull();
-    if (layout) {
-      expect(layout.controlTop).toBeGreaterThanOrEqual(layout.labelTop - 1);
-      expect(layout.controlBottom).toBeLessThanOrEqual(layout.labelBottom + 1);
-      expect(layout.textTop).toBeGreaterThanOrEqual(layout.labelTop - 1);
-      expect(layout.textBottom).toBeLessThanOrEqual(layout.labelBottom + 1);
-      expect(Math.abs(layout.controlCenter - layout.textCenter)).toBeLessThanOrEqual(1);
-    }
-
-    assertNoErrors(harness);
-  } finally {
-    await closeExtension(harness.context, harness.userDataDir);
+  expect(layout).not.toBeNull();
+  if (layout) {
+    expect(layout.controlTop).toBeGreaterThanOrEqual(layout.labelTop - 1);
+    expect(layout.controlBottom).toBeLessThanOrEqual(layout.labelBottom + 1);
+    expect(layout.textTop).toBeGreaterThanOrEqual(layout.labelTop - 1);
+    expect(layout.textBottom).toBeLessThanOrEqual(layout.labelBottom + 1);
+    expect(Math.abs(layout.controlCenter - layout.textCenter)).toBeLessThanOrEqual(1);
   }
 });

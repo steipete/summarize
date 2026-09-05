@@ -1,20 +1,9 @@
-import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/run.js";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const LIVE = process.env.SUMMARIZE_LIVE_TESTS === "1" && Boolean(process.env.OPENAI_API_KEY);
 const URL = "https://www.youtube.com/watch?v=9pUWFJgBc5Q";
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 function parseKeyMomentSeconds(summary: string): number[] {
   const lines = summary.split("\n");

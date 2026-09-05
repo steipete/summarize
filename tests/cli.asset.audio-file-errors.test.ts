@@ -1,15 +1,14 @@
+import { mkdtempSync, utimesSync, writeFileSync } from "node:fs";
 /**
  * Phase 4.5: Error scenario tests for media file transcription
  * Tests edge cases and error conditions to ensure robust error handling
  */
-
-import { mkdtempSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
 import { makeAssistantMessage, makeTextDeltaStream } from "./helpers/pi-ai-mock.js";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
   streamSimple: vi.fn(),
@@ -34,18 +33,6 @@ vi.mock("@earendil-works/pi-ai/compat", () => ({
   completeSimple: mocks.completeSimple,
   getModel: mocks.getModel,
 }));
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-
-  return { stream, getText: () => text };
-}
 
 describe("Media file error handling", () => {
   it("handles non-existent audio files gracefully", async () => {

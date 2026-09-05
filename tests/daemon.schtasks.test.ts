@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Writable } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
   execFile: vi.fn(),
@@ -41,17 +41,6 @@ import {
   restartScheduledTask,
   uninstallScheduledTask,
 } from "../src/daemon/schtasks.js";
-
-function collectStream(): { stream: Writable; getText: () => string } {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 function mockExecFileSuccess() {
   mocks.execFile.mockImplementation(

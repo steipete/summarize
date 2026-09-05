@@ -1,5 +1,5 @@
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
   refreshFree: vi.fn(async () => {}),
@@ -35,17 +35,6 @@ import {
   handleHelpRequest,
   handleRefreshFreeRequest,
 } from "../src/run/cli-preflight.js";
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 describe("run/cli-preflight", () => {
   it("handleHelpRequest: returns false when not help", () => {

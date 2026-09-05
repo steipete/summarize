@@ -1,29 +1,10 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { createCacheStore } from "../src/cache.js";
 import { runCli } from "../src/run.js";
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
-
-function noopStream(): Writable {
-  return new Writable({
-    write(_chunk, _encoding, callback) {
-      callback();
-    },
-  });
-}
+import { discardStream as noopStream, captureStream as collectStream } from "./helpers/streams.js";
 
 describe("--cache-stats", () => {
   it("prints cache entry counts", async () => {

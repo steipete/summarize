@@ -6,6 +6,7 @@ import type { Api } from "@earendil-works/pi-ai";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
 import { makeAssistantMessage } from "./helpers/pi-ai-mock.js";
+import { discardStream as noopStream } from "./helpers/streams.js";
 
 type MockModel = { provider: string; id: string; api: Api };
 
@@ -32,14 +33,6 @@ vi.mock("@earendil-works/pi-ai/compat", () => ({
   streamSimple: mocks.streamSimple,
   getModel: mocks.getModel,
 }));
-
-function noopStream(): Writable {
-  return new Writable({
-    write(_chunk, _encoding, callback) {
-      callback();
-    },
-  });
-}
 
 function collectStdout() {
   let text = "";

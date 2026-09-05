@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
   weakFails: false,
@@ -15,17 +15,6 @@ vi.mock("../src/llm/generate-text.js", () => ({
   generateTextWithModelId: mocks.generateTextWithModelId,
   streamTextWithModelId: mocks.streamTextWithModelId,
 }));
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 describe("auto preset summary cache", () => {
   it("prefers the preset-level cached winner over older per-candidate cache entries", async () => {

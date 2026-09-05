@@ -1,6 +1,6 @@
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { parseRequestedModelId } from "../src/model-spec.js";
+import { discardStream as sink } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
   createHtmlToMarkdownConverter: vi.fn(() => async () => "# Converted"),
@@ -12,14 +12,6 @@ vi.mock("../src/llm/html-to-markdown.js", () => ({
 
 import { createMarkdownConverters } from "../src/run/flows/url/markdown.js";
 import type { UrlFlowContext } from "../src/run/flows/url/types.js";
-
-function sink() {
-  return new Writable({
-    write(_chunk, _encoding, callback) {
-      callback();
-    },
-  });
-}
 
 function buildCtx(opts: {
   openaiRequestOptions?: { reasoningEffort?: "high" };

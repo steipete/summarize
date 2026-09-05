@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { refreshFree } from "../src/refresh-free.js";
+import { discardStream as sink } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
   generateTextWithModelId: vi.fn(async () => ({
@@ -17,14 +17,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../src/llm/generate-text.js", () => ({
   generateTextWithModelId: mocks.generateTextWithModelId,
 }));
-
-function sink() {
-  return new Writable({
-    write(_chunk, _encoding, callback) {
-      callback();
-    },
-  });
-}
 
 describe("refresh-free config file permissions proof", () => {
   afterEach(() => vi.restoreAllMocks());

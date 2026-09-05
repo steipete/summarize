@@ -1,17 +1,6 @@
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { createTerminalSummaryStream } from "../src/run/summary-stream.js";
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 describe("terminal summary stream", () => {
   it("renders engine deltas through the plain output adapter", async () => {
