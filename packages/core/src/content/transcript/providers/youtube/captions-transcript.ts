@@ -6,8 +6,9 @@ import {
   type YoutubeCaptionTrack,
 } from "../../../youtube-captions.js";
 import { sanitizeYoutubeJsonResponse } from "../../utils.js";
+import { extractInitialPlayerResponse } from "../../utils.js";
 import { extractYoutubeiBootstrap } from "./api.js";
-import { extractInitialPlayerResponse, extractInnertubeApiKey } from "./captions-player.js";
+import { extractInnertubeApiKey } from "./captions-player.js";
 import {
   REQUEST_HEADERS,
   isObjectLike,

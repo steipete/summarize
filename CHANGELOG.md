@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Transcript cache: preserve embedded-caption and native YouTube media source metadata across cache hits instead of losing it to duplicated source lists.
 - Browser media: support MP4 files carrying Annex B AVC/HEVC and clarify missing WebCodecs errors in insecure contexts with MediaBunny 1.55.2.
 - FAL transcription: clear settled deadlines and stop local queue polling and retries after timeout (#392, thanks @vincent-peng).
 - Content extraction: decode HTML entities once so deliberately escaped markup remains literal text (#394, thanks @devYRPauli).
@@ -15,6 +16,7 @@
 
 ### Dependencies and maintenance
 
+- Return DOM documents directly instead of exposing no-op cleanup lifecycles, and share YouTube player-response parsing across captions, metadata, and page extraction.
 - Centralize test output streams and browser-extension lifecycles while preserving isolated profiles, runtime-error checks, and scenario coverage.
 - Remove the sidepanel's redundant action/reducer/dispatch layer; use one state object with explicit lifecycle transitions while preserving navigation, chat, and slide restoration.
 - Make provider metadata the shared source for configuration and model parsing; remove duplicated provider inventories, native model constructors, client defaults, and request-option parsing.

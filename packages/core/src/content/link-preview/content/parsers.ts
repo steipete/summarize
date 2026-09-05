@@ -16,39 +16,34 @@ export interface ParsedMetadata {
 }
 
 export function extractMetadataFromHtml(html: string, url: string): ParsedMetadata {
-  const parsed = parseHtmlDocument(html);
-  const { document } = parsed;
+  const document = parseHtmlDocument(html);
 
-  try {
-    const title = pickFirstText([
-      pickMetaContent(document, [
-        { attribute: "property", value: "og:title" },
-        { attribute: "name", value: "og:title" },
-        { attribute: "name", value: "twitter:title" },
-      ]),
-      extractTagText(document, "title"),
-    ]);
+  const title = pickFirstText([
+    pickMetaContent(document, [
+      { attribute: "property", value: "og:title" },
+      { attribute: "name", value: "og:title" },
+      { attribute: "name", value: "twitter:title" },
+    ]),
+    extractTagText(document, "title"),
+  ]);
 
-    const description = pickFirstText([
-      pickMetaContent(document, [
-        { attribute: "property", value: "og:description" },
-        { attribute: "name", value: "description" },
-        { attribute: "name", value: "twitter:description" },
-      ]),
-    ]);
+  const description = pickFirstText([
+    pickMetaContent(document, [
+      { attribute: "property", value: "og:description" },
+      { attribute: "name", value: "description" },
+      { attribute: "name", value: "twitter:description" },
+    ]),
+  ]);
 
-    const siteName = pickFirstText([
-      pickMetaContent(document, [
-        { attribute: "property", value: "og:site_name" },
-        { attribute: "name", value: "application-name" },
-      ]),
-      safeHostname(url),
-    ]);
+  const siteName = pickFirstText([
+    pickMetaContent(document, [
+      { attribute: "property", value: "og:site_name" },
+      { attribute: "name", value: "application-name" },
+    ]),
+    safeHostname(url),
+  ]);
 
-    return { title, description, siteName };
-  } finally {
-    parsed.close();
-  }
+  return { title, description, siteName };
 }
 
 export function extractMetadataFromFirecrawl(

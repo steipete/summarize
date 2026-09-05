@@ -50,7 +50,11 @@ export {
   type CacheStats,
 } from "@steipete/summarize-core/runtime";
 import { cleanupSlidesPayload, collectSlidesPayloadArtifactPaths } from "./cache-slides-cleanup.js";
-import type { TranscriptCache, TranscriptSource } from "./content/index.js";
+import {
+  TRANSCRIPT_SOURCES,
+  type TranscriptCache,
+  type TranscriptSource,
+} from "./content/index.js";
 
 export type CacheConfig = {
   enabled?: boolean;
@@ -78,23 +82,8 @@ type CacheRow = {
   created_at: number;
 };
 
-const TRANSCRIPT_SOURCES: readonly TranscriptSource[] = [
-  "youtubei",
-  "captionTracks",
-  "yt-dlp",
-  "podcastTranscript",
-  "whisper",
-  "apify",
-  "html",
-  "unavailable",
-  "unknown",
-];
-
 function normalizeTranscriptSource(value: unknown): TranscriptSource | null {
-  if (typeof value !== "string") return null;
-  return TRANSCRIPT_SOURCES.includes(value as TranscriptSource)
-    ? (value as TranscriptSource)
-    : null;
+  return TRANSCRIPT_SOURCES.find((candidate) => candidate === value) ?? null;
 }
 
 export type CacheStore = {

@@ -17,7 +17,6 @@ export const REQUEST_HEADERS: Record<string, string> = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
-export const YT_INITIAL_PLAYER_RESPONSE_TOKEN = "ytInitialPlayerResponse";
 export const INNERTUBE_API_KEY_REGEX =
   /"INNERTUBE_API_KEY":"([^"]+)"|INNERTUBE_API_KEY\\":\\"([^\\"]+)\\"/;
 

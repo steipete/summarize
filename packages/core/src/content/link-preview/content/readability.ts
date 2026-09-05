@@ -15,21 +15,17 @@ export async function extractReadabilityFromHtml(
   try {
     const cleanedHtml = stripCssFromHtml(stripHiddenHtml(html));
     const { Readability } = await import("@mozilla/readability");
-    const parsed = parseHtmlDocument(cleanedHtml, url);
-    try {
-      const article = new Readability(parsed.document).parse();
-      if (!article) return null;
+    const document = parseHtmlDocument(cleanedHtml, url);
+    const article = new Readability(document).parse();
+    if (!article) return null;
 
-      const text = (article.textContent ?? "").replace(/\s+/g, " ").trim();
-      return {
-        text,
-        html: article.content ?? null,
-        title: article.title ?? null,
-        excerpt: article.excerpt ?? null,
-      };
-    } finally {
-      parsed.close();
-    }
+    const text = (article.textContent ?? "").replace(/\s+/g, " ").trim();
+    return {
+      text,
+      html: article.content ?? null,
+      title: article.title ?? null,
+      excerpt: article.excerpt ?? null,
+    };
   } catch {
     return null;
   }

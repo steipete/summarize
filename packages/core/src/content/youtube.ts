@@ -1,4 +1,4 @@
-import { extractInitialPlayerResponse } from "./transcript/providers/youtube/captions-player.js";
+import { extractInitialPlayerResponse } from "./transcript/utils.js";
 
 const ANDROID_VR_CLIENT_NAME = "ANDROID_VR";
 const ANDROID_VR_CLIENT_ID = "28";

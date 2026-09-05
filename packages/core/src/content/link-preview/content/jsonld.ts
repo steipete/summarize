@@ -8,9 +8,9 @@ export type JsonLdContent = {
 };
 
 export function extractJsonLdContent(html: string): JsonLdContent | null {
-  const parsed = parseHtmlDocument(html);
+  const document = parseHtmlDocument(html);
   try {
-    const scripts = parsed.document.querySelectorAll('script[type="application/ld+json"]');
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
     const candidates: JsonLdContent[] = [];
 
     for (const script of scripts) {
@@ -38,8 +38,6 @@ export function extractJsonLdContent(html: string): JsonLdContent | null {
     return sorted[0] ?? null;
   } catch {
     return null;
-  } finally {
-    parsed.close();
   }
 }
 

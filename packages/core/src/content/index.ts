@@ -62,6 +62,7 @@ export type {
 export { ProgressKind } from "./link-preview/deps.js";
 export {
   CACHE_MODES,
+  TRANSCRIPT_SOURCES,
   type CacheMode,
   type CacheStatus,
   type TranscriptSegment,

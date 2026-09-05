@@ -107,39 +107,33 @@ export function collectSegmentsFromHtml(
     },
   });
 
-  const parsed = parseHtmlDocument(sanitized);
-  try {
-    const segments: string[] = [];
+  const document = parseHtmlDocument(sanitized);
+  const segments: string[] = [];
 
-    for (const element of parsed.document.querySelectorAll(
-      "h1,h2,h3,h4,h5,h6,li,p,blockquote,pre",
-    )) {
-      const tag = element.tagName.toLowerCase();
-      const text = normalizeWhitespace(element.textContent ?? "").replaceAll(/\n+/g, " ");
-      if (!text) continue;
+  for (const element of document.querySelectorAll("h1,h2,h3,h4,h5,h6,li,p,blockquote,pre")) {
+    const tag = element.tagName.toLowerCase();
+    const text = normalizeWhitespace(element.textContent ?? "").replaceAll(/\n+/g, " ");
+    if (!text) continue;
 
-      if (tag.startsWith("h")) {
-        if (text.length >= 10) segments.push(text);
-        continue;
-      }
-
-      if (tag === "li") {
-        if (text.length >= Math.min(20, minimumSegmentLength)) segments.push(`• ${text}`);
-        continue;
-      }
-
-      if (text.length >= minimumSegmentLength) segments.push(text);
+    if (tag.startsWith("h")) {
+      if (text.length >= 10) segments.push(text);
+      continue;
     }
 
-    if (segments.length === 0) {
-      const fallback = normalizeWhitespace(parsed.document.body?.textContent || sanitized);
-      return fallback ? [fallback] : [];
+    if (tag === "li") {
+      if (text.length >= Math.min(20, minimumSegmentLength)) segments.push(`• ${text}`);
+      continue;
     }
 
-    return mergeConsecutiveSegments(segments);
-  } finally {
-    parsed.close();
+    if (text.length >= minimumSegmentLength) segments.push(text);
   }
+
+  if (segments.length === 0) {
+    const fallback = normalizeWhitespace(document.body?.textContent || sanitized);
+    return fallback ? [fallback] : [];
+  }
+
+  return mergeConsecutiveSegments(segments);
 }
 
 export function extractPlainText(html: string): string {
