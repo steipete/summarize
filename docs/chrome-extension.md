@@ -193,6 +193,7 @@ See `docs/media.md` for detection and transcript rules.
 - Timeout (e.g. `90s`, `2m`), retries, max output tokens (e.g. `2k`).
 - Process manager: live list of daemon-spawned tools (ffmpeg, yt-dlp, tesseract, etc.) with logs.
 - Extension includes current settings in request; daemon treats them like CLI flags (`--model`, `--length`, `--language`, `--prompt`).
+- Options and the side panel share model-discovery and selection state in `src/lib/model-presets.ts`; each screen supplies its presets, hints, and presentation behavior.
 
 ## Token Pairing / Setup Mode
 

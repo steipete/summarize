@@ -1,4 +1,5 @@
 import type { CacheStats } from "@steipete/summarize-core/runtime";
+import { createModelPresetsController } from "../../lib/model-presets";
 import { defaultSettings, loadSettings, saveSettings } from "../../lib/settings";
 import { applyTheme, type ColorMode, type ColorScheme } from "../../lib/theme";
 import { bindOptionsInputs } from "./bindings";
@@ -9,7 +10,6 @@ import { createDaemonStatusChecker } from "./daemon-status";
 import { getOptionsElements } from "./elements";
 import { applyLoadedOptionsSettings, buildSavedOptionsSettings } from "./form-state";
 import { createLogsViewer } from "./logs-viewer";
-import { createModelPresetsController } from "./model-presets";
 import { createOptionsSaveRuntime } from "./persistence";
 import { mountOptionsPickers } from "./pickers";
 import { createProcessesViewer } from "./processes-viewer";
@@ -286,7 +286,9 @@ const modelPresets = createModelPresetsController({
   presetEl: elements.modelPresetEl,
   customEl: elements.modelCustomEl,
   defaultValue: defaultSettings.model,
+  includeCliHints: true,
 });
+modelPresets.setDefaultPresets();
 
 let currentScheme: ColorScheme = defaultSettings.colorScheme;
 let currentMode: ColorMode = defaultSettings.colorMode;

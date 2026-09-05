@@ -1,8 +1,8 @@
 import { readPresetOrCustomValue, resolvePresetOrCustom } from "../../lib/combo";
+import type { createModelPresetsController } from "../../lib/model-presets";
 import type { DirectProvider, Settings } from "../../lib/settings";
 import type { ColorMode, ColorScheme } from "../../lib/theme";
 import type { BooleanSettingsState } from "./boolean-settings";
-import type { createModelPresetsController } from "./model-presets";
 
 type FormElements = {
   tokenEl: HTMLInputElement;

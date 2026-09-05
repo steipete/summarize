@@ -1,6 +1,6 @@
+import type { createModelPresetsController } from "../../lib/model-presets";
 import { normalizeDaemonPort } from "../../lib/settings";
 import type { createLogsViewer } from "./logs-viewer";
-import type { createModelPresetsController } from "./model-presets";
 import type { createProcessesViewer } from "./processes-viewer";
 
 type OptionsBindingsArgs = {
