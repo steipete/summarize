@@ -1,44 +1,12 @@
 import { isOpenRouterBaseUrl, resolveConfiguredBaseUrl } from "@steipete/summarize-core";
 import type { CliProvider, SummarizeConfig } from "../config.js";
 import { DEFAULT_MINIMAX_BASE_URL, DEFAULT_OLLAMA_BASE_URL } from "../llm/provider-registry.js";
+import type { RunApiStatus } from "../shared/run-api-status.js";
 import { resolveCliAvailability, resolveExecutableInPath } from "./environment.js";
 
-export type EnvState = {
-  apiKey: string | null;
-  openrouterApiKey: string | null;
-  openrouterConfigured: boolean;
-  groqApiKey: string | null;
-  assemblyaiApiKey: string | null;
-  deepgramApiKey: string | null;
-  elevenlabsApiKey: string | null;
-  openaiApiKey: string | null;
-  xaiApiKey: string | null;
-  googleApiKey: string | null;
-  anthropicApiKey: string | null;
-  zaiApiKey: string | null;
-  zaiBaseUrl: string;
-  nvidiaApiKey: string | null;
-  nvidiaBaseUrl: string;
-  minimaxApiKey: string | null;
-  minimaxBaseUrl: string;
-  ollamaBaseUrl: string;
-  firecrawlApiKey: string | null;
-  firecrawlConfigured: boolean;
-  googleConfigured: boolean;
-  anthropicConfigured: boolean;
-  apifyToken: string | null;
-  ytDlpPath: string | null;
-  ytDlpCookiesFromBrowser: string | null;
-  falApiKey: string | null;
+export type EnvState = RunApiStatus & {
   cliAvailability: Partial<Record<CliProvider, boolean>>;
   envForAuto: Record<string, string | undefined>;
-  providerBaseUrls: {
-    openai: string | null;
-    nvidia: string | null;
-    anthropic: string | null;
-    google: string | null;
-    xai: string | null;
-  };
 };
 
 export function resolveEnvState({

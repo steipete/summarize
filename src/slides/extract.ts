@@ -103,17 +103,6 @@ function resolveSlidesStreamFallback(env: Record<string, string | undefined>): b
   return raw === "1" || raw === "true" || raw === "yes";
 }
 
-function resolveToolPath(
-  binary: string,
-  env: Record<string, string | undefined>,
-  explicitEnvKey?: string,
-): string | null {
-  const explicit =
-    explicitEnvKey && typeof env[explicitEnvKey] === "string" ? env[explicitEnvKey]?.trim() : "";
-  if (explicit) return resolveExecutableInPath(explicit, env);
-  return resolveExecutableInPath(binary, env);
-}
-
 type ResolveRunnableToolArgs = {
   binary: string;
   env: Record<string, string | undefined>;
@@ -136,7 +125,7 @@ async function resolveRunnableTool({
   if (explicit) {
     return (await canSpawnCommand({ command: explicit, args: probeArgs, env })) ? explicit : null;
   }
-  const resolved = resolveToolPath(binary, env, explicitEnvKey);
+  const resolved = resolveExecutableInPath(binary, env, explicitEnvKey);
   if (resolved) return resolved;
   if (await canSpawnCommand({ command: binary, args: probeArgs, env })) return binary;
   if (binary === "ffmpeg" || binary === "ffprobe") {

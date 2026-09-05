@@ -1,10 +1,7 @@
-import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
+import { execDaemonCommand } from "./command.js";
 import { DAEMON_SYSTEMD_SERVICE_NAME } from "./constants.js";
-
-const execFileAsync = promisify(execFile);
 
 function resolveHomeDir(env: Record<string, string | undefined>): string {
   const home = env.HOME?.trim() || env.USERPROFILE?.trim();
@@ -111,22 +108,7 @@ export async function readSystemdServiceExecStart(
   }
 }
 
-async function execSystemctl(
-  args: string[],
-): Promise<{ stdout: string; stderr: string; code: number }> {
-  try {
-    const { stdout, stderr } = await execFileAsync("systemctl", args, { encoding: "utf8" });
-    return { stdout: String(stdout ?? ""), stderr: String(stderr ?? ""), code: 0 };
-  } catch (error) {
-    const e = error as { stdout?: unknown; stderr?: unknown; code?: unknown; message?: unknown };
-    return {
-      stdout: typeof e.stdout === "string" ? e.stdout : "",
-      stderr:
-        typeof e.stderr === "string" ? e.stderr : typeof e.message === "string" ? e.message : "",
-      code: typeof e.code === "number" ? e.code : 1,
-    };
-  }
-}
+const execSystemctl = (args: string[]) => execDaemonCommand("systemctl", args);
 
 async function assertSystemdAvailable() {
   const res = await execSystemctl(["--user", "status"]);

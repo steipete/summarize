@@ -20,6 +20,7 @@
 
 ### Dependencies and maintenance
 
+- Share daemon service-command execution, executable override lookup, and environment-state types without changing platform-specific service behavior or the JSON environment whitelist.
 - Remove the unused chat mode from summary streaming, share SSE idle deadlines, and consolidate FFmpeg execution and OpenAI transcription HTTP handling while retaining format and response-specific policy.
 - Share asset text validation and Markdown conversion across extraction and summaries; simplify prompt construction and prepare daemon agent requests once for streaming and completion without changing retry boundaries.
 - Share podcast feed transcript resolution, media download/progress completion, and Apple URL parsing; collapse Spotify's duplicated episode-search fallback while preserving provider order and failure metadata.

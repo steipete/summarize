@@ -42,6 +42,8 @@ The daemon prepares message history, tools, prompts, model selection, and CLI ex
 
 The daemon **never** executes tools. It only returns the next assistant message.
 
+Service installation keeps launchd, systemd, and Scheduled Task policy in separate adapters. They share command output/error normalization in `src/daemon/command.ts`; only Windows commands request hidden windows. Executable overrides use the application environment resolver, while public JSON environment output retains its explicit whitelist.
+
 ## Settings + Permissions
 
 ### Settings

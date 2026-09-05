@@ -1,11 +1,8 @@
-import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
+import { execDaemonCommand } from "./command.js";
 import { readDaemonConfig } from "./config.js";
 import { DAEMON_HOST, DAEMON_WINDOWS_TASK_NAME } from "./constants.js";
-
-const execFileAsync = promisify(execFile);
 
 function resolveHomeDir(env: Record<string, string | undefined>): string {
   const home = env.USERPROFILE?.trim() || env.HOME?.trim();
@@ -229,38 +226,8 @@ function buildLauncherVbs({
   return lines.join("\r\n");
 }
 
-async function execWindowsCommand(
-  file: string,
-  args: string[],
-): Promise<{ stdout: string; stderr: string; code: number }> {
-  try {
-    const { stdout, stderr } = await execFileAsync(file, args, {
-      encoding: "utf8",
-      windowsHide: true,
-    });
-    return { stdout: String(stdout ?? ""), stderr: String(stderr ?? ""), code: 0 };
-  } catch (error) {
-    const e = error as { stdout?: unknown; stderr?: unknown; code?: unknown; message?: unknown };
-    return {
-      stdout: typeof e.stdout === "string" ? e.stdout : "",
-      stderr:
-        typeof e.stderr === "string" ? e.stderr : typeof e.message === "string" ? e.message : "",
-      code: typeof e.code === "number" ? e.code : 1,
-    };
-  }
-}
-
-async function execSchtasks(
-  args: string[],
-): Promise<{ stdout: string; stderr: string; code: number }> {
-  return execWindowsCommand("schtasks", args);
-}
-
-async function execTaskkill(
-  args: string[],
-): Promise<{ stdout: string; stderr: string; code: number }> {
-  return execWindowsCommand("taskkill", args);
-}
+const execSchtasks = (args: string[]) => execDaemonCommand("schtasks", args, { windowsHide: true });
+const execTaskkill = (args: string[]) => execDaemonCommand("taskkill", args, { windowsHide: true });
 
 function isMissingProcessError(detail: string): boolean {
   return /not found|not running|no running instance|does not exist/i.test(detail);
