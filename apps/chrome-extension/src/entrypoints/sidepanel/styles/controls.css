@@ -33,45 +33,14 @@ select {
 }
 
 .pickerTrigger {
-  width: 100%;
-  border: 1px solid var(--border);
   background: var(--field-bg);
-  color: var(--text);
   padding: 7px 30px 7px 10px;
-  border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  font: inherit;
-  cursor: pointer;
-  position: relative;
-}
-
-.pickerTrigger[data-state="open"] {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
 }
 
 .pickerTrigger:focus-visible {
   outline: none;
   border-color: color-mix(in srgb, var(--ui-focus) 45%, var(--border));
-}
-
-.pickerTrigger::after {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-right: 2px solid var(--muted);
-  border-bottom: 2px solid var(--muted);
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%) rotate(45deg);
-  pointer-events: none;
-}
-
-.pickerTrigger .scheme-chips {
-  margin-left: auto;
 }
 
 .font .pickerTrigger > span {
@@ -103,26 +72,9 @@ select {
 }
 
 .pickerContent {
-  background: rgba(18, 22, 32, 0.94);
-  background: var(--panel);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  border-radius: 14px;
-  padding: 6px;
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(30px) saturate(1.22) brightness(1.04);
-  -webkit-backdrop-filter: blur(30px) saturate(1.22) brightness(1.04);
-}
-
-.pickerContent[hidden] {
-  display: none;
-}
-
-.pickerList {
-  display: grid;
-  gap: 4px;
 }
 
 .pickerPositioner[data-picker="length"] .pickerContent {
@@ -167,111 +119,6 @@ select {
 
 .pickerPositioner[data-picker="length"] .pickerOption {
   justify-content: flex-start;
-}
-
-.pickerOption {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  gap: 12px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.pickerOption:hover,
-.pickerOption:focus-visible {
-  outline: none;
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-}
-
-.pickerOption[data-highlighted] {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-}
-
-.pickerOption[data-state="checked"] {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-}
-
-.scheme-chips {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.scheme-chips span {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--chip-1);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chip-1) 60%, transparent);
-}
-
-.scheme-chips span:nth-child(2) {
-  background: var(--chip-2);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chip-2) 60%, transparent);
-}
-
-.scheme-chips span:nth-child(3) {
-  background: var(--chip-3);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chip-3) 60%, transparent);
-}
-
-.scheme-chips span:nth-child(4) {
-  background: var(--chip-4);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chip-4) 60%, transparent);
-}
-
-.pickerTrigger .scheme-chips span {
-  width: 6px;
-  height: 6px;
-}
-
-.scheme-slate {
-  --chip-1: #4f76ff;
-  --chip-2: #1a2230;
-  --chip-3: #eaf0f8;
-  --chip-4: #aab6c9;
-}
-
-.scheme-cedar {
-  --chip-1: #c46b2a;
-  --chip-2: #221b16;
-  --chip-3: #f1e8dd;
-  --chip-4: #bdaea1;
-}
-
-.scheme-mint {
-  --chip-1: #2a9d8f;
-  --chip-2: #14201e;
-  --chip-3: #e4f3ef;
-  --chip-4: #a6bdb7;
-}
-
-.scheme-ocean {
-  --chip-1: #2b8db8;
-  --chip-2: #14222b;
-  --chip-3: #e0edf6;
-  --chip-4: #a7bfca;
-}
-
-.scheme-ember {
-  --chip-1: #d66a4a;
-  --chip-2: #261916;
-  --chip-3: #f3e4dc;
-  --chip-4: #c1aca3;
-}
-
-.scheme-iris {
-  --chip-1: #7b6cf6;
-  --chip-2: #1e1928;
-  --chip-3: #ece6f6;
-  --chip-4: #b4aeca;
 }
 
 input[type="text"]:focus,
