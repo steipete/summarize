@@ -83,6 +83,33 @@ test("options pickers apply overlay selection", async ({ harness }) => {
   await expect(modeTrigger).toHaveText("Light");
 });
 
+test("options pickers retain keyboard selection and focus without hidden native controls", async ({
+  harness,
+}) => {
+  const page = await openExtensionPage(harness, "options.html", "#tabs");
+  await expect(page.locator("html")).toHaveAttribute("data-settings-ready", "true");
+  await page.click("#tab-ui");
+  const schemeTrigger = page.locator("label.scheme .pickerTrigger");
+  await schemeTrigger.press("ArrowDown");
+  const schemes = getOpenPickerList(page).getByRole("option");
+  await expect(schemes.first()).toBeFocused();
+  await schemes.first().press("End");
+  await expect(schemes.last()).toBeFocused();
+  await schemes.last().press("Enter");
+  await expect(schemeTrigger).toBeFocused();
+  await expect(schemeTrigger.locator(".scheme-label")).toHaveText("Iris");
+  await expect.poll(async () => (await getSettings(harness)).colorScheme).toBe("iris");
+
+  const modeTrigger = page.locator("label.mode .pickerTrigger");
+  await modeTrigger.press("ArrowDown");
+  const modes = getOpenPickerList(page).getByRole("option");
+  await expect(modes.first()).toBeFocused();
+  await modes.first().press("Escape");
+  await expect(modeTrigger).toBeFocused();
+  await expect(getOpenPickerList(page)).toHaveCount(0);
+  await expect(schemeTrigger.locator(".scheme-label")).toHaveText("Iris");
+});
+
 test("options restores the active tab from browser local storage", async ({ harness }) => {
   const page = await openExtensionPage(harness, "options.html", "#tabs");
   await page.click("#tab-runtime");

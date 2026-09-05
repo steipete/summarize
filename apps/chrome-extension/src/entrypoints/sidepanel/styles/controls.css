@@ -232,13 +232,6 @@ select {
   height: 6px;
 }
 
-.pickerHidden {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
 .scheme-slate {
   --chip-1: #4f76ff;
   --chip-2: #1a2230;

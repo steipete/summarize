@@ -299,17 +299,5 @@ export function useSelect({ id, items, value, onValueChange }: UseSelectArgs) {
         },
       };
     },
-    getHiddenSelectProps: () => ({
-      value: selectedValue,
-      tabIndex: -1,
-      "aria-hidden": true,
-      onChange: (event: Event) => {
-        const next = (event.currentTarget as HTMLSelectElement).value;
-        if (next !== selectedValue) {
-          setSelectedValue(next);
-          onValueChange(next);
-        }
-      },
-    }),
   };
 }

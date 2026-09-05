@@ -1,9 +1,8 @@
-import { render, type JSX } from "preact";
-import { createPortal } from "preact/compat";
 import type { ColorMode, ColorScheme } from "../../lib/theme";
-import { getOverlayRoot } from "../../ui/portal";
-import { SchemeChips } from "../../ui/scheme-chips";
-import { type SelectItem, useSelect } from "../../ui/select";
+import { mountComponent } from "../../ui/mount";
+import { useSelect } from "../../ui/select";
+import { SelectField } from "../../ui/select-field";
+import { modeItems, schemeItems, SchemeChips } from "../../ui/theme";
 
 type OptionsPickerState = {
   scheme: ColorScheme;
@@ -16,75 +15,6 @@ type OptionsPickerHandlers = {
 };
 
 type OptionsPickerProps = OptionsPickerState & OptionsPickerHandlers;
-
-const schemeItems: SelectItem[] = [
-  { value: "slate", label: "Slate" },
-  { value: "cedar", label: "Cedar" },
-  { value: "mint", label: "Mint" },
-  { value: "ocean", label: "Ocean" },
-  { value: "ember", label: "Ember" },
-  { value: "iris", label: "Iris" },
-];
-
-const modeItems: SelectItem[] = [
-  { value: "system", label: "System" },
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-];
-
-function SelectField({
-  label,
-  labelClassName,
-  api,
-  triggerContent,
-  optionContent,
-  items,
-}: {
-  label: string;
-  labelClassName: string;
-  api: ReturnType<typeof useSelect>;
-  triggerContent: (selectedLabel: string, selectedValue: string) => JSX.Element;
-  optionContent: (item: SelectItem) => JSX.Element;
-  items: SelectItem[];
-}) {
-  const selectedValue = api.value[0] ?? "";
-  const selectedLabel =
-    api.valueAsString || items.find((item) => item.value === selectedValue)?.label || "";
-  const portalRoot = getOverlayRoot();
-  const positionerProps = api.getPositionerProps();
-  const positionerStyle = {
-    ...(positionerProps.style ?? {}),
-    position: "fixed",
-    zIndex: 9999,
-    pointerEvents: api.open ? "auto" : "none",
-  };
-  const content = (
-    <div className="pickerPositioner" {...positionerProps} style={positionerStyle}>
-      <div className="pickerContent" {...api.getContentProps()}>
-        <div className="pickerList" {...api.getListProps()}>
-          {items.map((item) => (
-            <button key={item.value} className="pickerOption" {...api.getItemProps({ item })}>
-              {optionContent(item)}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <label className={labelClassName} {...api.getLabelProps()}>
-      <span className="pickerTitle">{label}</span>
-      <div className="picker" {...api.getRootProps()}>
-        <button className="pickerTrigger" {...api.getTriggerProps()}>
-          {triggerContent(selectedLabel, selectedValue)}
-        </button>
-        {portalRoot ? createPortal(content, portalRoot) : content}
-        <select className="pickerHidden" {...api.getHiddenSelectProps()} />
-      </div>
-    </label>
-  );
-}
 
 function OptionsPickers(props: OptionsPickerProps) {
   const schemeApi = useSelect({
@@ -113,6 +43,8 @@ function OptionsPickers(props: OptionsPickerProps) {
         label="Color scheme"
         labelClassName="scheme"
         api={schemeApi}
+        matchTriggerWidth
+        positionerStyle={{ pointerEvents: schemeApi.open ? "auto" : "none" }}
         items={schemeItems}
         triggerContent={(label, value) => (
           <>
@@ -131,6 +63,8 @@ function OptionsPickers(props: OptionsPickerProps) {
         label="Appearance"
         labelClassName="mode"
         api={modeApi}
+        matchTriggerWidth
+        positionerStyle={{ pointerEvents: modeApi.open ? "auto" : "none" }}
         items={modeItems}
         triggerContent={(label) => <span>{label || "System"}</span>}
         optionContent={(item) => <span>{item.label}</span>}
@@ -140,17 +74,5 @@ function OptionsPickers(props: OptionsPickerProps) {
 }
 
 export function mountOptionsPickers(root: HTMLElement, props: OptionsPickerProps) {
-  let current = props;
-  const renderPickers = () => {
-    render(<OptionsPickers {...current} />, root);
-  };
-
-  renderPickers();
-
-  return {
-    update(next: OptionsPickerProps) {
-      current = next;
-      renderPickers();
-    },
-  };
+  return mountComponent(root, OptionsPickers, props);
 }

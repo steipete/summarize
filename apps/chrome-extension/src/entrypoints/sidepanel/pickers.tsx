@@ -1,14 +1,14 @@
 import type { SummaryLength } from "@steipete/summarize-core";
 import { SUMMARY_LENGTH_SPECS } from "@steipete/summarize-core/prompts";
-import { render, type JSX } from "preact";
-import { createPortal } from "preact/compat";
+import type { JSX } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { readPresetOrCustomValue, resolvePresetOrCustom } from "../../lib/combo";
 import { defaultSettings } from "../../lib/settings";
 import type { ColorMode, ColorScheme } from "../../lib/theme";
-import { getOverlayRoot } from "../../ui/portal";
-import { SchemeChips } from "../../ui/scheme-chips";
+import { mountComponent } from "../../ui/mount";
 import { type SelectItem, useSelect } from "../../ui/select";
+import { SelectField, SelectPopup } from "../../ui/select-field";
+import { modeItems, schemeItems, SchemeChips } from "../../ui/theme";
 
 type SidepanelPickerState = {
   scheme: ColorScheme;
@@ -97,21 +97,6 @@ const lengthItems: LengthItem[] = [
   { value: "custom", label: "Custom…", tooltip: "Set a custom length like 1500, 20k, or 1.5k." },
 ];
 
-const schemeItems: SelectItem[] = [
-  { value: "slate", label: "Slate" },
-  { value: "cedar", label: "Cedar" },
-  { value: "mint", label: "Mint" },
-  { value: "ocean", label: "Ocean" },
-  { value: "ember", label: "Ember" },
-  { value: "iris", label: "Iris" },
-];
-
-const modeItems: SelectItem[] = [
-  { value: "system", label: "System" },
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-];
-
 const modeIcons: Record<string, JSX.Element> = {
   system: (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -167,86 +152,18 @@ const fontItems: SelectItem[] = [
   },
 ];
 
-function SelectField({
-  label,
-  labelClassName,
-  titleClassName,
-  pickerId,
-  api,
-  triggerContent,
-  optionContent,
-  items,
-}: {
-  label: string;
-  labelClassName: string;
-  titleClassName?: string;
-  pickerId?: string;
-  api: ReturnType<typeof useSelect>;
-  triggerContent: (selectedLabel: string, selectedValue: string) => JSX.Element;
-  optionContent: (item: SelectItem) => JSX.Element;
-  items: SelectItem[];
-}) {
-  const selectedValue = api.value[0] ?? "";
-  const selectedLabel =
-    api.valueAsString || items.find((item) => item.value === selectedValue)?.label || "";
-  const portalRoot = getOverlayRoot();
-
-  const positionerProps = api.getPositionerProps();
-  const positionerStyle = {
-    ...(positionerProps.style ?? {}),
-    position: "fixed",
-    zIndex: 9999,
-  };
-  if ("width" in positionerStyle) delete positionerStyle.width;
-  if ("maxWidth" in positionerStyle) delete positionerStyle.maxWidth;
-  const content = (
-    <div
-      className="pickerPositioner"
-      data-picker={pickerId}
-      {...positionerProps}
-      style={positionerStyle}
-    >
-      <div className="pickerContent" {...api.getContentProps()}>
-        <div className="pickerList" {...api.getListProps()}>
-          {items.map((item) => (
-            <button key={item.value} className="pickerOption" {...api.getItemProps({ item })}>
-              {optionContent(item)}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <label className={labelClassName} {...api.getLabelProps()}>
-      <span className={titleClassName ?? "pickerTitle"}>{label}</span>
-      <div className="picker" {...api.getRootProps()}>
-        <button className="pickerTrigger" {...api.getTriggerProps()}>
-          {triggerContent(selectedLabel, selectedValue)}
-        </button>
-        {portalRoot ? createPortal(content, portalRoot) : content}
-        <select className="pickerHidden" {...api.getHiddenSelectProps()} />
-      </div>
-    </label>
-  );
-}
-
 function LengthField({
   value,
   onValueChange,
-  variant = "grid",
 }: {
   value: string;
   onValueChange: (value: string) => void;
-  variant?: "grid" | "mini";
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const shouldFocusCustomInputRef = useRef(false);
   const resolved = useMemo(() => resolvePresetOrCustom({ value, presets: lengthPresets }), [value]);
   const [presetValue, setPresetValue] = useState(resolved.presetValue);
   const [customValue, setCustomValue] = useState(resolved.customValue);
-  const portalRoot = getOverlayRoot();
 
   useEffect(() => {
     setPresetValue(resolved.presetValue);
@@ -307,42 +224,24 @@ function LengthField({
     onValueChange(next);
   };
 
-  const positionerProps = api.getPositionerProps();
-  const positionerStyle = {
-    ...(positionerProps.style ?? {}),
-    position: "fixed",
-    zIndex: 9999,
-  };
-  if ("width" in positionerStyle) delete positionerStyle.width;
-  if ("maxWidth" in positionerStyle) delete positionerStyle.maxWidth;
   const content = (
-    <div
-      className="pickerPositioner"
-      data-picker="length"
-      data-variant={variant}
-      {...positionerProps}
-      style={positionerStyle}
-    >
-      <div className="pickerContent" {...api.getContentProps()}>
-        <div className="pickerList" {...api.getListProps()}>
-          {lengthItems.map((item) => (
-            <button
-              key={item.value}
-              className="pickerOption"
-              style={item.value === "custom" ? { gridColumn: "1 / -1" } : undefined}
-              title={item.tooltip}
-              {...api.getItemProps({ item })}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+    <SelectPopup api={api} pickerId="length" variant="mini">
+      {lengthItems.map((item) => (
+        <button
+          key={item.value}
+          className="pickerOption"
+          style={item.value === "custom" ? { gridColumn: "1 / -1" } : undefined}
+          title={item.tooltip}
+          {...api.getItemProps({ item })}
+        >
+          {item.label}
+        </button>
+      ))}
+    </SelectPopup>
   );
 
   return (
-    <label className={variant === "mini" ? "length mini" : "length wide"} {...resolvedLabelProps}>
+    <label className="length mini" {...resolvedLabelProps}>
       <span className="pickerTitle">Length</span>
       <div className="combo">
         <div className="picker" {...api.getRootProps()}>
@@ -381,8 +280,7 @@ function LengthField({
               <span>{api.valueAsString || "Length"}</span>
             </button>
           )}
-          {portalRoot ? createPortal(content, portalRoot) : content}
-          <select className="pickerHidden" {...api.getHiddenSelectProps()} />
+          {content}
         </div>
       </div>
     </label>
@@ -476,23 +374,11 @@ function SidepanelPickers(props: SidepanelPickerProps) {
 }
 
 export function mountSidepanelPickers(root: HTMLElement, props: SidepanelPickerProps) {
-  let current = props;
-  const renderPickers = () => {
-    render(<SidepanelPickers {...current} />, root);
-  };
-
-  renderPickers();
-
-  return {
-    update(next: SidepanelPickerProps) {
-      current = next;
-      renderPickers();
-    },
-  };
+  return mountComponent(root, SidepanelPickers, props);
 }
 
 function SidepanelLengthPicker(props: SidepanelLengthPickerProps) {
-  return <LengthField variant="mini" value={props.length} onValueChange={props.onLengthChange} />;
+  return <LengthField value={props.length} onValueChange={props.onLengthChange} />;
 }
 
 function SummarizeControl(props: SummarizeControlProps) {
@@ -510,16 +396,14 @@ function SummarizeControl(props: SummarizeControlProps) {
         { value: "video-slides", label: videoSlidesLabel },
       ]
     : [{ value: "page", label: pageLabel }];
-  const portalRoot = getOverlayRoot();
   const api = useSelect({
     id: "source",
     items: sourceItems,
     value: props.slidesEnabled ? "video-slides" : props.mode,
     onValueChange: (next) => {
-      const raw = Array.isArray(next) ? next[0] : next;
-      if (raw === "video-slides") {
+      if (next === "video-slides") {
         props.onChange({ mode: "video", slides: true });
-      } else if (raw === "video") {
+      } else if (next === "video") {
         props.onChange({ mode: "video", slides: false });
       } else {
         props.onChange({ mode: "page", slides: false });
@@ -531,31 +415,14 @@ function SummarizeControl(props: SummarizeControlProps) {
   const selectedLabel =
     api.valueAsString || sourceItems.find((item) => item.value === selectedValue)?.label || "Page";
 
-  const positionerProps = api.getPositionerProps();
-  const positionerStyle = {
-    ...(positionerProps.style ?? {}),
-    position: "fixed",
-    zIndex: 9999,
-  };
-  if ("width" in positionerStyle) delete positionerStyle.width;
-  if ("maxWidth" in positionerStyle) delete positionerStyle.maxWidth;
   const content = (
-    <div
-      className="pickerPositioner"
-      data-picker="source"
-      {...positionerProps}
-      style={positionerStyle}
-    >
-      <div className="pickerContent" {...api.getContentProps()}>
-        <div className="pickerList" {...api.getListProps()}>
-          {sourceItems.map((item) => (
-            <button key={item.value} className="pickerOption" {...api.getItemProps({ item })}>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+    <SelectPopup api={api} pickerId="source">
+      {sourceItems.map((item) => (
+        <button key={item.value} className="pickerOption" {...api.getItemProps({ item })}>
+          {item.label}
+        </button>
+      ))}
+    </SelectPopup>
   );
 
   const triggerProps = api.getTriggerProps();
@@ -618,8 +485,7 @@ function SummarizeControl(props: SummarizeControlProps) {
         >
           Summarize
         </button>
-        {portalRoot ? createPortal(content, portalRoot) : content}
-        <select className="pickerHidden" {...api.getHiddenSelectProps()} />
+        {content}
       </div>
       {showSlidesTextToggle ? (
         <fieldset className="summarizeSlidesToggle">
@@ -645,33 +511,9 @@ function SummarizeControl(props: SummarizeControlProps) {
 }
 
 export function mountSidepanelLengthPicker(root: HTMLElement, props: SidepanelLengthPickerProps) {
-  let current = props;
-  const renderPicker = () => {
-    render(<SidepanelLengthPicker {...current} />, root);
-  };
-
-  renderPicker();
-
-  return {
-    update(next: SidepanelLengthPickerProps) {
-      current = next;
-      renderPicker();
-    },
-  };
+  return mountComponent(root, SidepanelLengthPicker, props);
 }
 
 export function mountSummarizeControl(root: HTMLElement, props: SummarizeControlProps) {
-  let current = props;
-  const renderPicker = () => {
-    render(<SummarizeControl {...current} />, root);
-  };
-
-  renderPicker();
-
-  return {
-    update(next: SummarizeControlProps) {
-      current = next;
-      renderPicker();
-    },
-  };
+  return mountComponent(root, SummarizeControl, props);
 }

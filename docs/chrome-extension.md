@@ -94,6 +94,8 @@ The sidepanel owns one plain `PanelState` object. Simple fields update directly;
 
 Summary and slide streams share SSE idle-deadline reads, including keepalive comments, but retain separate rendering, cancellation, and completion policies. Chat runs through the agent loop, not a second mode in the summary stream controller.
 
+Picker behavior lives in `ui/select.tsx`; fields and portalled popup markup live in `ui/select-field.tsx`. Options retains inline trigger-width and pointer-event sizing, while side-panel controls retain their CSS-sized popups. The shared Preact mount helper updates component props without remounting hook state.
+
 - **Extension (MV3, WXT)**
   - Side Panel UI: length + typography controls (font family + size), auto/manual toggle.
   - Background service worker: tab + navigation tracking, content extraction, starts summarize runs.
