@@ -1,5 +1,33 @@
 import { parseSseStream } from "@steipete/summarize-core/runtime";
 import type { LlmTokenUsage } from "../../types.js";
+import type { OpenAiTextStreamResult } from "./types.js";
+
+export function createOpenAiTextStream(
+  response: Response,
+  modelId: string,
+  readEvent: (
+    event: Record<string, unknown>,
+  ) => { text?: string; usage?: LlmTokenUsage | null } | null,
+): OpenAiTextStreamResult {
+  const body = response.body;
+  if (!body) throw new Error("OpenAI stream response was empty.");
+  const usage = createDeferredUsage();
+  const textStream = {
+    async *[Symbol.asyncIterator]() {
+      let finalUsage: LlmTokenUsage | null = null;
+      try {
+        for await (const event of parseOpenAiSseJsonStream(body)) {
+          const parsed = readEvent(event);
+          if (parsed?.usage !== undefined) finalUsage = parsed.usage;
+          if (typeof parsed?.text === "string") yield parsed.text;
+        }
+      } finally {
+        usage.resolve(finalUsage);
+      }
+    },
+  };
+  return { textStream, usage: usage.promise, resolvedModelId: modelId };
+}
 
 export async function* parseOpenAiSseJsonStream(
   body: ReadableStream<Uint8Array>,
@@ -35,7 +63,7 @@ export function createOpenAiSseError(event: Record<string, unknown>): Error {
   return error;
 }
 
-export function createDeferredUsage(): {
+function createDeferredUsage(): {
   promise: Promise<LlmTokenUsage | null>;
   resolve: (value: LlmTokenUsage | null) => void;
 } {

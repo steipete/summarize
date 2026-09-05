@@ -1,5 +1,45 @@
 import type { Context } from "@earendil-works/pi-ai";
+import { normalizeOpenAiUsage } from "../../usage.js";
 import type { OpenAiClientConfig } from "../types.js";
+import type { OpenAiTextCompletionResult, OpenAiTextRequest } from "./types.js";
+
+export async function postOpenAiJson(
+  {
+    openaiConfig,
+    fetchImpl,
+    signal,
+  }: Pick<OpenAiTextRequest, "openaiConfig" | "fetchImpl" | "signal">,
+  url: URL,
+  payload: Record<string, unknown>,
+  headers = buildOpenAiRequestHeaders(openaiConfig),
+): Promise<Response> {
+  const requestUrl = String(url);
+  const response = await fetchImpl(requestUrl, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+    signal,
+  });
+  if (!response.ok) {
+    throw createOpenAiHttpError({
+      baseUrl: requestUrl,
+      status: response.status,
+      bodyText: await response.text(),
+    });
+  }
+  return response;
+}
+
+export async function readOpenAiCompletion<Payload>(
+  response: Response,
+  modelId: string,
+  extractText: (payload: Payload) => string,
+): Promise<OpenAiTextCompletionResult> {
+  const payload = JSON.parse(await response.text()) as Payload & { usage?: unknown };
+  const text = extractText(payload);
+  if (!text) throw new Error(`LLM returned an empty summary (model openai/${modelId}).`);
+  return { text, usage: normalizeOpenAiUsage(payload.usage) };
+}
 
 export function isGitHubModelsBaseUrl(baseUrl: string | undefined): boolean {
   if (!baseUrl) return false;
