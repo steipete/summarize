@@ -1,5 +1,5 @@
 import { buildSlidePresentation } from "../../lib/slides-presentation";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { createInitialSlidesSummaryState, patchPanelState } from "./panel-state-store";
 import { resolveSlidesLengthArg } from "./slides-state";
 import { createStreamController } from "./stream-controller";
 import type { PanelState, RunStart, SlideSummarySource, UiState } from "./types";
@@ -13,7 +13,7 @@ type SlidesSummarySnapshot = {
 
 type SlidesSummaryControllerOptions = {
   getToken: () => Promise<string>;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   friendlyFetchError: (error: unknown, fallback: string) => string;
   panelUrlsMatch: (left: string | null | undefined, right: string | null | undefined) => boolean;
   getPanelState: () => PanelState;
@@ -36,16 +36,9 @@ type SlidesSummaryControllerOptions = {
 export function createSlidesSummaryController(options: SlidesSummaryControllerOptions) {
   let activeGeneration = 0;
 
-  const dispatch = (action: PanelStateAction) => {
-    if (options.dispatchPanelState) {
-      options.dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(options.getPanelState(), action);
-    }
-  };
   const getState = () => options.getPanelState().slidesSummary;
   const updateState = (value: Partial<PanelState["slidesSummary"]>) => {
-    dispatch({ type: "slides-summary-update", value });
+    patchPanelState(options.getPanelState(), "slidesSummary", value);
   };
   const isCurrentGeneration = (generation: number) => generation === activeGeneration;
 
@@ -215,7 +208,7 @@ export function createSlidesSummaryController(options: SlidesSummaryControllerOp
       activeGeneration += 1;
       streamController.abort();
       streamController = createGenerationStreamController(activeGeneration);
-      dispatch({ type: "slides-summary-reset" });
+      options.getPanelState().slidesSummary = createInitialSlidesSummaryState();
       options.clearSummarySource();
     },
     start(run: RunStart) {

@@ -1,22 +1,17 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatController } from "../apps/chrome-extension/src/entrypoints/sidepanel/chat-controller";
-import {
-  createInitialPanelState,
-  createPanelStateStore,
-} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import type { ChatMessage } from "../apps/chrome-extension/src/entrypoints/sidepanel/types";
 
-function createHarness(options: { injectedDispatch?: boolean } = {}) {
+function createHarness() {
   const panelState = createInitialPanelState();
-  const store = createPanelStateStore(panelState);
   const messagesEl = document.createElement("div");
   const inputEl = document.createElement("textarea");
   const sendBtn = document.createElement("button");
   const contextEl = document.createElement("div");
   const scrollToBottom = vi.fn();
   const onNewContent = vi.fn();
-  const dispatchPanelState = vi.fn(store.dispatch);
   const controller = new ChatController({
     messagesEl,
     inputEl,
@@ -28,14 +23,14 @@ function createHarness(options: { injectedDispatch?: boolean } = {}) {
     } as never,
     limits: { maxMessages: 10, maxChars: 10 },
     panelState,
-    dispatchPanelState: options.injectedDispatch ? dispatchPanelState : undefined,
+
     scrollToBottom,
     onNewContent,
   });
   return {
     contextEl,
     controller,
-    dispatchPanelState,
+
     inputEl,
     messagesEl,
     onNewContent,
@@ -74,7 +69,7 @@ describe("sidepanel chat controller", () => {
   });
 
   it("sets, replaces, appends missing replacements, and removes canonical messages", () => {
-    const harness = createHarness({ injectedDispatch: true });
+    const harness = createHarness();
     const user = userMessage();
     const assistant = assistantMessage();
 
@@ -86,7 +81,6 @@ describe("sidepanel chat controller", () => {
 
     expect(harness.panelState.chat.messages).toEqual([assistantMessage("assistant-1", "Updated")]);
     expect(harness.messagesEl.textContent).toContain("Updated");
-    expect(harness.dispatchPanelState).toHaveBeenCalled();
     expect(harness.onNewContent).toHaveBeenCalledOnce();
     expect(harness.scrollToBottom).toHaveBeenCalledOnce();
   });

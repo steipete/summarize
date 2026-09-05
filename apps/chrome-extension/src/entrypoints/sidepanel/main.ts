@@ -10,7 +10,7 @@ import { createSidepanelInteractionRuntime } from "./interaction-runtime";
 import { createMetricsController } from "./metrics-controller";
 import { isPanelChatAvailable } from "./panel-capabilities";
 import { createPanelMessagingRuntime } from "./panel-messaging";
-import { createPanelStateStore } from "./panel-state-store";
+import { createInitialPanelState, patchPanelState } from "./panel-state-store";
 import { createSidepanelPresentationRuntime } from "./presentation-runtime";
 import { createSidepanelRunRuntime } from "./run-runtime";
 import { createSidepanelSessionRuntime } from "./session-runtime";
@@ -67,18 +67,17 @@ const typographyController = createTypographyController({
   defaultLineHeight: defaultSettings.lineHeight,
 });
 
-const panelStateStore = createPanelStateStore();
-const panelState = panelStateStore.state;
+const panelState = createInitialPanelState();
 const getActiveTabId = () => panelState.navigation.activeTabId;
 const getActiveTabUrl = () => panelState.navigation.activeTabUrl;
 const getPanelSession = () => panelState.panelSession;
 const updatePanelSession = (value: Partial<typeof panelState.panelSession>) => {
-  panelStateStore.dispatch({ type: "panel-session-update", value });
+  patchPanelState(panelState, "panelSession", value);
 };
 
 const panelMessagingRuntime = createPanelMessagingRuntime({
   panelState,
-  dispatchPanelState: panelStateStore.dispatch,
+
   onMessage: (msg) => {
     handleBgMessage(msg);
   },
@@ -119,7 +118,7 @@ const appearanceControls = createAppearanceControls({
 const presentationRuntime = createSidepanelPresentationRuntime({
   dom,
   panelState,
-  dispatchPanelState: panelStateStore.dispatch,
+
   appearanceControls,
   metricsController,
   resolveLocalSlides,
@@ -137,7 +136,7 @@ const { applySlidesLayout, setSlidesLayout } = summarizeControlRuntime;
 const sessionRuntime = createSidepanelSessionRuntime({
   dom,
   panelState,
-  dispatchPanelState: panelStateStore.dispatch,
+
   metricsController,
   presentationRuntime,
   send,
@@ -147,7 +146,7 @@ const { bindRunActions, chatRuntime, clearCurrentView, navigationRuntime, syncWi
 
 const runRuntime = createSidepanelRunRuntime({
   panelState,
-  dispatchPanelState: panelStateStore.dispatch,
+
   getActiveTabId,
   getActiveTabUrl,
   appearanceControls,
@@ -199,7 +198,7 @@ const {
 const stateEffectsRuntime = createSidepanelStateEffectsRuntime({
   dom,
   panelState,
-  dispatchPanelState: panelStateStore.dispatch,
+
   appearanceControls,
   typographyController,
   panelMessagingRuntime,
@@ -217,7 +216,7 @@ function handleBgMessage(msg: BgToPanel) {
 registerSidepanelRuntimeTestHooks({
   dom,
   panelState,
-  dispatchPanelState: panelStateStore.dispatch,
+
   presentationRuntime,
   runRuntime,
   stateEffectsRuntime,
@@ -310,7 +309,7 @@ bootstrapSidepanel({
   ensurePanelPort: () => panelMessagingRuntime.ensure(),
   loadSettings,
   panelState,
-  dispatchPanelState: panelStateStore.dispatch,
+
   typographyController,
   setSlidesLayoutInputValue: (value) => {
     slidesLayoutEl.value = value;

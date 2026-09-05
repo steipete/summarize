@@ -1,5 +1,5 @@
 import type { Settings, SlidesLayout } from "../../lib/settings";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import type { PanelState } from "./types";
 
 export function bindSidepanelUiEvents({
@@ -187,53 +187,36 @@ export function bindSidepanelLifecycle({
 
 export function bindSettingsStorage({
   panelState,
-  dispatchPanelState,
+
   applyChatEnabled,
   hideAutomationNotice,
 }: {
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   applyChatEnabled: () => void;
   hideAutomationNotice: () => void;
 }) {
-  const dispatch = (action: PanelStateAction) => {
-    if (dispatchPanelState) {
-      dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(panelState, action);
-    }
-  };
-
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
     const nextSettings = changes.settings?.newValue;
     if (!nextSettings || typeof nextSettings !== "object") return;
     if (!panelState.panelSession.settingsHydrated) {
-      dispatch({
-        type: "panel-session-update",
-        value: {
-          pendingSettingsSnapshot: {
-            ...(panelState.panelSession.pendingSettingsSnapshot ?? {}),
-            ...(nextSettings as Partial<Settings>),
-          },
+      patchPanelState(panelState, "panelSession", {
+        pendingSettingsSnapshot: {
+          ...(panelState.panelSession.pendingSettingsSnapshot ?? {}),
+          ...(nextSettings as Partial<Settings>),
         },
       });
     }
     const nextChatEnabled = (nextSettings as { chatEnabled?: unknown }).chatEnabled;
     if (typeof nextChatEnabled === "boolean") {
-      dispatch({
-        type: "panel-session-update",
-        value: { chatEnabled: nextChatEnabled },
-      });
+      patchPanelState(panelState, "panelSession", { chatEnabled: nextChatEnabled });
       applyChatEnabled();
     }
     const nextAutomationEnabled = (nextSettings as { automationEnabled?: unknown })
       .automationEnabled;
     if (typeof nextAutomationEnabled === "boolean") {
-      dispatch({
-        type: "panel-session-update",
-        value: { automationEnabled: nextAutomationEnabled },
-      });
+      patchPanelState(panelState, "panelSession", { automationEnabled: nextAutomationEnabled });
       if (!nextAutomationEnabled) hideAutomationNotice();
     }
   });

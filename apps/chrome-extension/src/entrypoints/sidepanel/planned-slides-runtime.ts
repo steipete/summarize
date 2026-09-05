@@ -1,5 +1,5 @@
 import { extractYouTubeVideoId } from "@steipete/summarize-core/content/url";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import { panelUrlsMatch } from "./session-policy";
 import { shouldSeedPlannedSlidesForRun } from "./slides-seed-policy";
 import { resolveSlidesInputMode } from "./slides-session-state";
@@ -7,7 +7,7 @@ import type { PanelState, RunStart } from "./types";
 
 export function createPlannedSlidesRuntime({
   panelState,
-  dispatchPanelState,
+
   getActiveTabUrl,
   getLengthValue,
   updateSlidesTextState,
@@ -15,21 +15,13 @@ export function createPlannedSlidesRuntime({
   schedulePanelCacheSync,
 }: {
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   getActiveTabUrl: () => string | null;
   getLengthValue: () => string;
   updateSlidesTextState: () => void;
   queueSlidesRender: () => void;
   schedulePanelCacheSync: (delayMs?: number) => void;
 }) {
-  const dispatch = (action: PanelStateAction) => {
-    if (dispatchPanelState) {
-      dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(panelState, action);
-    }
-  };
-
   const getSourceId = (run: RunStart) => {
     const youtubeId = extractYouTubeVideoId(run.url);
     return youtubeId ? `youtube-${youtubeId}` : `planned-${run.id}`;
@@ -108,20 +100,14 @@ export function createPlannedSlidesRuntime({
       return { index: index + 1, timestamp, imageUrl: "" };
     });
 
-    dispatch({
-      type: "slides",
-      slides: {
-        sourceUrl: run.url,
-        sourceId,
-        sourceKind,
-        ocrAvailable: false,
-        slides,
-      },
-    });
-    dispatch({
-      type: "slides-session-update",
-      value: { slidesSeededSourceId: sourceId },
-    });
+    panelState.slides = {
+      sourceUrl: run.url,
+      sourceId,
+      sourceKind,
+      ocrAvailable: false,
+      slides,
+    };
+    patchPanelState(panelState, "slidesSession", { slidesSeededSourceId: sourceId });
     updateSlidesTextState();
     queueSlidesRender();
     schedulePanelCacheSync(0);
@@ -152,7 +138,7 @@ export function createPlannedSlidesRuntime({
   };
 
   const clearPendingRun = () => {
-    dispatch({ type: "planned-slides-run", value: null });
+    patchPanelState(panelState, "slidesLifecycle", { plannedRun: null });
   };
 
   const maybeSeedPendingRun = () => {

@@ -6,7 +6,7 @@ import type { createDaemonHintRuntime } from "./daemon-hint-runtime";
 import type { SidepanelDom } from "./dom";
 import type { PanelCachePayload } from "./panel-cache";
 import type { createPanelMessagingRuntime } from "./panel-messaging";
-import type { PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import type { createSidepanelPresentationRuntime } from "./presentation-runtime";
 import type { createSidepanelRunRuntime } from "./run-runtime";
 import type { createSidepanelSessionRuntime } from "./session-runtime";
@@ -27,7 +27,7 @@ type TypographyController = ReturnType<typeof createTypographyController>;
 export function createSidepanelStateEffectsRuntime({
   dom,
   panelState,
-  dispatchPanelState,
+
   appearanceControls,
   typographyController,
   panelMessagingRuntime,
@@ -39,7 +39,7 @@ export function createSidepanelStateEffectsRuntime({
 }: {
   dom: SidepanelDom;
   panelState: PanelState;
-  dispatchPanelState: (action: PanelStateAction) => void;
+
   appearanceControls: AppearanceControls;
   typographyController: TypographyController;
   panelMessagingRuntime: PanelMessagingRuntime;
@@ -89,7 +89,7 @@ export function createSidepanelStateEffectsRuntime({
 
   const uiStateRuntime = createUiStateRuntime({
     panelState,
-    dispatchPanelState,
+
     appearanceControls,
     typographyController,
     navigationRuntime,
@@ -142,7 +142,7 @@ export function createSidepanelStateEffectsRuntime({
 
   const bgMessageRuntime = createSidepanelBgMessageRuntime({
     panelState,
-    dispatchPanelState,
+
     applyUiState,
     setStatus: headerController.setStatus,
     isStreaming,
@@ -159,7 +159,7 @@ export function createSidepanelStateEffectsRuntime({
     handleSlidesLocal: handleLocalSlidesResponse,
     getSlidesContextRequestId: () => panelState.slidesSession.slidesContextRequestId,
     setSlidesContextPending: (value) => {
-      dispatchPanelState({ type: "slides-session-update", value: { slidesContextPending: value } });
+      patchPanelState(panelState, "slidesSession", { slidesContextPending: value });
     },
     setSlidesTranscriptTimedText,
     updateSlidesTextState,

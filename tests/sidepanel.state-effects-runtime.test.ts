@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { createSidepanelBgMessageRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/bg-message-runtime";
 import type { SidepanelDom } from "../apps/chrome-extension/src/entrypoints/sidepanel/dom";
-import { createPanelStateStore } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import type { createSidepanelPresentationRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/presentation-runtime";
 import type { createSidepanelRunRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/run-runtime";
 import type { createSidepanelSessionRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/session-runtime";
@@ -35,7 +35,7 @@ afterEach(() => {
 
 describe("sidepanel state effects runtime", () => {
   it("wires UI state and background messages through subsystem ports", () => {
-    const store = createPanelStateStore();
+    const store = createInitialPanelState();
     const send = vi.fn(async () => {});
     const renderInlineSlides = vi.fn();
     const startSlidesSummaryStreamForRunId = vi.fn();
@@ -48,8 +48,8 @@ describe("sidepanel state effects runtime", () => {
         modelRefreshBtn: { disabled: false },
         renderMarkdownHostEl,
       } as SidepanelDom,
-      panelState: store.state,
-      dispatchPanelState: store.dispatch,
+      panelState: store,
+
       appearanceControls: {} as Parameters<
         typeof createSidepanelStateEffectsRuntime
       >[0]["appearanceControls"],
@@ -168,7 +168,7 @@ describe("sidepanel state effects runtime", () => {
     expect(handleBgMessage).toHaveBeenCalledWith(message);
     expect(send).toHaveBeenCalledWith({ type: "panel:slides-capture" });
     expect(setSlidesLayout).toHaveBeenCalledWith("gallery");
-    expect(store.state.slidesSession.slidesContextPending).toBe(true);
+    expect(store.slidesSession.slidesContextPending).toBe(true);
     expect(applyPanelCache).toHaveBeenCalledWith({}, { preserveChat: true });
     expect(renderInlineSlides).toHaveBeenCalledWith(renderMarkdownHostEl, { fallback: true });
     expect(startSlidesSummaryStreamForRunId).toHaveBeenCalledWith("run-1", null);

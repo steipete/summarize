@@ -1,27 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
-  createPanelStateStore,
-  reducePanelState,
+  attachPanelRun,
+  createInitialPanelState,
+  createInitialSlidesSummaryState,
+  createInitialSlidesTextState,
+  patchPanelState,
+  setPanelPhase,
+  replacePanelChatMessage,
+  resetPanelSummary,
+  restorePanelSession,
+  setPendingSlidesRun,
+  setPendingSummaryRun,
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 
 describe("sidepanel panel state store", () => {
   it("updates active tab identity as one navigation transition", () => {
-    const store = createPanelStateStore();
-    store.dispatch({
-      type: "active-tab",
-      tabId: 42,
-      url: "https://example.com",
-    });
+    const store = createInitialPanelState();
+    patchPanelState(store, "navigation", { activeTabId: 42, activeTabUrl: "https://example.com" });
 
-    expect(store.state.navigation).toEqual({
+    expect(store.navigation).toEqual({
       activeTabId: 42,
       activeTabUrl: "https://example.com",
       lastAgentNavigation: null,
       pendingPreserveChatForUrl: null,
     });
 
-    store.dispatch({ type: "active-tab-url", url: "https://example.com/next" });
-    expect(store.state.navigation).toEqual({
+    patchPanelState(store, "navigation", { activeTabUrl: "https://example.com/next" });
+    expect(store.navigation).toEqual({
       activeTabId: 42,
       activeTabUrl: "https://example.com/next",
       lastAgentNavigation: null,
@@ -30,24 +35,21 @@ describe("sidepanel panel state store", () => {
   });
 
   it("owns navigation policy markers without losing active tab identity", () => {
-    const store = createPanelStateStore();
-    store.dispatch({ type: "active-tab", tabId: 42, url: "https://example.com" });
-    store.dispatch({
-      type: "navigation-policy-update",
-      value: {
-        lastAgentNavigation: {
-          url: "https://example.com/next",
-          tabId: 43,
-          at: 100,
-        },
-        pendingPreserveChatForUrl: {
-          url: "https://example.com/next",
-          at: 101,
-        },
+    const store = createInitialPanelState();
+    patchPanelState(store, "navigation", { activeTabId: 42, activeTabUrl: "https://example.com" });
+    patchPanelState(store, "navigation", {
+      lastAgentNavigation: {
+        url: "https://example.com/next",
+        tabId: 43,
+        at: 100,
+      },
+      pendingPreserveChatForUrl: {
+        url: "https://example.com/next",
+        at: 101,
       },
     });
 
-    expect(store.state.navigation).toEqual({
+    expect(store.navigation).toEqual({
       activeTabId: 42,
       activeTabUrl: "https://example.com",
       lastAgentNavigation: {
@@ -61,14 +63,16 @@ describe("sidepanel panel state store", () => {
       },
     });
 
-    store.dispatch({ type: "active-tab", tabId: 44, url: "https://example.com/final" });
-    expect(store.state.navigation.lastAgentNavigation?.tabId).toBe(43);
+    patchPanelState(store, "navigation", {
+      activeTabId: 44,
+      activeTabUrl: "https://example.com/final",
+    });
+    expect(store.navigation.lastAgentNavigation?.tabId).toBe(43);
   });
 
   it("attaches runs as one transition", () => {
-    const store = createPanelStateStore();
-    store.dispatch({
-      type: "attach-run",
+    const store = createInitialPanelState();
+    attachPanelRun(store, {
       tabId: 42,
       runId: "run-1",
       slidesRunId: "run-1",
@@ -77,7 +81,7 @@ describe("sidepanel panel state store", () => {
       meta: { inputSummary: null, model: "auto", modelLabel: "auto" },
     });
 
-    expect(store.state).toMatchObject({
+    expect(store).toMatchObject({
       runId: "run-1",
       activeRun: { tabId: 42 },
       slidesRunId: "run-1",
@@ -88,7 +92,7 @@ describe("sidepanel panel state store", () => {
   });
 
   it("queues and consumes deferred runs by normalized URL key", () => {
-    const store = createPanelStateStore();
+    const store = createInitialPanelState();
     const urlKey = "https://example.com/video";
     const run = {
       id: "run-1",
@@ -98,31 +102,23 @@ describe("sidepanel panel state store", () => {
       reason: "tab-activated",
     } as const;
 
-    store.dispatch({
-      type: "pending-summary-run",
-      urlKey,
-      value: { type: "run", run },
-    });
-    store.dispatch({
-      type: "pending-slides-run",
-      urlKey,
-      value: { runId: "slides-1", url: urlKey, local: true },
-    });
+    setPendingSummaryRun(store, urlKey, { type: "run", run });
+    setPendingSlidesRun(store, urlKey, { runId: "slides-1", url: urlKey, local: true });
 
-    expect(store.state.pendingRuns).toEqual({
+    expect(store.pendingRuns).toEqual({
       summaryByUrl: { [urlKey]: { type: "run", run } },
       slidesByUrl: {
         [urlKey]: { runId: "slides-1", url: urlKey, local: true },
       },
     });
 
-    store.dispatch({ type: "pending-summary-run", urlKey, value: null });
-    store.dispatch({ type: "pending-slides-run", urlKey, value: null });
-    expect(store.state.pendingRuns).toEqual({ summaryByUrl: {}, slidesByUrl: {} });
+    setPendingSummaryRun(store, urlKey, null);
+    setPendingSlidesRun(store, urlKey, null);
+    expect(store.pendingRuns).toEqual({ summaryByUrl: {}, slidesByUrl: {} });
   });
 
   it("owns active and planned slides lifecycle state", () => {
-    const store = createPanelStateStore();
+    const store = createInitialPanelState();
     const plannedRun = {
       id: "run-1",
       url: "https://example.com/video",
@@ -131,37 +127,25 @@ describe("sidepanel panel state store", () => {
       reason: "tab-activated",
     } as const;
 
-    store.dispatch({
-      type: "active-slides-run",
-      value: { runId: "slides-1", url: plannedRun.url, local: true },
+    patchPanelState(store, "slidesLifecycle", {
+      activeRun: { runId: "slides-1", url: plannedRun.url, local: true },
     });
-    store.dispatch({ type: "planned-slides-run", value: plannedRun });
+    patchPanelState(store, "slidesLifecycle", { plannedRun: plannedRun });
 
-    expect(store.state.slidesLifecycle).toEqual({
+    expect(store.slidesLifecycle).toEqual({
       activeRun: { runId: "slides-1", url: plannedRun.url, local: true },
       plannedRun,
     });
 
-    store.dispatch({ type: "active-slides-run", value: null });
-    store.dispatch({ type: "planned-slides-run", value: null });
-    expect(store.state.slidesLifecycle).toEqual({ activeRun: null, plannedRun: null });
+    patchPanelState(store, "slidesLifecycle", { activeRun: null });
+    patchPanelState(store, "slidesLifecycle", { plannedRun: null });
+    expect(store.slidesLifecycle).toEqual({ activeRun: null, plannedRun: null });
   });
 
   it("owns slides summary lifecycle state", () => {
-    const store = createPanelStateStore();
+    const store = createInitialPanelState();
 
-    store.dispatch({
-      type: "slides-summary-update",
-      value: {
-        runId: "slides-1",
-        url: "https://example.com/video",
-        markdown: "Summary",
-        complete: true,
-        model: "test-model",
-      },
-    });
-
-    expect(store.state.slidesSummary).toMatchObject({
+    patchPanelState(store, "slidesSummary", {
       runId: "slides-1",
       url: "https://example.com/video",
       markdown: "Summary",
@@ -169,8 +153,16 @@ describe("sidepanel panel state store", () => {
       model: "test-model",
     });
 
-    store.dispatch({ type: "slides-summary-reset" });
-    expect(store.state.slidesSummary).toEqual({
+    expect(store.slidesSummary).toMatchObject({
+      runId: "slides-1",
+      url: "https://example.com/video",
+      markdown: "Summary",
+      complete: true,
+      model: "test-model",
+    });
+
+    store.slidesSummary = createInitialSlidesSummaryState();
+    expect(store.slidesSummary).toEqual({
       runId: null,
       url: null,
       markdown: "",
@@ -182,16 +174,17 @@ describe("sidepanel panel state store", () => {
   });
 
   it("updates slides session state and advances request identity", () => {
-    const store = createPanelStateStore();
+    const store = createInitialPanelState();
 
-    store.dispatch({
-      type: "slides-session-update",
-      value: { inputMode: "video", slidesBusy: true },
+    patchPanelState(store, "slidesSession", { inputMode: "video", slidesBusy: true });
+    patchPanelState(store, "slidesSession", {
+      slidesContextRequestId: store.slidesSession.slidesContextRequestId + 1,
     });
-    store.dispatch({ type: "slides-context-request-next" });
-    store.dispatch({ type: "slides-context-request-next" });
+    patchPanelState(store, "slidesSession", {
+      slidesContextRequestId: store.slidesSession.slidesContextRequestId + 1,
+    });
 
-    expect(store.state.slidesSession).toMatchObject({
+    expect(store.slidesSession).toMatchObject({
       inputMode: "video",
       slidesBusy: true,
       slidesContextRequestId: 2,
@@ -199,24 +192,21 @@ describe("sidepanel panel state store", () => {
   });
 
   it("owns serializable slides text state", () => {
-    const store = createPanelStateStore();
+    const store = createInitialPanelState();
 
-    store.dispatch({
-      type: "slides-text-update",
-      value: {
-        mode: "ocr",
-        toggleVisible: true,
-        transcriptTimedText: "[00:00] Intro",
-        transcriptAvailable: true,
-        ocrAvailable: true,
-        descriptionsByIndex: { 1: "Description" },
-        summariesByIndex: { 1: "Summary" },
-        titlesByIndex: { 1: "Title" },
-        summarySource: "slides",
-      },
+    patchPanelState(store, "slidesText", {
+      mode: "ocr",
+      toggleVisible: true,
+      transcriptTimedText: "[00:00] Intro",
+      transcriptAvailable: true,
+      ocrAvailable: true,
+      descriptionsByIndex: { 1: "Description" },
+      summariesByIndex: { 1: "Summary" },
+      titlesByIndex: { 1: "Title" },
+      summarySource: "slides",
     });
 
-    expect(store.state.slidesText).toMatchObject({
+    expect(store.slidesText).toMatchObject({
       mode: "ocr",
       toggleVisible: true,
       descriptionsByIndex: { 1: "Description" },
@@ -224,8 +214,8 @@ describe("sidepanel panel state store", () => {
       summarySource: "slides",
     });
 
-    store.dispatch({ type: "slides-text-reset" });
-    expect(store.state.slidesText).toEqual({
+    store.slidesText = createInitialSlidesTextState();
+    expect(store.slidesText).toEqual({
       mode: "transcript",
       toggleVisible: false,
       transcriptTimedText: null,
@@ -239,18 +229,15 @@ describe("sidepanel panel state store", () => {
   });
 
   it("owns local panel session state", () => {
-    const store = createPanelStateStore();
+    const store = createInitialPanelState();
 
-    store.dispatch({
-      type: "panel-session-update",
-      value: {
-        autoSummarize: true,
-        settingsHydrated: true,
-        lastAction: "summarize",
-      },
+    patchPanelState(store, "panelSession", {
+      autoSummarize: true,
+      settingsHydrated: true,
+      lastAction: "summarize",
     });
 
-    expect(store.state.panelSession).toMatchObject({
+    expect(store.panelSession).toMatchObject({
       autoSummarize: true,
       settingsHydrated: true,
       lastAction: "summarize",
@@ -259,7 +246,7 @@ describe("sidepanel panel state store", () => {
   });
 
   it("owns chat messages and streaming state", () => {
-    const store = createPanelStateStore();
+    const store = createInitialPanelState();
     const userMessage = {
       id: "user-1",
       role: "user" as const,
@@ -273,60 +260,57 @@ describe("sidepanel panel state store", () => {
       timestamp: 2,
     };
 
-    store.dispatch({ type: "chat-message-add", message: userMessage });
-    store.dispatch({ type: "chat-message-add", message: assistantMessage });
-    store.dispatch({ type: "chat-streaming", value: true });
-    store.dispatch({
-      type: "chat-message-replace",
-      message: { ...assistantMessage, content: "Updated" },
+    patchPanelState(store, "chat", { messages: [...store.chat.messages, userMessage] });
+    patchPanelState(store, "chat", { messages: [...store.chat.messages, assistantMessage] });
+    patchPanelState(store, "chat", { streaming: true });
+    replacePanelChatMessage(store, { ...assistantMessage, content: "Updated" });
+    patchPanelState(store, "chat", {
+      messages: store.chat.messages.filter((message) => message.id !== userMessage.id),
     });
-    store.dispatch({ type: "chat-message-remove", id: userMessage.id });
 
-    expect(store.state.chat).toEqual({
+    expect(store.chat).toEqual({
       messages: [{ ...assistantMessage, content: "Updated" }],
       streaming: true,
       queue: [],
     });
 
-    store.dispatch({ type: "chat-messages", messages: [userMessage] });
-    expect(store.state.chat.messages).toEqual([userMessage]);
+    patchPanelState(store, "chat", { messages: [userMessage] });
+    expect(store.chat.messages).toEqual([userMessage]);
 
-    store.dispatch({ type: "chat-reset" });
-    expect(store.state.chat).toEqual({ messages: [], streaming: false, queue: [] });
+    store.chat = { messages: [], streaming: false, queue: [] };
+    expect(store.chat).toEqual({ messages: [], streaming: false, queue: [] });
   });
 
   it("owns queued chat messages", () => {
-    const store = createPanelStateStore();
+    const store = createInitialPanelState();
     const first = { id: "queue-1", text: "First", createdAt: 1 };
     const second = { id: "queue-2", text: "Second", createdAt: 2 };
 
-    store.dispatch({ type: "chat-queue-add", item: first });
-    store.dispatch({ type: "chat-queue-add", item: second });
-    expect(store.state.chat.queue).toEqual([first, second]);
+    patchPanelState(store, "chat", { queue: [...store.chat.queue, first] });
+    patchPanelState(store, "chat", { queue: [...store.chat.queue, second] });
+    expect(store.chat.queue).toEqual([first, second]);
 
-    store.dispatch({ type: "chat-queue-remove", id: first.id });
-    expect(store.state.chat.queue).toEqual([second]);
+    patchPanelState(store, "chat", {
+      queue: store.chat.queue.filter((item) => item.id !== first.id),
+    });
+    expect(store.chat.queue).toEqual([second]);
 
-    store.dispatch({ type: "chat-queue-clear" });
-    expect(store.state.chat.queue).toEqual([]);
+    patchPanelState(store, "chat", { queue: [] });
+    expect(store.chat.queue).toEqual([]);
   });
 
   it("restores cached sessions without replacing omitted slides", () => {
-    const store = createPanelStateStore();
-    store.dispatch({
-      type: "slides",
-      slides: {
-        sourceUrl: "https://example.com",
-        sourceId: "slides-1",
-        sourceKind: "youtube",
-        ocrAvailable: false,
-        slides: [],
-      },
-    });
-    const existingSlides = store.state.slides;
+    const store = createInitialPanelState();
+    store.slides = {
+      sourceUrl: "https://example.com",
+      sourceId: "slides-1",
+      sourceKind: "youtube",
+      ocrAvailable: false,
+      slides: [],
+    };
+    const existingSlides = store.slides;
 
-    store.dispatch({
-      type: "restore-session",
+    restorePanelSession(store, {
       tabId: 42,
       runId: "run-1",
       slidesRunId: null,
@@ -335,27 +319,38 @@ describe("sidepanel panel state store", () => {
       summaryFromCache: true,
     });
 
-    expect(store.state.summaryFromCache).toBe(true);
-    expect(store.state.activeRun.tabId).toBe(42);
-    expect(store.state.slides).toBe(existingSlides);
+    expect(store.summaryFromCache).toBe(true);
+    expect(store.activeRun.tabId).toBe(42);
+    expect(store.slides).toBe(existingSlides);
   });
 
   it("keeps phase and error invariants together", () => {
-    const failed = reducePanelState(createPanelStateStore().state, {
-      type: "phase",
-      phase: "error",
-      error: "failed",
-    });
-    expect(failed).toMatchObject({ phase: "error", error: "failed" });
+    const state = createInitialPanelState();
+    setPanelPhase(state, "error", "failed");
+    expect(state).toMatchObject({ phase: "error", error: "failed" });
+    setPanelPhase(state, "error");
+    expect(state.error).toBe("failed");
+    setPanelPhase(state, "idle");
+    expect(state).toMatchObject({ phase: "idle", error: null });
+  });
 
-    const recovered = reducePanelState(failed, { type: "phase", phase: "idle" });
-    expect(recovered).toMatchObject({ phase: "idle", error: null });
+  it("keeps the root identity and replaces nested slices without mutating snapshots", () => {
+    const state = createInitialPanelState();
+    const original = state;
+    const navigation = state.navigation;
+    const chat = state.chat;
+    patchPanelState(state, "navigation", { activeTabId: 42 });
+    patchPanelState(state, "chat", { streaming: true });
+    expect(state).toBe(original);
+    expect(state.navigation).not.toBe(navigation);
+    expect(navigation.activeTabId).toBeNull();
+    expect(state.chat).not.toBe(chat);
+    expect(chat.streaming).toBe(false);
   });
 
   it("resets summary and run-owned slides together", () => {
-    const store = createPanelStateStore();
-    store.dispatch({
-      type: "attach-run",
+    const store = createInitialPanelState();
+    attachPanelRun(store, {
       tabId: 42,
       runId: "run-1",
       slidesRunId: "run-1",
@@ -363,15 +358,12 @@ describe("sidepanel panel state store", () => {
       source: { url: "https://example.com", title: null },
       meta: { inputSummary: null, model: null, modelLabel: null },
     });
-    store.dispatch({ type: "summary", markdown: "Summary" });
-    store.dispatch({ type: "summary-cache", value: true });
-    store.dispatch({
-      type: "retained-slide-summary",
-      value: { markdown: "Retained", url: "https://example.com" },
-    });
-    store.dispatch({ type: "reset-summary", clearRunId: true, clearSlides: true });
+    store.summaryMarkdown = "Summary";
+    store.summaryFromCache = true;
+    store.retainedSlideSummary = { markdown: "Retained", url: "https://example.com" };
+    resetPanelSummary(store, { clearRunId: true, clearSlides: true });
 
-    expect(store.state).toMatchObject({
+    expect(store).toMatchObject({
       runId: null,
       activeRun: { tabId: null },
       slidesRunId: null,
@@ -379,12 +371,12 @@ describe("sidepanel panel state store", () => {
       summaryFromCache: null,
       slides: null,
     });
-    expect(store.state.retainedSlideSummary).toEqual({
+    expect(store.retainedSlideSummary).toEqual({
       markdown: "Retained",
       url: "https://example.com",
     });
 
-    store.dispatch({ type: "retained-slide-summary", value: null });
-    expect(store.state.retainedSlideSummary).toBeNull();
+    store.retainedSlideSummary = null;
+    expect(store.retainedSlideSummary).toBeNull();
   });
 });

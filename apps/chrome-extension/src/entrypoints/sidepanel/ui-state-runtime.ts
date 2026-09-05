@@ -1,7 +1,7 @@
 import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import type { PanelCachePayload } from "./panel-cache";
 import { isPanelChatAvailable } from "./panel-capabilities";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import {
   resolvePanelNavigationDecision,
   shouldIgnoreTransientPanelTabState,
@@ -43,7 +43,7 @@ type PanelCacheControllerLike = {
 
 type UiStateRuntimeOpts = {
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   appearanceControls: AppearanceControlsLike;
   typographyController: TypographyControllerLike;
   navigationRuntime: NavigationRuntimeLike;
@@ -88,22 +88,10 @@ type UiStateRuntimeOpts = {
   onSlidesOcrChanged: () => void;
 };
 
-function dispatchPanelState(
-  opts: Pick<UiStateRuntimeOpts, "panelState" | "dispatchPanelState">,
-  action: PanelStateAction,
-) {
-  if (opts.dispatchPanelState) {
-    opts.dispatchPanelState(action);
-  } else {
-    applyPanelStateAction(opts.panelState, action);
-  }
-}
-
 function applyCachedOrReset(
   opts: Pick<
     UiStateRuntimeOpts,
     | "panelState"
-    | "dispatchPanelState"
     | "panelCacheController"
     | "applyPanelCache"
     | "requestSlidesCapture"
@@ -126,14 +114,14 @@ function applyCachedOrReset(
         opts.requestSlidesCapture();
       }
     } else {
-      dispatchPanelState(opts, { type: "source", source: null });
+      opts.panelState.currentSource = null;
       opts.resetSummaryView({ preserveChat });
       opts.panelCacheController.request(tabId, url, preserveChat);
     }
     return;
   }
 
-  dispatchPanelState(opts, { type: "source", source: null });
+  opts.panelState.currentSource = null;
   opts.resetSummaryView({ preserveChat });
 }
 
@@ -142,12 +130,9 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
     if (state.panelOpen && !opts.panelState.panelSession.lastPanelOpen) {
       opts.clearInlineError();
     }
-    dispatchPanelState(opts, {
-      type: "panel-session-update",
-      value: {
-        lastPanelOpen: state.panelOpen,
-        autoSummarize: state.settings.autoSummarize,
-      },
+    patchPanelState(opts.panelState, "panelSession", {
+      lastPanelOpen: state.panelOpen,
+      autoSummarize: state.settings.autoSummarize,
     });
     opts.appearanceControls.setAutoValue(state.settings.autoSummarize);
 
@@ -206,7 +191,10 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
         );
       }
       const previousTabId = activeTabId;
-      dispatchPanelState(opts, { type: "active-tab", tabId: nextTabId, url: nextTabUrl });
+      patchPanelState(opts.panelState, "navigation", {
+        activeTabId: nextTabId,
+        activeTabUrl: nextTabUrl,
+      });
       if (opts.panelState.chat.streaming && navigation.shouldAbortChatStream) {
         opts.requestAgentAbort("Tab changed");
       }
@@ -216,23 +204,17 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
         void opts.migrateChatHistory(previousTabId, nextTabId, nextTabUrl);
       }
       if (navigation.nextInputMode) {
-        dispatchPanelState(opts, {
-          type: "slides-session-update",
-          value: { inputMode: navigation.nextInputMode },
-        });
+        patchPanelState(opts.panelState, "slidesSession", { inputMode: navigation.nextInputMode });
       }
       if (navigation.resetInputModeOverride) {
-        dispatchPanelState(opts, {
-          type: "slides-session-update",
-          value: { inputModeOverride: null },
-        });
+        patchPanelState(opts.panelState, "slidesSession", { inputModeOverride: null });
       }
       opts.abortSummaryStream();
       if (!opts.maybeStartPendingSummaryRunForUrl(nextTabUrl)) {
         applyCachedOrReset(opts, nextTabId, nextTabUrl, navigation.preserveChat);
       }
     } else if (navigation.kind === "url") {
-      dispatchPanelState(opts, { type: "active-tab-url", url: nextTabUrl });
+      patchPanelState(opts.panelState, "navigation", { activeTabUrl: nextTabUrl });
       if (navigation.preserveChat) {
         opts.navigationRuntime.notePreserveChatForUrl(nextTabUrl);
       } else if (navigation.shouldClearChat) {
@@ -248,33 +230,24 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
         );
       }
       if (navigation.nextInputMode) {
-        dispatchPanelState(opts, {
-          type: "slides-session-update",
-          value: { inputMode: navigation.nextInputMode },
-        });
+        patchPanelState(opts.panelState, "slidesSession", { inputMode: navigation.nextInputMode });
       }
     }
 
-    dispatchPanelState(opts, {
-      type: "panel-session-update",
-      value: {
-        chatEnabled: state.settings.chatEnabled,
-        automationEnabled: state.settings.automationEnabled,
-        daemonFeaturesAvailable:
-          (state.settings.summaryRuntime === "direct" && state.settings.providerConfigured) ||
-          (state.settings.summaryRuntime === "daemon" && state.daemon.ok && state.daemon.authed),
-      },
+    patchPanelState(opts.panelState, "panelSession", {
+      chatEnabled: state.settings.chatEnabled,
+      automationEnabled: state.settings.automationEnabled,
+      daemonFeaturesAvailable:
+        (state.settings.summaryRuntime === "direct" && state.settings.providerConfigured) ||
+        (state.settings.summaryRuntime === "daemon" && state.daemon.ok && state.daemon.authed),
     });
     const nextSlidesOcrEnabled = Boolean(state.settings.slidesOcrEnabled);
     const slidesOcrChanged =
       nextSlidesOcrEnabled !== opts.panelState.slidesSession.slidesOcrEnabled;
-    dispatchPanelState(opts, {
-      type: "slides-session-update",
-      value: {
-        slidesEnabled: state.settings.slidesEnabled,
-        slidesParallel: state.settings.slidesParallel,
-        ...(slidesOcrChanged ? { slidesOcrEnabled: nextSlidesOcrEnabled } : {}),
-      },
+    patchPanelState(opts.panelState, "slidesSession", {
+      slidesEnabled: state.settings.slidesEnabled,
+      slidesParallel: state.settings.slidesParallel,
+      ...(slidesOcrChanged ? { slidesOcrEnabled: nextSlidesOcrEnabled } : {}),
     });
     if (slidesOcrChanged) {
       opts.onSlidesOcrChanged();
@@ -285,22 +258,16 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       fallbackModel &&
       (!opts.panelState.lastMeta.model || !opts.panelState.lastMeta.model.trim())
     ) {
-      dispatchPanelState(opts, {
-        type: "meta",
-        meta: {
-          ...opts.panelState.lastMeta,
-          model: fallbackModel,
-          modelLabel: fallbackModel,
-        },
-      });
+      opts.panelState.lastMeta = {
+        ...opts.panelState.lastMeta,
+        model: fallbackModel,
+        modelLabel: fallbackModel,
+      };
     }
     if (opts.panelState.slidesSession.slidesEnabled && nextMediaAvailable) {
-      dispatchPanelState(opts, {
-        type: "slides-session-update",
-        value: {
-          inputMode: "video",
-          inputModeOverride: "video",
-        },
+      patchPanelState(opts.panelState, "slidesSession", {
+        inputMode: "video",
+        inputModeOverride: "video",
       });
     }
     if (state.settings.slidesLayout && state.settings.slidesLayout !== slidesLayoutValue) {
@@ -363,28 +330,22 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
         if (preserveChat) {
           opts.navigationRuntime.notePreserveChatForUrl(nextTabUrl);
         }
-        dispatchPanelState(opts, { type: "source", source: null });
+        opts.panelState.currentSource = null;
         if (opts.isStreaming()) {
           opts.abortSummaryStream();
         }
         opts.resetSummaryView({ preserveChat });
       } else if (nextTabTitle && nextTabTitle !== opts.panelState.currentSource.title) {
-        dispatchPanelState(opts, {
-          type: "source",
-          source: {
-            ...opts.panelState.currentSource,
-            title: nextTabTitle,
-          },
-        });
+        opts.panelState.currentSource = {
+          ...opts.panelState.currentSource,
+          title: nextTabTitle,
+        };
         opts.headerController.setBaseTitle(nextTabTitle);
       }
     }
     if (!opts.panelState.currentSource) {
       if (!ignoreTransientTabState) {
-        dispatchPanelState(opts, {
-          type: "meta",
-          meta: { inputSummary: null, model: null, modelLabel: null },
-        });
+        opts.panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null };
         opts.headerController.setBaseTitle(nextTabTitle || nextTabUrl || "Summarize");
         opts.headerController.setBaseSubtitle("");
       }
@@ -393,22 +354,16 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       opts.headerController.setStatus(state.status);
     }
     if (!nextMediaAvailable && hasMediaInfo) {
-      dispatchPanelState(opts, {
-        type: "slides-session-update",
-        value: {
-          inputMode: "page",
-          inputModeOverride: null,
-        },
+      patchPanelState(opts.panelState, "slidesSession", {
+        inputMode: "page",
+        inputModeOverride: null,
       });
     }
-    dispatchPanelState(opts, {
-      type: "slides-session-update",
-      value: {
-        mediaAvailable: nextMediaAvailable,
-        summarizeVideoLabel: nextVideoLabel,
-        summarizePageWords: state.stats.pageWords,
-        summarizeVideoDurationSeconds: state.stats.videoDurationSeconds,
-      },
+    patchPanelState(opts.panelState, "slidesSession", {
+      mediaAvailable: nextMediaAvailable,
+      summarizeVideoLabel: nextVideoLabel,
+      summarizePageWords: state.stats.pageWords,
+      summarizeVideoDurationSeconds: state.stats.videoDurationSeconds,
     });
     opts.maybeSeedPlannedSlidesForPendingRun();
     opts.refreshSummarizeControl();

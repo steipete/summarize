@@ -1,9 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  createInitialPanelState,
-  createPanelStateStore,
-} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import { createSlidesViewRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-view-runtime";
 import type { PanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/types";
 
@@ -60,7 +57,7 @@ function createHarness(
   const panelState = options.panelState ?? createInitialPanelState();
   panelState.currentSource ??= { url: "https://example.com/video", title: "Video" };
   panelState.slides ??= createSlidePayload();
-  const store = createPanelStateStore(panelState);
+  const store = panelState;
   const send = vi.fn(async () => {});
   const refreshSummarizeControl = vi.fn();
   const headerSetProgressOverride = vi.fn();
@@ -95,7 +92,7 @@ function createHarness(
     refreshSummarizeControl,
     hideSlideNotice,
     panelState,
-    dispatchPanelState: options.dispatch ? store.dispatch : undefined,
+
     getFallbackSummaryMarkdown: () => options.fallbackSummary ?? null,
   });
   return {

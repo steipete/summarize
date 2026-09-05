@@ -1,9 +1,9 @@
-import type { PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import type { PanelState } from "./types";
 
 type ChatQueueRuntimeOpts = {
   panelState: PanelState;
-  dispatchPanelState: (action: PanelStateAction) => void;
+
   chatQueueEl: HTMLElement;
   maxQueue: number;
   setStatus: (value: string) => void;
@@ -15,7 +15,9 @@ export function createChatQueueRuntime(opts: ChatQueueRuntimeOpts) {
   }
 
   function removeQueuedMessage(id: string) {
-    opts.dispatchPanelState({ type: "chat-queue-remove", id });
+    patchPanelState(opts.panelState, "chat", {
+      queue: opts.panelState.chat.queue.filter((item) => item.id !== id),
+    });
     renderChatQueue();
   }
 
@@ -59,9 +61,11 @@ export function createChatQueueRuntime(opts: ChatQueueRuntimeOpts) {
       opts.setStatus(`Queue full (${opts.maxQueue}). Remove one to add more.`);
       return false;
     }
-    opts.dispatchPanelState({
-      type: "chat-queue-add",
-      item: { id: crypto.randomUUID(), text, createdAt: Date.now() },
+    patchPanelState(opts.panelState, "chat", {
+      queue: [
+        ...opts.panelState.chat.queue,
+        { id: crypto.randomUUID(), text, createdAt: Date.now() },
+      ],
     });
     renderChatQueue();
     return true;
@@ -69,13 +73,16 @@ export function createChatQueueRuntime(opts: ChatQueueRuntimeOpts) {
 
   function clearQueuedMessages() {
     if (opts.panelState.chat.queue.length === 0) return;
-    opts.dispatchPanelState({ type: "chat-queue-clear" });
+    patchPanelState(opts.panelState, "chat", { queue: [] });
     renderChatQueue();
   }
 
   function dequeueQueuedMessage() {
     const next = opts.panelState.chat.queue[0];
-    if (next) opts.dispatchPanelState({ type: "chat-queue-remove", id: next.id });
+    if (next)
+      patchPanelState(opts.panelState, "chat", {
+        queue: opts.panelState.chat.queue.filter((item) => item.id !== next.id),
+      });
     return next;
   }
 

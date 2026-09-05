@@ -1,10 +1,9 @@
-// @vitest-environment happy-dom
-
 import { readFileSync } from "node:fs";
+// @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSidepanelDom } from "../apps/chrome-extension/src/entrypoints/sidepanel/dom";
 import { createMetricsController } from "../apps/chrome-extension/src/entrypoints/sidepanel/metrics-controller";
-import { createPanelStateStore } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import { createSidepanelPresentationRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/presentation-runtime";
 
 vi.mock("../apps/chrome-extension/src/entrypoints/sidepanel/pickers", () => ({
@@ -36,12 +35,12 @@ describe("sidepanel presentation runtime", () => {
 
   it("composes controls, summary dispatch, and deferred feedback actions", async () => {
     const dom = createSidepanelDom();
-    const store = createPanelStateStore();
+    const store = createInitialPanelState();
     const send = vi.fn(async () => {});
     const runtime = createSidepanelPresentationRuntime({
       dom,
-      panelState: store.state,
-      dispatchPanelState: store.dispatch,
+      panelState: store,
+
       appearanceControls: {
         getLengthValue: () => "medium",
       },
@@ -59,7 +58,7 @@ describe("sidepanel presentation runtime", () => {
     dom.summarizeControlRoot.querySelector("button")?.click();
     await Promise.resolve();
 
-    expect(store.state.panelSession.lastAction).toBe("summarize");
+    expect(store.panelSession.lastAction).toBe("summarize");
     expect(send).toHaveBeenCalledWith({
       type: "panel:summarize",
       refresh: false,

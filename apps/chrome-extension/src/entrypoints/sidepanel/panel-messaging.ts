@@ -1,7 +1,7 @@
 import type { BgToPanel, PanelToBg } from "../../lib/panel-contracts";
 import type { SseSlidesData } from "../../lib/runtime-contracts";
 import { createPanelPortRuntime } from "./panel-port";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import type { PanelState } from "./types";
 
 type PanelPortRuntimeLike = {
@@ -11,7 +11,7 @@ type PanelPortRuntimeLike = {
 
 export function createPanelMessagingRuntime({
   panelState,
-  dispatchPanelState,
+
   onMessage,
   portRuntime = createPanelPortRuntime({ onMessage }),
   createRequestId = () => `local-slides-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -20,7 +20,7 @@ export function createPanelMessagingRuntime({
   clearTimer = (timer) => clearTimeout(timer),
 }: {
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   onMessage: (message: BgToPanel) => void;
   portRuntime?: PanelPortRuntimeLike;
   createRequestId?: () => string;
@@ -36,21 +36,13 @@ export function createPanelMessagingRuntime({
     }
   >();
 
-  const dispatch = (action: PanelStateAction) => {
-    if (dispatchPanelState) {
-      dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(panelState, action);
-    }
-  };
-
   const sendRaw = (message: PanelToBg) => portRuntime.send(message);
 
   const send = async (message: PanelToBg) => {
     if (message.type === "panel:summarize") {
-      dispatch({ type: "panel-session-update", value: { lastAction: "summarize" } });
+      patchPanelState(panelState, "panelSession", { lastAction: "summarize" });
     } else if (message.type === "panel:agent") {
-      dispatch({ type: "panel-session-update", value: { lastAction: "chat" } });
+      patchPanelState(panelState, "panelSession", { lastAction: "chat" });
     }
     await sendRaw(message);
   };

@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { bindSettingsStorage } from "../apps/chrome-extension/src/entrypoints/sidepanel/bindings";
-import {
-  createInitialPanelState,
-  createPanelStateStore,
-} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 
 describe("sidepanel settings storage binding", () => {
   let onChanged: (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => void;
@@ -23,13 +20,13 @@ describe("sidepanel settings storage binding", () => {
   it("merges pre-hydration settings while applying live controls", () => {
     const initialState = createInitialPanelState();
     initialState.panelSession.pendingSettingsSnapshot = { autoSummarize: true };
-    const panelStateStore = createPanelStateStore(initialState);
+    const panelStateStore = initialState;
     const applyChatEnabled = vi.fn();
     const hideAutomationNotice = vi.fn();
 
     bindSettingsStorage({
-      panelState: panelStateStore.state,
-      dispatchPanelState: panelStateStore.dispatch,
+      panelState: panelStateStore,
+
       applyChatEnabled,
       hideAutomationNotice,
     });
@@ -46,7 +43,7 @@ describe("sidepanel settings storage binding", () => {
       "local",
     );
 
-    expect(panelStateStore.state.panelSession).toMatchObject({
+    expect(panelStateStore.panelSession).toMatchObject({
       chatEnabled: false,
       automationEnabled: false,
       pendingSettingsSnapshot: {
@@ -62,11 +59,11 @@ describe("sidepanel settings storage binding", () => {
   it("does not queue settings after hydration", () => {
     const initialState = createInitialPanelState();
     initialState.panelSession.settingsHydrated = true;
-    const panelStateStore = createPanelStateStore(initialState);
+    const panelStateStore = initialState;
 
     bindSettingsStorage({
-      panelState: panelStateStore.state,
-      dispatchPanelState: panelStateStore.dispatch,
+      panelState: panelStateStore,
+
       applyChatEnabled: vi.fn(),
       hideAutomationNotice: vi.fn(),
     });
@@ -80,7 +77,7 @@ describe("sidepanel settings storage binding", () => {
       "local",
     );
 
-    expect(panelStateStore.state.panelSession.pendingSettingsSnapshot).toBeNull();
-    expect(panelStateStore.state.panelSession.chatEnabled).toBe(true);
+    expect(panelStateStore.panelSession.pendingSettingsSnapshot).toBeNull();
+    expect(panelStateStore.panelSession.chatEnabled).toBe(true);
   });
 });

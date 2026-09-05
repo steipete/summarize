@@ -4,14 +4,17 @@ import {
   type PanelSource,
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/active-tab-sync.js";
 import { createNavigationRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/navigation-runtime.js";
-import { createPanelStateStore } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store.js";
+import {
+  createInitialPanelState,
+  patchPanelState,
+} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 
 function createRuntime(options: { ttlMs?: number } = {}) {
-  const store = createPanelStateStore();
+  const store = createInitialPanelState();
   return createNavigationRuntime({
-    getState: () => store.state.navigation,
+    getState: () => store.navigation,
     updateState: (value) => {
-      store.dispatch({ type: "navigation-policy-update", value });
+      patchPanelState(store, "navigation", value);
     },
     ...options,
   });

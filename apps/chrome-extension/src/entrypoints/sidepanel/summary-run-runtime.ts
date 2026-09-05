@@ -1,5 +1,10 @@
 import type { BrowserAiSummaryInput } from "../../lib/panel-contracts";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import {
+  attachPanelRun,
+  patchPanelState,
+  restorePanelSession,
+  setPendingSummaryRun,
+} from "./panel-state-store";
 import { normalizePanelUrl, panelUrlsMatch } from "./session-policy";
 import { resolveSlidesInputMode } from "./slides-session-state";
 import type { PanelPhase, PanelState, RunStart } from "./types";
@@ -37,7 +42,7 @@ type SummaryViewPort = {
 
 export function createSummaryRunRuntime({
   panelState,
-  dispatchPanelState,
+
   getActiveTabId,
   cancelAutoSummarize,
   summaryStream,
@@ -47,7 +52,7 @@ export function createSummaryRunRuntime({
   browserAi,
 }: {
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   getActiveTabId: () => number | null;
   cancelAutoSummarize: () => void;
   summaryStream: SummaryStreamPort;
@@ -64,14 +69,6 @@ export function createSummaryRunRuntime({
     }) => void;
   };
 }) {
-  const dispatch = (action: PanelStateAction) => {
-    if (dispatchPanelState) {
-      dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(panelState, action);
-    }
-  };
-
   const attachRun = (run: RunStart) => {
     browserAi.cancel();
     const activeSlidesRun = panelState.slidesLifecycle.activeRun;
@@ -81,7 +78,7 @@ export function createSummaryRunRuntime({
     if (!preserveActiveLocalSlideRun) slides.stop();
 
     view.setPhase("connecting");
-    dispatch({ type: "panel-session-update", value: { lastAction: "summarize" } });
+    patchPanelState(panelState, "panelSession", { lastAction: "summarize" });
     cancelAutoSummarize();
     if (panelState.chat.streaming) chat.finishStreamingMessage();
 
@@ -106,8 +103,7 @@ export function createSummaryRunRuntime({
     view.setHeaderTitle(run.title || run.url || "Summarize");
     view.setHeaderSubtitle("");
     const fallbackModel = panelState.ui?.settings.model ?? null;
-    dispatch({
-      type: "attach-run",
+    attachPanelRun(panelState, {
       tabId: getActiveTabId(),
       runId: run.id,
       slidesRunId,
@@ -154,8 +150,7 @@ export function createSummaryRunRuntime({
     const slidesRunId =
       preservedSlides?.sourceId ??
       (preserveActiveSlideRun ? (activeSlidesRun?.runId ?? null) : null);
-    dispatch({
-      type: "restore-session",
+    restorePanelSession(panelState, {
       tabId: getActiveTabId(),
       runId: payload.run.id,
       slidesRunId,
@@ -181,11 +176,7 @@ export function createSummaryRunRuntime({
   };
 
   const rememberPendingRun = (run: RunStart) => {
-    dispatch({
-      type: "pending-summary-run",
-      urlKey: normalizePanelUrl(run.url),
-      value: { type: "run", run },
-    });
+    setPendingSummaryRun(panelState, normalizePanelUrl(run.url), { type: "run", run });
   };
 
   const rememberPendingSnapshot = (payload: {
@@ -193,15 +184,11 @@ export function createSummaryRunRuntime({
     markdown: string;
     browserAi?: BrowserAiSummaryInput;
   }) => {
-    dispatch({
-      type: "pending-summary-run",
-      urlKey: normalizePanelUrl(payload.run.url),
-      value: {
-        type: "snapshot",
-        run: payload.run,
-        markdown: payload.markdown,
-        browserAi: payload.browserAi,
-      },
+    setPendingSummaryRun(panelState, normalizePanelUrl(payload.run.url), {
+      type: "snapshot",
+      run: payload.run,
+      markdown: payload.markdown,
+      browserAi: payload.browserAi,
     });
   };
 
@@ -210,7 +197,7 @@ export function createSummaryRunRuntime({
     const key = normalizePanelUrl(url);
     const pending = panelState.pendingRuns.summaryByUrl[key];
     if (!pending || summaryStream.isStreaming()) return false;
-    dispatch({ type: "pending-summary-run", urlKey: key, value: null });
+    setPendingSummaryRun(panelState, key, null);
     if (pending.type === "snapshot") {
       applySnapshot({
         run: pending.run,

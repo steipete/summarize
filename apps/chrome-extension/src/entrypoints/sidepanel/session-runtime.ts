@@ -4,7 +4,7 @@ import { createSidepanelChatRuntime } from "./chat-runtime";
 import type { SidepanelDom } from "./dom";
 import type { createMetricsController } from "./metrics-controller";
 import { createNavigationRuntime } from "./navigation-runtime";
-import type { PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import { createPanelViewRuntime } from "./panel-view-runtime";
 import type { createSidepanelPresentationRuntime } from "./presentation-runtime";
 import type { PanelState } from "./types";
@@ -23,14 +23,14 @@ type RunActions = {
 export function createSidepanelSessionRuntime({
   dom,
   panelState,
-  dispatchPanelState,
+
   metricsController,
   presentationRuntime,
   send,
 }: {
   dom: SidepanelDom;
   panelState: PanelState;
-  dispatchPanelState: (action: PanelStateAction) => void;
+
   metricsController: MetricsController;
   presentationRuntime: PresentationRuntime;
   send: (message: PanelToBg) => Promise<void>;
@@ -46,7 +46,7 @@ export function createSidepanelSessionRuntime({
   const navigationRuntime = createNavigationRuntime({
     getState: () => panelState.navigation,
     updateState: (value) => {
-      dispatchPanelState({ type: "navigation-policy-update", value });
+      patchPanelState(panelState, "navigation", value);
     },
   });
 
@@ -54,7 +54,7 @@ export function createSidepanelSessionRuntime({
   const getActiveTabUrl = () => panelState.navigation.activeTabUrl;
   const chatRuntime = createSidepanelChatRuntime({
     panelState,
-    dispatchPanelState,
+
     markdown,
     mainEl: dom.mainEl,
     renderEl: dom.renderEl,
@@ -84,7 +84,7 @@ export function createSidepanelSessionRuntime({
       metricsController.setActiveMode("chat");
     },
     setLastActionChat: () => {
-      dispatchPanelState({ type: "panel-session-update", value: { lastAction: "chat" } });
+      patchPanelState(panelState, "panelSession", { lastAction: "chat" });
     },
     renderInlineSlides: () => {
       renderInlineSlides(dom.chatMessagesEl);
@@ -105,7 +105,7 @@ export function createSidepanelSessionRuntime({
       navigationRuntime,
       getCurrentSource: () => panelState.currentSource,
       setCurrentSource: (source) => {
-        dispatchPanelState({ type: "source", source });
+        panelState.currentSource = source;
       },
       resetForNavigation: (preserveChat) => {
         setPhase("idle");
@@ -123,7 +123,7 @@ export function createSidepanelSessionRuntime({
   };
 
   const clearCurrentView = async () => {
-    dispatchPanelState({ type: "retained-slide-summary", value: null });
+    panelState.retainedSlideSummary = null;
     if (panelState.chat.streaming) {
       chatRuntime.requestAbort("Cleared");
     }

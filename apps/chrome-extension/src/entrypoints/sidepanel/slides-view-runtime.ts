@@ -2,7 +2,7 @@ import { shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import type MarkdownIt from "markdown-it";
 import { logExtensionEvent } from "../../lib/extension-logs";
 import type { SseSlidesData } from "../../lib/runtime-contracts";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import { createSlideImageLoader, normalizeSlideImageUrl } from "./slide-images";
 import {
   normalizeSlidesPayload,
@@ -29,7 +29,7 @@ export function createSlidesViewRuntime({
   refreshSummarizeControl,
   hideSlideNotice,
   panelState,
-  dispatchPanelState,
+
   getFallbackSummaryMarkdown,
 }: {
   renderMarkdownHostEl: HTMLElement;
@@ -61,19 +61,13 @@ export function createSlidesViewRuntime({
   refreshSummarizeControl: () => void;
   hideSlideNotice: () => void;
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   getFallbackSummaryMarkdown?: () => string | null;
 }) {
   const slideImageLoader = createSlideImageLoader();
-  const dispatch = (action: PanelStateAction) => {
-    if (dispatchPanelState) {
-      dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(panelState, action);
-    }
-  };
+
   const updateSlidesSession = (value: Partial<PanelState["slidesSession"]>) => {
-    dispatch({ type: "slides-session-update", value });
+    patchPanelState(panelState, "slidesSession", value);
   };
   const resolveActiveSlidesRunId = () => {
     if (panelState.slidesRunId) return panelState.slidesRunId;
@@ -214,7 +208,7 @@ export function createSlidesViewRuntime({
   };
 
   const renderMarkdown = (markdown: string) => {
-    dispatch({ type: "summary", markdown });
+    panelState.summaryMarkdown = markdown;
     updateSlideSummaryFromMarkdown(markdown, {
       preserveIfEmpty: slidesTextController.hasSummaryTitles(),
       source: "summary",
@@ -238,7 +232,9 @@ export function createSlidesViewRuntime({
     if (!panelState.slides || panelState.slidesSession.slidesContextPending) return;
     const sourceUrl = panelState.slides.sourceUrl || panelState.currentSource?.url || null;
     if (sourceUrl && panelState.slidesSession.slidesContextUrl === sourceUrl) return;
-    dispatch({ type: "slides-context-request-next" });
+    patchPanelState(panelState, "slidesSession", {
+      slidesContextRequestId: panelState.slidesSession.slidesContextRequestId + 1,
+    });
     const requestId = `slides-${panelState.slidesSession.slidesContextRequestId}`;
     updateSlidesSession({
       slidesContextPending: true,
@@ -294,7 +290,7 @@ export function createSlidesViewRuntime({
       }
       return;
     }
-    dispatch({ type: "slides", slides: merged });
+    panelState.slides = merged;
     if (activeSlidesRunId) {
       updateSlidesSession({ slidesAppliedRunId: activeSlidesRunId });
     }

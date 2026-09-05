@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createInitialPanelState,
-  createPanelStateStore,
+  patchPanelState,
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import type { SlideTextMode } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-state";
 import { createSummarizeControlRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/summarize-control-runtime";
@@ -93,7 +93,7 @@ function buildRuntime(
   initialPanelState.currentSource = state.currentSourceUrl
     ? { url: state.currentSourceUrl, title: null }
     : null;
-  const panelStateStore = createPanelStateStore(initialPanelState);
+  const panelStateStore = initialPanelState;
   const calls = {
     patchSettings: vi.fn(async (_patch: Partial<Settings>) => {}),
     loadSettings: vi.fn(
@@ -102,10 +102,7 @@ function buildRuntime(
     showSlideNotice: vi.fn(),
     hideSlideNotice: vi.fn(),
     setSlidesBusy: vi.fn((value: boolean) => {
-      panelStateStore.dispatch({
-        type: "slides-session-update",
-        value: { slidesBusy: value },
-      });
+      patchPanelState(panelStateStore, "slidesSession", { slidesBusy: value });
     }),
     stopSlidesStream: vi.fn(),
     maybeApplyPendingSlidesSummary: vi.fn(),
@@ -133,7 +130,7 @@ function buildRuntime(
 
   const view = createSummarizeControlView({
     root: {} as HTMLElement,
-    panelState: panelStateStore.state,
+    panelState: panelStateStore,
     slidesTextController,
   });
   const runtime = createSummarizeControlRuntime({
@@ -141,8 +138,8 @@ function buildRuntime(
     renderSlidesHostEl,
     slidesLayoutEl,
     slidesTextController,
-    panelState: panelStateStore.state,
-    dispatchPanelState: panelStateStore.dispatch,
+    panelState: panelStateStore,
+
     patchSettings: calls.patchSettings,
     loadSettings: calls.loadSettings,
     showSlideNotice: calls.showSlideNotice,
@@ -169,7 +166,7 @@ function buildRuntime(
   });
 
   return {
-    state: panelStateStore.state,
+    state: panelStateStore,
     calls,
     runtime,
     view,

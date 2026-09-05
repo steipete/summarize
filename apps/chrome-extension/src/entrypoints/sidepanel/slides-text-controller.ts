@@ -1,7 +1,7 @@
 import { logExtensionEvent } from "../../lib/extension-logs";
 import type { SseSlidesData } from "../../lib/runtime-contracts";
 import { parseTranscriptTimedText } from "../../lib/slides-text";
-import type { PanelStateAction } from "./panel-state-store";
+import { createInitialSlidesTextState, patchPanelState } from "./panel-state-store";
 import {
   buildSlideDescriptions,
   deriveSlideSummaries,
@@ -12,7 +12,7 @@ import type { PanelState, SlideSummarySource } from "./types";
 
 export function createSlidesTextController(options: {
   panelState: PanelState;
-  dispatchPanelState: (action: PanelStateAction) => void;
+
   getSlides: () => SseSlidesData["slides"] | null | undefined;
   getLengthValue: () => string;
   getSlidesOcrEnabled: () => boolean;
@@ -22,7 +22,7 @@ export function createSlidesTextController(options: {
   const getSlides = () => options.getSlides() ?? [];
   const getState = () => options.panelState.slidesText;
   const updateState = (value: Partial<PanelState["slidesText"]>) => {
-    options.dispatchPanelState({ type: "slides-text-update", value });
+    patchPanelState(options.panelState, "slidesText", value);
   };
 
   const rebuildDescriptions = () => {
@@ -71,7 +71,7 @@ export function createSlidesTextController(options: {
 
   return {
     reset() {
-      options.dispatchPanelState({ type: "slides-text-reset" });
+      options.panelState.slidesText = createInitialSlidesTextState();
       lastDescriptionLogKey = "";
     },
     clearSummarySource() {

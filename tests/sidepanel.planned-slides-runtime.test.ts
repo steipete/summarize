@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  applyPanelStateAction,
-  createInitialPanelState,
-} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import { createPlannedSlidesRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/planned-slides-runtime";
 import type {
   PanelState,
@@ -35,9 +32,7 @@ function createHarness(
   const schedulePanelCacheSync = vi.fn();
   const runtime = createPlannedSlidesRuntime({
     panelState,
-    dispatchPanelState: options.dispatch
-      ? (action) => applyPanelStateAction(panelState, action)
-      : undefined,
+
     getActiveTabUrl: () => options.activeTabUrl ?? null,
     getLengthValue: () => options.length ?? "medium",
     updateSlidesTextState,

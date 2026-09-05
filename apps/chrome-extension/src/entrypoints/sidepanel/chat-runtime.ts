@@ -11,7 +11,7 @@ import type { ChatHistoryLimits } from "./chat-state";
 import { createChatStreamRuntime } from "./chat-stream-runtime";
 import { createChatUiRuntime } from "./chat-ui-runtime";
 import { isPanelChatAvailable } from "./panel-capabilities";
-import type { PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import { parseTimestampHref } from "./timestamp-links";
 import type { ChatMessage, PanelState } from "./types";
 
@@ -28,7 +28,7 @@ type NavigationRuntime = {
 
 export function createSidepanelChatRuntime({
   panelState,
-  dispatchPanelState,
+
   markdown,
   mainEl,
   renderEl,
@@ -58,7 +58,7 @@ export function createSidepanelChatRuntime({
   seekToTimestamp,
 }: {
   panelState: PanelState;
-  dispatchPanelState: (action: PanelStateAction) => void;
+
   markdown: MarkdownIt;
   mainEl: HTMLElement;
   renderEl: HTMLElement;
@@ -104,7 +104,7 @@ export function createSidepanelChatRuntime({
     markdown,
     limits: CHAT_LIMITS,
     panelState,
-    dispatchPanelState,
+
     scrollToBottom: () => chatUiRuntime.scrollToBottom(),
     onNewContent: renderInlineSlides,
   });
@@ -126,7 +126,7 @@ export function createSidepanelChatRuntime({
 
   const chatQueueRuntime = createChatQueueRuntime({
     panelState,
-    dispatchPanelState,
+
     chatQueueEl,
     maxQueue: MAX_CHAT_QUEUE,
     setStatus,
@@ -155,7 +155,7 @@ export function createSidepanelChatRuntime({
 
   automationRuntime = createAutomationRuntime({
     panelState,
-    dispatchPanelState,
+
     automationNoticeActionBtn,
     automationNoticeEl,
     automationNoticeMessageEl,
@@ -172,7 +172,7 @@ export function createSidepanelChatRuntime({
     chatEnabled: () => isPanelChatAvailable(panelState),
     isChatStreaming: () => panelState.chat.streaming,
     setChatStreaming: (value) => {
-      dispatchPanelState({ type: "chat-streaming", value });
+      patchPanelState(panelState, "chat", { streaming: value });
     },
     hasUserMessages: () => chatController.hasUserMessages(),
     addUserMessage: (text) => {

@@ -1,7 +1,7 @@
 import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
 import type { Settings, SlidesLayout } from "../../lib/settings";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import type { SlideTextMode } from "./slides-state";
 import { resolveSlidesRenderLayout } from "./slides-view-policy";
 import type { PanelState } from "./types";
@@ -16,7 +16,7 @@ type SummarizeControlRuntimeOptions = {
   slidesLayoutEl: HTMLSelectElement;
   slidesTextController: SlidesTextControllerLike;
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   patchSettings: (patch: Partial<Settings>) => Promise<void>;
   loadSettings: () => Promise<Pick<Settings, "slideRuntime" | "token">>;
   showSlideNotice: (message: string) => void;
@@ -68,13 +68,6 @@ async function fetchSlideTools(
 }
 
 export function createSummarizeControlRuntime(options: SummarizeControlRuntimeOptions) {
-  const dispatch = (action: PanelStateAction) => {
-    if (options.dispatchPanelState) {
-      options.dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(options.panelState, action);
-    }
-  };
   const getEffectiveMode = () =>
     options.panelState.slidesSession.inputModeOverride ??
     options.panelState.slidesSession.inputMode;
@@ -114,13 +107,10 @@ export function createSummarizeControlRuntime(options: SummarizeControlRuntimeOp
       options.stopSlidesStream();
     }
 
-    dispatch({
-      type: "slides-session-update",
-      value: {
-        inputMode: value.mode,
-        inputModeOverride: value.mode,
-        slidesEnabled: value.slides,
-      },
+    patchPanelState(options.panelState, "slidesSession", {
+      inputMode: value.mode,
+      inputModeOverride: value.mode,
+      slidesEnabled: value.slides,
     });
     await options.patchSettings({ slidesEnabled: value.slides });
 
@@ -166,10 +156,7 @@ export function createSummarizeControlRuntime(options: SummarizeControlRuntimeOp
 
   const setSlidesLayout = (next: SlidesLayout) => {
     if (next === options.panelState.slidesSession.slidesLayout) return;
-    dispatch({
-      type: "slides-session-update",
-      value: { slidesLayout: next },
-    });
+    patchPanelState(options.panelState, "slidesSession", { slidesLayout: next });
     options.slidesLayoutEl.value = next;
     applySlidesLayout();
   };

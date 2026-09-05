@@ -1,5 +1,4 @@
 import { buildIdleSubtitle } from "../../lib/header";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
 import { createStreamController } from "./stream-controller";
 import type { PanelPhase, PanelState } from "./types";
 
@@ -17,7 +16,7 @@ export function createSummaryStreamRuntime({
   isStreaming,
   maybeApplyPendingSlidesSummary,
   panelState,
-  dispatchPanelState,
+
   queueSlidesRender,
   rebuildSlideDescriptions,
   refreshSummaryMetrics,
@@ -44,7 +43,7 @@ export function createSummaryStreamRuntime({
   isStreaming: () => boolean;
   maybeApplyPendingSlidesSummary: () => void;
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   queueSlidesRender: () => void;
   rebuildSlideDescriptions: () => void;
   refreshSummaryMetrics: (summary: string) => void;
@@ -58,13 +57,6 @@ export function createSummaryStreamRuntime({
   shouldRebuildSlideDescriptions: () => boolean;
   syncWithActiveTab: () => Promise<void>;
 }) {
-  const dispatch = (action: PanelStateAction) => {
-    if (dispatchPanelState) {
-      dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(panelState, action);
-    }
-  };
   let lastStreamError: string | null = null;
 
   return {
@@ -73,14 +65,11 @@ export function createSummaryStreamRuntime({
       onReset: () => {
         resetSummaryView({ clearRunId: false, stopSlides: false });
         const fallbackModel = getFallbackModel();
-        dispatch({
-          type: "meta",
-          meta: {
-            inputSummary: null,
-            model: fallbackModel,
-            modelLabel: fallbackModel,
-          },
-        });
+        panelState.lastMeta = {
+          inputSummary: null,
+          model: fallbackModel,
+          modelLabel: fallbackModel,
+        };
         lastStreamError = null;
         seedPlannedSlidesForPendingRun();
       },
@@ -110,20 +99,15 @@ export function createSummaryStreamRuntime({
         rememberUrl(url);
       },
       onMeta: (data) => {
-        dispatch({
-          type: "meta",
-          meta: {
-            model: typeof data.model === "string" ? data.model : panelState.lastMeta.model,
-            modelLabel:
-              typeof data.modelLabel === "string"
-                ? data.modelLabel
-                : panelState.lastMeta.modelLabel,
-            inputSummary:
-              typeof data.inputSummary === "string"
-                ? data.inputSummary
-                : panelState.lastMeta.inputSummary,
-          },
-        });
+        panelState.lastMeta = {
+          model: typeof data.model === "string" ? data.model : panelState.lastMeta.model,
+          modelLabel:
+            typeof data.modelLabel === "string" ? data.modelLabel : panelState.lastMeta.modelLabel,
+          inputSummary:
+            typeof data.inputSummary === "string"
+              ? data.inputSummary
+              : panelState.lastMeta.inputSummary,
+        };
         headerSetBaseSubtitle(
           buildIdleSubtitle({
             inputSummary: panelState.lastMeta.inputSummary,
@@ -135,7 +119,7 @@ export function createSummaryStreamRuntime({
       },
       onSlides: handleSlides,
       onSummaryFromCache: (value) => {
-        dispatch({ type: "summary-cache", value });
+        panelState.summaryFromCache = value;
         handleSummaryFromCache(value);
         schedulePanelCacheSync();
         if (value === true) {

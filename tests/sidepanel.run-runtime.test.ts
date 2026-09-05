@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  applyPanelStateAction,
-  createInitialPanelState,
-} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import { createSidepanelRunRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/run-runtime";
 import type { RunStart } from "../apps/chrome-extension/src/entrypoints/sidepanel/types";
 
@@ -46,7 +43,7 @@ describe("sidepanel run runtime", () => {
 
     const runtime = createSidepanelRunRuntime({
       panelState,
-      dispatchPanelState: (action) => applyPanelStateAction(panelState, action),
+
       getActiveTabId: () => panelState.navigation.activeTabId,
       getActiveTabUrl: () => panelState.navigation.activeTabUrl,
       appearanceControls: {

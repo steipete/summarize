@@ -1,4 +1,4 @@
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState, setPendingSlidesRun } from "./panel-state-store";
 import { normalizePanelUrl } from "./session-policy";
 import { hasResolvedSlidesPayload } from "./slides-pending";
 import { resolveSlidesInputMode } from "./slides-session-state";
@@ -6,7 +6,7 @@ import type { PanelState, RunStart } from "./types";
 
 export function createSlidesRunRuntime(options: {
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   refreshSummarizeControl: () => void;
   hideSlideNotice: () => void;
   setSlidesBusy: (value: boolean) => void;
@@ -30,22 +30,11 @@ export function createSlidesRunRuntime(options: {
   shouldUseBrowserAiSlides: () => boolean;
   headerSetStatus: (text: string) => void;
 }) {
-  const dispatch = (action: PanelStateAction) => {
-    if (options.dispatchPanelState) {
-      options.dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(options.panelState, action);
-    }
-  };
-
   const ensureVideoMode = () => {
     if (resolveSlidesInputMode(options.panelState.slidesSession) === "video") return;
-    dispatch({
-      type: "slides-session-update",
-      value: {
-        inputMode: "video",
-        inputModeOverride: "video",
-      },
+    patchPanelState(options.panelState, "slidesSession", {
+      inputMode: "video",
+      inputModeOverride: "video",
     });
     options.refreshSummarizeControl();
   };
@@ -68,10 +57,10 @@ export function createSlidesRunRuntime(options: {
   };
 
   const stopSlidesStream = () => {
-    dispatch({ type: "active-slides-run", value: null });
+    patchPanelState(options.panelState, "slidesLifecycle", { activeRun: null });
     options.stopSlidesHydrator();
     options.setSlidesBusy(false);
-    dispatch({ type: "slides-run", runId: null });
+    options.panelState.slidesRunId = null;
     stopSlidesSummaryStream();
   };
 
@@ -83,7 +72,7 @@ export function createSlidesRunRuntime(options: {
     ensureVideoMode();
     options.hideSlideNotice();
     options.setSlidesBusy(true);
-    dispatch({ type: "slides-run", runId });
+    options.panelState.slidesRunId = runId;
     options.schedulePanelCacheSync();
     options.startSlidesHydrator(runId, opts);
   };
@@ -104,7 +93,7 @@ export function createSlidesRunRuntime(options: {
         null,
       local: meta?.local ?? existing?.local ?? false,
     };
-    dispatch({ type: "active-slides-run", value: activeRun });
+    patchPanelState(options.panelState, "slidesLifecycle", { activeRun: activeRun });
     startSlidesStreamCore(runId, { local: activeRun.local });
   };
 
@@ -161,11 +150,7 @@ export function createSlidesRunRuntime(options: {
     local?: boolean;
   }) => {
     if (!value.url) return;
-    dispatch({
-      type: "pending-slides-run",
-      urlKey: normalizePanelUrl(value.url),
-      value,
-    });
+    setPendingSlidesRun(options.panelState, normalizePanelUrl(value.url), value);
   };
 
   const maybeStartPendingSlidesForUrl = (url: string | null) => {
@@ -176,7 +161,7 @@ export function createSlidesRunRuntime(options: {
     if (!options.panelState.slidesSession.slidesEnabled) return;
     if (resolveSlidesInputMode(options.panelState.slidesSession) !== "video") return;
     if (options.isSlidesHydratorStreaming()) return;
-    dispatch({ type: "pending-slides-run", urlKey: key, value: null });
+    setPendingSlidesRun(options.panelState, key, null);
     if (
       hasResolvedSlidesPayload(
         options.panelState.slides,

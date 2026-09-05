@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 
 const bindingSpies = vi.hoisted(() => ({
   bindSettingsStorage: vi.fn(),
@@ -11,10 +12,6 @@ vi.mock("../apps/chrome-extension/src/entrypoints/sidepanel/bindings", () => ({
 }));
 
 import { bootstrapSidepanel } from "../apps/chrome-extension/src/entrypoints/sidepanel/bootstrap-runtime";
-import {
-  createInitialPanelState,
-  createPanelStateStore,
-} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 
 describe("sidepanel bootstrap runtime", () => {
   beforeEach(() => {
@@ -31,7 +28,7 @@ describe("sidepanel bootstrap runtime", () => {
     const calls: string[] = [];
     const initialState = createInitialPanelState();
     initialState.panelSession.pendingSettingsSnapshot = { chatEnabled: true };
-    const panelStateStore = createPanelStateStore(initialState);
+    const panelStateStore = initialState;
     const loadedSettings = {
       autoSummarize: true,
       chatEnabled: false,
@@ -49,8 +46,8 @@ describe("sidepanel bootstrap runtime", () => {
         calls.push("ensure");
       },
       loadSettings: async () => loadedSettings,
-      panelState: panelStateStore.state,
-      dispatchPanelState: panelStateStore.dispatch,
+      panelState: panelStateStore,
+
       typographyController: {
         setCurrentFontSize: (value) => calls.push(`font:${value}`),
         setCurrentLineHeight: (value) => calls.push(`line:${value}`),
@@ -84,19 +81,19 @@ describe("sidepanel bootstrap runtime", () => {
     expect(calls).toContain("model-disabled:true");
     expect(calls).toContain("ready");
     expect(calls).toContain("ping");
-    expect(panelStateStore.state.panelSession).toMatchObject({
+    expect(panelStateStore.panelSession).toMatchObject({
       autoSummarize: true,
       chatEnabled: true,
       automationEnabled: false,
       settingsHydrated: true,
       pendingSettingsSnapshot: null,
     });
-    expect(panelStateStore.state.slidesSession.slidesLayout).toBe("gallery");
+    expect(panelStateStore.slidesSession.slidesLayout).toBe("gallery");
   });
 
   it("uses loaded settings directly when there is no pending snapshot", async () => {
     const calls: string[] = [];
-    const panelStateStore = createPanelStateStore();
+    const panelStateStore = createInitialPanelState();
 
     bootstrapSidepanel({
       ensurePanelPort: async () => {
@@ -113,8 +110,8 @@ describe("sidepanel bootstrap runtime", () => {
         model: "openai/gpt-5.4",
         token: "abc123",
       }),
-      panelState: panelStateStore.state,
-      dispatchPanelState: panelStateStore.dispatch,
+      panelState: panelStateStore,
+
       typographyController: {
         setCurrentFontSize: (value) => calls.push(`font:${value}`),
         setCurrentLineHeight: (value) => calls.push(`line:${value}`),
@@ -144,13 +141,13 @@ describe("sidepanel bootstrap runtime", () => {
 
     expect(calls).not.toContain("hide-automation");
     expect(calls).toContain("model-disabled:false");
-    expect(panelStateStore.state.panelSession).toMatchObject({
+    expect(panelStateStore.panelSession).toMatchObject({
       autoSummarize: false,
       chatEnabled: true,
       automationEnabled: true,
       settingsHydrated: true,
       pendingSettingsSnapshot: null,
     });
-    expect(panelStateStore.state.slidesSession.slidesLayout).toBe("strip");
+    expect(panelStateStore.slidesSession.slidesLayout).toBe("strip");
   });
 });

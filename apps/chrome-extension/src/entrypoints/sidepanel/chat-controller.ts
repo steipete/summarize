@@ -5,7 +5,7 @@ import {
   computeChatContextUsage,
   hasUserChatMessage,
 } from "./chat-state";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState, replacePanelChatMessage } from "./panel-state-store";
 import { parseTimestampSeconds } from "./timestamp-links";
 import type { ChatMessage, PanelState } from "./types";
 
@@ -19,7 +19,7 @@ export type ChatControllerOptions = {
   markdown: MarkdownIt;
   limits: ChatHistoryLimits;
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   scrollToBottom?: () => void;
   onNewContent?: () => void;
 };
@@ -32,7 +32,7 @@ export class ChatController {
   private readonly markdown: MarkdownIt;
   private readonly limits: ChatHistoryLimits;
   private readonly panelState: PanelState;
-  private readonly dispatchPanelState?: (action: PanelStateAction) => void;
+
   private readonly scrollToBottom?: () => void;
   private readonly onNewContent?: () => void;
   private readonly typingIndicatorHtml =
@@ -48,7 +48,7 @@ export class ChatController {
     this.markdown = opts.markdown;
     this.limits = opts.limits;
     this.panelState = opts.panelState;
-    this.dispatchPanelState = opts.dispatchPanelState;
+
     this.scrollToBottom = opts.scrollToBottom;
     this.onNewContent = opts.onNewContent;
   }
@@ -66,7 +66,7 @@ export class ChatController {
   }
 
   reset() {
-    this.dispatch({ type: "chat-reset" });
+    this.panelState.chat = { messages: [], streaming: false, queue: [] };
     this.messagesEl.innerHTML = "";
     this.inputEl.value = "";
     this.sendBtn.disabled = false;
@@ -75,7 +75,7 @@ export class ChatController {
   }
 
   setMessages(messages: ChatMessage[], opts?: RenderOptions) {
-    this.dispatch({ type: "chat-messages", messages });
+    patchPanelState(this.panelState, "chat", { messages: messages });
     this.messagesEl.innerHTML = "";
     for (const message of messages) {
       this.renderMessage(message, { scroll: false });
@@ -89,7 +89,9 @@ export class ChatController {
   }
 
   addMessage(message: ChatMessage, opts?: RenderOptions) {
-    this.dispatch({ type: "chat-message-add", message });
+    patchPanelState(this.panelState, "chat", {
+      messages: [...this.panelState.chat.messages, message],
+    });
     this.renderMessage(message, opts);
     this.updateVisibility();
     this.updateContextStatus();
@@ -101,7 +103,7 @@ export class ChatController {
       this.addMessage(message, opts);
       return;
     }
-    this.dispatch({ type: "chat-message-replace", message });
+    replacePanelChatMessage(this.panelState, message);
     const existing = this.messagesEl.querySelector(`[data-id="${message.id}"]`);
     if (existing) {
       const nextEl = this.createMessageElement(message);
@@ -120,7 +122,9 @@ export class ChatController {
   removeMessage(id: string) {
     const index = this.getMessages().findIndex((item) => item.id === id);
     if (index === -1) return;
-    this.dispatch({ type: "chat-message-remove", id });
+    patchPanelState(this.panelState, "chat", {
+      messages: this.panelState.chat.messages.filter((message) => message.id !== id),
+    });
     const existing = this.messagesEl.querySelector(`[data-id="${id}"]`);
     existing?.remove();
     this.updateVisibility();
@@ -131,12 +135,9 @@ export class ChatController {
     const messages = this.getMessages();
     const lastMsg = messages[messages.length - 1];
     if (lastMsg?.role === "assistant") {
-      this.dispatch({
-        type: "chat-message-replace",
-        message: {
-          ...lastMsg,
-          content: [{ type: "text", text: content }],
-        },
+      replacePanelChatMessage(this.panelState, {
+        ...lastMsg,
+        content: [{ type: "text", text: content }],
       });
       const msgEl = this.messagesEl.querySelector(`[data-id="${lastMsg.id}"]`);
       if (msgEl) {
@@ -211,14 +212,6 @@ export class ChatController {
       if (seconds == null) return match;
       return `[${time}](timestamp:${seconds})`;
     });
-  }
-
-  private dispatch(action: PanelStateAction) {
-    if (this.dispatchPanelState) {
-      this.dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(this.panelState, action);
-    }
   }
 
   private createMessageElement(message: ChatMessage): HTMLDivElement {

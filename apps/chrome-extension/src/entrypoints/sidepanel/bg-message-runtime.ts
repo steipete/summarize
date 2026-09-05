@@ -1,5 +1,4 @@
 import type { BgToPanel, RunStart, UiState } from "../../lib/panel-contracts";
-import type { PanelStateAction } from "./panel-state-store";
 import {
   normalizePanelUrl,
   shouldAcceptRunForCurrentPage,
@@ -76,7 +75,7 @@ type SummarySnapshotPayload = Omit<Extract<BgToPanel, { type: "run:snapshot" }>,
 
 export function createSidepanelBgMessageRuntime(options: {
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   applyUiState: (state: UiState) => void;
   setStatus: (text: string) => void;
   isStreaming: () => boolean;
@@ -128,11 +127,7 @@ export function createSidepanelBgMessageRuntime(options: {
       handleSidepanelBgMessage({
         msg,
         applyUiState: (state) => {
-          if (options.dispatchPanelState) {
-            options.dispatchPanelState({ type: "ui", ui: state });
-          } else {
-            Object.assign(options.panelState, { ui: state });
-          }
+          options.panelState.ui = state;
           options.applyUiState(state);
         },
         setStatus: options.setStatus,

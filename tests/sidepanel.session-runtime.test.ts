@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SidepanelDom } from "../apps/chrome-extension/src/entrypoints/sidepanel/dom";
-import { createPanelStateStore } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import type { createSidepanelPresentationRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/presentation-runtime";
 import { createSidepanelSessionRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/session-runtime";
 
@@ -25,8 +25,8 @@ afterEach(() => {
 
 describe("sidepanel session runtime", () => {
   it("owns tab sync and coordinated view clearing", async () => {
-    const store = createPanelStateStore();
-    store.state.chat.streaming = true;
+    const store = createInitialPanelState();
+    store.chat.streaming = true;
     const abortSummaryStream = vi.fn();
     const stopSlidesStream = vi.fn();
     const resetSummaryView = vi.fn();
@@ -68,8 +68,8 @@ describe("sidepanel session runtime", () => {
 
     const runtime = createSidepanelSessionRuntime({
       dom: {} as SidepanelDom,
-      panelState: store.state,
-      dispatchPanelState: store.dispatch,
+      panelState: store,
+
       metricsController: {
         clearForMode: vi.fn(),
         setActiveMode: vi.fn(),

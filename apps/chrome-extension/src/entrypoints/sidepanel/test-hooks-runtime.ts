@@ -1,7 +1,7 @@
 import type { BgToPanel, UiState } from "../../lib/panel-contracts";
 import type { SidepanelDom } from "./dom";
 import { isPanelChatAvailable } from "./panel-capabilities";
-import type { PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import type { createSidepanelPresentationRuntime } from "./presentation-runtime";
 import { selectRetainedSlideSummaryMarkdown } from "./retained-slide-summary";
 import type { createSidepanelRunRuntime } from "./run-runtime";
@@ -17,14 +17,14 @@ type StateEffectsRuntime = ReturnType<typeof createSidepanelStateEffectsRuntime>
 export function registerSidepanelRuntimeTestHooks({
   dom,
   panelState,
-  dispatchPanelState,
+
   presentationRuntime,
   runRuntime,
   stateEffectsRuntime,
 }: {
   dom: SidepanelDom;
   panelState: PanelState;
-  dispatchPanelState: (action: PanelStateAction) => void;
+
   presentationRuntime: PresentationRuntime;
   runRuntime: RunRuntime;
   stateEffectsRuntime: StateEffectsRuntime;
@@ -85,7 +85,7 @@ export function registerSidepanelRuntimeTestHooks({
     }),
     renderSlidesNow: slidesViewRuntime.queueSlidesRender,
     applyUiState: (state: UiState) => {
-      dispatchPanelState({ type: "ui", ui: state });
+      panelState.ui = state;
       stateEffectsRuntime.applyUiState(state);
     },
     applyBgMessage: (message: BgToPanel) => {
@@ -104,13 +104,10 @@ export function registerSidepanelRuntimeTestHooks({
       setPhase("idle");
     },
     forceRenderSlides: () => {
-      dispatchPanelState({
-        type: "slides-session-update",
-        value: {
-          slidesEnabled: true,
-          inputMode: "video",
-          inputModeOverride: "video",
-        },
+      patchPanelState(panelState, "slidesSession", {
+        slidesEnabled: true,
+        inputMode: "video",
+        inputModeOverride: "video",
       });
       return slidesViewRuntime.slidesRenderer.forceRender();
     },

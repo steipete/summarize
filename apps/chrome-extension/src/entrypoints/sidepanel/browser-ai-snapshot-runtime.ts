@@ -2,7 +2,6 @@ import { buildBrowserAiSummaryMarkdown } from "../../lib/browser-summary";
 import { logExtensionEvent } from "../../lib/extension-logs";
 import type { BgToPanel } from "../../lib/panel-contracts";
 import type { BrowserAiRequestKey } from "./browser-ai-summary-runtime";
-import type { PanelStateAction } from "./panel-state-store";
 import { panelUrlsMatch } from "./session-policy";
 import type { PanelState } from "./types";
 
@@ -10,7 +9,7 @@ type BrowserSummarySnapshot = Extract<BgToPanel, { type: "run:snapshot" }>;
 
 export function createBrowserAiSnapshotRuntime(options: {
   panelState: PanelState;
-  dispatchPanelState: (action: PanelStateAction) => void;
+
   browserAi: {
     cancel: (requestKey?: BrowserAiRequestKey) => void;
     summarize: (options: {
@@ -55,14 +54,11 @@ export function createBrowserAiSnapshotRuntime(options: {
           });
           return;
         }
-        options.dispatchPanelState({
-          type: "meta",
-          meta: {
-            ...options.panelState.lastMeta,
-            model: "Gemini Nano",
-            modelLabel: "Gemini Nano",
-          },
-        });
+        options.panelState.lastMeta = {
+          ...options.panelState.lastMeta,
+          model: "Gemini Nano",
+          modelLabel: "Gemini Nano",
+        };
         options.renderMarkdown(
           buildBrowserAiSummaryMarkdown({
             title: snapshot.run.title,
