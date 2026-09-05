@@ -25,7 +25,7 @@ CLI and daemon code remain adapters:
 | `events.ts`             | Adapter-neutral summary stream contract                             |
 | `errors.ts`             | Stable engine error-code guards                                     |
 | `types.ts`              | Model attempts and typed execution results                          |
-| `model-call.ts`         | Provider model resolution and non-streaming calls                   |
+| `model-call.ts`         | Provider model resolution                                           |
 | `streaming.ts`          | Stream capability and chunk normalization                           |
 
 ## Dependency rules
@@ -43,6 +43,8 @@ Engine modules may depend on portable domain/config modules, provider clients, c
 ## Streaming
 
 The engine never writes summary text to stdout.
+
+Each provider attempt resolves one request shared by streaming, direct completion, and fallback completion. Stream consumption owns output-handler lifecycle and marks visible or handler failures as interrupted; only an uncommitted provider failure can fall back to completion. Usage collection happens after successful stream consumption and does not trigger another model call.
 
 `SummaryStreamHandler` receives normalized chunks:
 

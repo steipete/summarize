@@ -15,6 +15,7 @@
 
 ### Dependencies and maintenance
 
+- Unify model execution around one resolved request and completion path; centralize stream consumption while preserving output-failure and retry boundaries.
 - Consolidate LLM request options and SDK stream handling while preserving provider-specific configuration, errors, and fallback behavior.
 - Build asset summary contexts directly from shared application state, removing redundant context wrappers and narrowing the asset-only format override.
 - Share Gemini file/byte transcription and bounded cloud-provider error handling, with coverage for the inline-upload boundary and uploaded-file cleanup after failures.

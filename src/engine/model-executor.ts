@@ -1,7 +1,8 @@
 import type { CliProvider } from "../config.js";
+import type { LlmCall } from "../costs.js";
 import { isCliDisabled, runCliModel } from "../llm/cli.js";
 import { isRetryableLlmError, resolveLlmErrorMessage } from "../llm/generate-text-shared.js";
-import { streamTextWithModelId } from "../llm/generate-text.js";
+import { generateTextWithModelId, streamTextWithModelId } from "../llm/generate-text.js";
 import { parseGatewayStyleModelId } from "../llm/model-id.js";
 import { mergeRequestOptionsForProvider } from "../llm/model-options.js";
 import type { ModelRequestOptions, OpenAiReasoningEffort } from "../llm/model-options.js";
@@ -14,9 +15,9 @@ import {
 import type { ProviderRuntimeBindings } from "../llm/provider-profile.js";
 import { formatCompactCount } from "../shared/format-count.js";
 import { countTokens } from "../tokenizer.js";
-import { EngineError } from "./errors.js";
+import { EngineError, hasEngineErrorCode } from "./errors.js";
 import type { SummaryStreamHandler } from "./events.js";
-import { resolveModelIdForLlmCall, summarizeWithModelId } from "./model-call.js";
+import { resolveModelIdForLlmCall } from "./model-call.js";
 import {
   canStream,
   isGoogleStreamingUnsupportedError,
@@ -40,23 +41,7 @@ export type ModelExecutorDeps = {
   trackedFetch: typeof fetch;
   resolveMaxOutputTokensForCall: (modelId: string) => Promise<number | null>;
   resolveMaxInputTokensForCall: (modelId: string) => Promise<number | null>;
-  llmCalls: Array<{
-    provider:
-      | "xai"
-      | "openai"
-      | "google"
-      | "anthropic"
-      | "zai"
-      | "nvidia"
-      | "minimax"
-      | "github-copilot"
-      | "ollama"
-      | "cli";
-    model: string;
-    usage: Awaited<ReturnType<typeof summarizeWithModelId>>["usage"] | null;
-    costUsd?: number | null;
-    purpose: "summary" | "markdown" | "speaker-identification";
-  }>;
+  llmCalls: LlmCall[];
   log?: ((message: string) => void) | null;
   trace?: ((name: string, detail?: string | null) => void) | null;
   providerRuntime: ProviderRuntimeBindings;
@@ -77,6 +62,85 @@ class StreamHandlerError extends Error {
     this.name = "StreamHandlerError";
     this.handlerError = normalized;
   }
+}
+
+function normalizeStreamError(error: unknown): Error {
+  return error instanceof Error
+    ? error
+    : new Error(resolveLlmErrorMessage(error) || "LLM stream failed", { cause: error });
+}
+
+function streamInterrupted(error: unknown): EngineError {
+  const cause = normalizeStreamError(error);
+  return new EngineError("SUMMARY_STREAM_INTERRUPTED", cause.message, { cause });
+}
+
+async function consumeSummaryStream(
+  result: Awaited<ReturnType<typeof streamTextWithModelId>>,
+  handler: SummaryStreamHandler | null | undefined,
+  trace: ModelExecutorDeps["trace"],
+): Promise<Pick<SummaryAttemptResult, "summary" | "summaryEmitted">> {
+  let streamed = "";
+  let handlerStarted = false;
+  let outputEmitted = false;
+  const emitChunk = async (next: string, appended: string) => {
+    const previous = streamed;
+    streamed = next;
+    if (!handler || (!handlerStarted && !streamed.trim())) return;
+    const firstChunk = !handlerStarted;
+    handlerStarted = true;
+    try {
+      outputEmitted =
+        (await handler.onChunk({
+          streamed,
+          prevStreamed: firstChunk ? "" : previous,
+          appended: firstChunk ? streamed : appended,
+        })) || outputEmitted;
+    } catch (error) {
+      throw new StreamHandlerError(error);
+    }
+  };
+  const throwIfFailed = () => {
+    const error = result.lastError();
+    if (error) throw normalizeStreamError(error);
+  };
+  try {
+    let sawFirstDelta = false;
+    for await (const delta of result.textStream) {
+      if (!sawFirstDelta) {
+        sawFirstDelta = true;
+        trace?.("summary:first-delta");
+      }
+      const merged = mergeStreamingChunk(streamed, delta);
+      await emitChunk(merged.next, merged.appended);
+    }
+    throwIfFailed();
+    const finalText = (await result.finalText)?.trim() ?? "";
+    throwIfFailed();
+    if (finalText.length > streamed.length && finalText.startsWith(streamed)) {
+      await emitChunk(finalText, finalText.slice(streamed.length));
+    }
+    if (!streamed.trim()) throw new Error("LLM returned an empty summary");
+  } catch (error) {
+    if (handler && handlerStarted && !outputEmitted) {
+      try {
+        await handler.onReset();
+      } catch (resetError) {
+        throw streamInterrupted(new StreamHandlerError(resetError).handlerError);
+      }
+    }
+    if (error instanceof StreamHandlerError) throw streamInterrupted(error.handlerError);
+    throw outputEmitted ? streamInterrupted(error) : error;
+  }
+  let finalOutputEmitted = false;
+  if (handler && handlerStarted) {
+    try {
+      finalOutputEmitted = (await handler.onDone?.(streamed)) ?? false;
+    } catch (error) {
+      throw streamInterrupted(error);
+    }
+  }
+  return { summary: streamed.trim(), summaryEmitted: outputEmitted || finalOutputEmitted };
 }
 
 export function createModelExecutor(deps: ModelExecutorDeps) {
@@ -223,7 +287,6 @@ export function createModelExecutor(deps: ModelExecutorDeps) {
     const streamingEnabledForCall =
       allowStreaming &&
       deps.streamingEnabled &&
-      !modelResolution.forceStreamOff &&
       canStream({
         provider: parsedModelEffective.provider,
         prompt,
@@ -260,24 +323,39 @@ export function createModelExecutor(deps: ModelExecutorDeps) {
       }
     }
 
-    if (!streamingEnabledForCall) {
-      const result = await summarizeWithModelId({
-        modelId: parsedModelEffective.canonical,
-        prompt,
-        maxOutputTokens: maxOutputTokensForCall ?? undefined,
-        timeoutMs: deps.timeoutMs,
-        fetchImpl: deps.trackedFetch,
-        apiKeys: apiKeysForLlm,
-        forceOpenRouter: attempt.forceOpenRouter,
-        openaiBaseUrlOverride: attempt.openaiBaseUrlOverride ?? providerRuntime.baseUrls.openai,
-        anthropicBaseUrlOverride: providerRuntime.baseUrls.anthropic,
-        googleBaseUrlOverride: providerRuntime.baseUrls.google,
-        xaiBaseUrlOverride: providerRuntime.baseUrls.xai,
+    const request = {
+      modelId: parsedModelEffective.canonical,
+      prompt,
+      temperature: 0,
+      maxOutputTokens: maxOutputTokensForCall ?? undefined,
+      timeoutMs: deps.timeoutMs,
+      fetchImpl: deps.trackedFetch,
+      apiKeys: apiKeysForLlm,
+      forceOpenRouter: attempt.forceOpenRouter,
+      openaiBaseUrlOverride: attempt.openaiBaseUrlOverride ?? providerRuntime.baseUrls.openai,
+      anthropicBaseUrlOverride: providerRuntime.baseUrls.anthropic,
+      googleBaseUrlOverride: providerRuntime.baseUrls.google,
+      xaiBaseUrlOverride: providerRuntime.baseUrls.xai,
+      ollamaBaseUrlOverride: providerRuntime.baseUrls.ollama,
+      forceChatCompletions,
+      requestOptions,
+    };
+    const toResult = (summary: string, summaryEmitted = false): SummaryAttemptResult => ({
+      summary,
+      summaryEmitted,
+      modelMeta: {
+        provider: parsedModelEffective.provider,
+        canonical: attempt.userModelId.toLowerCase().startsWith("openrouter/")
+          ? attempt.userModelId
+          : parsedModelEffective.canonical,
+      },
+      maxOutputTokensForCall: maxOutputTokensForCall ?? null,
+    });
+    const complete = async (retries = deps.retries) => {
+      const result = await generateTextWithModelId({
+        ...request,
         zaiBaseUrlOverride: providerRuntime.baseUrls.zai,
-        ollamaBaseUrlOverride: providerRuntime.baseUrls.ollama,
-        forceChatCompletions,
-        requestOptions,
-        retries: deps.retries,
+        retries,
         onRetry: createRetryLogger(parsedModelEffective.canonical),
       });
       deps.llmCalls.push({
@@ -288,264 +366,52 @@ export function createModelExecutor(deps: ModelExecutorDeps) {
       });
       const summary = result.text.trim();
       if (!summary) throw new Error("LLM returned an empty summary");
-      const displayCanonical = attempt.userModelId.toLowerCase().startsWith("openrouter/")
-        ? attempt.userModelId
-        : parsedModelEffective.canonical;
-      return {
-        summary,
-        summaryEmitted: false,
-        modelMeta: {
-          provider: parsedModelEffective.provider,
-          canonical: displayCanonical,
-        },
-        maxOutputTokensForCall: maxOutputTokensForCall ?? null,
-      };
-    }
+      return summary;
+    };
+    if (!streamingEnabledForCall) return toResult(await complete());
 
-    let summaryEmitted = false;
-    let summary = "";
-    let getLastStreamError: (() => unknown) | null = null;
-
-    let streamResult: Awaited<ReturnType<typeof streamTextWithModelId>> | null = null;
-    const summarizeWithoutStreaming = async (retries = deps.retries) => {
-      const result = await summarizeWithModelId({
-        modelId: parsedModelEffective.canonical,
-        prompt,
-        maxOutputTokens: maxOutputTokensForCall ?? undefined,
-        timeoutMs: deps.timeoutMs,
-        fetchImpl: deps.trackedFetch,
-        apiKeys: apiKeysForLlm,
-        forceOpenRouter: attempt.forceOpenRouter,
-        openaiBaseUrlOverride: attempt.openaiBaseUrlOverride ?? providerRuntime.baseUrls.openai,
-        anthropicBaseUrlOverride: providerRuntime.baseUrls.anthropic,
-        googleBaseUrlOverride: providerRuntime.baseUrls.google,
-        xaiBaseUrlOverride: providerRuntime.baseUrls.xai,
-        zaiBaseUrlOverride: providerRuntime.baseUrls.zai,
-        ollamaBaseUrlOverride: providerRuntime.baseUrls.ollama,
-        forceChatCompletions,
-        requestOptions,
-        retries,
-        onRetry: createRetryLogger(parsedModelEffective.canonical),
-      });
-      deps.llmCalls.push({
-        provider: result.provider,
-        model: result.canonicalModelId,
-        usage: result.usage,
-        purpose: "summary",
-      });
-      return result.text;
-    };
-    const canFallbackFromStreamError = (error: unknown): boolean =>
-      isStreamingTimeoutError(error) ||
-      (deps.retries > 0 && isRetryableLlmError(error)) ||
-      (parsedModelEffective.provider === "google" && isGoogleStreamingUnsupportedError(error));
-    const remainingRetriesAfterStreamFallback = (error: unknown): number =>
-      isRetryableLlmError(error) ? Math.max(0, deps.retries - 1) : deps.retries;
-    const normalizeStreamError = (error: unknown): Error =>
-      error instanceof Error
-        ? error
-        : new Error(resolveLlmErrorMessage(error) || "LLM stream failed", { cause: error });
-    const throwIfStreamFailed = () => {
-      const error = getLastStreamError?.();
-      if (error) throw normalizeStreamError(error);
-    };
-    const writeStreamFallbackNotice = (error: unknown) => {
-      if (isStreamingTimeoutError(error)) {
-        deps.log?.(
-          `Streaming timed out for ${parsedModelEffective.canonical}; falling back to non-streaming.`,
-        );
-        return;
-      }
-      if (isRetryableLlmError(error)) {
-        deps.log?.(
-          `Transient streaming failure for ${parsedModelEffective.canonical}; retrying non-streaming.`,
-        );
-        return;
-      }
-      deps.log?.(
-        `Google model ${parsedModelEffective.canonical} rejected streamGenerateContent; falling back to non-streaming.`,
-      );
-    };
-    const createStreamInterruptedError = (error: unknown) => {
-      const normalized = normalizeStreamError(error);
-      return new EngineError("SUMMARY_STREAM_INTERRUPTED", normalized.message, {
-        cause: normalized,
-      });
-    };
-    const callStreamHandler = async <T>(operation: () => T | Promise<T>): Promise<T> => {
-      try {
-        return await operation();
-      } catch (error) {
-        throw new StreamHandlerError(error);
-      }
-    };
+    let stream: Awaited<ReturnType<typeof streamTextWithModelId>>;
+    let consumed: Pick<SummaryAttemptResult, "summary" | "summaryEmitted">;
     try {
       deps.trace?.("summary:stream-open");
-      streamResult = await streamTextWithModelId({
-        modelId: parsedModelEffective.canonical,
-        apiKeys: apiKeysForLlm,
-        forceOpenRouter: attempt.forceOpenRouter,
-        openaiBaseUrlOverride: attempt.openaiBaseUrlOverride ?? providerRuntime.baseUrls.openai,
-        anthropicBaseUrlOverride: providerRuntime.baseUrls.anthropic,
-        googleBaseUrlOverride: providerRuntime.baseUrls.google,
-        xaiBaseUrlOverride: providerRuntime.baseUrls.xai,
-        ollamaBaseUrlOverride: providerRuntime.baseUrls.ollama,
-        forceChatCompletions,
-        requestOptions,
-        prompt,
-        temperature: 0,
-        maxOutputTokens: maxOutputTokensForCall ?? undefined,
-        timeoutMs: deps.timeoutMs,
-        fetchImpl: deps.trackedFetch,
-      });
+      stream = await streamTextWithModelId(request);
+      consumed = await consumeSummaryStream(stream, streamHandler, deps.trace);
     } catch (error) {
-      if (canFallbackFromStreamError(error)) {
-        writeStreamFallbackNotice(error);
-        summary = await summarizeWithoutStreaming(remainingRetriesAfterStreamFallback(error));
-        streamResult = null;
-      } else {
-        throw error;
-      }
-    }
-
-    if (streamResult) {
-      getLastStreamError = streamResult.lastError;
-      let streamed = "";
-      let streamedRaw = "";
-      let streamCompleted = false;
-      let streamHandlerStarted = false;
-      let streamOutputEmitted = false;
-
-      try {
-        let sawFirstDelta = false;
-        for await (const delta of streamResult.textStream) {
-          if (!sawFirstDelta) {
-            sawFirstDelta = true;
-            deps.trace?.("summary:first-delta");
-          }
-          const prevStreamed = streamed;
-          const merged = mergeStreamingChunk(streamed, delta);
-          streamed = merged.next;
-          if (streamHandler) {
-            if (!streamHandlerStarted && !streamed.trim()) continue;
-            const firstChunk = !streamHandlerStarted;
-            streamHandlerStarted = true;
-            streamOutputEmitted =
-              (await callStreamHandler(() =>
-                streamHandler.onChunk({
-                  streamed: merged.next,
-                  prevStreamed: firstChunk ? "" : prevStreamed,
-                  appended: firstChunk ? merged.next : merged.appended,
-                }),
-              )) || streamOutputEmitted;
-          }
-        }
-
-        throwIfStreamFailed();
-
-        const finalText = (await streamResult.finalText)?.trim() ?? "";
-        throwIfStreamFailed();
-        if (finalText.length > streamed.length && finalText.startsWith(streamed)) {
-          const prevStreamed = streamed;
-          const firstChunk = !streamHandlerStarted;
-          streamed = finalText;
-          if (streamHandler) {
-            streamHandlerStarted = true;
-            streamOutputEmitted =
-              (await callStreamHandler(() =>
-                streamHandler.onChunk({
-                  streamed,
-                  prevStreamed: firstChunk ? "" : prevStreamed,
-                  appended: firstChunk ? streamed : streamed.slice(prevStreamed.length),
-                }),
-              )) || streamOutputEmitted;
-          }
-        }
-
-        streamedRaw = streamed;
-        const trimmed = streamed.trim();
-        streamed = trimmed;
-        if (!streamed) throw new Error("LLM returned an empty summary");
-        streamCompleted = true;
-      } catch (error) {
-        if (streamHandler && streamHandlerStarted && !streamOutputEmitted) {
-          try {
-            await callStreamHandler(() => streamHandler.onReset());
-          } catch (resetError) {
-            const cause =
-              resetError instanceof StreamHandlerError ? resetError.handlerError : resetError;
-            throw createStreamInterruptedError(cause);
-          }
-          streamHandlerStarted = false;
-        }
-        if (error instanceof StreamHandlerError) {
-          throw createStreamInterruptedError(error.handlerError);
-        }
-        if (canFallbackFromStreamError(error) && !streamOutputEmitted) {
-          writeStreamFallbackNotice(error);
-          summary = await summarizeWithoutStreaming(remainingRetriesAfterStreamFallback(error));
-          streamResult = null;
-        } else {
-          throw streamOutputEmitted ? createStreamInterruptedError(error) : error;
-        }
-      } finally {
-        if (streamCompleted && streamHandler && streamHandlerStarted) {
-          try {
-            const finalOutputEmitted =
-              (await streamHandler.onDone?.(streamedRaw || streamed)) ?? false;
-            summaryEmitted = streamOutputEmitted || finalOutputEmitted;
-          } catch (error) {
-            throw createStreamInterruptedError(error);
-          }
-        }
-      }
-      if (streamResult) {
-        const usage = await streamResult.usage;
-        deps.llmCalls.push({
-          provider: streamResult.provider,
-          model: streamResult.canonicalModelId,
-          usage,
-          purpose: "summary",
-        });
-        summary = streamed;
-      }
-    }
-
-    summary = summary.trim();
-    if (summary.length === 0) {
-      const last = getLastStreamError?.();
-      if (last instanceof Error) {
-        throw new Error(last.message, { cause: last });
-      }
-      throw new Error("LLM returned an empty summary");
-    }
-
-    if (!streamResult && streamHandler) {
-      const cleaned = summary.trim();
+      if (hasEngineErrorCode(error, "SUMMARY_STREAM_INTERRUPTED")) throw error;
+      const timedOut = isStreamingTimeoutError(error);
+      const retryable = isRetryableLlmError(error);
+      const unsupported =
+        parsedModelEffective.provider === "google" && isGoogleStreamingUnsupportedError(error);
+      if (!timedOut && !(deps.retries > 0 && retryable) && !unsupported) throw error;
+      deps.log?.(
+        timedOut
+          ? `Streaming timed out for ${request.modelId}; falling back to non-streaming.`
+          : retryable
+            ? `Transient streaming failure for ${request.modelId}; retrying non-streaming.`
+            : `Google model ${request.modelId} rejected streamGenerateContent; falling back to non-streaming.`,
+      );
+      const summary = await complete(retryable ? Math.max(0, deps.retries - 1) : deps.retries);
+      if (!streamHandler) return toResult(summary);
       try {
         const chunkEmitted = await streamHandler.onChunk({
-          streamed: cleaned,
+          streamed: summary,
           prevStreamed: "",
-          appended: cleaned,
+          appended: summary,
         });
-        const finalOutputEmitted = (await streamHandler.onDone?.(cleaned)) ?? false;
-        summaryEmitted = chunkEmitted || finalOutputEmitted;
-      } catch (error) {
-        throw createStreamInterruptedError(error);
+        const finalEmitted = (await streamHandler.onDone?.(summary)) ?? false;
+        return toResult(summary, chunkEmitted || finalEmitted);
+      } catch (outputError) {
+        throw streamInterrupted(outputError);
       }
     }
-
-    return {
-      summary,
-      summaryEmitted,
-      modelMeta: {
-        provider: parsedModelEffective.provider,
-        canonical: attempt.userModelId.toLowerCase().startsWith("openrouter/")
-          ? attempt.userModelId
-          : parsedModelEffective.canonical,
-      },
-      maxOutputTokensForCall: maxOutputTokensForCall ?? null,
-    };
+    const usage = await stream.usage;
+    deps.llmCalls.push({
+      provider: stream.provider,
+      model: stream.canonicalModelId,
+      usage,
+      purpose: "summary",
+    });
+    return toResult(consumed.summary, consumed.summaryEmitted);
   };
 
   return {

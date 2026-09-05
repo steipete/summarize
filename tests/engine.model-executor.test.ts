@@ -8,17 +8,17 @@ import { parseRequestedModelId } from "../src/model-spec.js";
 
 const mocks = vi.hoisted(() => ({
   resolveModelIdForLlmCall: vi.fn(),
-  summarizeWithModelId: vi.fn(),
+  generateTextWithModelId: vi.fn(),
   streamTextWithModelId: vi.fn(),
 }));
 
 vi.mock("../src/llm/generate-text.js", () => ({
+  generateTextWithModelId: mocks.generateTextWithModelId,
   streamTextWithModelId: mocks.streamTextWithModelId,
 }));
 
 vi.mock("../src/engine/model-call.js", () => ({
   resolveModelIdForLlmCall: mocks.resolveModelIdForLlmCall,
-  summarizeWithModelId: mocks.summarizeWithModelId,
 }));
 
 function createTestModelExecutor(
@@ -93,16 +93,15 @@ function resolveTestFixedAttempt(
 
 beforeEach(() => {
   mocks.resolveModelIdForLlmCall.mockReset();
-  mocks.summarizeWithModelId.mockReset();
+  mocks.generateTextWithModelId.mockReset();
   mocks.streamTextWithModelId.mockReset();
   mocks.resolveModelIdForLlmCall.mockImplementation(
     async ({ parsedModel }: { parsedModel: { canonical: string } }) => ({
       modelId: parsedModel.canonical,
       note: null,
-      forceStreamOff: false,
     }),
   );
-  mocks.summarizeWithModelId.mockResolvedValue({
+  mocks.generateTextWithModelId.mockResolvedValue({
     text: "Summary.",
     provider: "openai",
     canonicalModelId: "openai/gpt-5.4",
@@ -125,7 +124,7 @@ describe("model executor OpenAI chat-completions routing", () => {
       false,
     );
 
-    const call = mocks.summarizeWithModelId.mock.calls[0]?.[0] as {
+    const call = mocks.generateTextWithModelId.mock.calls[0]?.[0] as {
       forceChatCompletions?: boolean;
       openaiBaseUrlOverride?: string | null;
     };
@@ -146,7 +145,7 @@ describe("model executor OpenAI chat-completions routing", () => {
       false,
     );
 
-    const call = mocks.summarizeWithModelId.mock.calls[0]?.[0] as {
+    const call = mocks.generateTextWithModelId.mock.calls[0]?.[0] as {
       forceChatCompletions?: boolean;
       forceOpenRouter?: boolean;
     };
@@ -163,7 +162,7 @@ describe("model executor OpenAI chat-completions routing", () => {
       allowStreaming: false,
     });
 
-    const call = mocks.summarizeWithModelId.mock.calls[0]?.[0] as {
+    const call = mocks.generateTextWithModelId.mock.calls[0]?.[0] as {
       apiKeys?: { openaiApiKey?: string | null };
       forceChatCompletions?: boolean;
       openaiBaseUrlOverride?: string | null;
@@ -182,7 +181,7 @@ describe("model executor OpenAI chat-completions routing", () => {
       allowStreaming: false,
     });
 
-    const call = mocks.summarizeWithModelId.mock.calls[0]?.[0] as {
+    const call = mocks.generateTextWithModelId.mock.calls[0]?.[0] as {
       apiKeys?: { openaiApiKey?: string | null };
       openaiBaseUrlOverride?: string | null;
     };
@@ -226,6 +225,62 @@ describe("model executor credential availability", () => {
 });
 
 describe("model executor streaming", () => {
+  it.each(["opening", "consuming"])("preserves request settings after %s fails", async (phase) => {
+    const failure = Object.assign(new Error("connection reset"), { code: "ECONNRESET" });
+    if (phase === "opening") {
+      mocks.streamTextWithModelId.mockRejectedValue(failure);
+    } else {
+      mocks.streamTextWithModelId.mockResolvedValue({
+        textStream: (async function* () {
+          throw failure;
+        })(),
+        usage: Promise.resolve(null),
+        finalText: Promise.resolve(null),
+        lastError: () => null,
+      });
+    }
+    const engine = createTestModelExecutor(false, true, 2);
+    const attempt = resolveTestFixedAttempt(engine, "openai/gpt-5.4");
+    attempt.openaiBaseUrlOverride = "https://gateway.example/v1";
+    attempt.requestOptions = { reasoningEffort: "high" };
+    await engine.runSummaryAttempt({
+      attempt,
+      prompt: { system: "Summarize faithfully.", userText: "Document." },
+      allowStreaming: true,
+    });
+    const request = mocks.streamTextWithModelId.mock.calls[0]?.[0];
+    expect(request).toMatchObject({
+      temperature: 0,
+      openaiBaseUrlOverride: "https://gateway.example/v1",
+    });
+    expect(mocks.generateTextWithModelId).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ ...request, retries: 1 }),
+    );
+  });
+
+  it("does not repeat a completed model call when usage collection fails", async () => {
+    const failure = new Error("usage connection reset");
+    const usage = Promise.reject(failure);
+    void usage.catch(() => {});
+    mocks.streamTextWithModelId.mockResolvedValue({
+      textStream: (async function* () {
+        yield "Summary.";
+      })(),
+      finalText: Promise.resolve("Summary."),
+      usage,
+      lastError: () => null,
+    });
+    const engine = createTestModelExecutor(undefined, true, 2);
+    await expect(
+      engine.runSummaryAttempt({
+        attempt: resolveTestFixedAttempt(engine, "openai/gpt-5.4"),
+        prompt: { userText: "Document." },
+        allowStreaming: true,
+      }),
+    ).rejects.toBe(failure);
+    expect(mocks.generateTextWithModelId).not.toHaveBeenCalled();
+  });
+
   it("emits structured chunks without owning output", async () => {
     async function* textStream() {
       yield "Hello";
@@ -377,7 +432,7 @@ describe("model executor streaming", () => {
       canonicalModelId: "openai/gpt-5.4",
       lastError: () => null,
     });
-    mocks.summarizeWithModelId.mockResolvedValue({
+    mocks.generateTextWithModelId.mockResolvedValue({
       text: "Fallback summary.",
       provider: "openai",
       canonicalModelId: "openai/gpt-5.4",
@@ -485,7 +540,7 @@ describe("model executor streaming", () => {
     expect(hasEngineErrorCode(error, "SUMMARY_STREAM_INTERRUPTED")).toBe(true);
     expect(error).toMatchObject({ message: "output connection closed" });
     expect(onReset).toHaveBeenCalledOnce();
-    expect(mocks.summarizeWithModelId).not.toHaveBeenCalled();
+    expect(mocks.generateTextWithModelId).not.toHaveBeenCalled();
   });
 
   it("retries a clean empty stream before output starts", async () => {
@@ -515,7 +570,7 @@ describe("model executor streaming", () => {
       }),
     ).resolves.toMatchObject({ summary: "Summary." });
 
-    expect(mocks.summarizeWithModelId).toHaveBeenCalledWith(
+    expect(mocks.generateTextWithModelId).toHaveBeenCalledWith(
       expect.objectContaining({ retries: 0 }),
     );
   });
