@@ -9,6 +9,42 @@ import {
   trackErrors,
 } from "./helpers/extension-harness";
 
+test("options checkbox controllers persist only their own setting", async ({ harness }) => {
+  const page = await openExtensionPage(harness, "options.html", "#tabs");
+  await expect(page.locator("html")).toHaveAttribute("data-settings-ready", "true");
+  const toggles = [
+    ["autoSummarize", "options-auto"],
+    ["chatEnabled", "options-chat"],
+    ["automationEnabled", "options-automation"],
+    ["hoverSummaries", "options-hover-summaries"],
+    ["summaryTimestamps", "options-summary-timestamps"],
+    ["slidesParallel", "options-slides-parallel"],
+    ["slidesOcrEnabled", "options-slides-ocr"],
+    ["extendedLogging", "options-extended-logging"],
+    ["autoCliFallback", "options-auto-cli-fallback"],
+  ] as const;
+  const expected = Object.fromEntries(
+    await Promise.all(
+      toggles.map(async ([key, id]) => [key, await page.locator(`#${id}`).isChecked()]),
+    ),
+  );
+  for (const [key, id] of toggles) {
+    const input = page.locator(`#${id}`);
+    const tab = await input.evaluate((element) =>
+      element.closest("[data-tab-panel]")?.getAttribute("data-tab-panel"),
+    );
+    await page.click(`#tab-${tab}`);
+    expected[key] = !(await input.isChecked());
+    await input.setChecked(expected[key], { force: true });
+    await expect
+      .poll(async () => {
+        const saved = await getSettings(harness);
+        return Object.fromEntries(toggles.map(([setting]) => [setting, saved[setting]]));
+      })
+      .toEqual(expected);
+  }
+});
+
 test("options pickers apply overlay selection", async ({ harness }) => {
   const page = await openExtensionPage(harness, "options.html", "#tabs");
   await page.click("#tab-ui");

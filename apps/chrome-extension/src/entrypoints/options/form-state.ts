@@ -1,6 +1,7 @@
 import { readPresetOrCustomValue, resolvePresetOrCustom } from "../../lib/combo";
-import type { DirectProvider, Settings, SlideRuntime, SummaryRuntime } from "../../lib/settings";
+import type { DirectProvider, Settings } from "../../lib/settings";
 import type { ColorMode, ColorScheme } from "../../lib/theme";
+import type { BooleanSettingsState } from "./boolean-settings";
 import type { createModelPresetsController } from "./model-presets";
 
 type FormElements = {
@@ -28,20 +29,6 @@ type FormElements = {
   fontSizeEl: HTMLInputElement;
 };
 
-type BooleanFormState = {
-  autoSummarize: boolean;
-  hoverSummaries: boolean;
-  chatEnabled: boolean;
-  automationEnabled: boolean;
-  slidesParallel: boolean;
-  slideRuntime: SlideRuntime;
-  summaryRuntime: SummaryRuntime;
-  slidesOcrEnabled: boolean;
-  summaryTimestamps: boolean;
-  extendedLogging: boolean;
-  autoCliFallback: boolean;
-};
-
 export function buildSavedOptionsSettings({
   current,
   defaults,
@@ -55,7 +42,7 @@ export function buildSavedOptionsSettings({
   defaults: Settings;
   elements: FormElements;
   modelPresets: ReturnType<typeof createModelPresetsController>;
-  booleans: BooleanFormState;
+  booleans: BooleanSettingsState;
   currentScheme: ColorScheme;
   currentMode: ColorMode;
 }): Settings {

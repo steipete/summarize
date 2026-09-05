@@ -25,92 +25,12 @@ import { createOptionsTabs, resolveActiveOptionsTab } from "./tab-controller";
 declare const __SUMMARIZE_GIT_HASH__: string;
 declare const __SUMMARIZE_VERSION__: string;
 
-const {
-  formEl,
-  statusEl,
-  tokenEl,
-  daemonPortEl,
-  daemonCapabilityStatusEl,
-  daemonPermissionEnableBtn,
-  daemonFieldsEl,
-  tokenCopyBtn,
-  summaryRuntimeModeRoot,
-  providerEl,
-  providerApiKeyEl,
-  providerBaseUrlEl,
-  modelPresetEl,
-  modelCustomEl,
-  languagePresetEl,
-  languageCustomEl,
-  promptOverrideEl,
-  autoToggleRoot,
-  maxCharsEl,
-  hoverPromptEl,
-  hoverPromptResetBtn,
-  chatToggleRoot,
-  automationToggleRoot,
-  automationPermissionsBtn,
-  userScriptsNoticeEl,
-  skillsExportBtn,
-  skillsImportBtn,
-  skillsSearchEl,
-  skillsListEl,
-  skillsEmptyEl,
-  skillsConflictsEl,
-  hoverSummariesToggleRoot,
-  summaryTimestampsToggleRoot,
-  slidesParallelToggleRoot,
-  slideRuntimeModeRoot,
-  slidesOcrToggleRoot,
-  extendedLoggingToggleRoot,
-  autoCliFallbackToggleRoot,
-  autoCliOrderEl,
-  requestModeEl,
-  firecrawlModeEl,
-  markdownModeEl,
-  preprocessModeEl,
-  youtubeModeEl,
-  transcriberEl,
-  timeoutEl,
-  retriesEl,
-  maxOutputTokensEl,
-  pickersRoot,
-  fontFamilyEl,
-  fontSizeEl,
-  buildInfoEl,
-  daemonStatusEl,
-  browserCacheStatusEl,
-  browserCacheClearBtn,
-  logsSourceEl,
-  logsTailEl,
-  logsRefreshBtn,
-  logsAutoEl,
-  logsOutputEl,
-  logsRawEl,
-  logsTableEl,
-  logsParsedEl,
-  logsMetaEl,
-  processesRefreshBtn,
-  processesAutoEl,
-  processesShowCompletedEl,
-  processesLimitEl,
-  processesStreamEl,
-  processesTailEl,
-  processesMetaEl,
-  processesTableEl,
-  processesLogsTitleEl,
-  processesLogsCopyBtn,
-  processesLogsOutputEl,
-  tabsRoot,
-  tabButtons,
-  tabPanels,
-  logsLevelInputs,
-} = getOptionsElements();
+const elements = getOptionsElements();
 
-const resolveActiveTab = () => resolveActiveOptionsTab(tabButtons);
+const resolveActiveTab = () => resolveActiveOptionsTab(elements.tabButtons);
 
 let isInitializing = true;
-const { setStatus, flashStatus } = createStatusController(statusEl);
+const { setStatus, flashStatus } = createStatusController(elements.statusEl);
 type SkillsController = ReturnType<typeof createSkillsController>;
 let skillsController: SkillsController | null = null;
 let skillsControllerPromise: Promise<SkillsController> | null = null;
@@ -123,12 +43,12 @@ const getSkillsController = async () => {
       .then(({ createSkillsController }) => {
         const controller = createSkillsController({
           elements: {
-            searchEl: skillsSearchEl,
-            listEl: skillsListEl,
-            emptyEl: skillsEmptyEl,
-            conflictsEl: skillsConflictsEl,
-            exportBtn: skillsExportBtn,
-            importBtn: skillsImportBtn,
+            searchEl: elements.skillsSearchEl,
+            listEl: elements.skillsListEl,
+            emptyEl: elements.skillsEmptyEl,
+            conflictsEl: elements.skillsConflictsEl,
+            exportBtn: elements.skillsExportBtn,
+            importBtn: elements.skillsImportBtn,
           },
           setStatus,
           flashStatus,
@@ -164,45 +84,45 @@ const loadSkillsTab = () => {
 
 const logsViewer = createLogsViewer({
   elements: {
-    sourceEl: logsSourceEl,
-    tailEl: logsTailEl,
-    refreshBtn: logsRefreshBtn,
-    autoEl: logsAutoEl,
-    outputEl: logsOutputEl,
-    rawEl: logsRawEl,
-    tableEl: logsTableEl,
-    parsedEl: logsParsedEl,
-    metaEl: logsMetaEl,
-    levelInputs: logsLevelInputs,
+    sourceEl: elements.logsSourceEl,
+    tailEl: elements.logsTailEl,
+    refreshBtn: elements.logsRefreshBtn,
+    autoEl: elements.logsAutoEl,
+    outputEl: elements.logsOutputEl,
+    rawEl: elements.logsRawEl,
+    tableEl: elements.logsTableEl,
+    parsedEl: elements.logsParsedEl,
+    metaEl: elements.logsMetaEl,
+    levelInputs: elements.logsLevelInputs,
   },
-  getToken: () => tokenEl.value.trim(),
+  getToken: () => elements.tokenEl.value.trim(),
   isActive: () => resolveActiveTab() === "logs",
 });
 
 const processesViewer = createProcessesViewer({
   elements: {
-    refreshBtn: processesRefreshBtn,
-    autoEl: processesAutoEl,
-    showCompletedEl: processesShowCompletedEl,
-    limitEl: processesLimitEl,
-    streamEl: processesStreamEl,
-    tailEl: processesTailEl,
-    metaEl: processesMetaEl,
-    tableEl: processesTableEl,
-    logsTitleEl: processesLogsTitleEl,
-    logsCopyBtn: processesLogsCopyBtn,
-    logsOutputEl: processesLogsOutputEl,
+    refreshBtn: elements.processesRefreshBtn,
+    autoEl: elements.processesAutoEl,
+    showCompletedEl: elements.processesShowCompletedEl,
+    limitEl: elements.processesLimitEl,
+    streamEl: elements.processesStreamEl,
+    tailEl: elements.processesTailEl,
+    metaEl: elements.processesMetaEl,
+    tableEl: elements.processesTableEl,
+    logsTitleEl: elements.processesLogsTitleEl,
+    logsCopyBtn: elements.processesLogsCopyBtn,
+    logsOutputEl: elements.processesLogsOutputEl,
   },
-  getToken: () => tokenEl.value.trim(),
+  getToken: () => elements.tokenEl.value.trim(),
   isActive: () => resolveActiveTab() === "processes",
 });
 
 let refreshBrowserCacheStatus = () => {};
 
 createOptionsTabs({
-  root: tabsRoot,
-  buttons: tabButtons,
-  panels: tabPanels,
+  root: elements.tabsRoot,
+  buttons: elements.tabButtons,
+  panels: elements.tabPanels,
   storageKey: optionsTabStorageKey,
   onTabActivated: (tabId) => {
     if (tabId === "skills") loadSkillsTab();
@@ -226,31 +146,7 @@ createOptionsTabs({
 
 let booleanSettings: ReturnType<typeof createBooleanSettingsRuntime> | null = null;
 let daemonCapability: ReturnType<typeof createDaemonCapabilityController> | null = null;
-let refreshRuntimeStatus = (_token = tokenEl.value) => {};
-const settingsElements = {
-  tokenEl,
-  daemonPortEl,
-  providerEl,
-  providerApiKeyEl,
-  providerBaseUrlEl,
-  languagePresetEl,
-  languageCustomEl,
-  promptOverrideEl,
-  hoverPromptEl,
-  autoCliOrderEl,
-  maxCharsEl,
-  requestModeEl,
-  firecrawlModeEl,
-  markdownModeEl,
-  preprocessModeEl,
-  youtubeModeEl,
-  transcriberEl,
-  timeoutEl,
-  retriesEl,
-  maxOutputTokensEl,
-  fontFamilyEl,
-  fontSizeEl,
-};
+let refreshRuntimeStatus = (_token = elements.tokenEl.value) => {};
 
 const { saveNow, scheduleAutoSave } = createOptionsSaveRuntime({
   isInitializing: () => isInitializing,
@@ -262,21 +158,9 @@ const { saveNow, scheduleAutoSave } = createOptionsSaveRuntime({
       buildSavedOptionsSettings({
         current,
         defaults: defaultSettings,
-        elements: settingsElements,
+        elements,
         modelPresets,
-        booleans: booleanSettings?.getState() ?? {
-          autoSummarize: defaultSettings.autoSummarize,
-          chatEnabled: defaultSettings.chatEnabled,
-          automationEnabled: defaultSettings.automationEnabled,
-          hoverSummaries: defaultSettings.hoverSummaries,
-          summaryTimestamps: defaultSettings.summaryTimestamps,
-          slidesParallel: defaultSettings.slidesParallel,
-          slideRuntime: defaultSettings.slideRuntime,
-          summaryRuntime: defaultSettings.summaryRuntime,
-          slidesOcrEnabled: defaultSettings.slidesOcrEnabled,
-          extendedLogging: defaultSettings.extendedLogging,
-          autoCliFallback: defaultSettings.autoCliFallback,
-        },
+        booleans: booleanSettings?.getState() ?? defaultSettings,
         currentScheme,
         currentMode,
       }),
@@ -286,19 +170,7 @@ const { saveNow, scheduleAutoSave } = createOptionsSaveRuntime({
 
 booleanSettings = createBooleanSettingsRuntime({
   defaults: defaultSettings,
-  roots: {
-    autoToggleRoot,
-    chatToggleRoot,
-    automationToggleRoot,
-    hoverSummariesToggleRoot,
-    summaryTimestampsToggleRoot,
-    slidesParallelToggleRoot,
-    slideRuntimeModeRoot,
-    summaryRuntimeModeRoot,
-    slidesOcrToggleRoot,
-    extendedLoggingToggleRoot,
-    autoCliFallbackToggleRoot,
-  },
+  roots: elements,
   scheduleAutoSave,
   onAutomationChanged: () => {
     void automationPermissions.updateUi();
@@ -316,7 +188,7 @@ const resolveExtensionVersion = () => {
 };
 
 const { checkDaemonStatus, setDaemonStatus } = createDaemonStatusChecker({
-  statusEl: daemonStatusEl,
+  statusEl: elements.daemonStatusEl,
   getExtensionVersion: resolveExtensionVersion,
   isDaemonMode: () => {
     const state = booleanSettings?.getState();
@@ -325,15 +197,15 @@ const { checkDaemonStatus, setDaemonStatus } = createDaemonStatusChecker({
 });
 
 daemonCapability = createDaemonCapabilityController({
-  statusEl: daemonCapabilityStatusEl,
-  enableBtn: daemonPermissionEnableBtn,
-  daemonFieldsEl,
-  summaryRuntimeRoot: summaryRuntimeModeRoot,
-  slideRuntimeRoot: slideRuntimeModeRoot,
+  statusEl: elements.daemonCapabilityStatusEl,
+  enableBtn: elements.daemonPermissionEnableBtn,
+  daemonFieldsEl: elements.daemonFieldsEl,
+  summaryRuntimeRoot: elements.summaryRuntimeModeRoot,
+  slideRuntimeRoot: elements.slideRuntimeModeRoot,
   onStateChanged: () => refreshRuntimeStatus(),
 });
 
-refreshRuntimeStatus = (token = tokenEl.value) => {
+refreshRuntimeStatus = (token = elements.tokenEl.value) => {
   const capability = daemonCapability?.getState();
   if (capability && !capability.policy.daemonAllowed) {
     setDaemonStatus("Disabled by administrator", "warn");
@@ -368,29 +240,29 @@ async function sendBrowserCacheMessage(type: "browser-cache:stats" | "browser-ca
 
 function renderBrowserCacheStatus(stats: CacheStats | null | undefined) {
   if (!stats) {
-    browserCacheStatusEl.textContent = "Unavailable";
+    elements.browserCacheStatusEl.textContent = "Unavailable";
     return;
   }
   const entryLabel = stats.totalEntries === 1 ? "entry" : "entries";
-  browserCacheStatusEl.textContent = `${stats.totalEntries} ${entryLabel} · ${formatBytes(
+  elements.browserCacheStatusEl.textContent = `${stats.totalEntries} ${entryLabel} · ${formatBytes(
     stats.sizeBytes,
   )} · expires after 30 days`;
 }
 
 refreshBrowserCacheStatus = () => {
-  browserCacheStatusEl.textContent = "Loading...";
+  elements.browserCacheStatusEl.textContent = "Loading...";
   void sendBrowserCacheMessage("browser-cache:stats")
     .then((response) => {
       renderBrowserCacheStatus(response.ok ? response.stats : null);
     })
     .catch(() => {
-      browserCacheStatusEl.textContent = "Unavailable";
+      elements.browserCacheStatusEl.textContent = "Unavailable";
     });
 };
 
-browserCacheClearBtn.addEventListener("click", () => {
-  browserCacheClearBtn.disabled = true;
-  browserCacheStatusEl.textContent = "Clearing...";
+elements.browserCacheClearBtn.addEventListener("click", () => {
+  elements.browserCacheClearBtn.disabled = true;
+  elements.browserCacheStatusEl.textContent = "Clearing...";
   void sendBrowserCacheMessage("browser-cache:clear")
     .then((response) => {
       if (!response.ok) {
@@ -402,17 +274,17 @@ browserCacheClearBtn.addEventListener("click", () => {
       flashStatus("Browser cache cleared");
     })
     .catch(() => {
-      browserCacheStatusEl.textContent = "Clear failed";
+      elements.browserCacheStatusEl.textContent = "Clear failed";
       setStatus("Failed to clear browser cache");
     })
     .finally(() => {
-      browserCacheClearBtn.disabled = false;
+      elements.browserCacheClearBtn.disabled = false;
     });
 });
 
 const modelPresets = createModelPresetsController({
-  presetEl: modelPresetEl,
-  customEl: modelCustomEl,
+  presetEl: elements.modelPresetEl,
+  customEl: elements.modelCustomEl,
   defaultValue: defaultSettings.model,
 });
 
@@ -433,20 +305,20 @@ const pickerHandlers = {
   },
 };
 
-const pickers = mountOptionsPickers(pickersRoot, {
+const pickers = mountOptionsPickers(elements.pickersRoot, {
   scheme: currentScheme,
   mode: currentMode,
   ...pickerHandlers,
 });
 
 const automationPermissions = createAutomationPermissionsController({
-  automationPermissionsBtn,
-  userScriptsNoticeEl,
+  automationPermissionsBtn: elements.automationPermissionsBtn,
+  userScriptsNoticeEl: elements.userScriptsNoticeEl,
   getAutomationEnabled: () => booleanSettings.getState().automationEnabled,
   flashStatus,
 });
 
-automationPermissionsBtn.addEventListener("click", () => {
+elements.automationPermissionsBtn.addEventListener("click", () => {
   void automationPermissions.requestPermissions();
 });
 
@@ -459,7 +331,7 @@ async function load() {
     settings: s,
     defaults: defaultSettings,
     languagePresets,
-    elements: settingsElements,
+    elements,
   });
   booleanSettings.setState(loadedState.booleans);
   booleanSettings.render();
@@ -484,70 +356,40 @@ chrome.storage.onChanged.addListener((_changes, areaName) => {
   if (areaName === "managed") void load();
 });
 
-providerEl.addEventListener("change", () => {
+elements.providerEl.addEventListener("change", () => {
   void (async () => {
     const stored = await loadSettings();
     await saveSettings({
       ...stored,
       providerApiKeys: {
         ...stored.providerApiKeys,
-        [activeProvider]: providerApiKeyEl.value.trim(),
+        [activeProvider]: elements.providerApiKeyEl.value.trim(),
       },
       providerBaseUrls: {
         ...stored.providerBaseUrls,
-        [activeProvider]: providerBaseUrlEl.value.trim(),
+        [activeProvider]: elements.providerBaseUrlEl.value.trim(),
       },
     });
-    const nextProvider = providerEl.value as typeof activeProvider;
+    const nextProvider = elements.providerEl.value as typeof activeProvider;
     activeProvider = nextProvider;
     const refreshed = await loadSettings();
-    providerApiKeyEl.value = refreshed.providerApiKeys[nextProvider] ?? "";
-    providerBaseUrlEl.value = refreshed.providerBaseUrls[nextProvider] ?? "";
+    elements.providerApiKeyEl.value = refreshed.providerApiKeys[nextProvider] ?? "";
+    elements.providerBaseUrlEl.value = refreshed.providerBaseUrls[nextProvider] ?? "";
     scheduleAutoSave(0);
   })();
 });
 
-providerApiKeyEl.addEventListener("input", () => scheduleAutoSave(400));
-providerBaseUrlEl.addEventListener("input", () => scheduleAutoSave(400));
+elements.providerApiKeyEl.addEventListener("input", () => scheduleAutoSave(400));
+elements.providerBaseUrlEl.addEventListener("input", () => scheduleAutoSave(400));
 
-const copyToken = () => copyTokenToClipboard({ tokenEl, flashStatus });
+const copyToken = () => copyTokenToClipboard({ tokenEl: elements.tokenEl, flashStatus });
 
 const refreshModelsIfStale = () => {
-  modelPresets.refreshIfStale(tokenEl.value);
+  modelPresets.refreshIfStale(elements.tokenEl.value);
 };
 
 bindOptionsInputs({
-  elements: {
-    formEl,
-    tokenEl,
-    daemonPortEl,
-    tokenCopyBtn,
-    modelPresetEl,
-    modelCustomEl,
-    languagePresetEl,
-    languageCustomEl,
-    promptOverrideEl,
-    hoverPromptEl,
-    hoverPromptResetBtn,
-    maxCharsEl,
-    requestModeEl,
-    firecrawlModeEl,
-    markdownModeEl,
-    preprocessModeEl,
-    youtubeModeEl,
-    transcriberEl,
-    timeoutEl,
-    retriesEl,
-    maxOutputTokensEl,
-    autoCliOrderEl,
-    fontFamilyEl,
-    fontSizeEl,
-    logsSourceEl,
-    logsTailEl,
-    logsParsedEl,
-    logsAutoEl,
-    logsLevelInputs,
-  },
+  elements,
   scheduleAutoSave,
   saveNow,
   checkDaemonStatus: refreshRuntimeStatus,
@@ -559,7 +401,7 @@ bindOptionsInputs({
   defaultHoverPrompt: defaultSettings.hoverPrompt,
 });
 
-applyBuildInfo(buildInfoEl, {
+applyBuildInfo(elements.buildInfoEl, {
   injectedVersion:
     typeof __SUMMARIZE_VERSION__ === "string" && __SUMMARIZE_VERSION__ ? __SUMMARIZE_VERSION__ : "",
   manifestVersion: chrome?.runtime?.getManifest?.().version ?? "",

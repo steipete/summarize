@@ -185,22 +185,6 @@ function normalizeAutoCliOrder(value: unknown): string {
   return out.length > 0 ? out.join(",") : defaultSettings.autoCliOrder;
 }
 
-function normalizeTranscriber(value: unknown): TranscriberSetting {
-  if (typeof value !== "string") return defaultSettings.transcriber;
-  const trimmed = value.trim().toLowerCase();
-  if (!trimmed) return defaultSettings.transcriber;
-  if (trimmed === "whisper" || trimmed === "parakeet" || trimmed === "canary") return trimmed;
-  return defaultSettings.transcriber;
-}
-
-function normalizeRequestMode(value: unknown): RequestModeSetting {
-  if (typeof value !== "string") return defaultSettings.requestMode;
-  const trimmed = value.trim().toLowerCase();
-  if (!trimmed) return defaultSettings.requestMode;
-  if (trimmed === "page" || trimmed === "url") return trimmed;
-  return defaultSettings.requestMode;
-}
-
 function normalizeSlidesLayout(value: unknown): SlidesLayout {
   if (typeof value !== "string") return defaultSettings.slidesLayout;
   const trimmed = value.trim().toLowerCase();
@@ -257,48 +241,6 @@ function normalizeProviderMap(value: unknown): Partial<Record<DirectProvider, st
     if (typeof entry === "string") out[provider] = entry.trim();
   }
   return out;
-}
-
-function normalizeFirecrawlMode(value: unknown): FirecrawlModeSetting {
-  if (typeof value !== "string") return defaultSettings.firecrawlMode;
-  const trimmed = value.trim().toLowerCase();
-  if (!trimmed) return defaultSettings.firecrawlMode;
-  if (trimmed === "off" || trimmed === "auto" || trimmed === "always") return trimmed;
-  return defaultSettings.firecrawlMode;
-}
-
-function normalizeMarkdownMode(value: unknown): MarkdownModeSetting {
-  if (typeof value !== "string") return defaultSettings.markdownMode;
-  const trimmed = value.trim().toLowerCase();
-  if (!trimmed) return defaultSettings.markdownMode;
-  if (trimmed === "off" || trimmed === "auto" || trimmed === "llm" || trimmed === "readability") {
-    return trimmed;
-  }
-  return defaultSettings.markdownMode;
-}
-
-function normalizePreprocessMode(value: unknown): PreprocessModeSetting {
-  if (typeof value !== "string") return defaultSettings.preprocessMode;
-  const trimmed = value.trim().toLowerCase();
-  if (!trimmed) return defaultSettings.preprocessMode;
-  if (trimmed === "off" || trimmed === "auto" || trimmed === "always") return trimmed;
-  return defaultSettings.preprocessMode;
-}
-
-function normalizeYoutubeMode(value: unknown): YoutubeModeSetting {
-  if (typeof value !== "string") return defaultSettings.youtubeMode;
-  const trimmed = value.trim().toLowerCase();
-  if (!trimmed) return defaultSettings.youtubeMode;
-  if (
-    trimmed === "auto" ||
-    trimmed === "web" ||
-    trimmed === "apify" ||
-    trimmed === "yt-dlp" ||
-    trimmed === "no-auto"
-  ) {
-    return trimmed;
-  }
-  return defaultSettings.youtubeMode;
 }
 
 function normalizeTimeout(value: unknown): string {
@@ -426,25 +368,84 @@ export const defaultSettings: Settings = {
   colorMode: defaultColorMode,
 };
 
+function normalizeChoice<Value extends string>(
+  value: unknown,
+  choices: readonly Value[],
+  fallback: Value,
+): Value {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return choices.find((choice) => choice === normalized) ?? fallback;
+}
+
+function normalizeSettings(settings: Settings): Settings {
+  return {
+    ...settings,
+    daemonPort: normalizeDaemonPort(settings.daemonPort),
+    summaryRuntime: normalizeSummaryRuntime(settings.summaryRuntime),
+    provider: normalizeProvider(settings.provider),
+    providerApiKeys: normalizeProviderMap(settings.providerApiKeys),
+    providerBaseUrls: normalizeProviderMap(settings.providerBaseUrls),
+    model: normalizeModel(settings.model),
+    length: normalizeLength(settings.length),
+    language: normalizeLanguage(settings.language),
+    promptOverride: normalizePromptOverride(settings.promptOverride),
+    hoverPrompt: normalizeHoverPrompt(settings.hoverPrompt),
+    autoCliOrder: normalizeAutoCliOrder(settings.autoCliOrder),
+    requestMode: normalizeChoice(
+      settings.requestMode,
+      ["page", "url"],
+      defaultSettings.requestMode,
+    ),
+    slidesLayout: normalizeSlidesLayout(settings.slidesLayout),
+    firecrawlMode: normalizeChoice(
+      settings.firecrawlMode,
+      ["off", "auto", "always"],
+      defaultSettings.firecrawlMode,
+    ),
+    markdownMode: normalizeChoice(
+      settings.markdownMode,
+      ["off", "auto", "llm", "readability"],
+      defaultSettings.markdownMode,
+    ),
+    preprocessMode: normalizeChoice(
+      settings.preprocessMode,
+      ["off", "auto", "always"],
+      defaultSettings.preprocessMode,
+    ),
+    youtubeMode: normalizeChoice(
+      settings.youtubeMode,
+      ["auto", "web", "apify", "yt-dlp", "no-auto"],
+      defaultSettings.youtubeMode,
+    ),
+    timeout: normalizeTimeout(settings.timeout),
+    retries: normalizeRetries(settings.retries),
+    maxOutputTokens: normalizeMaxOutputTokens(settings.maxOutputTokens),
+    transcriber: normalizeChoice(
+      settings.transcriber,
+      ["whisper", "parakeet", "canary"],
+      defaultSettings.transcriber,
+    ),
+    fontFamily: normalizeFontFamily(settings.fontFamily),
+    maxChars: normalizeMaxChars(settings.maxChars),
+    fontSize: normalizeFontSize(settings.fontSize),
+    lineHeight: normalizeLineHeight(settings.lineHeight),
+    colorScheme: normalizeColorScheme(settings.colorScheme),
+    colorMode: normalizeColorMode(settings.colorMode),
+  };
+}
+
 export async function loadSettings(): Promise<EffectiveSettings> {
   const raw = (await readStoredSettings()) as Partial<Settings> & Record<string, unknown>;
-  const normalized: Settings = {
+  const normalized = normalizeSettings({
     ...defaultSettings,
     ...raw,
     token: typeof raw.token === "string" ? raw.token : defaultSettings.token,
-    daemonPort: normalizeDaemonPort(raw.daemonPort),
     summaryRuntime: normalizeSummaryRuntime(raw.summaryRuntime, raw),
-    provider: normalizeProvider(raw.provider),
-    providerApiKeys: normalizeProviderMap(raw.providerApiKeys),
-    providerBaseUrls: normalizeProviderMap(raw.providerBaseUrls),
     daemonHintDismissed:
       typeof raw.daemonHintDismissed === "boolean"
         ? raw.daemonHintDismissed
         : defaultSettings.daemonHintDismissed,
     model: normalizeModel(raw.model, raw),
-    length: normalizeLength(raw.length),
-    language: normalizeLanguage(raw.language),
-    promptOverride: normalizePromptOverride(raw.promptOverride),
     autoSummarize:
       typeof raw.autoSummarize === "boolean" ? raw.autoSummarize : defaultSettings.autoSummarize,
     hoverSummaries:
@@ -464,7 +465,6 @@ export async function loadSettings(): Promise<EffectiveSettings> {
       typeof raw.slidesOcrEnabled === "boolean"
         ? raw.slidesOcrEnabled
         : defaultSettings.slidesOcrEnabled,
-    slidesLayout: normalizeSlidesLayout(raw.slidesLayout),
     summaryTimestamps:
       typeof raw.summaryTimestamps === "boolean"
         ? raw.summaryTimestamps
@@ -484,23 +484,7 @@ export async function loadSettings(): Promise<EffectiveSettings> {
         ? raw.autoCliOrder
         : (raw as Record<string, unknown>).magicCliOrder,
     ),
-    hoverPrompt: normalizeHoverPrompt(raw.hoverPrompt),
-    transcriber: normalizeTranscriber(raw.transcriber),
-    maxChars: normalizeMaxChars(raw.maxChars),
-    requestMode: normalizeRequestMode(raw.requestMode),
-    firecrawlMode: normalizeFirecrawlMode(raw.firecrawlMode),
-    markdownMode: normalizeMarkdownMode(raw.markdownMode),
-    preprocessMode: normalizePreprocessMode(raw.preprocessMode),
-    youtubeMode: normalizeYoutubeMode(raw.youtubeMode),
-    timeout: normalizeTimeout(raw.timeout),
-    retries: normalizeRetries(raw.retries),
-    maxOutputTokens: normalizeMaxOutputTokens(raw.maxOutputTokens),
-    fontFamily: normalizeFontFamily(raw.fontFamily),
-    fontSize: normalizeFontSize(raw.fontSize),
-    lineHeight: normalizeLineHeight(raw.lineHeight),
-    colorScheme: normalizeColorScheme(raw.colorScheme),
-    colorMode: normalizeColorMode(raw.colorMode),
-  };
+  });
   const policy = await readDaemonPolicy();
   return {
     ...enforceDaemonPolicy(normalized, policy),
@@ -515,37 +499,8 @@ export async function saveSettings(settings: Settings): Promise<void> {
     daemonManaged: _daemonManaged,
     ...storedSettings
   } = settings as EffectiveSettings;
-  const normalized = {
-    ...storedSettings,
-    daemonPort: normalizeDaemonPort(storedSettings.daemonPort),
-    summaryRuntime: normalizeSummaryRuntime(storedSettings.summaryRuntime),
-    provider: normalizeProvider(storedSettings.provider),
-    providerApiKeys: normalizeProviderMap(storedSettings.providerApiKeys),
-    providerBaseUrls: normalizeProviderMap(storedSettings.providerBaseUrls),
-    model: normalizeModel(storedSettings.model),
-    length: normalizeLength(storedSettings.length),
-    language: normalizeLanguage(storedSettings.language),
-    promptOverride: normalizePromptOverride(storedSettings.promptOverride),
-    hoverPrompt: normalizeHoverPrompt(storedSettings.hoverPrompt),
-    autoCliOrder: normalizeAutoCliOrder(storedSettings.autoCliOrder),
-    requestMode: normalizeRequestMode(storedSettings.requestMode),
-    slidesLayout: normalizeSlidesLayout(storedSettings.slidesLayout),
-    firecrawlMode: normalizeFirecrawlMode(storedSettings.firecrawlMode),
-    markdownMode: normalizeMarkdownMode(storedSettings.markdownMode),
-    preprocessMode: normalizePreprocessMode(storedSettings.preprocessMode),
-    youtubeMode: normalizeYoutubeMode(storedSettings.youtubeMode),
-    timeout: normalizeTimeout(storedSettings.timeout),
-    retries: normalizeRetries(storedSettings.retries),
-    maxOutputTokens: normalizeMaxOutputTokens(storedSettings.maxOutputTokens),
-    transcriber: normalizeTranscriber(storedSettings.transcriber),
-    fontFamily: normalizeFontFamily(storedSettings.fontFamily),
-    maxChars: normalizeMaxChars(storedSettings.maxChars),
-    fontSize: normalizeFontSize(storedSettings.fontSize),
-    lineHeight: normalizeLineHeight(storedSettings.lineHeight),
-    colorScheme: normalizeColorScheme(storedSettings.colorScheme),
-    colorMode: normalizeColorMode(storedSettings.colorMode),
-  };
-  await writeStoredSettings(normalized);
+
+  await writeStoredSettings(normalizeSettings(storedSettings));
 }
 
 export function getProviderSettings(settings: Settings): ProviderSettings {

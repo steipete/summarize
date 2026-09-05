@@ -16,6 +16,7 @@
 
 ### Dependencies and maintenance
 
+- Make Options use one element collection and declarative checkbox bindings; share settings normalization between load and save without mixing legacy migrations or managed policy into persistence.
 - Share page-media resolution and embedded transcript composition across HTML and Firecrawl extraction, keeping source-specific metadata, Markdown, and timeout policies separate.
 - Delete the unreachable daemon chat pipeline and unused browser media adapters; keep chat on the agent endpoint and audio on the bounded chunked decoder.
 - Use one slide-download/cache/progress workflow with source-specific download and stream-fallback policies instead of three copied pipelines.
