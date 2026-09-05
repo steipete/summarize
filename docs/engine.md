@@ -100,6 +100,8 @@ The engine owns:
 
 Provider transport lives in `src/llm`. Generation and streaming share `LlmRequestOptions`, so prompt conversion and fallback attempts retain the original request settings. SDK-backed streaming providers share delta collection, deadlines, usage, and final-text handling; provider branches own model configuration and error normalization. OpenAI's HTTP transport keeps its separate response handling.
 
+`src/llm/markdown-converters.ts` builds both HTML and transcript converters from one model configuration and generation path. The source-specific prompts, 200,000-character input limits, and usage reporting remain explicit; URL orchestration selects which converter to expose.
+
 ## Tests
 
 Key coverage:

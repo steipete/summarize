@@ -17,6 +17,7 @@
 
 ### Dependencies and maintenance
 
+- Build HTML and transcript LLM Markdown converters from one model configuration and generation path; preserve their separate prompts, input limits, and usage callbacks.
 - Share content-script message retries across extraction, seeking, and slide preparation while retaining operation-specific timeouts and reinjection policies.
 - Consolidate file-summary prompt policy and timed-transcript parsing/formatting while preserving prompt text and source-specific length limits.
 - Share one media subprocess lifecycle across line streaming, text/binary capture, and OCR while preserving output tracking and timeout/error behavior.

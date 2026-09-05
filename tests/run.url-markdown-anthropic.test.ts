@@ -3,11 +3,14 @@ import { parseRequestedModelId } from "../src/model-spec.js";
 import { discardStream as sink } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
-  createHtmlToMarkdownConverter: vi.fn(() => async () => "# Converted"),
+  createLlmMarkdownConverters: vi.fn(() => ({
+    html: async () => "# Converted",
+    transcript: async () => "# Converted",
+  })),
 }));
 
-vi.mock("../src/llm/html-to-markdown.js", () => ({
-  createHtmlToMarkdownConverter: mocks.createHtmlToMarkdownConverter,
+vi.mock("../src/llm/markdown-converters.js", () => ({
+  createLlmMarkdownConverters: mocks.createLlmMarkdownConverters,
 }));
 
 import { createMarkdownConverters } from "../src/run/flows/url/markdown.js";
@@ -82,7 +85,7 @@ function buildCtx(opts: {
 
 describe("URL markdown anthropic routing", () => {
   it("scopes openai-only request options away from anthropic markdown calls", () => {
-    mocks.createHtmlToMarkdownConverter.mockClear();
+    mocks.createLlmMarkdownConverters.mockClear();
     const ctx = buildCtx({
       openaiRequestOptions: { reasoningEffort: "high" },
       openaiRequestOptionsOverride: { serviceTier: "fast" },
@@ -90,7 +93,7 @@ describe("URL markdown anthropic routing", () => {
 
     createMarkdownConverters(ctx, { isYoutubeUrl: false });
 
-    expect(mocks.createHtmlToMarkdownConverter).toHaveBeenCalledWith(
+    expect(mocks.createLlmMarkdownConverters).toHaveBeenCalledWith(
       expect.objectContaining({
         modelId: expect.stringContaining("anthropic"),
         requestOptions: undefined,
@@ -99,7 +102,7 @@ describe("URL markdown anthropic routing", () => {
   });
 
   it("forwards an explicit CLI --thinking override to anthropic markdown calls", () => {
-    mocks.createHtmlToMarkdownConverter.mockClear();
+    mocks.createLlmMarkdownConverters.mockClear();
     const ctx = buildCtx({
       openaiRequestOptions: { reasoningEffort: "high" },
       cliReasoningEffortOverride: "xhigh",
@@ -107,7 +110,7 @@ describe("URL markdown anthropic routing", () => {
 
     createMarkdownConverters(ctx, { isYoutubeUrl: false });
 
-    expect(mocks.createHtmlToMarkdownConverter).toHaveBeenCalledWith(
+    expect(mocks.createLlmMarkdownConverters).toHaveBeenCalledWith(
       expect.objectContaining({
         requestOptions: { reasoningEffort: "xhigh" },
       }),
