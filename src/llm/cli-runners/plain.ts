@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { execCliWithInput } from "../cli-exec.js";
 import type { CliRunResult, ResolvedCliRunOptions } from "./types.js";
 
@@ -66,11 +67,26 @@ export async function runCopilotCli(options: ResolvedCliRunOptions): Promise<Cli
   return { text, usage: null, costUsd: null };
 }
 
+function lastIndexOfCaseInsensitive(str: string, target: string): number {
+  const targetLower = target.toLowerCase();
+  for (let index = str.length - target.length; index >= 0; index -= 1) {
+    if (str.slice(index, index + target.length).toLowerCase() === targetLower) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+export const AGY_NO_TOOLS_GUIDANCE =
+  "\n\nIMPORTANT: Do not create or edit files. Do not include local file links or work-log narration. Return only the final text response.";
+
 export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunResult> {
   const platform = typeof process !== "undefined" ? process.platform : "linux";
+  const isWindows = platform === "win32";
   const isolatedCwd = !options.allowTools
     ? await fs.mkdtemp(path.join(tmpdir(), "summarize-agy-"))
     : null;
+  let promptDir: string | null = null;
   try {
     const args = [...options.providerExtraArgs];
     if (!options.allowTools && !hasAnyFlag(args, ["--sandbox"])) args.push("--sandbox");
@@ -81,14 +97,6 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
       );
     }
     const { limit, type } = resolveAgyMaxPrintArgLimit(platform);
-    const promptSize =
-      type === "chars" ? options.prompt.length : Buffer.byteLength(options.prompt, "utf8");
-    if (promptSize > limit) {
-      throw new Error(
-        `Antigravity CLI requires --print <prompt> and cannot safely receive large prompts over argv (${promptSize} ${type}). ` +
-          "Use a different CLI provider for this input, reduce extracted content, or update agy to support stdin/file input.",
-      );
-    }
     if (
       Number.isFinite(options.timeoutMs) &&
       options.timeoutMs > 0 &&
@@ -96,16 +104,57 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
     ) {
       args.push("--print-timeout", `${Math.max(1, Math.ceil(options.timeoutMs / 1000))}s`);
     }
-    args.push("--print", options.prompt);
-    if (platform === "win32") {
-      const commandChars = estimateWindowsCommandChars([options.binary, ...args]);
-      if (commandChars > limit) {
-        throw new Error(
-          `Antigravity CLI requires --print <prompt> and cannot safely receive large prompts over argv (${commandChars} escaped chars). ` +
-            "Use a different CLI provider for this input, reduce extracted content, or update agy to support stdin/file input.",
-        );
+
+    const noToolsGuidance = !options.allowTools ? AGY_NO_TOOLS_GUIDANCE : "";
+
+    const fullPrompt = options.prompt + noToolsGuidance;
+    const promptSize = type === "chars" ? fullPrompt.length : Buffer.byteLength(fullPrompt, "utf8");
+    const initialCommandSize = isWindows
+      ? estimateWindowsCommandChars([options.binary, ...args, "--print", fullPrompt])
+      : Buffer.byteLength([options.binary, ...args, "--print", fullPrompt].join(" "), "utf-8");
+
+    let printPrompt = fullPrompt;
+
+    if (promptSize > limit || initialCommandSize > limit) {
+      promptDir = await fs.mkdtemp(path.join(isolatedCwd ?? tmpdir(), "summarize-agy-prompt-"));
+      const documentPath = path.join(promptDir, "document.txt");
+
+      const lastContentIdx = lastIndexOfCaseInsensitive(options.prompt, "<content");
+      const lastEndIdx = lastIndexOfCaseInsensitive(options.prompt, "</content>");
+
+      let payloadToSave = options.prompt;
+      let promptInstructions = "";
+
+      if (lastContentIdx !== -1 && lastEndIdx > lastContentIdx) {
+        const endTagLength = "</content>".length;
+        const beforeContent = options.prompt.slice(0, lastContentIdx).trim();
+        const afterContent = options.prompt.slice(lastEndIdx + endTagLength).trim();
+        promptInstructions = [beforeContent, afterContent].filter(Boolean).join("\n\n");
+        payloadToSave = options.prompt.slice(lastContentIdx, lastEndIdx + endTagLength);
       }
+
+      await fs.writeFile(documentPath, payloadToSave, { mode: 0o600, encoding: "utf-8" });
+      const documentUrl = pathToFileURL(documentPath).href;
+
+      const fileInstruction = `Summarize the content in ${documentUrl}`;
+      printPrompt = promptInstructions
+        ? `${promptInstructions}\n\n${fileInstruction}${noToolsGuidance}`
+        : `${fileInstruction}${noToolsGuidance}`;
     }
+
+    const finalCommandSize = isWindows
+      ? estimateWindowsCommandChars([options.binary, ...args, "--print", printPrompt])
+      : Buffer.byteLength([options.binary, ...args, "--print", printPrompt].join(" "), "utf-8");
+
+    if (finalCommandSize > limit) {
+      throw new Error(
+        `Antigravity CLI requires --print <prompt> and cannot safely receive large command arguments over argv (${finalCommandSize} ${type}). ` +
+          "Use a different CLI provider for this input, reduce extra args or extracted content, or update agy to support stdin/file input.",
+      );
+    }
+
+    args.push("--print", printPrompt);
+
     const redactedCommand = [
       options.binary,
       ...args.map((arg, index) => (args[index - 1] === "--print" ? "[prompt redacted]" : arg)),
@@ -125,6 +174,7 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
     if (!text) throw new Error("CLI returned empty output");
     return { text, usage: null, costUsd: null };
   } finally {
+    if (promptDir) await fs.rm(promptDir, { recursive: true, force: true }).catch(() => {});
     if (isolatedCwd) await fs.rm(isolatedCwd, { recursive: true, force: true }).catch(() => {});
   }
 }
