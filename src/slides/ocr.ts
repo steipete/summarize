@@ -1,5 +1,4 @@
-import { spawnTracked } from "../processes.js";
-import { runWithConcurrency } from "./process.js";
+import { runProcessCaptureBuffer, runWithConcurrency } from "./process.js";
 import type { SlideImage } from "./types.js";
 
 const TESSERACT_TIMEOUT_MS = 120_000;
@@ -23,62 +22,13 @@ export function estimateOcrConfidence(text: string): number {
 }
 
 export async function runTesseract(tesseractPath: string, imagePath: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const { proc, handle } = spawnTracked(
-      tesseractPath,
-      [imagePath, "stdout", "--oem", "3", "--psm", "6"],
-      {
-        stdio: ["ignore", "pipe", "pipe"],
-        label: "tesseract",
-        kind: "tesseract",
-        captureOutput: false,
-      },
-    );
-    let stdout = "";
-    let stderr = "";
-    let stderrBuffer = "";
-
-    const timeout = setTimeout(() => {
-      proc.kill("SIGKILL");
-      reject(new Error("tesseract timed out"));
-    }, TESSERACT_TIMEOUT_MS);
-
-    if (proc.stdout) {
-      proc.stdout.setEncoding("utf8");
-      proc.stdout.on("data", (chunk: string) => {
-        stdout += chunk;
-      });
-    }
-
-    if (proc.stderr) {
-      proc.stderr.setEncoding("utf8");
-      proc.stderr.on("data", (chunk: string) => {
-        if (stderr.length < 8192) stderr += chunk;
-        stderrBuffer += chunk;
-        const lines = stderrBuffer.split(/\r?\n/);
-        stderrBuffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (line) handle?.appendOutput("stderr", line);
-        }
-      });
-    }
-
-    proc.on("error", (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-
-    proc.on("close", (code) => {
-      clearTimeout(timeout);
-      if (stderrBuffer.trim()) handle?.appendOutput("stderr", stderrBuffer.trim());
-      if (code === 0) {
-        resolve(stdout);
-        return;
-      }
-      const suffix = stderr.trim() ? `: ${stderr.trim()}` : "";
-      reject(new Error(`tesseract exited with code ${code}${suffix}`));
-    });
+  const output = await runProcessCaptureBuffer({
+    command: tesseractPath,
+    args: [imagePath, "stdout", "--oem", "3", "--psm", "6"],
+    timeoutMs: TESSERACT_TIMEOUT_MS,
+    errorLabel: "tesseract",
   });
+  return output.toString("utf8");
 }
 
 export async function runOcrOnSlides(

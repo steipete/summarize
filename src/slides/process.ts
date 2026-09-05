@@ -17,110 +17,48 @@ function resolveProcessCommand(command: ProcessCommand, args: string[]) {
   };
 }
 
-export async function runProcess({
-  command,
-  args,
-  timeoutMs,
-  errorLabel,
-  onStderrLine,
-  onStdoutLine,
-}: {
+type ProcessOptions = {
   command: ProcessCommand;
   args: string[];
   timeoutMs: number;
   errorLabel: string;
-  onStderrLine?: (line: string, handle: ProcessHandle | null) => void;
-  onStdoutLine?: (line: string, handle: ProcessHandle | null) => void;
-}): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const resolved = resolveProcessCommand(command, args);
-    const { proc, handle } = spawnTracked(resolved.command, resolved.args, {
-      stdio: ["ignore", "pipe", "pipe"],
-      label: errorLabel,
-      kind: errorLabel,
-      captureOutput: false,
-    });
-    let stderr = "";
-    let stderrBuffer = "";
-    let stdoutBuffer = "";
+};
 
-    const flushLine = (line: string) => {
-      onStderrLine?.(line, handle);
-      handle?.appendOutput("stderr", line);
-      if (stderr.length < 8192) {
-        stderr += line;
-        if (!line.endsWith("\n")) stderr += "\n";
-      }
-    };
+type ProcessLineHandler = (line: string, handle: ProcessHandle | null) => void;
+type ProcessLineOptions = ProcessOptions & {
+  onStderrLine?: ProcessLineHandler;
+  onStdoutLine?: ProcessLineHandler;
+};
 
-    if (proc.stderr) {
-      proc.stderr.setEncoding("utf8");
-      proc.stderr.on("data", (chunk: string) => {
-        stderrBuffer += chunk;
-        const lines = stderrBuffer.split(/\r?\n/);
-        stderrBuffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (line) flushLine(line);
-        }
-      });
+function readProcessLines(
+  stream: NodeJS.ReadableStream | null,
+  onLine: (line: string) => void,
+  onChunk?: (chunk: string) => void,
+): () => void {
+  let buffer = "";
+  stream?.setEncoding("utf8");
+  stream?.on("data", (chunk: string) => {
+    onChunk?.(chunk);
+    buffer += chunk;
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (line) onLine(line);
     }
-
-    if (proc.stdout) {
-      const handleStdoutLine = onStdoutLine ?? onStderrLine;
-      if (handleStdoutLine) {
-        proc.stdout.setEncoding("utf8");
-        proc.stdout.on("data", (chunk: string) => {
-          stdoutBuffer += chunk;
-          const lines = stdoutBuffer.split(/\r?\n/);
-          stdoutBuffer = lines.pop() ?? "";
-          for (const line of lines) {
-            if (!line) continue;
-            handleStdoutLine(line, handle);
-            handle?.appendOutput("stdout", line);
-          }
-        });
-      }
-    }
-
-    const timeout = setTimeout(() => {
-      proc.kill("SIGKILL");
-      reject(new Error(`${errorLabel} timed out`));
-    }, timeoutMs);
-
-    proc.on("error", (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-
-    proc.on("close", (code) => {
-      clearTimeout(timeout);
-      if (stderrBuffer.trim().length > 0) flushLine(stderrBuffer.trim());
-      if (stdoutBuffer.trim().length > 0) {
-        const handleStdoutLine = onStdoutLine ?? onStderrLine;
-        if (handleStdoutLine) handleStdoutLine(stdoutBuffer.trim(), handle);
-        handle?.appendOutput("stdout", stdoutBuffer.trim());
-      }
-      if (code === 0) {
-        resolve();
-        return;
-      }
-      const suffix = stderr.trim() ? `: ${stderr.trim()}` : "";
-      reject(new Error(`${errorLabel} exited with code ${code}${suffix}`));
-    });
   });
+  return () => {
+    if (buffer.trim()) onLine(buffer.trim());
+  };
 }
 
-export async function runProcessCapture({
-  command,
-  args,
-  timeoutMs,
-  errorLabel,
-}: {
-  command: ProcessCommand;
-  args: string[];
-  timeoutMs: number;
-  errorLabel: string;
-}): Promise<string> {
+function runProcessWithOutput(options: ProcessLineOptions, mode: "lines"): Promise<void>;
+function runProcessWithOutput(options: ProcessOptions, mode: "text"): Promise<string>;
+function runProcessWithOutput(options: ProcessOptions, mode: "buffer"): Promise<Buffer>;
+function runProcessWithOutput(
+  options: ProcessLineOptions,
+  mode: "lines" | "text" | "buffer",
+): Promise<void | string | Buffer> {
+  const { command, args, timeoutMs, errorLabel, onStderrLine, onStdoutLine } = options;
   return new Promise((resolve, reject) => {
     const resolved = resolveProcessCommand(command, args);
     const { proc, handle } = spawnTracked(resolved.command, resolved.args, {
@@ -129,124 +67,76 @@ export async function runProcessCapture({
       kind: errorLabel,
       captureOutput: false,
     });
+    let stderr = "";
     let stdout = "";
-    let stderr = "";
-    let stdoutBuffer = "";
-    let stderrBuffer = "";
+    const chunks: Buffer[] = [];
+    const appendError = (text: string) => {
+      if (stderr.length < 8192) stderr += text;
+    };
+    const flushStderr = readProcessLines(
+      proc.stderr,
+      (line) => {
+        if (mode === "lines") onStderrLine?.(line, handle);
+        handle?.appendOutput("stderr", line);
+        if (mode === "lines") appendError(`${line}\n`);
+      },
+      mode === "lines" ? undefined : appendError,
+    );
+
+    const stdoutHandler = onStdoutLine ?? onStderrLine;
+    let flushStdout: (() => void) | undefined;
+    if (mode === "buffer") {
+      proc.stdout?.on("data", (chunk: Buffer) => chunks.push(chunk));
+    } else if (mode === "text" || stdoutHandler) {
+      flushStdout = readProcessLines(
+        proc.stdout,
+        (line) => {
+          if (mode === "lines") stdoutHandler?.(line, handle);
+          handle?.appendOutput("stdout", line);
+        },
+        mode === "text"
+          ? (chunk) => {
+              stdout += chunk;
+            }
+          : undefined,
+      );
+    } else {
+      proc.stdout?.resume();
+    }
 
     const timeout = setTimeout(() => {
       proc.kill("SIGKILL");
       reject(new Error(`${errorLabel} timed out`));
     }, timeoutMs);
-
-    if (proc.stdout) {
-      proc.stdout.setEncoding("utf8");
-      proc.stdout.on("data", (chunk: string) => {
-        stdout += chunk;
-        stdoutBuffer += chunk;
-        const lines = stdoutBuffer.split(/\r?\n/);
-        stdoutBuffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (line) handle?.appendOutput("stdout", line);
-        }
-      });
-    }
-
-    if (proc.stderr) {
-      proc.stderr.setEncoding("utf8");
-      proc.stderr.on("data", (chunk: string) => {
-        if (stderr.length < 8192) stderr += chunk;
-        stderrBuffer += chunk;
-        const lines = stderrBuffer.split(/\r?\n/);
-        stderrBuffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (line) handle?.appendOutput("stderr", line);
-        }
-      });
-    }
-
     proc.on("error", (error) => {
       clearTimeout(timeout);
       reject(error);
     });
-
     proc.on("close", (code) => {
       clearTimeout(timeout);
-      if (stdoutBuffer.trim()) handle?.appendOutput("stdout", stdoutBuffer.trim());
-      if (stderrBuffer.trim()) handle?.appendOutput("stderr", stderrBuffer.trim());
+      if (mode === "lines") flushStderr();
+      flushStdout?.();
+      if (mode !== "lines") flushStderr();
       if (code === 0) {
-        resolve(stdout);
-        return;
+        resolve(mode === "buffer" ? Buffer.concat(chunks) : mode === "text" ? stdout : undefined);
+      } else {
+        const suffix = stderr.trim() ? `: ${stderr.trim()}` : "";
+        reject(new Error(`${errorLabel} exited with code ${code}${suffix}`));
       }
-      const suffix = stderr.trim() ? `: ${stderr.trim()}` : "";
-      reject(new Error(`${errorLabel} exited with code ${code}${suffix}`));
     });
   });
 }
 
-export async function runProcessCaptureBuffer({
-  command,
-  args,
-  timeoutMs,
-  errorLabel,
-}: {
-  command: ProcessCommand;
-  args: string[];
-  timeoutMs: number;
-  errorLabel: string;
-}): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const resolved = resolveProcessCommand(command, args);
-    const { proc, handle } = spawnTracked(resolved.command, resolved.args, {
-      stdio: ["ignore", "pipe", "pipe"],
-      label: errorLabel,
-      kind: errorLabel,
-      captureOutput: false,
-    });
-    const chunks: Buffer[] = [];
-    let stderr = "";
-    let stderrBuffer = "";
+export async function runProcess(options: ProcessLineOptions): Promise<void> {
+  await runProcessWithOutput(options, "lines");
+}
 
-    const timeout = setTimeout(() => {
-      proc.kill("SIGKILL");
-      reject(new Error(`${errorLabel} timed out`));
-    }, timeoutMs);
+export async function runProcessCapture(options: ProcessOptions): Promise<string> {
+  return runProcessWithOutput(options, "text");
+}
 
-    if (proc.stdout) {
-      proc.stdout.on("data", (chunk: Buffer) => {
-        chunks.push(chunk);
-      });
-    }
-
-    if (proc.stderr) {
-      proc.stderr.setEncoding("utf8");
-      proc.stderr.on("data", (chunk: string) => {
-        if (stderr.length < 8192) stderr += chunk;
-        stderrBuffer += chunk;
-        const lines = stderrBuffer.split(/\r?\n/);
-        stderrBuffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (line) handle?.appendOutput("stderr", line);
-        }
-      });
-    }
-
-    proc.on("error", (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-
-    proc.on("close", (code) => {
-      clearTimeout(timeout);
-      if (stderrBuffer.trim()) handle?.appendOutput("stderr", stderrBuffer.trim());
-      if (code === 0) {
-        resolve(Buffer.concat(chunks));
-        return;
-      }
-      const suffix = stderr.trim() ? `: ${stderr.trim()}` : "";
-      reject(new Error(`${errorLabel} exited with code ${code}${suffix}`));
-    });
-  });
+export async function runProcessCaptureBuffer(options: ProcessOptions): Promise<Buffer> {
+  return runProcessWithOutput(options, "buffer");
 }
 
 export async function runWithConcurrency<T>(

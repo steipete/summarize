@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Slides: drain ignored subprocess output so a verbose media tool cannot stall on a full stdout pipe.
 - Transcript cache: preserve embedded-caption and native YouTube media source metadata across cache hits instead of losing it to duplicated source lists.
 - Browser media: support MP4 files carrying Annex B AVC/HEVC and clarify missing WebCodecs errors in insecure contexts with MediaBunny 1.55.2.
 - FAL transcription: clear settled deadlines and stop local queue polling and retries after timeout (#392, thanks @vincent-peng).
@@ -16,6 +17,7 @@
 
 ### Dependencies and maintenance
 
+- Share one media subprocess lifecycle across line streaming, text/binary capture, and OCR while preserving output tracking and timeout/error behavior.
 - Build model resources once from resolved run intent; remove intermediate factories while keeping selection separate from provider, metrics, and stream state.
 - Make Options use one element collection and declarative checkbox bindings; share settings normalization between load and save without mixing legacy migrations or managed policy into persistence.
 - Share page-media resolution and embedded transcript composition across HTML and Firecrawl extraction, keeping source-specific metadata, Markdown, and timeout policies separate.

@@ -28,6 +28,8 @@ Two main paths.
 
 Rule: keep terminal I/O in render helpers; keep state mutations in the state store.
 
+`src/slides/process.ts` owns media-tool spawning, deadlines, exit errors, and output collection. Line callbacks, text capture, and binary capture share that lifecycle; OCR uses binary capture to avoid logging recognized text. Ignored stdout is drained so child processes cannot block on a full pipe.
+
 ## Chrome extension
 
 - `apps/chrome-extension/src/entrypoints/sidepanel/stream-controller.ts`
