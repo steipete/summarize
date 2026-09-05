@@ -4,13 +4,7 @@ import { resolveBundledFfmpegCommand } from "@steipete/summarize-core/ffmpeg";
 import { resolveExecutableInPath } from "../application/environment.js";
 import type { MediaCache } from "../content/index.js";
 import { canSpawnCommand } from "../run/env.js";
-import {
-  buildSlidesMediaCacheKey,
-  downloadRemoteVideo,
-  downloadYoutubeVideo,
-  formatBytes,
-  resolveYoutubeStreamUrl,
-} from "./download.js";
+import { downloadRemoteVideo, downloadYoutubeVideo, resolveYoutubeStreamUrl } from "./download.js";
 import {
   buildSlideTimeline,
   buildSlidesChunkMeta,
@@ -310,8 +304,6 @@ export async function extractSlidesForSource({
         ytDlpCookiesFromBrowser,
         resolveSlidesYtDlpExtractFormat: () => resolveSlidesYtDlpExtractFormat(env),
         resolveSlidesStreamFallback: () => resolveSlidesStreamFallback(env),
-        buildSlidesMediaCacheKey,
-        formatBytes,
         reportSlidesProgress,
         logSlidesTiming,
         downloadYoutubeVideo,

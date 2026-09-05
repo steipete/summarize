@@ -11,7 +11,6 @@ import { isPublicBrowserUrl } from "../../lib/browser-url-content";
 import { BrowserPcmAccumulator } from "./browser-media-audio";
 
 const MAX_BROWSER_MEDIA_BYTES = 128 * 1024 * 1024;
-const MAX_BROWSER_PCM_BYTES = 512 * 1024 * 1024;
 const MAX_BROWSER_PCM_CHUNK_BYTES = 64 * 1024 * 1024;
 const BROWSER_AUDIO_CHUNK_SECONDS = 15 * 60;
 const BROWSER_MEDIA_URL_CACHE_BYTES = 24 * 1024 * 1024;
@@ -208,54 +207,6 @@ export async function processBrowserAudioBytesWithMediaBunny({
   return await processBrowserAudioInput({ input, onChunk });
 }
 
-export async function decodeBrowserAudioBytesWithMediaBunny({
-  inputBytes,
-  mimeType,
-}: {
-  inputBytes: Uint8Array;
-  mimeType: string;
-}): Promise<Float32Array> {
-  if (inputBytes.byteLength === 0) throw new Error("The resolved audio stream is empty.");
-  if (inputBytes.byteLength > MAX_BROWSER_MEDIA_BYTES) {
-    throw new Error("Audio is too large for in-browser decoding.");
-  }
-
-  const chunks: Float32Array[] = [];
-  let totalBytes = 0;
-  await processBrowserAudioBytesWithMediaBunny({
-    inputBytes,
-    mimeType,
-    onChunk: async ({ audio }) => {
-      totalBytes += audio.byteLength;
-      if (totalBytes > MAX_BROWSER_PCM_BYTES) {
-        throw new Error("Decoded audio is too long for buffered in-browser transcription.");
-      }
-      chunks.push(audio);
-    },
-  });
-  return concatenateFloat32(chunks);
-}
-
-export async function decodeBrowserAudioBytesWithWebAudio(
-  inputBytes: Uint8Array,
-): Promise<Float32Array> {
-  if (inputBytes.byteLength === 0) throw new Error("The resolved audio stream is empty.");
-  if (inputBytes.byteLength > MAX_BROWSER_MEDIA_BYTES) {
-    throw new Error("Audio is too large for in-browser decoding.");
-  }
-
-  const context = new OfflineAudioContext(1, 1, TARGET_AUDIO_SAMPLE_RATE);
-  const decoded = await context.decodeAudioData(exactArrayBuffer(inputBytes));
-  const output = new Float32Array(decoded.length);
-  for (let channelIndex = 0; channelIndex < decoded.numberOfChannels; channelIndex += 1) {
-    const channel = decoded.getChannelData(channelIndex);
-    for (let index = 0; index < channel.length; index += 1) {
-      output[index] = (output[index] ?? 0) + channel[index] / decoded.numberOfChannels;
-    }
-  }
-  return output;
-}
-
 let creatingOffscreenDocument: Promise<void> | null = null;
 
 export async function ensureOffscreenDocument(): Promise<void> {
@@ -373,17 +324,6 @@ async function processBrowserAudioInput({
   } finally {
     input.dispose();
   }
-}
-
-function concatenateFloat32(chunks: Float32Array[]): Float32Array {
-  const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const combined = new Float32Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    combined.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return combined;
 }
 
 export async function browserMediaCanvasToDataUrl({ canvas }: WrappedCanvas): Promise<string> {

@@ -16,6 +16,8 @@
 
 ### Dependencies and maintenance
 
+- Delete the unreachable daemon chat pipeline and unused browser media adapters; keep chat on the agent endpoint and audio on the bounded chunked decoder.
+- Use one slide-download/cache/progress workflow with source-specific download and stream-fallback policies instead of three copied pipelines.
 - Return DOM documents directly instead of exposing no-op cleanup lifecycles, and share YouTube player-response parsing across captions, metadata, and page extraction.
 - Centralize test output streams and browser-extension lifecycles while preserving isolated profiles, runtime-error checks, and scenario coverage.
 - Remove the sidepanel's redundant action/reducer/dispatch layer; use one state object with explicit lifecycle transitions while preserving navigation, chat, and slide restoration.

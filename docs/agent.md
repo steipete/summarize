@@ -24,6 +24,8 @@ Explicit exclusions (per product direction): **no update checker**, **no tutoria
 3. **Content scripts** handle element picking and native-input bridge.
 4. **Daemon** provides `/v1/agent` (SSE stream of chunks + final assistant message).
 
+Chat-only Q&A and automation use this same endpoint and implementation. The automation flag selects the prompt and available tools; there is no separate chat execution pipeline.
+
 ### Data Flow (Agent Loop)
 
 - User sends a message in the side panel.

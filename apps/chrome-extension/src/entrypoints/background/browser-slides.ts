@@ -85,10 +85,6 @@ async function cropVisibleTabCapture(dataUrl: string, frame: PreparedFrame): Pro
   return await blobToDataUrl(cropped);
 }
 
-export function getBrowserSlidesPayload(runId: string): SseSlidesData | null {
-  return browserSlidesByRunId.get(runId)?.slides ?? null;
-}
-
 export function takeBrowserSlidesPayload(runId: string): SseSlidesData | null {
   const stored = browserSlidesByRunId.get(runId);
   if (!stored || stored.expiresAt <= Date.now()) return null;
