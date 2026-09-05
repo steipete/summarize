@@ -30,6 +30,8 @@ Rule: keep terminal I/O in render helpers; keep state mutations in the state sto
 
 `src/slides/process.ts` owns media-tool spawning, deadlines, exit errors, and output collection. Line callbacks, text capture, and binary capture share that lifecycle; OCR uses binary capture to avoid logging recognized text. Ignored stdout is drained so child processes cannot block on a full pipe.
 
+`src/slides/download.ts` owns temporary download directories through success or failure. Failures remove partial output without replacing the original error; successful downloads return cleanup to the caller. Structured yt-dlp progress shares one parser on stdout and stderr, while ordinary percentage/speed/ETA lines remain stderr-only.
+
 ## Chrome extension
 
 `background/content-script-bridge.ts` shares retry/reinjection handling across extraction, seeking, and frame preparation. Only extraction has a message deadline; capture startup and restoration keep their separate recovery policies and self-contained main-world scripts.

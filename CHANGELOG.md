@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Slides: parse ordinary yt-dlp percentage lines correctly and remove partial download directories after process or output-inspection failures.
 - Transcription: skip probing the local Whisper executable when no usable model is installed, avoiding unnecessary process startup and delays on cloud-only or unconfigured systems.
 - Browser settings: retain a dismissed local-companion hint when saving other Options preferences.
 - Browser chat: normalize partial or malformed saved usage metadata and unknown stop reasons when restoring assistant history.
@@ -20,6 +21,7 @@
 
 ### Dependencies and maintenance
 
+- Share stdout/stderr download-progress handling and one temporary-directory lifecycle for YouTube and direct-video downloads, retaining successful-download cleanup ownership with the caller.
 - Share OpenAI-compatible request submission, completion validation, and stream usage settlement while retaining protocol-specific payloads and strict document routing/header behavior.
 - Share picker fields, popup rendering, and Preact mounting across Options, the side panel, and checkboxes; derive theme choices from the existing theme registry and remove unused modes and empty hidden select controls.
 - Share daemon service-command execution, executable override lookup, and environment-state types without changing platform-specific service behavior or the JSON environment whitelist.
