@@ -17,6 +17,7 @@
 
 ### Dependencies and maintenance
 
+- Consolidate file-summary prompt policy and timed-transcript parsing/formatting while preserving prompt text and source-specific length limits.
 - Share one media subprocess lifecycle across line streaming, text/binary capture, and OCR while preserving output tracking and timeout/error behavior.
 - Build model resources once from resolved run intent; remove intermediate factories while keeping selection separate from provider, metrics, and stream state.
 - Make Options use one element collection and declarative checkbox bindings; share settings normalization between load and save without mixing legacy migrations or managed policy into persistence.

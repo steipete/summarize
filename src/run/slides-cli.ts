@@ -1,3 +1,4 @@
+import { formatTimestamp } from "@steipete/summarize-core/slides";
 import { CommanderError } from "commander";
 import { resolveEnvState } from "../application/environment-state.js";
 import { loadSummarizeConfig } from "../config.js";
@@ -30,18 +31,6 @@ type SlidesCliContext = {
   stdout: NodeJS.WritableStream;
   stderr: NodeJS.WritableStream;
 };
-
-function formatTimestamp(seconds: number): string {
-  const clamped = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(clamped / 3600);
-  const minutes = Math.floor((clamped % 3600) / 60);
-  const secs = clamped % 60;
-  const mm = String(minutes).padStart(2, "0");
-  const ss = String(secs).padStart(2, "0");
-  if (hours <= 0) return `${minutes}:${ss}`;
-  const hh = String(hours).padStart(2, "0");
-  return `${hh}:${mm}:${ss}`;
-}
 
 function parseRenderMode(raw: unknown): SlidesRenderMode {
   const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";

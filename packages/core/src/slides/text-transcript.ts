@@ -27,7 +27,7 @@ const SLIDE_WINDOW_SECONDS_MAX = 180;
 const clampNumber = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-function parseTimestampSeconds(value: string): number | null {
+export function parseTimestampSeconds(value: string): number | null {
   const rawParts = value.split(":").map((item) => item.trim());
   if (rawParts.length !== 2 && rawParts.length !== 3) return null;
   if (rawParts.some((item) => !/^\d+$/.test(item))) return null;

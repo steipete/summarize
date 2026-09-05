@@ -42,6 +42,8 @@ Engine modules may depend on portable domain/config modules, provider clients, c
 
 ## Streaming
 
+Core owns file-summary instruction construction and timed-transcript parsing/formatting. Attached-file and extracted-text entry points retain their distinct length/context policies; CLI slide output and engine prompt/timestamp validation consume the same timestamp primitives.
+
 The engine never writes summary text to stdout.
 
 Each provider attempt resolves one request shared by streaming, direct completion, and fallback completion. Stream consumption owns output-handler lifecycle and marks visible or handler failures as interrupted; only an uncommitted provider failure can fall back to completion. Usage collection happens after successful stream consumption and does not trigger another model call.
