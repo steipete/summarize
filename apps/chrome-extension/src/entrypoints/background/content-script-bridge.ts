@@ -93,6 +93,53 @@ export function canSummarizeUrl(url: string | undefined): url is string {
   return true;
 }
 
+function hasNoContentReceiver(message: string): boolean {
+  return (
+    message.includes("Receiving end does not exist") ||
+    message.includes("Could not establish connection")
+  );
+}
+
+async function retryContentMessage<Result extends { ok: true } | { ok: false; error: string }>(
+  tabId: number,
+  send: () => Promise<Result>,
+  extraction?: {
+    timeoutMs: number;
+    log?: (event: string, detail?: Record<string, unknown>) => void;
+  },
+): Promise<Result | { ok: false; error: string }> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      extraction?.log?.("extract:attempt", {
+        attempt: attempt + 1,
+        timeoutMs: extraction.timeoutMs,
+      });
+      const result = await send();
+      if (!result.ok) return { ok: false, error: result.error };
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const didTimeout = Boolean(extraction && message.includes("extract timed out"));
+      if (hasNoContentReceiver(message) || didTimeout) {
+        const injected = await injectExtractScript(tabId, extraction);
+        if (!injected.ok) return injected;
+        if (didTimeout && attempt === 2) {
+          return {
+            ok: false,
+            error:
+              "Page extraction timed out. Reload the tab (or “Summarize → Refresh”), then retry.",
+          };
+        }
+        await new Promise((resolve) => setTimeout(resolve, 120));
+      } else {
+        if (attempt === 2) return { ok: false, error: message };
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+    }
+  }
+  return { ok: false, error: "Content script not ready" };
+}
+
 export async function extractFromTab(
   tabId: number,
   maxChars: number,
@@ -135,45 +182,8 @@ export async function extractFromTab(
     }
   };
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      opts?.log?.("extract:attempt", { attempt: attempt + 1, timeoutMs });
-      const res = await sendMessageWithTimeout();
-      if (!res.ok) return { ok: false, error: res.error };
-      return { ok: true, data: res };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const noReceiver =
-        message.includes("Receiving end does not exist") ||
-        message.includes("Could not establish connection");
-      const didTimeout = message.includes("extract timed out");
-      if (noReceiver || didTimeout) {
-        const injected = await injectExtractScript(tabId, opts);
-        if (!injected.ok) return injected;
-        if (didTimeout && attempt === 2) {
-          return {
-            ok: false,
-            error:
-              "Page extraction timed out. Reload the tab (or “Summarize → Refresh”), then retry.",
-          };
-        }
-        await new Promise((resolve) => setTimeout(resolve, 120));
-        continue;
-      }
-
-      if (attempt === 2) {
-        return {
-          ok: false,
-          error: noReceiver
-            ? "Content script not ready. Check extension “Site access” → “On all sites”, then reload the tab."
-            : message,
-        };
-      }
-      await new Promise((resolve) => setTimeout(resolve, 350));
-    }
-  }
-
-  return { ok: false, error: "Content script not ready" };
+  const result = await retryContentMessage(tabId, sendMessageWithTimeout, { ...opts, timeoutMs });
+  return result.ok ? { ok: true, data: result } : result;
 }
 
 export async function seekInTab(
@@ -182,36 +192,11 @@ export async function seekInTab(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const req = { type: "seek", seconds } satisfies SeekRequest;
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const res = (await chrome.tabs.sendMessage(tabId, req)) as SeekResponse;
-      if (!res.ok) return { ok: false, error: res.error };
-      return { ok: true };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const noReceiver =
-        message.includes("Receiving end does not exist") ||
-        message.includes("Could not establish connection");
-      if (noReceiver) {
-        const injected = await injectExtractScript(tabId);
-        if (!injected.ok) return injected;
-        await new Promise((resolve) => setTimeout(resolve, 120));
-        continue;
-      }
-
-      if (attempt === 2) {
-        return {
-          ok: false,
-          error: noReceiver
-            ? "Content script not ready. Check extension “Site access” → “On all sites”, then reload the tab."
-            : message,
-        };
-      }
-      await new Promise((resolve) => setTimeout(resolve, 350));
-    }
-  }
-
-  return { ok: false, error: "Content script not ready" };
+  const result = await retryContentMessage(
+    tabId,
+    () => chrome.tabs.sendMessage(tabId, req) as Promise<SeekResponse>,
+  );
+  return result.ok ? { ok: true } : result;
 }
 
 export async function prepareSlideFrameInTab(
@@ -220,36 +205,11 @@ export async function prepareSlideFrameInTab(
 ): Promise<{ ok: true; data: SlideFrameResponse & { ok: true } } | { ok: false; error: string }> {
   const req = { type: "prepare-slide-frame", seconds } satisfies PrepareSlideFrameRequest;
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const res = (await chrome.tabs.sendMessage(tabId, req)) as SlideFrameResponse;
-      if (!res.ok) return { ok: false, error: res.error };
-      return { ok: true, data: res };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const noReceiver =
-        message.includes("Receiving end does not exist") ||
-        message.includes("Could not establish connection");
-      if (noReceiver) {
-        const injected = await injectExtractScript(tabId);
-        if (!injected.ok) return injected;
-        await new Promise((resolve) => setTimeout(resolve, 120));
-        continue;
-      }
-
-      if (attempt === 2) {
-        return {
-          ok: false,
-          error: noReceiver
-            ? "Content script not ready. Check extension “Site access” → “On all sites”, then reload the tab."
-            : message,
-        };
-      }
-      await new Promise((resolve) => setTimeout(resolve, 350));
-    }
-  }
-
-  return { ok: false, error: "Content script not ready" };
+  const result = await retryContentMessage(
+    tabId,
+    () => chrome.tabs.sendMessage(tabId, req) as Promise<SlideFrameResponse>,
+  );
+  return result.ok ? { ok: true, data: result } : result;
 }
 
 export async function prepareCurrentSlideFrameInTab(
@@ -257,36 +217,11 @@ export async function prepareCurrentSlideFrameInTab(
 ): Promise<{ ok: true; data: SlideFrameResponse & { ok: true } } | { ok: false; error: string }> {
   const req = { type: "prepare-current-slide-frame" } satisfies PrepareCurrentSlideFrameRequest;
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const res = (await chrome.tabs.sendMessage(tabId, req)) as SlideFrameResponse;
-      if (!res.ok) return { ok: false, error: res.error };
-      return { ok: true, data: res };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const noReceiver =
-        message.includes("Receiving end does not exist") ||
-        message.includes("Could not establish connection");
-      if (noReceiver) {
-        const injected = await injectExtractScript(tabId);
-        if (!injected.ok) return injected;
-        await new Promise((resolve) => setTimeout(resolve, 120));
-        continue;
-      }
-
-      if (attempt === 2) {
-        return {
-          ok: false,
-          error: noReceiver
-            ? "Content script not ready. Check extension “Site access” → “On all sites”, then reload the tab."
-            : message,
-        };
-      }
-      await new Promise((resolve) => setTimeout(resolve, 350));
-    }
-  }
-
-  return { ok: false, error: "Content script not ready" };
+  const result = await retryContentMessage(
+    tabId,
+    () => chrome.tabs.sendMessage(tabId, req) as Promise<SlideFrameResponse>,
+  );
+  return result.ok ? { ok: true, data: result } : result;
 }
 
 export async function beginSlideFrameCaptureInTab(
@@ -336,10 +271,7 @@ export async function beginSlideFrameCaptureInTab(
     return { ok: true, state: req.state };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const noReceiver =
-      message.includes("Receiving end does not exist") ||
-      message.includes("Could not establish connection");
-    if (!noReceiver) return { ok: false, error: message };
+    if (!hasNoContentReceiver(message)) return { ok: false, error: message };
     const injected = await injectExtractScript(tabId);
     if (!injected.ok) return injected;
     await new Promise((resolve) => setTimeout(resolve, 120));

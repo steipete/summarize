@@ -32,6 +32,8 @@ Rule: keep terminal I/O in render helpers; keep state mutations in the state sto
 
 ## Chrome extension
 
+`background/content-script-bridge.ts` shares retry/reinjection handling across extraction, seeking, and frame preparation. Only extraction has a message deadline; capture startup and restoration keep their separate recovery policies and self-contained main-world scripts.
+
 - `apps/chrome-extension/src/entrypoints/sidepanel/stream-controller.ts`
   Transport lifecycle.
 - `stream-controller-policy.ts`
