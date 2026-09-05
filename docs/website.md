@@ -39,6 +39,8 @@ Daemon note:
 
 - Tweet audio transcription runs only with `--video-mode transcript` (auto mode skips yt-dlp for tweets).
 - Tweet text extraction prefers `xurl` when installed, falls back to `bird`, then Twitter Syndication API, then Nitter.
+- `--video-mode transcript` still requests the tweet's audio transcript when text extraction uses the Syndication API; if no transcript is available, the extracted tweet text remains available.
+- Syndication responses marked as truncated continue to the remaining extractors instead of treating a long-form tweet preview as complete content.
 
 ## Flags
 

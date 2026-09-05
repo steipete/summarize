@@ -35,15 +35,6 @@ import {
   selectBaseContent,
 } from "./utils.js";
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 const MAX_TWITTER_TEXT_FOR_TRANSCRIPT = 500;
 
 const buildSkippedTwitterTranscript = (
@@ -285,8 +276,6 @@ export async function fetchLinkContent(
     return birdResult;
   }
 
-  let syndicationError: unknown = null;
-
   const attemptTwitterSyndication = async (): Promise<ExtractedLinkContent | null> => {
     const tweetId = extractTweetId(url);
     if (!tweetId) return null;
@@ -304,7 +293,6 @@ export async function fetchLinkContent(
       });
 
       if (!response.ok) {
-        syndicationError = new Error(`Twitter syndication returned HTTP ${response.status}`);
         deps.onProgress?.({
           kind: ProgressKind.TwitterSyndicationDone,
           url: syndicationUrl,
@@ -316,8 +304,16 @@ export async function fetchLinkContent(
 
       const data = (await response.json()) as Record<string, unknown> | null;
       const text = typeof data?.text === "string" ? data.text : null;
-      if (!data || !text) {
-        syndicationError = new Error("Twitter syndication returned empty payload");
+      const quoted = data?.quoted_tweet as
+        | {
+            text?: string;
+            user?: { screen_name?: string };
+            article?: { title?: string; preview_text?: string };
+            note_tweet?: unknown;
+          }
+        | undefined;
+      // Syndication marks long-form previews; later extractors may return the full text.
+      if (!data || !text?.trim() || data.note_tweet != null || quoted?.note_tweet != null) {
         deps.onProgress?.({
           kind: ProgressKind.TwitterSyndicationDone,
           url: syndicationUrl,
@@ -337,13 +333,6 @@ export async function fetchLinkContent(
         : "";
 
       let bodyText = text;
-      const quoted = data.quoted_tweet as
-        | {
-            text?: string;
-            user?: { screen_name?: string };
-            article?: { title?: string; preview_text?: string };
-          }
-        | undefined;
       if (quoted?.text) {
         const qAuthor = quoted.user?.screen_name ?? "";
         bodyText += `\n\n> Quoted ${qAuthor ? `@${qAuthor}: ` : ""}${quoted.text}`;
@@ -365,20 +354,35 @@ export async function fetchLinkContent(
 
       const formattedContent = authorHeader ? `${authorHeader}\n\n${bodyText}` : bodyText;
       const title = screenName || authorName ? `Tweet by ${authorName || screenName}` : "Tweet";
+      const transcriptResolution =
+        mediaTranscriptMode === "prefer"
+          ? await resolveTranscriptForLink(url, null, deps, {
+              youtubeTranscriptMode,
+              mediaTranscriptMode,
+              transcriptTimestamps,
+              transcriptDiarization,
+              transcriptVideoDownload,
+              cacheMode,
+              fileMtime,
+            })
+          : buildSkippedTwitterTranscript(
+              cacheMode,
+              "Skipped tweet transcript (media transcript mode is auto; enable --video-mode transcript to force audio).",
+            );
 
       const result = finalizeExtractedLinkContent({
         url,
-        baseContent: formattedContent,
+        baseContent: selectBaseContent(
+          formattedContent,
+          transcriptResolution.text,
+          transcriptResolution.segments,
+        ),
         contentSections: [],
         maxCharacters,
         title,
         description: text,
         siteName: "x.com",
-        transcriptResolution: {
-          text: null,
-          source: null,
-          metadata: { provider: "twitter-syndication" },
-        },
+        transcriptResolution,
         video: null,
         isVideoOnly: false,
         diagnostics: {
@@ -390,15 +394,7 @@ export async function fetchLinkContent(
             provider: null,
             notes: null,
           },
-          transcript: {
-            cacheMode,
-            cacheStatus: "miss",
-            textProvided: false,
-            provider: null,
-            attemptedProviders: [],
-            notes:
-              "Twitter transcript skipped (media transcript mode is auto; enable --video-mode transcript to force audio).",
-          },
+          transcript: ensureTranscriptDiagnostics(transcriptResolution, cacheMode),
           embeddedVideo: {
             mode: embeddedVideoMode ?? "auto",
             detected: false,
@@ -420,8 +416,7 @@ export async function fetchLinkContent(
       });
 
       return result;
-    } catch (error) {
-      syndicationError = error;
+    } catch {
       deps.onProgress?.({
         kind: ProgressKind.TwitterSyndicationDone,
         url: syndicationUrl,

@@ -73,8 +73,7 @@ describe("Twitter Syndication API Extraction", () => {
 
   it("falls back to Nitter when Twitter Syndication API fails with HTTP 404", async () => {
     const tweetUrl = "https://x.com/user/status/123";
-    const syndicationUrl = "https://cdn.syndication.twimg.com/tweet-result?id=123&token=123";
-    const nitterUrl = "https://nitter.net/user/status/123";
+    const syndicationUrl = toTwitterSyndicationUrl("123");
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.url;
@@ -104,9 +103,49 @@ describe("Twitter Syndication API Extraction", () => {
       },
     );
 
+    expect(fetchMock).toHaveBeenNthCalledWith(1, syndicationUrl, expect.any(Object));
     expect(result.diagnostics.strategy).toBe("nitter");
     expect(result.content).toContain("Content from Nitter");
   });
+
+  it.each(["tweet", "quoted tweet"])(
+    "falls back when the %s text is explicitly truncated",
+    async (kind) => {
+      const tweetUrl = "https://x.com/user/status/123";
+      const payload = {
+        text: "A truncated preview...",
+        ...(kind === "tweet"
+          ? { note_tweet: { id: "456" } }
+          : { quoted_tweet: { text: "Quoted preview...", note_tweet: { id: "456" } } }),
+      };
+      const result = await fetchLinkContent(
+        tweetUrl,
+        {},
+        {
+          env: {},
+          fetch: vi.fn(async (input: RequestInfo | URL) => {
+            const url = typeof input === "string" ? input : input.url;
+            if (url === toTwitterSyndicationUrl("123")) return Response.json(payload);
+            return new Response(
+              "<html><body><article>The complete long-form tweet from Nitter.</article></body></html>",
+              {
+                headers: { "Content-Type": "text/html" },
+              },
+            );
+          }) as typeof fetch,
+          scrapeWithFirecrawl: null,
+          apifyApiToken: null,
+          ytDlpPath: null,
+          convertHtmlToMarkdown: null,
+          transcriptCache: null,
+        },
+      );
+
+      expect(result.diagnostics.strategy).toBe("nitter");
+      expect(result.content).toContain("The complete long-form tweet from Nitter.");
+      expect(result.content).not.toContain("preview");
+    },
+  );
 
   it("emits exactly one twitter-syndication-done event with ok:false when post-fetch parsing throws", async () => {
     const tweetUrl = "https://x.com/user/status/123";
@@ -140,7 +179,7 @@ describe("Twitter Syndication API Extraction", () => {
     ).catch(() => {});
 
     const doneEvents = progressEvents.filter((e) => e.kind === "twitter-syndication-done");
-    expect(doneEvents).toHaveLength(1);
+    expect(doneEvents).toEqual([{ kind: "twitter-syndication-done", ok: false }]);
   });
 
   it("preserves literal HTML-like markup in tweet and quoted tweet text without sanitization loss", async () => {

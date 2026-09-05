@@ -39,11 +39,13 @@ describe("toTwitterSyndicationUrl", () => {
 });
 
 describe("isBlockedTwitterContent", () => {
-  it("detects Nitter C&D and offline landing pages", () => {
-    expect(isBlockedTwitterContent("nitter.net is offline")).toBe(true);
-    expect(isBlockedTwitterContent("nitter notice: cease-and-desist received")).toBe(true);
+  it("preserves ordinary reporting about Nitter shutdowns", () => {
+    expect(isBlockedTwitterContent("Nitter received a cease-and-desist letter.")).toBe(false);
+    expect(isBlockedTwitterContent("Nitter.net is offline, according to its developer.")).toBe(
+      false,
+    );
     expect(isBlockedTwitterContent("Nitter development stopped due to Twitter API changes")).toBe(
-      true,
+      false,
     );
   });
 

@@ -7,7 +7,7 @@ const NITTER_HOSTS = [
   "nitter.1d4.us",
 ];
 const TWITTER_BLOCKED_TEXT_PATTERN =
-  /something went wrong|try again|privacy related extensions|please disable them and try again|nitter\.net is offline|nitter[\s\S]*?cease[- ]and[- ]desist|nitter development stopped/i;
+  /something went wrong|try again|privacy related extensions|please disable them and try again/i;
 const ANUBIS_TOKENS = ["anubis", "proof-of-work", "proof of work", "hashcash", "jshelter"];
 const TWITTER_BROADCAST_PATH_PATTERN = /^\/i\/broadcasts\/[^/?#]+/i;
 
