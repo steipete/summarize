@@ -29,6 +29,30 @@ function ingestOptions(source: (typeof remoteSources)[number]) {
 }
 
 describe("slides ingest", () => {
+  it.each(remoteSources)("cleans downloaded media if caching fails for $url", async (source) => {
+    const options = ingestOptions(source);
+    const failure = new Error("cache write failed");
+    const cleanup = vi.fn(async () => {
+      throw new Error("cleanup failed");
+    });
+    const downloaded = { filePath: "/tmp/downloaded.mp4", cleanup };
+    options.downloadYoutubeVideo.mockResolvedValue(downloaded);
+    options.downloadRemoteVideo.mockResolvedValue(downloaded);
+    options.resolveSlidesStreamFallback = () => false;
+    await expect(
+      prepareSlidesInput({
+        ...options,
+        mediaCache: {
+          get: async () => null,
+          put: async () => {
+            throw failure;
+          },
+        } as never,
+      }),
+    ).rejects.toBe(failure);
+    expect(cleanup).toHaveBeenCalledOnce();
+  });
+
   it.each(remoteSources)("shares cache, cleanup, and progress for $url", async (source) => {
     const options = ingestOptions(source);
     const cleanup = vi.fn(async () => {});

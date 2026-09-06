@@ -32,6 +32,8 @@ Rule: keep terminal I/O in render helpers; keep state mutations in the state sto
 
 `src/slides/download.ts` owns temporary download directories through success or failure. Failures remove partial output without replacing the original error; successful downloads return cleanup to the caller. Structured yt-dlp progress shares one parser on stdout and stderr, while ordinary percentage/speed/ETA lines remain stderr-only.
 
+Direct-video downloads use a Node stream pipeline for backpressure, file closure, and stream teardown. The download owner also cancels rejected HTTP bodies and aborts settled fetches. `src/slides/ingest.ts` owns downloaded-file cleanup until cache handoff succeeds, then transfers cleanup to extraction.
+
 ## Chrome extension
 
 `background/content-script-bridge.ts` shares retry/reinjection handling across extraction, seeking, and frame preparation. Only extraction has a message deadline; capture startup and restoration keep their separate recovery policies and self-contained main-world scripts.

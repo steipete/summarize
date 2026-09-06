@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Slides: stop direct-video response streams after download failures and remove downloaded temporary files if the media-cache handoff fails; preserve the original failure when cleanup also fails.
 - Browser AI: give overlapping Prompt API requests separate sessions and destroy sessions that finish loading after cancellation, so a stale request cannot tear down its replacement.
 - Slides: parse ordinary yt-dlp percentage lines correctly and remove partial download directories after process or output-inspection failures.
 - Transcription: skip probing the local Whisper executable when no usable model is installed, avoiding unnecessary process startup and delays on cloud-only or unconfigured systems.

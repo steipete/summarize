@@ -1,6 +1,9 @@
-import { promises as fs } from "node:fs";
+import { createWriteStream, promises as fs } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { buildSharedVideoMediaCacheKey } from "@steipete/summarize-core/content";
 import type { ProcessHandle } from "../processes.js";
 import { runProcess, runProcessCapture } from "./process.js";
@@ -139,19 +142,19 @@ export async function downloadRemoteVideo(options: {
     const filePath = path.join(dir, `video${suffix}`);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    let body: Response["body"] = null;
     try {
       const res = await fetchImpl(url, { signal: controller.signal });
+      body = res.body;
       if (!res.ok) {
         throw new Error(`Download failed: ${res.status} ${res.statusText}`);
       }
       const totalRaw = res.headers.get("content-length");
       const total = totalRaw ? Number(totalRaw) : 0;
       const hasTotal = Number.isFinite(total) && total > 0;
-      const reader = res.body?.getReader();
-      if (!reader) {
+      if (!body) {
         throw new Error("Download failed: missing response body");
       }
-      const handle = await fs.open(filePath, "w");
       let downloaded = 0;
       let lastPercent = -1;
       let lastReportedBytes = 0;
@@ -169,24 +172,26 @@ export async function downloadRemoteVideo(options: {
         lastReportedBytes = downloaded;
         onProgress(0, `(${formatBytes(downloaded)})`);
       };
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (!value) continue;
-          await handle.write(value);
-          downloaded += value.byteLength;
-          reportProgress();
-        }
-      } finally {
-        await handle.close();
-      }
+      await pipeline(
+        Readable.fromWeb(body as NodeReadableStream<Uint8Array>),
+        async function* (source: AsyncIterable<Uint8Array>) {
+          for await (const value of source) {
+            yield value;
+            downloaded += value.byteLength;
+            reportProgress();
+          }
+        },
+        createWriteStream(filePath),
+        { signal: controller.signal },
+      );
       if (hasTotal) {
         onProgress?.(100, `(${formatBytes(downloaded)}/${formatBytes(total)})`);
       }
       return filePath;
     } finally {
       clearTimeout(timeout);
+      controller.abort();
+      await body?.cancel().catch(() => {});
     }
   });
 }

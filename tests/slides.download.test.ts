@@ -97,4 +97,35 @@ describe("slides download", () => {
       await rm(result.filePath, { force: true });
     }
   });
+
+  it.each(["progress", "http", "timeout"])(
+    "cancels the response body after %s failure",
+    async (stage) => {
+      const cancel = vi.fn();
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array([1, 2, 3]));
+        },
+        cancel,
+      });
+      const response = new Response(body, {
+        status: stage === "http" ? 503 : 200,
+        headers: { "content-length": "6" },
+      });
+      const failure = new Error("progress failed");
+      await expect(
+        downloadRemoteVideo({
+          url: "https://cdn.example/video.mp4",
+          timeoutMs: stage === "timeout" ? 20 : 1000,
+          fetchImpl: vi.fn(async () => response),
+          onProgress: () => {
+            if (stage === "progress") throw failure;
+          },
+        }),
+      ).rejects.toThrow(
+        stage === "http" ? "Download failed: 503" : stage === "timeout" ? /abort/i : failure,
+      );
+      expect(cancel).toHaveBeenCalledOnce();
+    },
+  );
 });

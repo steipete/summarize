@@ -1,59 +1,14 @@
 ---
 title: "Slides"
 kicker: "modes"
-summary: "Plan for slide-first UX without model usage."
+summary: "Slide extraction, model summaries, and transcript/OCR fallbacks in the CLI and browser."
 read_when:
   - "When changing slide summaries, slide UI, or slide/seek behavior in the side panel."
 ---
 
-# Slides plan (no model)
+# Slides
 
-## Goals
-
-- Expanded slides view = full-width cards, top of summary.
-- Click slide = seek video timestamp (no modal).
-- Descriptions scale with length setting.
-- Always show all slides (even if text missing).
-- No model call for slide descriptions.
-
-## Data sources
-
-- Primary: transcript timed text (already available with timestamps).
-- Secondary: OCR text from slides (truncate, selectable).
-- Tertiary: empty description (still render card).
-
-## Description generation (no model)
-
-- For each slide timestamp `t`:
-  - Pull transcript segments within a time window around `t`.
-  - Concatenate into plain text (no bullets).
-  - If no transcript: use OCR text (trim).
-  - If neither: empty string.
-- Always render all slide cards; missing text → show slide only.
-
-## Length scaling
-
-- Map summary length to per-slide target chars.
-- Use existing length presets (short/medium/long/xl/xxl + custom):
-  - `short`: ~120 chars/slide
-  - `medium`: ~200 chars/slide
-  - `long`: ~320 chars/slide
-  - `xl`: ~480 chars/slide
-  - `xxl`: ~700 chars/slide
-  - custom: derive from maxCharacters (e.g. `maxChars / min(slideCount, 10)`, clamp).
-- Clamp per-slide text: `[80, 900]` chars.
-- Window size should expand with length (e.g. 20s → 90s).
-
-## UI behavior
-
-- Side panel slide mode is slide-first:
-  - vertical full-width cards by default
-  - thumbnail + timestamp + text
-  - transcript/OCR text appears before slide images finish extracting
-- No giant summary block under active slide cards.
-- Slide click: seek only (no modal).
-- OCR toggle appears near summarize control only when OCR is significant
-  (enough slides + total OCR chars); otherwise hide it.
+Slides mode pairs video keyframes with timestamped text. Extraction itself does not require a model; summaries can use the configured provider or on-device Gemini Nano. Sources include YouTube URLs, direct video URLs, and local video files.
 
 ## CLI
 
@@ -66,19 +21,20 @@ read_when:
 - `summarize slides <source>` extracts slides without summarizing (use `--render auto|kitty|iterm` for inline thumbnails).
 - Defaults to writing images under `./slides/<sourceId>/` (override via `--slides-dir` / `--output`).
 
-## Implementation notes
+See [the slides command](commands/slides.md) for extraction flags and requirements.
 
-- Build `slideDescriptions` map in panel:
-  - Use `summary.timedText` when available.
-  - Split transcript into segments with timestamps (already in payload).
-- Store per-slide text on client (no daemon model calls).
-- Ensure summary cache keys untouched; only client-only rendering.
-- Slide extraction downloads the media once for detect+extract; set `SLIDES_EXTRACT_STREAM=1` to allow stream fallback (lower accuracy).
+## Browser side panel
 
-## Steps
+Slide mode shows vertical image/timestamp/text cards instead of the large summary block. Text can appear before extraction finishes, and cards remain visible without descriptions. Clicking a slide seeks the video, without opening a modal.
 
-1. Add slide-description builder in sidepanel using transcript timed text + OCR fallback.
-2. Add length-based per-slide char budget and window sizing.
-3. Render expanded card list with timestamps + text.
-4. Remove modal; click = seek only.
-5. Add tests for slide description + fallback.
+Generated slide summaries take precedence over transcript fallbacks. Gemini Nano can generate slide summaries locally using transcript context and available images; it falls back to text-only or smaller requests when needed. Other models use the configured summary runtime. Transcript windows supply missing descriptions, with enabled OCR as a fallback when no transcript is available. Selecting OCR mode prefers recognized text; the toggle appears only when enabled OCR has enough meaningful text.
+
+Fallback text budgets scale with `--length`: approximately 120/200/320/480/700 characters for `short`/`medium`/`long`/`xl`/`xxl`. Custom character targets are divided across at most ten slides and clamped to 80–900 characters per slide. Transcript windows grow from 30 to 180 seconds, stop at the next slide, and include a short lead-in. These are fallback-text budgets, not limits on model-generated summaries.
+
+Browser extraction uses MediaBunny/WebCodecs for fetchable videos and visible-tab capture as a fallback. Daemon extraction uses downloaded media with FFmpeg and optional Tesseract OCR. See [browser settings](chrome-extension.md) for runtime selection.
+
+## Ownership
+
+Core owns transcript parsing, fallback budgets, and slide-summary coercion. The side panel owns description selection and rendering state; browser AI owns on-device model sessions. CLI output owns terminal rendering and image support.
+
+Daemon/CLI extraction downloads media once for detection and frame extraction, reusing cached media when available. `SLIDES_EXTRACT_STREAM=1` permits lower-accuracy stream fallback after download failure. Failed downloads and failed cache handoffs clean their temporary files; successful handoffs return cleanup to the extraction caller. See [the rendering flow](slides-rendering-flow.md) for implementation entrypoints.

@@ -58,7 +58,7 @@ If a required tool is missing, summarize prints a clear warning and exits non-ze
 : Pick a CLI theme.
 
 `--timeout <duration>`
-: Cap the download + extraction. Default `2m`.
+: Per-operation timeout setting. Default `2m`; not an overall wall-clock deadline. yt-dlp downloads and FFmpeg scene detection allow at least `5m`, and individual extraction/probe steps have their own limits.
 
 `--no-cache`
 : Force re-download and re-extraction (bypasses both caches).

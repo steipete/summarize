@@ -115,10 +115,12 @@ export async function prepareSlidesInput({
 
   reportSlidesProgress?.("downloading video", 6);
   const downloadStartedAt = Date.now();
+  let inputCleanup: (() => Promise<void>) | null = null;
   try {
     const downloaded = ytDlpOptions
       ? await downloadYoutubeVideo({ ...ytDlpOptions, onProgress })
       : await downloadRemoteVideo({ url: source.url, timeoutMs, fetchImpl, onProgress });
+    inputCleanup = downloaded.cleanup;
     const cached = mediaCacheKey
       ? await mediaCache?.put({
           url: mediaCacheKey,
@@ -132,10 +134,11 @@ export async function prepareSlidesInput({
     );
     return {
       inputPath: cached?.filePath ?? downloaded.filePath,
-      inputCleanup: downloaded.cleanup,
+      inputCleanup,
       warnings,
     };
   } catch (error) {
+    await inputCleanup?.().catch(() => {});
     const remoteFallbackAllowed =
       allowRemoteUrlFallback || (needsYtDlp && source.kind !== "youtube");
     if (!allowStreamFallback || !remoteFallbackAllowed) throw error;
