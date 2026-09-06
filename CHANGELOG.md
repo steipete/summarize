@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.21.12 - Unreleased
+## 0.21.12 - 2026-09-06
+
+**Highlight:** a reliability and architecture cleanup release, including live-tested fixes for OpenAI image inputs, podcast feed routing, and missing slide frames.
 
 ### Fixes
 
@@ -15,7 +17,7 @@
 - Browser chat: normalize partial or malformed saved usage metadata and unknown stop reasons when restoring assistant history.
 - Slides: drain ignored subprocess output so a verbose media tool cannot stall on a full stdout pipe.
 - Transcript cache: preserve embedded-caption and native YouTube media source metadata across cache hits instead of losing it to duplicated source lists.
-- Browser media: support MP4 files carrying Annex B AVC/HEVC and clarify missing WebCodecs errors in insecure contexts with MediaBunny 1.55.2.
+- Browser media: support MP4 files carrying Annex B AVC/HEVC and clarify missing WebCodecs errors in insecure contexts with MediaBunny 1.55.3.
 - FAL transcription: clear settled deadlines and stop local queue polling and retries after timeout (#392, thanks @vincent-peng).
 - Content extraction: decode HTML entities once so deliberately escaped markup remains literal text (#394, thanks @devYRPauli).
 - Content extraction: avoid splitting UTF-16 surrogate pairs when clipping to a character budget (#391, thanks @devYRPauli).
@@ -26,45 +28,15 @@
 
 ### Dependencies and maintenance
 
-- Make Firefox smoke validation wait for actual extension installation and stop its browser runner directly, avoiding orphaned processes behind the package-manager wrapper.
-- Repair browser-local speech validation with public audio fixtures, real decoding/inference, and immediate failure diagnostics instead of an unsupported loopback media source.
-- Remove the abandoned Homebrew-tap formula writer and its obsolete tests; keep formula ownership with Homebrew/core and use supported pnpm script invocations in release CI and instructions.
-- Share browser AI request cancellation/status ownership and download monitoring; consolidate tab-navigation result metadata while retaining navigation, focus, and timeout policies.
-- Share retry-message formatting, URL output input types, and YouTube request headers while retaining renderer, endpoint, and credential-specific policies.
-- Share slide-summary paragraph distribution and live rendering inputs while preserving intro handling, interludes, duplicate indexes, and fallback precedence.
-- Give shared pickers and checkboxes one base stylesheet; retain Options and side-panel layout, sizing, backgrounds, and focus overrides in their own stylesheets.
-- Share stdout/stderr download-progress handling and one temporary-directory lifecycle for YouTube and direct-video downloads, retaining successful-download cleanup ownership with the caller.
-- Share OpenAI-compatible request submission, completion validation, and stream usage settlement while retaining protocol-specific payloads and strict document routing/header behavior.
-- Share picker fields, popup rendering, and Preact mounting across Options, the side panel, and checkboxes; derive theme choices from the existing theme registry and remove unused modes and empty hidden select controls.
-- Share daemon service-command execution, executable override lookup, and environment-state types without changing platform-specific service behavior or the JSON environment whitelist.
-- Remove the unused chat mode from summary streaming, share SSE idle deadlines, and consolidate FFmpeg execution and OpenAI transcription HTTP handling while retaining format and response-specific policy.
-- Share asset text validation and Markdown conversion across extraction and summaries; simplify prompt construction and prepare daemon agent requests once for streaming and completion without changing retry boundaries.
-- Share podcast feed transcript resolution, media download/progress completion, and Apple URL parsing; collapse Spotify's duplicated episode-search fallback while preserving provider order and failure metadata.
-- Type-check the entire extension in the local gate and CI using browser/bundler settings; remove stale copies of session, settings, API, and callback contracts.
-- Share model discovery, selection preservation, and refresh throttling between Options and the side panel while retaining their distinct presets and provider hints.
-- Build HTML and transcript LLM Markdown converters from one model configuration and generation path; preserve their separate prompts, input limits, and usage callbacks.
-- Share content-script message retries across extraction, seeking, and slide preparation while retaining operation-specific timeouts and reinjection policies.
-- Consolidate file-summary prompt policy and timed-transcript parsing/formatting while preserving prompt text and source-specific length limits.
-- Share one media subprocess lifecycle across line streaming, text/binary capture, and OCR while preserving output tracking and timeout/error behavior.
-- Build model resources once from resolved run intent; remove intermediate factories while keeping selection separate from provider, metrics, and stream state.
-- Make Options use one element collection and declarative checkbox bindings; share settings normalization between load and save without mixing legacy migrations or managed policy into persistence.
-- Share page-media resolution and embedded transcript composition across HTML and Firecrawl extraction, keeping source-specific metadata, Markdown, and timeout policies separate.
-- Delete the unreachable daemon chat pipeline and unused browser media adapters; keep chat on the agent endpoint and audio on the bounded chunked decoder.
-- Use one slide-download/cache/progress workflow with source-specific download and stream-fallback policies instead of three copied pipelines.
-- Return DOM documents directly instead of exposing no-op cleanup lifecycles, and share YouTube player-response parsing across captions, metadata, and page extraction.
-- Centralize test output streams and browser-extension lifecycles while preserving isolated profiles, runtime-error checks, and scenario coverage.
-- Remove the sidepanel's redundant action/reducer/dispatch layer; use one state object with explicit lifecycle transitions while preserving navigation, chat, and slide restoration.
-- Make provider metadata the shared source for configuration and model parsing; remove duplicated provider inventories, native model constructors, client defaults, and request-option parsing.
-- Replace duplicated file/byte transcription orchestration with one source-aware runner, shared local/provider handling, and common decode retries while preserving lazy file uploads and full-input fallback.
-- Unify model execution around one resolved request and completion path; centralize stream consumption while preserving output-failure and retry boundaries.
-- Consolidate LLM request options and SDK stream handling while preserving provider-specific configuration, errors, and fallback behavior.
-- Build asset summary contexts directly from shared application state, removing redundant context wrappers and narrowing the asset-only format override.
-- Share Gemini file/byte transcription and bounded cloud-provider error handling, with coverage for the inline-upload boundary and uploaded-file cleanup after failures.
-- Refresh stabilized DOM, Markdown, browser media, image, protobuf, and pnpm dependencies; repair the Node 24 test container's workspace build and preserve local security patches (#403, thanks @dependabot).
-- Refresh Pi AI and Oxc tooling while keeping Node typings aligned with the supported Node 24 runtime (#399, thanks @dependabot).
-- Align Dependabot's npm cooldown with pnpm's seven-day stabilization window so automated updates do not select versions the install gate rejects.
-- Refresh the test, lint, parser, browser media, and transitive dependencies; update the Bun builder to 1.4.0, pin CI actions by commit, and align Corepack setup with the workspace's pnpm version.
-- Refresh policy-eligible CLI, core, extension, media, test, lint, and transitive dependencies without bypassing the seven-day stabilization window.
+- Consolidate model execution, provider metadata, request construction, retries, streaming, and token usage while preserving protocol-specific behavior and output-failure boundaries.
+- Share asset conversion, podcast resolution, transcription, media download, slide extraction, and cache metadata ownership; remove duplicated pipelines and unused adapters.
+- Simplify side-panel state, Options wiring, model discovery, pickers, component mounting, and shared styles without changing layouts or supported settings.
+- Type-check the entire extension in the root gate and CI; centralize test streams and browser lifecycles while preserving isolated profiles and runtime-error checks.
+- Repair browser-local speech validation with public audio and real decoding/inference; make Firefox smoke wait for installation and clean up its own runner and profile.
+- Remove the abandoned Homebrew-tap writer, keep formula updates with Homebrew/core, and correct pnpm release commands.
+- Refresh stabilized DOM, Markdown, browser media, image, protobuf, and pnpm dependencies; repair the Node 24 test container and preserve local security patches (#403, thanks @dependabot).
+- Refresh Pi AI and Oxc while keeping Node typings aligned with the supported Node 24 runtime (#399, thanks @dependabot).
+- Refresh the remaining runtime/test tooling and Bun builder, pin CI actions, and align Dependabot with pnpm's seven-day stabilization policy.
 
 ## 0.21.11 - 2026-08-10
 
