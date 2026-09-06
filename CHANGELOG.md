@@ -23,6 +23,7 @@
 
 ### Dependencies and maintenance
 
+- Remove the abandoned Homebrew-tap formula writer and its obsolete tests; keep formula ownership with Homebrew/core and use supported pnpm script invocations in release CI and instructions.
 - Share browser AI request cancellation/status ownership and download monitoring; consolidate tab-navigation result metadata while retaining navigation, focus, and timeout policies.
 - Share retry-message formatting, URL output input types, and YouTube request headers while retaining renderer, endpoint, and credential-specific policies.
 - Share slide-summary paragraph distribution and live rendering inputs while preserving intro handling, interludes, duplicate indexes, and fallback precedence.

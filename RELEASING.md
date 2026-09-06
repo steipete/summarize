@@ -1,13 +1,15 @@
 # Releasing `@steipete/summarize` (npm + Homebrew/Bun)
 
-Ship is **not done** until:
+A release is **not done** until:
 
 - npm is published
 - GitHub Release has both Developer ID-signed and Apple-notarized Bun tarball assets
 - GitHub Release has the Chrome extension zip
 - GitHub Release has the Firefox extension zip
 - GitHub Release has `SHA256SUMS` for the exact CI-verified assets
-- Homebrew/core formula is updated + `brew install summarize` verifies
+- The matching Chrome extension is submitted for review with automatic publishing and its exact pending/published version is verified, unless all shipped changes are daemon-only and the packaged extension/companion contract is unchanged. See [Chrome Web Store submission](docs/releasing.md#checklist).
+
+Homebrew/core autobumps independently. Do not block a completed release on that lag or manually rewrite the formula; verification is an optional follow-up once it catches up.
 
 ## Version sources (keep in sync)
 
@@ -30,12 +32,12 @@ Ship is **not done** until:
    - Update `CHANGELOG.md` (set the date + bullet notes under the new version header)
 
 2. Gates (no warnings)
-   - `pnpm -s install`
-   - `pnpm -s check`
-   - `pnpm -s build`
+   - `pnpm install`
+   - `pnpm check`
+   - `pnpm build`
 
 3. Build Bun artifact locally (unsigned smoke proof only)
-   - `pnpm -s build:bun:test`
+   - `pnpm build:bun:test`
    - Artifacts: `dist-bun/summarize-macos-arm64-v<ver>.tar.gz`, `dist-bun/summarize-macos-x64-v<ver>.tar.gz`
    - Local artifacts are not releasable. The tag-triggered Release workflow rebuilds the frozen source, signs and notarizes both Mach-O executables, and packages those CI-produced bytes.
 
@@ -83,8 +85,8 @@ Ship is **not done** until:
    - A separate publisher creates the GitHub Release only after both verifiers pass. `scripts/release.sh github` is verification-only and refuses a missing or incomplete CI-published release.
    - Verify notes render with real newlines: `gh release view v<ver> --json body --jq .body`.
 
-9. Homebrew/core verify
-   - Homebrew/core is autobumped from the GitHub Release; this can lag the npm/GitHub release.
+9. Optional Homebrew/core follow-up
+   - Homebrew/core is autobumped from the GitHub Release; this can lag the npm/GitHub release and does not block closeout.
    - Verify when the formula catches up:
      ```bash
      scripts/release.sh homebrew

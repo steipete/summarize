@@ -182,7 +182,7 @@ jobs:
             ASC_KEY_ID="$ASC_KEY_ID" \
             ASC_ISSUER_ID="$ASC_ISSUER_ID" \
             ASC_PRIVATE_KEY_PATH="$p8" \
-            pnpm -s build:bun:test
+            pnpm build:bun:test
 
       - name: Build browser extension archives
         run: |
