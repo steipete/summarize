@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildAssetPromptMessages,
   classifyUrl,
@@ -193,6 +193,62 @@ describe("asset helpers", () => {
         timeoutMs: 10,
       }),
     ).resolves.toEqual({ kind: "media", mediaType: "audio/mpeg" });
+  });
+
+  it.each([
+    [
+      "feed.xml",
+      "application/xml",
+      '<?xml version="1.0"?><rss version="2.0"><channel/></rss>',
+      "website",
+    ],
+    ["feed.rss", "application/rss+xml", "<rss><channel/></rss>", "website"],
+    ["feed.atom", "application/atom+xml", '<feed xmlns="http://www.w3.org/2005/Atom"/>', "website"],
+    [
+      "feed",
+      "text/xml",
+      '<?xml version="1.0"?> <!-- Feed --> <feed xmlns="http://www.w3.org/2005/Atom"/>',
+      "website",
+    ],
+    [
+      "settings.xml",
+      "application/xml",
+      "<settings><feed>not a feed document</feed></settings>",
+      "asset",
+    ],
+  ])(
+    "classifies %s without treating feeds as raw files",
+    async (pathname, mediaType, body, kind) => {
+      await expect(
+        classifyUrl({
+          url: `https://example.com/${pathname}`,
+          fetchImpl: async () => new Response(body, { headers: { "content-type": mediaType } }),
+          timeoutMs: 1000,
+        }),
+      ).resolves.toEqual({ kind });
+    },
+  );
+
+  it("bounds feed sniffing when a server ignores the range request", async () => {
+    const cancel = vi.fn();
+    const fetchImpl: typeof fetch = async (_input, init) =>
+      new Response(
+        init?.method === "HEAD"
+          ? null
+          : new ReadableStream<Uint8Array>({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode(`<rss><channel>${"entry ".repeat(2000)}`),
+                );
+              },
+              cancel,
+            }),
+        { headers: { "content-type": "application/xml" } },
+      );
+    await expect(
+      classifyUrl({ url: "https://example.com/feed.xml", fetchImpl, timeoutMs: 1000 }),
+    ).resolves.toEqual({ kind: "website" });
+    expect(cancel).toHaveBeenCalledOnce();
   });
 
   it("builds prompt messages with attachments", () => {
