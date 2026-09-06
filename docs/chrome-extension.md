@@ -198,6 +198,7 @@ See `docs/media.md` for detection and transcript rules.
 - Process manager: live list of daemon-spawned tools (ffmpeg, yt-dlp, tesseract, etc.) with logs.
 - Extension includes current settings in request; daemon treats them like CLI flags (`--model`, `--length`, `--language`, `--prompt`).
 - Options and the side panel share model-discovery and selection state in `src/lib/model-presets.ts`; each screen supplies its presets, hints, and presentation behavior.
+- Browser AI keeps reusable Summarizer sessions by request key and length. Prompt API prewarming supplies one session to one request; that request destroys it on completion or cancellation. Replacing a request aborts the previous request for the same key without cancelling the other summary/slide key.
 
 ## Token Pairing / Setup Mode
 

@@ -81,50 +81,31 @@ export async function executeNavigateTool(args: NavigateArgs): Promise<NavigateR
     if (!tab?.id) throw new Error("Tab not found");
     await chrome.tabs.update(tab.id, { active: true });
     await chrome.windows.update(tab.windowId, { focused: true });
-    const skills = tab.url ? await listSkills(tab.url) : [];
-    return {
-      switchedToTab: tab.id,
-      finalUrl: tab.url ?? null,
-      title: tab.title ?? null,
-      tabId: tab.id,
-      skills: skills.map((skill) => ({
-        name: skill.name,
-        shortDescription: skill.shortDescription,
-      })),
-    };
+    return { switchedToTab: tab.id, ...(await describeTab(tab, null)) };
   }
 
   const url = args.url?.trim();
   if (!url) throw new Error("Missing url");
 
-  if (args.newTab) {
-    const tab = await chrome.tabs.create({ url });
-    if (!tab.id) throw new Error("Failed to open new tab");
-    const finalTab = await waitForTabComplete(tab.id).catch(() => tab);
-    const skills = finalTab.url ? await listSkills(finalTab.url) : [];
-    return {
-      finalUrl: finalTab.url ?? url,
-      title: finalTab.title ?? null,
-      tabId: finalTab.id,
-      skills: skills.map((skill) => ({
-        name: skill.name,
-        shortDescription: skill.shortDescription,
-      })),
-    };
-  }
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) throw new Error("No active tab");
-  await chrome.tabs.update(tab.id, { url });
+  const newTab = args.newTab;
+  const tab = newTab
+    ? await chrome.tabs.create({ url })
+    : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+  if (!tab?.id) throw new Error(newTab ? "Failed to open new tab" : "No active tab");
+  if (!newTab) await chrome.tabs.update(tab.id, { url });
   const finalTab = await waitForTabComplete(tab.id).catch(() => tab);
-  const skills = finalTab.url ? await listSkills(finalTab.url) : [];
+  return describeTab(finalTab, url);
+}
+
+async function describeTab(
+  tab: chrome.tabs.Tab,
+  fallbackUrl: string | null,
+): Promise<NavigateResult> {
+  const skills = tab.url ? await listSkills(tab.url) : [];
   return {
-    finalUrl: finalTab.url ?? url,
-    title: finalTab.title ?? null,
-    tabId: finalTab.id,
-    skills: skills.map((skill) => ({
-      name: skill.name,
-      shortDescription: skill.shortDescription,
-    })),
+    finalUrl: tab.url ?? fallbackUrl,
+    title: tab.title ?? null,
+    tabId: tab.id,
+    skills: skills.map((skill) => ({ name: skill.name, shortDescription: skill.shortDescription })),
   };
 }

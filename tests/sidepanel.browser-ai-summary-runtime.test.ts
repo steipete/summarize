@@ -267,6 +267,69 @@ describe("sidepanel browser AI summary runtime", () => {
     );
   });
 
+  it("gives overlapping prompts separate sessions and preserves the newer request's status", async () => {
+    const firstResult = Promise.withResolvers<string>();
+    const secondResult = Promise.withResolvers<string>();
+    const firstSession = { prompt: vi.fn(() => firstResult.promise), destroy: vi.fn() };
+    const secondSession = { prompt: vi.fn(() => secondResult.promise), destroy: vi.fn() };
+    const create = vi.fn().mockResolvedValueOnce(firstSession).mockResolvedValueOnce(secondSession);
+    const setStatus = vi.fn();
+    const runtime = createBrowserAiSummaryRuntime({
+      getLanguageModelApi: () => ({ availability: async () => "available", create }),
+      isUserActive: () => true,
+      setStatus,
+    });
+
+    runtime.preparePrompt();
+    const first = runtime.prompt({ input: "First", responseConstraint: /^.+$/ });
+    await vi.waitFor(() => expect(firstSession.prompt).toHaveBeenCalledOnce());
+    const second = runtime.prompt({
+      input: "Second",
+      responseConstraint: /^.+$/,
+      status: "Newer prompt",
+    });
+    await vi.waitFor(() => expect(secondSession.prompt).toHaveBeenCalledOnce());
+    expect(firstSession.prompt).toHaveBeenCalledWith(
+      "First",
+      expect.objectContaining({ signal: expect.objectContaining({ aborted: true }) }),
+    );
+
+    firstResult.resolve("Stale result");
+    await expect(first).resolves.toBeNull();
+    expect(firstSession.destroy).toHaveBeenCalledOnce();
+    expect(secondSession.destroy).not.toHaveBeenCalled();
+    expect(setStatus).toHaveBeenLastCalledWith("Newer prompt");
+    secondResult.resolve("Fresh result");
+    await expect(second).resolves.toMatchObject({ kind: "success", text: "Fresh result" });
+    expect(secondSession.destroy).toHaveBeenCalledOnce();
+    expect(setStatus).toHaveBeenLastCalledWith("");
+  });
+
+  it("destroys a prompt session that finishes loading after cancellation", async () => {
+    const pendingSession = Promise.withResolvers<{
+      prompt: ReturnType<typeof vi.fn>;
+      destroy: ReturnType<typeof vi.fn>;
+    }>();
+    const session = { prompt: vi.fn(), destroy: vi.fn() };
+    const runtime = createBrowserAiSummaryRuntime({
+      getLanguageModelApi: () => ({
+        availability: async () => "available",
+        create: () => pendingSession.promise,
+      }),
+      isUserActive: () => true,
+      setStatus: vi.fn(),
+    });
+
+    runtime.preparePrompt();
+    const result = runtime.prompt({ input: "Source", responseConstraint: /^.+$/ });
+    runtime.cancel("slides");
+    pendingSession.resolve(session);
+
+    await expect(result).resolves.toBeNull();
+    expect(session.prompt).not.toHaveBeenCalled();
+    expect(session.destroy).toHaveBeenCalledOnce();
+  });
+
   it("reports context pressure before prompting", async () => {
     const session = {
       contextWindow: 1_000,

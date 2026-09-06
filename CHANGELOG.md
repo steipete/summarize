@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Browser AI: give overlapping Prompt API requests separate sessions and destroy sessions that finish loading after cancellation, so a stale request cannot tear down its replacement.
 - Slides: parse ordinary yt-dlp percentage lines correctly and remove partial download directories after process or output-inspection failures.
 - Transcription: skip probing the local Whisper executable when no usable model is installed, avoiding unnecessary process startup and delays on cloud-only or unconfigured systems.
 - Browser settings: retain a dismissed local-companion hint when saving other Options preferences.
@@ -21,6 +22,7 @@
 
 ### Dependencies and maintenance
 
+- Share browser AI request cancellation/status ownership and download monitoring; consolidate tab-navigation result metadata while retaining navigation, focus, and timeout policies.
 - Share retry-message formatting, URL output input types, and YouTube request headers while retaining renderer, endpoint, and credential-specific policies.
 - Share slide-summary paragraph distribution and live rendering inputs while preserving intro handling, interludes, duplicate indexes, and fallback precedence.
 - Give shared pickers and checkboxes one base stylesheet; retain Options and side-panel layout, sizing, backgrounds, and focus overrides in their own stylesheets.
