@@ -25,6 +25,7 @@
 
 ### Dependencies and maintenance
 
+- Make Firefox smoke validation wait for actual extension installation and stop its browser runner directly, avoiding orphaned processes behind the package-manager wrapper.
 - Repair browser-local speech validation with public audio fixtures, real decoding/inference, and immediate failure diagnostics instead of an unsupported loopback media source.
 - Remove the abandoned Homebrew-tap formula writer and its obsolete tests; keep formula ownership with Homebrew/core and use supported pnpm script invocations in release CI and instructions.
 - Share browser AI request cancellation/status ownership and download monitoring; consolidate tab-navigation result metadata while retaining navigation, focus, and timeout policies.
