@@ -7,7 +7,7 @@ import {
 } from "../../../youtube-captions.js";
 import { sanitizeYoutubeJsonResponse } from "../../utils.js";
 import { extractInitialPlayerResponse } from "../../utils.js";
-import { extractYoutubeiBootstrap } from "./api.js";
+import { buildYoutubeiHeaders, extractYoutubeiBootstrap } from "./api.js";
 import { extractInnertubeApiKey } from "./captions-player.js";
 import {
   REQUEST_HEADERS,
@@ -130,26 +130,13 @@ export const fetchTranscriptFromCaptionTracks = async (
   };
 
   try {
-    const userAgent =
-      REQUEST_HEADERS["User-Agent"] ??
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36";
-    const headers: Record<string, string> = withBunCompressionHeaders({
-      "Content-Type": "application/json",
-      "User-Agent": userAgent,
-      Accept: "application/json",
-      Origin: "https://www.youtube.com",
-      Referer: originalUrl,
-      "X-Goog-AuthUser": "0",
-      "X-Youtube-Bootstrap-Logged-In": "false",
+    const headers = buildYoutubeiHeaders(originalUrl, {
+      clientName,
+      clientVersion,
+      visitorData,
+      pageCl,
+      pageLabel,
     });
-
-    if (clientName) headers["X-Youtube-Client-Name"] = clientName;
-    if (clientVersion) headers["X-Youtube-Client-Version"] = clientVersion;
-    if (visitorData) headers["X-Goog-Visitor-Id"] = visitorData;
-    if (typeof pageCl === "number" && Number.isFinite(pageCl)) {
-      headers["X-Youtube-Page-CL"] = String(pageCl);
-    }
-    if (pageLabel) headers["X-Youtube-Page-Label"] = pageLabel;
     if (xsrfToken) headers["X-Youtube-Identity-Token"] = xsrfToken;
 
     const response = await fetchWithTimeout(

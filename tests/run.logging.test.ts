@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
+import { formatLlmRetryNotice } from "../src/llm/generate-text-shared.js";
 import { createRetryLogger } from "../src/run/logging.js";
 
 describe("run/logging", () => {
-  it("formats retry reasons", () => {
+  it.each([
+    ["Empty summary", "empty output"],
+    [new Error("timed out"), "timeout"],
+    [{ message: "something else" }, "error"],
+    [{ errorMessage: "timed out" }, "error"],
+    [undefined, "error"],
+  ])("formats retry reason for %j", (error, reason) => {
     const stderr = { write: vi.fn() } as unknown as NodeJS.WritableStream;
 
     const log = createRetryLogger({
@@ -12,19 +19,10 @@ describe("run/logging", () => {
       modelId: "openai/gpt-test",
     });
 
-    log({ attempt: 1, maxRetries: 2, delayMs: 10, error: "Empty summary" });
-    expect((stderr.write as unknown as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]).toContain(
-      "LLM empty output",
-    );
-
-    log({ attempt: 2, maxRetries: 2, delayMs: 10, error: new Error("timed out") });
-    expect((stderr.write as unknown as ReturnType<typeof vi.fn>).mock.calls[1]?.[0]).toContain(
-      "LLM timeout",
-    );
-
-    log({ attempt: 3, maxRetries: 4, delayMs: 10, error: { message: "something else" } });
-    expect((stderr.write as unknown as ReturnType<typeof vi.fn>).mock.calls[2]?.[0]).toContain(
-      "LLM error",
-    );
+    const notice = { attempt: 1, maxRetries: 2, delayMs: 10, error };
+    const expected = `LLM ${reason} for openai/gpt-test; retry 1/2 in 10ms.`;
+    expect(formatLlmRetryNotice("openai/gpt-test", notice)).toBe(expected);
+    log(notice);
+    expect(stderr.write).toHaveBeenCalledExactlyOnceWith(expect.stringContaining(expected));
   });
 });

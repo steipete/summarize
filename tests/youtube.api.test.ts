@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildYoutubeiHeaders,
   extractTranscriptFromTranscriptEndpoint,
   extractYoutubeiBootstrap,
   extractYoutubeiTranscriptConfig,
@@ -7,6 +8,26 @@ import {
 } from "../packages/core/src/content/transcript/providers/youtube/api.js";
 
 describe("YouTube transcript parsing", () => {
+  it("keeps optional and player-only metadata out of transcript headers", () => {
+    const config = {
+      clientName: "",
+      clientVersion: null,
+      pageCl: Number.NaN,
+      xsrfToken: "player-only",
+    };
+    const headers = buildYoutubeiHeaders("https://www.youtube.com/watch?v=test", config);
+    expect(headers).toMatchObject({
+      "Content-Type": "application/json",
+      Origin: "https://www.youtube.com",
+      Referer: "https://www.youtube.com/watch?v=test",
+      "X-Goog-AuthUser": "0",
+    });
+    expect(headers).not.toHaveProperty("X-Youtube-Client-Name");
+    expect(headers).not.toHaveProperty("X-Youtube-Client-Version");
+    expect(headers).not.toHaveProperty("X-Youtube-Page-CL");
+    expect(headers).not.toHaveProperty("X-Youtube-Identity-Token");
+  });
+
   it("extracts youtubei transcript config from bootstrap HTML", () => {
     const html =
       "<!doctype html><html><head>" +

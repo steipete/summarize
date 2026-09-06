@@ -35,6 +35,7 @@ Goal: keep provider entrypoints thin; keep provider policy explicit.
 
 ## Shared policy
 
+- YouTube transcript and web-player requests share header construction in `youtube/api.ts`. Android-player headers remain separate, and the identity token remains web-player-only.
 - `podcast/feed-flow.ts` owns RSS transcript lookup, timestamp selection, and result shaping for direct feeds, Apple, and Spotify. Each source retains feed fetching, fallback decisions, and failure metadata; Apple's iTunes path still records the feed attempt before fetching.
 - `podcast/media.ts` shares download progress, transcription options, and completion across in-memory and temporary-file sources. Size limits and duration probing remain source-specific; temporary files are removed after success or failure.
 - `content/link-preview/content/page-media.ts`

@@ -1,7 +1,11 @@
 import type { CliProvider } from "../config.js";
 import type { LlmCall } from "../costs.js";
 import { isCliDisabled, runCliModel } from "../llm/cli.js";
-import { isRetryableLlmError, resolveLlmErrorMessage } from "../llm/generate-text-shared.js";
+import {
+  formatLlmRetryNotice,
+  isRetryableLlmError,
+  resolveLlmErrorMessage,
+} from "../llm/generate-text-shared.js";
 import { generateTextWithModelId, streamTextWithModelId } from "../llm/generate-text.js";
 import { parseGatewayStyleModelId } from "../llm/model-id.js";
 import { mergeRequestOptionsForProvider } from "../llm/model-options.js";
@@ -146,26 +150,9 @@ async function consumeSummaryStream(
 export function createModelExecutor(deps: ModelExecutorDeps) {
   const providerRuntime = deps.providerRuntime;
 
-  const createRetryLogger = (modelId: string) => {
-    return (notice: { attempt: number; maxRetries: number; delayMs: number; error?: unknown }) => {
-      const message =
-        typeof notice.error === "string"
-          ? notice.error
-          : notice.error instanceof Error
-            ? notice.error.message
-            : typeof (notice.error as { message?: unknown } | null)?.message === "string"
-              ? String((notice.error as { message?: unknown }).message)
-              : "";
-      const reason = /empty summary/i.test(message)
-        ? "empty output"
-        : /timed out/i.test(message)
-          ? "timeout"
-          : "error";
-      deps.log?.(
-        `LLM ${reason} for ${modelId}; retry ${notice.attempt}/${notice.maxRetries} in ${notice.delayMs}ms.`,
-      );
-    };
-  };
+  const createRetryLogger =
+    (modelId: string) => (notice: Parameters<typeof formatLlmRetryNotice>[1]) =>
+      deps.log?.(formatLlmRetryNotice(modelId, notice));
 
   const envHasKeyFor = (requiredEnv: ModelAttempt["requiredEnv"]) => {
     const cliProvider = cliProviderForRequiredEnv(requiredEnv);

@@ -4,6 +4,26 @@ import { userTextAndImageMessage } from "./prompt.js";
 import type { LlmTokenUsage } from "./types.js";
 import { normalizeTokenUsage } from "./usage.js";
 
+export function formatLlmRetryNotice(
+  modelId: string,
+  notice: { attempt: number; maxRetries: number; delayMs: number; error?: unknown },
+): string {
+  const message =
+    typeof notice.error === "string"
+      ? notice.error
+      : notice.error instanceof Error
+        ? notice.error.message
+        : typeof (notice.error as { message?: unknown } | null)?.message === "string"
+          ? String((notice.error as { message?: unknown }).message)
+          : "";
+  const reason = /empty summary/i.test(message)
+    ? "empty output"
+    : /timed out/i.test(message)
+      ? "timeout"
+      : "error";
+  return `LLM ${reason} for ${modelId}; retry ${notice.attempt}/${notice.maxRetries} in ${notice.delayMs}ms.`;
+}
+
 export function promptToContext(prompt: Prompt): Context {
   const attachments = prompt.attachments ?? [];
   if (attachments.some((attachment) => attachment.kind === "document")) {
