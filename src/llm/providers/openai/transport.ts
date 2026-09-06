@@ -97,15 +97,32 @@ export function resolveOpenAiChatCompletionsUrl(baseUrl: string): URL {
   return url;
 }
 
+type ChatContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
 export function contextToChatCompletionMessages(
   context: Context,
-): Array<{ role: string; content: string }> {
-  const messages: Array<{ role: string; content: string }> = [];
+): Array<{ role: string; content: string | ChatContentPart[] }> {
+  const messages: Array<{ role: string; content: string | ChatContentPart[] }> = [];
   const systemPrompt = context.systemPrompt?.trim();
   if (systemPrompt) {
     messages.push({ role: "system", content: systemPrompt });
   }
   for (const message of context.messages) {
+    if (Array.isArray(message.content) && message.content.some((part) => part.type === "image")) {
+      const content = message.content.flatMap<ChatContentPart>((part) => {
+        if (part.type === "text") return [{ type: "text", text: part.text }];
+        if (part.type === "image") {
+          return [
+            { type: "image_url", image_url: { url: `data:${part.mimeType};base64,${part.data}` } },
+          ];
+        }
+        return [];
+      });
+      messages.push({ role: message.role, content });
+      continue;
+    }
     const content =
       typeof message.content === "string"
         ? message.content.trim()
@@ -123,14 +140,24 @@ export function contextToChatCompletionMessages(
 
 export function contextToResponsesInput(context: Context): Array<{
   role: string;
-  content: Array<{ type: "input_text"; text: string }>;
+  content: Array<
+    | { type: "input_text"; text: string }
+    | { type: "input_image"; image_url: string; detail: "auto" }
+  >;
 }> {
   return contextToChatCompletionMessages({
     systemPrompt: undefined,
     messages: context.messages,
   }).map((message) => ({
     role: message.role,
-    content: [{ type: "input_text", text: message.content }],
+    content:
+      typeof message.content === "string"
+        ? [{ type: "input_text", text: message.content }]
+        : message.content.map((part) =>
+            part.type === "text"
+              ? { type: "input_text", text: part.text }
+              : { type: "input_image", image_url: part.image_url.url, detail: "auto" },
+          ),
   }));
 }
 

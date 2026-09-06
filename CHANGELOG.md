@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Images: preserve image attachments in OpenAI Responses and Chat Completions requests, including streaming, instead of silently sending only the text prompt.
 - Slides: stop direct-video response streams after download failures and remove downloaded temporary files if the media-cache handoff fails; preserve the original failure when cleanup also fails.
 - Browser AI: give overlapping Prompt API requests separate sessions and destroy sessions that finish loading after cancellation, so a stale request cannot tear down its replacement.
 - Slides: parse ordinary yt-dlp percentage lines correctly and remove partial download directories after process or output-inspection failures.
