@@ -153,7 +153,7 @@ export function createSlidesViewRuntime({
     slidesRenderer.renderInline(container, opts);
   };
 
-  const renderMarkdownDisplay = () => {
+  const renderSummaryDisplay = (markdown: string) => {
     renderSummaryMarkdownDisplay({
       activeTabUrl: panelState.navigation.activeTabUrl,
       autoSummarize: panelState.panelSession.autoSummarize,
@@ -164,7 +164,7 @@ export function createSlidesViewRuntime({
       hostEl: renderMarkdownHostEl,
       copyButtonEl: summaryCopyBtn,
       inputMode: resolveSlidesInputMode(panelState.slidesSession),
-      markdown: panelState.summaryMarkdown ?? "",
+      markdown,
       md,
       phase: panelState.phase,
       renderInlineSlides,
@@ -175,27 +175,8 @@ export function createSlidesViewRuntime({
     });
   };
 
-  const renderEmptySummaryState = () => {
-    renderSummaryMarkdownDisplay({
-      activeTabUrl: panelState.navigation.activeTabUrl,
-      autoSummarize: panelState.panelSession.autoSummarize,
-      currentSourceTitle: panelState.currentSource?.title ?? null,
-      currentSourceUrl: panelState.currentSource?.url ?? null,
-      hasSlides: Boolean(panelState.slides?.slides.length),
-      headerSetStatus,
-      hostEl: renderMarkdownHostEl,
-      copyButtonEl: summaryCopyBtn,
-      inputMode: resolveSlidesInputMode(panelState.slidesSession),
-      markdown: "",
-      md,
-      phase: panelState.phase,
-      renderInlineSlides,
-      slidesEnabled: panelState.slidesSession.slidesEnabled,
-      slidesLayout: panelState.slidesSession.slidesLayout,
-      tabTitle: panelState.ui?.tab.title ?? null,
-      tabUrl: panelState.ui?.tab.url ?? null,
-    });
-  };
+  const renderMarkdownDisplay = () => renderSummaryDisplay(panelState.summaryMarkdown ?? "");
+  const renderEmptySummaryState = () => renderSummaryDisplay("");
 
   const updateSlideSummaryFromMarkdown = (
     markdown: string,

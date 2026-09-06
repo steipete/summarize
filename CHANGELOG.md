@@ -21,6 +21,7 @@
 
 ### Dependencies and maintenance
 
+- Share slide-summary paragraph distribution and live rendering inputs while preserving intro handling, interludes, duplicate indexes, and fallback precedence.
 - Give shared pickers and checkboxes one base stylesheet; retain Options and side-panel layout, sizing, backgrounds, and focus overrides in their own stylesheets.
 - Share stdout/stderr download-progress handling and one temporary-directory lifecycle for YouTube and direct-video downloads, retaining successful-download cleanup ownership with the caller.
 - Share OpenAI-compatible request submission, completion validation, and stream usage settlement while retaining protocol-specific payloads and strict document routing/header behavior.

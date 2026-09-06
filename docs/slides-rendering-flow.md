@@ -47,6 +47,8 @@ Rule: keep terminal I/O in render helpers; keep state mutations in the state sto
 
 Rule: push pure status/log logic out of adapters first.
 
+Slide-summary coercion shares paragraph selection and distribution, while retaining separate explicit-summary and fallback text policies. Normal and empty-summary rendering build the same display inputs from live panel state; rendering an empty state does not erase stored Markdown.
+
 ## When debugging
 
 1. Check state transitions before DOM issues.

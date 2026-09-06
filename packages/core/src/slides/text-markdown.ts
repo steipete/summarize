@@ -472,37 +472,33 @@ export function coerceSummaryWithSlides({
     lengthArg,
   });
 
-  if (slideSummaries.size > 0 && !titleOnlySlideSummaries) {
+  const hasDetailedSummaries = slideSummaries.size > 0 && !titleOnlySlideSummaries;
+  const paragraphs = splitMarkdownParagraphs(hasDetailedSummaries ? summary : distributionMarkdown);
+  if (!hasDetailedSummaries && paragraphs.length === 0) return markdown;
+  if (!hasDetailedSummaries && ordered.every((slide) => interludeSlideIndexes.has(slide.index))) {
+    return [intro.trim(), ...ordered.map((slide) => `[slide:${slide.index}]\n## Interlude`)]
+      .filter(Boolean)
+      .join("\n\n");
+  }
+  const introParagraph = reserveIntro ? intro || paragraphs[0] || "" : "";
+  const introIndex = introParagraph ? paragraphs.indexOf(introParagraph) : -1;
+  const remaining = reserveIntro
+    ? introIndex >= 0
+      ? paragraphs.filter((_, index) => index !== introIndex)
+      : paragraphs.slice(1)
+    : paragraphs;
+  const distributableSlides = ordered.filter((slide) => !interludeSlideIndexes.has(slide.index));
+  const total = (distributableSlides.length > 0 ? distributableSlides : ordered).length;
+
+  if (hasDetailedSummaries) {
     const parts: string[] = [];
     if (intro) parts.push(intro);
-    const paragraphs = splitMarkdownParagraphs(summary);
-    const introParagraph = reserveIntro ? intro || paragraphs[0] || "" : "";
-    const introIndex = introParagraph ? paragraphs.indexOf(introParagraph) : -1;
-    const remaining = reserveIntro
-      ? introIndex >= 0
-        ? paragraphs.filter((_, index) => index !== introIndex)
-        : paragraphs.slice(1)
-      : paragraphs;
     const distributedSummaries = new Map<number, string>();
     if (remaining.length > 0) {
-      const distributableSlides = ordered.filter(
-        (slide) => !interludeSlideIndexes.has(slide.index),
-      );
-      const distributionSlides = distributableSlides.length > 0 ? distributableSlides : ordered;
-      const total = distributionSlides.length;
       let distributionIndex = 0;
       for (const slide of ordered) {
         if (interludeSlideIndexes.has(slide.index) && distributableSlides.length > 0) continue;
-        const segmentIndex = distributionIndex;
-        const start = Math.round((segmentIndex * remaining.length) / total);
-        const end = Math.round(((segmentIndex + 1) * remaining.length) / total);
-        distributionIndex += 1;
-        const segment =
-          remaining.slice(start, end).join("\n\n").trim() ||
-          remaining[
-            Math.min(remaining.length - 1, Math.floor((segmentIndex * remaining.length) / total))
-          ]?.trim() ||
-          "";
+        const segment = distributeParagraphs(remaining, distributionIndex++, total);
         if (segment) distributedSummaries.set(slide.index, segment);
       }
     }
@@ -527,43 +523,8 @@ export function coerceSummaryWithSlides({
     return parts.join("\n\n");
   }
 
-  const paragraphs = splitMarkdownParagraphs(distributionMarkdown);
-  if (paragraphs.length === 0) return markdown;
   const parts: string[] = [];
-  const allOrderedSlidesAreInterludes =
-    ordered.length > 0 && ordered.every((slide) => interludeSlideIndexes.has(slide.index));
-  if (allOrderedSlidesAreInterludes) {
-    if (intro) parts.push(intro.trim());
-    for (const slide of ordered) {
-      parts.push(`[slide:${slide.index}]\n## Interlude`);
-    }
-    return parts.join("\n\n");
-  }
-  const introParagraph = reserveIntro ? intro || paragraphs[0] || "" : "";
-  const introIndex = introParagraph ? paragraphs.indexOf(introParagraph) : -1;
-  const remaining = reserveIntro
-    ? introIndex >= 0
-      ? paragraphs.filter((_, index) => index !== introIndex)
-      : paragraphs.slice(1)
-    : paragraphs;
   if (introParagraph) parts.push(introParagraph.trim());
-  if (remaining.length === 0) {
-    for (const slide of ordered) {
-      if (interludeSlideIndexes.has(slide.index)) {
-        parts.push(`[slide:${slide.index}]\n## Interlude`);
-        continue;
-      }
-      const fallback = fallbackSummaries.get(slide.index) ?? "";
-      const withTitle = fallback
-        ? ensureSlideTitleLine({ text: fallback, slide, total: ordered.length })
-        : "";
-      parts.push(withTitle ? `[slide:${slide.index}]\n${withTitle}` : `[slide:${slide.index}]`);
-    }
-    return parts.join("\n\n");
-  }
-  const distributableSlides = ordered.filter((slide) => !interludeSlideIndexes.has(slide.index));
-  const distributionSlides = distributableSlides.length > 0 ? distributableSlides : ordered;
-  const total = distributionSlides.length;
   const slideTotal = ordered.length;
   let distributionIndex = 0;
   for (const slide of ordered) {
@@ -572,20 +533,23 @@ export function coerceSummaryWithSlides({
       parts.push(`[slide:${slideIndex}]\n## Interlude`);
       continue;
     }
-    const segmentIndex = distributionIndex;
-    const start = Math.round((segmentIndex * remaining.length) / total);
-    const end = Math.round(((segmentIndex + 1) * remaining.length) / total);
-    distributionIndex += 1;
-    const segment =
-      remaining.slice(start, end).join("\n\n").trim() ||
-      remaining[
-        Math.min(remaining.length - 1, Math.floor((segmentIndex * remaining.length) / total))
-      ]?.trim() ||
-      "";
+    const segment = distributeParagraphs(remaining, distributionIndex++, total);
     const fallback = fallbackSummaries.get(slideIndex) ?? "";
     const text = segment || fallback;
     const withTitle = text ? ensureSlideTitleLine({ text, slide, total: slideTotal }) : "";
     parts.push(withTitle ? `[slide:${slideIndex}]\n${withTitle}` : `[slide:${slideIndex}]`);
   }
   return parts.join("\n\n");
+}
+
+function distributeParagraphs(paragraphs: string[], index: number, total: number): string {
+  const start = Math.round((index * paragraphs.length) / total);
+  const end = Math.round(((index + 1) * paragraphs.length) / total);
+  return (
+    paragraphs.slice(start, end).join("\n\n").trim() ||
+    paragraphs[
+      Math.min(paragraphs.length - 1, Math.floor((index * paragraphs.length) / total))
+    ]?.trim() ||
+    ""
+  );
 }
