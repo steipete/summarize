@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- Slides: measure frame timestamps after the requested seek point, preventing later scenes from being assigned earlier timestamps and discarded as duplicates; regenerate older extraction caches with the corrected timing.
 - Podcasts: route RSS and Atom feed URLs through content/transcript extraction instead of treating feed XML as a raw file, while preserving ordinary XML asset handling.
 - Images: preserve image attachments in OpenAI Responses and Chat Completions requests, including streaming, instead of silently sending only the text prompt.
 - Slides: stop direct-video response streams after download failures and remove downloaded temporary files if the media-cache handoff fails; preserve the original failure when cleanup also fails.

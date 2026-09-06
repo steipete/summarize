@@ -1,3 +1,5 @@
+export const SLIDE_EXTRACTION_VERSION = 1;
+
 export type SlideSourceKind = "youtube" | "direct";
 
 export type SlideSource = {
@@ -27,6 +29,7 @@ export type SlideAutoTune = {
 };
 
 export type SlideExtractionResult = {
+  extractorVersion?: number;
   sourceUrl: string;
   sourceKind: SlideSourceKind;
   sourceId: string;

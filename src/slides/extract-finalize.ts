@@ -1,12 +1,13 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { buildSlidesDirId, serializeSlideImagePath } from "./store.js";
-import type {
-  SlideAutoTune,
-  SlideExtractionResult,
-  SlideImage,
-  SlideSource,
-  SlideSourceKind,
+import {
+  SLIDE_EXTRACTION_VERSION,
+  type SlideAutoTune,
+  type SlideExtractionResult,
+  type SlideImage,
+  type SlideSource,
+  type SlideSourceKind,
 } from "./types.js";
 
 export const SLIDES_PROGRESS = {
@@ -55,6 +56,7 @@ export function buildSlideTimeline(args: {
   slides: Array<SlideImage & { segment?: unknown }>;
 }): SlideExtractionResult {
   return {
+    extractorVersion: SLIDE_EXTRACTION_VERSION,
     sourceUrl: args.source.url,
     sourceKind: args.source.kind,
     sourceId: args.source.sourceId,
@@ -124,6 +126,7 @@ export async function writeSlidesJson(
 ): Promise<void> {
   const slidesDirId = result.slidesDirId ?? buildSlidesDirId(slidesDir);
   const payload = {
+    extractorVersion: result.extractorVersion,
     sourceUrl: result.sourceUrl,
     sourceKind: result.sourceKind,
     sourceId: result.sourceId,

@@ -14,6 +14,13 @@ describe("resolveExtractedTimestamp", () => {
     expect(resolveExtractedTimestamp({ requested: 10, actual: 42.25 })).toBe(42.25);
   });
 
+  it("treats an explicit zero seek base as the input timeline origin", () => {
+    expect(resolveExtractedTimestamp({ requested: 4.32, actual: 4.36, seekBase: 0 })).toBeCloseTo(
+      4.36,
+      4,
+    );
+  });
+
   it("prefers base-relative timestamps when closer to requested", () => {
     expect(resolveExtractedTimestamp({ requested: 120, actual: 7.5, seekBase: 112 })).toBeCloseTo(
       119.5,

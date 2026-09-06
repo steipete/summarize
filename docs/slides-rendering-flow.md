@@ -30,6 +30,10 @@ Rule: keep terminal I/O in render helpers; keep state mutations in the state sto
 
 `src/slides/process.ts` owns media-tool spawning, deadlines, exit errors, and output collection. Line callbacks, text capture, and binary capture share that lifecycle; OCR uses binary capture to avoid logging recognized text. Ignored stdout is drained so child processes cannot block on a full pipe.
 
+Frame extraction trims decoded input before collecting `showinfo` and signal statistics. Timestamp conversion uses the explicit input-seek origin, including zero, so pre-seek frames cannot move a later slide backward or cause final duration filtering to discard it.
+
+Completed slide results carry an extractor version in memory and `slides.json`. Cache validation rejects older/unversioned extraction results, including SQLite copies, so corrected timing regenerates stale frames without invalidating unrelated transcript or summary caches.
+
 `src/slides/download.ts` owns temporary download directories through success or failure. Failures remove partial output without replacing the original error; successful downloads return cleanup to the caller. Structured yt-dlp progress shares one parser on stdout and stderr, while ordinary percentage/speed/ETA lines remain stderr-only.
 
 Direct-video downloads use a Node stream pipeline for backpressure, file closure, and stream teardown. The download owner also cancels rejected HTTP bodies and aborts settled fetches. `src/slides/ingest.ts` owns downloaded-file cleanup until cache handoff succeeds, then transfers cleanup to extraction.

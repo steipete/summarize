@@ -62,8 +62,8 @@ export function resolveExtractedTimestamp({
   if (!Number.isFinite(requested)) return 0;
   if (actual == null || !Number.isFinite(actual) || actual < 0) return requested;
   const base =
-    typeof seekBase === "number" && Number.isFinite(seekBase) && seekBase > 0 ? seekBase : null;
-  if (!base) {
+    typeof seekBase === "number" && Number.isFinite(seekBase) && seekBase >= 0 ? seekBase : null;
+  if (base === null) {
     if (actual <= 5) return requested + actual;
     return actual;
   }

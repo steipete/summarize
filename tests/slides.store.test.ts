@@ -12,7 +12,7 @@ import {
   serializeSlideImagePath,
   validateSlidesCache,
 } from "../src/slides/store.js";
-import type { SlideExtractionResult } from "../src/slides/types.js";
+import { SLIDE_EXTRACTION_VERSION, type SlideExtractionResult } from "../src/slides/types.js";
 
 describe("slides store", () => {
   it("serializes relative paths and resolves cached slides", async () => {
@@ -32,6 +32,7 @@ describe("slides store", () => {
     await fs.writeFile(imagePath, "fake");
 
     const payload: SlideExtractionResult = {
+      extractorVersion: SLIDE_EXTRACTION_VERSION,
       sourceUrl: source.url,
       sourceKind: source.kind,
       sourceId: source.sourceId,
@@ -65,6 +66,16 @@ describe("slides store", () => {
       "utf8",
     );
     const cached = await readSlidesCacheIfValid({ source, settings });
+    await expect(
+      validateSlidesCache({
+        cached: { ...payload, extractorVersion: undefined },
+        source,
+        settings,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      validateSlidesCache({ cached: { ...payload, extractorVersion: 0 }, source, settings }),
+    ).resolves.toBeNull();
     expect(cached?.slides[0]?.imagePath).toBe(imagePath);
     expect(cached?.slidesDirId).toBe(buildSlidesDirId(slidesDir));
   });
@@ -86,6 +97,7 @@ describe("slides store", () => {
     await fs.writeFile(imagePath, "fake");
 
     const cached: SlideExtractionResult = {
+      extractorVersion: SLIDE_EXTRACTION_VERSION,
       sourceUrl: source.url,
       sourceKind: source.kind,
       sourceId: source.sourceId,
@@ -163,6 +175,7 @@ describe("slides store", () => {
     await fs.symlink(outsideImage, linkPath);
 
     const cached: SlideExtractionResult = {
+      extractorVersion: SLIDE_EXTRACTION_VERSION,
       sourceUrl: source.url,
       sourceKind: source.kind,
       sourceId: source.sourceId,
