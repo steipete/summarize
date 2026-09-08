@@ -36,6 +36,7 @@ export function extractEnclosureForEpisode(
   episodeTitle: string,
 ): { enclosureUrl: string; durationSeconds: number | null } | null {
   const normalizedTarget = normalizeLooseTitle(episodeTitle);
+  if (!normalizedTarget) return null;
   const items = extractFeedItems(feedXml);
   for (const item of items) {
     const title = extractItemTitle(item);
@@ -94,12 +95,14 @@ export function decodeXmlEntities(value: string): string {
 }
 
 export function normalizeLooseTitle(value: string): string {
-  return value
+  const normalized = value
     .toLowerCase()
     .normalize("NFKD")
-    .replaceAll(/\p{Diacritic}+/gu, "")
-    .replaceAll(/[^a-z0-9]+/g, " ")
+    // Keep Latin accent folding, but preserve meaningful marks in other scripts.
+    .replaceAll(/(\p{Script=Latin})\p{M}+/gu, "$1")
+    .replaceAll(/[^\p{L}\p{M}\p{N}]+/gu, " ")
     .trim();
+  return /[\p{L}\p{N}]/u.test(normalized) ? normalized : "";
 }
 
 export function extractFeedItems(xml: string): string[] {
