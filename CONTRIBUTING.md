@@ -7,7 +7,7 @@ Focused fixes, tests, and documentation improvements are welcome.
 Requirements:
 
 - Node.js 24 or newer
-- pnpm 11.24.0 through Corepack
+- pnpm 11.25.0 through Corepack
 - Git
 
 ```bash

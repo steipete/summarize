@@ -2,6 +2,16 @@
 
 ## 0.21.13 - Unreleased
 
+**Highlights:** browser media reliability fixes and stabilized dependency updates.
+
+### Fixes
+
+- Browser media: fix audio sample copying across browser versions and a BlobSource memory leak with MediaBunny 1.55.5.
+
+### Dependencies and maintenance
+
+- Refresh stabilized Pi AI, Undici, happy-dom, and pnpm dependencies while retaining Node 24 support and the seven-day release-age policy.
+
 ### Documentation
 
 - Correct Firefox signing guidance to match the extension ID in published packages.
