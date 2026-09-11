@@ -78,7 +78,7 @@
     "@mozilla/readability": "0.6.0",
     "linkedom": "^0.18.13",
     "sanitize-html": "^2.17.7",
-    "undici": "8.10.1"
+    "undici": "8.10.2"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

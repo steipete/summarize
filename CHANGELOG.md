@@ -2,6 +2,14 @@
 
 ## 0.21.14 - Unreleased
 
+**Highlights:** correct podcast episode selection for non-Latin titles and stabilized network/media reliability updates.
+
+- Podcasts: preserve Unicode episode titles and meaningful combining marks so RSS transcripts and audio match the requested episode; reject empty matching keys (#445, thanks @vincent-peng).
+- Network: update Undici to 8.10.2 for upstream HTTP, retry, cache, TLS, and WebSocket security fixes.
+- Browser media: stop failed MediaBunny sample iterators from continuing internally with MediaBunny 1.55.7.
+- Models: refresh Pi AI to 0.85.0 for provider-stream and proxy fixes while retaining Node 24 support.
+- Maintenance: refresh stabilized DOM, Oxc, Chrome typings, and Vitest tooling; patch the YAML tooling dependency and update the pinned Pages action after its seven-day hold (#402, #446, thanks @dependabot).
+
 ## 0.21.13 - 2026-09-07
 
 **Highlights:** browser media reliability fixes and stabilized dependency updates.
