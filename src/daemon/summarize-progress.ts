@@ -58,6 +58,10 @@ export function formatProgress(event: LinkPreviewProgressEvent): string | null {
       return "X: extracting tweet (nitter)…";
     case ProgressKind.NitterDone:
       return event.ok ? "X: extracted tweet" : "X: extract failed";
+    case ProgressKind.TwitterSyndicationStart:
+      return "X: extracting tweet (syndication API)…";
+    case ProgressKind.TwitterSyndicationDone:
+      return event.ok ? "X: extracted tweet" : "X: extract failed";
     default:
       return null;
   }

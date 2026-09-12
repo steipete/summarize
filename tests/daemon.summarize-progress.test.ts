@@ -86,6 +86,18 @@ describe("daemon/summarize-progress", () => {
         { kind: ProgressKind.NitterDone, ok: false } as LinkPreviewProgressEvent,
         "X: extract failed",
       ],
+      [
+        { kind: ProgressKind.TwitterSyndicationStart } as LinkPreviewProgressEvent,
+        "X: extracting tweet (syndication API)…",
+      ],
+      [
+        { kind: ProgressKind.TwitterSyndicationDone, ok: true } as LinkPreviewProgressEvent,
+        "X: extracted tweet",
+      ],
+      [
+        { kind: ProgressKind.TwitterSyndicationDone, ok: false } as LinkPreviewProgressEvent,
+        "X: extract failed",
+      ],
       [{ kind: "unknown" as unknown as ProgressKind } as LinkPreviewProgressEvent, null],
     ];
 

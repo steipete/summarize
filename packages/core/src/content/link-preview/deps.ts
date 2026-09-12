@@ -24,6 +24,9 @@ export const ProgressKind = {
   NitterStart: "nitter-start",
   NitterDone: "nitter-done",
 
+  TwitterSyndicationStart: "twitter-syndication-start",
+  TwitterSyndicationDone: "twitter-syndication-done",
+
   BirdStart: "bird-start",
   BirdDone: "bird-done",
 } as const;
@@ -125,6 +128,8 @@ export type LinkPreviewProgressEvent =
     }
   | { kind: "nitter-start"; url: string }
   | { kind: "nitter-done"; url: string; ok: boolean; textBytes: number | null }
+  | { kind: "twitter-syndication-start"; url: string }
+  | { kind: "twitter-syndication-done"; url: string; ok: boolean; textBytes: number | null }
   | { kind: "bird-start"; url: string; client?: "xurl" | "bird" | null }
   | {
       kind: "bird-done";

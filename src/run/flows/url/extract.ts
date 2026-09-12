@@ -47,6 +47,9 @@ export function deriveExtractionUi(extracted: ExtractedLinkContent): UrlExtracti
   if (twitterStrategy) {
     viaSources.push(twitterStrategy);
   }
+  if (extracted.diagnostics.strategy === "twitter-syndication") {
+    viaSources.push("twitter-syndication");
+  }
   if (extracted.diagnostics.strategy === "nitter") {
     viaSources.push("Nitter");
   }
@@ -58,6 +61,8 @@ export function deriveExtractionUi(extracted: ExtractedLinkContent): UrlExtracti
   const footerParts: string[] = [];
   if (extracted.diagnostics.strategy === "html") footerParts.push("html");
   if (twitterStrategy) footerParts.push(twitterStrategy);
+  if (extracted.diagnostics.strategy === "twitter-syndication")
+    footerParts.push("twitter-syndication");
   if (extracted.diagnostics.strategy === "nitter") footerParts.push("nitter");
   if (extracted.diagnostics.firecrawl.used) footerParts.push("firecrawl");
   if (extracted.diagnostics.markdown.used) {

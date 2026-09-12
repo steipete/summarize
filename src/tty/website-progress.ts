@@ -83,6 +83,22 @@ export function createWebsiteProgress({
         return;
       }
 
+      if (event.kind === "twitter-syndication-start") {
+        stopAll();
+        spinner.setText(renderStatus("X", ": fetching via syndication API…"));
+        return;
+      }
+
+      if (event.kind === "twitter-syndication-done") {
+        stopAll();
+        if (event.ok && typeof event.textBytes === "number") {
+          spinner.setText(renderStatus("X", `: got ${formatBytes(event.textBytes)}…`));
+          return;
+        }
+        spinner.setText(renderStatus("X", ": syndication failed; fallback…"));
+        return;
+      }
+
       if (event.kind === "firecrawl-start") {
         stopAll();
         const reason = event.reason ? formatFirecrawlReason(event.reason) : "";

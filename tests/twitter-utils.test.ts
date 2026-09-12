@@ -1,8 +1,63 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractTweetId,
   isAnubisHtml,
+  isBlockedTwitterContent,
   toNitterUrls,
+  toTwitterSyndicationUrl,
 } from "../packages/core/src/content/link-preview/content/twitter-utils.js";
+
+describe("extractTweetId", () => {
+  it("extracts status ID from valid x.com and twitter.com URLs", () => {
+    expect(extractTweetId("https://x.com/user/status/2094533934960758909")).toBe(
+      "2094533934960758909",
+    );
+    expect(extractTweetId("https://twitter.com/user/status/1234567890?s=20")).toBe("1234567890");
+    expect(extractTweetId("https://mobile.twitter.com/user/status/9876543210")).toBe("9876543210");
+  });
+
+  it("returns null for non-status, invalid, or alphanumeric status segment URLs", () => {
+    expect(extractTweetId("https://x.com/user")).toBeNull();
+    expect(extractTweetId("https://x.com/user/status/123abc")).toBeNull();
+    expect(extractTweetId("https://example.com/user/status/123")).toBeNull();
+    expect(extractTweetId("not-a-url")).toBeNull();
+  });
+});
+
+describe("toTwitterSyndicationUrl", () => {
+  it("builds expected syndication API endpoint URL with derived token", () => {
+    expect(toTwitterSyndicationUrl("2094533934960758909")).toBe(
+      "https://cdn.syndication.twimg.com/tweet-result?id=2094533934960758909&token=52s67gk1e2",
+    );
+    expect(toTwitterSyndicationUrl("1288158940940222464")).toBe(
+      "https://cdn.syndication.twimg.com/tweet-result?id=1288158940940222464&token=34evcdrq711",
+    );
+    expect(toTwitterSyndicationUrl("1668680561921038336")).toBe(
+      "https://cdn.syndication.twimg.com/tweet-result?id=1668680561921038336&token=41mbbppzkg",
+    );
+  });
+});
+
+describe("isBlockedTwitterContent", () => {
+  it("preserves ordinary reporting about Nitter shutdowns", () => {
+    expect(isBlockedTwitterContent("Nitter received a cease-and-desist letter.")).toBe(false);
+    expect(isBlockedTwitterContent("Nitter.net is offline, according to its developer.")).toBe(
+      false,
+    );
+    expect(isBlockedTwitterContent("Nitter development stopped due to Twitter API changes")).toBe(
+      false,
+    );
+  });
+
+  it("returns false for legitimate tweet content", () => {
+    expect(isBlockedTwitterContent("This is a legitimate summary of a tweet.")).toBe(false);
+    expect(
+      isBlockedTwitterContent(
+        "The company sent a formal cease-and-desist letter regarding patent infringement.",
+      ),
+    ).toBe(false);
+  });
+});
 
 describe("toNitterUrls", () => {
   it("returns empty for non-twitter urls", () => {
