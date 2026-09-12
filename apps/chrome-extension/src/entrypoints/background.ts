@@ -375,10 +375,11 @@ export default defineBackground(() => {
   // Firefox supports sidebarAction.toggle() for programmatic control
   if (import.meta.env.BROWSER === "firefox") {
     chrome.action.onClicked.addListener(() => {
-      // @ts-expect-error - sidebarAction API exists in Firefox but not in Chrome types
-      if (typeof browser?.sidebarAction?.toggle === "function") {
-        // @ts-expect-error - Firefox-specific API
-        void browser.sidebarAction.toggle();
+      const firefoxBrowser = browser as typeof browser & {
+        sidebarAction?: { toggle?: () => Promise<void> };
+      };
+      if (typeof firefoxBrowser?.sidebarAction?.toggle === "function") {
+        void firefoxBrowser.sidebarAction.toggle();
       }
     });
   }

@@ -45,27 +45,7 @@ export async function runBrowserJs(
     throw new Error(buildUserScriptsGuidance(status));
   }
 
-  const terminate =
-    // @ts-expect-error - terminate is not yet in the type definitions
-    typeof chrome.userScripts?.terminate === "function"
-      ? // @ts-expect-error - terminate is not yet in the type definitions
-        chrome.userScripts.terminate.bind(chrome.userScripts)
-      : null;
-  const executionId = terminate ? crypto.randomUUID() : undefined;
   const nativeInputCapability = nativeInputEnabled ? crypto.randomUUID() : "";
-  let abortHandler: (() => void) | null = null;
-
-  if (signal && executionId && terminate) {
-    abortHandler = () => {
-      try {
-        terminate(tab.id, executionId);
-      } catch {
-        // Ignore termination races.
-      }
-    };
-    signal.addEventListener("abort", abortHandler, { once: true });
-  }
-
   const wrapperCode = buildBrowserJsWrapper({
     fnSource,
     args,
@@ -84,33 +64,28 @@ export async function runBrowserJs(
     // World configuration may already exist.
   }
 
-  try {
-    return await withArtifactsArmedTab({
-      enabled: true,
-      tabId,
-      sendMessage: (message) => chrome.runtime.sendMessage(message),
-      run: async () =>
-        withNativeInputArmedTab({
-          enabled: nativeInputEnabled,
-          tabId,
-          sendMessage: (message) => chrome.runtime.sendMessage(message),
-          capability: nativeInputCapability,
-          run: async () => {
-            const results = await userScripts.execute!({
-              target: { tabId },
-              world: "USER_SCRIPT",
-              worldId: "summarize-browserjs",
-              injectImmediately: true,
-              js: [{ code: wrapperCode }],
-              ...(executionId ? { executionId } : {}),
-            });
-            if (signal?.aborted) return { ok: false, error: "Execution aborted" };
-            const result = results?.[0]?.result as BrowserJsResult | undefined;
-            return result ?? { ok: false, error: "No result from browserjs()" };
-          },
-        }),
-    });
-  } finally {
-    if (abortHandler) signal?.removeEventListener("abort", abortHandler);
-  }
+  return await withArtifactsArmedTab({
+    enabled: true,
+    tabId,
+    sendMessage: (message) => chrome.runtime.sendMessage(message),
+    run: async () =>
+      withNativeInputArmedTab({
+        enabled: nativeInputEnabled,
+        tabId,
+        sendMessage: (message) => chrome.runtime.sendMessage(message),
+        capability: nativeInputCapability,
+        run: async () => {
+          const results = await userScripts.execute!({
+            target: { tabId },
+            world: "USER_SCRIPT",
+            worldId: "summarize-browserjs",
+            injectImmediately: true,
+            js: [{ code: wrapperCode }],
+          });
+          if (signal?.aborted) return { ok: false, error: "Execution aborted" };
+          const result = results?.[0]?.result as BrowserJsResult | undefined;
+          return result ?? { ok: false, error: "No result from browserjs()" };
+        },
+      }),
+  });
 }
