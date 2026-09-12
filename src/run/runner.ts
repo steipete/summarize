@@ -72,7 +72,7 @@ export async function runCli(
 
     applyWidthOverride({ width: program.opts().width, env });
 
-    let promptOverride = await resolvePromptOverride({
+    const promptOverride = await resolvePromptOverride({
       prompt: program.opts().prompt,
       promptFile: program.opts().promptFile,
     });

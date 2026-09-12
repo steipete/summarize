@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { access } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { readCliOptionValue } from "../cli-args.js";
 import { loadSummarizeConfig } from "../config.js";
 import {
   createThemeRenderer,
@@ -32,16 +33,6 @@ const parseModel = (value: string | null): OnnxModel => {
   const normalized = value.trim().toLowerCase();
   if (normalized === "parakeet" || normalized === "canary") return normalized;
   throw new Error(`Unsupported --model: ${value}`);
-};
-
-const readArgValue = (normalizedArgv: string[], name: string): string | null => {
-  const eq = normalizedArgv.find((arg) => arg.startsWith(`${name}=`));
-  if (eq) return eq.slice(`${name}=`.length).trim() || null;
-  const index = normalizedArgv.indexOf(name);
-  if (index === -1) return null;
-  const next = normalizedArgv[index + 1];
-  if (!next || next.startsWith("-")) return null;
-  return next.trim() || null;
 };
 
 const fileExists = async (filePath: string): Promise<boolean> => {
@@ -111,10 +102,10 @@ export async function handleTranscriberCliRequest({
     throw new Error(`Unknown transcriber command: ${subcommand}`);
   }
 
-  const model = parseModel(readArgValue(normalizedArgv, "--model"));
+  const model = parseModel(readCliOptionValue(normalizedArgv, "--model"));
   const { config } = loadSummarizeConfig({ env: envForRun });
   const themeName = resolveThemeNameFromSources({
-    cli: readArgValue(normalizedArgv, "--theme"),
+    cli: readCliOptionValue(normalizedArgv, "--theme"),
     env: envForRun.SUMMARIZE_THEME,
     config: config?.ui?.theme,
   });

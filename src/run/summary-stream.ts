@@ -1,8 +1,7 @@
-import { createMarkdownStreamer, render as renderMarkdownAnsi } from "markdansi";
 import type { SummaryStreamHandler } from "../engine/events.js";
-import { prepareMarkdownForTerminalStreaming } from "./markdown.js";
+import { createTerminalMarkdownStreamer } from "./markdown-streamer.js";
 import { createStreamOutputGate, type StreamOutputMode } from "./stream-output.js";
-import { isRichTty, markdownRenderWidth, supportsColor } from "./terminal.js";
+import { isRichTty } from "./terminal.js";
 
 export function createTerminalSummaryStream({
   stdout,
@@ -37,18 +36,7 @@ export function createTerminalSummaryStream({
         restoreDuringStream: resolvedOutputMode !== "delta",
       });
   const createStreamer = () =>
-    shouldRenderMarkdown
-      ? createMarkdownStreamer({
-          render: (markdown) =>
-            renderMarkdownAnsi(prepareMarkdownForTerminalStreaming(markdown), {
-              width: markdownRenderWidth(stdout, env),
-              wrap: true,
-              color: supportsColor(stdout, envForRun),
-              hyperlinks: true,
-            }),
-          spacing: "single",
-        })
-      : null;
+    shouldRenderMarkdown ? createTerminalMarkdownStreamer({ stdout, env, envForRun }) : null;
   let streamer = createStreamer();
   let wroteLeadingBlankLine = false;
 

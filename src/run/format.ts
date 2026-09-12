@@ -1,3 +1,4 @@
+export { sumNumbersOrNull } from "../shared/numbers.js";
 export { resolveTargetCharacters } from "../shared/summary-length.js";
 
 export function formatOptionalString(value: string | null | undefined): string {
@@ -12,18 +13,6 @@ export function formatOptionalNumber(value: number | null | undefined): string {
     return String(value);
   }
   return "none";
-}
-
-export function sumNumbersOrNull(values: Array<number | null>): number | null {
-  let sum = 0;
-  let any = false;
-  for (const value of values) {
-    if (typeof value === "number" && Number.isFinite(value)) {
-      sum += value;
-      any = true;
-    }
-  }
-  return any ? sum : null;
 }
 
 export function formatUSD(value: number): string {

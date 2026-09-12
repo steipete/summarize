@@ -46,6 +46,8 @@ Core owns file-summary instruction construction and timed-transcript parsing/for
 
 The engine never writes summary text to stdout.
 
+CLI summary and slide adapters share the terminal Markdown streamer factory in `src/run/markdown-streamer.ts`; each adapter retains its own progress and stream lifecycle. Standalone command preflight uses `src/cli-args.ts` for the same equals-form and separate-value option semantics.
+
 Each provider attempt resolves one request shared by streaming, direct completion, and fallback completion. Stream consumption owns output-handler lifecycle and marks visible or handler failures as interrupted; only an uncommitted provider failure can fall back to completion. Usage collection happens after successful stream consumption and does not trigger another model call.
 
 `SummaryStreamHandler` receives normalized chunks:

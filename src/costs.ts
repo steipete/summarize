@@ -1,5 +1,6 @@
 import type { LlmTokenUsage } from "./llm/generate-text.js";
 import type { LlmProvider as BaseLlmProvider } from "./llm/model-id.js";
+import { sumNumbersOrNull } from "./shared/numbers.js";
 
 export type LlmProvider = BaseLlmProvider | "cli";
 
@@ -25,18 +26,6 @@ export type RunMetricsReport = {
     apify: { requests: number };
   };
 };
-
-function sumOrNull(values: Array<number | null>): number | null {
-  let sum = 0;
-  let any = false;
-  for (const value of values) {
-    if (typeof value === "number" && Number.isFinite(value)) {
-      sum += value;
-      any = true;
-    }
-  }
-  return any ? sum : null;
-}
 
 export function buildRunMetricsReport({
   llmCalls,
@@ -83,9 +72,9 @@ export function buildRunMetricsReport({
   }
 
   const llm = Array.from(llmMap.values()).map((row) => {
-    const promptTokens = sumOrNull(row.promptTokens);
-    const completionTokens = sumOrNull(row.completionTokens);
-    const totalTokens = sumOrNull(row.totalTokens);
+    const promptTokens = sumNumbersOrNull(row.promptTokens);
+    const completionTokens = sumNumbersOrNull(row.completionTokens);
+    const totalTokens = sumNumbersOrNull(row.totalTokens);
     return {
       provider: row.provider,
       model: row.model,

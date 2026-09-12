@@ -1,3 +1,4 @@
+import { readCliOptionValue } from "../cli-args.js";
 import { buildDaemonHelp } from "../run/help.js";
 import {
   checkAuth,
@@ -39,16 +40,6 @@ type DaemonCliContext = {
   stderr: NodeJS.WritableStream;
 };
 
-function readArgValue(argv: string[], name: string): string | null {
-  const eq = argv.find((a) => a.startsWith(`${name}=`));
-  if (eq) return eq.slice(`${name}=`.length).trim() || null;
-  const index = argv.indexOf(name);
-  if (index === -1) return null;
-  const next = argv[index + 1];
-  if (!next || next.startsWith("-")) return null;
-  return next.trim() || null;
-}
-
 function wantHelp(argv: string[]): boolean {
   return argv.includes("--help") || argv.includes("-h") || argv.includes("help");
 }
@@ -58,7 +49,7 @@ function hasArg(argv: string[], name: string): boolean {
 }
 
 function readPortArg(argv: string[]): number | null {
-  const portRaw = readArgValue(argv, "--port");
+  const portRaw = readCliOptionValue(argv, "--port");
   if (!portRaw) return null;
   const port = Number(portRaw);
   if (!Number.isFinite(port) || port <= 0 || port > 65535) throw new Error("Invalid --port");
@@ -66,7 +57,7 @@ function readPortArg(argv: string[]): number | null {
 }
 
 function readExtensionIdArg(argv: string[]): string | null {
-  const extensionId = readArgValue(argv, "--extension-id");
+  const extensionId = readCliOptionValue(argv, "--extension-id");
   if (!extensionId) return null;
   if (!/^[a-p]{32}$/.test(extensionId)) throw new Error("Invalid --extension-id");
   return extensionId;
@@ -114,7 +105,7 @@ export async function handleDaemonRequest({
   }
 
   if (sub === "install") {
-    const token = readArgValue(normalizedArgv, "--token");
+    const token = readCliOptionValue(normalizedArgv, "--token");
     if (!token) throw new Error("Missing --token");
     const requestedPort = readPortArg(normalizedArgv);
     const dev = hasArg(normalizedArgv, "--dev");
@@ -345,7 +336,7 @@ export async function handleDaemonRequest({
 
   if (sub === "run") {
     const existingConfig = await readDaemonConfig({ env: envForRun });
-    const tokenOverride = readArgValue(normalizedArgv, "--token")?.trim() || null;
+    const tokenOverride = readCliOptionValue(normalizedArgv, "--token")?.trim() || null;
     const port = readPortArg(normalizedArgv) ?? existingConfig?.port ?? DAEMON_PORT_DEFAULT;
     if (!existingConfig && !tokenOverride) {
       stderr.write("Missing ~/.summarize/daemon.json\n");

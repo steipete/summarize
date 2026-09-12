@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import { readCliOptionValue } from "../cli-args.js";
 import { handleDaemonRequest } from "../daemon/cli.js";
 import { refreshFree } from "../refresh-free.js";
 import {
@@ -96,20 +97,10 @@ export async function handleRefreshFreeRequest({
     normalizedArgv.includes("-h") ||
     normalizedArgv.includes("help");
 
-  const readArgValue = (name: string): string | null => {
-    const eq = normalizedArgv.find((a) => a.startsWith(`${name}=`));
-    if (eq) return eq.slice(`${name}=`.length).trim() || null;
-    const index = normalizedArgv.indexOf(name);
-    if (index === -1) return null;
-    const next = normalizedArgv[index + 1];
-    if (!next || next.startsWith("-")) return null;
-    return next.trim() || null;
-  };
-
-  const runsRaw = readArgValue("--runs");
-  const smartRaw = readArgValue("--smart");
-  const minParamsRaw = readArgValue("--min-params");
-  const maxAgeDaysRaw = readArgValue("--max-age-days");
+  const runsRaw = readCliOptionValue(normalizedArgv, "--runs");
+  const smartRaw = readCliOptionValue(normalizedArgv, "--smart");
+  const minParamsRaw = readCliOptionValue(normalizedArgv, "--min-params");
+  const maxAgeDaysRaw = readCliOptionValue(normalizedArgv, "--max-age-days");
   const runs = runsRaw ? Number(runsRaw) : 2;
   const smart = smartRaw ? Number(smartRaw) : 3;
   const minParams = (() => {
