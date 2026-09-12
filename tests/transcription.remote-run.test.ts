@@ -43,7 +43,6 @@ vi.mock("../packages/core/src/transcription/whisper/deepgram.js", () => ({
 }));
 vi.mock("../packages/core/src/transcription/whisper/openai.js", () => ({
   transcribeWithOpenAi: mocks.openai,
-  shouldRetryOpenAiViaFfmpeg: () => false,
 }));
 vi.mock("../packages/core/src/transcription/whisper/fal.js", () => ({
   transcribeWithFal: mocks.fal,
@@ -147,7 +146,7 @@ describe.each(["groq", "openai"] as const)("%s decode retry source ownership", (
       mocks.ffmpeg.mockResolvedValue(true);
       const converted = new Uint8Array([9]);
       mocks.transcode.mockResolvedValue(converted);
-      const transcribe = vi.fn().mockRejectedValueOnce(new Error("decode failure"));
+      const transcribe = vi.fn().mockRejectedValueOnce(new Error("could not be decoded"));
       if (throws) transcribe.mockRejectedValueOnce(new Error("retry unavailable"));
       else transcribe.mockResolvedValueOnce(null);
       const source = {
@@ -162,7 +161,6 @@ describe.each(["groq", "openai"] as const)("%s decode retry source ownership", (
         provider,
         notes,
         transcribe,
-        shouldRetry: () => true,
       });
       expect(attempt.kind).toBe("error");
       if (throws) {

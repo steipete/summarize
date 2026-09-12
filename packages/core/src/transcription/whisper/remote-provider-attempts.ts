@@ -10,7 +10,7 @@ import {
 import { transcribeWithFal } from "./fal.js";
 import { isFfmpegAvailable } from "./ffmpeg.js";
 import { transcribeFileWithGemini, transcribeWithGemini } from "./gemini.js";
-import { shouldRetryOpenAiViaFfmpeg, transcribeWithOpenAi } from "./openai.js";
+import { transcribeWithOpenAi } from "./openai.js";
 import type {
   ProviderResult,
   TranscriptionBytes,
@@ -132,7 +132,6 @@ async function attemptOpenAi(
       transcribeWithOpenAi(input.bytes, input.mediaType, input.filename, options.openaiApiKey!, {
         env: options.env,
       }),
-    shouldRetry: shouldRetryOpenAiViaFfmpeg,
   });
   run.source = truncated && attempt.kind === "error" ? source : attempt.source;
   return attempt;

@@ -1273,13 +1273,13 @@ describe("transcription/whisper", () => {
     }
   });
 
-  it("shouldRetryGroqViaFfmpeg detects retryable errors", async () => {
-    const { shouldRetryGroqViaFfmpeg } =
-      await import("../packages/core/src/transcription/whisper/groq.js");
-    expect(shouldRetryGroqViaFfmpeg(new Error("Unrecognized file format"))).toBe(true);
-    expect(shouldRetryGroqViaFfmpeg(new Error("could not be decoded"))).toBe(true);
-    expect(shouldRetryGroqViaFfmpeg(new Error("format is not supported"))).toBe(true);
-    expect(shouldRetryGroqViaFfmpeg(new Error("rate limit exceeded"))).toBe(false);
+  it("isMediaDecodeError detects retryable errors", async () => {
+    const { isMediaDecodeError } =
+      await import("../packages/core/src/transcription/whisper/decode-retry.js");
+    expect(isMediaDecodeError(new Error("Unrecognized file format"))).toBe(true);
+    expect(isMediaDecodeError(new Error("could not be decoded"))).toBe(true);
+    expect(isMediaDecodeError(new Error("format is not supported"))).toBe(true);
+    expect(isMediaDecodeError(new Error("rate limit exceeded"))).toBe(false);
   });
 
   it("uses Groq with default filename when none provided", async () => {

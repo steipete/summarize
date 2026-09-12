@@ -10,7 +10,7 @@ import {
   transcribeMediaFileWithDiarization,
 } from "./diarization.js";
 import { isFfmpegAvailable } from "./ffmpeg.js";
-import { shouldRetryGroqViaFfmpeg, transcribeWithGroq } from "./groq.js";
+import { transcribeWithGroq } from "./groq.js";
 import { transcribeWithLocalOnnx, transcribeWithLocalWhisper } from "./local.js";
 import { transcribeWithRemoteFallbacks } from "./remote.js";
 import {
@@ -126,7 +126,6 @@ async function transcribe(
         notes: run.notes,
         transcribe: (input) =>
           transcribeWithGroq(input.bytes, input.mediaType, input.filename, settings.groqApiKey!),
-        shouldRetry: shouldRetryGroqViaFfmpeg,
       });
       run.source = attempt.source;
       if (attempt.kind === "result") return { ...attempt.result, notes: run.notes };

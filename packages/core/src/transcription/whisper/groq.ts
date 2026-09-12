@@ -41,15 +41,6 @@ export async function transcribeWithGroq(
   return trimmed.length > 0 ? trimmed : null;
 }
 
-export function shouldRetryGroqViaFfmpeg(error: Error): boolean {
-  const msg = error.message.toLowerCase();
-  return (
-    msg.includes("unrecognized file format") ||
-    msg.includes("could not be decoded") ||
-    msg.includes("format is not supported")
-  );
-}
-
 async function tryGroqCurlFallback({
   bytes,
   mediaType,

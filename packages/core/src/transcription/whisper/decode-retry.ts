@@ -2,18 +2,25 @@ import { isFfmpegAvailable, transcodeBytesToMp3 } from "./ffmpeg.js";
 import type { ProviderResult, TranscriptionBytes } from "./request.js";
 import { wrapError } from "./utils.js";
 
+export function isMediaDecodeError(error: Error): boolean {
+  const msg = error.message.toLowerCase();
+  return (
+    msg.includes("unrecognized file format") ||
+    msg.includes("could not be decoded") ||
+    msg.includes("format is not supported")
+  );
+}
+
 export async function transcribeWithDecodeRetry({
   source,
   provider,
   notes,
   transcribe,
-  shouldRetry,
 }: {
   source: TranscriptionBytes;
   provider: "groq" | "openai";
   notes: string[];
   transcribe: (source: TranscriptionBytes) => Promise<string | null>;
-  shouldRetry: (error: Error) => boolean;
 }): Promise<ProviderResult & { source: TranscriptionBytes }> {
   const label = provider === "groq" ? "Groq" : "OpenAI";
   const success = (
@@ -32,7 +39,7 @@ export async function transcribeWithDecodeRetry({
   } catch (error) {
     failure = wrapError(`${label} transcription failed`, error);
   }
-  if (shouldRetry(failure)) {
+  if (isMediaDecodeError(failure)) {
     if (await isFfmpegAvailable()) {
       try {
         notes.push(`${label} could not decode media; transcoding via ffmpeg and retrying`);

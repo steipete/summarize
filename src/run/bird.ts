@@ -1,3 +1,4 @@
+import { isTwitterStatusUrl } from "@steipete/summarize-core/content/url";
 import { execTweetCli } from "./bird/exec.js";
 import { parseBirdTweetPayload, parseXurlTweetPayload } from "./bird/parse.js";
 import type { BirdTweetPayload, TweetCliClient } from "./bird/types.js";
@@ -18,17 +19,6 @@ function parseTweetId(raw: string): string | null {
     return match?.[1] ?? null;
   } catch {
     return null;
-  }
-}
-
-function isTwitterStatusUrl(raw: string): boolean {
-  try {
-    const parsed = new URL(raw);
-    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
-    if (!TWITTER_HOSTS.has(host)) return false;
-    return /\/status\/\d+/.test(parsed.pathname);
-  } catch {
-    return false;
   }
 }
 

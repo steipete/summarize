@@ -140,15 +140,6 @@ function parseSecondsToMs(value: unknown): number | null {
   return Number.isFinite(numeric) && numeric >= 0 ? Math.round(numeric * 1000) : null;
 }
 
-export function shouldRetryOpenAiViaFfmpeg(error: Error): boolean {
-  const msg = error.message.toLowerCase();
-  return (
-    msg.includes("unrecognized file format") ||
-    msg.includes("could not be decoded") ||
-    msg.includes("format is not supported")
-  );
-}
-
 function resolveRetryAfterMs(
   headers: Headers,
   status: number,
