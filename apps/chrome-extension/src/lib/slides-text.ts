@@ -6,5 +6,6 @@ export {
   resolveSlideTextBudget,
   splitSlideTitleFromText,
   splitSummaryFromSlides,
+  truncateSlideText,
   type SlideTimelineEntry,
 } from "@steipete/summarize-core/slides";

@@ -1,8 +1,8 @@
 export type { SlideTimelineEntry, TranscriptSegment } from "./text-types.js";
 
+export { buildSlideTextFallback, coerceSummaryWithSlides } from "./text-compose.js";
+
 export {
-  buildSlideTextFallback,
-  coerceSummaryWithSlides,
   ensureSlideTitleLine,
   extractSlideMarkers,
   findSlidesSectionStart,
@@ -22,4 +22,5 @@ export {
   parseTimestampSeconds,
   resolveSlideTextBudget,
   resolveSlideWindowSeconds,
+  truncateSlideText,
 } from "./text-transcript.js";

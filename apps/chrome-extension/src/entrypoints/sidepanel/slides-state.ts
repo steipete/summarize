@@ -5,6 +5,7 @@ import {
   buildSlideTextFallback,
   resolveSlideTextBudget,
   splitSummaryFromSlides,
+  truncateSlideText,
   type SlideTimelineEntry,
 } from "../../lib/slides-text";
 import { chooseSlideDescription, sanitizeSlideSummaryTitle } from "./slide-text-policy";
@@ -162,14 +163,6 @@ export function normalizeOcrText(raw: string | null | undefined): string {
   }
 
   return text;
-}
-
-function truncateSlideText(value: string, limit: number): string {
-  if (value.length <= limit) return value;
-  const truncated = value.slice(0, limit).trimEnd();
-  const clean = truncated.replace(/\s+\S*$/, "").trim();
-  const result = clean.length > 0 ? clean : truncated.trim();
-  return result.length > 0 ? `${result}...` : "";
 }
 
 function getOcrTextForSlide(slide: SlideLike, budget: number): string {

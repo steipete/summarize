@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildSlideTextFallback,
   coerceSummaryWithSlides,
+} from "../packages/core/src/slides/text-compose.js";
+import {
   ensureSlideTitleLine,
   extractSlideMarkers,
   findSlidesSectionStart,
