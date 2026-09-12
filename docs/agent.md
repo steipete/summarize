@@ -57,7 +57,7 @@ Service installation keeps launchd, systemd, and Scheduled Task policy in separa
 
 Defined in `apps/chrome-extension/wxt.config.ts`:
 
-- `userScripts` – optional; requested via Options for `browserjs()` main-world script execution.
+- `userScripts` – optional; requested via Options for `browserjs()` page-context script execution.
 - `debugger` – required only in `build:automation` for **native input** and the **debugger** tool.
 
 Neither permission is needed for summarization. The standard Chrome build omits `debugger` because
@@ -65,6 +65,8 @@ Neither permission is needed for summarization. The standard Chrome build omits 
 and it hides debugger-backed tools. The separate automation build declares it as required.
 
 #### Chrome: enable User Scripts (if needed)
+
+Immediate `browserjs()` execution requires [Chrome 135+](https://developer.chrome.com/docs/extensions/reference/api/userScripts#method-execute). The extension installation minimum remains Chrome 120+.
 
 1. `chrome://extensions`
 2. Open extension details
@@ -206,7 +208,7 @@ REPL environment:
 
 - Runs in a **sandboxed iframe** (no DOM access to the panel).
 - `browserjs(fn, ...args)` runs the function **in the page context**.
-  - Uses `chrome.userScripts.execute` in the main world.
+  - Uses `chrome.userScripts.execute` (Chrome 135+) for page-context execution.
 - `navigate({ url })` available inside the REPL (always use for navigation).
 - `sleep(ms)` helper.
 - Console output is captured and returned; return values are appended as `=> value`.

@@ -1,3 +1,5 @@
+const MIN_EXECUTE_CHROME_VERSION = 135;
+
 export type UserScriptsStatus = {
   apiAvailable: boolean;
   permissionGranted: boolean;
@@ -11,7 +13,7 @@ export function getChromeVersion(): number | null {
 }
 
 export async function getUserScriptsStatus(): Promise<UserScriptsStatus> {
-  const apiAvailable = Boolean(chrome.userScripts);
+  const apiAvailable = typeof chrome.userScripts?.execute === "function";
   const permissionGranted = Boolean(
     await chrome.permissions?.contains?.({ permissions: ["userScripts"] }),
   );
@@ -22,7 +24,6 @@ export async function getUserScriptsStatus(): Promise<UserScriptsStatus> {
   };
 }
 
-// Returns a user-facing, actionable message for the current userScripts status.
 export function buildUserScriptsGuidance(status: UserScriptsStatus): string {
   const chromeVersion = status.chromeVersion ?? 0;
   const permissionHint = status.permissionGranted
@@ -38,6 +39,10 @@ export function buildUserScriptsGuidance(status: UserScriptsStatus): string {
       .join(" ");
   }
 
+  if (chromeVersion > 0 && chromeVersion < MIN_EXECUTE_CHROME_VERSION) {
+    return `Chrome ${chromeVersion} detected. Browser automation requires Chrome ${MIN_EXECUTE_CHROME_VERSION} or higher. Please update Chrome.`;
+  }
+
   if (chromeVersion >= 138) {
     return [
       permissionHint,
@@ -47,19 +52,10 @@ export function buildUserScriptsGuidance(status: UserScriptsStatus): string {
       .join("\n\n");
   }
 
-  if (chromeVersion >= 120) {
+  if (chromeVersion >= MIN_EXECUTE_CHROME_VERSION) {
     return [
       permissionHint,
       `Chrome ${chromeVersion} detected. Enable Developer mode in chrome://extensions, then reload the extension and try again.`,
-    ]
-      .filter(Boolean)
-      .join(" ");
-  }
-
-  if (chromeVersion > 0) {
-    return [
-      permissionHint,
-      `Chrome ${chromeVersion} detected. The userScripts API requires Chrome 120 or higher. Please update Chrome.`,
     ]
       .filter(Boolean)
       .join(" ");

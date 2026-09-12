@@ -105,7 +105,8 @@ access with Chrome policy; see [`docs/chrome-enterprise.md`](../../docs/chrome-e
 Summarization, chat, and browser media do not require Chrome's `userScripts` or `debugger`
 permissions. Website automation is off by default. **Options → Enable automation permissions**
 requests optional `userScripts` access from an explicit user click so user-requested `browserjs()` /
-REPL code can run in the page's main world.
+REPL code can run in the page context. Immediate `browserjs()` execution requires Chrome 135+;
+the extension installation minimum remains Chrome 120+.
 
 Chrome does not allow `debugger` to be declared optional. The standard Chrome build omits it and
 hides the debugger tool; `pnpm -C apps/chrome-extension build:automation` creates the separate
