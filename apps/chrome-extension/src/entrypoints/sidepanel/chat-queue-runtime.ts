@@ -38,6 +38,7 @@ export function createChatQueueRuntime(opts: ChatQueueRuntimeOpts) {
 
       const text = document.createElement("div");
       text.className = "chatQueueText";
+      text.dataset.localeIgnore = "true";
       text.textContent = item.text;
       text.title = item.text;
 

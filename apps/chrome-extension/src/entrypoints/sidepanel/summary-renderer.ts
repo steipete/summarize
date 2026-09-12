@@ -116,6 +116,7 @@ export function renderSummaryEmptyState({
   if (state.detail) {
     const detail = document.createElement("p");
     detail.className = "renderEmpty__detail";
+    detail.dataset.localeIgnore = "true";
     detail.textContent = state.detail;
     wrapper.append(detail);
   }
