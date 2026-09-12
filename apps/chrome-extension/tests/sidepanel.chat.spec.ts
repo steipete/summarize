@@ -1,4 +1,4 @@
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { getSummarizeCalls, mockDaemonSummarize } from "./helpers/daemon-fixtures";
 import { test } from "./helpers/extension-fixtures";
 import {
@@ -19,6 +19,39 @@ import {
   waitForPanelPort,
 } from "./helpers/extension-harness";
 
+async function sendChat(page: Page, text: string, method: "button" | "keyboard" = "button") {
+  const input = page.locator("#chatInput");
+  await input.fill(text, { timeout: 10_000 });
+  if (method === "keyboard") await input.press("Enter", { timeout: 10_000 });
+  else await page.locator("#chatSend").click({ timeout: 10_000 });
+}
+
+async function gateDaemonReadiness(harness: Parameters<typeof getBackground>[0]) {
+  const background = await getBackground(harness);
+  await background.evaluate(() => {
+    const state = globalThis as typeof globalThis & { __releaseChatReadiness?: () => void };
+    const previousFetch = globalThis.fetch;
+    const ready = new Promise<void>((resolve) => {
+      state.__releaseChatReadiness = resolve;
+    });
+    globalThis.fetch = async (input, init) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url === "http://127.0.0.1:8787/health" || url === "http://127.0.0.1:8787/v1/ping") {
+        await ready;
+      }
+      return previousFetch(input, init);
+    };
+  });
+  return async () => {
+    await background.evaluate(() => {
+      const state = globalThis as typeof globalThis & { __releaseChatReadiness?: () => void };
+      if (!state.__releaseChatReadiness) throw new Error("Missing chat readiness gate");
+      state.__releaseChatReadiness();
+      delete state.__releaseChatReadiness;
+    });
+  };
+}
+
 test("sidepanel chat queue sends next message after stream completes", async ({ harness }) => {
   await mockDaemonSummarize(harness);
   await seedSettings(harness, {
@@ -38,6 +71,7 @@ test("sidepanel chat queue sends next message after stream completes", async ({ 
   await injectContentScript(harness, "content-scripts/extract.js", "https://example.com");
   await waitForExtractReady(harness, "https://example.com");
 
+  const releaseReadiness = await gateDaemonReadiness(harness);
   const page = await openExtensionPage(harness, "sidepanel.html", "#title");
 
   let agentRequestCount = 0;
@@ -57,23 +91,23 @@ test("sidepanel chat queue sends next message after stream completes", async ({ 
     });
   });
 
-  const sendChat = async (text: string) => {
-    await page.evaluate((value) => {
-      const input = document.getElementById("chatInput") as HTMLTextAreaElement | null;
-      const send = document.getElementById("chatSend") as HTMLButtonElement | null;
-      if (!input || !send) return;
-      input.value = value;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      send.click();
-    }, text);
-  };
-
   await maybeBringToFront(contentPage);
   await activateTabByUrl(harness, "https://example.com");
   await waitForActiveTabUrl(harness, "https://example.com");
-  await sendChat("First question");
+  await expect(page.locator("#chatDock")).toBeHidden();
+  const firstMessage = sendChat(page, "First question");
+  try {
+    // Cross the page command queue while daemon readiness is still gated.
+    await page.evaluate(() => undefined);
+    await expect(page.locator("#chatInput")).toHaveValue("");
+    expect(agentRequestCount).toBe(0);
+  } finally {
+    await releaseReadiness();
+    await firstMessage;
+  }
   await expect.poll(() => agentRequestCount).toBe(1);
-  await sendChat("Second question");
+  await sendChat(page, "Second question");
+  await expect(page.locator("#chatQueue")).toContainText("Second question");
   await expect.poll(() => agentRequestCount, { timeout: 1_000 }).toBe(1);
 
   releaseFirst?.();
@@ -209,42 +243,14 @@ test("sidepanel chat queue drains messages after stream completes", async ({ har
     });
   });
 
-  const sendChat = async (text: string) => {
-    await page.evaluate((value) => {
-      const input = document.getElementById("chatInput") as HTMLTextAreaElement | null;
-      const send = document.getElementById("chatSend") as HTMLButtonElement | null;
-      if (!input || !send) return;
-      input.value = value;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      send.click();
-    }, text);
-  };
-
   await maybeBringToFront(contentPage);
   await activateTabByUrl(harness, "https://example.com");
   await waitForActiveTabUrl(harness, "https://example.com");
-  await sendChat("First question");
+  await sendChat(page, "First question");
   await expect.poll(() => agentRequestCount).toBe(1);
 
-  const enqueueChat = async (text: string) => {
-    await page.evaluate((value) => {
-      const input = document.getElementById("chatInput") as HTMLTextAreaElement | null;
-      if (!input) return;
-      input.value = value;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(
-        new KeyboardEvent("keydown", {
-          key: "Enter",
-          code: "Enter",
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-    }, text);
-  };
-
-  await enqueueChat("Second question");
-  await enqueueChat("Third question");
+  await sendChat(page, "Second question", "keyboard");
+  await sendChat(page, "Third question", "keyboard");
 
   releaseFirst?.();
 
