@@ -33,7 +33,6 @@ export async function runCli(
   argv: string[],
   { env: inputEnv, fetch, execFile: execFileOverride, stdin, stdout, stderr }: RunEnv,
 ): Promise<void> {
-  (globalThis as unknown as { AI_SDK_LOG_WARNINGS?: boolean }).AI_SDK_LOG_WARNINGS = false;
   const perfTrace = createPerfTrace({ env: inputEnv, stderr });
   const runStdout = perfTrace?.wrapStdout(stdout) ?? stdout;
 

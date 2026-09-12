@@ -14,10 +14,14 @@ const htmlResponse = (html: string, status = 200) =>
 describe("cli --json", () => {
   const home = mkdtempSync(join(tmpdir(), "summarize-tests-json-"));
 
-  it("disables AI SDK warning logs (stdout must stay JSON)", async () => {
+  it("preserves read-only host logging settings while keeping stdout JSON", async () => {
     const globalObject = globalThis as unknown as { AI_SDK_LOG_WARNINGS?: boolean };
-    const previous = globalObject.AI_SDK_LOG_WARNINGS;
-    globalObject.AI_SDK_LOG_WARNINGS = true;
+    const previous = Object.getOwnPropertyDescriptor(globalObject, "AI_SDK_LOG_WARNINGS");
+    Object.defineProperty(globalObject, "AI_SDK_LOG_WARNINGS", {
+      value: true,
+      writable: false,
+      configurable: true,
+    });
 
     try {
       const html =
@@ -54,10 +58,11 @@ describe("cli --json", () => {
         },
       );
 
-      expect(globalObject.AI_SDK_LOG_WARNINGS).toBe(false);
+      expect(globalObject.AI_SDK_LOG_WARNINGS).toBe(true);
       expect(() => JSON.parse(stdoutText)).not.toThrow();
     } finally {
-      globalObject.AI_SDK_LOG_WARNINGS = previous;
+      if (previous) Object.defineProperty(globalObject, "AI_SDK_LOG_WARNINGS", previous);
+      else Reflect.deleteProperty(globalObject, "AI_SDK_LOG_WARNINGS");
     }
   });
 
