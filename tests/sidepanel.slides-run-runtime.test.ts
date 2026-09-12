@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  applyPanelStateAction,
-  createInitialPanelState,
-} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import { createSlidesRunRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-run-runtime";
 import type {
   PanelState,
@@ -53,9 +50,7 @@ function createHarness(
   };
   const runtime = createSlidesRunRuntime({
     panelState,
-    dispatchPanelState: options.dispatch
-      ? (action) => applyPanelStateAction(panelState, action)
-      : undefined,
+
     refreshSummarizeControl: calls.refreshSummarizeControl,
     hideSlideNotice: calls.hideSlideNotice,
     setSlidesBusy: calls.setSlidesBusy,

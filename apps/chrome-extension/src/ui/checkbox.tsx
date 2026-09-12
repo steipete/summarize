@@ -1,4 +1,4 @@
-import { render } from "preact";
+import { mountComponent } from "./mount";
 
 function Checkmark() {
   return (
@@ -59,17 +59,5 @@ export function mountCheckbox(
     onCheckedChange: (checked: boolean) => void;
   },
 ) {
-  let current = props;
-  const renderCheckbox = () => {
-    render(<CheckboxField {...current} />, root);
-  };
-
-  renderCheckbox();
-
-  return {
-    update(next: typeof current) {
-      current = next;
-      renderCheckbox();
-    },
-  };
+  return mountComponent(root, CheckboxField, props);
 }

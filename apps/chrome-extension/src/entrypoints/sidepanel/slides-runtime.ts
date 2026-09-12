@@ -3,7 +3,6 @@ import {
   shouldUseBrowserAiForSlides,
 } from "./browser-ai-slides-runtime";
 import type { createBrowserAiSummaryRuntime } from "./browser-ai-summary-runtime";
-import type { PanelStateAction } from "./panel-state-store";
 import { createSlidesHydrator } from "./slides-hydrator";
 import { createSlidesRunRuntime } from "./slides-run-runtime";
 import { createSlidesSummaryController } from "./slides-summary-controller";
@@ -14,7 +13,7 @@ export function createSidepanelSlidesRuntime({
   browserAi,
   clearSummarySource,
   panelState,
-  dispatchPanelState,
+
   friendlyFetchError,
   getLengthValue,
   getToken,
@@ -40,7 +39,7 @@ export function createSidepanelSlidesRuntime({
   browserAi: ReturnType<typeof createBrowserAiSummaryRuntime>;
   clearSummarySource: () => void;
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   friendlyFetchError: (error: unknown, fallback: string) => string;
   getLengthValue: () => string;
   getToken: () => Promise<string>;
@@ -68,7 +67,7 @@ export function createSidepanelSlidesRuntime({
 }) {
   const slidesSummaryController = createSlidesSummaryController({
     getToken,
-    dispatchPanelState,
+
     friendlyFetchError,
     panelUrlsMatch,
     getPanelState: () => panelState,
@@ -139,7 +138,7 @@ export function createSidepanelSlidesRuntime({
 
   const slidesRunRuntime = createSlidesRunRuntime({
     panelState,
-    dispatchPanelState,
+
     refreshSummarizeControl,
     hideSlideNotice,
     setSlidesBusy,

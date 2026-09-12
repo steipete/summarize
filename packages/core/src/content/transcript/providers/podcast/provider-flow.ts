@@ -1,41 +1,16 @@
-import type { TranscriptionConfig } from "../../transcription-config.js";
 import type { ProviderResult } from "../../types.js";
 import { fetchTranscriptWithYtDlp } from "../youtube/yt-dlp.js";
+import { fetchFeedTranscript } from "./feed-flow.js";
 import type { PodcastFlowContext } from "./flow-context.js";
 import { buildWhisperResult, joinNotes } from "./results.js";
-import {
-  decodeXmlEntities,
-  extractEnclosureFromFeed,
-  tryFetchTranscriptFromFeedXml,
-} from "./rss.js";
+import { decodeXmlEntities, extractEnclosureFromFeed } from "./rss.js";
 
 export async function tryPodcastTranscriptFromFeed(
   flow: PodcastFlowContext,
 ): Promise<ProviderResult | null> {
-  if (!flow.feedHtml || !/podcast:transcript/i.test(flow.feedHtml)) return null;
-
-  flow.pushOnce("podcastTranscript");
-  const direct = await tryFetchTranscriptFromFeedXml({
-    fetchImpl: flow.options.fetch,
-    feedXml: flow.feedHtml,
-    episodeTitle: null,
-    notes: flow.notes,
-  });
-  if (!direct) return null;
-
-  return {
-    text: direct.text,
-    source: "podcastTranscript",
-    segments: flow.options.transcriptTimestamps ? (direct.segments ?? null) : null,
-    attemptedProviders: flow.attemptedProviders,
-    notes: joinNotes(flow.notes),
-    metadata: {
-      provider: "podcast",
-      kind: "rss_podcast_transcript",
-      transcriptUrl: direct.transcriptUrl,
-      transcriptType: direct.transcriptType,
-    },
-  };
+  return flow.feedHtml
+    ? fetchFeedTranscript(flow, flow.feedHtml, null, { kind: "rss_podcast_transcript" })
+    : null;
 }
 
 export async function tryFeedEnclosureTranscript(
@@ -99,25 +74,13 @@ export async function tryOgAudioTranscript(
   });
   if (result.text) {
     flow.notes.push("Used og:audio media (may be a preview clip, not the full episode)");
-    return buildWhisperResult({
-      attemptedProviders: flow.attemptedProviders,
-      notes: flow.notes,
-      outcome: result,
-      metadata: {
-        provider: "podcast",
-        kind: "og_audio",
-        ogAudioUrl,
-      },
-    });
   }
-
-  return {
-    text: null,
-    source: null,
+  return buildWhisperResult({
     attemptedProviders: flow.attemptedProviders,
-    notes: result.error?.message ?? null,
+    notes: flow.notes,
+    outcome: result,
     metadata: { provider: "podcast", kind: "og_audio", ogAudioUrl },
-  };
+  });
 }
 
 export async function tryPodcastYtDlpTranscript(

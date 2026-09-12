@@ -7,17 +7,13 @@ import { extractReadabilityFromHtml } from "../packages/core/src/content/link-pr
 
 describe("HTML document adapter", () => {
   it("wraps fragments and keeps the doctype outside the body", () => {
-    const parsed = parseHtmlDocument('<!doctype html><p id="content">Hello</p>');
-    try {
-      expect(parsed.document.documentElement?.tagName.toLowerCase()).toBe("html");
-      expect(parsed.document.head).not.toBeNull();
-      expect(parsed.document.body?.querySelector("#content")?.textContent).toBe("Hello");
-      const serialized = serializeHtmlDocument(parsed.document);
-      expect(serialized.match(/<!doctype/gi)).toHaveLength(1);
-      expect(parsed.document.body?.innerHTML).not.toContain("doctype");
-    } finally {
-      parsed.close();
-    }
+    const document = parseHtmlDocument('<!doctype html><p id="content">Hello</p>');
+    expect(document.documentElement?.tagName.toLowerCase()).toBe("html");
+    expect(document.head).not.toBeNull();
+    expect(document.body?.querySelector("#content")?.textContent).toBe("Hello");
+    const serialized = serializeHtmlDocument(document);
+    expect(serialized.match(/<!doctype/gi)).toHaveLength(1);
+    expect(document.body?.innerHTML).not.toContain("doctype");
   });
 
   it("moves malformed document children into the body for Readability", async () => {
@@ -32,83 +28,57 @@ describe("HTML document adapter", () => {
   });
 
   it("does not mistake raw html text for the document element", () => {
-    const parsed = parseHtmlDocument(
+    const document = parseHtmlDocument(
       '<textarea><html></textarea><article id="content">Still present</article>',
     );
-    try {
-      expect(parsed.document.body?.querySelector("#content")?.textContent).toBe("Still present");
-      expect(parsed.document.body?.querySelector("textarea")?.textContent).toBe("<html>");
-    } finally {
-      parsed.close();
-    }
+    expect(document.body?.querySelector("#content")?.textContent).toBe("Still present");
+    expect(document.body?.querySelector("textarea")?.textContent).toBe("<html>");
   });
 
   it("normalizes documents with optional html tags", () => {
-    const parsed = parseHtmlDocument(
+    const document = parseHtmlDocument(
       "<!doctype html><head><title>Optional tags</title></head><body><p>Body</p></body>",
     );
-    try {
-      expect(parsed.document.head?.querySelector("title")?.textContent).toBe("Optional tags");
-      expect(parsed.document.body?.textContent).toBe("Body");
-      expect(parsed.document.body?.querySelector("head, body")).toBeNull();
-    } finally {
-      parsed.close();
-    }
+    expect(document.head?.querySelector("title")?.textContent).toBe("Optional tags");
+    expect(document.body?.textContent).toBe("Body");
+    expect(document.body?.querySelector("head, body")).toBeNull();
   });
 
   it("places leading document metadata in a synthesized head", () => {
-    const parsed = parseHtmlDocument(
+    const document = parseHtmlDocument(
       '<title>Fragment title</title><meta name="description" content="Details"><article>Body</article>',
     );
-    try {
-      expect(parsed.document.title).toBe("Fragment title");
-      expect(parsed.document.head?.querySelector('meta[name="description"]')).not.toBeNull();
-      expect(parsed.document.body?.textContent).toBe("Body");
-    } finally {
-      parsed.close();
-    }
+    expect(document.title).toBe("Fragment title");
+    expect(document.head?.querySelector('meta[name="description"]')).not.toBeNull();
+    expect(document.body?.textContent).toBe("Body");
   });
 
   it("normalizes HTML attribute names without changing foreign content", () => {
-    const parsed = parseHtmlDocument(
+    const document = parseHtmlDocument(
       '<META PROPERTY="og:title" CONTENT="Uppercase title"><video SRC="first.mp4" src="second.mp4"></video><svg viewBox="0 0 1 1"></svg><math><csymbol definitionURL="urn:example"></csymbol></math>',
     );
-    try {
-      expect(
-        parsed.document.head?.querySelector('meta[property="og:title"]')?.getAttribute("content"),
-      ).toBe("Uppercase title");
-      expect(parsed.document.body?.querySelector("video")?.getAttribute("src")).toBe("first.mp4");
-      expect(parsed.document.body?.querySelector("svg")?.hasAttribute("viewBox")).toBe(true);
-      expect(parsed.document.body?.querySelector("csymbol")?.hasAttribute("definitionURL")).toBe(
-        true,
-      );
-    } finally {
-      parsed.close();
-    }
+    expect(document.head?.querySelector('meta[property="og:title"]')?.getAttribute("content")).toBe(
+      "Uppercase title",
+    );
+    expect(document.body?.querySelector("video")?.getAttribute("src")).toBe("first.mp4");
+    expect(document.body?.querySelector("svg")?.hasAttribute("viewBox")).toBe(true);
+    expect(document.body?.querySelector("csymbol")?.hasAttribute("definitionURL")).toBe(true);
   });
 
   it("recognizes full documents after an XML declaration", () => {
-    const parsed = parseHtmlDocument(
+    const document = parseHtmlDocument(
       '<?xml version="1.0"?><!doctype html><html><head><title>XHTML</title></head><body><p>Body</p></body></html>',
     );
-    try {
-      expect(parsed.document.title).toBe("XHTML");
-      expect(parsed.document.body?.textContent).toBe("Body");
-    } finally {
-      parsed.close();
-    }
+    expect(document.title).toBe("XHTML");
+    expect(document.body?.textContent).toBe("Body");
   });
 
   it("preserves body content order around malformed head and body tags", () => {
-    const parsed = parseHtmlDocument(
+    const document = parseHtmlDocument(
       "<html><div>Before</div><head><title>Title</title></head><body><p>Main</p></body><div>After</div></html>",
     );
-    try {
-      expect(parsed.document.body?.textContent).toBe("BeforeMainAfter");
-      expect(parsed.document.head?.querySelector("title")?.textContent).toBe("Title");
-    } finally {
-      parsed.close();
-    }
+    expect(document.body?.textContent).toBe("BeforeMainAfter");
+    expect(document.head?.querySelector("title")?.textContent).toBe("Title");
   });
 
   it("resolves relative links against the page URL for Readability", async () => {
@@ -124,12 +94,11 @@ describe("HTML document adapter", () => {
   it("does not execute scripts while parsing", () => {
     const marker = "__summarizeLinkedomExecutionMarker";
     delete (globalThis as Record<string, unknown>)[marker];
-    const parsed = parseHtmlDocument(`<script>globalThis.${marker} = true</script><p>Safe</p>`);
+    const document = parseHtmlDocument(`<script>globalThis.${marker} = true</script><p>Safe</p>`);
     try {
       expect((globalThis as Record<string, unknown>)[marker]).toBeUndefined();
-      expect(parsed.document.body?.textContent).toContain("Safe");
+      expect(document.body?.textContent).toContain("Safe");
     } finally {
-      parsed.close();
       delete (globalThis as Record<string, unknown>)[marker];
     }
   });

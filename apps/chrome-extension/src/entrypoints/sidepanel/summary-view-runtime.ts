@@ -1,7 +1,7 @@
 import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import { buildIdleSubtitle } from "../../lib/header";
 import type { PanelCachePayload } from "./panel-cache";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState, resetPanelSummary, restorePanelSession } from "./panel-state-store";
 import { normalizeSlideImageUrl } from "./slide-images";
 import { normalizeSlidesPayload } from "./slides-payload";
 import { clearSummaryCopyButton } from "./summary-renderer";
@@ -31,7 +31,7 @@ type HeaderControllerLike = {
 
 type SummaryViewRuntimeOpts = {
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   renderEl: HTMLElement;
   renderSlidesHostEl: HTMLElement;
   renderMarkdownHostEl: HTMLElement;
@@ -59,13 +59,6 @@ type SummaryViewRuntimeOpts = {
 };
 
 export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
-  const dispatch = (action: PanelStateAction) => {
-    if (opts.dispatchPanelState) {
-      opts.dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(opts.panelState, action);
-    }
-  };
   const resolveActiveSlidesRunId = () => {
     if (opts.panelState.slidesRunId) return opts.panelState.slidesRunId;
     if (opts.panelState.slides && opts.panelState.runId) return opts.panelState.runId;
@@ -83,20 +76,17 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     opts.renderMarkdownHostEl.innerHTML = "";
     clearSummaryCopyButton(opts.summaryCopyBtn);
     opts.metricsController.clearForMode("summary");
-    dispatch({ type: "reset-summary", clearRunId, clearSlides: stopSlides });
-    dispatch({
-      type: "slides-session-update",
-      value: {
-        slidesExpanded: true,
-        ...(stopSlides
-          ? {
-              slidesContextPending: false,
-              slidesContextUrl: null,
-              slidesSeededSourceId: null,
-              slidesAppliedRunId: null,
-            }
-          : {}),
-      },
+    resetPanelSummary(opts.panelState, { clearRunId, clearSlides: stopSlides });
+    patchPanelState(opts.panelState, "slidesSession", {
+      slidesExpanded: true,
+      ...(stopSlides
+        ? {
+            slidesContextPending: false,
+            slidesContextUrl: null,
+            slidesSeededSourceId: null,
+            slidesAppliedRunId: null,
+          }
+        : {}),
     });
     if (stopSlides) {
       opts.slidesRenderer.clear();
@@ -112,8 +102,7 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     const slidesRunId =
       payload.slidesRunId ??
       (opts.panelState.slidesSession.slidesParallel ? null : (payload.runId ?? null));
-    dispatch({
-      type: "restore-session",
+    restorePanelSession(opts.panelState, {
       tabId: payload.tabId,
       runId: payload.runId ?? null,
       slidesRunId,
@@ -125,20 +114,17 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
       },
       summaryFromCache: payload.summaryFromCache ?? null,
     });
-    dispatch({
-      type: "slides-summary-update",
-      value: {
-        markdown: payload.slidesSummaryMarkdown ?? "",
-        complete:
-          payload.slidesSummaryComplete ?? Boolean((payload.slidesSummaryMarkdown ?? "").trim()),
-        model:
-          payload.slidesSummaryModel ??
-          opts.panelState.lastMeta.model ??
-          opts.panelState.ui?.settings.model ??
-          null,
-        pending: null,
-        hadError: false,
-      },
+    patchPanelState(opts.panelState, "slidesSummary", {
+      markdown: payload.slidesSummaryMarkdown ?? "",
+      complete:
+        payload.slidesSummaryComplete ?? Boolean((payload.slidesSummaryMarkdown ?? "").trim()),
+      model:
+        payload.slidesSummaryModel ??
+        opts.panelState.lastMeta.model ??
+        opts.panelState.ui?.settings.model ??
+        null,
+      pending: null,
+      hadError: false,
     });
     opts.headerController.setBaseTitle(payload.title || payload.url || "Summarize");
     opts.headerController.setBaseSubtitle(
@@ -152,26 +138,16 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
     const normalizedSlides = normalizeSlidesPayload(payload.slides);
     const hasNormalizedSlides = Boolean(normalizedSlides && normalizedSlides.slides.length > 0);
     if (normalizedSlides && hasNormalizedSlides) {
-      dispatch({
-        type: "slides",
-        slides: {
-          ...normalizedSlides,
-          slides: normalizedSlides.slides.map((slide) => ({
-            ...slide,
-            imageUrl: normalizeSlideImageUrl(
-              slide.imageUrl,
-              normalizedSlides.sourceId,
-              slide.index,
-            ),
-          })),
-        },
-      });
-      dispatch({
-        type: "slides-session-update",
-        value: {
-          slidesContextPending: false,
-          slidesContextUrl: opts.slidesTextController.getTranscriptAvailable() ? payload.url : null,
-        },
+      opts.panelState.slides = {
+        ...normalizedSlides,
+        slides: normalizedSlides.slides.map((slide) => ({
+          ...slide,
+          imageUrl: normalizeSlideImageUrl(slide.imageUrl, normalizedSlides.sourceId, slide.index),
+        })),
+      };
+      patchPanelState(opts.panelState, "slidesSession", {
+        slidesContextPending: false,
+        slidesContextUrl: opts.slidesTextController.getTranscriptAvailable() ? payload.url : null,
       });
       opts.updateSlidesTextState();
       if (
@@ -181,19 +157,15 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
       ) {
         void opts.requestSlidesContext();
       }
-      dispatch({
-        type: "slides-session-update",
-        value: { slidesAppliedRunId: resolveActiveSlidesRunId() },
+      patchPanelState(opts.panelState, "slidesSession", {
+        slidesAppliedRunId: resolveActiveSlidesRunId(),
       });
     } else {
-      dispatch({ type: "slides", slides: null });
-      dispatch({
-        type: "slides-session-update",
-        value: {
-          slidesContextPending: false,
-          slidesContextUrl: null,
-          slidesAppliedRunId: null,
-        },
+      opts.panelState.slides = null;
+      patchPanelState(opts.panelState, "slidesSession", {
+        slidesContextPending: false,
+        slidesContextUrl: null,
+        slidesAppliedRunId: null,
       });
       opts.updateSlidesTextState();
       if (payload.summaryMarkdown && payload.url && isYouTubeVideoUrl(payload.url)) {

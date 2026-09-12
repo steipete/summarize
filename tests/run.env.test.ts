@@ -30,6 +30,18 @@ describe("run/env", () => {
     expect(resolveExecutableInPath(uvx.file, { PATH: "" })).toBe(uvx.file);
     expect(resolveExecutableInPath("missing", { PATH: uvx.dir })).toBeNull();
     expect(resolveExecutableInPath("", { PATH: uvx.dir })).toBeNull();
+    expect(resolveExecutableInPath("missing", { TOOL_PATH: ` ${uvx.file} ` }, "TOOL_PATH")).toBe(
+      uvx.file,
+    );
+    expect(
+      resolveExecutableInPath("missing", { PATH: uvx.dir, TOOL_PATH: "uvx" }, "TOOL_PATH"),
+    ).toBe(uvx.file);
+    expect(resolveExecutableInPath("uvx", { PATH: uvx.dir, TOOL_PATH: " " }, "TOOL_PATH")).toBe(
+      uvx.file,
+    );
+    expect(
+      resolveExecutableInPath("uvx", { PATH: uvx.dir, TOOL_PATH: "missing" }, "TOOL_PATH"),
+    ).toBeNull();
   });
 
   it("detects uvx from either UVX_PATH or PATH", () => {

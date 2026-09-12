@@ -1,0 +1,16 @@
+export const LEGACY_API_KEY_ENV_MAP = {
+  openai: "OPENAI_API_KEY",
+  nvidia: "NVIDIA_API_KEY",
+  minimax: "MINIMAX_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  google: "GEMINI_API_KEY",
+  xai: "XAI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+  zai: "Z_AI_API_KEY",
+  apify: "APIFY_API_TOKEN",
+  firecrawl: "FIRECRAWL_API_KEY",
+  fal: "FAL_KEY",
+  groq: "GROQ_API_KEY",
+  assemblyai: "ASSEMBLYAI_API_KEY",
+  elevenlabs: "ELEVENLABS_API_KEY",
+} as const;

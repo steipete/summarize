@@ -4,11 +4,16 @@ import type { LlmProvider } from "./llm/model-id.js";
 import type { ModelRequestOptions } from "./llm/model-options.js";
 import {
   DEFAULT_CLI_MODELS,
-  type RequiredModelEnv,
   requiredEnvForCliProvider,
-  resolveRequiredEnvForModelId,
+  requiredEnvForGatewayProvider,
 } from "./llm/provider-capabilities.js";
-import { DEFAULT_OLLAMA_BASE_URL } from "./llm/provider-profile.js";
+import {
+  getGatewayProviderProfile,
+  isGatewayProvider,
+  parseCliProviderName,
+  type CliRequiredModelEnv,
+  type GatewayRequiredModelEnv,
+} from "./llm/provider-registry.js";
 
 export type FixedModelSpec =
   | {
@@ -18,16 +23,7 @@ export type FixedModelSpec =
       provider: LlmProvider;
       openrouterProviders: string[] | null;
       forceOpenRouter: false;
-      requiredEnv:
-        | "XAI_API_KEY"
-        | "OPENAI_API_KEY"
-        | "GEMINI_API_KEY"
-        | "ANTHROPIC_API_KEY"
-        | "Z_AI_API_KEY"
-        | "NVIDIA_API_KEY"
-        | "MINIMAX_API_KEY"
-        | "GITHUB_TOKEN"
-        | "OLLAMA_BASE_URL";
+      requiredEnv: GatewayRequiredModelEnv;
       openaiBaseUrlOverride?: string | null;
       forceChatCompletions?: boolean;
       requestOptions?: ModelRequestOptions;
@@ -48,16 +44,7 @@ export type FixedModelSpec =
       llmModelId: null;
       openrouterProviders: null;
       forceOpenRouter: false;
-      requiredEnv:
-        | "CLI_CLAUDE"
-        | "CLI_CODEX"
-        | "CLI_GEMINI"
-        | "CLI_AGENT"
-        | "CLI_OPENCLAW"
-        | "CLI_OPENCODE"
-        | "CLI_COPILOT"
-        | "CLI_AGY"
-        | "CLI_PI";
+      requiredEnv: CliRequiredModelEnv;
       cliProvider: CliProvider;
       cliModel: string | null;
     };
@@ -102,125 +89,15 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     };
   }
 
-  if (lower.startsWith("zai/")) {
-    const model = trimmed.slice("zai/".length).trim();
-    if (model.length === 0) {
-      throw new Error("Invalid model id: zai/… is missing the model id");
-    }
-    return {
-      kind: "fixed",
-      transport: "native",
-      userModelId: `zai/${model}`,
-      llmModelId: `zai/${model}`,
-      provider: "zai",
-      openrouterProviders: null,
-      forceOpenRouter: false,
-      requiredEnv: "Z_AI_API_KEY",
-      openaiBaseUrlOverride: "https://api.z.ai/api/paas/v4",
-      forceChatCompletions: true,
-    };
-  }
-
-  if (lower.startsWith("nvidia/")) {
-    const model = trimmed.slice("nvidia/".length).trim();
-    if (model.length === 0) {
-      throw new Error("Invalid model id: nvidia/… is missing the model id");
-    }
-    return {
-      kind: "fixed",
-      transport: "native",
-      userModelId: `nvidia/${model}`,
-      llmModelId: `nvidia/${model}`,
-      provider: "nvidia",
-      openrouterProviders: null,
-      forceOpenRouter: false,
-      requiredEnv: "NVIDIA_API_KEY",
-      // Default; can be overridden at runtime via NVIDIA_BASE_URL / config.nvidia.baseUrl.
-      openaiBaseUrlOverride: "https://integrate.api.nvidia.com/v1",
-      forceChatCompletions: true,
-    };
-  }
-
-  if (lower.startsWith("minimax/")) {
-    const model = trimmed.slice("minimax/".length).trim();
-    if (model.length === 0) {
-      throw new Error("Invalid model id: minimax/… is missing the model id");
-    }
-    return {
-      kind: "fixed",
-      transport: "native",
-      userModelId: `minimax/${model}`,
-      llmModelId: `minimax/${model}`,
-      provider: "minimax",
-      openrouterProviders: null,
-      forceOpenRouter: false,
-      requiredEnv: "MINIMAX_API_KEY",
-      // Default; can be overridden at runtime via MINIMAX_BASE_URL / config.minimax.baseUrl.
-      openaiBaseUrlOverride: "https://api.minimax.io/v1",
-      forceChatCompletions: true,
-    };
-  }
-
-  if (lower.startsWith("ollama/")) {
-    const model = trimmed.slice("ollama/".length).trim();
-    if (model.length === 0) {
-      throw new Error("Invalid model id: ollama/… is missing the model id");
-    }
-    return {
-      kind: "fixed",
-      transport: "native",
-      userModelId: `ollama/${model}`,
-      llmModelId: `ollama/${model}`,
-      provider: "ollama",
-      openrouterProviders: null,
-      forceOpenRouter: false,
-      requiredEnv: "OLLAMA_BASE_URL",
-      // Default; can be overridden at runtime via OLLAMA_BASE_URL / config.ollama.baseUrl.
-      openaiBaseUrlOverride: DEFAULT_OLLAMA_BASE_URL,
-      forceChatCompletions: true,
-    };
-  }
-
-  if (lower.startsWith("github-copilot/")) {
-    const model = trimmed.slice("github-copilot/".length).trim();
-    if (model.length === 0) {
-      throw new Error("Invalid model id: github-copilot/… is missing the model id");
-    }
-    const userModelId = normalizeGatewayStyleModelId(`github-copilot/${model}`);
-    return {
-      kind: "fixed",
-      transport: "native",
-      userModelId,
-      llmModelId: userModelId,
-      provider: "github-copilot",
-      openrouterProviders: null,
-      forceOpenRouter: false,
-      requiredEnv: "GITHUB_TOKEN",
-      openaiBaseUrlOverride: "https://models.github.ai/inference",
-      forceChatCompletions: true,
-    };
-  }
-
   if (lower.startsWith("cli/")) {
     const parts = trimmed
       .split("/")
       .map((part) => part.trim())
       .filter((part) => part.length > 0);
-    const providerRaw = parts[1]?.toLowerCase() ?? "";
-    if (
-      providerRaw !== "claude" &&
-      providerRaw !== "codex" &&
-      providerRaw !== "gemini" &&
-      providerRaw !== "agent" &&
-      providerRaw !== "openclaw" &&
-      providerRaw !== "opencode" &&
-      providerRaw !== "copilot" &&
-      providerRaw !== "agy" &&
-      providerRaw !== "pi"
-    ) {
+    const cliProvider = parseCliProviderName(parts[1] ?? "");
+    if (!cliProvider) {
       throw new Error(`Invalid CLI model id "${trimmed}". Expected cli/<provider>/<model>.`);
     }
-    const cliProvider = providerRaw as CliProvider;
     const requestedModel = parts.slice(2).join("/").trim();
     if (cliProvider === "agy" && requestedModel.length > 0) {
       throw new Error(
@@ -228,18 +105,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       );
     }
     const cliModel = requestedModel.length > 0 ? requestedModel : DEFAULT_CLI_MODELS[cliProvider];
-    const requiredEnv = requiredEnvForCliProvider(cliProvider) as Extract<
-      RequiredModelEnv,
-      | "CLI_CLAUDE"
-      | "CLI_CODEX"
-      | "CLI_GEMINI"
-      | "CLI_AGENT"
-      | "CLI_OPENCLAW"
-      | "CLI_OPENCODE"
-      | "CLI_COPILOT"
-      | "CLI_AGY"
-      | "CLI_PI"
-    >;
+    const requiredEnv = requiredEnvForCliProvider(cliProvider);
     const userModelId = cliModel ? `cli/${cliProvider}/${cliModel}` : `cli/${cliProvider}`;
     return {
       kind: "fixed",
@@ -289,22 +155,35 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     );
   }
 
+  const provider = lower.slice(0, lower.indexOf("/"));
+  if (isGatewayProvider(provider)) {
+    const profile = getGatewayProviderProfile(provider);
+    if (profile.defaultBaseUrl) {
+      const model = trimmed.slice(provider.length + 1).trim();
+      if (model.length === 0) {
+        throw new Error(`Invalid model id: ${provider}/… is missing the model id`);
+      }
+      const userModelId = normalizeGatewayStyleModelId(`${provider}/${model}`);
+      return {
+        kind: "fixed",
+        transport: "native",
+        userModelId,
+        llmModelId: userModelId,
+        provider,
+        openrouterProviders: null,
+        forceOpenRouter: false,
+        requiredEnv: profile.requiredEnv,
+        openaiBaseUrlOverride: profile.defaultBaseUrl,
+        forceChatCompletions: profile.forceChatCompletions,
+      };
+    }
+  }
+
   const userModelId = normalizeGatewayStyleModelId(trimmed);
   const parsed = parseGatewayStyleModelId(userModelId);
   const fastOpenAi = parsed.provider === "openai" ? resolveOpenAiFastModelId(parsed.model) : null;
   const llmModelId = fastOpenAi ? `openai/${fastOpenAi.modelId}` : userModelId;
-  const requiredEnv = resolveRequiredEnvForModelId(userModelId) as Extract<
-    RequiredModelEnv,
-    | "XAI_API_KEY"
-    | "OPENAI_API_KEY"
-    | "GEMINI_API_KEY"
-    | "ANTHROPIC_API_KEY"
-    | "Z_AI_API_KEY"
-    | "NVIDIA_API_KEY"
-    | "MINIMAX_API_KEY"
-    | "GITHUB_TOKEN"
-    | "OLLAMA_BASE_URL"
-  >;
+  const requiredEnv = requiredEnvForGatewayProvider(parsed.provider);
   return {
     kind: "fixed",
     transport: "native",

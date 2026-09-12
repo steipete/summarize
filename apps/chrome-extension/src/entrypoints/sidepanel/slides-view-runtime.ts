@@ -2,7 +2,7 @@ import { shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import type MarkdownIt from "markdown-it";
 import { logExtensionEvent } from "../../lib/extension-logs";
 import type { SseSlidesData } from "../../lib/runtime-contracts";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import { createSlideImageLoader, normalizeSlideImageUrl } from "./slide-images";
 import {
   normalizeSlidesPayload,
@@ -12,6 +12,7 @@ import {
 import { createSlidesRenderer } from "./slides-renderer";
 import { resolveSlidesInputMode } from "./slides-session-state";
 import { formatSlideTimestamp } from "./slides-state";
+import type { createSlidesTextController } from "./slides-text-controller";
 import { renderSummaryMarkdownDisplay } from "./summary-renderer";
 import type { PanelState, SlideSummarySource } from "./types";
 
@@ -29,29 +30,27 @@ export function createSlidesViewRuntime({
   refreshSummarizeControl,
   hideSlideNotice,
   panelState,
-  dispatchPanelState,
+
   getFallbackSummaryMarkdown,
 }: {
   renderMarkdownHostEl: HTMLElement;
   renderSlidesHostEl: HTMLElement;
   summaryCopyBtn: HTMLButtonElement;
   chatMessagesEl: HTMLElement;
-  md: MarkdownIt;
+  md: InstanceType<typeof MarkdownIt>;
   headerSetStatus: (text: string) => void;
   headerSetProgressOverride: (busy: boolean) => void;
-  slidesTextController: {
-    hasSummaryTitles: () => boolean;
-    updateSummaryFromMarkdown: (
-      markdown: string,
-      opts?: { preserveIfEmpty?: boolean; source?: "summary" | "slides" },
-    ) => boolean;
-    rebuildDescriptions: () => void;
-    syncTextState: () => void;
-    getDescriptions: () => Map<number, string>;
-    getTitles: () => Map<number, string>;
-    getDescriptionEntries: () => Array<[number, string]>;
-    getTranscriptTimedText: () => string | null;
-  };
+  slidesTextController: Pick<
+    ReturnType<typeof createSlidesTextController>,
+    | "hasSummaryTitles"
+    | "updateSummaryFromMarkdown"
+    | "rebuildDescriptions"
+    | "syncTextState"
+    | "getDescriptions"
+    | "getTitles"
+    | "getDescriptionEntries"
+    | "getTranscriptTimedText"
+  >;
   panelCacheController: { scheduleSync: () => void };
   send: (
     message:
@@ -61,19 +60,13 @@ export function createSlidesViewRuntime({
   refreshSummarizeControl: () => void;
   hideSlideNotice: () => void;
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   getFallbackSummaryMarkdown?: () => string | null;
 }) {
   const slideImageLoader = createSlideImageLoader();
-  const dispatch = (action: PanelStateAction) => {
-    if (dispatchPanelState) {
-      dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(panelState, action);
-    }
-  };
+
   const updateSlidesSession = (value: Partial<PanelState["slidesSession"]>) => {
-    dispatch({ type: "slides-session-update", value });
+    patchPanelState(panelState, "slidesSession", value);
   };
   const resolveActiveSlidesRunId = () => {
     if (panelState.slidesRunId) return panelState.slidesRunId;
@@ -160,7 +153,7 @@ export function createSlidesViewRuntime({
     slidesRenderer.renderInline(container, opts);
   };
 
-  const renderMarkdownDisplay = () => {
+  const renderSummaryDisplay = (markdown: string) => {
     renderSummaryMarkdownDisplay({
       activeTabUrl: panelState.navigation.activeTabUrl,
       autoSummarize: panelState.panelSession.autoSummarize,
@@ -171,7 +164,7 @@ export function createSlidesViewRuntime({
       hostEl: renderMarkdownHostEl,
       copyButtonEl: summaryCopyBtn,
       inputMode: resolveSlidesInputMode(panelState.slidesSession),
-      markdown: panelState.summaryMarkdown ?? "",
+      markdown,
       md,
       phase: panelState.phase,
       renderInlineSlides,
@@ -182,27 +175,8 @@ export function createSlidesViewRuntime({
     });
   };
 
-  const renderEmptySummaryState = () => {
-    renderSummaryMarkdownDisplay({
-      activeTabUrl: panelState.navigation.activeTabUrl,
-      autoSummarize: panelState.panelSession.autoSummarize,
-      currentSourceTitle: panelState.currentSource?.title ?? null,
-      currentSourceUrl: panelState.currentSource?.url ?? null,
-      hasSlides: Boolean(panelState.slides?.slides.length),
-      headerSetStatus,
-      hostEl: renderMarkdownHostEl,
-      copyButtonEl: summaryCopyBtn,
-      inputMode: resolveSlidesInputMode(panelState.slidesSession),
-      markdown: "",
-      md,
-      phase: panelState.phase,
-      renderInlineSlides,
-      slidesEnabled: panelState.slidesSession.slidesEnabled,
-      slidesLayout: panelState.slidesSession.slidesLayout,
-      tabTitle: panelState.ui?.tab.title ?? null,
-      tabUrl: panelState.ui?.tab.url ?? null,
-    });
-  };
+  const renderMarkdownDisplay = () => renderSummaryDisplay(panelState.summaryMarkdown ?? "");
+  const renderEmptySummaryState = () => renderSummaryDisplay("");
 
   const updateSlideSummaryFromMarkdown = (
     markdown: string,
@@ -214,7 +188,7 @@ export function createSlidesViewRuntime({
   };
 
   const renderMarkdown = (markdown: string) => {
-    dispatch({ type: "summary", markdown });
+    panelState.summaryMarkdown = markdown;
     updateSlideSummaryFromMarkdown(markdown, {
       preserveIfEmpty: slidesTextController.hasSummaryTitles(),
       source: "summary",
@@ -238,7 +212,9 @@ export function createSlidesViewRuntime({
     if (!panelState.slides || panelState.slidesSession.slidesContextPending) return;
     const sourceUrl = panelState.slides.sourceUrl || panelState.currentSource?.url || null;
     if (sourceUrl && panelState.slidesSession.slidesContextUrl === sourceUrl) return;
-    dispatch({ type: "slides-context-request-next" });
+    patchPanelState(panelState, "slidesSession", {
+      slidesContextRequestId: panelState.slidesSession.slidesContextRequestId + 1,
+    });
     const requestId = `slides-${panelState.slidesSession.slidesContextRequestId}`;
     updateSlidesSession({
       slidesContextPending: true,
@@ -294,7 +270,7 @@ export function createSlidesViewRuntime({
       }
       return;
     }
-    dispatch({ type: "slides", slides: merged });
+    panelState.slides = merged;
     if (activeSlidesRunId) {
       updateSlidesSession({ slidesAppliedRunId: activeSlidesRunId });
     }

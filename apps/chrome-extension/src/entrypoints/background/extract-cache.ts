@@ -7,8 +7,8 @@ import type { SlidesPayload } from "./panel-utils";
 
 export { createCachedExtract, type CachedExtract } from "./cached-extract";
 
-type CachedExtractStore = {
-  getCachedExtract(tabId: number, url: string): CachedExtract | null | undefined;
+export type CachedExtractStore = {
+  getCachedExtract(tabId: number, url?: string | null): CachedExtract | null;
   setCachedExtract(tabId: number, value: CachedExtract): void;
   getLastMediaProbe(tabId: number): string | null | undefined;
   rememberMediaProbe(tabId: number, url: string): void;
@@ -200,7 +200,7 @@ export async function ensureChatExtract({
   return next;
 }
 
-export async function primeMediaHint({
+export async function primeMediaHint<Session>({
   session,
   tabId,
   url,
@@ -210,14 +210,14 @@ export async function primeMediaHint({
   extractFromTab,
   emitState,
 }: {
-  session: unknown;
+  session: Session;
   tabId: number;
   url: string;
   title: string | null;
   panelSessionStore: CachedExtractStore;
   urlsMatch: (left: string, right: string) => boolean;
-  extractFromTab: (tabId: number, maxCharacters: number) => Promise<ExtractResponse>;
-  emitState: (session: unknown, status: string) => void;
+  extractFromTab: ExtractorContext["extractFromTab"];
+  emitState: (session: Session, status: string) => void;
 }): Promise<void> {
   const lastProbeUrl = panelSessionStore.getLastMediaProbe(tabId);
   if (lastProbeUrl && urlsMatch(lastProbeUrl, url)) return;

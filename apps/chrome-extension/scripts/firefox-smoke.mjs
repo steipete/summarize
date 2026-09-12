@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -20,15 +21,18 @@ if (!firefoxBinary) {
   );
 }
 
-const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const webExtCli = fileURLToPath(new URL("./bin/web-ext.js", import.meta.resolve("web-ext")));
+const profileDir = fs.mkdtempSync(path.join(tmpdir(), "summarize-firefox-smoke-"));
 const args = [
-  "exec",
-  "web-ext",
+  webExtCli,
   "run",
   "--source-dir",
   sourceDir,
   "--firefox",
   firefoxBinary,
+  "--firefox-profile",
+  profileDir,
+  "--keep-profile-changes",
   "--no-reload",
   "--no-input",
   "--start-url",
@@ -37,7 +41,7 @@ const args = [
   "--pref=browser.shell.checkDefaultBrowser=false",
   "--pref=datareporting.policy.dataSubmissionEnabled=false",
 ];
-const child = spawn(pnpm, args, {
+const child = spawn(process.execPath, args, {
   cwd: appDir,
   env: { ...process.env, NO_COLOR: "1" },
   stdio: ["ignore", "pipe", "pipe"],
@@ -66,12 +70,7 @@ const onOutput = (chunk) => {
   const text = chunk.toString();
   output += text;
   process.stdout.write(text);
-  if (
-    !ready &&
-    /extension will reload|installed .*temporary|running web extension|launching firefox/i.test(
-      output,
-    )
-  ) {
+  if (!ready && /installed .*temporary/i.test(output)) {
     ready = true;
     holdTimer = setTimeout(() => finish(), readyHoldMs);
   }
@@ -79,6 +78,9 @@ const onOutput = (chunk) => {
 
 child.stdout.on("data", onOutput);
 child.stderr.on("data", onOutput);
+child.once("close", () => {
+  fs.rmSync(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+});
 child.once("error", (error) => finish(error));
 child.once("exit", (code, signal) => {
   if (settled) return;

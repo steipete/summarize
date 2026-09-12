@@ -90,6 +90,12 @@ Dev (repo checkout):
 
 ## Architecture
 
+The sidepanel owns one plain `PanelState` object. Simple fields update directly; phase, run attachment, restoration, and reset use named transitions in `panel-state-store.ts`. Nested-slice updates replace the slice so previously captured navigation/chat/slide snapshots remain unchanged. There is no secondary action bus or optional dispatch path.
+
+Summary and slide streams share SSE idle-deadline reads, including keepalive comments, but retain separate rendering, cancellation, and completion policies. Chat runs through the agent loop, not a second mode in the summary stream controller.
+
+Picker behavior lives in `ui/select.tsx`; fields and portalled popup markup live in `ui/select-field.tsx`. Shared picker and checkbox defaults live in `ui/controls.css`, imported before page-specific overrides. Options retains inline trigger-width and pointer-event sizing, while side-panel controls retain their CSS-sized popups. The shared Preact mount helper updates component props without remounting hook state.
+
 - **Extension (MV3, WXT)**
   - Side Panel UI: length + typography controls (font family + size), auto/manual toggle.
   - Background service worker: tab + navigation tracking, content extraction, starts summarize runs.
@@ -191,6 +197,8 @@ See `docs/media.md` for detection and transcript rules.
 - Timeout (e.g. `90s`, `2m`), retries, max output tokens (e.g. `2k`).
 - Process manager: live list of daemon-spawned tools (ffmpeg, yt-dlp, tesseract, etc.) with logs.
 - Extension includes current settings in request; daemon treats them like CLI flags (`--model`, `--length`, `--language`, `--prompt`).
+- Options and the side panel share model-discovery and selection state in `src/lib/model-presets.ts`; each screen supplies its presets, hints, and presentation behavior.
+- Browser AI keeps reusable Summarizer sessions by request key and length. Prompt API prewarming supplies one session to one request; that request destroys it on completion or cancellation. Replacing a request aborts the previous request for the same key without cancelling the other summary/slide key.
 
 ## Token Pairing / Setup Mode
 

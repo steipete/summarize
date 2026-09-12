@@ -85,94 +85,89 @@ export function detectPrimaryVideoDetailsFromHtml(
   url: string,
 ): PrimaryVideoDetection | null {
   if (isLoomVideoUrl(url)) return null;
-  const parsed = parseHtmlDocument(html);
-  const { document } = parsed;
+  const document = parseHtmlDocument(html);
 
-  try {
-    const ogVideo = metaContent(document, [
-      { attribute: "property", value: "og:video" },
-      { attribute: "property", value: "og:video:url" },
-      { attribute: "property", value: "og:video:secure_url" },
-      { attribute: "name", value: "og:video" },
-      { attribute: "name", value: "og:video:url" },
-      { attribute: "name", value: "og:video:secure_url" },
-    ]);
-    const ogYoutubeVideo = ogVideo ? toYoutubeVideo(ogVideo, url) : null;
-    const iframeCandidates = Array.from(
-      document.querySelectorAll(
-        'iframe[src*="youtube.com/embed/"], iframe[src*="youtube-nocookie.com/embed/"], iframe[src*="youtu.be/"]',
-      ),
-    )
-      .map((element) => {
-        const src = element.getAttribute("src");
-        const video = src ? toYoutubeVideo(src, url) : null;
-        return video ? { element, video } : null;
-      })
-      .filter(
-        (
-          candidate,
-        ): candidate is {
-          element: Element;
-          video: DetectedVideo;
-        } => candidate !== null,
-      );
-    if (iframeCandidates.length > 0) {
-      const uniqueUrls = new Set(iframeCandidates.map((candidate) => candidate.video.url));
-      if (uniqueUrls.size === 1) {
-        if (ogYoutubeVideo && !uniqueUrls.has(ogYoutubeVideo.url)) {
-          return { video: iframeCandidates[0]!.video, source: "iframe", confidence: "medium" };
-        }
-        return { video: iframeCandidates[0]!.video, source: "iframe", confidence: "high" };
+  const ogVideo = metaContent(document, [
+    { attribute: "property", value: "og:video" },
+    { attribute: "property", value: "og:video:url" },
+    { attribute: "property", value: "og:video:secure_url" },
+    { attribute: "name", value: "og:video" },
+    { attribute: "name", value: "og:video:url" },
+    { attribute: "name", value: "og:video:secure_url" },
+  ]);
+  const ogYoutubeVideo = ogVideo ? toYoutubeVideo(ogVideo, url) : null;
+  const iframeCandidates = Array.from(
+    document.querySelectorAll(
+      'iframe[src*="youtube.com/embed/"], iframe[src*="youtube-nocookie.com/embed/"], iframe[src*="youtu.be/"]',
+    ),
+  )
+    .map((element) => {
+      const src = element.getAttribute("src");
+      const video = src ? toYoutubeVideo(src, url) : null;
+      return video ? { element, video } : null;
+    })
+    .filter(
+      (
+        candidate,
+      ): candidate is {
+        element: Element;
+        video: DetectedVideo;
+      } => candidate !== null,
+    );
+  if (iframeCandidates.length > 0) {
+    const uniqueUrls = new Set(iframeCandidates.map((candidate) => candidate.video.url));
+    if (uniqueUrls.size === 1) {
+      if (ogYoutubeVideo && !uniqueUrls.has(ogYoutubeVideo.url)) {
+        return { video: iframeCandidates[0]!.video, source: "iframe", confidence: "medium" };
       }
-      if (
-        ogYoutubeVideo &&
-        iframeCandidates.some((candidate) => candidate.video.url === ogYoutubeVideo.url)
-      ) {
-        return { video: ogYoutubeVideo, source: "open-graph", confidence: "high" };
-      }
-      const mainCandidates = iframeCandidates.filter((candidate) =>
-        candidate.element.closest("article, main, [role=main]"),
-      );
-      const uniqueMainUrls = new Set(mainCandidates.map((candidate) => candidate.video.url));
-      if (uniqueMainUrls.size === 1 && mainCandidates[0]) {
-        return { video: mainCandidates[0].video, source: "iframe", confidence: "high" };
-      }
-      return { video: iframeCandidates[0]!.video, source: "iframe", confidence: "medium" };
+      return { video: iframeCandidates[0]!.video, source: "iframe", confidence: "high" };
     }
-
-    if (ogVideo) {
-      const resolved = resolveAbsoluteUrl(ogVideo, url);
-      if (resolved && isDirectVideoUrl(resolved)) {
-        return {
-          video: { kind: "direct", url: resolved },
-          source: "open-graph",
-          confidence: "high",
-        };
-      }
-      if (ogYoutubeVideo) {
-        return { video: ogYoutubeVideo, source: "open-graph", confidence: "high" };
-      }
+    if (
+      ogYoutubeVideo &&
+      iframeCandidates.some((candidate) => candidate.video.url === ogYoutubeVideo.url)
+    ) {
+      return { video: ogYoutubeVideo, source: "open-graph", confidence: "high" };
     }
-
-    const videoSrc =
-      document.querySelector("video[src]")?.getAttribute("src") ??
-      document.querySelector("video source[src]")?.getAttribute("src") ??
-      null;
-    if (videoSrc) {
-      const resolved = resolveAbsoluteUrl(videoSrc, url);
-      if (resolved && isDirectVideoUrl(resolved)) {
-        return {
-          video: { kind: "direct", url: resolved },
-          source: "video-tag",
-          confidence: "high",
-        };
-      }
+    const mainCandidates = iframeCandidates.filter((candidate) =>
+      candidate.element.closest("article, main, [role=main]"),
+    );
+    const uniqueMainUrls = new Set(mainCandidates.map((candidate) => candidate.video.url));
+    if (uniqueMainUrls.size === 1 && mainCandidates[0]) {
+      return { video: mainCandidates[0].video, source: "iframe", confidence: "high" };
     }
-
-    return null;
-  } finally {
-    parsed.close();
+    return { video: iframeCandidates[0]!.video, source: "iframe", confidence: "medium" };
   }
+
+  if (ogVideo) {
+    const resolved = resolveAbsoluteUrl(ogVideo, url);
+    if (resolved && isDirectVideoUrl(resolved)) {
+      return {
+        video: { kind: "direct", url: resolved },
+        source: "open-graph",
+        confidence: "high",
+      };
+    }
+    if (ogYoutubeVideo) {
+      return { video: ogYoutubeVideo, source: "open-graph", confidence: "high" };
+    }
+  }
+
+  const videoSrc =
+    document.querySelector("video[src]")?.getAttribute("src") ??
+    document.querySelector("video source[src]")?.getAttribute("src") ??
+    null;
+  if (videoSrc) {
+    const resolved = resolveAbsoluteUrl(videoSrc, url);
+    if (resolved && isDirectVideoUrl(resolved)) {
+      return {
+        video: { kind: "direct", url: resolved },
+        source: "video-tag",
+        confidence: "high",
+      };
+    }
+  }
+
+  return null;
 }
 
 export function detectPrimaryVideoFromHtml(html: string, url: string): DetectedVideo | null {

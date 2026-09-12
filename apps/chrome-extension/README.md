@@ -19,6 +19,7 @@ Turkish for the extension interface.
 - Chrome dev: `pnpm -C apps/chrome-extension dev`
 - Firefox dev: `pnpm -C apps/chrome-extension dev:firefox`
 - Prod build (Chrome): `pnpm -C apps/chrome-extension build`
+- Type check browser code and runtime contracts: `pnpm -C apps/chrome-extension typecheck`
 - Debugger-enabled automation build (Chrome): `pnpm -C apps/chrome-extension build:automation`
 - Prod build (Firefox): `pnpm -C apps/chrome-extension build:firefox`
 - Build both: `pnpm -C apps/chrome-extension build:all`

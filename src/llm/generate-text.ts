@@ -1,4 +1,3 @@
-import type { Context } from "@earendil-works/pi-ai";
 import { completeSimple } from "@earendil-works/pi-ai/compat";
 import { maybeGenerateDocumentText } from "./generate-text-document.js";
 import {
@@ -11,11 +10,10 @@ import {
   shouldRetryGpt5WithoutTokenCap,
   sleep,
 } from "./generate-text-shared.js";
-import { streamTextWithContext } from "./generate-text-stream.js";
-import type { LlmApiKeys } from "./generate-text-types.js";
+import { streamTextWithContext, type StreamTextResult } from "./generate-text-stream.js";
+import type { LlmRequestOptions } from "./generate-text-types.js";
 import { parseGatewayStyleModelId } from "./model-id.js";
 import type { LlmProvider } from "./model-id.js";
-import type { ModelRequestOptions } from "./model-options.js";
 import type { Prompt } from "./prompt.js";
 import {
   getGatewayProviderProfile,
@@ -28,12 +26,7 @@ import {
 } from "./providers/anthropic.js";
 import { completeGoogleText } from "./providers/google.js";
 import { enableMinimaxReasoningSplit } from "./providers/minimax.js";
-import {
-  resolveAnthropicModel,
-  resolveGoogleModel,
-  resolveOpenAiCompatibleGatewayModel,
-  resolveXaiModel,
-} from "./providers/models.js";
+import { resolveOpenAiCompatibleGatewayModel, resolveXaiModel } from "./providers/models.js";
 import { completeOpenAiText } from "./providers/openai.js";
 import { extractText, throwIfAssistantMessageFailed } from "./providers/shared.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
@@ -66,50 +59,39 @@ class DocumentFallbackError extends Error {
   }
 }
 
-export async function generateTextWithModelId({
-  modelId,
-  apiKeys,
-  prompt,
-  temperature,
-  maxOutputTokens,
-  timeoutMs,
-  fetchImpl,
-  forceOpenRouter,
-  openaiBaseUrlOverride,
-  anthropicBaseUrlOverride,
-  googleBaseUrlOverride,
-  xaiBaseUrlOverride,
-  zaiBaseUrlOverride,
-  ollamaBaseUrlOverride,
-  forceChatCompletions,
-  requestOptions,
-  retries = 0,
-  onRetry,
-}: {
-  modelId: string;
-  apiKeys: LlmApiKeys;
+type GenerateTextArgs = LlmRequestOptions & {
   prompt: Prompt;
-  temperature?: number;
-  maxOutputTokens?: number;
-  timeoutMs: number;
-  fetchImpl: typeof fetch;
-  forceOpenRouter?: boolean;
-  openaiBaseUrlOverride?: string | null;
-  anthropicBaseUrlOverride?: string | null;
-  googleBaseUrlOverride?: string | null;
-  xaiBaseUrlOverride?: string | null;
   zaiBaseUrlOverride?: string | null;
-  ollamaBaseUrlOverride?: string | null;
-  forceChatCompletions?: boolean;
-  requestOptions?: ModelRequestOptions;
   retries?: number;
   onRetry?: (notice: RetryNotice) => void;
-}): Promise<{
+};
+
+export async function generateTextWithModelId(args: GenerateTextArgs): Promise<{
   text: string;
   canonicalModelId: string;
   provider: LlmProvider;
   usage: LlmTokenUsage | null;
 }> {
+  const {
+    modelId,
+    apiKeys,
+    prompt,
+    temperature,
+    maxOutputTokens,
+    timeoutMs,
+    fetchImpl,
+    forceOpenRouter,
+    openaiBaseUrlOverride,
+    anthropicBaseUrlOverride,
+    googleBaseUrlOverride,
+    xaiBaseUrlOverride,
+    zaiBaseUrlOverride,
+    ollamaBaseUrlOverride,
+    forceChatCompletions,
+    requestOptions,
+    retries = 0,
+    onRetry,
+  } = args;
   const parsed = parseGatewayStyleModelId(modelId);
   const providerProfile = getGatewayProviderProfile(parsed.provider);
   const effectiveTemperature = resolveEffectiveTemperature({
@@ -139,24 +121,9 @@ export async function generateTextWithModelId({
         retryWithModelId: async (fallbackModelId) => {
           try {
             return await generateTextWithModelId({
+              ...args,
               modelId: fallbackModelId,
-              apiKeys,
-              prompt,
-              temperature,
-              maxOutputTokens,
-              timeoutMs,
-              fetchImpl,
-              forceOpenRouter,
-              openaiBaseUrlOverride,
-              anthropicBaseUrlOverride,
-              googleBaseUrlOverride,
-              xaiBaseUrlOverride,
-              zaiBaseUrlOverride,
-              ollamaBaseUrlOverride,
-              forceChatCompletions,
-              requestOptions,
               retries: Math.max(0, maxRetries - documentAttempt),
-              onRetry,
             });
           } catch (error) {
             throw new DocumentFallbackError(error);
@@ -239,22 +206,15 @@ export async function generateTextWithModelId({
           context,
           xaiBaseUrlOverride,
         });
-        const result = await completeSimple(model, context, {
-          ...(typeof effectiveTemperature === "number"
-            ? { temperature: effectiveTemperature }
-            : {}),
-          ...(typeof maxOutputTokens === "number" ? { maxTokens: maxOutputTokens } : {}),
+        const result = await completeSimpleText({
+          model,
           apiKey,
           signal: controller.signal,
         });
-        throwIfAssistantMessageFailed(result, parsed.canonical);
-        const text = extractText(result);
-        if (!text) throw new Error(`LLM returned an empty summary (model ${parsed.canonical}).`);
         return {
-          text,
+          ...result,
           canonicalModelId: parsed.canonical,
           provider: parsed.provider,
-          usage: normalizeTokenUsage(result.usage),
         };
       }
 
@@ -378,45 +338,17 @@ export async function generateTextWithModelId({
         })
       ) {
         return generateTextWithModelId({
+          ...args,
           modelId: parsed.canonical,
-          apiKeys,
-          prompt,
-          temperature,
-          timeoutMs,
-          fetchImpl,
-          forceOpenRouter,
-          openaiBaseUrlOverride,
-          anthropicBaseUrlOverride,
-          googleBaseUrlOverride,
-          xaiBaseUrlOverride,
-          zaiBaseUrlOverride,
-          ollamaBaseUrlOverride,
-          forceChatCompletions,
-          requestOptions,
+          maxOutputTokens: undefined,
           retries: Math.max(0, maxRetries - attempt),
-          onRetry,
         });
       }
       if (googleFallbackModelId) {
         return generateTextWithModelId({
+          ...args,
           modelId: googleFallbackModelId,
-          apiKeys,
-          prompt,
-          temperature,
-          maxOutputTokens,
-          timeoutMs,
-          fetchImpl,
-          forceOpenRouter,
-          openaiBaseUrlOverride,
-          anthropicBaseUrlOverride,
-          googleBaseUrlOverride,
-          xaiBaseUrlOverride,
-          zaiBaseUrlOverride,
-          ollamaBaseUrlOverride,
-          forceChatCompletions,
-          requestOptions,
           retries: Math.max(0, maxRetries - attempt),
-          onRetry,
         });
       }
       if (parsed.provider === "anthropic") {
@@ -440,61 +372,10 @@ export async function generateTextWithModelId({
 }
 
 export async function streamTextWithModelId({
-  modelId,
-  apiKeys,
   prompt,
-  temperature,
-  maxOutputTokens,
-  timeoutMs,
-  fetchImpl,
-  forceOpenRouter,
-  openaiBaseUrlOverride,
-  anthropicBaseUrlOverride,
-  googleBaseUrlOverride,
-  xaiBaseUrlOverride,
-  ollamaBaseUrlOverride,
-  forceChatCompletions,
-  requestOptions,
-}: {
-  modelId: string;
-  apiKeys: LlmApiKeys;
+  ...options
+}: LlmRequestOptions & {
   prompt: Prompt;
-  temperature?: number;
-  maxOutputTokens?: number;
-  timeoutMs: number;
-  fetchImpl: typeof fetch;
-  forceOpenRouter?: boolean;
-  openaiBaseUrlOverride?: string | null;
-  anthropicBaseUrlOverride?: string | null;
-  googleBaseUrlOverride?: string | null;
-  xaiBaseUrlOverride?: string | null;
-  ollamaBaseUrlOverride?: string | null;
-  forceChatCompletions?: boolean;
-  requestOptions?: ModelRequestOptions;
-}): Promise<{
-  textStream: AsyncIterable<string>;
-  canonicalModelId: string;
-  provider: LlmProvider;
-  usage: Promise<LlmTokenUsage | null>;
-  finalText: Promise<string | null>;
-  lastError: () => unknown;
-}> {
-  const context = promptToContext(prompt);
-  return streamTextWithContext({
-    modelId,
-    apiKeys,
-    context,
-    temperature,
-    maxOutputTokens,
-    timeoutMs,
-    fetchImpl,
-    forceOpenRouter,
-    openaiBaseUrlOverride,
-    anthropicBaseUrlOverride,
-    googleBaseUrlOverride,
-    xaiBaseUrlOverride,
-    ollamaBaseUrlOverride,
-    forceChatCompletions,
-    requestOptions,
-  });
+}): Promise<StreamTextResult> {
+  return streamTextWithContext({ ...options, context: promptToContext(prompt) });
 }

@@ -3,16 +3,7 @@ import { fetchWithTimeout } from "../../../link-preview/fetch-with-timeout.js";
 import type { TranscriptSegment } from "../../../link-preview/types.js";
 import { parseTimestampToMs } from "../../timestamps.js";
 import { extractYoutubeBootstrapConfig, isRecord } from "../../utils.js";
-
-const REQUEST_HEADERS: Record<string, string> = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-  Accept:
-    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Cache-Control": "no-cache",
-  Pragma: "no-cache",
-};
+import { REQUEST_HEADERS } from "./captions-shared.js";
 
 export interface YoutubeTranscriptConfig {
   apiKey: string;
@@ -23,6 +14,45 @@ export interface YoutubeTranscriptConfig {
   clientVersion?: string | null;
   pageCl?: number | null;
   pageLabel?: string | null;
+}
+
+export function buildYoutubeiHeaders(
+  originalUrl: string,
+  config: Pick<
+    YoutubeTranscriptConfig,
+    "clientName" | "clientVersion" | "visitorData" | "pageCl" | "pageLabel"
+  >,
+): Record<string, string> {
+  const userAgent =
+    REQUEST_HEADERS["User-Agent"] ??
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36";
+  const headers: Record<string, string> = withBunCompressionHeaders({
+    "Content-Type": "application/json",
+    "User-Agent": userAgent,
+    Accept: "application/json",
+    Origin: "https://www.youtube.com",
+    Referer: originalUrl,
+    "X-Goog-AuthUser": "0",
+    "X-Youtube-Bootstrap-Logged-In": "false",
+  });
+
+  if (config.clientName) {
+    headers["X-Youtube-Client-Name"] = config.clientName;
+  }
+  if (config.clientVersion) {
+    headers["X-Youtube-Client-Version"] = config.clientVersion;
+  }
+  if (config.visitorData) {
+    headers["X-Goog-Visitor-Id"] = config.visitorData;
+  }
+  if (typeof config.pageCl === "number" && Number.isFinite(config.pageCl)) {
+    headers["X-Youtube-Page-CL"] = String(config.pageCl);
+  }
+  if (config.pageLabel) {
+    headers["X-Youtube-Page-Label"] = config.pageLabel;
+  }
+
+  return headers;
 }
 
 type YoutubeBootstrapConfig = Record<string, unknown> & {
@@ -137,34 +167,7 @@ export const fetchTranscriptFromTranscriptEndpoint = async (
   };
 
   try {
-    const userAgent =
-      REQUEST_HEADERS["User-Agent"] ??
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36";
-    const headers: Record<string, string> = withBunCompressionHeaders({
-      "Content-Type": "application/json",
-      "User-Agent": userAgent,
-      Accept: "application/json",
-      Origin: "https://www.youtube.com",
-      Referer: originalUrl,
-      "X-Goog-AuthUser": "0",
-      "X-Youtube-Bootstrap-Logged-In": "false",
-    });
-
-    if (config.clientName) {
-      headers["X-Youtube-Client-Name"] = config.clientName;
-    }
-    if (config.clientVersion) {
-      headers["X-Youtube-Client-Version"] = config.clientVersion;
-    }
-    if (config.visitorData) {
-      headers["X-Goog-Visitor-Id"] = config.visitorData;
-    }
-    if (typeof config.pageCl === "number" && Number.isFinite(config.pageCl)) {
-      headers["X-Youtube-Page-CL"] = String(config.pageCl);
-    }
-    if (config.pageLabel) {
-      headers["X-Youtube-Page-Label"] = config.pageLabel;
-    }
+    const headers = buildYoutubeiHeaders(originalUrl, config);
 
     const response = await fetchWithTimeout(
       fetchImpl,

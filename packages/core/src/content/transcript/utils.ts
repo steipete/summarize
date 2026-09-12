@@ -27,9 +27,9 @@ export function decodeHtmlEntities(input: string): string {
 }
 
 export function extractYoutubeBootstrapConfig(html: string): Record<string, unknown> | null {
-  const parsed = parseHtmlDocument(html);
+  const document = parseHtmlDocument(html);
   try {
-    const scripts = parsed.document.querySelectorAll("script");
+    const scripts = document.querySelectorAll("script");
 
     for (const script of scripts) {
       const source = script.textContent;
@@ -44,11 +44,31 @@ export function extractYoutubeBootstrapConfig(html: string): Record<string, unkn
     }
   } catch {
     // fall through to legacy regex
-  } finally {
-    parsed.close();
   }
 
   return parseBootstrapFromScript(html);
+}
+
+export function extractInitialPlayerResponse(html: string): Record<string, unknown> | null {
+  const tokenIndex = html.indexOf("ytInitialPlayerResponse");
+  if (tokenIndex < 0) {
+    return null;
+  }
+  const assignmentIndex = html.indexOf("=", tokenIndex);
+  if (assignmentIndex < 0) {
+    return null;
+  }
+  const objectText = extractBalancedJsonObject(html, assignmentIndex);
+  if (!objectText) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(objectText);
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 const YTCFG_SET_TOKEN = "ytcfg.set";

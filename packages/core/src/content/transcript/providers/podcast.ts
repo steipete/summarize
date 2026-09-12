@@ -108,29 +108,19 @@ export const fetchTranscript = async (
     transcribe,
   };
 
-  const directResult = await tryPodcastTranscriptFromFeed(flow);
-  if (directResult) return directResult;
-
-  const xiaoyuzhouResult = await fetchXiaoyuzhouTranscript(flow);
-  if (xiaoyuzhouResult) return xiaoyuzhouResult;
-
-  const spotifyResult = await fetchSpotifyTranscript(flow);
-  if (spotifyResult) return spotifyResult;
-
-  const appleLookupResult = await fetchAppleTranscriptFromItunesLookup(flow);
-  if (appleLookupResult) return appleLookupResult;
-
-  const appleEmbeddedResult = await fetchAppleTranscriptFromEmbeddedHtml(flow);
-  if (appleEmbeddedResult) return appleEmbeddedResult;
-
-  const enclosureResult = await tryFeedEnclosureTranscript(flow);
-  if (enclosureResult) return enclosureResult;
-
-  const ogAudioResult = await tryOgAudioTranscript(flow);
-  if (ogAudioResult) return ogAudioResult;
-
-  const ytDlpResult = await tryPodcastYtDlpTranscript(flow);
-  if (ytDlpResult) return ytDlpResult;
+  for (const fetchFromSource of [
+    tryPodcastTranscriptFromFeed,
+    fetchXiaoyuzhouTranscript,
+    fetchSpotifyTranscript,
+    fetchAppleTranscriptFromItunesLookup,
+    fetchAppleTranscriptFromEmbeddedHtml,
+    tryFeedEnclosureTranscript,
+    tryOgAudioTranscript,
+    tryPodcastYtDlpTranscript,
+  ]) {
+    const result = await fetchFromSource(flow);
+    if (result) return result;
+  }
 
   return buildNoTranscriptResult(flow);
 };

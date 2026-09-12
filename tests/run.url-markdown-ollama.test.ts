@@ -1,25 +1,20 @@
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { parseRequestedModelId } from "../src/model-spec.js";
+import { discardStream as sink } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
-  createHtmlToMarkdownConverter: vi.fn(() => async () => "# Converted"),
+  createLlmMarkdownConverters: vi.fn(() => ({
+    html: async () => "# Converted",
+    transcript: async () => "# Converted",
+  })),
 }));
 
-vi.mock("../src/llm/html-to-markdown.js", () => ({
-  createHtmlToMarkdownConverter: mocks.createHtmlToMarkdownConverter,
+vi.mock("../src/llm/markdown-converters.js", () => ({
+  createLlmMarkdownConverters: mocks.createLlmMarkdownConverters,
 }));
 
 import { createMarkdownConverters } from "../src/run/flows/url/markdown.js";
 import type { UrlFlowContext } from "../src/run/flows/url/types.js";
-
-function sink() {
-  return new Writable({
-    write(_chunk, _encoding, callback) {
-      callback();
-    },
-  });
-}
 
 describe("URL markdown Ollama routing", () => {
   it("allows llm markdown with fixed Ollama models and forwards the Ollama base URL", () => {
@@ -88,7 +83,7 @@ describe("URL markdown Ollama routing", () => {
 
     expect(converters.markdownProvider).toBe("ollama");
     expect(converters.convertHtmlToMarkdown).not.toBeNull();
-    expect(mocks.createHtmlToMarkdownConverter).toHaveBeenCalledWith(
+    expect(mocks.createLlmMarkdownConverters).toHaveBeenCalledWith(
       expect.objectContaining({
         modelId: "ollama/qwen3:0.6b",
         openaiApiKey: null,

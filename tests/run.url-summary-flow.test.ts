@@ -1,4 +1,3 @@
-import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import type { CacheStore } from "../src/cache.js";
 import type { ExtractedLinkContent } from "../src/content/index.js";
@@ -9,17 +8,7 @@ import {
   presentExtractedUrlSummary,
 } from "../src/run/flows/url/summary.js";
 import type { UrlFlowContext } from "../src/run/flows/url/types.js";
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const extracted: ExtractedLinkContent = {
   url: "https://www.youtube.com/watch?v=9pUWFJgBc5Q",

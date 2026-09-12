@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { readTranscriptCache } from "../packages/core/src/content/transcript/cache.js";
 import { buildTranscriptCacheKey, createCacheStore } from "../src/cache.js";
 
 describe("cache store", () => {
@@ -261,6 +262,43 @@ describe("cache store", () => {
 
     store.close();
   });
+
+  it.each(["embedded", "youtube-media"] as const)(
+    "preserves %s transcript sources through SQLite and core cache reads",
+    async (source) => {
+      const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+      const store = await createCacheStore({
+        path: join(root, "cache.sqlite"),
+        maxBytes: 1024 * 1024,
+      });
+      const url = "https://example.com/video";
+      try {
+        await store.transcriptCache.set({
+          url,
+          service: "generic",
+          resourceKey: null,
+          ttlMs: 60_000,
+          content: "Cached transcript",
+          source,
+          metadata: null,
+        });
+        expect((await store.transcriptCache.get({ url }))?.source).toBe(source);
+        const result = await readTranscriptCache({
+          url,
+          cacheMode: "default",
+          transcriptCache: store.transcriptCache,
+        });
+        expect(result.resolution).toMatchObject({ text: "Cached transcript", source });
+        expect(result.diagnostics).toMatchObject({
+          cacheStatus: "hit",
+          provider: source,
+          attemptedProviders: [source],
+        });
+      } finally {
+        store.close();
+      }
+    },
+  );
 
   it("transcript cache normalizes unknown sources and handles bad payloads", async () => {
     const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));

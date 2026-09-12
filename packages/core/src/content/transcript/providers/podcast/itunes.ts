@@ -107,7 +107,8 @@ export async function resolvePodcastFeedUrlFromItunesSearch(
 
   const normalizedTarget = normalizeLooseTitle(showTitle);
   const exact = results.find(
-    (r) => normalizeLooseTitle(String(r.collectionName ?? "")) === normalizedTarget,
+    (r) =>
+      normalizedTarget && normalizeLooseTitle(String(r.collectionName ?? "")) === normalizedTarget,
   );
   const best = exact ?? results[0];
   const feedUrl = typeof best?.feedUrl === "string" ? best.feedUrl.trim() : "";
@@ -159,11 +160,13 @@ export async function resolvePodcastEpisodeFromItunesSearch(
 
   const exact = candidates.find(
     (entry) =>
+      normalizedEpisode &&
+      normalizedShow &&
       normalizeLooseTitle(entry.title ?? "") === normalizedEpisode &&
       normalizeLooseTitle(entry.collection ?? "") === normalizedShow,
   );
   const exactEpisode = candidates.find(
-    (entry) => normalizeLooseTitle(entry.title ?? "") === normalizedEpisode,
+    (entry) => normalizedEpisode && normalizeLooseTitle(entry.title ?? "") === normalizedEpisode,
   );
   const best = exact ?? exactEpisode ?? candidates[0];
   if (!best?.episodeUrl) return null;

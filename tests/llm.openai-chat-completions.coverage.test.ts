@@ -78,23 +78,29 @@ describe("OpenAI chat-completions coverage", () => {
     await expect(completeOpenAiChatText(request(emptyFetch))).rejects.toThrow("empty summary");
   });
 
-  it("streams deltas and resolves final usage", async () => {
-    const body = [
-      `data: ${JSON.stringify({ choices: [{ delta: { content: "one" } }] })}\n\n`,
-      `data: ${JSON.stringify({ choices: [null], usage: { input_tokens: 2, output_tokens: 3, total_tokens: 5 } })}\n\n`,
-      "data: [DONE]\n\n",
-    ].join("");
-    const fetchImpl = vi.fn(async () => new Response(body)) as typeof fetch;
-    const result = await streamOpenAiChatText(request(fetchImpl));
-    const chunks: string[] = [];
-    for await (const chunk of result.textStream) chunks.push(chunk);
-    expect(chunks).toEqual(["one"]);
-    await expect(result.usage).resolves.toEqual({
-      promptTokens: 2,
-      completionTokens: 3,
-      totalTokens: 5,
-    });
-  });
+  it.each([false, true])(
+    "resolves usage when streaming ends (early close: %s)",
+    async (earlyClose) => {
+      const textEvent = `data: ${JSON.stringify({ choices: [{ delta: { content: "one" } }] })}\n\n`;
+      const usageEvent = `data: ${JSON.stringify({ choices: [null], usage: { input_tokens: 2, output_tokens: 3, total_tokens: 5 } })}\n\n`;
+      const events = earlyClose ? [usageEvent, textEvent] : [textEvent, usageEvent];
+      const response = new Response(events.join("") + "data: [DONE]\n\n");
+      const fetchImpl = vi.fn(async () => response) as typeof fetch;
+      const result = await streamOpenAiChatText(request(fetchImpl));
+      const chunks: string[] = [];
+      for await (const chunk of result.textStream) {
+        chunks.push(chunk);
+        if (earlyClose) break;
+      }
+      expect(chunks).toEqual(["one"]);
+      expect(response.body?.locked).toBe(false);
+      await expect(result.usage).resolves.toEqual({
+        promptTokens: 2,
+        completionTokens: 3,
+        totalTokens: 5,
+      });
+    },
+  );
 
   it("handles stream HTTP, missing-body, structured, and generic errors", async () => {
     const errorFetch = vi.fn(async () => new Response("bad", { status: 429 })) as typeof fetch;

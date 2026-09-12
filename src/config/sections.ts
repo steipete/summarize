@@ -1,8 +1,10 @@
 import { parseLengthArg } from "../flags.js";
-import { parseOpenAiReasoningEffort, parseOpenAiTextVerbosity } from "../llm/model-options.js";
+import { CLI_PROVIDERS } from "../llm/provider-registry.js";
 import { isCliThemeName, listCliThemes } from "../tty/theme.js";
+import { LEGACY_API_KEY_ENV_MAP } from "./legacy-api-keys.js";
 import {
   isRecord,
+  parseModelRequestOptions,
   parseCliProvider,
   parseLoggingFormat,
   parseLoggingLevel,
@@ -241,21 +243,12 @@ export function parseCliConfig(root: Record<string, unknown>, path: string): Cli
     typeof value.enabled !== "undefined"
       ? parseCliProviderList(value.enabled, path, "cli.enabled")
       : undefined;
-  const claude = value.claude ? parseCliProviderConfig(value.claude, path, "claude") : undefined;
-  const codex = value.codex ? parseCliProviderConfig(value.codex, path, "codex") : undefined;
-  const gemini = value.gemini ? parseCliProviderConfig(value.gemini, path, "gemini") : undefined;
-  const agent = value.agent ? parseCliProviderConfig(value.agent, path, "agent") : undefined;
-  const openclaw = value.openclaw
-    ? parseCliProviderConfig(value.openclaw, path, "openclaw")
-    : undefined;
-  const opencode = value.opencode
-    ? parseCliProviderConfig(value.opencode, path, "opencode")
-    : undefined;
-  const copilot = value.copilot
-    ? parseCliProviderConfig(value.copilot, path, "copilot")
-    : undefined;
-  const agy = value.agy ? parseCliProviderConfig(value.agy, path, "agy") : undefined;
-  const pi = value.pi ? parseCliProviderConfig(value.pi, path, "pi") : undefined;
+  const providers: Partial<Record<CliProvider, CliProviderConfig>> = {};
+  for (const provider of CLI_PROVIDERS) {
+    if (value[provider]) {
+      providers[provider] = parseCliProviderConfig(value[provider], path, provider);
+    }
+  }
   if (typeof value.autoFallback !== "undefined" && typeof value.magicAuto !== "undefined") {
     throw new Error(
       `Invalid config file ${path}: use only one of "cli.autoFallback" or legacy "cli.magicAuto".`,
@@ -283,15 +276,7 @@ export function parseCliConfig(root: Record<string, unknown>, path: string): Cli
       : parseStringArray(value.extraArgs, path, "cli.extraArgs");
 
   return enabled ||
-    claude ||
-    codex ||
-    gemini ||
-    agent ||
-    openclaw ||
-    opencode ||
-    copilot ||
-    agy ||
-    pi ||
+    Object.keys(providers).length > 0 ||
     autoFallback ||
     promptOverride ||
     typeof allowTools === "boolean" ||
@@ -299,15 +284,7 @@ export function parseCliConfig(root: Record<string, unknown>, path: string): Cli
     (extraArgs && extraArgs.length > 0)
     ? {
         ...(enabled ? { enabled } : {}),
-        ...(claude ? { claude } : {}),
-        ...(codex ? { codex } : {}),
-        ...(gemini ? { gemini } : {}),
-        ...(agent ? { agent } : {}),
-        ...(openclaw ? { openclaw } : {}),
-        ...(opencode ? { opencode } : {}),
-        ...(copilot ? { copilot } : {}),
-        ...(agy ? { agy } : {}),
-        ...(pi ? { pi } : {}),
+        ...providers,
         ...(autoFallback ? { autoFallback } : {}),
         ...(promptOverride ? { promptOverride } : {}),
         ...(typeof allowTools === "boolean" ? { allowTools } : {}),
@@ -420,34 +397,7 @@ export function parseOpenAiConfig(
   const baseUrl = parseOptionalBaseUrl(value.baseUrl);
   const useChatCompletions =
     typeof value.useChatCompletions === "boolean" ? value.useChatCompletions : undefined;
-  const serviceTier =
-    typeof value.serviceTier === "string" && value.serviceTier.trim().length > 0
-      ? value.serviceTier.trim()
-      : undefined;
-  const reasoningRaw =
-    typeof value.reasoningEffort === "string"
-      ? value.reasoningEffort
-      : typeof value.thinking === "string"
-        ? value.thinking
-        : undefined;
-  if (
-    typeof value.reasoningEffort !== "undefined" &&
-    typeof value.thinking !== "undefined" &&
-    String(value.reasoningEffort).trim().toLowerCase() !==
-      String(value.thinking).trim().toLowerCase()
-  ) {
-    throw new Error(
-      `Invalid config file ${path}: "openai.reasoningEffort" and "openai.thinking" must not conflict.`,
-    );
-  }
-  const reasoningEffort =
-    typeof reasoningRaw === "string"
-      ? parseOpenAiReasoningEffort(reasoningRaw, "openai.reasoningEffort")
-      : undefined;
-  const textVerbosity =
-    typeof value.textVerbosity === "string"
-      ? parseOpenAiTextVerbosity(value.textVerbosity, "openai.textVerbosity")
-      : undefined;
+  const requestOptions = parseModelRequestOptions(value, path, "openai");
   const whisperUsdPerMinuteRaw = value.whisperUsdPerMinute;
   const whisperUsdPerMinute =
     typeof whisperUsdPerMinuteRaw === "number" &&
@@ -458,16 +408,12 @@ export function parseOpenAiConfig(
 
   return typeof baseUrl === "string" ||
     typeof useChatCompletions === "boolean" ||
-    typeof serviceTier === "string" ||
-    typeof reasoningEffort === "string" ||
-    typeof textVerbosity === "string" ||
+    Object.keys(requestOptions).length > 0 ||
     typeof whisperUsdPerMinute === "number"
     ? {
         ...(typeof baseUrl === "string" ? { baseUrl } : {}),
         ...(typeof useChatCompletions === "boolean" ? { useChatCompletions } : {}),
-        ...(typeof serviceTier === "string" ? { serviceTier } : {}),
-        ...(typeof reasoningEffort === "string" ? { reasoningEffort } : {}),
-        ...(typeof textVerbosity === "string" ? { textVerbosity } : {}),
+        ...requestOptions,
         ...(typeof whisperUsdPerMinute === "number" ? { whisperUsdPerMinute } : {}),
       }
     : undefined;
@@ -503,25 +449,9 @@ export function parseApiKeysConfig(
     throw new Error(`Invalid config file ${path}: "apiKeys" must be an object.`);
   }
   const keys: Record<string, string> = {};
-  const allowed = [
-    "openai",
-    "nvidia",
-    "minimax",
-    "anthropic",
-    "google",
-    "xai",
-    "openrouter",
-    "zai",
-    "apify",
-    "firecrawl",
-    "fal",
-    "groq",
-    "assemblyai",
-    "elevenlabs",
-  ];
   for (const [key, val] of Object.entries(value)) {
     const normalizedKey = key.trim().toLowerCase();
-    if (!allowed.includes(normalizedKey)) {
+    if (!Object.hasOwn(LEGACY_API_KEY_ENV_MAP, normalizedKey)) {
       throw new Error(`Invalid config file ${path}: unknown apiKeys provider "${key}".`);
     }
     if (typeof val !== "string" || val.trim().length === 0) {

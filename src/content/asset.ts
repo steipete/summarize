@@ -118,6 +118,10 @@ function parseContentDispositionFilename(header: string | null): string | null {
 function classifyResponseHeaders(headers: Headers): UrlKind | null {
   const mediaType = normalizeHeaderMediaType(headers.get("content-type"));
   if (isTranscribableMediaType(mediaType)) return { kind: "media", mediaType };
+  if (mediaType === "application/rss+xml" || mediaType === "application/atom+xml") {
+    return { kind: "website" };
+  }
+  if (mediaType === "application/xml" || mediaType === "text/xml") return null;
 
   const filename = parseContentDispositionFilename(headers.get("content-disposition"));
   const filenameMediaType = filename ? normalizeHeaderMediaType(mime.getType(filename)) : null;
@@ -135,6 +139,33 @@ function classifyResponseHeaders(headers: Headers): UrlKind | null {
 function looksLikeHtml(bytes: Uint8Array): boolean {
   const head = new TextDecoder().decode(bytes.slice(0, 256)).trimStart().toLowerCase();
   return head.startsWith("<!doctype html") || head.startsWith("<html") || head.startsWith("<head");
+}
+
+function looksLikeFeed(bytes: Uint8Array): boolean {
+  const head = new TextDecoder()
+    .decode(bytes)
+    .replace(/^(?:\s*<\?xml[\s\S]*?\?>|\s*<!--[\s\S]*?-->)*\s*/i, "");
+  return /^<(?:rss|feed)(?:\s|\/?>)/i.test(head);
+}
+
+async function readResponsePrefix(response: Response): Promise<Uint8Array> {
+  const reader = response.body?.getReader();
+  if (!reader) return new Uint8Array(0);
+  const prefix = new Uint8Array(2048);
+  let length = 0;
+  try {
+    while (length < prefix.length) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = value.subarray(0, prefix.length - length);
+      prefix.set(chunk, length);
+      length += chunk.length;
+    }
+    return prefix.subarray(0, length);
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
 }
 
 function looksLikePlainText(bytes: Uint8Array): boolean {
@@ -255,7 +286,7 @@ export async function classifyUrl({
   timeoutMs: number;
 }): Promise<UrlKind> {
   const parsed = new URL(url);
-  if (isLikelyAssetPathname(parsed.pathname)) {
+  if (isLikelyAssetPathname(parsed.pathname) && !/\.(?:xml|rss|atom)$/i.test(parsed.pathname)) {
     return { kind: "asset" };
   }
 
@@ -285,12 +316,15 @@ export async function classifyUrl({
       if (!res.ok) return null;
       const headerKind = classifyResponseHeaders(res.headers);
       if (headerKind) return headerKind;
-      const buffer = new Uint8Array(await res.arrayBuffer());
-      return !looksLikeHtml(buffer) ? { kind: "asset" } : null;
+      const buffer = await readResponsePrefix(res);
+      return looksLikeHtml(buffer) || looksLikeFeed(buffer)
+        ? { kind: "website" }
+        : { kind: "asset" };
     } catch {
       return null;
     } finally {
       clearTimeout(timeout);
+      controller.abort();
     }
   };
 

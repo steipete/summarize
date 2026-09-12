@@ -55,6 +55,10 @@ Tip: use `--verbose` to see model attempts + the chosen model.
 - Local video understanding (requires Gemini video-capable model; otherwise expect an error or transcript-only behavior depending on input):
   - `summarize ./path/to/video.mp4 --max-output-tokens 200`
 
+## Browser-local transcription
+
+After building the extension, run `SUMMARIZE_LIVE_BROWSER_MEDIA=1 pnpm -C apps/chrome-extension exec playwright test tests/browser-media-local.live.spec.ts --project=chromium`. This downloads a public speech fixture and runs real MediaBunny decoding plus local Whisper inference for embedded and direct audio; no cloud transcription key is needed. Only the navigation documents are fixtures, not the media bytes or model output. Private media URLs remain rejected, and terminal extraction errors fail the test immediately rather than waiting for the success timeout.
+
 ## Z.AI
 
 - `summarize --model zai/glm-4.7 --max-output-tokens 200 https://example.com`

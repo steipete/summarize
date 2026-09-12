@@ -1,10 +1,51 @@
 # Changelog
 
-## 0.21.12 - Unreleased
+## 0.21.15 - Unreleased
+
+## 0.21.14 - 2026-09-11
+
+**Highlights:** correct podcast episode selection for non-Latin titles and stabilized network/media reliability updates.
+
+- Podcasts: preserve Unicode episode titles and meaningful combining marks so RSS transcripts and audio match the requested episode; reject empty matching keys (#445, thanks @vincent-peng).
+- Network: update Undici to 8.10.2 for upstream HTTP, retry, cache, TLS, and WebSocket security fixes.
+- Browser media: stop failed MediaBunny sample iterators from continuing internally with MediaBunny 1.55.7.
+- Models: refresh Pi AI to 0.85.0 for provider-stream and proxy fixes while retaining Node 24 support.
+- Maintenance: refresh stabilized DOM, Oxc, Chrome typings, and Vitest tooling; patch the YAML tooling dependency and update the pinned Pages action after its seven-day hold (#402, #446, thanks @dependabot).
+
+## 0.21.13 - 2026-09-07
+
+**Highlights:** browser media reliability fixes and stabilized dependency updates.
 
 ### Fixes
 
-- Browser media: support MP4 files carrying Annex B AVC/HEVC and clarify missing WebCodecs errors in insecure contexts with MediaBunny 1.55.2.
+- Browser media: fix audio sample copying across browser versions and a BlobSource memory leak with MediaBunny 1.55.5.
+
+### Dependencies and maintenance
+
+- Refresh stabilized Pi AI, Undici, happy-dom, and pnpm dependencies while retaining Node 24 support and the seven-day release-age policy.
+
+### Documentation
+
+- Correct Firefox signing guidance to match the extension ID in published packages.
+
+## 0.21.12 - 2026-09-06
+
+**Highlight:** a reliability and architecture cleanup release, including live-tested fixes for OpenAI image inputs, podcast feed routing, and missing slide frames.
+
+### Fixes
+
+- Slides: measure frame timestamps after the requested seek point, preventing later scenes from being assigned earlier timestamps and discarded as duplicates; regenerate older extraction caches with the corrected timing.
+- Podcasts: route RSS and Atom feed URLs through content/transcript extraction instead of treating feed XML as a raw file, while preserving ordinary XML asset handling.
+- Images: preserve image attachments in OpenAI Responses and Chat Completions requests, including streaming, instead of silently sending only the text prompt.
+- Slides: stop direct-video response streams after download failures and remove downloaded temporary files if the media-cache handoff fails; preserve the original failure when cleanup also fails.
+- Browser AI: give overlapping Prompt API requests separate sessions and destroy sessions that finish loading after cancellation, so a stale request cannot tear down its replacement.
+- Slides: parse ordinary yt-dlp percentage lines correctly and remove partial download directories after process or output-inspection failures.
+- Transcription: skip probing the local Whisper executable when no usable model is installed, avoiding unnecessary process startup and delays on cloud-only or unconfigured systems.
+- Browser settings: retain a dismissed local-companion hint when saving other Options preferences.
+- Browser chat: normalize partial or malformed saved usage metadata and unknown stop reasons when restoring assistant history.
+- Slides: drain ignored subprocess output so a verbose media tool cannot stall on a full stdout pipe.
+- Transcript cache: preserve embedded-caption and native YouTube media source metadata across cache hits instead of losing it to duplicated source lists.
+- Browser media: support MP4 files carrying Annex B AVC/HEVC and clarify missing WebCodecs errors in insecure contexts with MediaBunny 1.55.3.
 - FAL transcription: clear settled deadlines and stop local queue polling and retries after timeout (#392, thanks @vincent-peng).
 - Content extraction: decode HTML entities once so deliberately escaped markup remains literal text (#394, thanks @devYRPauli).
 - Content extraction: avoid splitting UTF-16 surrogate pairs when clipping to a character budget (#391, thanks @devYRPauli).
@@ -15,9 +56,15 @@
 
 ### Dependencies and maintenance
 
-- Align Dependabot's npm cooldown with pnpm's seven-day stabilization window so automated updates do not select versions the install gate rejects.
-- Refresh the test, lint, parser, browser media, and transitive dependencies; update the Bun builder to 1.4.0, pin CI actions by commit, and align Corepack setup with the workspace's pnpm version.
-- Refresh policy-eligible CLI, core, extension, media, test, lint, and transitive dependencies without bypassing the seven-day stabilization window.
+- Consolidate model execution, provider metadata, request construction, retries, streaming, and token usage while preserving protocol-specific behavior and output-failure boundaries.
+- Share asset conversion, podcast resolution, transcription, media download, slide extraction, and cache metadata ownership; remove duplicated pipelines and unused adapters.
+- Simplify side-panel state, Options wiring, model discovery, pickers, component mounting, and shared styles without changing layouts or supported settings.
+- Type-check the entire extension in the root gate and CI; centralize test streams and browser lifecycles while preserving isolated profiles and runtime-error checks.
+- Repair browser-local speech validation with public audio and real decoding/inference; make Firefox smoke wait for installation and clean up its own runner and profile.
+- Remove the abandoned Homebrew-tap writer, keep formula updates with Homebrew/core, and correct pnpm release commands.
+- Refresh stabilized DOM, Markdown, browser media, image, protobuf, and pnpm dependencies; repair the Node 24 test container and preserve local security patches (#403, thanks @dependabot).
+- Refresh Pi AI and Oxc while keeping Node typings aligned with the supported Node 24 runtime (#399, thanks @dependabot).
+- Refresh the remaining runtime/test tooling and Bun builder, pin CI actions, and align Dependabot with pnpm's seven-day stabilization policy.
 
 ## 0.21.11 - 2026-08-10
 

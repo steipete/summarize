@@ -1,6 +1,6 @@
 import type { ErrorController } from "./error-controller";
 import type { HeaderController } from "./header-controller";
-import type { PanelStateAction } from "./panel-state-store";
+import { setPanelPhase } from "./panel-state-store";
 import type { PanelPhase, PanelState } from "./types";
 
 type PhaseEventTarget = {
@@ -9,7 +9,7 @@ type PhaseEventTarget = {
 
 export function createPanelPhaseRuntime({
   panelState,
-  dispatchPanelState,
+
   errorController,
   headerController,
   setSlidesBusy,
@@ -18,7 +18,7 @@ export function createPanelPhaseRuntime({
   eventTarget = window,
 }: {
   panelState: PanelState;
-  dispatchPanelState: (action: PanelStateAction) => void;
+
   errorController: ErrorController;
   headerController: HeaderController;
   setSlidesBusy: (value: boolean) => void;
@@ -27,7 +27,7 @@ export function createPanelPhaseRuntime({
   eventTarget?: PhaseEventTarget;
 }) {
   const setPhase = (phase: PanelPhase, options?: { error?: string | null }) => {
-    dispatchPanelState({ type: "phase", phase, error: options?.error });
+    setPanelPhase(panelState, phase, options?.error);
     const running = phase === "connecting" || phase === "streaming";
     if (phase === "error") {
       const message =

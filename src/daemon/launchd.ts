@@ -1,10 +1,7 @@
-import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
+import { execDaemonCommand, type DaemonCommandResult } from "./command.js";
 import { DAEMON_LAUNCH_AGENT_LABEL } from "./constants.js";
-
-const execFileAsync = promisify(execFile);
 
 function resolveHomeDir(env: Record<string, string | undefined>): string {
   const home = env.HOME?.trim() || env.USERPROFILE?.trim();
@@ -117,22 +114,7 @@ export function buildLaunchAgentPlist({
 `;
 }
 
-async function execLaunchctl(
-  args: string[],
-): Promise<{ stdout: string; stderr: string; code: number }> {
-  try {
-    const { stdout, stderr } = await execFileAsync("launchctl", args, { encoding: "utf8" });
-    return { stdout: String(stdout ?? ""), stderr: String(stderr ?? ""), code: 0 };
-  } catch (error) {
-    const e = error as { stdout?: unknown; stderr?: unknown; code?: unknown; message?: unknown };
-    return {
-      stdout: typeof e.stdout === "string" ? e.stdout : "",
-      stderr:
-        typeof e.stderr === "string" ? e.stderr : typeof e.message === "string" ? e.message : "",
-      code: typeof e.code === "number" ? e.code : 1,
-    };
-  }
-}
+const execLaunchctl = (args: string[]) => execDaemonCommand("launchctl", args);
 
 function parseUid(raw: string | undefined): number | null {
   if (!raw) return null;
@@ -246,7 +228,7 @@ export async function installLaunchAgent({
   }
   await execLaunchctl(["unload", plistPath]);
   let installedDomain: string | null = null;
-  let lastBootstrap: { stdout: string; stderr: string; code: number } | null = null;
+  let lastBootstrap: DaemonCommandResult | null = null;
   for (const domain of domains) {
     const boot = await execLaunchctl(["bootstrap", domain, plistPath]);
     if (boot.code === 0) {
@@ -275,7 +257,7 @@ export async function restartLaunchAgent({
 }): Promise<void> {
   const label = DAEMON_LAUNCH_AGENT_LABEL;
   const domains = resolveLaunchctlDomains();
-  let lastResult: { stdout: string; stderr: string; code: number } | null = null;
+  let lastResult: DaemonCommandResult | null = null;
   for (const domain of domains) {
     const res = await execLaunchctl(["kickstart", "-k", `${domain}/${label}`]);
     if (res.code === 0) {

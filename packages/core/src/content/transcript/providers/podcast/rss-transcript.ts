@@ -39,6 +39,7 @@ export async function tryFetchTranscriptFromFeedXml({
 } | null> {
   const items = extractFeedItems(feedXml);
   const normalizedTarget = episodeTitle ? normalizeLooseTitle(episodeTitle) : null;
+  if (episodeTitle !== null && !normalizedTarget) return null;
 
   for (const item of items) {
     if (normalizedTarget) {

@@ -41,25 +41,21 @@ export function isBlockedRedditThreadHtml(inputUrl: string, html: string): boole
   const redditUrl = parseRedditThreadUrl(inputUrl);
   if (!redditUrl) return false;
 
-  const parsed = parseHtmlDocument(html, redditUrl.href);
-  try {
-    const threadId = redditThreadId(redditUrl);
-    if (
-      parsed.document.querySelector(
-        `#thing_t3_${threadId}.thing[data-type="link"], .thing[data-fullname="t3_${threadId}"][data-type="link"], shreddit-post, [data-testid="post-container"]`,
-      )
-    ) {
-      return false;
-    }
-
-    const title = normalizeCandidate(parsed.document.querySelector("title")?.textContent) ?? "";
-    if (REDDIT_VERIFICATION_PATTERN.test(title)) return true;
-
-    const body = normalizeCandidate(parsed.document.body?.textContent) ?? "";
-    return body.length <= 1_000 && REDDIT_VERIFICATION_PATTERN.test(body);
-  } finally {
-    parsed.close();
+  const document = parseHtmlDocument(html, redditUrl.href);
+  const threadId = redditThreadId(redditUrl);
+  if (
+    document.querySelector(
+      `#thing_t3_${threadId}.thing[data-type="link"], .thing[data-fullname="t3_${threadId}"][data-type="link"], shreddit-post, [data-testid="post-container"]`,
+    )
+  ) {
+    return false;
   }
+
+  const title = normalizeCandidate(document.querySelector("title")?.textContent) ?? "";
+  if (REDDIT_VERIFICATION_PATTERN.test(title)) return true;
+
+  const body = normalizeCandidate(document.body?.textContent) ?? "";
+  return body.length <= 1_000 && REDDIT_VERIFICATION_PATTERN.test(body);
 }
 
 function directChildWithClass(element: Element, className: string): Element | null {
@@ -117,63 +113,57 @@ export function normalizeOldRedditThreadHtml(
   const redditUrl = parseRedditThreadUrl(inputUrl);
   if (!redditUrl) return null;
 
-  const parsed = parseHtmlDocument(html, redditUrl.href);
-  try {
-    const threadId = redditThreadId(redditUrl);
-    if (!threadId) return null;
-    const post = parsed.document.querySelector(
-      `#thing_t3_${threadId}.thing[data-type="link"], .thing[data-fullname="t3_${threadId}"][data-type="link"]`,
+  const document = parseHtmlDocument(html, redditUrl.href);
+  const threadId = redditThreadId(redditUrl);
+  if (!threadId) return null;
+  const post = document.querySelector(
+    `#thing_t3_${threadId}.thing[data-type="link"], .thing[data-fullname="t3_${threadId}"][data-type="link"]`,
+  );
+  if (!post || post.classList.contains("promoted")) return null;
+
+  const postEntry = thingEntry(post);
+  const titleLink = postEntry?.querySelector("a.title") ?? null;
+  const title = normalizeCandidate(titleLink?.textContent) ?? null;
+  if (!title) return null;
+  const isSelfPost =
+    post.classList.contains("self") ||
+    (post.getAttribute("data-domain") ?? "").toLowerCase().startsWith("self.");
+  const titleUrl = resolveHttpUrl(
+    isSelfPost && options?.canonicalUrl ? options.canonicalUrl : titleLink?.getAttribute("href"),
+    redditUrl,
+  );
+
+  const postAuthor = normalizeCandidate(postEntry?.querySelector(".tagline .author")?.textContent);
+  const subreddit = normalizeCandidate(post.getAttribute("data-subreddit"));
+  const postBody = safeBodyHtml(entryBody(postEntry));
+  const postByline = [postAuthor ? `u/${postAuthor}` : null, subreddit ? `r/${subreddit}` : null]
+    .filter(Boolean)
+    .join(" in ");
+
+  const commentSections: string[] = [];
+  for (const comment of document.querySelectorAll(".thing.comment")) {
+    const entry = thingEntry(comment);
+    const body = entryBody(entry);
+    const bodyText = normalizeCandidate(body?.textContent);
+    if (!bodyText) continue;
+
+    const author = normalizeCandidate(entry?.querySelector(".tagline .author")?.textContent);
+    const headingLevel = Math.min(6, 3 + commentDepth(comment));
+    const heading = author ? `Comment by u/${author}` : "Comment";
+    commentSections.push(
+      `<section><h${headingLevel}>${escapeHtml(heading)}</h${headingLevel}>${safeBodyHtml(body)}</section>`,
     );
-    if (!post || post.classList.contains("promoted")) return null;
-
-    const postEntry = thingEntry(post);
-    const titleLink = postEntry?.querySelector("a.title") ?? null;
-    const title = normalizeCandidate(titleLink?.textContent) ?? null;
-    if (!title) return null;
-    const isSelfPost =
-      post.classList.contains("self") ||
-      (post.getAttribute("data-domain") ?? "").toLowerCase().startsWith("self.");
-    const titleUrl = resolveHttpUrl(
-      isSelfPost && options?.canonicalUrl ? options.canonicalUrl : titleLink?.getAttribute("href"),
-      redditUrl,
-    );
-
-    const postAuthor = normalizeCandidate(
-      postEntry?.querySelector(".tagline .author")?.textContent,
-    );
-    const subreddit = normalizeCandidate(post.getAttribute("data-subreddit"));
-    const postBody = safeBodyHtml(entryBody(postEntry));
-    const postByline = [postAuthor ? `u/${postAuthor}` : null, subreddit ? `r/${subreddit}` : null]
-      .filter(Boolean)
-      .join(" in ");
-
-    const commentSections: string[] = [];
-    for (const comment of parsed.document.querySelectorAll(".thing.comment")) {
-      const entry = thingEntry(comment);
-      const body = entryBody(entry);
-      const bodyText = normalizeCandidate(body?.textContent);
-      if (!bodyText) continue;
-
-      const author = normalizeCandidate(entry?.querySelector(".tagline .author")?.textContent);
-      const headingLevel = Math.min(6, 3 + commentDepth(comment));
-      const heading = author ? `Comment by u/${author}` : "Comment";
-      commentSections.push(
-        `<section><h${headingLevel}>${escapeHtml(heading)}</h${headingLevel}>${safeBodyHtml(body)}</section>`,
-      );
-    }
-
-    const bylineHtml = postByline ? `<p>Posted by ${escapeHtml(postByline)}</p>` : "";
-    const commentsHtml =
-      commentSections.length > 0 ? `<h2>Comments</h2>${commentSections.join("")}` : "";
-    const titleHtml = titleUrl
-      ? `<a href="${escapeHtml(titleUrl)}">${escapeHtml(title)}</a>`
-      : escapeHtml(title);
-    const outboundLinkHtml =
-      titleUrl && !isSelfPost
-        ? `<p>Link: <a href="${escapeHtml(titleUrl)}">${escapeHtml(titleUrl)}</a></p>`
-        : "";
-    return `<!doctype html><html><head><title>${escapeHtml(title)}</title><meta property="og:site_name" content="Reddit"></head><body><article><h1>${titleHtml}</h1>${bylineHtml}${outboundLinkHtml}${postBody}${commentsHtml}</article></body></html>`;
-  } finally {
-    parsed.close();
   }
+
+  const bylineHtml = postByline ? `<p>Posted by ${escapeHtml(postByline)}</p>` : "";
+  const commentsHtml =
+    commentSections.length > 0 ? `<h2>Comments</h2>${commentSections.join("")}` : "";
+  const titleHtml = titleUrl
+    ? `<a href="${escapeHtml(titleUrl)}">${escapeHtml(title)}</a>`
+    : escapeHtml(title);
+  const outboundLinkHtml =
+    titleUrl && !isSelfPost
+      ? `<p>Link: <a href="${escapeHtml(titleUrl)}">${escapeHtml(titleUrl)}</a></p>`
+      : "";
+  return `<!doctype html><html><head><title>${escapeHtml(title)}</title><meta property="og:site_name" content="Reddit"></head><body><article><h1>${titleHtml}</h1>${bylineHtml}${outboundLinkHtml}${postBody}${commentsHtml}</article></body></html>`;
 }

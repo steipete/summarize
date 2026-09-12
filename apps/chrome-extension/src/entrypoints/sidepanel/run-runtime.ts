@@ -8,7 +8,6 @@ import type { HeaderController } from "./header-controller";
 import type { createMetricsController } from "./metrics-controller";
 import type { NavigationRuntime } from "./navigation-runtime";
 import type { PanelCacheController } from "./panel-cache";
-import type { PanelStateAction } from "./panel-state-store";
 import { createPlannedSlidesRuntime } from "./planned-slides-runtime";
 import type { createSidepanelPresentationRuntime } from "./presentation-runtime";
 import { friendlyFetchError } from "./setup-runtime";
@@ -32,7 +31,7 @@ type PresentationRuntime = ReturnType<typeof createSidepanelPresentationRuntime>
 
 export function createSidepanelRunRuntime({
   panelState,
-  dispatchPanelState,
+
   getActiveTabId,
   getActiveTabUrl,
   appearanceControls,
@@ -46,7 +45,7 @@ export function createSidepanelRunRuntime({
   syncWithActiveTab,
 }: {
   panelState: PanelState;
-  dispatchPanelState: (action: PanelStateAction) => void;
+
   getActiveTabId: () => number | null;
   getActiveTabUrl: () => string | null;
   appearanceControls: AppearanceControls;
@@ -82,7 +81,7 @@ export function createSidepanelRunRuntime({
 
   const plannedSlidesRuntime = createPlannedSlidesRuntime({
     panelState,
-    dispatchPanelState,
+
     getActiveTabUrl,
     getLengthValue: appearanceControls.getLengthValue,
     updateSlidesTextState,
@@ -104,7 +103,7 @@ export function createSidepanelRunRuntime({
     isStreaming,
     maybeApplyPendingSlidesSummary,
     panelState,
-    dispatchPanelState,
+
     queueSlidesRender,
     rebuildSlideDescriptions,
     refreshSummaryMetrics: (summary) => {
@@ -138,14 +137,14 @@ export function createSidepanelRunRuntime({
   });
   const browserAiSnapshotRuntime = createBrowserAiSnapshotRuntime({
     panelState,
-    dispatchPanelState,
+
     browserAi: presentationRuntime.summary.browserAiRuntime,
     renderMarkdown,
   });
 
   const summaryRunRuntime = createSummaryRunRuntime({
     panelState,
-    dispatchPanelState,
+
     getActiveTabId,
     cancelAutoSummarize: autoSummarizeRuntime.cancel,
     summaryStream: {

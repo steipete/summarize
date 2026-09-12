@@ -1,6 +1,6 @@
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { makeAssistantMessage } from "./helpers/pi-ai-mock.js";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => {
   const completeSimple = vi.fn();
@@ -74,17 +74,6 @@ vi.mock("../src/content/index.js", () => ({
 }));
 
 import { runCli } from "../src/run.js";
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 describe("cli twitter skip-summary branches", () => {
   it("skips summarization for short tweet content in --json mode", async () => {

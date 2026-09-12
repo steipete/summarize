@@ -1,10 +1,10 @@
 import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 vi.mock("../packages/core/src/transcription/whisper/ffmpeg.js", async (importOriginal) => {
   const actual =
@@ -14,17 +14,6 @@ vi.mock("../packages/core/src/transcription/whisper/ffmpeg.js", async (importOri
     probeMediaDurationSecondsWithFfprobe: vi.fn(async () => 2),
   };
 });
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 describe("CLI media diarization integration", () => {
   afterEach(() => {

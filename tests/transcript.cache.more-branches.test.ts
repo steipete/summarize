@@ -119,6 +119,8 @@ describe("transcript cache - more branches", () => {
   it("maps cached sources, including unknown values", () => {
     expect(mapCachedSource(null)).toBeNull();
     expect(mapCachedSource("yt-dlp")).toBe("yt-dlp");
+    expect(mapCachedSource("youtube-media")).toBe("youtube-media");
+    expect(mapCachedSource("embedded")).toBe("embedded");
     expect(mapCachedSource("weird")).toBe("unknown");
   });
 

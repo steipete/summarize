@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SidepanelDom } from "../apps/chrome-extension/src/entrypoints/sidepanel/dom";
-import { createPanelStateStore } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import type { createSidepanelPresentationRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/presentation-runtime";
 import type { createSidepanelRunRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/run-runtime";
 import type { createSidepanelStateEffectsRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/state-effects-runtime";
@@ -22,14 +22,14 @@ describe("sidepanel test hooks runtime", () => {
       }
     ).__summarizeTestHooks = hooks;
 
-    const store = createPanelStateStore();
-    store.state.runId = "run-1";
-    store.state.summaryMarkdown = "summary";
-    store.state.lastMeta.model = "openai/gpt-5.4";
-    store.state.slidesSession.mediaAvailable = true;
-    store.state.slidesSummary.markdown = "slide summary";
-    store.state.slidesSummary.complete = true;
-    store.state.slidesSummary.model = "openai/gpt-5.4";
+    const store = createInitialPanelState();
+    store.runId = "run-1";
+    store.summaryMarkdown = "summary";
+    store.lastMeta.model = "openai/gpt-5.4";
+    store.slidesSession.mediaAvailable = true;
+    store.slidesSummary.markdown = "slide summary";
+    store.slidesSummary.complete = true;
+    store.slidesSummary.model = "openai/gpt-5.4";
 
     const setSlidesTranscriptTimedText = vi.fn();
     const updateSlidesTextState = vi.fn();
@@ -99,8 +99,8 @@ describe("sidepanel test hooks runtime", () => {
           textContent: "Failure",
         },
       } as unknown as SidepanelDom,
-      panelState: store.state,
-      dispatchPanelState: store.dispatch,
+      panelState: store,
+
       presentationRuntime,
       runRuntime,
       stateEffectsRuntime,
@@ -135,7 +135,7 @@ describe("sidepanel test hooks runtime", () => {
     expect(updateSlidesTextState).toHaveBeenCalledOnce();
     expect(handleSummarizeControlChange).toHaveBeenCalledWith({ mode: "video", slides: true });
     expect(refreshSummarizeControl).toHaveBeenCalledOnce();
-    expect(store.state.ui).toEqual({ panelOpen: true });
+    expect(store.ui).toEqual({ panelOpen: true });
     expect(applyUiState).toHaveBeenCalledWith({ panelOpen: true });
     expect(handleBgMessage).toHaveBeenCalledWith({ type: "ui:status", status: "Ready" });
     expect(renderMarkdown).toHaveBeenCalledWith("next summary");
@@ -144,7 +144,7 @@ describe("sidepanel test hooks runtime", () => {
       source: "slides-partial",
     });
     expect(setPhase).toHaveBeenCalledTimes(2);
-    expect(store.state.slidesSession).toMatchObject({
+    expect(store.slidesSession).toMatchObject({
       slidesEnabled: true,
       inputMode: "video",
       inputModeOverride: "video",

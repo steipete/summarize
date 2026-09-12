@@ -1,10 +1,10 @@
 import { openAsBlob } from "node:fs";
 import { basename } from "node:path";
 import { resolveOpenAiWhisperBaseUrl } from "../../openai/base-url.js";
-import { MAX_ERROR_DETAIL_CHARS, TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
+import { TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
 import { formatDiarizedTranscript, formatSpeakerLabel } from "./diarization-format.js";
 import type { TranscriptionSegment, WhisperTranscriptionResult } from "./types.js";
-import { ensureWhisperFilenameExtension, toArrayBuffer } from "./utils.js";
+import { ensureWhisperFilenameExtension, readErrorDetail, toArrayBuffer } from "./utils.js";
 
 type Env = Record<string, string | undefined>;
 export const OPENAI_DIARIZATION_MODEL = "gpt-4o-transcribe-diarize";
@@ -38,28 +38,7 @@ export async function transcribeWithOpenAi(
   form.append("file", new Blob([toArrayBuffer(bytes)], { type: mediaType }), safeName);
   form.append("model", "whisper-1");
 
-  const effectiveBaseUrl = resolveOpenAiWhisperBaseUrl({
-    explicitBaseUrl: options?.baseUrl,
-    env: options?.env,
-  });
-  const transcriptionUrl = `${effectiveBaseUrl.replace(/\/+$/, "")}/audio/transcriptions`;
-
-  const response = await globalThis.fetch(transcriptionUrl, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
-    body: form,
-    signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
-  });
-
-  if (!response.ok) {
-    const detail = await readErrorDetail(response);
-    throw new OpenAiTranscriptionHttpError(
-      response.status,
-      resolveRetryAfterMs(response.headers, response.status, detail),
-      detail,
-    );
-  }
-
+  const response = await requestOpenAiTranscription(form, apiKey, options);
   const payload = (await response.json()) as { text?: unknown };
   if (typeof payload?.text !== "string") return null;
   const trimmed = payload.text.trim();
@@ -90,26 +69,7 @@ export async function transcribeFileWithOpenAiDiarization({
   form.append("response_format", "diarized_json");
   form.append("chunking_strategy", "auto");
 
-  const effectiveBaseUrl = resolveOpenAiWhisperBaseUrl({
-    explicitBaseUrl: options?.baseUrl,
-    env: options?.env,
-  });
-  const transcriptionUrl = `${effectiveBaseUrl.replace(/\/+$/, "")}/audio/transcriptions`;
-  const response = await globalThis.fetch(transcriptionUrl, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
-    body: form,
-    signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
-  });
-  if (!response.ok) {
-    const detail = await readErrorDetail(response);
-    throw new OpenAiTranscriptionHttpError(
-      response.status,
-      resolveRetryAfterMs(response.headers, response.status, detail),
-      detail,
-    );
-  }
-
+  const response = await requestOpenAiTranscription(form, apiKey, options);
   const payload = (await response.json()) as { segments?: unknown; text?: unknown };
   if (!Array.isArray(payload.segments)) {
     throw new Error("OpenAI transcription returned an invalid diarized segment payload");
@@ -246,15 +206,32 @@ function parseRateLimitDurationMs(value: string | null): number | null {
   return consumed === trimmed && total >= 0 ? total : null;
 }
 
-async function readErrorDetail(response: Response): Promise<string | null> {
-  try {
-    const text = await response.text();
-    const trimmed = text.trim();
-    if (!trimmed) return null;
-    return trimmed.length > MAX_ERROR_DETAIL_CHARS
-      ? `${trimmed.slice(0, MAX_ERROR_DETAIL_CHARS)}…`
-      : trimmed;
-  } catch {
-    return null;
+async function requestOpenAiTranscription(
+  form: FormData,
+  apiKey: string,
+  options?: { baseUrl?: string | null; env?: Env },
+): Promise<Response> {
+  const effectiveBaseUrl = resolveOpenAiWhisperBaseUrl({
+    explicitBaseUrl: options?.baseUrl,
+    env: options?.env,
+  });
+  const transcriptionUrl = `${effectiveBaseUrl.replace(/\/+$/, "")}/audio/transcriptions`;
+
+  const response = await globalThis.fetch(transcriptionUrl, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: form,
+    signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response);
+    throw new OpenAiTranscriptionHttpError(
+      response.status,
+      resolveRetryAfterMs(response.headers, response.status, detail),
+      detail,
+    );
   }
+
+  return response;
 }

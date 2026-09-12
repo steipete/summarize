@@ -1,5 +1,5 @@
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => {
   const createLinkPreviewClient = vi.fn(() => {
@@ -69,17 +69,6 @@ vi.mock("../src/llm/cli.js", () => ({
 }));
 
 import { runCli } from "../src/run.js";
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 describe("cli run.ts CLI provider model path", () => {
   it("summarizes via cli/<provider> and includes metrics finish line", async () => {

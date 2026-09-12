@@ -15,7 +15,11 @@ function isExecutable(filePath: string): boolean {
 export function resolveExecutableInPath(
   binary: string,
   env: Record<string, string | undefined>,
+  explicitEnvKey?: string,
 ): string | null {
+  const explicit =
+    explicitEnvKey && typeof env[explicitEnvKey] === "string" ? env[explicitEnvKey]?.trim() : "";
+  if (explicit) binary = explicit;
   if (!binary) return null;
   if (path.isAbsolute(binary)) {
     return isExecutable(binary) ? binary : null;

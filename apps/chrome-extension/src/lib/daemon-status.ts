@@ -46,7 +46,7 @@ export function createDaemonStatusTracker(options: DaemonStatusTrackerOptions = 
         lastReadyState &&
         (opts.keepReady || now - lastReadyAt <= transientGraceMs);
 
-      if (shouldKeepReady) {
+      if (shouldKeepReady && lastReadyState) {
         return { ...lastReadyState };
       }
 

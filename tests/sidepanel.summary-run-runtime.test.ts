@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  applyPanelStateAction,
-  createInitialPanelState,
-} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import { createSummaryRunRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/summary-run-runtime";
 import type {
   PanelState,
@@ -58,9 +55,7 @@ function createHarness(
   };
   const runtime = createSummaryRunRuntime({
     panelState,
-    dispatchPanelState: options.dispatch
-      ? (action) => applyPanelStateAction(panelState, action)
-      : undefined,
+
     getActiveTabId: () => panelState.navigation.activeTabId,
     cancelAutoSummarize: calls.cancelAutoSummarize,
     summaryStream: {

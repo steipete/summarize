@@ -1,7 +1,6 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import {
   applyWidthOverride,
@@ -9,17 +8,7 @@ import {
   prepareRunEnvironment,
   resolvePromptOverride,
 } from "../src/run/runner-setup.js";
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 describe("runner setup", () => {
   it("normalizes bare diarize URLs and honors --no-color", () => {

@@ -7,7 +7,7 @@ Focused fixes, tests, and documentation improvements are welcome.
 Requirements:
 
 - Node.js 24 or newer
-- pnpm 11.23.0 through Corepack
+- pnpm 11.25.0 through Corepack
 - Git
 
 ```bash
@@ -48,12 +48,24 @@ pnpm -s format
 Extension:
 
 ```bash
+pnpm -C apps/chrome-extension typecheck
 pnpm -C apps/chrome-extension build
 pnpm -C apps/chrome-extension test:chrome
 pnpm -C apps/chrome-extension test:firefox
 ```
 
 The supported automated browser path is `test:chrome`. Firefox uses a temporary-install smoke test because Playwright cannot reliably drive `moz-extension://` pages.
+
+The root `check` gate also type-checks the extension with bundler module resolution and WXT's generated browser declarations. Keep callback, settings, and message types tied to their owning modules so changes are checked across runtime boundaries.
+
+Build and run the Node 24 CLI test container, including `ffmpeg` and `yt-dlp`:
+
+```bash
+docker build -f Dockerfile.test -t summarize-test .
+docker run --rm summarize-test https://example.com --extract --plain
+```
+
+The image uses the workspace's pinned pnpm version and frozen lockfile, including local dependency patches.
 
 Daemon after extension or daemon changes:
 

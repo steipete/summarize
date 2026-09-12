@@ -192,59 +192,7 @@
 }
 
 .checkboxControl {
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
   background: var(--field-bg);
-  display: grid;
-  place-items: center;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease,
-    transform 160ms ease;
-}
-
-.checkboxInput {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.checkboxControl[data-state="checked"] {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
-  background: color-mix(in srgb, var(--accent) 75%, transparent);
-  color: #fff;
-}
-
-.checkboxInput:focus-visible + .checkboxControl {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
-}
-
-.checkboxIndicator {
-  display: grid;
-  place-items: center;
-  opacity: 0;
-  transform: scale(0.6);
-  transition:
-    opacity 160ms ease,
-    transform 160ms ease;
-}
-
-.checkboxControl[data-state="checked"] .checkboxIndicator {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.checkboxIndicator svg {
-  width: 12px;
-  height: 10px;
 }
 
 .drawerFooter {

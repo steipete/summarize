@@ -1,5 +1,5 @@
-import { Writable } from "node:stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { discardStream as noopStream } from "./helpers/streams.js";
 
 const mocks = vi.hoisted(() => ({
   close: vi.fn(),
@@ -32,14 +32,6 @@ vi.mock("../src/run/cli-summarize-execution.js", () => ({
 }));
 
 import { runCli } from "../src/run.js";
-
-function noopStream() {
-  return new Writable({
-    write(_chunk, _encoding, callback) {
-      callback();
-    },
-  });
-}
 
 describe("CLI summarize command lifecycle", () => {
   beforeEach(() => {

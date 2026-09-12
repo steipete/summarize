@@ -1,9 +1,23 @@
 import { promises as fs } from "node:fs";
 import { MAX_ERROR_DETAIL_CHARS, TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
 import { resolveGeminiTranscriptionModel } from "./provider-setup.js";
-import { ensureWhisperFilenameExtension, toArrayBuffer, wrapError } from "./utils.js";
+import {
+  ensureWhisperFilenameExtension,
+  readErrorDetail,
+  toArrayBuffer,
+  wrapError,
+} from "./utils.js";
 
 type Env = Record<string, string | undefined>;
+
+type GeminiTranscriptionOptions = {
+  env?: Env;
+  model?: string | null;
+};
+
+type GeminiMediaPart =
+  | { inline_data: { mime_type: string; data: string } }
+  | { file_data: { mime_type: string; file_uri: string } };
 
 const GEMINI_INLINE_UPLOAD_BYTES = 20 * 1024 * 1024;
 const DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
@@ -23,18 +37,18 @@ export async function transcribeWithGemini(
   mediaType: string,
   filename: string | null,
   apiKey: string,
-  options?: {
-    env?: Env;
-    model?: string | null;
-  },
+  options?: GeminiTranscriptionOptions,
 ): Promise<string | null> {
   if (bytes.byteLength <= GEMINI_INLINE_UPLOAD_BYTES) {
-    return await generateInlineTranscript({
-      bytes,
-      mediaType,
+    return await generateTranscript({
+      media: {
+        inline_data: {
+          mime_type: mediaType,
+          data: Buffer.from(toArrayBuffer(bytes)).toString("base64"),
+        },
+      },
       apiKey,
-      env: options?.env,
-      model: options?.model ?? null,
+      ...options,
     });
   }
 
@@ -46,12 +60,20 @@ export async function transcribeWithGemini(
     env: options?.env,
   });
   try {
-    return await generateFileTranscript({
-      file: upload,
+    const ready = await waitForGeminiFileActive(upload, apiKey, options?.env);
+    const fileUri = typeof ready.uri === "string" ? ready.uri.trim() : "";
+    if (!fileUri) {
+      throw new Error("Gemini Files API did not return a file uri");
+    }
+    return await generateTranscript({
+      media: {
+        file_data: {
+          mime_type: resolveGeminiMimeType(ready, mediaType),
+          file_uri: fileUri,
+        },
+      },
       apiKey,
-      env: options?.env,
-      model: options?.model ?? null,
-      mediaType,
+      ...options,
     });
   } finally {
     await deleteGeminiFile(upload, apiKey, options?.env).catch(() => {});
@@ -63,61 +85,25 @@ export async function transcribeFileWithGemini({
   mediaType,
   filename,
   apiKey,
-  env,
-  model,
+  ...options
 }: {
   filePath: string;
   mediaType: string;
   filename: string | null;
   apiKey: string;
-  env?: Env;
-  model?: string | null;
-}): Promise<string | null> {
-  const stat = await fs.stat(filePath);
-  if (stat.size <= GEMINI_INLINE_UPLOAD_BYTES) {
-    const bytes = new Uint8Array(await fs.readFile(filePath));
-    return await generateInlineTranscript({
-      bytes,
-      mediaType,
-      apiKey,
-      env,
-      model,
-    });
-  }
-
-  const upload = await uploadGeminiFile({
-    filePath,
-    mediaType,
-    filename,
-    apiKey,
-    env,
-  });
-  try {
-    return await generateFileTranscript({
-      file: upload,
-      apiKey,
-      env,
-      model,
-      mediaType,
-    });
-  } finally {
-    await deleteGeminiFile(upload, apiKey, env).catch(() => {});
-  }
+} & GeminiTranscriptionOptions): Promise<string | null> {
+  return transcribeWithGemini(await fs.readFile(filePath), mediaType, filename, apiKey, options);
 }
 
-async function generateInlineTranscript({
-  bytes,
-  mediaType,
+async function generateTranscript({
+  media,
   apiKey,
   env,
   model,
 }: {
-  bytes: Uint8Array;
-  mediaType: string;
+  media: GeminiMediaPart;
   apiKey: string;
-  env?: Env;
-  model?: string | null;
-}): Promise<string | null> {
+} & GeminiTranscriptionOptions): Promise<string | null> {
   const response = await geminiJsonRequest({
     path: `v1beta/models/${resolveModelId(model, env)}:generateContent`,
     apiKey,
@@ -126,87 +112,13 @@ async function generateInlineTranscript({
       generationConfig: { temperature: 0 },
       contents: [
         {
-          parts: [
-            { text: TRANSCRIPTION_PROMPT },
-            {
-              inline_data: {
-                mime_type: mediaType,
-                data: Buffer.from(toArrayBuffer(bytes)).toString("base64"),
-              },
-            },
-          ],
+          parts: [{ text: TRANSCRIPTION_PROMPT }, media],
         },
       ],
     },
   });
 
   return extractGeminiTranscript(response, resolveModelId(model, env));
-}
-
-async function generateFileTranscript({
-  file,
-  apiKey,
-  env,
-  model,
-  mediaType,
-}: {
-  file: GeminiFileResource;
-  apiKey: string;
-  env?: Env;
-  model?: string | null;
-  mediaType: string;
-}): Promise<string | null> {
-  const ready = await waitForGeminiFileActive(file, apiKey, env);
-  const fileUri = typeof ready.uri === "string" ? ready.uri.trim() : "";
-  if (!fileUri) {
-    throw new Error("Gemini Files API did not return a file uri");
-  }
-  const response = await geminiJsonRequest({
-    path: `v1beta/models/${resolveModelId(model, env)}:generateContent`,
-    apiKey,
-    env,
-    body: {
-      generationConfig: { temperature: 0 },
-      contents: [
-        {
-          parts: [
-            { text: TRANSCRIPTION_PROMPT },
-            {
-              file_data: {
-                mime_type: resolveGeminiMimeType(ready, mediaType),
-                file_uri: fileUri,
-              },
-            },
-          ],
-        },
-      ],
-    },
-  });
-
-  return extractGeminiTranscript(response, resolveModelId(model, env));
-}
-
-async function uploadGeminiFile({
-  filePath,
-  mediaType,
-  filename,
-  apiKey,
-  env,
-}: {
-  filePath: string;
-  mediaType: string;
-  filename: string | null;
-  apiKey: string;
-  env?: Env;
-}): Promise<GeminiFileResource> {
-  const bytes = await fs.readFile(filePath);
-  return await uploadGeminiBytes({
-    bytes: new Uint8Array(bytes),
-    mediaType,
-    filename,
-    apiKey,
-    env,
-  });
 }
 
 async function uploadGeminiBytes({
@@ -430,14 +342,4 @@ function truncate(value: string): string {
   return trimmed.length > MAX_ERROR_DETAIL_CHARS
     ? `${trimmed.slice(0, MAX_ERROR_DETAIL_CHARS)}…`
     : trimmed;
-}
-
-async function readErrorDetail(response: Response): Promise<string | null> {
-  try {
-    const text = await response.text();
-    const trimmed = text.trim();
-    return trimmed.length > 0 ? truncate(trimmed) : null;
-  } catch {
-    return null;
-  }
 }

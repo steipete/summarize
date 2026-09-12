@@ -1,7 +1,8 @@
-import { parseSseStream, type RawSseMessage } from "@steipete/summarize-core/runtime";
+import { parseSseStream } from "@steipete/summarize-core/runtime";
 import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
 import { parseSseEvent, type SseSlidesData } from "../../lib/runtime-contracts";
+import { nextSseMessage } from "../../lib/sse-reader";
 
 export type SlidesStreamController = {
   start: (runId: string) => Promise<void>;
@@ -87,26 +88,12 @@ export function createSlidesStreamController(
       if (!res.body) throw new Error("Missing stream body");
 
       const iterator = parseSseStream(res.body);
-      const useIdleTimeout = Number.isFinite(idleTimeoutMs) && idleTimeoutMs > 0;
-      const nextWithTimeout = async () => {
-        if (!useIdleTimeout) return iterator.next();
-        let timer: ReturnType<typeof setTimeout> | null = null;
-        const timeoutPromise = new Promise<IteratorResult<RawSseMessage>>((_, reject) => {
-          timer = setTimeout(() => {
-            const error = new Error(idleTimeoutMessage);
-            error.name = "IdleTimeoutError";
-            reject(error);
-          }, idleTimeoutMs);
-        });
-        try {
-          return await Promise.race([iterator.next(), timeoutPromise]);
-        } finally {
-          if (timer) clearTimeout(timer);
-        }
-      };
-
       while (true) {
-        const { value: msg, done } = await nextWithTimeout();
+        const { value: msg, done } = await nextSseMessage(
+          iterator,
+          idleTimeoutMs,
+          idleTimeoutMessage,
+        );
         if (done) break;
         if (generation !== activeGeneration) return;
         if (nextController.signal.aborted) return;

@@ -7,6 +7,10 @@ updates:
     # Match pnpm's minimumReleaseAge before selecting version updates.
     cooldown:
       default-days: 7
+    ignore:
+      # Keep Node typings aligned with the supported runtime floor.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       dependencies:
         patterns: ["*"]

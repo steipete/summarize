@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
+import { captureStream as collectStream } from "./helpers/streams.js";
 
 vi.mock("../src/llm/generate-text.js", () => ({
   generateTextWithModelId: vi.fn(async ({ modelId }: { modelId: string }) => {
@@ -16,17 +16,6 @@ vi.mock("../src/llm/generate-text.js", () => ({
     };
   }),
 }));
-
-function collectStream() {
-  let text = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      text += chunk.toString();
-      callback();
-    },
-  });
-  return { stream, getText: () => text };
-}
 
 describe("cli --extract finish line includes model when LLM ran", () => {
   it("prints extraction label + model id when markdown conversion uses an LLM", async () => {

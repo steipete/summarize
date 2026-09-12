@@ -14,6 +14,7 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
 
 ## Defaults
 
+- OpenAI-compatible transports share HTTP submission, completion validation, and streaming usage settlement. Responses and Chat Completions keep distinct payload/event adapters; PDF documents retain the `api.openai.com` restriction and their separate header policy.
 - Default model: `auto`
 - Override with `SUMMARIZE_MODEL`, config file (`model`), or `--model`.
 

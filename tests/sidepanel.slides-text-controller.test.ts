@@ -1,18 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { createPanelStateStore } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store.js";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import { createSlidesTextController } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-text-controller.js";
 
-type ControllerOptions = Omit<
-  Parameters<typeof createSlidesTextController>[0],
-  "panelState" | "dispatchPanelState"
->;
+type ControllerOptions = Omit<Parameters<typeof createSlidesTextController>[0], "panelState">;
 
 function createController(options: ControllerOptions) {
-  const store = createPanelStateStore();
+  const store = createInitialPanelState();
   return createSlidesTextController({
     ...options,
-    panelState: store.state,
-    dispatchPanelState: store.dispatch,
+    panelState: store,
   });
 }
 

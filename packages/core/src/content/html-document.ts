@@ -1,10 +1,5 @@
 import { parseHTML } from "linkedom";
 
-export type ParsedHtmlDocument = {
-  document: Document;
-  close: () => void;
-};
-
 const HEAD_CONTENT_TAGS = new Set([
   "base",
   "basefont",
@@ -18,7 +13,7 @@ const HEAD_CONTENT_TAGS = new Set([
   "title",
 ]);
 
-export function parseHtmlDocument(html: string, url?: string): ParsedHtmlDocument {
+export function parseHtmlDocument(html: string, url?: string): Document {
   // LinkeDOM treats fragments as the document element; Readability requires normal body ancestry.
   const prolog = inspectProlog(html);
   const source = /^<html(?:\s|>)/i.test(html.slice(prolog.contentOffset))
@@ -50,10 +45,7 @@ export function parseHtmlDocument(html: string, url?: string): ParsedHtmlDocumen
   document.createElement = ((tagName: string, options?: ElementCreationOptions) =>
     createElement(tagName.toLowerCase(), options)) as typeof document.createElement;
 
-  return {
-    document,
-    close: () => undefined,
-  };
+  return document;
 }
 
 function normalizeHtmlAttributeNames(document: Document): void {

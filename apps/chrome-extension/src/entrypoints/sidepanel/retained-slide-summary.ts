@@ -1,4 +1,3 @@
-import type { PanelStateAction } from "./panel-state-store";
 import { panelUrlsMatch } from "./session-policy";
 import type { PanelState } from "./types";
 
@@ -7,17 +6,14 @@ const getSummaryScopeUrl = (panelState: PanelState) =>
 
 export function retainRenderedSlideSummary(
   panelState: PanelState,
-  dispatchPanelState: (action: PanelStateAction) => void,
+
   markdown: string,
 ) {
   if (!markdown.trim()) return;
-  dispatchPanelState({
-    type: "retained-slide-summary",
-    value: {
-      markdown,
-      url: getSummaryScopeUrl(panelState),
-    },
-  });
+  panelState.retainedSlideSummary = {
+    markdown,
+    url: getSummaryScopeUrl(panelState),
+  };
 }
 
 export function selectRetainedSlideSummaryMarkdown(panelState: PanelState) {

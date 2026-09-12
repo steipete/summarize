@@ -101,6 +101,37 @@ beforeEach(() => {
 });
 
 describe("daemon/agent", () => {
+  it.each(["complete", "stream"] as const)(
+    "keeps %s chat-only requests on the agent path without tools",
+    async (mode) => {
+      const request = {
+        env: { HOME: makeTempHome(), OPENAI_API_KEY: "sk-test" },
+        pageUrl: "https://example.com/article",
+        pageTitle: "Example article",
+        pageContent: "Grounded page content",
+        messages: [{ role: "user" as const, content: "What does this say?" }],
+        modelOverride: "openai/gpt-5-mini",
+        tools: ["navigate", "summarize"],
+        automationEnabled: false,
+      };
+      if (mode === "complete") {
+        expect(await completeAgentResponse(request)).toMatchObject({ role: "assistant" });
+      } else {
+        const onChunk = vi.fn();
+        const onAssistant = vi.fn();
+        await streamAgentResponse({ ...request, onChunk, onAssistant });
+        expect(onChunk).toHaveBeenCalledWith("ok");
+        expect(onAssistant).toHaveBeenCalledWith(expect.objectContaining({ role: "assistant" }));
+      }
+      const context = (mode === "complete" ? mockCompleteSimple : mockStreamSimple).mock
+        .calls[0]?.[1];
+      expect(context.tools).toEqual([]);
+      expect(context.systemPrompt).toContain("You are Summarize Chat");
+      expect(context.systemPrompt).toContain("Grounded page content");
+      expect(context.messages).toEqual([expect.objectContaining(request.messages[0])]);
+    },
+  );
+
   it("passes openrouter api key to pi-ai when using openrouter models", async () => {
     const home = makeTempHome();
     await completeAgentResponse({
@@ -467,33 +498,51 @@ describe("daemon/agent", () => {
     }
   });
 
-  it("runs fixed CLI agent models through the CLI transport", async () => {
-    const home = makeTempHome();
+  it.each(["complete", "stream"] as const)(
+    "runs %s CLI agent models through the CLI transport",
+    async (mode) => {
+      const home = makeTempHome();
+      const signal = new AbortController().signal;
+      const request = {
+        env: { HOME: home },
+        pageUrl: "https://example.com",
+        pageTitle: "Example",
+        pageContent: "Hello world",
+        messages: [{ role: "user", content: "Hi" }],
+        modelOverride: "cli/codex/gpt-5.2",
+        tools: [],
+        automationEnabled: false,
+        signal,
+      };
+      if (mode === "complete") {
+        expect((await completeAgentResponse(request)).content).toBe("cli agent");
+      } else {
+        const onChunk = vi.fn();
+        const onAssistant = vi.fn();
+        await streamAgentResponse({ ...request, onChunk, onAssistant });
+        expect(onChunk).toHaveBeenCalledExactlyOnceWith("cli agent");
+        expect(onAssistant).toHaveBeenCalledExactlyOnceWith({
+          role: "assistant",
+          content: "cli agent",
+        });
+      }
 
-    const assistant = await completeAgentResponse({
-      env: { HOME: home },
-      pageUrl: "https://example.com",
-      pageTitle: "Example",
-      pageContent: "Hello world",
-      messages: [{ role: "user", content: "Hi" }],
-      modelOverride: "cli/codex/gpt-5.2",
-      tools: [],
-      automationEnabled: false,
-    });
-
-    expect(runCliModel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: "codex",
-        model: "gpt-5.2",
-        allowTools: false,
-      }),
-    );
-    const args = vi.mocked(runCliModel).mock.calls[0]?.[0] as { prompt: string };
-    expect(args.prompt).toContain("You are Summarize Chat, not Claude.");
-    expect(args.prompt).toContain("User: Hi");
-    expect(mockCompleteSimple).not.toHaveBeenCalled();
-    expect(assistant.content).toBe("cli agent");
-  });
+      expect(runCliModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "codex",
+          model: "gpt-5.2",
+          allowTools: false,
+          signal,
+          timeoutMs: 120_000,
+        }),
+      );
+      const args = vi.mocked(runCliModel).mock.calls[0]?.[0] as { prompt: string };
+      expect(args.prompt).toContain("You are Summarize Chat, not Claude.");
+      expect(args.prompt).toContain("User: Hi");
+      expect(mockCompleteSimple).not.toHaveBeenCalled();
+      expect(mockStreamSimple).not.toHaveBeenCalled();
+    },
+  );
 
   it("falls back to CLI auto attempts when no API-key agent model is available", async () => {
     const home = makeTempHome();

@@ -1,5 +1,4 @@
 import type { BgToPanel, RunStart, UiState } from "../../lib/panel-contracts";
-import type { PanelStateAction } from "./panel-state-store";
 import {
   normalizePanelUrl,
   shouldAcceptRunForCurrentPage,
@@ -76,7 +75,7 @@ type SummarySnapshotPayload = Omit<Extract<BgToPanel, { type: "run:snapshot" }>,
 
 export function createSidepanelBgMessageRuntime(options: {
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   applyUiState: (state: UiState) => void;
   setStatus: (text: string) => void;
   isStreaming: () => boolean;
@@ -119,20 +118,16 @@ export function createSidepanelBgMessageRuntime(options: {
   rememberPendingSummarySnapshot: (payload: SummarySnapshotPayload) => void;
   attachSummaryRun: (run: RunStart) => void;
   applySummarySnapshot: (payload: SummarySnapshotPayload) => void;
-  handleChatHistory: (msg: Extract<BgMessage, { type: "chat:history" }>) => void;
-  handleAgentChunk: (msg: Extract<BgMessage, { type: "agent:chunk" }>) => void;
-  handleAgentResponse: (msg: Extract<BgMessage, { type: "agent:response" }>) => void;
+  handleChatHistory: (msg: Extract<BgToPanel, { type: "chat:history" }>) => void;
+  handleAgentChunk: (msg: Extract<BgToPanel, { type: "agent:chunk" }>) => void;
+  handleAgentResponse: (msg: Extract<BgToPanel, { type: "agent:response" }>) => void;
 }) {
   return {
-    handle(msg: BgMessage) {
+    handle(msg: BgToPanel) {
       handleSidepanelBgMessage({
         msg,
         applyUiState: (state) => {
-          if (options.dispatchPanelState) {
-            options.dispatchPanelState({ type: "ui", ui: state });
-          } else {
-            Object.assign(options.panelState, { ui: state });
-          }
+          options.panelState.ui = state;
           options.applyUiState(state);
         },
         setStatus: options.setStatus,

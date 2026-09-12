@@ -25,7 +25,7 @@ CLI and daemon code remain adapters:
 | `events.ts`             | Adapter-neutral summary stream contract                             |
 | `errors.ts`             | Stable engine error-code guards                                     |
 | `types.ts`              | Model attempts and typed execution results                          |
-| `model-call.ts`         | Provider model resolution and non-streaming calls                   |
+| `model-call.ts`         | Provider model resolution                                           |
 | `streaming.ts`          | Stream capability and chunk normalization                           |
 
 ## Dependency rules
@@ -42,7 +42,11 @@ Engine modules may depend on portable domain/config modules, provider clients, c
 
 ## Streaming
 
+Core owns file-summary instruction construction and timed-transcript parsing/formatting. Attached-file and extracted-text entry points retain their distinct length/context policies; CLI slide output and engine prompt/timestamp validation consume the same timestamp primitives.
+
 The engine never writes summary text to stdout.
+
+Each provider attempt resolves one request shared by streaming, direct completion, and fallback completion. Stream consumption owns output-handler lifecycle and marks visible or handler failures as interrupted; only an uncommitted provider failure can fall back to completion. Usage collection happens after successful stream consumption and does not trigger another model call.
 
 `SummaryStreamHandler` receives normalized chunks:
 
@@ -72,6 +76,10 @@ The user-facing error text remains descriptive, but it is not a control-flow con
 
 ## Adapter ownership
 
+Model selection resolves intent without creating process resources. `src/application/model-runtime.ts` then builds metrics, provider bindings, and the executable model in one factory; URL and asset flows share those same instances. Execution resources compose the flow contexts rather than rebuilding model options through intermediate factories.
+
+`src/application/flow-contexts.ts` composes asset and URL contexts from the same IO, flags, model, and runtime hooks. Asset execution receives its flat context directly; `assetFormat` is the explicit asset-only override. Fetch tracking, shared caches, and summary-cache notifications stay wired at this application boundary.
+
 Adapters own:
 
 - stdout/stderr
@@ -89,6 +97,10 @@ The engine owns:
 - stream normalization
 - timestamp validation
 - retry/fallback outcomes
+
+Provider transport lives in `src/llm`. Generation and streaming share `LlmRequestOptions`, so prompt conversion and fallback attempts retain the original request settings. SDK-backed streaming providers share delta collection, deadlines, usage, and final-text handling; provider branches own model configuration and error normalization. OpenAI's HTTP transport keeps its separate response handling.
+
+`src/llm/markdown-converters.ts` builds both HTML and transcript converters from one model configuration and generation path. The source-specific prompts, 200,000-character input limits, and usage reporting remain explicit; URL orchestration selects which converter to expose.
 
 ## Tests
 

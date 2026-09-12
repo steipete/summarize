@@ -5,7 +5,7 @@ export function createOptionsSaveRuntime(options: {
   persist: () => Promise<void>;
 }) {
   const { isInitializing, setStatus, flashStatus, persist } = options;
-  let saveTimer = 0;
+  let saveTimer: ReturnType<typeof globalThis.setTimeout> | 0 = 0;
   let saveInFlight = false;
   let saveQueued = false;
   let saveSequence = 0;

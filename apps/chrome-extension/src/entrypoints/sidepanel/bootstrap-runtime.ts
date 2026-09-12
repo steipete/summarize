@@ -1,43 +1,17 @@
 import type { ExtensionLocaleSetting } from "../../lib/i18n";
-import type { Settings } from "../../lib/settings";
+import type { loadSettings } from "../../lib/settings";
 import { bindSettingsStorage, bindSidepanelLifecycle } from "./bindings";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import type { PanelState } from "./types";
 
-type LoadedSettings = Pick<
-  Settings,
-  | "autoSummarize"
-  | "chatEnabled"
-  | "automationEnabled"
-  | "slidesLayout"
-  | "fontSize"
-  | "lineHeight"
-  | "fontFamily"
-  | "model"
-  | "token"
-  | "uiLocale"
->;
-
-function dispatchPanelState(
-  options: {
-    panelState: PanelState;
-    dispatchPanelState?: (action: PanelStateAction) => void;
-  },
-  action: PanelStateAction,
-) {
-  if (options.dispatchPanelState) {
-    options.dispatchPanelState(action);
-  } else {
-    applyPanelStateAction(options.panelState, action);
-  }
-}
+type LoadedSettings = Awaited<ReturnType<typeof loadSettings>>;
 
 export function bootstrapSidepanel(options: {
-  ensurePanelPort: () => Promise<void>;
+  ensurePanelPort: () => Promise<unknown>;
   loadSettings: () => Promise<LoadedSettings>;
   applyLocale: (locale: ExtensionLocaleSetting) => void;
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   typographyController: {
     setCurrentFontSize: (value: number) => void;
     setCurrentLineHeight: (value: number) => void;
@@ -70,27 +44,18 @@ export function bootstrapSidepanel(options: {
       ? { ...loadedSettings, ...pendingSettingsSnapshot }
       : loadedSettings;
     options.applyLocale(settings.uiLocale);
-    dispatchPanelState(options, {
-      type: "panel-session-update",
-      value: {
-        pendingSettingsSnapshot: null,
-        settingsHydrated: true,
-      },
+    patchPanelState(options.panelState, "panelSession", {
+      pendingSettingsSnapshot: null,
+      settingsHydrated: true,
     });
     options.typographyController.setCurrentFontSize(settings.fontSize);
     options.typographyController.setCurrentLineHeight(settings.lineHeight);
-    dispatchPanelState(options, {
-      type: "panel-session-update",
-      value: {
-        autoSummarize: settings.autoSummarize,
-        chatEnabled: settings.chatEnabled,
-        automationEnabled: settings.automationEnabled,
-      },
+    patchPanelState(options.panelState, "panelSession", {
+      autoSummarize: settings.autoSummarize,
+      chatEnabled: settings.chatEnabled,
+      automationEnabled: settings.automationEnabled,
     });
-    dispatchPanelState(options, {
-      type: "slides-session-update",
-      value: { slidesLayout: settings.slidesLayout },
-    });
+    patchPanelState(options.panelState, "slidesSession", { slidesLayout: settings.slidesLayout });
     options.setSlidesLayoutInputValue(settings.slidesLayout);
     if (!settings.automationEnabled) options.hideAutomationNotice();
     options.appearanceControls.setAutoValue(settings.autoSummarize);
@@ -114,7 +79,7 @@ export function bootstrapSidepanel(options: {
 
   bindSettingsStorage({
     panelState: options.panelState,
-    dispatchPanelState: options.dispatchPanelState,
+
     applyChatEnabled: options.applyChatEnabled,
     applyLocale: options.applyLocale,
     hideAutomationNotice: options.hideAutomationNotice,

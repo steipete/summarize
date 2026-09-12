@@ -1,10 +1,11 @@
 import type { DiarizationPreference } from "../../transcription/whisper/types.js";
 import type { TranscriptCache } from "../cache/types.js";
-import type {
-  CacheMode,
-  TranscriptDiagnostics,
-  TranscriptResolution,
-  TranscriptSource,
+import {
+  TRANSCRIPT_SOURCES,
+  type CacheMode,
+  type TranscriptDiagnostics,
+  type TranscriptResolution,
+  type TranscriptSource,
 } from "../link-preview/types.js";
 
 export const DEFAULT_TTL_MS = 1000 * 60 * 60 * 24 * 7;
@@ -144,20 +145,7 @@ const appendNote = (existing: string | null | undefined, next: string): string =
 
 export const mapCachedSource = (source: string | null): TranscriptSource | null => {
   if (source === null) return null;
-  if (
-    source === "youtubei" ||
-    source === "captionTracks" ||
-    source === "embedded" ||
-    source === "yt-dlp" ||
-    source === "podcastTranscript" ||
-    source === "whisper" ||
-    source === "apify" ||
-    source === "html" ||
-    source === "unavailable"
-  ) {
-    return source;
-  }
-  return "unknown";
+  return TRANSCRIPT_SOURCES.find((candidate) => candidate === source) ?? "unknown";
 };
 
 export const writeTranscriptCache = async ({

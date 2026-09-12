@@ -1,8 +1,11 @@
 import type { CliProvider, ModelConfig, SummarizeConfig } from "../config.js";
+import type { LengthArg } from "../flags.js";
 import { mergeModelRequestOptions } from "../llm/model-options.js";
 import type { RequestedModel } from "../model-spec.js";
 import { parseRequestedModelId } from "../model-spec.js";
+import type { RunContextState } from "./context.js";
 import { BUILTIN_MODELS } from "./model-catalog.js";
+import { resolveDesiredOutputTokens } from "./output-policy.js";
 
 function resolveConfiguredCliModel(
   provider: CliProvider,
@@ -66,6 +69,43 @@ export type ModelSelection = {
   configForModelSelection: SummarizeConfig | null;
   isFallbackModel: boolean;
 };
+
+export type RunModelSpec = ModelSelection & {
+  fixedModelSpec: Extract<ModelSelection["requestedModel"], { kind: "fixed" }> | null;
+  desiredOutputTokens: number | null;
+};
+
+export function resolveRunModelSpec({
+  context,
+  envForRun,
+  explicitModelArg,
+  configForSelection,
+  lengthArg,
+  maxOutputTokensArg,
+}: {
+  context: RunContextState;
+  envForRun: Record<string, string | undefined>;
+  explicitModelArg: string | null;
+  configForSelection: SummarizeConfig | null;
+  lengthArg: LengthArg;
+  maxOutputTokensArg: number | null;
+}): RunModelSpec {
+  const selection = resolveModelSelection({
+    config: context.config,
+    configForCli: configForSelection,
+    configPath: context.configPath,
+    envForRun,
+    explicitModelArg,
+  });
+  return {
+    ...selection,
+    fixedModelSpec: selection.requestedModel.kind === "fixed" ? selection.requestedModel : null,
+    desiredOutputTokens: resolveDesiredOutputTokens({
+      lengthArg,
+      maxOutputTokensArg,
+    }),
+  };
+}
 
 export function resolveModelSelection({
   config,

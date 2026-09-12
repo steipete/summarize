@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { SlideSettings } from "./settings.js";
-import type { SlideExtractionResult, SlideSource } from "./types.js";
+import { SLIDE_EXTRACTION_VERSION, type SlideExtractionResult, type SlideSource } from "./types.js";
 
 const normalizePath = (value: string) => path.resolve(value);
 
@@ -69,6 +69,7 @@ export async function validateSlidesCache({
   settings: SlideSettings;
 }): Promise<SlideExtractionResult | null> {
   if (!cached || typeof cached !== "object") return null;
+  if (cached.extractorVersion !== SLIDE_EXTRACTION_VERSION) return null;
   if (cached.sourceId !== source.sourceId) return null;
   if (cached.sourceKind !== source.kind) return null;
   if (cached.sourceUrl !== source.url) return null;

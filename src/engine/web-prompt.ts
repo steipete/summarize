@@ -1,3 +1,4 @@
+import { formatTimestamp, parseTranscriptTimedText } from "@steipete/summarize-core/slides";
 import type { ExtractedLinkContent } from "../content/index.js";
 import type { OutputLanguage } from "../language.js";
 import { buildLinkSummaryPrompt, SUMMARY_LENGTH_TARGET_CHARACTERS } from "../prompts/index.js";
@@ -5,8 +6,6 @@ import { resolveTargetCharacters, type SummaryLengthArg } from "../shared/summar
 import { buildSummaryTimestampLimitInstruction } from "./summary-timestamps.js";
 
 type SlidesResult = Awaited<ReturnType<typeof import("../slides/index.js").extractSlidesForSource>>;
-
-type TranscriptSegment = { startSeconds: number; text: string };
 
 const MAX_SLIDE_TRANSCRIPT_CHARS_BY_PRESET = {
   short: 2500,
@@ -18,51 +17,6 @@ const MAX_SLIDE_TRANSCRIPT_CHARS_BY_PRESET = {
 
 const SLIDE_TRANSCRIPT_DEFAULT_EDGE_SECONDS = 30;
 const SLIDE_TRANSCRIPT_LEEWAY_SECONDS = 10;
-
-function parseTimestampSeconds(value: string): number | null {
-  const rawParts = value.split(":").map((item) => item.trim());
-  if (rawParts.length !== 2 && rawParts.length !== 3) return null;
-  if (rawParts.some((item) => !/^\d+$/.test(item))) return null;
-  const parts = rawParts.map((item) => Number(item));
-  if (parts.some((item) => !Number.isFinite(item))) return null;
-  if (parts.length === 2) {
-    if (parts[1] >= 60) return null;
-    return parts[0] * 60 + parts[1];
-  }
-  if (parts.length === 3) {
-    if (parts[1] >= 60 || parts[2] >= 60) return null;
-    return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  }
-  return null;
-}
-
-function parseTranscriptTimedText(input: string | null | undefined): TranscriptSegment[] {
-  if (!input) return [];
-  const segments: TranscriptSegment[] = [];
-  for (const line of input.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith("[")) continue;
-    const match = trimmed.match(/^\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(.*)$/);
-    if (!match) continue;
-    const seconds = parseTimestampSeconds(match[1]);
-    if (seconds == null) continue;
-    const text = (match[2] ?? "").trim();
-    if (!text) continue;
-    segments.push({ startSeconds: seconds, text });
-  }
-  return segments.sort((a, b) => a.startSeconds - b.startSeconds);
-}
-
-function formatTimestamp(seconds: number): string {
-  const clamped = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(clamped / 3600);
-  const minutes = Math.floor((clamped % 3600) / 60);
-  const secs = clamped % 60;
-  if (hours <= 0) return `${minutes}:${String(secs).padStart(2, "0")}`;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(
-    secs,
-  ).padStart(2, "0")}`;
-}
 
 function truncateTranscript(value: string, limit: number): string {
   if (value.length <= limit) return value;

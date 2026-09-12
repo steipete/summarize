@@ -22,46 +22,41 @@ export type EmbeddedMedia = {
 };
 
 export function detectEmbeddedMedia(html: string, baseUrl: string): EmbeddedMedia | null {
-  const parsed = parseHtmlDocument(html);
-  const { document } = parsed;
+  const document = parseHtmlDocument(html);
 
-  try {
-    const trackCandidates: EmbeddedTrack[] = [];
-    for (const element of document.querySelectorAll(
-      'track[kind="captions"], track[kind="subtitles"]',
-    )) {
-      const src = element.getAttribute("src")?.trim();
-      if (!src) continue;
-      const url = resolveAbsoluteUrl(src, baseUrl);
-      if (!url) continue;
-      const type = element.getAttribute("type")?.trim() ?? null;
-      const language =
-        element.getAttribute("srclang")?.trim() ?? element.getAttribute("lang")?.trim() ?? null;
-      trackCandidates.push({ url, type, language });
-    }
-
-    const track = selectPreferredTrack(trackCandidates);
-    const videoUrl = resolveFirstMediaUrl(document, baseUrl, "video");
-    const audioUrl = resolveFirstMediaUrl(document, baseUrl, "audio");
-    const ogVideo = resolveOgMediaUrl(document, baseUrl, "video");
-    const ogAudio = resolveOgMediaUrl(document, baseUrl, "audio");
-
-    if (videoUrl || ogVideo) {
-      return { kind: "video", mediaUrl: pickMediaUrl([videoUrl, ogVideo]), track };
-    }
-    if (audioUrl || ogAudio) {
-      return { kind: "audio", mediaUrl: pickMediaUrl([audioUrl, ogAudio]), track };
-    }
-
-    const hasVideoTag = document.querySelector("video") !== null;
-    const hasAudioTag = !hasVideoTag && document.querySelector("audio") !== null;
-    if (track || hasVideoTag || hasAudioTag) {
-      return { kind: hasAudioTag ? "audio" : "video", mediaUrl: null, track };
-    }
-    return null;
-  } finally {
-    parsed.close();
+  const trackCandidates: EmbeddedTrack[] = [];
+  for (const element of document.querySelectorAll(
+    'track[kind="captions"], track[kind="subtitles"]',
+  )) {
+    const src = element.getAttribute("src")?.trim();
+    if (!src) continue;
+    const url = resolveAbsoluteUrl(src, baseUrl);
+    if (!url) continue;
+    const type = element.getAttribute("type")?.trim() ?? null;
+    const language =
+      element.getAttribute("srclang")?.trim() ?? element.getAttribute("lang")?.trim() ?? null;
+    trackCandidates.push({ url, type, language });
   }
+
+  const track = selectPreferredTrack(trackCandidates);
+  const videoUrl = resolveFirstMediaUrl(document, baseUrl, "video");
+  const audioUrl = resolveFirstMediaUrl(document, baseUrl, "audio");
+  const ogVideo = resolveOgMediaUrl(document, baseUrl, "video");
+  const ogAudio = resolveOgMediaUrl(document, baseUrl, "audio");
+
+  if (videoUrl || ogVideo) {
+    return { kind: "video", mediaUrl: pickMediaUrl([videoUrl, ogVideo]), track };
+  }
+  if (audioUrl || ogAudio) {
+    return { kind: "audio", mediaUrl: pickMediaUrl([audioUrl, ogAudio]), track };
+  }
+
+  const hasVideoTag = document.querySelector("video") !== null;
+  const hasAudioTag = !hasVideoTag && document.querySelector("audio") !== null;
+  if (track || hasVideoTag || hasAudioTag) {
+    return { kind: hasAudioTag ? "audio" : "video", mediaUrl: null, track };
+  }
+  return null;
 }
 
 export async function fetchCaptionTrack(

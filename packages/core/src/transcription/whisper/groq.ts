@@ -1,8 +1,8 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MAX_ERROR_DETAIL_CHARS, TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
-import { ensureWhisperFilenameExtension, toArrayBuffer } from "./utils.js";
+import { TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
+import { ensureWhisperFilenameExtension, readErrorDetail, toArrayBuffer } from "./utils.js";
 
 const GROQ_TRANSCRIPT_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 
@@ -48,19 +48,6 @@ export function shouldRetryGroqViaFfmpeg(error: Error): boolean {
     msg.includes("could not be decoded") ||
     msg.includes("format is not supported")
   );
-}
-
-async function readErrorDetail(response: Response): Promise<string | null> {
-  try {
-    const text = await response.text();
-    const trimmed = text.trim();
-    if (!trimmed) return null;
-    return trimmed.length > MAX_ERROR_DETAIL_CHARS
-      ? `${trimmed.slice(0, MAX_ERROR_DETAIL_CHARS)}…`
-      : trimmed;
-  } catch {
-    return null;
-  }
 }
 
 async function tryGroqCurlFallback({

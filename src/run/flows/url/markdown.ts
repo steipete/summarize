@@ -1,12 +1,11 @@
 import { resolveFixedModelAttempt } from "../../../application/model-attempts.js";
 import type { ModelAttempt } from "../../../engine/types.js";
-import { createHtmlToMarkdownConverter } from "../../../llm/html-to-markdown.js";
+import {
+  createLlmMarkdownConverters,
+  type ConvertTranscriptToMarkdown,
+} from "../../../llm/markdown-converters.js";
 import { parseGatewayStyleModelId } from "../../../llm/model-id.js";
 import { mergeRequestOptionsForProvider } from "../../../llm/model-options.js";
-import {
-  type ConvertTranscriptToMarkdown,
-  createTranscriptToMarkdownConverter,
-} from "../../../llm/transcript-to-markdown.js";
 import { convertToMarkdownWithMarkitdown } from "../../../markitdown.js";
 import { parseRequestedModelId } from "../../../model-spec.js";
 import { hasUvxCli } from "../../env.js";
@@ -181,14 +180,17 @@ export function createMarkdownConverters(
         onUsage: ({ model: usedModel, provider, usage }) => {
           ctx.model.llmCalls.push({ provider, model: usedModel, usage, purpose: "markdown" });
         },
-      } satisfies Parameters<typeof createHtmlToMarkdownConverter>[0])
+      } satisfies Parameters<typeof createLlmMarkdownConverters>[0])
     : null;
 
+  const llmConverters = llmConverterOptions
+    ? createLlmMarkdownConverters(llmConverterOptions)
+    : null;
   const llmHtmlToMarkdown =
     markdownRequested &&
-    llmConverterOptions !== null &&
+    llmConverters !== null &&
     (effectiveMarkdownMode === "llm" || markdownProvider !== "none")
-      ? createHtmlToMarkdownConverter(llmConverterOptions)
+      ? llmConverters.html
       : null;
 
   const markitdownHtmlToMarkdown =
@@ -259,9 +261,7 @@ export function createMarkdownConverters(
 
   // Transcript→Markdown converter (only for YouTube with --markdown-mode llm)
   const convertTranscriptToMarkdown: ConvertTranscriptToMarkdown | null =
-    transcriptMarkdownRequested && llmConverterOptions !== null
-      ? createTranscriptToMarkdownConverter(llmConverterOptions)
-      : null;
+    transcriptMarkdownRequested && llmConverters !== null ? llmConverters.transcript : null;
 
   return {
     markdownRequested,

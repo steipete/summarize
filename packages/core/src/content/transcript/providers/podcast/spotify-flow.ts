@@ -1,16 +1,13 @@
 import type { ProviderResult } from "../../types.js";
 import { TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
+import { fetchFeedTranscript } from "./feed-flow.js";
 import type { PodcastFlowContext } from "./flow-context.js";
 import {
   resolvePodcastEpisodeFromItunesSearch,
   resolvePodcastFeedUrlFromItunesSearch,
 } from "./itunes.js";
-import { buildWhisperResult, joinNotes } from "./results.js";
-import {
-  decodeXmlEntities,
-  extractEnclosureForEpisode,
-  tryFetchTranscriptFromFeedXml,
-} from "./rss.js";
+import { buildWhisperResult } from "./results.js";
+import { decodeXmlEntities, extractEnclosureForEpisode } from "./rss.js";
 import {
   extractSpotifyEmbedData,
   extractSpotifyEpisodeId,
@@ -109,148 +106,95 @@ export async function fetchSpotifyTranscript(
     }
 
     const feedUrl = await resolvePodcastFeedUrlFromItunesSearch(flow.options.fetch, showTitle);
-    if (!feedUrl) {
-      const episodeFromSearch = await resolvePodcastEpisodeFromItunesSearch(
-        flow.options.fetch,
-        showTitle,
-        episodeTitle,
-      );
-      if (episodeFromSearch) {
-        const missing = flow.ensureTranscriptionProvider();
-        if (missing) return missing;
-        flow.pushOnce("whisper");
-        const result = await flow.transcribe({
-          url: episodeFromSearch.episodeUrl,
-          filenameHint: "episode.mp3",
-          durationSecondsHint: episodeFromSearch.durationSeconds,
-        });
-        if (result.text) {
-          flow.notes.push("Resolved Spotify episode via iTunes episode search");
-          return buildWhisperResult({
-            attemptedProviders: flow.attemptedProviders,
-            notes: flow.notes,
-            outcome: result,
-            metadata: {
-              provider: "podcast",
-              kind: "spotify_itunes_search_episode",
-              episodeId: spotifyEpisodeId,
-              showTitle,
-              episodeTitle: episodeFromSearch.episodeTitle,
-              episodeUrl: episodeFromSearch.episodeUrl,
-              durationSeconds: episodeFromSearch.durationSeconds,
-            },
-          });
-        }
-      }
-      throw new Error(
-        `Spotify episode audio appears DRM-protected; could not resolve RSS feed via iTunes Search API for show "${showTitle}"`,
-      );
-    }
-
-    const feedResponse = await flow.options.fetch(feedUrl, {
-      signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
-    });
-    if (!feedResponse.ok) {
-      throw new Error(`Podcast feed fetch failed (${feedResponse.status})`);
-    }
-    const feedXml = await feedResponse.text();
-    let maybeTranscript: Awaited<ReturnType<typeof tryFetchTranscriptFromFeedXml>> = null;
-    if (/podcast:transcript/i.test(feedXml)) {
-      flow.pushOnce("podcastTranscript");
-      maybeTranscript = await tryFetchTranscriptFromFeedXml({
-        fetchImpl: flow.options.fetch,
-        feedXml,
-        episodeTitle,
-        notes: flow.notes,
+    if (feedUrl) {
+      const feedResponse = await flow.options.fetch(feedUrl, {
+        signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
       });
-    }
-    if (maybeTranscript) {
-      return {
-        text: maybeTranscript.text,
-        source: "podcastTranscript",
-        segments: flow.options.transcriptTimestamps ? (maybeTranscript.segments ?? null) : null,
-        attemptedProviders: flow.attemptedProviders,
-        notes: joinNotes(flow.notes),
-        metadata: {
-          provider: "podcast",
-          kind: "spotify_itunes_rss_transcript",
-          episodeId: spotifyEpisodeId,
-          showTitle,
-          episodeTitle,
-          feedUrl,
-          transcriptUrl: maybeTranscript.transcriptUrl,
-          transcriptType: maybeTranscript.transcriptType,
-        },
-      };
-    }
-    const match = extractEnclosureForEpisode(feedXml, episodeTitle);
-    if (!match) {
-      const episodeFromSearch = await resolvePodcastEpisodeFromItunesSearch(
-        flow.options.fetch,
-        showTitle,
-        episodeTitle,
-      );
-      if (episodeFromSearch) {
-        const missing = flow.ensureTranscriptionProvider();
-        if (missing) return missing;
-        flow.pushOnce("whisper");
-        const result = await flow.transcribe({
-          url: episodeFromSearch.episodeUrl,
-          filenameHint: "episode.mp3",
-          durationSecondsHint: episodeFromSearch.durationSeconds,
-        });
-        if (result.text) {
-          flow.notes.push("Resolved Spotify episode via iTunes episode search");
-          return buildWhisperResult({
-            attemptedProviders: flow.attemptedProviders,
-            notes: flow.notes,
-            outcome: result,
-            metadata: {
-              provider: "podcast",
-              kind: "spotify_itunes_search_episode",
-              episodeId: spotifyEpisodeId,
-              showTitle,
-              episodeTitle: episodeFromSearch.episodeTitle,
-              episodeUrl: episodeFromSearch.episodeUrl,
-              durationSeconds: episodeFromSearch.durationSeconds,
-            },
-          });
-        }
+      if (!feedResponse.ok) {
+        throw new Error(`Podcast feed fetch failed (${feedResponse.status})`);
       }
-      throw new Error(`Episode enclosure not found in RSS feed for "${episodeTitle}"`);
-    }
-    const enclosureUrl = decodeXmlEntities(match.enclosureUrl);
-    const durationSeconds = match.durationSeconds;
-
-    flow.notes.push(
-      via === "firecrawl"
-        ? "Resolved Spotify episode via Firecrawl embed + iTunes RSS"
-        : "Resolved Spotify episode via iTunes RSS",
-    );
-    const missing = flow.ensureTranscriptionProvider();
-    if (missing) return missing;
-    flow.pushOnce("whisper");
-    const result = await flow.transcribe({
-      url: enclosureUrl,
-      filenameHint: "episode.mp3",
-      durationSecondsHint: durationSeconds,
-    });
-    return buildWhisperResult({
-      attemptedProviders: flow.attemptedProviders,
-      notes: flow.notes,
-      outcome: result,
-      includeProviderOnFailure: true,
-      metadata: {
-        provider: "podcast",
-        kind: "spotify_itunes_rss_enclosure",
+      const feedXml = await feedResponse.text();
+      const transcript = await fetchFeedTranscript(flow, feedXml, episodeTitle, {
+        kind: "spotify_itunes_rss_transcript",
         episodeId: spotifyEpisodeId,
         showTitle,
         episodeTitle,
         feedUrl,
-        enclosureUrl,
-        durationSeconds,
-      },
-    });
+      });
+      if (transcript) return transcript;
+      const match = extractEnclosureForEpisode(feedXml, episodeTitle);
+      if (match) {
+        const enclosureUrl = decodeXmlEntities(match.enclosureUrl);
+        const durationSeconds = match.durationSeconds;
+
+        flow.notes.push(
+          via === "firecrawl"
+            ? "Resolved Spotify episode via Firecrawl embed + iTunes RSS"
+            : "Resolved Spotify episode via iTunes RSS",
+        );
+        const missing = flow.ensureTranscriptionProvider();
+        if (missing) return missing;
+        flow.pushOnce("whisper");
+        const result = await flow.transcribe({
+          url: enclosureUrl,
+          filenameHint: "episode.mp3",
+          durationSecondsHint: durationSeconds,
+        });
+        return buildWhisperResult({
+          attemptedProviders: flow.attemptedProviders,
+          notes: flow.notes,
+          outcome: result,
+          includeProviderOnFailure: true,
+          metadata: {
+            provider: "podcast",
+            kind: "spotify_itunes_rss_enclosure",
+            episodeId: spotifyEpisodeId,
+            showTitle,
+            episodeTitle,
+            feedUrl,
+            enclosureUrl,
+            durationSeconds,
+          },
+        });
+      }
+    }
+    const episodeFromSearch = await resolvePodcastEpisodeFromItunesSearch(
+      flow.options.fetch,
+      showTitle,
+      episodeTitle,
+    );
+    if (episodeFromSearch) {
+      const missing = flow.ensureTranscriptionProvider();
+      if (missing) return missing;
+      flow.pushOnce("whisper");
+      const result = await flow.transcribe({
+        url: episodeFromSearch.episodeUrl,
+        filenameHint: "episode.mp3",
+        durationSecondsHint: episodeFromSearch.durationSeconds,
+      });
+      if (result.text) {
+        flow.notes.push("Resolved Spotify episode via iTunes episode search");
+        return buildWhisperResult({
+          attemptedProviders: flow.attemptedProviders,
+          notes: flow.notes,
+          outcome: result,
+          metadata: {
+            provider: "podcast",
+            kind: "spotify_itunes_search_episode",
+            episodeId: spotifyEpisodeId,
+            showTitle,
+            episodeTitle: episodeFromSearch.episodeTitle,
+            episodeUrl: episodeFromSearch.episodeUrl,
+            durationSeconds: episodeFromSearch.durationSeconds,
+          },
+        });
+      }
+    }
+    throw new Error(
+      feedUrl
+        ? `Episode enclosure not found in RSS feed for "${episodeTitle}"`
+        : `Spotify episode audio appears DRM-protected; could not resolve RSS feed via iTunes Search API for show "${showTitle}"`,
+    );
   } catch (error) {
     return {
       text: null,

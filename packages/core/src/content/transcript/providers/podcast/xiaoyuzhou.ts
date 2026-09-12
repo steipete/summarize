@@ -86,9 +86,9 @@ export async function fetchXiaoyuzhouTranscript(
 }
 
 export function extractXiaoyuzhouOgAudioUrl(html: string): string | null {
-  const parsed = parseHtmlDocument(html);
+  const document = parseHtmlDocument(html);
   try {
-    const meta = parsed.document.querySelector('meta[property="og:audio"]');
+    const meta = document.querySelector('meta[property="og:audio"]');
     const candidate = (meta?.getAttribute("content") ?? "").trim();
     if (!candidate) return null;
     const url = new URL(candidate);
@@ -104,8 +104,6 @@ export function extractXiaoyuzhouOgAudioUrl(html: string): string | null {
     return url.href;
   } catch {
     return null;
-  } finally {
-    parsed.close();
   }
 }
 

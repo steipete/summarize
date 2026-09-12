@@ -35,6 +35,17 @@ type SlidesResult = Awaited<
   ReturnType<typeof import("../../../slides/index.js").extractSlidesForSource>
 >;
 
+type ExtractedUrlOutputArgs = {
+  ctx: UrlFlowContext;
+  url: string;
+  extracted: ExtractedLinkContent;
+  extractionUi: UrlExtractionUi;
+  prompt: string;
+  effectiveMarkdownMode: "off" | "auto" | "llm" | "readability";
+  transcriptionCostLabel: string | null;
+  slides?: SlidesResult | null;
+};
+
 async function writeUrlJsonOutput({
   ctx,
   url,
@@ -137,17 +148,7 @@ async function outputSummaryFromExtractedContent({
   slides,
   footerLabel,
   verboseMessage,
-}: {
-  ctx: UrlFlowContext;
-  url: string;
-  extracted: ExtractedLinkContent;
-  extractionUi: UrlExtractionUi;
-  prompt: string;
-  effectiveMarkdownMode: "off" | "auto" | "llm" | "readability";
-  transcriptionCostLabel: string | null;
-  slides?: Awaited<
-    ReturnType<typeof import("../../../slides/index.js").extractSlidesForSource>
-  > | null;
+}: ExtractedUrlOutputArgs & {
   footerLabel?: string | null;
   verboseMessage?: string | null;
 }) {
@@ -202,17 +203,7 @@ export async function outputExtractedUrl({
   transcriptionCostLabel,
   slides,
   slidesOutput,
-}: {
-  ctx: UrlFlowContext;
-  url: string;
-  extracted: ExtractedLinkContent;
-  extractionUi: UrlExtractionUi;
-  prompt: string;
-  effectiveMarkdownMode: "off" | "auto" | "llm" | "readability";
-  transcriptionCostLabel: string | null;
-  slides?: Awaited<
-    ReturnType<typeof import("../../../slides/index.js").extractSlidesForSource>
-  > | null;
+}: ExtractedUrlOutputArgs & {
   slidesOutput?: SlidesTerminalOutput | null;
 }) {
   const { io, flags, model, hooks } = ctx;

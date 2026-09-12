@@ -18,7 +18,6 @@ describe("model call resolution", () => {
     expect(result).toEqual({
       modelId: "google/gemini-custom-preview",
       note: null,
-      forceStreamOff: false,
     });
   });
 

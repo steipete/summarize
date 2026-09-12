@@ -66,6 +66,22 @@ describe("buildFileSummaryPrompt", () => {
 });
 
 describe("buildFileTextSummaryPrompt", () => {
+  it("keeps attached-file and extracted-text zero-length policies distinct", () => {
+    const options = { filename: null, summaryLength: { maxCharacters: 100 }, contentLength: 0 };
+    const attached = buildFileSummaryPrompt({ ...options, mediaType: "audio/mpeg" });
+    const extracted = buildFileTextSummaryPrompt({
+      ...options,
+      originalMediaType: "audio/mpeg",
+      contentMediaType: "text/plain",
+    });
+    expect(attached).toContain("Target length: up to 100 characters");
+    expect(attached).not.toContain("Extracted content length:");
+    expect(extracted).toContain("Target length: up to 0 characters");
+    expect(extracted).toContain("Extracted content length: 0 characters");
+    expect(attached).toContain("Omit sponsor messages");
+    expect(extracted).toContain("Omit sponsor messages");
+  });
+
   it("clamps length to extracted content", () => {
     const prompt = buildFileTextSummaryPrompt({
       filename: "notes.txt",

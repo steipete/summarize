@@ -13,7 +13,10 @@ export async function hasYouTubeCaptionTracksInTab(tabId: number): Promise<boole
       world: "MAIN",
       func: readYouTubePageCaptionSource,
     });
-    return (result?.result.tracks.length ?? 0) > 0;
+    if (!result) return false;
+    const source = result?.result;
+    if (!source) return true;
+    return source.tracks.length > 0;
   } catch {
     return true;
   }

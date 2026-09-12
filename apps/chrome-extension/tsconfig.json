@@ -2,9 +2,13 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": ".",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "erasableSyntaxOnly": false,
     "types": ["chrome"],
     "jsx": "react-jsx",
     "jsxImportSource": "preact"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "wxt.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "wxt.config.ts", ".wxt/wxt.d.ts"]
 }

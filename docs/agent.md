@@ -15,7 +15,7 @@ Scope:
 - **Off (default):** chat is Q&A only (no tools).
 - **On:** chat runs a tool-capable agent for web automation.
 
-Explicit exclusions (per product direction): **no update checker**, **no tutorial/welcome flow**, **no proxy config**, **no API key dialog**. All model calls go through the **local daemon**.
+This document describes **Daemon mode**, where model calls go through the local daemon. In **Direct mode**, a configured provider can also support chat and automation without a daemon; see [the extension guide](chrome-extension.md).
 
 ## Architecture (High Level)
 
@@ -23,6 +23,10 @@ Explicit exclusions (per product direction): **no update checker**, **no tutoria
 2. **Background** handles tab data, extraction, and tool execution.
 3. **Content scripts** handle element picking and native-input bridge.
 4. **Daemon** provides `/v1/agent` (SSE stream of chunks + final assistant message).
+
+Chat-only Q&A and automation use this same endpoint and implementation. The automation flag selects the prompt and available tools; there is no separate chat execution pipeline.
+
+The daemon prepares message history, tools, prompts, model selection, and CLI execution once for both SSE and JSON responses. Native completion and streaming retain separate retry policies: streaming may retry the compatibility model only before emitting text.
 
 ### Data Flow (Agent Loop)
 
@@ -37,6 +41,8 @@ Explicit exclusions (per product direction): **no update checker**, **no tutoria
 - Panel executes tool calls locally, appends `toolResult` messages, and repeats `/v1/agent` until no tool calls remain.
 
 The daemon **never** executes tools. It only returns the next assistant message.
+
+Service installation keeps launchd, systemd, and Scheduled Task policy in separate adapters. They share command output/error normalization in `src/daemon/command.ts`; only Windows commands request hidden windows. Executable overrides use the application environment resolver, while public JSON environment output retains its explicit whitelist.
 
 ## Settings + Permissions
 

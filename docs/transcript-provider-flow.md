@@ -35,6 +35,11 @@ Goal: keep provider entrypoints thin; keep provider policy explicit.
 
 ## Shared policy
 
+- YouTube transcript and web-player requests share header construction in `youtube/api.ts`. Android-player headers remain separate, and the identity token remains web-player-only.
+- `podcast/feed-flow.ts` owns RSS transcript lookup, timestamp selection, and result shaping for direct feeds, Apple, and Spotify. Each source retains feed fetching, fallback decisions, and failure metadata; Apple's iTunes path still records the feed attempt before fetching.
+- `podcast/media.ts` shares download progress, transcription options, and completion across in-memory and temporary-file sources. Size limits and duration probing remain source-specific; temporary files are removed after success or failure.
+- `content/link-preview/content/page-media.ts`
+  HTML and Firecrawl share media detection, transcript resolution, source-metric refresh, and embedded article/transcript composition. Each page builder retains its metadata and Markdown policy; metric deadlines still start at builder entry.
 - `transcription-capability.ts`
   One place for:
   - `resolveTranscriptProviderCapabilities`
@@ -44,6 +49,7 @@ Goal: keep provider entrypoints thin; keep provider policy explicit.
 - `transcription-start.ts`
   Runtime availability only.
   Local whisper, ONNX, cloud presence, display hints.
+- Local Whisper readiness checks for a usable model before starting the executable probe. FFmpeg segmentation and transcoding share process completion/error handling; MP3/WAV and lenient recovery retain their own arguments. OpenAI plain and diarized transcripts share HTTP submission but keep separate payload validation.
 
 ## Remote fallback
 

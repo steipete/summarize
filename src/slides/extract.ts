@@ -4,13 +4,7 @@ import { resolveBundledFfmpegCommand } from "@steipete/summarize-core/ffmpeg";
 import { resolveExecutableInPath } from "../application/environment.js";
 import type { MediaCache } from "../content/index.js";
 import { canSpawnCommand } from "../run/env.js";
-import {
-  buildSlidesMediaCacheKey,
-  downloadRemoteVideo,
-  downloadYoutubeVideo,
-  formatBytes,
-  resolveYoutubeStreamUrl,
-} from "./download.js";
+import { downloadRemoteVideo, downloadYoutubeVideo, resolveYoutubeStreamUrl } from "./download.js";
 import {
   buildSlideTimeline,
   buildSlidesChunkMeta,
@@ -109,17 +103,6 @@ function resolveSlidesStreamFallback(env: Record<string, string | undefined>): b
   return raw === "1" || raw === "true" || raw === "yes";
 }
 
-function resolveToolPath(
-  binary: string,
-  env: Record<string, string | undefined>,
-  explicitEnvKey?: string,
-): string | null {
-  const explicit =
-    explicitEnvKey && typeof env[explicitEnvKey] === "string" ? env[explicitEnvKey]?.trim() : "";
-  if (explicit) return resolveExecutableInPath(explicit, env);
-  return resolveExecutableInPath(binary, env);
-}
-
 type ResolveRunnableToolArgs = {
   binary: string;
   env: Record<string, string | undefined>;
@@ -142,7 +125,7 @@ async function resolveRunnableTool({
   if (explicit) {
     return (await canSpawnCommand({ command: explicit, args: probeArgs, env })) ? explicit : null;
   }
-  const resolved = resolveToolPath(binary, env, explicitEnvKey);
+  const resolved = resolveExecutableInPath(binary, env, explicitEnvKey);
   if (resolved) return resolved;
   if (await canSpawnCommand({ command: binary, args: probeArgs, env })) return binary;
   if (binary === "ffmpeg" || binary === "ffprobe") {
@@ -310,8 +293,6 @@ export async function extractSlidesForSource({
         ytDlpCookiesFromBrowser,
         resolveSlidesYtDlpExtractFormat: () => resolveSlidesYtDlpExtractFormat(env),
         resolveSlidesStreamFallback: () => resolveSlidesStreamFallback(env),
-        buildSlidesMediaCacheKey,
-        formatBytes,
         reportSlidesProgress,
         logSlidesTiming,
         downloadYoutubeVideo,

@@ -1,11 +1,10 @@
-// @vitest-environment happy-dom
-
 import type { Message } from "@earendil-works/pi-ai";
+// @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSidepanelChatRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/chat-runtime";
 import {
   createInitialPanelState,
-  createPanelStateStore,
+  patchPanelState,
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 
 const agentLoopMock = vi.hoisted(() => ({
@@ -38,13 +37,13 @@ function setScrollMetrics(element: HTMLElement) {
 }
 
 function createHarness(options: { chatEnabled?: boolean } = {}) {
-  const store = createPanelStateStore(createInitialPanelState());
-  store.state.panelSession.chatEnabled = options.chatEnabled ?? true;
-  store.state.panelSession.automationEnabled = true;
-  store.state.panelSession.daemonFeaturesAvailable = true;
-  store.state.navigation.activeTabId = 7;
-  store.state.navigation.activeTabUrl = "https://example.com/current";
-  store.state.summaryMarkdown = "Current summary";
+  const store = createInitialPanelState();
+  store.panelSession.chatEnabled = options.chatEnabled ?? true;
+  store.panelSession.automationEnabled = true;
+  store.panelSession.daemonFeaturesAvailable = true;
+  store.navigation.activeTabId = 7;
+  store.navigation.activeTabUrl = "https://example.com/current";
+  store.summaryMarkdown = "Current summary";
 
   const mainEl = document.createElement("main");
   setScrollMetrics(mainEl);
@@ -125,8 +124,8 @@ function createHarness(options: { chatEnabled?: boolean } = {}) {
     markAgentNavigationResult: vi.fn(),
   };
   const runtime = createSidepanelChatRuntime({
-    panelState: store.state,
-    dispatchPanelState: store.dispatch,
+    panelState: store,
+
     markdown: { render: (value: string) => value } as never,
     mainEl,
     renderEl,
@@ -142,8 +141,8 @@ function createHarness(options: { chatEnabled?: boolean } = {}) {
     automationNoticeEl,
     automationNoticeMessageEl,
     automationNoticeTitleEl,
-    getActiveTabId: () => store.state.navigation.activeTabId,
-    getActiveTabUrl: () => store.state.navigation.activeTabUrl,
+    getActiveTabId: () => store.navigation.activeTabId,
+    getActiveTabUrl: () => store.navigation.activeTabUrl,
     navigationRuntime,
     send,
     setStatus,
@@ -193,9 +192,9 @@ describe("sidepanel chat runtime", () => {
     harness.runtime.startMessage("  hello  ");
 
     await vi.waitFor(() => expect(agentLoopMock.run).toHaveBeenCalledOnce());
-    await vi.waitFor(() => expect(harness.store.state.chat.streaming).toBe(false));
+    await vi.waitFor(() => expect(harness.store.chat.streaming).toBe(false));
 
-    expect(harness.store.state.chat.messages).toMatchObject([{ role: "user", content: "hello" }]);
+    expect(harness.store.chat.messages).toMatchObject([{ role: "user", content: "hello" }]);
     expect(harness.clearErrors).toHaveBeenCalledOnce();
     expect(harness.setChatMetricsMode).toHaveBeenCalledOnce();
     expect(harness.setLastActionChat).toHaveBeenCalledOnce();
@@ -213,20 +212,20 @@ describe("sidepanel chat runtime", () => {
 
   it("queues normalized messages while streaming and drains them afterward", async () => {
     const harness = createHarness();
-    harness.store.dispatch({ type: "chat-streaming", value: true });
+    patchPanelState(harness.store, "chat", { streaming: true });
 
     expect(harness.runtime.enqueueMessage("  queued \n message  ")).toBe(true);
     harness.runtime.maybeSendQueuedMessage();
     expect(harness.runtime.getQueueLength()).toBe(1);
-    expect(harness.store.state.chat.queue).toMatchObject([{ text: "queued message" }]);
+    expect(harness.store.chat.queue).toMatchObject([{ text: "queued message" }]);
 
-    harness.store.dispatch({ type: "chat-streaming", value: false });
+    patchPanelState(harness.store, "chat", { streaming: false });
     harness.runtime.maybeSendQueuedMessage();
 
     await vi.waitFor(() => expect(harness.runtime.getQueueLength()).toBe(0));
-    expect(harness.store.state.chat.queue).toEqual([]);
-    await vi.waitFor(() => expect(harness.store.state.chat.streaming).toBe(false));
-    expect(harness.store.state.chat.messages).toMatchObject([
+    expect(harness.store.chat.queue).toEqual([]);
+    await vi.waitFor(() => expect(harness.store.chat.streaming).toBe(false));
+    expect(harness.store.chat.messages).toMatchObject([
       { role: "user", content: "queued message" },
     ]);
     expect(harness.chatQueueEl.classList.contains("isHidden")).toBe(true);
@@ -252,9 +251,7 @@ describe("sidepanel chat runtime", () => {
     });
     await restore;
 
-    expect(harness.store.state.chat.messages).toMatchObject([
-      { role: "user", content: "restored" },
-    ]);
+    expect(harness.store.chat.messages).toMatchObject([{ role: "user", content: "restored" }]);
     expect(harness.storage.set).toHaveBeenCalled();
   });
 
@@ -298,9 +295,11 @@ describe("sidepanel chat runtime", () => {
 
   it("migrates non-empty history to the destination tab URL", async () => {
     const harness = createHarness();
-    harness.store.dispatch({
-      type: "chat-message-add",
-      message: { id: "1", role: "user", content: "keep", timestamp: 1 },
+    patchPanelState(harness.store, "chat", {
+      messages: [
+        ...harness.store.chat.messages,
+        { id: "1", role: "user", content: "keep", timestamp: 1 },
+      ],
     });
 
     await harness.runtime.migrateHistory(7, 8, "https://example.com/next");
@@ -333,10 +332,10 @@ describe("sidepanel chat runtime", () => {
     expect(harness.seekToTimestamp).toHaveBeenCalledWith(42);
 
     harness.runtime.startMessage("temporary");
-    await vi.waitFor(() => expect(harness.store.state.chat.messages.length).toBe(1));
-    harness.store.state.panelSession.chatEnabled = false;
+    await vi.waitFor(() => expect(harness.store.chat.messages.length).toBe(1));
+    harness.store.panelSession.chatEnabled = false;
     harness.runtime.applyEnabled();
-    expect(harness.store.state.chat.messages).toEqual([]);
+    expect(harness.store.chat.messages).toEqual([]);
     expect(harness.chatContainerEl.hasAttribute("hidden")).toBe(true);
     expect(harness.clearChatMetrics).toHaveBeenCalledOnce();
 

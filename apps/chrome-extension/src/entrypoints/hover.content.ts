@@ -209,13 +209,13 @@ function hideTooltip() {
 function getAnchorFromEvent(event: Event): HTMLAnchorElement | null {
   const target = event.target as Element | null;
   if (target && typeof target.closest === "function") {
-    return target.closest("a[href]");
+    return target.closest<HTMLAnchorElement>("a[href]");
   }
   const composedPath = typeof event.composedPath === "function" ? event.composedPath() : [];
   for (const node of composedPath) {
     const element = node as Element;
     if (element && typeof element.closest === "function") {
-      const anchor = element.closest("a[href]");
+      const anchor = element.closest<HTMLAnchorElement>("a[href]");
       if (anchor) return anchor;
     }
   }

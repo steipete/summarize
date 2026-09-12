@@ -1,6 +1,6 @@
 {
   "name": "@steipete/summarize-core",
-  "version": "0.21.11",
+  "version": "0.21.14",
   "description": "Summarize core library (content extraction + prompts).",
   "files": [
     "dist",
@@ -78,7 +78,7 @@
     "@mozilla/readability": "0.6.0",
     "linkedom": "^0.18.13",
     "sanitize-html": "^2.17.7",
-    "undici": "8.10.0"
+    "undici": "8.10.2"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
@@ -88,5 +88,5 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@11.23.0"
+  "packageManager": "pnpm@11.25.0"
 }

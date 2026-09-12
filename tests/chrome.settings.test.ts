@@ -25,6 +25,31 @@ describe("chrome/settings", () => {
     expect(s.length).toBe("long");
   });
 
+  it("keeps migrations on load and preserves unknown fields without persisting policy", async () => {
+    storage.settings = {
+      summaryRuntime: "browser",
+      daemonlessSlides: false,
+      magicCliAuto: false,
+      magicCliOrder: " PI,claude ",
+      futureOption: { enabled: true },
+    };
+    const loaded = await loadSettings();
+    expect(loaded).toMatchObject({
+      model: "browser/gemini-nano",
+      summaryRuntime: "direct",
+      slideRuntime: "daemon",
+      autoCliFallback: false,
+      autoCliOrder: "pi,claude",
+      futureOption: { enabled: true },
+    });
+    await saveSettings(loaded);
+    const stored = storage.settings as Record<string, unknown>;
+    expect(stored.futureOption).toEqual({ enabled: true });
+    expect(stored).not.toHaveProperty("daemonAllowed");
+    expect(stored).not.toHaveProperty("daemonManaged");
+    expect(await loadSettings()).toEqual(loaded);
+  });
+
   it("normalizes model/length/language on save", async () => {
     await saveSettings({
       ...defaultSettings,

@@ -26,12 +26,8 @@ type InputEl = {
   focus: () => void;
 };
 
-type DockEl = {
-  getBoundingClientRect: () => { height: number };
-};
-
 type ResizeObserverCtor = new (callback: ResizeObserverCallback) => {
-  observe: (target: Element | DockEl) => void;
+  observe: (target: Element) => void;
   disconnect: () => void;
 };
 
@@ -65,7 +61,7 @@ export function createChatUiRuntime({
     ) => void;
   };
   chatInputEl: InputEl;
-  chatDockEl: DockEl;
+  chatDockEl: Element;
   chatContainerEl: ToggleableEl;
   chatDockContainerEl: ToggleableEl;
   renderEl: ClassListEl;

@@ -1,86 +1,8 @@
 import { withBunCompressionHeaders } from "../../../bun.js";
 import { fetchWithTimeout } from "../../../link-preview/fetch-with-timeout.js";
+import { extractInitialPlayerResponse } from "../../utils.js";
 import { extractYoutubeiBootstrap } from "./api.js";
-import {
-  INNERTUBE_API_KEY_REGEX,
-  REQUEST_HEADERS,
-  YT_INITIAL_PLAYER_RESPONSE_TOKEN,
-  isObjectLike,
-} from "./captions-shared.js";
-
-function extractBalancedJsonObject(source: string, startAt: number): string | null {
-  const start = source.indexOf("{", startAt);
-  if (start < 0) {
-    return null;
-  }
-
-  let depth = 0;
-  let inString = false;
-  let quote: '"' | "'" | null = null;
-  let escaping = false;
-
-  for (let i = start; i < source.length; i += 1) {
-    const ch = source[i];
-    if (!ch) continue;
-
-    if (inString) {
-      if (escaping) {
-        escaping = false;
-        continue;
-      }
-      if (ch === "\\") {
-        escaping = true;
-        continue;
-      }
-      if (quote && ch === quote) {
-        inString = false;
-        quote = null;
-      }
-      continue;
-    }
-
-    if (ch === '"' || ch === "'") {
-      inString = true;
-      quote = ch;
-      continue;
-    }
-
-    if (ch === "{") {
-      depth += 1;
-      continue;
-    }
-    if (ch === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        return source.slice(start, i + 1);
-      }
-    }
-  }
-
-  return null;
-}
-
-export function extractInitialPlayerResponse(html: string): Record<string, unknown> | null {
-  const tokenIndex = html.indexOf(YT_INITIAL_PLAYER_RESPONSE_TOKEN);
-  if (tokenIndex < 0) {
-    return null;
-  }
-  const assignmentIndex = html.indexOf("=", tokenIndex);
-  if (assignmentIndex < 0) {
-    return null;
-  }
-  const objectText = extractBalancedJsonObject(html, assignmentIndex);
-  if (!objectText) {
-    return null;
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(objectText);
-    return isObjectLike(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
+import { INNERTUBE_API_KEY_REGEX, REQUEST_HEADERS, isObjectLike } from "./captions-shared.js";
 
 function coerceDurationSeconds(value: unknown): number | null {
   const asNumber =

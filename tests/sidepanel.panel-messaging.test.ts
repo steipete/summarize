@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPanelMessagingRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-messaging";
-import {
-  createInitialPanelState,
-  createPanelStateStore,
-} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import type { SseSlidesData } from "../apps/chrome-extension/src/lib/runtime-contracts";
 
 describe("sidepanel panel messaging runtime", () => {
@@ -12,11 +9,11 @@ describe("sidepanel panel messaging runtime", () => {
   });
 
   it("tracks user actions only for normal sends", async () => {
-    const panelStateStore = createPanelStateStore();
+    const panelStateStore = createInitialPanelState();
     const send = vi.fn(async () => {});
     const runtime = createPanelMessagingRuntime({
-      panelState: panelStateStore.state,
-      dispatchPanelState: panelStateStore.dispatch,
+      panelState: panelStateStore,
+
       onMessage: vi.fn(),
       portRuntime: {
         ensure: async () => null,
@@ -25,7 +22,7 @@ describe("sidepanel panel messaging runtime", () => {
     });
 
     await runtime.send({ type: "panel:summarize", refresh: true });
-    expect(panelStateStore.state.panelSession.lastAction).toBe("summarize");
+    expect(panelStateStore.panelSession.lastAction).toBe("summarize");
 
     await runtime.sendRaw({
       type: "panel:agent",
@@ -33,7 +30,7 @@ describe("sidepanel panel messaging runtime", () => {
       messages: [],
       tools: [],
     });
-    expect(panelStateStore.state.panelSession.lastAction).toBe("summarize");
+    expect(panelStateStore.panelSession.lastAction).toBe("summarize");
     expect(send).toHaveBeenCalledTimes(2);
   });
 

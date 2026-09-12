@@ -96,6 +96,7 @@ Media cache eviction:
 
 ## Notes
 
+- Core owns the transcript-source inventory used by both extraction and SQLite reads, including embedded captions and native YouTube media. Cache hits retain their original source diagnostics.
 - No extension cache (daemon uses CLI cache).
 - No third-party SQLite deps.
 - Transcript namespace currently includes the YouTube mode (e.g. `yt:auto`, `yt:web`).

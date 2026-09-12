@@ -11,6 +11,7 @@ import {
   interleaveSlidesIntoTranscript,
   parseSlideSummariesFromMarkdown,
   parseTranscriptTimedText,
+  parseTimestampSeconds,
   resolveSlideTextBudget,
   resolveSlideWindowSeconds,
   splitSlideTitleFromText,
@@ -18,6 +19,21 @@ import {
 } from "../packages/core/src/slides/text.js";
 
 describe("slides text helpers", () => {
+  it.each([
+    ["0:00", 0],
+    ["99:59", 5999],
+    ["01:02:03", 3723],
+    [" 1 : 02 ", 62],
+    ["1:60", null],
+    ["1:60:00", null],
+    ["-1:00", null],
+    ["Infinity:00", null],
+    ["1", null],
+    ["1:2:3:4", null],
+  ])("parses shared timestamp %s as %s", (value, expected) => {
+    expect(parseTimestampSeconds(value as string)).toBe(expected);
+  });
+
   it("finds the earliest slides marker", () => {
     const markdown = ["# Title", "", "[slide:2] Second", "", "### Slides", "[slide:1] First"].join(
       "\n",

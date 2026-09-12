@@ -1,9 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  createInitialPanelState,
-  createPanelStateStore,
-} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import { createSlidesViewRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-view-runtime";
 import type { PanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/types";
 
@@ -50,7 +47,6 @@ function createSlidePayload(
 
 function createHarness(
   options: {
-    dispatch?: boolean;
     fallbackSummary?: string | null;
     panelState?: PanelState;
     summaryChanged?: boolean;
@@ -60,7 +56,6 @@ function createHarness(
   const panelState = options.panelState ?? createInitialPanelState();
   panelState.currentSource ??= { url: "https://example.com/video", title: "Video" };
   panelState.slides ??= createSlidePayload();
-  const store = createPanelStateStore(panelState);
   const send = vi.fn(async () => {});
   const refreshSummarizeControl = vi.fn();
   const headerSetProgressOverride = vi.fn();
@@ -95,7 +90,7 @@ function createHarness(
     refreshSummarizeControl,
     hideSlideNotice,
     panelState,
-    dispatchPanelState: options.dispatch ? store.dispatch : undefined,
+
     getFallbackSummaryMarkdown: () => options.fallbackSummary ?? null,
   });
   return {
@@ -231,8 +226,8 @@ describe("slides view runtime", () => {
     expect(harness.send).toHaveBeenCalledWith({ type: "panel:seek", seconds: 65 });
   });
 
-  it("writes rendered markdown through an injected panel dispatcher", () => {
-    const harness = createHarness({ dispatch: true, summaryChanged: true });
+  it("writes rendered markdown to canonical panel state", () => {
+    const harness = createHarness({ summaryChanged: true });
 
     harness.runtime.renderMarkdown("Updated summary");
 
@@ -254,11 +249,19 @@ describe("slides view runtime", () => {
     const harness = createHarness({ panelState });
     harness.panelState.currentSource = null;
     harness.panelState.slides = null;
+    harness.panelState.summaryMarkdown = "Retained summary";
 
     harness.runtime.renderEmptySummaryState();
-    harness.runtime.renderMarkdownDisplay();
-
     expect(harness.renderMarkdownHostEl.textContent).toContain("Loading");
+    expect(harness.panelState.summaryMarkdown).toBe("Retained summary");
+
+    harness.runtime.renderMarkdownDisplay();
+    expect(harness.renderMarkdownHostEl.textContent).toContain("Retained summary");
+
+    harness.panelState.navigation.activeTabUrl = null;
+    harness.panelState.panelSession.autoSummarize = false;
+    harness.runtime.renderEmptySummaryState();
+    expect(harness.renderMarkdownHostEl.textContent).not.toContain("Loading");
   });
 
   it("applies a seeded payload with transcript and fallback summary", () => {

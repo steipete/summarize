@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createBrowserAiSnapshotRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/browser-ai-snapshot-runtime";
-import {
-  applyPanelStateAction,
-  createInitialPanelState,
-} from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 
 describe("sidepanel browser AI snapshot runtime", () => {
   it("upgrades the current extractive snapshot and records Gemini Nano metadata", async () => {
@@ -13,7 +10,7 @@ describe("sidepanel browser AI snapshot runtime", () => {
     const renderMarkdown = vi.fn();
     const runtime = createBrowserAiSnapshotRuntime({
       panelState,
-      dispatchPanelState: (action) => applyPanelStateAction(panelState, action),
+
       browserAi: {
         cancel: vi.fn(),
         summarize: vi.fn(async () => "- First point\n- Second point"),
@@ -55,7 +52,7 @@ describe("sidepanel browser AI snapshot runtime", () => {
     const renderMarkdown = vi.fn();
     const runtime = createBrowserAiSnapshotRuntime({
       panelState,
-      dispatchPanelState: (action) => applyPanelStateAction(panelState, action),
+
       browserAi: {
         cancel: vi.fn(),
         summarize: vi.fn(async () => await summaryPromise),

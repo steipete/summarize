@@ -35,17 +35,6 @@ export function resolveDaemonListenHost(env: Record<string, string | undefined>)
     : DAEMON_HOST;
 }
 
-function resolveToolPath(
-  binary: string,
-  env: Record<string, string | undefined>,
-  explicitEnvKey?: string,
-): string | null {
-  const explicit =
-    explicitEnvKey && typeof env[explicitEnvKey] === "string" ? env[explicitEnvKey]?.trim() : "";
-  if (explicit) return resolveExecutableInPath(explicit, env);
-  return resolveExecutableInPath(binary, env);
-}
-
 export function buildHealthPayload(importMetaUrl?: string) {
   return { ok: true, pid: process.pid, version: resolvePackageVersion(importMetaUrl) };
 }
@@ -130,7 +119,7 @@ export async function runDaemonServer({
           daemonLogFile,
           daemonLogPaths,
           processRegistry,
-          resolveToolPath,
+          resolveToolPath: resolveExecutableInPath,
         })
       ) {
         return;
@@ -165,7 +154,7 @@ export async function runDaemonServer({
           runtime,
           port,
           daemonLogger,
-          resolveToolPath,
+          resolveToolPath: resolveExecutableInPath,
           createSessionId: randomUUID,
           onSessionEvent,
         })

@@ -1,140 +1,98 @@
+import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  isWhisperCppReady,
+  resolveWhisperCppModelNameForDisplay,
+} from "../packages/core/src/transcription/whisper.js";
 
-type MockProc = EventEmitter & {
-  stderr: EventEmitter & { setEncoding: () => void };
-};
+const mock = vi.hoisted(() => ({ mode: "ok" as "ok" | "error" | "nonzero" }));
 
-vi.mock("node:child_process", () => {
-  return {
-    spawn: (_bin: string, args: string[]) => {
-      const proc: MockProc = Object.assign(new EventEmitter(), {
-        stderr: Object.assign(new EventEmitter(), { setEncoding: () => {} }),
-      });
+vi.mock("node:child_process", () => ({
+  spawn: vi.fn((_binary: string, args: string[]) => {
+    expect(args).toEqual(["--help"]);
+    const proc = new EventEmitter();
+    process.nextTick(() => {
+      if (mock.mode === "error") proc.emit("error", new Error("spawn failed"));
+      else proc.emit("close", mock.mode === "nonzero" ? 1 : 0);
+    });
+    return proc;
+  }),
+}));
 
-      // Validate we only use this mock for availability checks in these tests.
-      if (!args.includes("--help")) {
-        throw new Error(`Unexpected whisper-cli invocation in test: ${args.join(" ")}`);
-      }
-
-      process.nextTick(() => {
-        const mode = (process.env.VITEST_WHISPER_SPAWN_MODE ?? "ok").trim();
-        if (mode === "error") {
-          proc.emit("error", new Error("spawn failed"));
-          return;
-        }
-        proc.emit("close", mode === "nonzero" ? 1 : 0);
-      });
-
-      return proc;
-    },
-  };
-});
-
-const ENV_KEYS = [
-  "SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP",
-  "SUMMARIZE_WHISPER_CPP_BINARY",
-  "SUMMARIZE_WHISPER_CPP_MODEL_PATH",
-  "VITEST_WHISPER_SPAWN_MODE",
-  "HOME",
-  "USERPROFILE",
-];
-
-function snapshotEnv(): Record<string, string | undefined> {
-  return Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
-}
-
-function restoreEnv(snapshot: Record<string, string | undefined>) {
-  for (const k of ENV_KEYS) {
-    const v = snapshot[k];
-    if (v === undefined) delete process.env[k];
-    else process.env[k] = v;
-  }
+function createModel() {
+  const modelPath = join(
+    mkdtempSync(join(tmpdir(), "summarize-whisper-ready-")),
+    "ggml-base.en.bin",
+  );
+  writeFileSync(modelPath, "fixture");
+  return modelPath;
 }
 
 describe("whisper.cpp readiness", () => {
-  const envSnapshot = snapshotEnv();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mock.mode = "ok";
+  });
+  afterEach(() => vi.unstubAllEnvs());
 
-  afterEach(() => {
-    restoreEnv(envSnapshot);
+  it("does not probe disabled local whisper.cpp", async () => {
+    expect(
+      await isWhisperCppReady({
+        SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP: "1",
+        SUMMARIZE_WHISPER_CPP_MODEL_PATH: createModel(),
+      }),
+    ).toBe(false);
+    expect(spawn).not.toHaveBeenCalled();
   });
 
-  it("returns false when local whisper.cpp is disabled", async () => {
-    process.env.SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP = "1";
-    process.env.VITEST_WHISPER_SPAWN_MODE = "ok";
-
-    const mod = await import("../packages/core/src/transcription/whisper");
-    expect(await mod.isWhisperCppReady()).toBe(false);
+  it.each(["error", "nonzero"] as const)("rejects an unavailable executable: %s", async (mode) => {
+    mock.mode = mode;
+    expect(await isWhisperCppReady({ SUMMARIZE_WHISPER_CPP_MODEL_PATH: createModel() })).toBe(
+      false,
+    );
+    expect(spawn).toHaveBeenCalledOnce();
   });
 
-  it("returns false when whisper-cli is not available (spawn error)", async () => {
-    process.env.SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP = "0";
-    process.env.VITEST_WHISPER_SPAWN_MODE = "error";
+  it.each(["unset", "missing", "directory"] as const)(
+    "does not probe without a usable model: %s",
+    async (kind) => {
+      const root = mkdtempSync(join(tmpdir(), "summarize-whisper-no-model-"));
+      const env =
+        kind === "unset"
+          ? {}
+          : {
+              SUMMARIZE_WHISPER_CPP_MODEL_PATH:
+                kind === "directory" ? root : join(root, "missing.bin"),
+            };
+      expect(await isWhisperCppReady(env)).toBe(false);
+      expect(spawn).not.toHaveBeenCalled();
+    },
+  );
 
-    const mod = await import("../packages/core/src/transcription/whisper");
-    expect(await mod.isWhisperCppReady()).toBe(false);
+  it("accepts a valid model and derives its display name", async () => {
+    const env = { SUMMARIZE_WHISPER_CPP_MODEL_PATH: createModel() };
+    expect(await isWhisperCppReady(env)).toBe(true);
+    expect(await resolveWhisperCppModelNameForDisplay(env)).toBe("base");
   });
 
-  it("returns false when whisper-cli exists but model is missing", async () => {
-    process.env.SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP = "0";
-    process.env.VITEST_WHISPER_SPAWN_MODE = "ok";
-    process.env.SUMMARIZE_WHISPER_CPP_MODEL_PATH = join(tmpdir(), `missing-${Date.now()}.bin`);
-
-    const mod = await import("../packages/core/src/transcription/whisper");
-    expect(await mod.isWhisperCppReady()).toBe(false);
+  it("discovers cached models under HOME", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-whisper-home-"));
+    const directory = join(home, ".summarize", "cache", "whisper-cpp", "models");
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(join(directory, "ggml-base.bin"), "fixture");
+    expect(await isWhisperCppReady({ HOME: home })).toBe(true);
+    expect(await resolveWhisperCppModelNameForDisplay({ HOME: home })).toBe("base");
   });
 
-  it("returns true when whisper-cli exists and model path is valid", async () => {
-    process.env.SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP = "0";
-    process.env.VITEST_WHISPER_SPAWN_MODE = "ok";
-
-    const dir = mkdtempSync(join(tmpdir(), "summarize-whisper-test-"));
-    const modelPath = join(dir, "ggml-base.en.bin");
-    writeFileSync(modelPath, "x");
-    process.env.SUMMARIZE_WHISPER_CPP_MODEL_PATH = modelPath;
-
-    const mod = await import("../packages/core/src/transcription/whisper");
-    expect(await mod.isWhisperCppReady()).toBe(true);
-    expect(await mod.resolveWhisperCppModelNameForDisplay()).toBe("base");
-  });
-
-  it("supports fallback model discovery under ~/.summarize/cache/whisper-cpp/models", async () => {
-    process.env.SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP = "0";
-    process.env.VITEST_WHISPER_SPAWN_MODE = "ok";
-    delete process.env.SUMMARIZE_WHISPER_CPP_MODEL_PATH;
-
-    const home = mkdtempSync(join(tmpdir(), "summarize-home-"));
-    process.env.HOME = home;
-    delete process.env.USERPROFILE;
-
-    const modelPath = join(home, ".summarize", "cache", "whisper-cpp", "models", "ggml-base.bin");
-    mkdirSync(join(home, ".summarize", "cache", "whisper-cpp", "models"), { recursive: true });
-    writeFileSync(modelPath, "x");
-
-    const mod = await import("../packages/core/src/transcription/whisper");
-    expect(await mod.isWhisperCppReady()).toBe(true);
-    expect(await mod.resolveWhisperCppModelNameForDisplay()).toBe("base");
-  });
-
-  it("accepts explicit env overrides without reading process.env model settings", async () => {
-    process.env.SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP = "0";
-    process.env.VITEST_WHISPER_SPAWN_MODE = "ok";
-    delete process.env.SUMMARIZE_WHISPER_CPP_MODEL_PATH;
-
-    const dir = mkdtempSync(join(tmpdir(), "summarize-whisper-env-"));
-    const modelPath = join(dir, "ggml-base.en.bin");
-    writeFileSync(modelPath, "x");
-
-    const env = {
-      SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP: "0",
-      SUMMARIZE_WHISPER_CPP_MODEL_PATH: modelPath,
-    };
-
-    const mod = await import("../packages/core/src/transcription/whisper");
-    expect(await mod.isWhisperCppReady(env)).toBe(true);
-    expect(await mod.resolveWhisperCppModelNameForDisplay(env)).toBe("base");
+  it("uses explicit env instead of process model settings", async () => {
+    vi.stubEnv("SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP", "1");
+    vi.stubEnv("SUMMARIZE_WHISPER_CPP_MODEL_PATH", "/missing/process/model.bin");
+    const env = { SUMMARIZE_WHISPER_CPP_MODEL_PATH: createModel() };
+    expect(await isWhisperCppReady(env)).toBe(true);
+    expect(await resolveWhisperCppModelNameForDisplay(env)).toBe("base");
   });
 });

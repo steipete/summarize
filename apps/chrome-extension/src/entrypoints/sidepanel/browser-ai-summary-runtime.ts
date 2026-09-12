@@ -47,7 +47,6 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
   const isUserActive = options.isUserActive ?? defaultIsUserActive;
   const sessions = new Map<string, Promise<BrowserSummarizerSession | null>>();
   const promptSessions = new Map<string, Promise<BrowserLanguageModelSession | null>>();
-  const activeRequests = new Map<BrowserAiRequestKey, number>();
   const activeControllers = new Map<BrowserAiRequestKey, AbortController>();
   let statusOwner: { requestKey: BrowserAiRequestKey; token: symbol } | null = null;
 
@@ -65,6 +64,32 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     options.setStatus("");
   };
 
+  const createDownloadMonitor =
+    (requestKey: BrowserAiRequestKey, statusToken: symbol) => (monitor: EventTarget) => {
+      monitor.addEventListener("downloadprogress", (event) => {
+        const loaded = (event as Event & { loaded?: number }).loaded;
+        const percent =
+          typeof loaded === "number" && Number.isFinite(loaded)
+            ? ` ${Math.round(loaded * 100)}%`
+            : "";
+        setOwnedStatus(requestKey, statusToken, `Downloading on-device AI…${percent}`);
+      });
+    };
+
+  const beginRequest = (requestKey: BrowserAiRequestKey, kind: "summary" | "prompt") => {
+    activeControllers.get(requestKey)?.abort();
+    const controller = new AbortController();
+    activeControllers.set(requestKey, controller);
+    const statusToken = Symbol(`browser-ai:${requestKey}:${kind}`);
+    const isCurrent = () => activeControllers.get(requestKey) === controller;
+    const finish = () => {
+      if (!isCurrent()) return;
+      activeControllers.delete(requestKey);
+      clearOwnedStatus(statusToken);
+    };
+    return { controller, statusToken, isCurrent, finish };
+  };
+
   const createSession = (
     api: BrowserSummarizerApi,
     length: BrowserAiSummaryInput["length"],
@@ -77,16 +102,7 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
         type: "key-points",
         format: "plain-text",
         length,
-        monitor(monitor) {
-          monitor.addEventListener("downloadprogress", (event) => {
-            const loaded = (event as Event & { loaded?: number }).loaded;
-            const percent =
-              typeof loaded === "number" && Number.isFinite(loaded)
-                ? ` ${Math.round(loaded * 100)}%`
-                : "";
-            setOwnedStatus(requestKey, statusToken, `Downloading on-device AI…${percent}`);
-          });
-        },
+        monitor: createDownloadMonitor(requestKey, statusToken),
       })
       .catch((error) => {
         logExtensionEvent({
@@ -132,20 +148,10 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     imageInput: boolean,
     statusToken: symbol,
   ): Promise<BrowserLanguageModelSession | null> => {
-    const key = promptSessionKey(requestKey, imageInput);
-    const promise = api
+    return api
       .create({
         ...buildLanguageModelOptions(imageInput),
-        monitor(monitor) {
-          monitor.addEventListener("downloadprogress", (event) => {
-            const loaded = (event as Event & { loaded?: number }).loaded;
-            const percent =
-              typeof loaded === "number" && Number.isFinite(loaded)
-                ? ` ${Math.round(loaded * 100)}%`
-                : "";
-            setOwnedStatus(requestKey, statusToken, `Downloading on-device AI…${percent}`);
-          });
-        },
+        monitor: createDownloadMonitor(requestKey, statusToken),
       })
       .catch((error) => {
         logExtensionEvent({
@@ -154,11 +160,8 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
           scope: "sidepanel",
           detail: { imageInput, requestKey, ...browserAiErrorDetail(error) },
         });
-        promptSessions.delete(key);
         return null;
       });
-    promptSessions.set(key, promise);
-    return promise;
   };
 
   const ensurePromptSession = async (
@@ -168,7 +171,10 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
   ): Promise<BrowserLanguageModelSession | null> => {
     const key = promptSessionKey(requestKey, imageInput);
     const cached = promptSessions.get(key);
-    if (cached) return await cached;
+    if (cached) {
+      promptSessions.delete(key);
+      return await cached;
+    }
     const api = getLanguageModelApi();
     if (!api) return null;
     const availability = await api
@@ -211,7 +217,10 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     const api = getLanguageModelApi();
     if (!api) return;
     const statusToken = Symbol(`browser-ai:${requestKey}:prompt-prepare`);
-    void createPromptSession(api, requestKey, imageInput, statusToken).then(() => {
+    const promise = createPromptSession(api, requestKey, imageInput, statusToken);
+    promptSessions.set(key, promise);
+    void promise.then((session) => {
+      if (!session && promptSessions.get(key) === promise) promptSessions.delete(key);
       clearOwnedStatus(statusToken);
     });
   };
@@ -221,7 +230,6 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
       ? [requestKey]
       : (["summary", "slides"] satisfies BrowserAiRequestKey[]);
     for (const key of requestKeys) {
-      activeRequests.set(key, (activeRequests.get(key) ?? 0) + 1);
       activeControllers.get(key)?.abort();
       activeControllers.delete(key);
     }
@@ -242,18 +250,10 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     requestKey?: BrowserAiRequestKey;
     status?: string;
   }): Promise<string | null> => {
-    const request = (activeRequests.get(requestKey) ?? 0) + 1;
-    activeRequests.set(requestKey, request);
-    activeControllers.get(requestKey)?.abort();
-    const controller = new AbortController();
-    activeControllers.set(requestKey, controller);
-    const statusToken = Symbol(`browser-ai:${requestKey}:${request}`);
+    const { controller, statusToken, isCurrent, finish } = beginRequest(requestKey, "summary");
     const session = await ensureSession(input.length, requestKey, statusToken);
-    if (!session || request !== activeRequests.get(requestKey)) {
-      if (request === activeRequests.get(requestKey)) {
-        activeControllers.delete(requestKey);
-        clearOwnedStatus(statusToken);
-      }
+    if (!session || !isCurrent()) {
+      finish();
       return null;
     }
 
@@ -271,8 +271,7 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
         context,
         signal: controller.signal,
       });
-      const summary =
-        request === activeRequests.get(requestKey) && result.trim() ? result.trim() : null;
+      const summary = isCurrent() && result.trim() ? result.trim() : null;
       logExtensionEvent({
         event: summary ? "browser-ai:summarize-done" : "browser-ai:summarize-discarded",
         level: summary ? "verbose" : "warn",
@@ -299,10 +298,7 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
       });
       return null;
     } finally {
-      if (request === activeRequests.get(requestKey)) {
-        activeControllers.delete(requestKey);
-        clearOwnedStatus(statusToken);
-      }
+      finish();
     }
   };
 
@@ -317,21 +313,13 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     requestKey?: BrowserAiRequestKey;
     status?: string;
   }): Promise<BrowserAiPromptResult | null> => {
-    const request = (activeRequests.get(requestKey) ?? 0) + 1;
-    activeRequests.set(requestKey, request);
-    activeControllers.get(requestKey)?.abort();
-    const controller = new AbortController();
-    activeControllers.set(requestKey, controller);
-    const statusToken = Symbol(`browser-ai:${requestKey}:prompt:${request}`);
+    const { controller, statusToken, isCurrent, finish } = beginRequest(requestKey, "prompt");
     const imageInput = promptUsesImages(input);
-    const key = promptSessionKey(requestKey, imageInput);
     const chars = promptTextLength(input);
     const session = await ensurePromptSession(requestKey, imageInput, statusToken);
-    if (!session || request !== activeRequests.get(requestKey)) {
-      if (request === activeRequests.get(requestKey)) {
-        activeControllers.delete(requestKey);
-        clearOwnedStatus(statusToken);
-      }
+    if (!session || !isCurrent()) {
+      session?.destroy?.();
+      finish();
       return null;
     }
 
@@ -367,7 +355,7 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
         }
       }
       const result = await session.prompt(input, promptOptions);
-      const text = request === activeRequests.get(requestKey) && result.trim() ? result.trim() : "";
+      const text = isCurrent() && result.trim() ? result.trim() : "";
       if (!text) return null;
       logExtensionEvent({
         event: "browser-ai:prompt-done",
@@ -402,14 +390,7 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
       return null;
     } finally {
       session.destroy?.();
-      const cached = promptSessions.get(key);
-      if (cached && (await cached) === session) {
-        promptSessions.delete(key);
-      }
-      if (request === activeRequests.get(requestKey)) {
-        activeControllers.delete(requestKey);
-        clearOwnedStatus(statusToken);
-      }
+      finish();
     }
   };
 

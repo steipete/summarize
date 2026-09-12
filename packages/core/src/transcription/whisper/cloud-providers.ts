@@ -76,7 +76,7 @@ function resolveCloudProviderOrderFromAvailability(
   });
 }
 
-export function resolveCloudProviderOrder(state: CloudProviderKeyState): CloudProvider[] {
+export function resolveCloudProviderOrder(state: Partial<CloudProviderKeyState>): CloudProvider[] {
   const order: CloudProvider[] = [];
   if (state.assemblyaiApiKey) order.push("assemblyai");
   if (state.geminiApiKey) order.push("gemini");

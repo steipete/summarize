@@ -8,7 +8,7 @@ import { runChatAgentLoop } from "./chat-agent-loop";
 import type { ChatController } from "./chat-controller";
 import { buildEmptyUsage } from "./chat-history-store";
 import { isPanelAutomationAvailable } from "./panel-capabilities";
-import { applyPanelStateAction, type PanelStateAction } from "./panel-state-store";
+import { patchPanelState } from "./panel-state-store";
 import type { ChatMessage, PanelState } from "./types";
 
 type AutomationNoticeAction = "extensions" | "options";
@@ -32,7 +32,7 @@ type RuntimeMessageListener = (
 
 export function createAutomationRuntime({
   panelState,
-  dispatchPanelState,
+
   automationNoticeActionBtn,
   automationNoticeEl,
   automationNoticeMessageEl,
@@ -47,7 +47,7 @@ export function createAutomationRuntime({
   addRuntimeMessageListener = (listener) => chrome.runtime.onMessage.addListener(listener),
 }: {
   panelState: PanelState;
-  dispatchPanelState?: (action: PanelStateAction) => void;
+
   automationNoticeActionBtn: HTMLButtonElement;
   automationNoticeEl: HTMLElement;
   automationNoticeMessageEl: HTMLElement;
@@ -74,17 +74,9 @@ export function createAutomationRuntime({
   };
   addRuntimeMessageListener?: (listener: RuntimeMessageListener) => void;
 }) {
-  const dispatch = (action: PanelStateAction) => {
-    if (dispatchPanelState) {
-      dispatchPanelState(action);
-    } else {
-      applyPanelStateAction(panelState, action);
-    }
-  };
-
   const hideNotice = (options?: { force?: boolean }) => {
     if (panelState.panelSession.automationNoticeSticky && !options?.force) return;
-    dispatch({ type: "panel-session-update", value: { automationNoticeSticky: false } });
+    patchPanelState(panelState, "panelSession", { automationNoticeSticky: false });
     automationNoticeEl.classList.add("hidden");
   };
 
@@ -101,10 +93,7 @@ export function createAutomationRuntime({
     ctaAction?: AutomationNoticeAction;
     sticky?: boolean;
   }) => {
-    dispatch({
-      type: "panel-session-update",
-      value: { automationNoticeSticky: Boolean(sticky) },
-    });
+    patchPanelState(panelState, "panelSession", { automationNoticeSticky: Boolean(sticky) });
     automationNoticeTitleEl.textContent = title;
     automationNoticeMessageEl.textContent = message;
     automationNoticeActionBtn.textContent = ctaLabel || "Open extension details";

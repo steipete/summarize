@@ -19,6 +19,7 @@ export {
   getTranscriptTextForSlide,
   interleaveSlidesIntoTranscript,
   parseTranscriptTimedText,
+  parseTimestampSeconds,
   resolveSlideTextBudget,
   resolveSlideWindowSeconds,
 } from "./text-transcript.js";

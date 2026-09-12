@@ -110,22 +110,18 @@ function shouldStripElement(
 export function stripHiddenHtml(html: string): string {
   if (!html) return html;
   const withoutComments = html.replace(COMMENT_PATTERN, "");
-  const parsed = parseHtmlDocument(withoutComments);
+  const document = parseHtmlDocument(withoutComments);
 
-  try {
-    for (const element of parsed.document.querySelectorAll("*")) {
-      const tagName = element.tagName.toLowerCase();
-      const attributes: AttributeMap = {};
-      for (const attribute of element.attributes) {
-        attributes[attribute.name.toLowerCase()] = attribute.value.toLowerCase();
-      }
-      if (shouldStripElement(tagName, attributes.style, attributes)) {
-        element.remove();
-      }
+  for (const element of document.querySelectorAll("*")) {
+    const tagName = element.tagName.toLowerCase();
+    const attributes: AttributeMap = {};
+    for (const attribute of element.attributes) {
+      attributes[attribute.name.toLowerCase()] = attribute.value.toLowerCase();
     }
-
-    return serializeHtmlDocument(parsed.document);
-  } finally {
-    parsed.close();
+    if (shouldStripElement(tagName, attributes.style, attributes)) {
+      element.remove();
+    }
   }
+
+  return serializeHtmlDocument(document);
 }
