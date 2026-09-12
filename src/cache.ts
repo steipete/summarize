@@ -86,24 +86,30 @@ export function clearCacheFiles(path: string) {
 
 export async function readCacheStats(path: string): Promise<CacheStats | null> {
   if (!existsSync(path)) return null;
+  const counts = createEmptyCacheCounts();
+  let totalEntries: number;
   const db = await openSqlite(path);
   try {
-    db.exec("PRAGMA query_only = ON");
-  } catch {
-    // ignore
-  }
-  const counts = createEmptyCacheCounts();
-  const rows = db.prepare("SELECT kind, COUNT(*) AS count FROM cache_entries GROUP BY kind").all();
-  for (const row of rows as Array<{ kind?: string; count?: number }>) {
-    if (row?.kind && typeof row.count === "number" && row.kind in counts) {
-      counts[row.kind as CacheKind] = row.count;
+    try {
+      db.exec("PRAGMA query_only = ON");
+    } catch {
+      // ignore
     }
+    const rows = db
+      .prepare("SELECT kind, COUNT(*) AS count FROM cache_entries GROUP BY kind")
+      .all();
+    for (const row of rows as Array<{ kind?: string; count?: number }>) {
+      if (row?.kind && typeof row.count === "number" && Object.hasOwn(counts, row.kind)) {
+        counts[row.kind as CacheKind] = row.count;
+      }
+    }
+    const totalRow = db.prepare("SELECT COUNT(*) AS count FROM cache_entries").get() as
+      | { count?: number }
+      | undefined;
+    totalEntries = typeof totalRow?.count === "number" ? totalRow.count : 0;
+  } finally {
+    db.close();
   }
-  const totalRow = db.prepare("SELECT COUNT(*) AS count FROM cache_entries").get() as
-    | { count?: number }
-    | undefined;
-  const totalEntries = typeof totalRow?.count === "number" ? totalRow.count : 0;
-  db.close();
   return {
     path,
     sizeBytes: getSqliteFileSizeBytes(path),
