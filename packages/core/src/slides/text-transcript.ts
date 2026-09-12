@@ -49,7 +49,10 @@ function normalizeSlideText(value: string): string {
 
 export function truncateSlideText(value: string, limit: number): string {
   if (value.length <= limit) return value;
-  const truncated = value.slice(0, limit).trimEnd();
+  const prefix = value.slice(0, limit);
+  // A character budget can end between the UTF-16 units of an astral character.
+  const splitsSurrogatePair = (value.codePointAt(prefix.length - 1) ?? 0) > 0xffff;
+  const truncated = (splitsSurrogatePair ? prefix.slice(0, -1) : prefix).trimEnd();
   const clean = truncated.replace(/\s+\S*$/, "").trim();
   const result = clean.length > 0 ? clean : truncated.trim();
   return result.length > 0 ? `${result}...` : "";
