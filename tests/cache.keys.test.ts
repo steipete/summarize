@@ -2,14 +2,49 @@ import { describe, expect, it } from "vitest";
 import {
   buildAttachmentContentHash,
   buildExtractCacheKey,
+  buildExtractCacheKeyValue,
   buildPromptContentHash,
   buildPromptHash,
   buildSummaryCacheKey,
+  buildSummaryCacheKeyValue,
+  buildSlidesCacheKeyValue,
+  buildTranscriptCacheKeyValue,
   extractTaggedBlock,
   hashString,
 } from "../src/cache.js";
 
 describe("cache keys and tags", () => {
+  it("preserves caller-selected format versions through the raw key facade", () => {
+    const input = {
+      url: "https://example.com/video",
+      options: {},
+      contentHash: "content",
+      promptHash: "prompt",
+      model: "provider/model",
+      lengthKey: "chars:140",
+      languageKey: "en",
+      namespace: null,
+      settings: {
+        ocr: false,
+        outputDir: "slides",
+        sceneThreshold: 0.3,
+        autoTuneThreshold: true,
+        maxSlides: 10,
+        minDurationSeconds: 5,
+      },
+      formatVersion: 100,
+    };
+    for (const buildKey of [
+      buildExtractCacheKeyValue,
+      buildSummaryCacheKeyValue,
+      buildSlidesCacheKeyValue,
+      buildTranscriptCacheKeyValue,
+    ]) {
+      expect(buildKey(input)).toBe(buildKey({ ...input }));
+      expect(buildKey(input)).not.toBe(buildKey({ ...input, formatVersion: 101 }));
+    }
+  });
+
   it("extracts tagged blocks", () => {
     const prompt = "<instructions>Do the thing.</instructions>\n<content>Body</content>";
     expect(extractTaggedBlock(prompt, "instructions")).toBe("Do the thing.");

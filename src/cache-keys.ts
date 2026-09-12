@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { CACHE_FORMAT_VERSION } from "@steipete/summarize-core/runtime";
 import type { LengthArg } from "./flags.js";
 import type { OutputLanguage } from "./language.js";
 
@@ -167,5 +168,82 @@ export function buildTranscriptCacheKeyValue({
     namespace,
     fileMtime: fileMtime ?? null,
     formatVersion,
+  });
+}
+
+export function buildExtractCacheKey({
+  url,
+  options,
+}: {
+  url: string;
+  options: Record<string, unknown>;
+}): string {
+  return buildExtractCacheKeyValue({
+    url,
+    options,
+    formatVersion: CACHE_FORMAT_VERSION,
+  });
+}
+
+export function buildSummaryCacheKey({
+  contentHash,
+  promptHash,
+  model,
+  lengthKey,
+  languageKey,
+}: {
+  contentHash: string;
+  promptHash: string;
+  model: string;
+  lengthKey: string;
+  languageKey: string;
+}): string {
+  return buildSummaryCacheKeyValue({
+    contentHash,
+    promptHash,
+    model,
+    lengthKey,
+    languageKey,
+    formatVersion: CACHE_FORMAT_VERSION,
+  });
+}
+
+export function buildSlidesCacheKey({
+  url,
+  settings,
+}: {
+  url: string;
+  settings: {
+    ocr: boolean;
+    outputDir: string;
+    sceneThreshold: number;
+    autoTuneThreshold: boolean;
+    maxSlides: number;
+    minDurationSeconds: number;
+  };
+}): string {
+  return buildSlidesCacheKeyValue({
+    url,
+    settings,
+    formatVersion: CACHE_FORMAT_VERSION,
+  });
+}
+
+export function buildTranscriptCacheKey({
+  url,
+  namespace,
+  formatVersion,
+  fileMtime,
+}: {
+  url: string;
+  namespace: string | null;
+  formatVersion?: number;
+  fileMtime?: number | null;
+}): string {
+  return buildTranscriptCacheKeyValue({
+    url,
+    namespace,
+    fileMtime,
+    formatVersion: formatVersion ?? CACHE_FORMAT_VERSION,
   });
 }
