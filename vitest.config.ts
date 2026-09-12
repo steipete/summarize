@@ -8,7 +8,8 @@ const cpuCount = Math.max(1, cpus().length);
 const POSITIVE_INTEGER_PATTERN = /^[1-9]\d*$/u;
 
 export function resolveMaxThreads(raw: string | undefined, availableCpus = cpuCount): number {
-  const fallback = Math.min(8, Math.max(4, Math.floor(Math.max(1, availableCpus) / 2)));
+  const cpuBudget = Math.max(1, Math.floor(availableCpus));
+  const fallback = Math.min(cpuBudget, 8, Math.max(4, Math.floor(cpuBudget / 2)));
   const value = raw?.trim();
   if (!value || !POSITIVE_INTEGER_PATTERN.test(value)) return fallback;
   const parsed = Number.parseInt(value, 10);
@@ -63,6 +64,7 @@ export function createVitestConfig({
     },
     test: {
       maxWorkers,
+      fsModuleCache: true,
       environment: "node",
       include: ["tests/**/*.test.ts"],
       setupFiles: ["tests/setup.ts"],

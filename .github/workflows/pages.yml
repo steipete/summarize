@@ -6,8 +6,7 @@ on:
     paths:
       - "docs/**"
       - "scripts/build-docs-site.mjs"
-      - "scripts/docs-site-assets.mjs"
-      - "scripts/docs-site-markdown.mjs"
+      - "scripts/docs-site-*.mjs"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

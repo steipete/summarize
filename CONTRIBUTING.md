@@ -45,6 +45,8 @@ pnpm run format
 
 `pnpm run check` runs formatting, lint, type checking, and coverage tests. Run it before opening or updating a pull request. Installation already builds the CLI and core through `prepare`; run `pnpm run build` again after source changes.
 
+Production lint also checks unused bindings, unreachable code, and constant binary expressions. Vitest reuses source transforms between runs while retaining test isolation. Automatic worker counts respect the available CPUs; `VITEST_MAX_THREADS` remains available for an explicit override.
+
 Extension:
 
 ```bash

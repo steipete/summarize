@@ -17,5 +17,15 @@
   "rules": {
     "typescript/no-floating-promises": "error",
     "typescript/no-misused-promises": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/**", "packages/core/src/**", "apps/chrome-extension/src/**", "scripts/**"],
+      "rules": {
+        "no-unused-vars": "error",
+        "no-unreachable": "error",
+        "no-constant-binary-expression": "error"
+      }
+    }
+  ]
 }

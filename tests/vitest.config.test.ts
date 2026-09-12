@@ -14,7 +14,12 @@ describe("vitest config", () => {
     },
   );
 
-  it("wires VITEST_MAX_THREADS into Vitest 4 maxWorkers", () => {
+  it.each([1, 2, 3])("does not oversubscribe a %i-CPU machine by default", (availableCpus) => {
+    expect(resolveMaxThreads(undefined, availableCpus)).toBe(availableCpus);
+    expect(resolveMaxThreads("invalid", availableCpus)).toBe(availableCpus);
+  });
+
+  it("wires VITEST_MAX_THREADS into maxWorkers", () => {
     const config = createVitestConfig({
       env: { VITEST_MAX_THREADS: "1" },
       availableCpus: 16,
