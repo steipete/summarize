@@ -1,0 +1,48 @@
+import type { Settings } from "./settings-types";
+import { defaultColorMode, defaultColorScheme } from "./theme";
+
+export const DEFAULT_DAEMON_PORT = "8787";
+
+export const defaultSettings: Settings = {
+  token: "",
+  daemonPort: DEFAULT_DAEMON_PORT,
+  summaryRuntime: "direct",
+  provider: "openai",
+  providerApiKeys: {},
+  providerBaseUrls: {},
+  daemonHintDismissed: false,
+  autoSummarize: true,
+  hoverSummaries: false,
+  chatEnabled: true,
+  automationEnabled: false,
+  slidesEnabled: true,
+  slideRuntime: "browser",
+  slidesParallel: true,
+  slidesOcrEnabled: false,
+  slidesLayout: "gallery",
+  summaryTimestamps: true,
+  extendedLogging: false,
+  autoCliFallback: true,
+  autoCliOrder: "claude,gemini,codex,agent,openclaw,opencode,copilot",
+  hoverPrompt:
+    "Plain text only (no Markdown). Summarize the linked page concisely in 1-2 sentences; aim for 100-200 characters.",
+  transcriber: "",
+  model: "auto",
+  length: "long",
+  language: "auto",
+  promptOverride: "",
+  maxChars: 120_000,
+  requestMode: "",
+  firecrawlMode: "",
+  markdownMode: "",
+  preprocessMode: "",
+  youtubeMode: "",
+  timeout: "",
+  retries: null,
+  maxOutputTokens: "",
+  fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
+  fontSize: 14,
+  lineHeight: 1.45,
+  colorScheme: defaultColorScheme,
+  colorMode: defaultColorMode,
+};
