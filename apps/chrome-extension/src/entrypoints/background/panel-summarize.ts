@@ -5,21 +5,16 @@ import {
   shouldPreferUrlMode,
 } from "@steipete/summarize-core/content/url";
 import { buildBrowserSummaryPayload } from "../../lib/browser-summary";
-import {
-  buildDirectSummaryPrompt,
-  DIRECT_SUMMARY_SYSTEM_PROMPT,
-  resolveDirectMaxTokens,
-} from "../../lib/direct-prompts";
-import { completeDirectText, providerLabel } from "../../lib/direct-provider";
 import { planMediaExtraction } from "../../lib/media-extraction-plan";
 import { resolveSummaryExecution } from "../../lib/model-routing";
 import type { BrowserAiSummaryInput, RunStart } from "../../lib/panel-contracts";
-import { getProviderSettings, type Settings } from "../../lib/settings";
+import type { Settings } from "../../lib/settings";
 import type { BrowserLocalMediaTranscript } from "./browser-local-transcript";
 import { createCachedExtract, type CachedExtract } from "./cached-extract";
 import type { ExtractResponse } from "./content-script-bridge";
 import type { ExtractorContext } from "./extractors/router";
 import { ensurePreparedPanelTranscript, preparePanelContent } from "./panel-content-preparation";
+import { summarizePanelDirectly } from "./panel-direct-summary";
 import { startPanelDaemonSummary } from "./panel-summary-daemon";
 import {
   beginSummaryRequest,
@@ -416,20 +411,11 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
   if (summaryExecution === "direct") {
     sendStatus("Sending to provider…");
     try {
-      const prompt = buildDirectSummaryPrompt({
-        url: resolvedPayload.url,
+      const result = await summarizePanelDirectly({
+        extracted: resolvedPayload,
         title: resolvedTitle,
-        text: resolvedPayload.text,
         transcriptTimedText: browserTranscriptTimedText,
-        truncated: resolvedPayload.truncated,
         settings,
-      });
-      const result = await completeDirectText({
-        model: settings.model,
-        providerSettings: getProviderSettings(settings),
-        system: DIRECT_SUMMARY_SYSTEM_PROMPT,
-        prompt,
-        maxTokens: resolveDirectMaxTokens(settings),
         signal: controller.signal,
         fetchImpl,
       });
@@ -438,7 +424,7 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
         id: createSummaryRunId("direct"),
         url: resolvedPayload.url,
         title: resolvedTitle,
-        model: `${providerLabel(result.config.provider)} · ${result.config.model}`,
+        model: result.model,
         reason,
         slides: wantsSlides,
       };
@@ -460,7 +446,6 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
 
   sendStatus("Connecting…");
   session.inflightUrl = resolvedPayload.url;
-  const summarySlides = daemonSlidesConfig;
 
   let id: string;
   try {
@@ -474,7 +459,7 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
       noCache: Boolean(opts?.refresh),
       inputMode: requestInputMode,
       timestamps: summaryTimestamps,
-      slides: summarySlides,
+      slides: daemonSlidesConfig,
       signal: controller.signal,
       fetchImpl: daemonFetchImpl,
       buildSummarizeRequestBody,

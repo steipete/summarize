@@ -87,9 +87,6 @@ export function createSidepanelChatRuntime({
   renderInlineSlides: () => void;
   seekToTimestamp: (seconds: number) => void;
 }) {
-  let chatUiRuntime: ReturnType<typeof createChatUiRuntime>;
-  let automationRuntime: ReturnType<typeof createAutomationRuntime>;
-
   const wrapMessage = (message: Message): ChatMessage => ({
     ...message,
     id: crypto.randomUUID(),
@@ -132,7 +129,7 @@ export function createSidepanelChatRuntime({
     setStatus,
   });
 
-  chatUiRuntime = createChatUiRuntime({
+  const chatUiRuntime = createChatUiRuntime({
     mainEl,
     chatJumpBtn,
     chatInputEl,
@@ -153,7 +150,7 @@ export function createSidepanelChatRuntime({
     resetChatSession: () => chatSession.reset(),
   });
 
-  automationRuntime = createAutomationRuntime({
+  const automationRuntime = createAutomationRuntime({
     panelState,
 
     automationNoticeActionBtn,
