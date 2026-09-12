@@ -13,16 +13,16 @@
 - Homebrew/core formula is not owned here; BrewTestBot autobumps releases about every 3h. Do not block or manually manage it; ship and continue.
 - Chrome Web Store: every release must upload the matching `dist-chrome/summarize-chrome-extension-v<version>.zip` to item `cejgnmmhbbpdmjnfppjdfkocebngehfg`, submit it for review with automatic publishing, and verify the exact pending/published version. Skip only when every shipped change is daemon-side and the packaged extension/companion contract is unchanged.
 - Dev:
-  - Build: `pnpm -s build` (builds core first)
-  - Gate: `pnpm -s check`
+  - Build: `pnpm run build` (builds core first; also runs during install via `prepare`)
+  - Gate: `pnpm run check`
   - Import from apps: prefer `@steipete/summarize-core` to avoid pulling CLI-only deps.
 - Dependencies: stable releases need a 7-day stabilization delay before adoption; prereleases remain excluded unless already adopted.
-- Daemon: restart with `pnpm -s summarize daemon restart`; verify via `pnpm -s summarize daemon status`.
+- Daemon: restart with `pnpm summarize daemon restart`; verify via `pnpm summarize daemon status`.
 - Rebuild (extension + daemon): run **both** in order:
   1. `pnpm -C apps/chrome-extension build`
   2. `pnpm summarize daemon restart`
 - Extension tests:
   - `pnpm -C apps/chrome-extension test:chrome` = supported automated path.
-  - Firefox Playwright extension tests are not reliable (`moz-extension://` limitation); default `test:firefox` skips.
+  - Firefox Playwright extension tests are not reliable (`moz-extension://` limitation); default `test:firefox` runs a temporary-install smoke test.
   - Use `pnpm -C apps/chrome-extension test:firefox:force` only for explicit diagnostics.
 - Commits: use `committer "type: message" <files...>` (Conventional Commits).

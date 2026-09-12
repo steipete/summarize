@@ -20,6 +20,7 @@ overrides:
   wxt>esbuild: '-'
 
 patchedDependencies:
+  adm-zip@0.6.0: 8f90a48589f33f1bb6ba8f001bcafc7b71052e34fb0462e37c2a2b8137595f05
   image-size@2.0.2: 0d36cf6868094bf1a964e8ee431dfa1e791f841bf924bbb74cfb6b4c7894806e
 
 importers:
@@ -27,8 +28,8 @@ importers:
   .:
     dependencies:
       '@earendil-works/pi-ai':
-        specifier: ^0.85.0
-        version: 0.85.0(supports-color@10.2.2)(ws@8.21.3)(zod@4.4.3)
+        specifier: ^0.85.1
+        version: 0.85.1(supports-color@10.2.2)(ws@8.21.3)(zod@4.4.3)
       '@steipete/summarize-core':
         specifier: workspace:*
         version: link:packages/core
@@ -54,8 +55,8 @@ importers:
         specifier: ^0.3.3
         version: 0.3.3
       tokentally:
-        specifier: ^0.1.4
-        version: 0.1.4
+        specifier: ^0.1.5
+        version: 0.1.5
       undici:
         specifier: 8.10.2
         version: 8.10.2
@@ -116,8 +117,8 @@ importers:
         version: 10.29.8
     devDependencies:
       '@playwright/test':
-        specifier: 1.62.1
-        version: 1.62.1
+        specifier: 1.63.0
+        version: 1.63.0
       '@types/chrome':
         specifier: ^0.2.8
         version: 0.2.8
@@ -331,13 +332,13 @@ packages:
     engines: {node: '>= 0.10.4'}
     hasBin: true
 
-  '@earendil-works/pi-ai@0.85.0':
-    resolution: {integrity: sha512-CbeeZH3NHav7Rs182tYq0eoCAWfDd1MvOAXKzonIF4uN3uO99EB8iT1HfyGofJmPkAf8MeIwOBQtqqd0zgrPWA==}
+  '@earendil-works/pi-ai@0.85.1':
+    resolution: {integrity: sha512-+VgVIJDkDO2efYJKEEqvPTH4zmnIaXdAppGbO+vKFA9qy5PdhFiAenuFAkU+oiCSfOC4dMHDyrjdQeL4ZoC5CQ==}
     engines: {node: '>=22.19.0'}
     hasBin: true
 
-  '@earendil-works/pi-telemetry@0.85.0':
-    resolution: {integrity: sha512-gs8Zq1lySn8liq7U7CCSgWHJcA8c6+ZWk+CBPp7w0K+SN5LcLcsbs3+bh7zipm4CqNkVhcpwGAEGJp7qZqsVnA==}
+  '@earendil-works/pi-telemetry@0.85.1':
+    resolution: {integrity: sha512-Bg/YN6kA7Swja/NQxka8xFdecb4E/auIEGF2G5A25EaQXhRnPj300/7/KpgsDDMYUzHTDAv4RyUxaQPJKW81Rw==}
     engines: {node: '>=22.19.0'}
 
   '@emnapi/runtime@1.11.3':
@@ -1022,8 +1023,8 @@ packages:
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
 
-  '@playwright/test@1.62.1':
-    resolution: {integrity: sha512-DTcUc8qii+cpHvtOwggMtBRMjKZHXYWdw8syRYu2vtzuq4Wxphqq4NfCs5Zt44L6mA8rfDfj+PHnxFc/FeK6mQ==}
+  '@playwright/test@1.63.0':
+    resolution: {integrity: sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -2193,11 +2194,6 @@ packages:
     resolution: {integrity: sha512-EQsFzMUJkCKGr1ePqlYADkIUmHW1s3ZXr5Yqy6wbGrfUCphpl2maM/kyOIRA2HpP3AaFQTZXD4ldjek+nccddA==}
     engines: {node: '>=14.14'}
 
-  fsevents@2.3.2:
-    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
-    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
-    os: [darwin]
-
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -2926,13 +2922,13 @@ packages:
   platform@1.3.6:
     resolution: {integrity: sha512-fnWVljUchTro6RiCFvCXBbNhJc2NijN7oIQxbwsyL0buWJPG85v81ehlHI9fXrJsMNgTofEoWIQeClKpgxFLrg==}
 
-  playwright-core@1.62.1:
-    resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
+  playwright-core@1.63.0:
+    resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
     engines: {node: '>=20'}
     hasBin: true
 
-  playwright@1.62.1:
-    resolution: {integrity: sha512-0M+L3LAD8/nm554LOla9Ayx0j0tmFZ0FBcoQ7F1VuVHpM/XpiC8RcDzBQB8W5+hA8L22THxELzeF+2WcUzvcLg==}
+  playwright@1.63.0:
+    resolution: {integrity: sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -3280,8 +3276,8 @@ packages:
     resolution: {integrity: sha512-dRXchy+C0IgK8WPC6xvCHFRIWYUbqqdEIKPaKo/AcTUNzwLTK6AH7RjdLWsEZcAN/TBdtfUw3PYEgPr5VPr6ww==}
     engines: {node: '>=14.16'}
 
-  tokentally@0.1.4:
-    resolution: {integrity: sha512-+sfoN+uL47rbOQFZdiWhJqZmkimTMGwsDUryWfQDVHbRJaETGu+20iGtWG4a9d+GTEVwXPVg6vtUFnBk37Q6VQ==}
+  tokentally@0.1.5:
+    resolution: {integrity: sha512-BCO6WFjqd718vjlQvXgCuLiNAnCXSs6MRnRM+7EGrTUhM4fd1LwzNXBWVvEBk4CgG68dmxhegGq8FH7eGfVABQ==}
     engines: {node: '>=24'}
 
   ts-algebra@2.0.0:
@@ -3917,11 +3913,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@earendil-works/pi-ai@0.85.0(supports-color@10.2.2)(ws@8.21.3)(zod@4.4.3)':
+  '@earendil-works/pi-ai@0.85.1(supports-color@10.2.2)(ws@8.21.3)(zod@4.4.3)':
     dependencies:
       '@anthropic-ai/sdk': 0.123.0(zod@4.4.3)
       '@aws-sdk/client-bedrock-runtime': 3.1048.0
-      '@earendil-works/pi-telemetry': 0.85.0
+      '@earendil-works/pi-telemetry': 0.85.1
       '@google/genai': 1.52.0(supports-color@10.2.2)
       '@smithy/node-http-handler': 4.7.3
       http-proxy-agent: 7.0.2(supports-color@10.2.2)
@@ -3937,7 +3933,7 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-telemetry@0.85.0': {}
+  '@earendil-works/pi-telemetry@0.85.1': {}
 
   '@emnapi/runtime@1.11.3':
     dependencies:
@@ -4362,9 +4358,9 @@ snapshots:
 
   '@pinojs/redact@0.4.0': {}
 
-  '@playwright/test@1.62.1':
+  '@playwright/test@1.63.0':
     dependencies:
-      playwright: 1.62.1
+      playwright: 1.63.0
 
   '@pnpm/config.env-replace@1.1.0': {}
 
@@ -4796,7 +4792,7 @@ snapshots:
       upath: 3.0.7
       yauzl: 3.4.0
 
-  adm-zip@0.6.0: {}
+  adm-zip@0.6.0(patch_hash=8f90a48589f33f1bb6ba8f001bcafc7b71052e34fb0462e37c2a2b8137595f05): {}
 
   agent-base@7.1.4: {}
 
@@ -5340,7 +5336,7 @@ snapshots:
 
   firefox-profile@4.7.1:
     dependencies:
-      adm-zip: 0.6.0
+      adm-zip: 0.6.0(patch_hash=8f90a48589f33f1bb6ba8f001bcafc7b71052e34fb0462e37c2a2b8137595f05)
       fs-extra: 11.4.0
       ini: 4.1.3
       minimist: 1.2.8
@@ -5366,9 +5362,6 @@ snapshots:
       graceful-fs: 4.2.11
       jsonfile: 6.2.1
       universalify: 2.0.1
-
-  fsevents@2.3.2:
-    optional: true
 
   fsevents@2.3.3:
     optional: true
@@ -5901,7 +5894,7 @@ snapshots:
 
   onnxruntime-node@1.24.3:
     dependencies:
-      adm-zip: 0.6.0
+      adm-zip: 0.6.0(patch_hash=8f90a48589f33f1bb6ba8f001bcafc7b71052e34fb0462e37c2a2b8137595f05)
       global-agent: 3.0.0
       onnxruntime-common: 1.24.3
 
@@ -6126,13 +6119,11 @@ snapshots:
 
   platform@1.3.6: {}
 
-  playwright-core@1.62.1: {}
+  playwright-core@1.63.0: {}
 
-  playwright@1.62.1:
+  playwright@1.63.0:
     dependencies:
-      playwright-core: 1.62.1
-    optionalDependencies:
-      fsevents: 2.3.2
+      playwright-core: 1.63.0
 
   postcss@8.5.26:
     dependencies:
@@ -6511,7 +6502,7 @@ snapshots:
       '@tokenizer/token': 0.3.0
       ieee754: 1.2.1
 
-  tokentally@0.1.4: {}
+  tokentally@0.1.5: {}
 
   ts-algebra@2.0.0: {}
 

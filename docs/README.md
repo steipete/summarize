@@ -24,4 +24,4 @@ summary: "Docs index for summarize behaviors and modes."
 
 ## Website
 
-- Jekyll site source: `docs/` (Markdown → HTML via GitHub Pages Actions)
+- Site source: `docs/`, rendered by `scripts/build-docs-site.mjs` and deployed through GitHub Pages Actions.

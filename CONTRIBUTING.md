@@ -16,8 +16,8 @@ cd summarize
 corepack enable
 corepack install
 pnpm install --frozen-lockfile
-pnpm -s build
-pnpm -s check
+pnpm run build
+pnpm run check
 ```
 
 ## Repository Layout
@@ -34,16 +34,16 @@ Apps should import `@steipete/summarize-core` rather than the CLI package.
 ## Common Commands
 
 ```bash
-pnpm -s build
-pnpm -s check
-pnpm -s test
-pnpm -s test:coverage
-pnpm -s lint
-pnpm -s typecheck
-pnpm -s format
+pnpm run build
+pnpm run check
+pnpm run test
+pnpm run test:coverage
+pnpm run lint
+pnpm run typecheck
+pnpm run format
 ```
 
-`pnpm -s check` runs formatting, lint, type checking, and coverage tests. Run it before opening or updating a pull request.
+`pnpm run check` runs formatting, lint, type checking, and coverage tests. Run it before opening or updating a pull request. Installation already builds the CLI and core through `prepare`; run `pnpm run build` again after source changes.
 
 Extension:
 
@@ -67,12 +67,14 @@ docker run --rm summarize-test https://example.com --extract --plain
 
 The image uses the workspace's pinned pnpm version and frozen lockfile, including local dependency patches.
 
+Dependency patches live in `patches/` and have regression tests in `tests/dependency.*-security.test.ts`. The adm-zip 0.6.0 patch backports the destination-symlink extraction fix from 0.6.1 while that release completes the seven-day hold. It also stops asynchronous extraction after a directory rejection so the callback fires once; retain that correction until upstream fixes it, even after adopting 0.6.1. The image-size patch remains necessary until upstream publishes its parser-loop fixes. Registry audits still report patched versions by number, so verify the checked-in patches and tests rather than suppressing those advisories.
+
 Daemon after extension or daemon changes:
 
 ```bash
 pnpm -C apps/chrome-extension build
-pnpm -s summarize daemon restart
-pnpm -s summarize daemon status
+pnpm summarize daemon restart
+pnpm summarize daemon status
 ```
 
 ## Changes

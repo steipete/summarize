@@ -9,15 +9,6 @@ allowBuilds:
   protobufjs: true
 
 minimumReleaseAge: 10080
-minimumReleaseAgeExclude:
-  - "@earendil-works/pi-ai@0.79.1"
-  - "@oxfmt/*"
-  - "@oxlint/*"
-  - "markdansi@0.3.1"
-  - "marked@18.0.5"
-  - "oxfmt@0.54.0"
-  - "oxlint@1.69.0"
-  - "undici@8.4.1"
 
 overrides:
   adm-zip: 0.6.0
@@ -36,6 +27,8 @@ overrides:
   "vitest>jsdom": "-"
   # WXT 0.20.26 declares esbuild but its shipped runtime does not import it.
   "wxt>esbuild": "-"
-# Upstream has no patched release; fix GHSA-w3rx-r6r6-pgpr and GHSA-5p2g-fcmc-qvqq.
 patchedDependencies:
+  # Backport only GHSA-vwc7-r8mq-g2x9 while 0.6.1 completes its seven-day hold.
+  adm-zip@0.6.0: patches/adm-zip@0.6.0.patch
+  # Upstream has no patched release for GHSA-w3rx-r6r6-pgpr and GHSA-5p2g-fcmc-qvqq.
   image-size@2.0.2: patches/image-size@2.0.2.patch

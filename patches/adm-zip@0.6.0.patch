@@ -1,0 +1,97 @@
+diff --git a/adm-zip.js b/adm-zip.js
+index d62438b99ad2c8abb1c29506a87c36fd63573683..5bfa690160c81f6cc8ff6aeb94fff7da1c447d3d 100644
+--- a/adm-zip.js
++++ b/adm-zip.js
+@@ -709,6 +709,8 @@ module.exports = function (/**String*/ input, /** object */ options) {
+                     // collapsed subdirectories together (issue #306).
+                     var name = canonical(maintainEntryPath ? child.entryName : child.entryName.substring(item.entryName.length));
+                     var childName = sanitize(targetPath, name);
++                    // reject writing through a pre-existing symlink inside the target
++                    filetools.assertPathSafe(targetPath, childName);
+                     // The reverse operation for attr depend on method addFile()
+                     const fileAttr = keepOriginalPermission ? child.header.fileAttr : undefined;
+                     filetools.writeFileTo(childName, content, overwrite, fileAttr);
+@@ -719,6 +721,9 @@ module.exports = function (/**String*/ input, /** object */ options) {
+             var content = item.getData(_zip.password);
+             if (!content) throw Utils.Errors.CANT_EXTRACT_FILE();
+ 
++            // reject writing through a pre-existing symlink inside the target
++            filetools.assertPathSafe(targetPath, target);
++
+             if (filetools.fs.existsSync(target) && !overwrite) {
+                 throw Utils.Errors.CANT_OVERRIDE();
+             }
+@@ -775,6 +780,8 @@ module.exports = function (/**String*/ input, /** object */ options) {
+             const dirEntries = [];
+             _zip.entries.forEach(function (entry) {
+                 var entryName = sanitize(targetPath, canonical(entry.entryName));
++                // reject writing through a pre-existing symlink inside the target
++                filetools.assertPathSafe(targetPath, entryName);
+                 if (entry.isDirectory) {
+                     filetools.makeDir(entryName);
+                     // defer restoring the directory permission until its files are written
+@@ -854,10 +861,11 @@ module.exports = function (/**String*/ input, /** object */ options) {
+                 // The reverse operation for attr depend on method addFile()
+                 const dirAttr = keepOriginalPermission ? entry.header.fileAttr : undefined;
+                 try {
++                    // reject writing through a pre-existing symlink inside the target
++                    filetools.assertPathSafe(targetPath, dirPath);
+                     filetools.makeDir(dirPath);
+                 } catch (er) {
+-                    callback(getError("Unable to create folder", dirPath));
+-                    continue;
++                    return callback(getError("Unable to create folder", dirPath));
+                 }
+                 // defer restoring the directory permission until its files are written:
+                 // a restrictive mode applied now would block writing them
+@@ -890,6 +898,12 @@ module.exports = function (/**String*/ input, /** object */ options) {
+                     } else {
+                         const entryName = pth.normalize(canonical(entry.entryName));
+                         const filePath = sanitize(targetPath, entryName);
++                        try {
++                            // reject writing through a pre-existing symlink inside the target
++                            filetools.assertPathSafe(targetPath, filePath);
++                        } catch (er) {
++                            return next(er);
++                        }
+                         entry.getDataAsync(function (content, err_1) {
+                             if (err_1) {
+                                 next(err_1);
+diff --git a/util/utils.js b/util/utils.js
+index 8b8efaed31d64a4aa456d4b0905fac2599805ffe..6e7c067fad6b3a9d6d4945b655586cc8f7624631 100644
+--- a/util/utils.js
++++ b/util/utils.js
+@@ -159,6 +159,33 @@ Utils.prototype.writeFileToAsync = function (/*String*/ path, /*Buffer*/ content
+     });
+ };
+ 
++// Reject pre-existing destination symlinks below the caller-selected extraction root.
++Utils.prototype.assertPathSafe = function (/*String*/ root, /*String*/ target) {
++    const self = this;
++    if (typeof self.fs.lstatSync !== "function") return;
++
++    const resolvedRoot = pth.resolve(root);
++    const resolvedTarget = pth.resolve(target);
++    if (resolvedTarget === resolvedRoot) return;
++
++    const rel = pth.relative(resolvedRoot, resolvedTarget);
++    // Not under root: sanitize() is responsible for that case; nothing to walk.
++    if (!rel || rel === ".." || rel.startsWith(".." + pth.sep) || pth.isAbsolute(rel)) return;
++
++    let cur = resolvedRoot;
++    for (const part of rel.split(pth.sep)) {
++        if (!part || part === ".") continue;
++        cur = pth.join(cur, part);
++        let stat;
++        try {
++            stat = self.fs.lstatSync(cur);
++        } catch (e) {
++            break; // component does not exist yet: nothing below it can be a symlink
++        }
++        if (stat.isSymbolicLink()) throw Errors.FILE_IN_THE_WAY(`"${cur}"`);
++    }
++};
++
+ Utils.prototype.findFiles = function (/*String*/ path) {
+     const self = this;
+ 

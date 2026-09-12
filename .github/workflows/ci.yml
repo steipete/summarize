@@ -32,14 +32,14 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Check formatting
+        run: pnpm format:check
+
       - name: Lint
         run: pnpm lint
 
       - name: Tests (coverage)
         run: pnpm test:coverage
-
-      - name: Build
-        run: pnpm build
 
       - name: Typecheck extension
         run: pnpm -C apps/chrome-extension typecheck

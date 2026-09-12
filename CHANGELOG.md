@@ -2,6 +2,9 @@
 
 ## 0.21.15 - Unreleased
 
+- Security: backport the adm-zip destination-symlink extraction fix (GHSA-vwc7-r8mq-g2x9) while its new release completes the seven-day stabilization hold.
+- Maintenance: refresh stabilized Pi AI, tokentally, Playwright, and Bun tooling, enforce formatting in CI, and reuse the installation build.
+
 ## 0.21.14 - 2026-09-11
 
 **Highlights:** correct podcast episode selection for non-Latin titles and stabilized network/media reliability updates.
