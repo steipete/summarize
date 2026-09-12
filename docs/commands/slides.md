@@ -34,7 +34,7 @@ If a required tool is missing, summarize prints a clear warning and exits non-ze
 ## Flags
 
 `--slides-ocr`
-: Run OCR on every extracted slide. Saves a `.txt` next to each PNG.
+: Run OCR on every extracted slide. Stores `ocrText` and `ocrConfidence` in `slides.json` and the JSON response.
 
 `--slides-dir <dir>`
 : Output base directory. Default: `./slides`. A per-video subfolder is created inside.
@@ -77,20 +77,33 @@ If a required tool is missing, summarize prints a clear warning and exits non-ze
 Each run writes a directory like:
 
 ```text
-slides/<video-id>/
-  001.png
-  002.png
+slides/<source-id>/
+  slide_0001_18.60s.png
+  slide_0002_42.20s.png
   ...
-  001.txt    # only with --slides-ocr
+  slides.json
 ```
 
-In `--json` mode, stdout is:
+The filenames include the slide index and timestamp. `slides.json` records the manifest, including OCR results when requested; OCR does not create separate text files. `ocrConfidence` uses a 0–1 scale.
+
+In `--json` mode, stdout contains an envelope like this (additional extraction metadata omitted):
 
 ```json
 {
-  "url": "...",
-  "outDir": "slides/<id>",
-  "slides": [{ "index": 1, "path": "...001.png", "timeSeconds": 18.6, "ocr": "..." }]
+  "ok": true,
+  "slides": {
+    "sourceUrl": "https://example.com/lecture.mp4",
+    "slidesDir": "/absolute/path/slides/<id>",
+    "slides": [
+      {
+        "index": 1,
+        "timestamp": 18.6,
+        "imagePath": "/absolute/path/slides/<id>/slide_0001_18.60s.png",
+        "ocrText": "Recognized slide text",
+        "ocrConfidence": 0.92
+      }
+    ]
+  }
 }
 ```
 
@@ -109,7 +122,7 @@ summarize slides "https://youtu.be/..." \
   --slides-max 24 --slides-scene-threshold 0.2
 
 # Pipe-friendly JSON for an automation.
-summarize slides "https://youtu.be/..." --json | jq '.slides[].path'
+summarize slides "https://youtu.be/..." --json | jq '.slides.slides[].imagePath'
 
 # Force re-extraction after editing the source video.
 summarize slides "./talk.mp4" --no-cache -o ./out

@@ -6,6 +6,7 @@
 - ONNX transcription: keep staged audio available until inference exits and discard interrupted model downloads so retries cannot reuse partial artifacts.
 - Refresh Free: honor `FORCE_COLOR=0` and use the same color-override precedence as the rest of the CLI.
 - Maintenance: refresh stabilized Pi AI, tokentally, Playwright, and Bun tooling, enforce formatting in CI, and reuse the installation build.
+- Docs: correct the slides command JSON envelope, image paths, and OCR manifest examples.
 
 ## 0.21.14 - 2026-09-11
 
