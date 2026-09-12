@@ -5,7 +5,7 @@ import { readPresetOrCustomValue, resolvePresetOrCustom } from "../../lib/combo"
 import { defaultSettings } from "../../lib/settings";
 import { mountComponent } from "../../ui/mount";
 import { type SelectItem, useSelect } from "../../ui/select";
-import { SelectField, SelectPopup } from "../../ui/select-field";
+import { SelectPopup } from "../../ui/select-field";
 
 type SidepanelLengthPickerProps = {
   length: string;
