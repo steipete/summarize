@@ -20,11 +20,7 @@ import { MAX_REMOTE_MEDIA_BYTES } from "./constants.js";
 import {
   downloadCappedBytes,
   downloadToFile,
-  filenameFromUrl,
   formatBytes,
-  normalizeHeaderType,
-  parseContentLength,
-  parseContentRangeTotal,
   probeRemoteMedia,
   remoteMediaTooLargeError,
 } from "./media-download.js";

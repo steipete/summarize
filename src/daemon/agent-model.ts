@@ -16,7 +16,6 @@ import { parseGatewayStyleModelId } from "../llm/model-id.js";
 import {
   cliProviderForRequiredEnv,
   envHasRequiredKey,
-  getGatewayProviderProfile,
   isGatewayProvider,
   requiredEnvForGatewayProvider,
   type GatewayProvider,

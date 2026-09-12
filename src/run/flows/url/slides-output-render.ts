@@ -9,14 +9,12 @@ import type { SlideState } from "./slides-output-state.js";
 
 export function createInlineSlidesUnsupportedNotifier({
   inlineNoticeEnabled,
-  flags,
   io,
   richTty,
   clearProgressForStdout,
   restoreProgressAfterStdout,
 }: {
   inlineNoticeEnabled: boolean;
-  flags: { plain: boolean };
   io: {
     stderr: NodeJS.WritableStream;
   };

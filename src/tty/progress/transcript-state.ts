@@ -255,14 +255,6 @@ function resolveWhisperPercent(state: TranscriptProgressState): number | null {
 function formatProvider(hint: string): string {
   if (hint === "cpp") return "Whisper.cpp";
   if (hint === "onnx") return "ONNX (Parakeet/Canary)";
-  const labelForPart = (part: string, chained: boolean) => {
-    if (part === "groq") return "Whisper/Groq";
-    if (part === "assemblyai") return "AssemblyAI";
-    if (part === "gemini") return "Gemini";
-    if (part === "openai") return "Whisper/OpenAI";
-    if (part === "fal") return chained ? "FAL" : "Whisper/FAL";
-    return part;
-  };
   if (hint === "groq") return "Whisper/Groq";
   if (hint === "assemblyai") return "AssemblyAI";
   if (hint === "gemini") return "Gemini";

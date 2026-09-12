@@ -1,7 +1,6 @@
 import type { ExtractedLinkContent } from "../../../content/index.js";
 import { buildLengthPartsForFinishLine } from "../../finish-line.js";
 export { buildModelMetaFromAttempt } from "../../../engine/model-meta.js";
-import type { ModelAttempt } from "../../../engine/types.js";
 import type { UrlFlowContext } from "./types.js";
 
 export function buildFinishExtras({

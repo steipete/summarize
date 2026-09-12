@@ -75,8 +75,6 @@ export const SUMMARY_LENGTH_MAX_CHARACTERS: Record<SummaryLength, number> = Obje
 ) as Record<SummaryLength, number>;
 
 export function resolveSummaryLengthSpec(length: SummaryLength): SummaryLengthSpec {
-  // SummaryLength is a contracts-enforced enum in all call sites; suppress generic injection warning.
-  // eslint-disable-next-line security/detect-object-injection
   return SUMMARY_LENGTH_SPECS[length];
 }
 

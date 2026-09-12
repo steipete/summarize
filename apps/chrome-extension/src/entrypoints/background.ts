@@ -36,13 +36,7 @@ import {
 } from "./background/panel-session-actions";
 import { createPanelSessionStore, type PanelSession } from "./background/panel-session-store";
 import { handlePanelSlidesContextRequest } from "./background/panel-slides-context";
-import { type PanelUiState } from "./background/panel-state";
-import {
-  getActiveTab,
-  openOptionsWindow,
-  type SlidesPayload,
-  urlsMatch,
-} from "./background/panel-utils";
+import { getActiveTab, openOptionsWindow, urlsMatch } from "./background/panel-utils";
 import {
   createRuntimeActionsHandler,
   type ArtifactsRequest,

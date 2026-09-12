@@ -82,7 +82,6 @@ export function createSlidesTerminalOutput({
   state.setMeta({ sourceUrl: extracted.url });
   const noteInlineUnsupported = createInlineSlidesUnsupportedNotifier({
     inlineNoticeEnabled,
-    flags,
     io: { stderr: io.stderr },
     richTty: isRichTty(io.stdout),
     clearProgressForStdout,

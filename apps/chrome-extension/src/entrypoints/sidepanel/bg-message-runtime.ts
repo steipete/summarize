@@ -1,9 +1,5 @@
 import type { BgToPanel, RunStart, UiState } from "../../lib/panel-contracts";
-import {
-  normalizePanelUrl,
-  shouldAcceptRunForCurrentPage,
-  shouldAcceptSlidesForCurrentPage,
-} from "./session-policy";
+import { shouldAcceptRunForCurrentPage, shouldAcceptSlidesForCurrentPage } from "./session-policy";
 import type { PanelState } from "./types";
 
 export function handleSidepanelBgMessage(options: {

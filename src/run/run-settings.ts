@@ -26,7 +26,6 @@ import type { OutputLanguage } from "../language.js";
 import { resolveOutputLanguage } from "../language.js";
 import { formatPresetLengthGuidance, type SummaryLengthTarget } from "../prompts/index.js";
 import {
-  parseCliProvider,
   parseOptionalBoolean,
   parseOptionalCliProviderOrder,
   parseOptionalSetting,

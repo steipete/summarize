@@ -24,32 +24,17 @@ import {
   applyMinDurationFilter,
   buildIntervalTimestamps,
   buildSceneSegments,
-  calibrateSceneThreshold,
   clamp,
   filterTimestampsByMinDuration,
   findSceneSegment,
   mergeTimestamps,
-  resolveExtractedTimestamp,
   selectTimestampTargets,
 } from "./scene-detection.js";
 import type { SlideSettings } from "./settings.js";
-import { resolveSlideSource, resolveSlideSourceFromUrl } from "./source.js";
-import {
-  buildSlidesDirId,
-  readSlidesCacheIfValid,
-  resolveSlidesDir,
-  serializeSlideImagePath,
-} from "./store.js";
-import type {
-  SlideAutoTune,
-  SlideExtractionResult,
-  SlideImage,
-  SlideSource,
-  SlideSourceKind,
-} from "./types.js";
+import { readSlidesCacheIfValid, resolveSlidesDir } from "./store.js";
+import type { SlideExtractionResult, SlideImage, SlideSource, SlideSourceKind } from "./types.js";
 
 const slidesLocks = new Map<string, Promise<void>>();
-const YT_DLP_TIMEOUT_MS = 300_000;
 const DEFAULT_SLIDES_WORKERS = 8;
 const DEFAULT_SLIDES_SAMPLE_COUNT = 8;
 // Prefer broadly-decodable H.264/MP4 for ffmpeg stability.

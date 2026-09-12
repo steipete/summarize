@@ -64,7 +64,7 @@ export async function executeUrlFlow({
     throw new Error("Only HTTP and HTTPS URLs can be summarized");
   }
 
-  const { io, flags, model, cache: cacheState, hooks } = ctx;
+  const { io, flags, model, hooks } = ctx;
   ctx.perfTrace?.mark("url:start");
   const theme = createThemeRenderer({
     themeName: resolveThemeNameFromSources({ env: io.envForRun.SUMMARIZE_THEME }),

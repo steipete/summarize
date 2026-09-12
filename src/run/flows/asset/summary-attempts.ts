@@ -64,7 +64,6 @@ export async function buildAssetModelAttempts({
     });
   }
 
-  /* v8 ignore next */
   if (!ctx.fixedModelSpec) {
     throw new Error("Internal error: missing fixed model spec");
   }

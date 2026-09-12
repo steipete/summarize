@@ -144,7 +144,6 @@ export async function resolveUrlSummaryExecution({
     : null;
 
   const attempts: ModelAttempt[] = await (async () => {
-    /* v8 ignore next */
     if (!model.isFallbackModel && !model.fixedModelSpec) {
       throw new Error("Internal error: missing fixed model spec");
     }

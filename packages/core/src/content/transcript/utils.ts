@@ -1,5 +1,4 @@
 import { parseHtmlDocument } from "../html-document.js";
-import { extractYouTubeVideoId } from "../url.js";
 
 export { extractYouTubeVideoId, isLoomVideoUrl, isYouTubeUrl, isYouTubeVideoUrl } from "../url.js";
 

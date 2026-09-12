@@ -136,7 +136,6 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
     onStatus: (status: string) => void,
   ) =>
     ensureChatExtractImpl({
-      session,
       tab,
       settings,
       panelSessionStore,

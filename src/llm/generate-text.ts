@@ -318,7 +318,6 @@ export async function generateTextWithModelId(args: GenerateTextArgs): Promise<{
         };
       }
 
-      /* v8 ignore next */
       throw new Error(`Unknown provider ${parsed.provider}`);
     } catch (error) {
       const normalizedError =

@@ -2,8 +2,6 @@ import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve as resolvePath } from "node:path";
 import {
   CACHE_FORMAT_VERSION,
-  DEFAULT_CACHE_MAX_MB,
-  DEFAULT_CACHE_TTL_DAYS,
   buildPortableCacheRow,
   createEmptyCacheCounts,
   parseCacheJson,
@@ -11,20 +9,10 @@ import {
   type CacheStats,
 } from "@steipete/summarize-core/runtime";
 import {
-  buildAttachmentContentHash,
   buildExtractCacheKeyValue,
-  buildLanguageKey,
-  buildLengthKey,
-  buildPromptContentHash,
-  buildPromptHash,
   buildSlidesCacheKeyValue,
   buildSummaryCacheKeyValue,
   buildTranscriptCacheKeyValue,
-  hashJson,
-  hashString,
-  hashBytes,
-  normalizeContentForHash,
-  extractTaggedBlock,
 } from "./cache-keys.js";
 export {
   buildAttachmentContentHash,

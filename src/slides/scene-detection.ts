@@ -82,7 +82,6 @@ function buildCalibrationSampleTimestamps(
   const clamped = Math.max(3, Math.min(12, Math.round(sampleCount)));
   const startRatio = 0.05;
   const endRatio = 0.95;
-  if (clamped === 1) return [clamp(durationSeconds * 0.5, 0, durationSeconds - 0.1)];
   const step = (endRatio - startRatio) / (clamped - 1);
   const points: number[] = [];
   for (let i = 0; i < clamped; i += 1) {

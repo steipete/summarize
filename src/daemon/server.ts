@@ -16,7 +16,7 @@ import { ProcessRegistry } from "./process-registry.js";
 import { handleAdminRoutes } from "./server-admin-routes.js";
 import { handleAgentRoute } from "./server-agent-route.js";
 import { authorizeDaemonRequest } from "./server-auth.js";
-import { corsHeaders, json, readCorsHeaders, text } from "./server-http.js";
+import { json, readCorsHeaders, text } from "./server-http.js";
 import { handleRefreshFreeRoute } from "./server-refresh-route.js";
 import { DaemonRuntime, resolveDaemonMaxActiveSummaries } from "./server-runtime.js";
 import { handleSessionRoutes } from "./server-session-routes.js";

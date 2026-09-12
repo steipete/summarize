@@ -74,13 +74,11 @@ function readExtensionIdArg(argv: string[]): string | null {
 
 function writeWindowsContainerInstallInstructions({
   stdout,
-  port,
   configPath,
   programArguments,
   workingDirectory,
 }: {
   stdout: NodeJS.WritableStream;
-  port: number;
   configPath: string;
   programArguments: string[];
   workingDirectory?: string;
@@ -166,7 +164,6 @@ export async function handleDaemonRequest({
       if (!authed) throw new Error("Daemon is up but auth failed (token mismatch?)");
       writeWindowsContainerInstallInstructions({
         stdout,
-        port,
         configPath,
         programArguments,
         workingDirectory,

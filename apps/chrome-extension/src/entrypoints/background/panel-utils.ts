@@ -3,7 +3,6 @@ import type { SummaryLength } from "../../lib/runtime-contracts";
 import {
   buildSlideTextFallback,
   parseTranscriptTimedText,
-  resolveSlideTextBudget,
   type SlideTimelineEntry,
 } from "../../lib/slides-text";
 

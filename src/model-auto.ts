@@ -3,7 +3,6 @@ import type { AutoRuleKind, CliProvider, SummarizeConfig } from "./config.js";
 import { normalizeGatewayStyleModelId, parseGatewayStyleModelId } from "./llm/model-id.js";
 import type { ModelRequestOptions } from "./llm/model-options.js";
 import {
-  DEFAULT_CLI_MODELS,
   envHasRequiredKey,
   isVideoUnderstandingCapableModelId,
   parseCliProviderName,

@@ -45,7 +45,6 @@ const {
   modelStatusEl,
   pickersRoot,
   refreshBtn,
-  renderMarkdownHostEl,
   setupEl,
   sizeLgBtn,
   sizeSmBtn,

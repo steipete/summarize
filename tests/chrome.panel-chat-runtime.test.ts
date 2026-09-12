@@ -491,9 +491,9 @@ describe("chrome panel chat runtime", () => {
 
     expect(harness.ensureChatExtractImpl).toHaveBeenCalledWith(
       expect.objectContaining({
-        session: harness.session,
         tab,
         sendStatus: expect.any(Function),
+        log: expect.any(Function),
       }),
     );
     expect(harness.handlePanelChatHistoryRequestImpl).toHaveBeenCalledWith(

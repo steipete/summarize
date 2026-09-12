@@ -1,8 +1,6 @@
-import { isTwitterStatusUrl, isYouTubeUrl } from "@steipete/summarize-core/content/url";
 import {
   coerceSummaryWithSlides,
   interleaveSlidesIntoTranscript,
-  normalizeSummarySlideHeadings,
 } from "@steipete/summarize-core/slides";
 import { render as renderMarkdownAnsi } from "markdansi";
 import {

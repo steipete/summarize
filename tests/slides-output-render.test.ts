@@ -25,7 +25,6 @@ describe("slides output render", () => {
     const restoreProgressAfterStdout = vi.fn();
     const notify = createInlineSlidesUnsupportedNotifier({
       inlineNoticeEnabled: true,
-      flags: { plain: false },
       io: { stderr: stderr.stream },
       richTty: false,
       clearProgressForStdout,

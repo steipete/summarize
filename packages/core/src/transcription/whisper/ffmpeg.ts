@@ -149,7 +149,7 @@ export async function transcodeBytesToMp3(bytes: Uint8Array): Promise<Uint8Array
     await fs.writeFile(inputPath, bytes);
     try {
       await runFfmpegTranscodeToMp3({ inputPath, outputPath });
-    } catch (_error) {
+    } catch {
       await runFfmpegTranscodeToMp3Lenient({ inputPath, outputPath });
     }
     return new Uint8Array(await fs.readFile(outputPath));
