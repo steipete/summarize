@@ -1,3 +1,4 @@
+import { ansi, isRichTty } from "../run/terminal.js";
 import type {
   BenchmarkedOpenRouterModel,
   BenchmarkFailureCounts,
@@ -10,14 +11,9 @@ function supportsColor(
 ): boolean {
   if (env.NO_COLOR) return false;
   if (env.FORCE_COLOR && env.FORCE_COLOR !== "0") return true;
-  if (!(stream as unknown as { isTTY?: boolean }).isTTY) return false;
+  if (!isRichTty(stream)) return false;
   const term = env.TERM?.toLowerCase();
   return Boolean(term && term !== "dumb");
-}
-
-function ansi(code: string, input: string, enabled: boolean): string {
-  if (!enabled) return input;
-  return `\u001b[${code}m${input}\u001b[0m`;
 }
 
 export function formatRefreshFreeDuration(ms: number): string {
@@ -51,7 +47,7 @@ export class RefreshFreeReporter {
     this.#stderr = stderr;
     this.#verbose = verbose;
     this.#color = supportsColor(stderr, env);
-    this.#isTty = Boolean((stderr as unknown as { isTTY?: boolean }).isTTY);
+    this.#isTty = isRichTty(stderr);
   }
 
   #ansi(code: string, text: string) {

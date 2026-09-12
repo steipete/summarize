@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { CommanderError } from "commander";
 import { terminateTrackedProcesses } from "./processes.js";
 import { runCli } from "./run.js";
+import { isRichTty } from "./run/terminal.js";
 
 export type CliMainArgs = {
   argv: string[];
@@ -166,8 +167,7 @@ export async function runCliMain({
       return;
     }
 
-    const isTty = Boolean((stderr as unknown as { isTTY?: boolean }).isTTY);
-    if (isTty) stderr.write("\n");
+    if (isRichTty(stderr)) stderr.write("\n");
 
     if (verbose && error instanceof Error && typeof error.stack === "string") {
       stderr.write(`${error.stack}\n`);

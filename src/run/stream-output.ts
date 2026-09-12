@@ -1,32 +1,8 @@
+import { terminalHeight, terminalWidth } from "./terminal.js";
+
 export type StreamOutputMode = "line" | "delta";
 
-function terminalColumns(stream: NodeJS.WritableStream): number {
-  const columns = (stream as unknown as { columns?: unknown }).columns;
-  return typeof columns === "number" && Number.isFinite(columns) && columns > 0
-    ? Math.floor(columns)
-    : 80;
-}
-
-function terminalRows(stream: NodeJS.WritableStream): number {
-  const rows = (stream as unknown as { rows?: unknown }).rows;
-  return typeof rows === "number" && Number.isFinite(rows) && rows > 0 ? Math.floor(rows) : 24;
-}
-
-type SegmenterLike = {
-  segment: (input: string) => Iterable<{ segment: string }>;
-};
-
-type SegmenterConstructor = new (
-  locales?: string | string[],
-  options?: { granularity?: "grapheme" },
-) => SegmenterLike;
-
-const splitGraphemes = (() => {
-  const Segmenter = (Intl as unknown as { Segmenter?: SegmenterConstructor }).Segmenter;
-  if (!Segmenter) return (input: string) => Array.from(input);
-  const segmenter = new Segmenter(undefined, { granularity: "grapheme" });
-  return (input: string) => Array.from(segmenter.segment(input), (part) => part.segment);
-})();
+const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 function isZeroWidthCodePoint(codePoint: number): boolean {
   return (
@@ -174,7 +150,7 @@ function displayCellWidth(grapheme: string): number {
 function visualLineCount(text: string, columns: number): number {
   let lines = 1;
   let column = 0;
-  for (const grapheme of splitGraphemes(text.replace(/\r\n?/g, "\n"))) {
+  for (const { segment: grapheme } of segmenter.segment(text.replace(/\r\n?/g, "\n"))) {
     if (grapheme === "\n") {
       lines += 1;
       column = 0;
@@ -220,8 +196,8 @@ export function createStreamOutputGate({
   let plainLeadingSkipLen = 0;
   let plainFlushedText = "";
   let pendingFinalReprint: string | null = null;
-  const columns = terminalColumns(stdout);
-  const rows = terminalRows(stdout);
+  const columns = terminalWidth(stdout);
+  const rows = terminalHeight(stdout);
 
   const ensureCleared = () => {
     if (cleared) return;

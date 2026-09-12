@@ -1,5 +1,8 @@
+type TerminalStream = NodeJS.WritableStream &
+  Partial<Pick<NodeJS.WriteStream, "isTTY" | "columns" | "rows">>;
+
 export function isRichTty(stream: NodeJS.WritableStream): boolean {
-  return Boolean((stream as unknown as { isTTY?: boolean }).isTTY);
+  return Boolean((stream as TerminalStream).isTTY);
 }
 
 export function supportsColor(
@@ -17,32 +20,27 @@ export function supportsColor(
 
 export function terminalWidth(
   stream: NodeJS.WritableStream,
-  env: Record<string, string | undefined>,
+  env: Record<string, string | undefined> = {},
 ): number {
-  const cols = (stream as unknown as { columns?: unknown }).columns;
-  if (typeof cols === "number" && Number.isFinite(cols) && cols > 0) {
-    return Math.floor(cols);
-  }
-  const fromEnv = env.COLUMNS ? Number(env.COLUMNS) : NaN;
-  if (Number.isFinite(fromEnv) && fromEnv > 0) {
-    return Math.floor(fromEnv);
-  }
-  return 80;
+  return terminalDimension((stream as TerminalStream).columns, env.COLUMNS, 80);
 }
 
 export function terminalHeight(
   stream: NodeJS.WritableStream,
-  env: Record<string, string | undefined>,
+  env: Record<string, string | undefined> = {},
 ): number {
-  const rows = (stream as unknown as { rows?: unknown }).rows;
-  if (typeof rows === "number" && Number.isFinite(rows) && rows > 0) {
-    return Math.floor(rows);
+  return terminalDimension((stream as TerminalStream).rows, env.LINES, 24);
+}
+
+function terminalDimension(value: unknown, envValue: string | undefined, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.floor(value);
   }
-  const fromEnv = env.LINES ? Number(env.LINES) : NaN;
+  const fromEnv = envValue ? Number(envValue) : NaN;
   if (Number.isFinite(fromEnv) && fromEnv > 0) {
     return Math.floor(fromEnv);
   }
-  return 24;
+  return fallback;
 }
 
 /** Default max width for markdown rendering to keep text readable on wide terminals. */
