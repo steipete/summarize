@@ -1,20 +1,9 @@
-import { ansi, isRichTty } from "../run/terminal.js";
+import { ansi, isRichTty, supportsColor } from "../run/terminal.js";
 import type {
   BenchmarkedOpenRouterModel,
   BenchmarkFailureCounts,
   BenchmarkFailureKind,
 } from "./benchmark.js";
-
-function supportsColor(
-  stream: NodeJS.WritableStream,
-  env: Record<string, string | undefined>,
-): boolean {
-  if (env.NO_COLOR) return false;
-  if (env.FORCE_COLOR && env.FORCE_COLOR !== "0") return true;
-  if (!isRichTty(stream)) return false;
-  const term = env.TERM?.toLowerCase();
-  return Boolean(term && term !== "dumb");
-}
 
 export function formatRefreshFreeDuration(ms: number): string {
   if (!Number.isFinite(ms)) return `${ms}`;

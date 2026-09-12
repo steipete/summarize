@@ -34,6 +34,34 @@ function model(): BenchmarkedOpenRouterModel {
 }
 
 describe("refresh-free presentation", () => {
+  it.each([
+    {
+      label: "FORCE_COLOR=0 on a TTY",
+      env: { FORCE_COLOR: "0", TERM: "xterm" },
+      isTTY: true,
+      color: false,
+    },
+    {
+      label: "FORCE_COLOR over NO_COLOR",
+      env: { FORCE_COLOR: "1", NO_COLOR: "1" },
+      isTTY: false,
+      color: true,
+    },
+    {
+      label: "NO_COLOR on a TTY",
+      env: { NO_COLOR: "1", TERM: "xterm" },
+      isTTY: true,
+      color: false,
+    },
+    { label: "a normal TTY", env: { TERM: "xterm" }, isTTY: true, color: true },
+    { label: "redirected output", env: { TERM: "xterm" }, isTTY: false, color: false },
+  ])("respects $label", ({ env, isTTY, color }) => {
+    const capture = createCaptureStream(isTTY);
+    const reporter = new RefreshFreeReporter({ stderr: capture.stream, env, verbose: false });
+    reporter.fetchingCatalog();
+    expect(/\u001b\[[\d;]+m/.test(capture.output())).toBe(color);
+  });
+
   it("formats benchmark durations", () => {
     expect(formatRefreshFreeDuration(149)).toBe("149ms");
     expect(formatRefreshFreeDuration(1550)).toBe("1.6s");

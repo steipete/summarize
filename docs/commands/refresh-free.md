@@ -76,6 +76,8 @@ summarize refresh-free --runs 3 --smart 5 --verbose
 
 A short summary of survivors and rejected candidates is printed on stdout.
 
+Color follows the rest of the CLI: `FORCE_COLOR=0` disables it, while a nonzero `FORCE_COLOR` takes precedence over `NO_COLOR`. Without an override, color requires a capable terminal.
+
 ## See also
 
 - [LLM overview](../llm.md) — `--model` syntax, including `free`.
