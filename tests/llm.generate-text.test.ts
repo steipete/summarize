@@ -1,5 +1,5 @@
 import type { Api } from "@earendil-works/pi-ai";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { generateTextWithModelId, streamTextWithModelId } from "../src/llm/generate-text.js";
 import { buildDocumentPrompt } from "./helpers/document-prompt.js";
 import { buildMinimalPdf } from "./helpers/pdf.js";
@@ -15,19 +15,6 @@ const mocks = vi.hoisted(() => ({
   }),
 }));
 
-mocks.completeSimple.mockImplementation(async (model: MockModel) =>
-  makeAssistantMessage({
-    provider: model.provider,
-    model: model.id,
-    api: model.api,
-    text: "ok",
-    usage: { input: 1, output: 2, totalTokens: 3 },
-  }),
-);
-mocks.streamSimple.mockImplementation((_model: MockModel) =>
-  makeTextDeltaStream(["o", "k"], makeAssistantMessage({ text: "ok" })),
-);
-
 vi.mock("@earendil-works/pi-ai/compat", () => ({
   completeSimple: mocks.completeSimple,
   streamSimple: mocks.streamSimple,
@@ -35,13 +22,34 @@ vi.mock("@earendil-works/pi-ai/compat", () => ({
 }));
 
 describe("llm generate/stream", () => {
-  const originalBaseUrl = process.env.OPENAI_BASE_URL;
+  beforeEach(() => {
+    vi.stubEnv("OPENAI_BASE_URL", "https://openai.example.com/v1");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("Unexpected network request in LLM fixture");
+      }),
+    );
+    mocks.completeSimple.mockReset().mockImplementation(async (model: MockModel) =>
+      makeAssistantMessage({
+        provider: model.provider,
+        model: model.id,
+        api: model.api,
+        text: "ok",
+        usage: { input: 1, output: 2, totalTokens: 3 },
+      }),
+    );
+    mocks.streamSimple
+      .mockReset()
+      .mockImplementation((_model: MockModel) =>
+        makeTextDeltaStream(["o", "k"], makeAssistantMessage({ text: "ok" })),
+      );
+  });
 
   afterEach(() => {
     vi.useRealTimers();
-    mocks.completeSimple.mockClear();
-    mocks.streamSimple.mockClear();
-    process.env.OPENAI_BASE_URL = originalBaseUrl;
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   it("routes by provider (generateText) and includes maxOutputTokens when set", async () => {
@@ -151,7 +159,7 @@ describe("llm generate/stream", () => {
     expect(streamArgs).not.toHaveProperty("maxTokens");
   });
 
-  it("skips temperature for OpenAI GPT-5 models (generate/stream)", async () => {
+  it("skips temperature for GPT-5 models through compat generate/stream", async () => {
     mocks.completeSimple.mockClear();
     mocks.streamSimple.mockClear();
 
@@ -184,6 +192,9 @@ describe("llm generate/stream", () => {
       timeoutMs: 2000,
       fetchImpl: globalThis.fetch.bind(globalThis),
     });
+
+    expect(mocks.completeSimple).toHaveBeenCalledTimes(1);
+    expect(mocks.streamSimple).toHaveBeenCalledTimes(1);
 
     const generateArgs = (mocks.completeSimple.mock.calls[0]?.[2] ?? {}) as Record<string, unknown>;
     const streamArgs = (mocks.streamSimple.mock.calls[0]?.[2] ?? {}) as Record<string, unknown>;
