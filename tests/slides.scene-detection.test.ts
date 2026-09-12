@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { calibrateSceneThreshold } from "../src/slides/scene-calibration.js";
 
 const mocks = vi.hoisted(() => ({
   runProcess: vi.fn(),
@@ -22,7 +23,6 @@ import {
   buildIntervalTimestamps,
   buildSceneSegments,
   buildSegments,
-  calibrateSceneThreshold,
   clamp,
   detectSceneTimestamps,
   filterTimestampsByMinDuration,

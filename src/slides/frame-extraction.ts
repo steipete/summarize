@@ -2,9 +2,9 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { resolveExecutableInPath } from "../application/environment.js";
 import { runProcess, runWithConcurrency, type ProcessCommand } from "./process.js";
+import { calibrateSceneThreshold } from "./scene-calibration.js";
 import {
   buildSegments,
-  calibrateSceneThreshold,
   clamp,
   detectSceneTimestamps,
   parseShowinfoTimestamp,

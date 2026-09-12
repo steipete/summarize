@@ -1,9 +1,5 @@
 import { promises as fs } from "node:fs";
-import path from "node:path";
-import { resolveBundledFfmpegCommand } from "@steipete/summarize-core/ffmpeg";
-import { resolveExecutableInPath } from "../application/environment.js";
 import type { MediaCache } from "../content/index.js";
-import { canSpawnCommand } from "../run/env.js";
 import { downloadRemoteVideo, downloadYoutubeVideo, resolveYoutubeStreamUrl } from "./download.js";
 import {
   buildSlideTimeline,
@@ -17,107 +13,36 @@ import {
 import { detectSlideTimestamps, extractFramesAtTimestamps } from "./frame-extraction.js";
 import { prepareSlidesInput } from "./ingest.js";
 import { runOcrOnSlides } from "./ocr.js";
-import type { ProcessCommand } from "./process.js";
+import {
+  createSlidesLogger,
+  createSlidesProgress,
+  resolveRunnableTool,
+  resolveSlidesSampleCount,
+  resolveSlidesStreamFallback,
+  resolveSlidesWorkers,
+  resolveSlidesYtDlpExtractFormat,
+} from "./runtime.js";
 import {
   adjustTimestampWithinSegment,
   applyMaxSlidesFilter,
   applyMinDurationFilter,
   buildIntervalTimestamps,
   buildSceneSegments,
-  clamp,
   filterTimestampsByMinDuration,
   findSceneSegment,
   mergeTimestamps,
   selectTimestampTargets,
 } from "./scene-detection.js";
 import type { SlideSettings } from "./settings.js";
-import { readSlidesCacheIfValid, resolveSlidesDir } from "./store.js";
+import {
+  prepareSlidesDir,
+  withSlidesLock,
+  readSlidesCacheIfValid,
+  resolveSlidesDir,
+} from "./store.js";
 import type { SlideExtractionResult, SlideImage, SlideSource, SlideSourceKind } from "./types.js";
 
-const slidesLocks = new Map<string, Promise<void>>();
-const DEFAULT_SLIDES_WORKERS = 8;
-const DEFAULT_SLIDES_SAMPLE_COUNT = 8;
-// Prefer broadly-decodable H.264/MP4 for ffmpeg stability.
-// (Some "bestvideo" picks AV1 which can fail on certain ffmpeg builds / hwaccel setups.)
-const DEFAULT_YT_DLP_FORMAT_EXTRACT =
-  "bestvideo[height<=720][vcodec^=avc1][ext=mp4]/best[height<=720][vcodec^=avc1][ext=mp4]/bestvideo[height<=720][ext=mp4]/best[height<=720]";
-
-type SlidesLogger = ((message: string) => void) | null;
-
 export { parseShowinfoTimestamp, resolveExtractedTimestamp } from "./scene-detection.js";
-
-function createSlidesLogger(logger: SlidesLogger) {
-  const logSlides = (message: string) => {
-    if (!logger) return;
-    logger(message);
-  };
-  const logSlidesTiming = (label: string, startedAt: number) => {
-    const elapsedMs = Date.now() - startedAt;
-    logSlides(`${label} elapsedMs=${elapsedMs}`);
-    return elapsedMs;
-  };
-  return { logSlides, logSlidesTiming };
-}
-
-function resolveSlidesWorkers(env: Record<string, string | undefined>): number {
-  const raw = env.SUMMARIZE_SLIDES_WORKERS ?? env.SLIDES_WORKERS;
-  if (!raw) return DEFAULT_SLIDES_WORKERS;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_SLIDES_WORKERS;
-  return Math.max(1, Math.min(16, Math.round(parsed)));
-}
-
-function resolveSlidesSampleCount(env: Record<string, string | undefined>): number {
-  const raw = env.SUMMARIZE_SLIDES_SAMPLES ?? env.SLIDES_SAMPLES;
-  if (!raw) return DEFAULT_SLIDES_SAMPLE_COUNT;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_SLIDES_SAMPLE_COUNT;
-  return Math.max(3, Math.min(12, Math.round(parsed)));
-}
-
-function resolveSlidesYtDlpExtractFormat(env: Record<string, string | undefined>): string {
-  return (
-    env.SUMMARIZE_SLIDES_YTDLP_FORMAT_EXTRACT ??
-    env.SLIDES_YTDLP_FORMAT_EXTRACT ??
-    DEFAULT_YT_DLP_FORMAT_EXTRACT
-  ).trim();
-}
-
-function resolveSlidesStreamFallback(env: Record<string, string | undefined>): boolean {
-  const raw = env.SLIDES_EXTRACT_STREAM?.trim().toLowerCase();
-  return raw === "1" || raw === "true" || raw === "yes";
-}
-
-type ResolveRunnableToolArgs = {
-  binary: string;
-  env: Record<string, string | undefined>;
-  explicitEnvKey?: string;
-  probeArgs: string[];
-};
-
-function resolveRunnableTool(
-  args: ResolveRunnableToolArgs & { binary: "ffmpeg" | "ffprobe" },
-): Promise<ProcessCommand | null>;
-function resolveRunnableTool(args: ResolveRunnableToolArgs): Promise<string | null>;
-async function resolveRunnableTool({
-  binary,
-  env,
-  explicitEnvKey,
-  probeArgs,
-}: ResolveRunnableToolArgs): Promise<ProcessCommand | null> {
-  const explicit =
-    explicitEnvKey && typeof env[explicitEnvKey] === "string" ? env[explicitEnvKey]?.trim() : "";
-  if (explicit) {
-    return (await canSpawnCommand({ command: explicit, args: probeArgs, env })) ? explicit : null;
-  }
-  const resolved = resolveExecutableInPath(binary, env, explicitEnvKey);
-  if (resolved) return resolved;
-  if (await canSpawnCommand({ command: binary, args: probeArgs, env })) return binary;
-  if (binary === "ffmpeg" || binary === "ffprobe") {
-    return resolveBundledFfmpegCommand(binary);
-  }
-  return null;
-}
 
 type ExtractSlidesArgs = {
   source: SlideSource;
@@ -179,22 +104,7 @@ export async function extractSlidesForSource({
         }
       }
 
-      const reportSlidesProgress = (() => {
-        const onSlidesProgress = hooks?.onSlidesProgress;
-        if (!onSlidesProgress) return null;
-        let lastText = "";
-        let lastPercent = 0;
-        return (label: string, percent: number, detail?: string) => {
-          const clamped = clamp(Math.round(percent), 0, 100);
-          const nextPercent = Math.max(lastPercent, clamped);
-          const suffix = detail ? ` ${detail}` : "";
-          const text = `Slides: ${label}${suffix} ${nextPercent}%`;
-          if (text === lastText) return;
-          lastText = text;
-          lastPercent = nextPercent;
-          onSlidesProgress(text);
-        };
-      })();
+      const reportSlidesProgress = createSlidesProgress(hooks?.onSlidesProgress);
 
       const warnings: string[] = [];
       const totalStartedAt = Date.now();
@@ -415,12 +325,12 @@ export async function extractSlidesForSource({
           });
         const extractFramesStartedAt = Date.now();
         const extractedSlides: SlideImage[] = await extractFrames();
-        const extractElapsedMs = logSlidesTiming?.(
+        const extractElapsedMs = logSlidesTiming(
           `extract frames (count=${trimmed.length}, parallel=${workers})`,
           extractFramesStartedAt,
         );
-        if (trimmed.length > 0 && typeof extractElapsedMs === "number") {
-          logSlides?.(
+        if (trimmed.length > 0) {
+          logSlides(
             `extract frames avgMsPerFrame=${Math.round(extractElapsedMs / trimmed.length)}`,
           );
         }
@@ -436,7 +346,7 @@ export async function extractSlidesForSource({
 
         const renameStartedAt = Date.now();
         const renamedSlides = await renameSlidesWithTimestamps(rawSlides, slidesDir);
-        logSlidesTiming?.("rename slides", renameStartedAt);
+        logSlidesTiming("rename slides", renameStartedAt);
         if (renamedSlides.length === 0) {
           throw new Error("No slides extracted; try lowering --slides-scene-threshold.");
         }
@@ -444,7 +354,7 @@ export async function extractSlidesForSource({
         let slidesWithOcr = renamedSlides;
         if (ocrEnabled && tesseractPath) {
           const ocrStartedAt = Date.now();
-          logSlides?.(`ocr start count=${renamedSlides.length} mode=parallel workers=${workers}`);
+          logSlides(`ocr start count=${renamedSlides.length} mode=parallel workers=${workers}`);
           const ocrStartPercent = SLIDES_PROGRESS.OCR - 3;
           const reportOcrProgress = (completed: number, total: number) => {
             const ratio = total > 0 ? completed / total : 0;
@@ -461,9 +371,9 @@ export async function extractSlidesForSource({
             workers,
             reportOcrProgress,
           );
-          const elapsedMs = logSlidesTiming?.("ocr done", ocrStartedAt);
-          if (renamedSlides.length > 0 && typeof elapsedMs === "number") {
-            logSlides?.(`ocr avgMsPerSlide=${Math.round(elapsedMs / renamedSlides.length)}`);
+          const elapsedMs = logSlidesTiming("ocr done", ocrStartedAt);
+          if (renamedSlides.length > 0) {
+            logSlides(`ocr avgMsPerSlide=${Math.round(elapsedMs / renamedSlides.length)}`);
           }
         }
 
@@ -501,42 +411,4 @@ export async function extractSlidesForSource({
       hooks?.onSlidesProgress?.("Slides: queued");
     },
   );
-}
-
-async function prepareSlidesDir(slidesDir: string): Promise<void> {
-  await fs.mkdir(slidesDir, { recursive: true });
-  const entries = await fs.readdir(slidesDir);
-  await Promise.all(
-    entries.map(async (entry) => {
-      if (entry.startsWith("slide_") && entry.endsWith(".png")) {
-        await fs.rm(path.join(slidesDir, entry), { force: true });
-      }
-      if (entry === "slides.json") {
-        await fs.rm(path.join(slidesDir, entry), { force: true });
-      }
-    }),
-  );
-}
-
-async function withSlidesLock<T>(
-  key: string,
-  fn: () => Promise<T>,
-  onWait?: (() => void) | null,
-): Promise<T> {
-  const previous = slidesLocks.get(key) ?? null;
-  if (previous && onWait) onWait();
-  let release = () => {};
-  const current = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  slidesLocks.set(key, current);
-  await (previous ?? Promise.resolve());
-  try {
-    return await fn();
-  } finally {
-    release();
-    if (slidesLocks.get(key) === current) {
-      slidesLocks.delete(key);
-    }
-  }
 }

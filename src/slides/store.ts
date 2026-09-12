@@ -143,3 +143,43 @@ export async function readSlidesCacheIfValid({
   }
   return await validateSlidesCache({ cached: parsed, source, settings });
 }
+
+const slidesLocks = new Map<string, Promise<void>>();
+
+export async function prepareSlidesDir(slidesDir: string): Promise<void> {
+  await fs.mkdir(slidesDir, { recursive: true });
+  const entries = await fs.readdir(slidesDir);
+  await Promise.all(
+    entries.map(async (entry) => {
+      if (entry.startsWith("slide_") && entry.endsWith(".png")) {
+        await fs.rm(path.join(slidesDir, entry), { force: true });
+      }
+      if (entry === "slides.json") {
+        await fs.rm(path.join(slidesDir, entry), { force: true });
+      }
+    }),
+  );
+}
+
+export async function withSlidesLock<T>(
+  key: string,
+  fn: () => Promise<T>,
+  onWait?: (() => void) | null,
+): Promise<T> {
+  const previous = slidesLocks.get(key) ?? null;
+  if (previous && onWait) onWait();
+  let release = () => {};
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  slidesLocks.set(key, current);
+  await (previous ?? Promise.resolve());
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (slidesLocks.get(key) === current) {
+      slidesLocks.delete(key);
+    }
+  }
+}

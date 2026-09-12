@@ -30,6 +30,8 @@ Rule: keep terminal I/O in render helpers; keep state mutations in the state sto
 
 `src/slides/process.ts` owns media-tool spawning, deadlines, exit errors, and output collection. Line callbacks, text capture, and binary capture share that lifecycle; OCR uses binary capture to avoid logging recognized text. Ignored stdout is drained so child processes cannot block on a full pipe.
 
+`src/slides/runtime.ts` owns tool resolution, worker/sample settings, and progress/log adapters. `scene-calibration.ts` owns optional frame sampling and hash-based threshold calibration; `scene-detection.ts` owns scene timestamps and selection. Output-directory preparation and per-directory serialization live with cache paths in `store.ts`, keeping extraction orchestration focused on the pipeline.
+
 Frame extraction trims decoded input before collecting `showinfo` and signal statistics. Timestamp conversion uses the explicit input-seek origin, including zero, so pre-seek frames cannot move a later slide backward or cause final duration filtering to discard it.
 
 Completed slide results carry an extractor version in memory and `slides.json`. Cache validation rejects older/unversioned extraction results, including SQLite copies, so corrected timing regenerates stale frames without invalidating unrelated transcript or summary caches.
