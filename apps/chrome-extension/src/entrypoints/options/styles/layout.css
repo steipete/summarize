@@ -1,0 +1,412 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--text);
+  background:
+    radial-gradient(
+      1200px 640px at 14% -18%,
+      color-mix(in srgb, var(--accent) 14%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 6%, transparent) 45%,
+      transparent 75%
+    ),
+    radial-gradient(
+      1200px 640px at 110% 6%,
+      color-mix(in srgb, var(--accent) 10%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 4%, transparent) 42%,
+      transparent 75%
+    ),
+    linear-gradient(
+      180deg,
+      var(--bg1) 0%,
+      color-mix(in srgb, var(--bg1) 55%, var(--bg0)) 45%,
+      var(--bg0) 70%,
+      var(--bg2) 100%
+    );
+  min-height: 100vh;
+}
+
+main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 14px 18px 24px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 10px;
+}
+
+.topMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.buildInfo {
+  color: var(--muted);
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+h1 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.2px;
+}
+
+form {
+  display: grid;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.tabButton {
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.tabButton[aria-selected="true"] {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.tabButton:focus-visible {
+  outline: none;
+  border-color: var(--ui-focus);
+}
+
+.tabButton:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.tabPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.tabPanel[hidden] {
+  display: none;
+}
+
+.pageFooter {
+  margin-top: 10px;
+  text-align: center;
+  padding: 6px 10px;
+}
+
+.section {
+  display: grid;
+  gap: 10px;
+}
+
+.advancedFields {
+  display: grid;
+  gap: 14px;
+}
+
+.advancedFields[hidden] {
+  display: none;
+}
+
+.advancedSection {
+  gap: 14px;
+}
+
+.runtimeSection {
+  gap: 14px;
+}
+
+.advancedHead {
+  display: grid;
+  gap: 4px;
+}
+
+.advancedHead h2 {
+  margin: 0;
+}
+
+.subgroup {
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  overflow: hidden;
+}
+
+.subgroupHead {
+  padding: 8px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  background: color-mix(in srgb, var(--surface) 75%, transparent);
+}
+
+.subgroupTitle {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.subgroupBody {
+  padding: 12px 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.subgroupBody.advancedGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+.subgroupBody.advancedGrid--thirds {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.toggleField {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
+}
+
+.toggleField > div:first-child {
+  align-self: center;
+}
+
+.toggleField .toggleHint {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.runtimeModeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.runtimeModeCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px;
+  padding: 10px 12px;
+  min-height: 74px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 65%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.runtimeModeCard[data-selected] {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.runtimeModeCard input {
+  grid-row: 1 / span 2;
+  width: 16px;
+  height: 16px;
+  margin: 1px 4px 0 0;
+  accent-color: var(--accent);
+}
+
+.runtimeModeCard:has(input:focus-visible) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.runtimeModeTitle {
+  grid-column: 2;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.runtimeModeText {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.logsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.logsActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logsAuto {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.logsControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.logsFilters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.logsToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.logsLevelFilters {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.logsLevelFilters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.logsFilterLabel {
+  font-size: 11px;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.logsOutput {
+  margin: 0;
+  padding: 0 10px 8px;
+  min-height: 220px;
+  max-height: 320px;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.logsRaw {
+  margin: 0;
+  padding: 8px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.logsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.logsTable th,
+.logsTable td {
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.logsTable thead th {
+  position: sticky;
+  top: 0;
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+  z-index: 1;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.logsTable tbody tr + tr td {
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.logsTable td.level {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.logsTable td.level.info {
+  color: var(--accent);
+}
+
+.logsTable td.level.warn {
+  color: var(--warning);
+}
+
+.logsTable td.level.error {
+  color: var(--danger);
+}
+
+.logsTable td.level.verbose {
+  color: var(--muted);
+}
+
+.logsTable td.details {
+  color: var(--muted);
+  word-break: break-word;
+}
