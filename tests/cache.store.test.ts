@@ -1,14 +1,26 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readTranscriptCache } from "../packages/core/src/content/transcript/cache.js";
 import { buildTranscriptCacheKey, createCacheStore } from "../src/cache.js";
 
+const tempDirs: string[] = [];
+const createCacheTestDir = () => {
+  const dir = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+  tempDirs.push(dir);
+  return dir;
+};
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
+
 describe("cache store", () => {
   it("waits for a first-open database lock before enabling WAL", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const root = createCacheTestDir();
     const path = join(root, "cache.sqlite");
     const holder = spawn(
       process.execPath,
@@ -58,7 +70,7 @@ describe("cache store", () => {
   });
 
   it("round-trips text entries", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const root = createCacheTestDir();
     const path = join(root, "cache.sqlite");
     const store = await createCacheStore({ path, maxBytes: 1024 * 1024 });
 
@@ -69,7 +81,7 @@ describe("cache store", () => {
   });
 
   it("round-trips json entries and returns null for invalid json", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const root = createCacheTestDir();
     const path = join(root, "cache.sqlite");
     const store = await createCacheStore({ path, maxBytes: 1024 * 1024 });
 
@@ -83,7 +95,7 @@ describe("cache store", () => {
   });
 
   it("expires entries based on ttl", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const root = createCacheTestDir();
     const path = join(root, "cache.sqlite");
     const store = await createCacheStore({ path, maxBytes: 1024 * 1024 });
 
@@ -94,7 +106,7 @@ describe("cache store", () => {
   });
 
   it("evicts oldest entries when size cap exceeded", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const root = createCacheTestDir();
     const path = join(root, "cache.sqlite");
     const store = await createCacheStore({ path, maxBytes: 60 });
 
@@ -108,7 +120,7 @@ describe("cache store", () => {
   });
 
   it("cleans slide artifacts when entries expire, evict, or clear", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const root = createCacheTestDir();
     const path = join(root, "cache.sqlite");
     const slidesDir = join(root, "slides");
     mkdirSync(slidesDir);
@@ -145,13 +157,19 @@ describe("cache store", () => {
   });
 
   it("keeps slide artifacts that are still referenced by another cache row", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const now = 1_700_000_000_000;
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const root = createCacheTestDir();
     const path = join(root, "cache.sqlite");
     const slidesDir = join(root, "slides");
     mkdirSync(slidesDir);
     const imagePath = join(slidesDir, "slide_0001_0.00s.png");
     writeFileSync(imagePath, "png");
     writeFileSync(join(slidesDir, "slides.json"), "{}");
+
+    for (const path of [imagePath, join(slidesDir, "slides.json")]) {
+      utimesSync(path, new Date(now), new Date(now));
+    }
 
     const store = await createCacheStore({ path, maxBytes: 100_000 });
     const payload = {
@@ -160,7 +178,7 @@ describe("cache store", () => {
     };
     store.setJson("slides", "new-settings", payload, null);
     store.setJson("slides", "old-settings", payload, 10);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    clock.mockReturnValue(now + 1000);
     store.setText("summary", "trigger-expiry-sweep", "x", null);
 
     expect(existsSync(imagePath)).toBe(true);
@@ -172,7 +190,9 @@ describe("cache store", () => {
   });
 
   it("preserves newer slide artifacts from an active extraction using the same directory", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const now = 1_700_000_000_000;
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const root = createCacheTestDir();
     const path = join(root, "cache.sqlite");
     const slidesDir = join(root, "slides");
     mkdirSync(slidesDir);
@@ -181,16 +201,22 @@ describe("cache store", () => {
     writeFileSync(imagePath, "old");
     writeFileSync(jsonPath, "old");
 
+    for (const path of [imagePath, jsonPath]) {
+      utimesSync(path, new Date(now), new Date(now));
+    }
+
     const store = await createCacheStore({ path, maxBytes: 100_000 });
     const payload = {
       slidesDir,
       slides: [{ index: 1, timestamp: 0, imagePath: "slide_0001_0.00s.png" }],
     };
     store.setJson("slides", "old-settings", payload, 10);
-    await new Promise((resolve) => setTimeout(resolve, 25));
     writeFileSync(imagePath, "active");
     writeFileSync(jsonPath, "active");
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    for (const path of [imagePath, jsonPath]) {
+      utimesSync(path, new Date(now + 2000), new Date(now + 2000));
+    }
+    clock.mockReturnValue(now + 4000);
     store.setText("summary", "trigger-expiry-sweep", "x", null);
 
     expect(existsSync(imagePath)).toBe(true);
@@ -200,7 +226,7 @@ describe("cache store", () => {
   });
 
   it("namespaces transcript cache by namespace", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const root = createCacheTestDir();
     const path = join(root, "cache.sqlite");
     const store = await createCacheStore({
       path,
@@ -236,7 +262,7 @@ describe("cache store", () => {
   });
 
   it("keys local transcript cache writes by file mtime", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const root = createCacheTestDir();
     const path = join(root, "cache.sqlite");
     const store = await createCacheStore({ path, maxBytes: 1024 * 1024 });
     const url = "file:///tmp/audio.opus";
@@ -266,7 +292,7 @@ describe("cache store", () => {
   it.each(["embedded", "youtube-media"] as const)(
     "preserves %s transcript sources through SQLite and core cache reads",
     async (source) => {
-      const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+      const root = createCacheTestDir();
       const store = await createCacheStore({
         path: join(root, "cache.sqlite"),
         maxBytes: 1024 * 1024,
@@ -301,7 +327,7 @@ describe("cache store", () => {
   );
 
   it("transcript cache normalizes unknown sources and handles bad payloads", async () => {
-    const root = mkdtempSync(join(tmpdir(), "summarize-cache-"));
+    const root = createCacheTestDir();
     const path = join(root, "cache.sqlite");
     const store = await createCacheStore({
       path,
