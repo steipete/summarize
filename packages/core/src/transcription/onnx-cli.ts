@@ -179,7 +179,13 @@ async function downloadFile(url: string, destination: string) {
   // `fetch` Response.body is typed as DOM `ReadableStream` but Node's `Readable.fromWeb` expects
   // `node:stream/web`'s `ReadableStream` (which includes async-iterator helpers). Runtime is fine.
   const body = response.body as unknown as NodeReadableStream;
-  await pipeline(Readable.fromWeb(body), createWriteStream(destination));
+  const temporaryPath = `${destination}.${randomUUID()}.tmp`;
+  try {
+    await pipeline(Readable.fromWeb(body), createWriteStream(temporaryPath, { flags: "wx" }));
+    await fs.rename(temporaryPath, destination);
+  } finally {
+    await fs.rm(temporaryPath, { force: true }).catch(() => {});
+  }
 }
 
 async function ensureModelArtifactsDownloaded({
@@ -285,7 +291,7 @@ export async function transcribeWithOnnxCli({
   const tempFile = join(tmpdir(), `summarize-onnx-${randomUUID()}-${safeName}`);
   try {
     await fs.writeFile(tempFile, bytes);
-    return transcribeWithOnnxCliFile({
+    return await transcribeWithOnnxCliFile({
       model,
       filePath: tempFile,
       mediaType,

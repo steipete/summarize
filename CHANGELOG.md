@@ -3,6 +3,7 @@
 ## 0.21.15 - Unreleased
 
 - Security: backport the adm-zip destination-symlink extraction fix (GHSA-vwc7-r8mq-g2x9) while its new release completes the seven-day stabilization hold.
+- ONNX transcription: keep staged audio available until inference exits and discard interrupted model downloads so retries cannot reuse partial artifacts.
 - Maintenance: refresh stabilized Pi AI, tokentally, Playwright, and Bun tooling, enforce formatting in CI, and reuse the installation build.
 
 ## 0.21.14 - 2026-09-11

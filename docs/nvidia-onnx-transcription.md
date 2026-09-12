@@ -44,12 +44,14 @@ For the Chrome extension, you can pick a permanent default under **Settings → 
 - Artifacts are stored under `${SUMMARIZE_ONNX_CACHE_DIR || $XDG_CACHE_HOME || ~/.cache}/summarize/onnx/<model>/`.
 - Set `SUMMARIZE_ONNX_MODEL_BASE_URL` to point at a mirror (defaults to the Hugging Face repo for the chosen model).
 - The first run downloads `model.onnx` and `vocab.txt`; subsequent runs reuse cached files.
+- Downloads are committed to the cache only after the full response is written. Failed downloads remove their temporary files, so the next run retries instead of using a partial model. If an older version left a corrupt cached artifact, remove that artifact once to download it again.
 
 ## Behavior
 
 - Input audio is transcoded to 16kHz mono WAV via `ffmpeg` when available; otherwise the original file is passed to the CLI.
 - Onnx errors (missing command, non-zero exit, empty output) fall back to the existing Whisper flow with a note recorded in the transcript metadata.
 - Progress UI shows "ONNX (Parakeet/Canary)" while the external transcriber runs.
+- In-memory audio is staged until the external transcriber exits, then removed on success or failure.
 
 ## Notes
 
