@@ -81,13 +81,18 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
       );
     }
     const { limit, type } = resolveAgyMaxPrintArgLimit(platform);
-    const promptSize =
+    const userPromptSize =
       type === "chars" ? options.prompt.length : Buffer.byteLength(options.prompt, "utf8");
-    if (promptSize > limit) {
+    if (userPromptSize > limit) {
       throw new Error(
-        `Antigravity CLI requires --print <prompt> and cannot safely receive large prompts over argv (${promptSize} ${type}). ` +
+        `Antigravity CLI requires --print <prompt> and cannot safely receive large prompts over argv (${userPromptSize} ${type}). ` +
           "Use a different CLI provider for this input, reduce extracted content, or update agy to support stdin/file input.",
       );
+    }
+    let prompt = options.prompt;
+    if (!options.allowTools) {
+      prompt +=
+        "\n\nIMPORTANT: Do not use tools or create files. Do not include local file links or work-log narration. Return only the final text response.";
     }
     if (
       Number.isFinite(options.timeoutMs) &&
@@ -96,7 +101,7 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
     ) {
       args.push("--print-timeout", `${Math.max(1, Math.ceil(options.timeoutMs / 1000))}s`);
     }
-    args.push("--print", options.prompt);
+    args.push("--print", prompt);
     if (platform === "win32") {
       const commandChars = estimateWindowsCommandChars([options.binary, ...args]);
       if (commandChars > limit) {
