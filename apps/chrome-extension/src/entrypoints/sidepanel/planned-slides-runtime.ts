@@ -1,6 +1,6 @@
 import { extractYouTubeVideoId } from "@steipete/summarize-core/content/url";
+import { panelUrlsMatch } from "../../lib/panel-url";
 import { patchPanelState } from "./panel-state-store";
-import { panelUrlsMatch } from "./session-policy";
 import { shouldSeedPlannedSlidesForRun } from "./slides-seed-policy";
 import { resolveSlidesInputMode } from "./slides-session-state";
 import type { PanelState, RunStart } from "./types";

@@ -1,5 +1,5 @@
+import { isPanelContentUrl, panelUrlsMatch } from "../../lib/panel-url";
 import type { NavigationRuntime } from "./navigation-runtime";
-import { panelUrlsMatch } from "./session-policy";
 
 export type PanelSource = { url: string; title: string | null };
 
@@ -18,16 +18,6 @@ type ActiveTabSyncOptions = {
   queryActiveTab?: () => Promise<ActiveTab | null>;
 };
 
-function canSyncTabUrl(url: string | null | undefined): url is string {
-  if (!url) return false;
-  if (url.startsWith("chrome://")) return false;
-  if (url.startsWith("chrome-extension://")) return false;
-  if (url.startsWith("moz-extension://")) return false;
-  if (url.startsWith("edge://")) return false;
-  if (url.startsWith("about:")) return false;
-  return true;
-}
-
 export async function syncNavigationWithActiveTab(options: ActiveTabSyncOptions) {
   const currentSource = options.getCurrentSource();
   if (!currentSource) return;
@@ -36,7 +26,7 @@ export async function syncNavigationWithActiveTab(options: ActiveTabSyncOptions)
     const tab = options.queryActiveTab
       ? await options.queryActiveTab()
       : ((await chrome.tabs.query({ active: true, currentWindow: true }))[0] ?? null);
-    if (!tab?.url || !canSyncTabUrl(tab.url)) return;
+    if (!tab?.url || !isPanelContentUrl(tab.url)) return;
     if (!panelUrlsMatch(tab.url, currentSource.url)) {
       const preserveChat = options.navigationRuntime.isRecentAgentNavigation(
         tab.id ?? null,

@@ -1,4 +1,4 @@
-import { panelUrlsMatch } from "./session-policy";
+import { panelUrlsMatch } from "../../lib/panel-url";
 import type { PanelState } from "./types";
 
 const getSummaryScopeUrl = (panelState: PanelState) =>

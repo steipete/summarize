@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
-  isMatchablePanelUrl,
-  normalizePanelUrl,
-  panelUrlsMatch,
   resolvePanelNavigationDecision,
   shouldAcceptRunForCurrentPage,
   shouldAcceptSlidesForCurrentPage,
   shouldIgnoreTransientPanelTabState,
   shouldInvalidateCurrentSource,
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/session-policy.js";
+import {
+  isPanelContentUrl as isMatchablePanelUrl,
+  normalizePanelUrl,
+  panelUrlsMatch,
+} from "../apps/chrome-extension/src/lib/panel-url.js";
 
 describe("sidepanel session policy", () => {
   it("preserves chat and migrates it on a tab switch when asked", () => {

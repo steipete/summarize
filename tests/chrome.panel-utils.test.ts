@@ -5,8 +5,8 @@ import {
   getActiveTab,
   openOptionsWindow,
   resolveOptionsUrl,
-  urlsMatch,
 } from "../apps/chrome-extension/src/entrypoints/background/panel-utils.js";
+import { panelUrlsMatch as urlsMatch } from "../apps/chrome-extension/src/lib/panel-url.js";
 
 describe("chrome panel utils", () => {
   beforeEach(() => {

@@ -19,7 +19,7 @@ export async function handlePanelSlidesContextRequest<Recovery, Status>(options:
     getCachedExtract: (tabId: number, url?: string | null) => CachedExtract | null;
     setCachedExtract: (tabId: number, payload: CachedExtract) => void;
   };
-  urlsMatch: typeof import("./panel-utils").urlsMatch;
+  urlsMatch: typeof import("../../lib/panel-url").panelUrlsMatch;
   send: (message: SlidesContextResponse) => void;
   fetchImpl?: typeof fetch;
   resolveLogLevel: (event: string) => "verbose" | "warn" | "error";

@@ -1,11 +1,11 @@
 import type { BrowserAiSummaryInput } from "../../lib/panel-contracts";
+import { normalizePanelUrl, panelUrlsMatch } from "../../lib/panel-url";
 import {
   attachPanelRun,
   patchPanelState,
   restorePanelSession,
   setPendingSummaryRun,
 } from "./panel-state-store";
-import { normalizePanelUrl, panelUrlsMatch } from "./session-policy";
 import { resolveSlidesInputMode } from "./slides-session-state";
 import type { PanelPhase, PanelState, RunStart } from "./types";
 

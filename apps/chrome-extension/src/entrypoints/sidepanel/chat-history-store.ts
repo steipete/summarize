@@ -1,6 +1,6 @@
 import type { AgentMessage as Message } from "@steipete/summarize-core/runtime";
+import { normalizePanelUrl } from "../../lib/panel-url";
 import { compactChatHistory, type ChatHistoryLimits } from "./chat-state";
-import { normalizePanelUrl } from "./session-policy";
 import type { ChatMessage } from "./types";
 
 function getChatHistoryKey(tabId: number, url?: string | null) {

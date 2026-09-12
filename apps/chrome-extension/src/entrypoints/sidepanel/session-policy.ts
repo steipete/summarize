@@ -1,36 +1,4 @@
-export function normalizePanelUrl(value: string) {
-  try {
-    const url = new URL(value);
-    url.hash = "";
-    return url.toString();
-  } catch {
-    return value;
-  }
-}
-
-export function panelUrlsMatch(a: string, b: string) {
-  const left = normalizePanelUrl(a);
-  const right = normalizePanelUrl(b);
-  if (left === right) return true;
-  const boundaryMatch = (longer: string, shorter: string) => {
-    if (!longer.startsWith(shorter)) return false;
-    if (longer.length === shorter.length) return true;
-    const next = longer[shorter.length];
-    return next === "/" || next === "?" || next === "&";
-  };
-  return boundaryMatch(left, right) || boundaryMatch(right, left);
-}
-
-export function isMatchablePanelUrl(value: string | null) {
-  if (!value) return false;
-  return !(
-    value.startsWith("chrome://") ||
-    value.startsWith("chrome-extension://") ||
-    value.startsWith("moz-extension://") ||
-    value.startsWith("edge://") ||
-    value.startsWith("about:")
-  );
-}
+import { isPanelContentUrl as isMatchablePanelUrl, panelUrlsMatch } from "../../lib/panel-url";
 
 export function shouldIgnoreTransientPanelTabState({
   nextTabUrl,

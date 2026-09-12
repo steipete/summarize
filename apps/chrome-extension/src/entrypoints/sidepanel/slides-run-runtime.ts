@@ -1,5 +1,5 @@
+import { normalizePanelUrl } from "../../lib/panel-url";
 import { patchPanelState, setPendingSlidesRun } from "./panel-state-store";
-import { normalizePanelUrl } from "./session-policy";
 import { hasResolvedSlidesPayload } from "./slides-pending";
 import { resolveSlidesInputMode } from "./slides-session-state";
 import type { PanelState, RunStart } from "./types";

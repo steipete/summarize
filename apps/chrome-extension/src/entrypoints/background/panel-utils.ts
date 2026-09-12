@@ -1,4 +1,5 @@
 import type { OptionsTab } from "../../lib/options-tabs";
+import { isPanelContentUrl } from "../../lib/panel-url";
 import type { SummaryLength } from "../../lib/runtime-contracts";
 import {
   buildSlideTextFallback,
@@ -103,17 +104,6 @@ export function resolveOptionsUrl(tab?: OptionsTab): string {
   return url.toString();
 }
 
-function isContentTabUrl(url: string | null | undefined): url is string {
-  if (!url) return false;
-  return !(
-    url.startsWith("chrome-extension://") ||
-    url.startsWith("chrome://") ||
-    url.startsWith("moz-extension://") ||
-    url.startsWith("edge://") ||
-    url.startsWith("about:")
-  );
-}
-
 export async function openOptionsWindow(tab?: OptionsTab) {
   const url = resolveOptionsUrl(tab);
   try {
@@ -154,36 +144,13 @@ export async function getActiveTab(windowId?: number): Promise<chrome.tabs.Tab |
       ? { active: true, windowId }
       : { active: true, currentWindow: true };
   const [activeTab] = await chrome.tabs.query(query);
-  if (isContentTabUrl(activeTab?.url)) {
+  if (isPanelContentUrl(activeTab?.url)) {
     return activeTab;
   }
 
   const fallbackTabs = await chrome.tabs.query(
     typeof windowId === "number" ? { windowId } : { currentWindow: true },
   );
-  const contentTab = fallbackTabs.find((tab) => isContentTabUrl(tab.url)) ?? null;
+  const contentTab = fallbackTabs.find((tab) => isPanelContentUrl(tab.url)) ?? null;
   return contentTab;
-}
-
-export function normalizeUrl(value: string) {
-  try {
-    const url = new URL(value);
-    url.hash = "";
-    return url.toString();
-  } catch {
-    return value;
-  }
-}
-
-export function urlsMatch(a: string, b: string) {
-  const left = normalizeUrl(a);
-  const right = normalizeUrl(b);
-  if (left === right) return true;
-  const boundaryMatch = (longer: string, shorter: string) => {
-    if (!longer.startsWith(shorter)) return false;
-    if (longer.length === shorter.length) return true;
-    const next = longer[shorter.length];
-    return next === "/" || next === "?" || next === "&";
-  };
-  return boundaryMatch(left, right) || boundaryMatch(right, left);
 }

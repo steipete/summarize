@@ -16,8 +16,8 @@ export function createBackgroundPanelRuntime<
   getActiveTab: typeof import("./panel-utils").getActiveTab;
   daemonHealth: typeof import("./daemon-client").daemonHealth;
   daemonPing: typeof import("./daemon-client").daemonPing;
-  canSummarizeUrl: typeof import("./content-script-bridge").canSummarizeUrl;
-  urlsMatch: typeof import("./panel-utils").urlsMatch;
+  canSummarizeUrl: typeof import("../../lib/panel-url").isPanelContentUrl;
+  urlsMatch: typeof import("../../lib/panel-url").panelUrlsMatch;
   primeMediaHint: typeof import("./extract-cache").primeMediaHint;
   extractFromTab: typeof import("./content-script-bridge").extractFromTab;
   buildSummarizeRequestBody: typeof import("../../lib/daemon-payload").buildSummarizeRequestBody;

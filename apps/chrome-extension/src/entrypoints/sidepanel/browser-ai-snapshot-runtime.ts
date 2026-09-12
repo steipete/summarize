@@ -1,8 +1,8 @@
 import { buildBrowserAiSummaryMarkdown } from "../../lib/browser-summary";
 import { logExtensionEvent } from "../../lib/extension-logs";
 import type { BgToPanel } from "../../lib/panel-contracts";
+import { panelUrlsMatch } from "../../lib/panel-url";
 import type { BrowserAiRequestKey } from "./browser-ai-summary-runtime";
-import { panelUrlsMatch } from "./session-policy";
 import type { PanelState } from "./types";
 
 type BrowserSummarySnapshot = Extract<BgToPanel, { type: "run:snapshot" }>;

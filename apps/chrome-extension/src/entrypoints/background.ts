@@ -6,13 +6,16 @@ import { createDaemonRecovery, isDaemonUnreachableError } from "../lib/daemon-re
 import { createDaemonStatusTracker } from "../lib/daemon-status";
 import { logExtensionEvent } from "../lib/extension-logs";
 import type { BgToPanel, PanelCachePayload, PanelToBg } from "../lib/panel-contracts";
+import {
+  isPanelContentUrl as canSummarizeUrl,
+  panelUrlsMatch as urlsMatch,
+} from "../lib/panel-url";
 import { loadSettings, patchSettings } from "../lib/settings";
 import { transcribeBrowserMediaInTab } from "./background/browser-local-transcript";
 import { runBrowserSlidesForTab, takeBrowserSlidesPayload } from "./background/browser-slides";
 import { createBrowserSlidesRuntime } from "./background/browser-slides-runtime";
 import {
   beginSlideFrameCaptureInTab,
-  canSummarizeUrl,
   extractFromTab,
   getPrimaryMediaInfoInTab,
   prepareCurrentSlideFrameInTab,
@@ -36,7 +39,7 @@ import {
 } from "./background/panel-session-actions";
 import { createPanelSessionStore, type PanelSession } from "./background/panel-session-store";
 import { handlePanelSlidesContextRequest } from "./background/panel-slides-context";
-import { getActiveTab, openOptionsWindow, urlsMatch } from "./background/panel-utils";
+import { getActiveTab, openOptionsWindow } from "./background/panel-utils";
 import {
   createRuntimeActionsHandler,
   type ArtifactsRequest,

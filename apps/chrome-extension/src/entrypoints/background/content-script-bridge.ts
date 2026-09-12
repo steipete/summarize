@@ -83,16 +83,6 @@ async function injectExtractScript(
   }
 }
 
-export function canSummarizeUrl(url: string | null | undefined): url is string {
-  if (!url) return false;
-  if (url.startsWith("chrome://")) return false;
-  if (url.startsWith("chrome-extension://")) return false;
-  if (url.startsWith("moz-extension://")) return false;
-  if (url.startsWith("edge://")) return false;
-  if (url.startsWith("about:")) return false;
-  return true;
-}
-
 function hasNoContentReceiver(message: string): boolean {
   return (
     message.includes("Receiving end does not exist") ||

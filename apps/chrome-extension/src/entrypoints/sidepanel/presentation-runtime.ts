@@ -1,6 +1,7 @@
 import MarkdownIt from "markdown-it";
 import { isGeminiNanoModel } from "../../lib/model-routing";
 import type { PanelToBg } from "../../lib/panel-contracts";
+import { panelUrlsMatch } from "../../lib/panel-url";
 import { loadSettings, patchSettings } from "../../lib/settings";
 import type { createAppearanceControls } from "./appearance-controls";
 import { createBrowserAiSummaryRuntime } from "./browser-ai-summary-runtime";
@@ -14,7 +15,6 @@ import {
   retainRenderedSlideSummary,
   selectRetainedSlideSummaryMarkdown,
 } from "./retained-slide-summary";
-import { panelUrlsMatch } from "./session-policy";
 import { friendlyFetchError } from "./setup-runtime";
 import { createSidepanelSlidesRuntime } from "./slides-runtime";
 import { createSlidesTextController } from "./slides-text-controller";
