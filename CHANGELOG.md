@@ -2,6 +2,7 @@
 
 ## 0.21.15 - Unreleased
 
+- Maintenance: refresh stabilized transitive Undici, AWS/Smithy, Hugging Face Jinja, WXT browser, and build-tool dependencies.
 - Security: backport the adm-zip destination-symlink extraction fix (GHSA-vwc7-r8mq-g2x9) while its new release completes the seven-day stabilization hold.
 - Slide text: avoid splitting Unicode surrogate pairs when shortening transcript or OCR text.
 - ONNX transcription: keep staged audio available until inference exits and discard interrupted model downloads so retries cannot reuse partial artifacts.
