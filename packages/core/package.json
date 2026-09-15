@@ -66,6 +66,10 @@
     "./slides": {
       "types": "./dist/types/slides/index.d.ts",
       "import": "./dist/esm/slides/index.js"
+    },
+    "./localization": {
+      "types": "./dist/types/localization/index.d.ts",
+      "import": "./dist/esm/localization/index.js"
     }
   },
   "scripts": {
@@ -76,6 +80,7 @@
   },
   "dependencies": {
     "@mozilla/readability": "0.6.0",
+    "intl-messageformat": "11.2.14",
     "linkedom": "^0.18.13",
     "sanitize-html": "^2.17.7",
     "undici": "8.10.2"

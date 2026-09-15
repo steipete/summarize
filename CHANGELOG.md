@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.22.1 - Unreleased
+## 0.23.0 - Unreleased
 
+- Localization: centralize CLI and extension catalogs with a shared ICU message runtime and CI checks for missing, stale, and mismatched translations, building on Turkish support from @husodrn46.
 - Network: handle bodyless and invalid responses in the DNS-pinned transport without crashing, and honor cancellation carried by Request objects.
 - Network: strip authorization and cookie headers on cross-origin guarded redirects, retain same-origin Request options, and cancel discarded redirect bodies.
 - Media cache: remove superseded files when a URL's cached filename extension changes so obsolete downloads do not escape the size cap.

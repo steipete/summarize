@@ -35,6 +35,9 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
+      - name: Check localization catalogs
+        run: pnpm check:localization
+
       - name: Lint
         run: pnpm lint
 
