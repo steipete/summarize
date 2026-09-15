@@ -2,6 +2,8 @@
 
 ## 0.22.1 - Unreleased
 
+- Network: handle bodyless and invalid responses in the DNS-pinned transport without crashing, and honor cancellation carried by Request objects.
+
 ## 0.22.0 - 2026-09-14
 
 **Highlights:** Twitter/X Syndication fallback and Turkish interfaces, plus Antigravity print-mode steering and large-prompt offloading.

@@ -64,6 +64,13 @@ export async function fetchWithDnsPinnedAddresses(
   }
 
   const url = new URL(getInputUrl(input));
+  const method = methodFrom(input, init);
+  const signal =
+    init?.signal !== undefined
+      ? init.signal
+      : typeof input !== "string" && !(input instanceof URL)
+        ? input.signal
+        : undefined;
   const client = url.protocol === "https:" ? https : http;
   const headers: Record<string, string> = {};
   headersFrom(input, init).forEach((value, key) => {
@@ -77,8 +84,8 @@ export async function fetchWithDnsPinnedAddresses(
         agent: url.protocol === "https:" ? directHttpsAgent : directHttpAgent,
         headers,
         lookup: createPinnedLookup(addresses),
-        method: methodFrom(input, init),
-        ...(init?.signal ? { signal: init.signal } : {}),
+        method,
+        ...(signal ? { signal } : {}),
       },
       (res) => {
         const responseHeaders = new Headers();
@@ -89,13 +96,23 @@ export async function fetchWithDnsPinnedAddresses(
             responseHeaders.set(key, value);
           }
         }
-        const response = new Response(Readable.toWeb(res) as ReadableStream<Uint8Array>, {
-          headers: responseHeaders,
-          status: res.statusCode ?? 200,
-          statusText: res.statusMessage,
-        });
-        Object.defineProperty(response, "url", { configurable: true, value: url.href });
-        resolve(response);
+        try {
+          const status = res.statusCode ?? 200;
+          const nullBody = method.toUpperCase() === "HEAD" || [204, 205, 304].includes(status);
+          const response = new Response(
+            nullBody ? null : (Readable.toWeb(res) as ReadableStream<Uint8Array>),
+            { headers: responseHeaders, status, statusText: res.statusMessage },
+          );
+          if (nullBody) {
+            res.on("error", reject);
+            res.resume();
+          }
+          Object.defineProperty(response, "url", { configurable: true, value: url.href });
+          resolve(response);
+        } catch (error) {
+          res.destroy();
+          reject(error);
+        }
       },
     );
     req.on("error", reject);
