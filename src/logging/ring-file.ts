@@ -58,7 +58,7 @@ export function createRingFileWriter(options: RingFileOptions): RingFileWriter {
   const maxBytes = normalizeMaxBytes(options.maxBytes);
   const maxFiles = normalizeMaxFiles(options.maxFiles);
   const dir = path.dirname(filePath);
-  const ensureDir = fs.mkdir(dir, { recursive: true });
+  let directoryReady = false;
   let chain = Promise.resolve();
 
   const enqueue = (task: () => Promise<void>) => {
@@ -69,7 +69,10 @@ export function createRingFileWriter(options: RingFileOptions): RingFileWriter {
     const normalized = line.endsWith("\n") ? line : `${line}\n`;
     const bytes = Buffer.byteLength(normalized, "utf8");
     enqueue(async () => {
-      await ensureDir;
+      if (!directoryReady) {
+        await fs.mkdir(dir, { recursive: true });
+        directoryReady = true;
+      }
       const currentSize = await fileSize(filePath);
       if (currentSize + bytes > maxBytes) {
         await rotateFiles(filePath, maxFiles);

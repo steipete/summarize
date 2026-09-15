@@ -94,6 +94,7 @@ Media cache eviction:
 
 - TTL sweep on read/write.
 - Size cap: evict least-recently-used files until under cap.
+- Replacing a URL's cached media removes its previous file, including when the filename extension changes, so obsolete files cannot escape eviction accounting.
 - `verify` controls integrity checks: `size` (default), `hash`, or `none`.
 
 ## Notes

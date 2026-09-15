@@ -373,6 +373,10 @@ export async function createMediaCache({
         const index = await readIndex(indexPath);
         await pruneExpired(index, now);
         await moveFile(stagingPath, join(cacheDir, fileName));
+        const previous = index.entries[key];
+        if (previous && previous.fileName !== fileName) {
+          await removeEntry(cacheDir, index, key, previous);
+        }
         const expiresAtMs = ttlMs > 0 ? now + ttlMs : null;
         const entry: MediaCacheIndexEntry = {
           url,

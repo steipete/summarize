@@ -1,6 +1,6 @@
-import { mkdtemp, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createMediaCache } from "../src/media-cache.js";
 
@@ -9,6 +9,31 @@ const makeTempDir = async (prefix: string) => {
 };
 
 describe("media cache", () => {
+  it.each(["mp3", "m4a"])(
+    "replaces media without leaving unindexed files (%s)",
+    async (extension) => {
+      const cacheDir = await makeTempDir("summarize-media-cache-");
+      try {
+        const cache = await createMediaCache({ path: cacheDir, maxBytes: 5, ttlMs: 60_000 });
+        const filePath = join(cacheDir, "source.bin");
+        const url = "https://example.com/audio";
+        await writeFile(filePath, "old!");
+        await cache.put({ url, filePath, filename: "audio.mp3" });
+        await writeFile(filePath, "newer");
+        const replacement = await cache.put({ url, filePath, filename: `audio.${extension}` });
+        expect(replacement).not.toBeNull();
+        expect((await readdir(cacheDir)).sort()).toEqual(
+          [basename(replacement!.filePath), "index.json"].sort(),
+        );
+        const cached = await cache.get({ url });
+        expect(cached?.sizeBytes).toBe(5);
+        await expect(readFile(cached!.filePath, "utf8")).resolves.toBe("newer");
+      } finally {
+        await rm(cacheDir, { recursive: true, force: true });
+      }
+    },
+  );
+
   it("serializes concurrent writes across independent cache instances", async () => {
     const cacheDir = await makeTempDir("summarize-media-cache-");
     try {

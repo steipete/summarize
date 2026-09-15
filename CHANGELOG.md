@@ -4,6 +4,8 @@
 
 - Network: handle bodyless and invalid responses in the DNS-pinned transport without crashing, and honor cancellation carried by Request objects.
 - Network: strip authorization and cookie headers on cross-origin guarded redirects, retain same-origin Request options, and cancel discarded redirect bodies.
+- Media cache: remove superseded files when a URL's cached filename extension changes so obsolete downloads do not escape the size cap.
+- Daemon logging: contain directory-creation failures within the write queue and retry initialization on later writes instead of crashing or permanently dropping logs.
 
 ## 0.22.0 - 2026-09-14
 
