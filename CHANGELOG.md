@@ -3,6 +3,7 @@
 ## 0.22.1 - Unreleased
 
 - Network: handle bodyless and invalid responses in the DNS-pinned transport without crashing, and honor cancellation carried by Request objects.
+- Network: strip authorization and cookie headers on cross-origin guarded redirects, retain same-origin Request options, and cancel discarded redirect bodies.
 
 ## 0.22.0 - 2026-09-14
 

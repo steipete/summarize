@@ -187,6 +187,7 @@ export function createNetworkGuardedFetch(
     }
     const location = response.headers.get("location");
     if (!location) return response;
+    await response.body?.cancel().catch(() => {});
     if (redirectCount >= maxRedirects) {
       throw new Error(`${targetLabel} redirected too many times`);
     }
@@ -195,7 +196,18 @@ export function createNetworkGuardedFetch(
       throw new Error(`${targetLabel} redirected a non-GET request`);
     }
     const nextUrl = new URL(location, response.url || target.url.href).href;
-    return await guardedFetch(nextUrl, { ...init, body: null, method }, redirectCount + 1);
+    const request = typeof input !== "string" && !(input instanceof URL) ? input : null;
+    const headers = new Headers(init?.headers ?? request?.headers);
+    if (new URL(nextUrl).origin !== target.url.origin) {
+      for (const name of ["authorization", "proxy-authorization", "cookie", "cookie2"]) {
+        headers.delete(name);
+      }
+    }
+    return await guardedFetch(
+      request ? new Request(nextUrl, request) : nextUrl,
+      { ...init, body: null, method, headers },
+      redirectCount + 1,
+    );
   };
   return markFetchAsDnsPinned(guardedFetch as typeof fetch);
 }
