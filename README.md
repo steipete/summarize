@@ -51,18 +51,17 @@ summarize "https://example.com" --cli codex
 
 The default `auto` model chooses among configured providers. The [five-minute quickstart](docs/quickstart.md) covers API keys, local models, files, YouTube, podcasts, and JSON output.
 
-### Turkish
+### Languages
 
-Select Turkish summaries with either spelling:
+The CLI and Chrome/Firefox extension interfaces support English, German, French, Spanish, Italian, Brazilian Portuguese, Dutch, Polish, Russian, Japanese, Simplified Chinese, Traditional Chinese, Korean, and Turkish.
+
+The interface follows your system or browser language, with English as the fallback. Use `--locale de` or `SUMMARIZE_LOCALE=de` for German CLI help and progress, or select **Interface language** in the extension’s options. Summary language stays independent:
 
 ```bash
-summarize "https://example.com" --language tr
-summarize "https://example.com" --language turkish
+summarize "https://example.com" --locale de --language japanese
 ```
 
-For Turkish CLI help and progress text, use `--locale tr` or set
-`SUMMARIZE_LOCALE=tr`. The interface follows your system language when supported,
-with English as the fallback. Use `--locale en` to select English explicitly.
+The [localization guide](docs/localization.md) covers locale selection, translation glossaries, adding languages, and the CI checks that keep catalogs complete.
 
 ## What it handles
 

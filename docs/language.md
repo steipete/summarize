@@ -53,18 +53,10 @@ Legacy (still supported):
 
 Unknown values are passed through to the model (sanitized).
 
-## CLI language
+## Interface language
 
-`--language` selects the language of the generated summary. It does not translate
-the command-line interface. Use `--locale tr` (or `SUMMARIZE_LOCALE=tr`) for
-Turkish help, progress, and status text. The CLI remains English by default;
-unknown locales fall back to English. Command names, flags, model/provider IDs,
-URLs, paths, and protocol identifiers are never translated.
-Raw diagnostics and provider error messages, including Antigravity command-size errors, retain their original text. Syndication progress labels are included in the Turkish catalogs; uncatalogued status text falls back to English.
+`--language` controls the generated summary independently of the CLI and extension interface. Use `--locale de` (or `SUMMARIZE_LOCALE=de`) for German help, progress, and status text. Without an explicit preference, the CLI follows the system locale; unsupported preferences fall through to the system locale and then English. Command names, flags, model/provider IDs, URLs, paths, and protocol identifiers retain their spelling. Native and provider diagnostics remain opaque; Summarize’s own guidance is localized.
 
-## Extension interface language
+In the extension, choose **Interface language** in **Options → UI**. **Automatic** follows the browser’s language preferences. An explicitly saved locale takes precedence, while profiles without one follow the browser. Changing the setting updates an already-open side panel without translating summary content, user data, or diagnostic log payloads.
 
-Choose English, Turkish, or Automatic under Options → User interface. Existing
-profiles keep English until you choose a locale; fresh installations use the
-browser language. The setting updates an already-open side panel immediately.
-It does not translate summary content, user data, or diagnostic log payloads.
+See [Localization](localization.md) for the complete fourteen-language set, regional fallbacks, catalogs, glossaries, and contributor checks.

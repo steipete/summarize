@@ -33,6 +33,7 @@ const sections = [
       "slides.md",
       "timestamps.md",
       "language.md",
+      "localization.md",
     ],
   ],
   [

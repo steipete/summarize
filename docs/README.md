@@ -12,6 +12,7 @@ summary: "Docs index for summarize behaviors and modes."
 - `docs/engine.md` — headless execution engine architecture
 - `docs/firecrawl.md` — Firecrawl mode + API key
 - `docs/language.md` — output language (`--language` / config `language`)
+- `docs/localization.md` — interface languages, translation catalogs, glossaries, and contributor checks
 - `docs/llm.md` — LLM summarization + model config (Gateway/OpenAI)
 - `docs/manual-tests.md` — manual end-to-end test checklist
 - `docs/model-auto.md` — automatic model selection (`--model auto`)
