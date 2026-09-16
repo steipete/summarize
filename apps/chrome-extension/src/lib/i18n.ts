@@ -16,8 +16,8 @@ import {
   availableUiLocales,
   type RegisteredUiLocale,
 } from "@steipete/summarize-core/localization/messages";
-import ownEnglish from "../localization/en.json";
-import ownTurkish from "../localization/tr.json";
+import ownEnglish from "../localization/en.json" with { type: "json" };
+import ownTurkish from "../localization/tr.json" with { type: "json" };
 const english = { ...sharedEnglishMessages, ...ownEnglish };
 const turkish = { ...sharedMessageCatalogs.tr, ...ownTurkish };
 
