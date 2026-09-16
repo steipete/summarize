@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { friendlyFetchError } from "../src/entrypoints/background/daemon-client";
 import { fetchBrowserUrlContent, isPublicBrowserUrl } from "../src/lib/browser-url-content";
+import { resolveText } from "../src/lib/i18n";
 
 test("browser URL extraction rejects local and non-HTTP targets before fetch", async () => {
   const blocked = [
@@ -147,13 +148,11 @@ test("browser URL extraction stops streaming responses at the byte limit", async
 });
 
 test("fetch errors only include daemon recovery guidance for daemon operations", () => {
-  expect(
-    friendlyFetchError(new TypeError("Failed to fetch"), "Direct provider request failed"),
-  ).toContain("provider unavailable");
-  expect(
-    friendlyFetchError(new TypeError("Failed to fetch"), "Direct provider request failed"),
-  ).not.toContain("daemon status");
-  expect(friendlyFetchError(new TypeError("Failed to fetch"), "Daemon request failed")).toContain(
-    "summarize daemon status",
-  );
+  const direct = friendlyFetchError(new TypeError("Failed to fetch"), "directProvider");
+  const daemon = friendlyFetchError(new TypeError("Failed to fetch"), "daemonRequest");
+  expect(resolveText(direct.localized, "en")).toBe(direct.message);
+  expect(direct.message).toContain("provider unavailable");
+  expect(direct.message).not.toContain("daemon status");
+  expect(resolveText(daemon.localized, "en")).toBe(daemon.message);
+  expect(daemon.message).toContain("summarize daemon status");
 });
