@@ -1,27 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { UiState } from "../apps/chrome-extension/src/entrypoints/sidepanel/types";
+import { message, resolveText, type LocalizedText } from "../apps/chrome-extension/src/lib/i18n";
 
-const setupViewMocks = vi.hoisted(() => ({
-  installStepsHtml: vi.fn(
-    ({
-      token,
-      daemonPort,
-      headline,
-      message,
-      showTroubleshooting,
-    }: {
-      token: string;
-      daemonPort: string;
-      headline: string;
-      message?: string;
-      showTroubleshooting?: boolean;
-    }) =>
-      `headline=${headline};token=${token};port=${daemonPort};message=${message ?? ""};troubleshooting=${
-        showTroubleshooting ? "yes" : "no"
-      }`,
-  ),
-  wireSetupButtons: vi.fn(),
-}));
+const setupViewMocks = await vi.hoisted(async () => {
+  const { resolveText } = await import("../apps/chrome-extension/src/lib/i18n");
+  return {
+    installStepsHtml: vi.fn(
+      ({
+        token,
+        daemonPort,
+        headline,
+        message,
+        showTroubleshooting,
+      }: {
+        token: string;
+        daemonPort: string;
+        headline: LocalizedText;
+        message?: LocalizedText;
+        showTroubleshooting?: boolean;
+      }) =>
+        `headline=${resolveText(headline, "en")};token=${token};port=${daemonPort};message=${resolveText(message ?? "", "en")};troubleshooting=${
+          showTroubleshooting ? "yes" : "no"
+        }`,
+    ),
+    wireSetupButtons: vi.fn(),
+  };
+});
 
 vi.mock("../apps/chrome-extension/src/entrypoints/sidepanel/setup-view", () => ({
   installStepsHtml: setupViewMocks.installStepsHtml,
@@ -96,13 +100,13 @@ describe("sidepanel setup runtime behavior", () => {
   });
 
   it("formats failed fetch guidance with daemon troubleshooting help", () => {
-    expect(friendlyFetchError(new Error("Failed to fetch"), "Connect")).toContain(
+    expect(resolveText(friendlyFetchError(new Error("Failed to fetch"), "Connect"))).toContain(
       "daemon unreachable or blocked by Chrome",
     );
   });
 
   it("formats non-fetch errors directly", () => {
-    expect(friendlyFetchError(new Error("boom"), "Connect")).toBe("Connect: boom");
+    expect(resolveText(friendlyFetchError(new Error("boom"), "Connect"))).toBe("Connect: boom");
   });
 
   it("renders setup immediately when the token is missing", async () => {
@@ -140,7 +144,7 @@ describe("sidepanel setup runtime behavior", () => {
     expect(setupViewMocks.installStepsHtml).toHaveBeenCalledWith(
       expect.objectContaining({
         token: "fresh-token",
-        headline: "Setup",
+        headline: message("setup"),
       }),
     );
     expect(setupViewMocks.wireSetupButtons).toHaveBeenCalledWith(
@@ -185,7 +189,7 @@ describe("sidepanel setup runtime behavior", () => {
     expect(setupViewMocks.installStepsHtml).toHaveBeenCalledWith(
       expect.objectContaining({
         token: "saved-token",
-        headline: "Daemon not reachable",
+        headline: message("daemon.not.reachable"),
         showTroubleshooting: true,
       }),
     );
@@ -280,7 +284,7 @@ describe("sidepanel setup runtime behavior", () => {
     expect(loadToken).not.toHaveBeenCalled();
     expect(setupViewMocks.installStepsHtml).toHaveBeenCalledWith(
       expect.objectContaining({
-        headline: "Daemon capabilities unavailable",
+        headline: message("daemon.capabilities.unavailable"),
       }),
     );
   });

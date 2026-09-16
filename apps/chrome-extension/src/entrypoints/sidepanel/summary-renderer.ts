@@ -1,3 +1,9 @@
+import type { LocalizedText } from "../../lib/i18n";
+import {
+  setLocalizedAttribute as setUiAttribute,
+  message as uiMessage,
+  setText as setUiText,
+} from "../../lib/i18n";
 import { selectMarkdownForLayout } from "./slides-state";
 import { buildSummaryEmptyState } from "./summary-empty-state";
 import { linkifyTimestamps } from "./timestamp-links";
@@ -19,12 +25,12 @@ function configureCopyButton({
 }: {
   button: HTMLButtonElement;
   text: string;
-  headerSetStatus: (text: string) => void;
+  headerSetStatus: (text: LocalizedText) => void;
 }) {
   button.classList.remove("hidden");
   button.disabled = false;
-  button.setAttribute("aria-label", "Copy summary");
-  button.title = "Copy summary";
+  setUiAttribute(button, "aria-label", uiMessage("copy.summary"));
+  setUiAttribute(button, "title", uiMessage("copy.summary"));
   button.onclick = () => {
     void copySummaryText({ text, headerSetStatus });
   };
@@ -61,16 +67,16 @@ async function copySummaryText({
   headerSetStatus,
 }: {
   text: string;
-  headerSetStatus: (text: string) => void;
+  headerSetStatus: (text: LocalizedText) => void;
 }) {
   const trimmed = text.trim();
   if (!trimmed) {
-    headerSetStatus("Nothing to copy");
+    headerSetStatus(uiMessage("nothing.to.copy"));
     return;
   }
   try {
     await navigator.clipboard.writeText(trimmed);
-    headerSetStatus("Copied");
+    headerSetStatus(uiMessage("copied"));
     return;
   } catch {
     // fallback
@@ -89,7 +95,7 @@ async function copySummaryText({
   ghost.remove();
   selection?.removeAllRanges();
   range.detach();
-  headerSetStatus(ok ? "Copied" : "Copy failed");
+  headerSetStatus(ok ? uiMessage("copied") : uiMessage("copy.failed"));
 }
 
 export function renderSummaryEmptyState({
@@ -108,16 +114,16 @@ export function renderSummaryEmptyState({
   wrapper.dataset.emptyState = "true";
   const label = document.createElement("div");
   label.className = "renderEmpty__label";
-  label.textContent = state.label;
+  setUiText(label, state.label);
   const message = document.createElement("p");
   message.className = "renderEmpty__message";
-  message.textContent = state.message;
+  setUiText(message, state.message);
   wrapper.append(label, message);
   if (state.detail) {
     const detail = document.createElement("p");
     detail.className = "renderEmpty__detail";
     detail.dataset.localeIgnore = "true";
-    detail.textContent = state.detail;
+    setUiText(detail, state.detail);
     wrapper.append(detail);
   }
   hostEl.replaceChildren(wrapper);
@@ -147,7 +153,7 @@ export function renderSummaryMarkdownDisplay({
   currentSourceTitle: string | null;
   currentSourceUrl: string | null;
   hasSlides: boolean;
-  headerSetStatus: (text: string) => void;
+  headerSetStatus: (text: LocalizedText) => void;
   hostEl: HTMLElement;
   copyButtonEl?: HTMLButtonElement | null;
   inputMode: "page" | "video";
@@ -195,7 +201,7 @@ export function renderSummaryMarkdownDisplay({
     });
   } catch (err) {
     const message = err instanceof Error ? err.stack || err.message : String(err);
-    headerSetStatus(`Error: ${message}`);
+    headerSetStatus(uiMessage("error.message", { error: message }));
     return;
   }
   for (const a of Array.from(hostEl.querySelectorAll("a"))) {

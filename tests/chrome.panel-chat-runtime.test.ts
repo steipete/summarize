@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { friendlyFetchError } from "../apps/chrome-extension/src/entrypoints/background/daemon-client.js";
 import type {
   CachedExtract,
   ensureChatExtract,
@@ -8,6 +9,7 @@ import type {
   handlePanelAgentRequest,
   handlePanelChatHistoryRequest,
 } from "../apps/chrome-extension/src/entrypoints/background/panel-chat.js";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 import type { PanelCachePayload } from "../apps/chrome-extension/src/lib/panel-contracts.js";
 import { defaultSettings } from "../apps/chrome-extension/src/lib/settings.js";
 
@@ -135,7 +137,7 @@ function createHarness({
     extractFromTab: vi.fn() as never,
     fetchImpl: vi.fn() as never,
     logExtract: () => vi.fn(),
-    friendlyFetchError: (error) => String(error),
+    friendlyFetchError,
     ensureChatExtractImpl,
     handlePanelAgentRequestImpl,
     handlePanelChatHistoryRequestImpl,
@@ -184,7 +186,7 @@ describe("chrome panel chat runtime", () => {
       extractFromTab: vi.fn() as never,
       fetchImpl: vi.fn() as never,
       logExtract: () => vi.fn(),
-      friendlyFetchError: (error) => String(error),
+      friendlyFetchError,
     });
 
     await runtime.handleAgent(session, {
@@ -448,7 +450,10 @@ describe("chrome panel chat runtime", () => {
       type: "run:error",
       message: "extract failed",
     });
-    expect(harness.sendStatus).toHaveBeenCalledWith(harness.session, "Error: extract failed");
+    expect(harness.sendStatus).toHaveBeenCalledWith(
+      harness.session,
+      message("error.message", { error: "extract failed" }),
+    );
     expect(harness.handlePanelAgentRequestImpl).not.toHaveBeenCalled();
   });
 

@@ -204,6 +204,7 @@ export async function handleSessionRoutes(options: {
         if (!hasSlidesEvent && session.slides) {
           res.write(
             encodeSseEvent({
+              // i18n-ignore: SSE event identifier; payload descriptors render in the client.
               event: "slides",
               data: buildSlidesPayload({
                 slides: session.slides,
@@ -216,7 +217,13 @@ export async function handleSessionRoutes(options: {
 
         const hasStatusEvent = buffer.some((entry) => entry.event.event === "status");
         if (!hasStatusEvent && session.slidesLastStatus) {
-          res.write(encodeSseEvent({ event: "status", data: { text: session.slidesLastStatus } }));
+          res.write(
+            encodeSseEvent({
+              // i18n-ignore: SSE event identifier; replayed payload was already prepared.
+              event: "status",
+              data: session.slidesLastStatus,
+            }),
+          );
         }
       },
     });

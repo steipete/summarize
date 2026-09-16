@@ -1,3 +1,5 @@
+import { extensionMessage, message as uiMessage, resolveText, uiNumber } from "../../lib/i18n";
+import { MessageText } from "../../ui/localized-text";
 import { mountComponent } from "../../ui/mount";
 import { type SelectItem, useSelect } from "../../ui/select";
 import { SelectPopup } from "../../ui/select-field";
@@ -7,7 +9,7 @@ type SummarizeControlProps = {
   slidesEnabled: boolean;
   mediaAvailable: boolean;
   busy?: boolean;
-  videoLabel?: string;
+  mediaKind?: "audio" | "video";
   pageWords?: number | null;
   videoDurationSeconds?: number | null;
   slidesTextMode?: "transcript" | "ocr";
@@ -17,37 +19,57 @@ type SummarizeControlProps = {
   onSummarize: () => void;
 };
 
-const formatWordCount = (value: number | null | undefined) => {
-  if (!value || !Number.isFinite(value)) return null;
-  return `${value.toLocaleString()} words`;
-};
-
 const formatDuration = (seconds: number | null | undefined) => {
   if (!seconds || !Number.isFinite(seconds)) return null;
   const total = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
   const secs = total % 60;
-  const mm = minutes.toString().padStart(2, "0");
-  const ss = secs.toString().padStart(2, "0");
-  return hours > 0 ? `${hours}:${mm}:${ss} min` : `${minutes}:${ss} min`;
+  const mm = uiNumber(minutes, { minimumIntegerDigits: 2, useGrouping: false });
+  const ss = uiNumber(secs, { minimumIntegerDigits: 2, useGrouping: false });
+  return hours > 0
+    ? `${uiNumber(hours, { useGrouping: false })}:${mm}:${ss}`
+    : `${uiNumber(minutes, { useGrouping: false })}:${ss}`;
 };
 
 function SummarizeControl(props: SummarizeControlProps) {
-  const pageMeta = formatWordCount(props.pageWords);
   const videoMeta = formatDuration(props.videoDurationSeconds);
-
-  const pageLabel = pageMeta ? `Page · ${pageMeta}` : "Page";
-  const videoLabel = `${props.videoLabel ?? "Video"}${videoMeta ? ` · ${videoMeta}` : ""}`;
-  const videoSlidesLabel = `${props.videoLabel ?? "Video"} + Slides`;
+  const pageLabel = uiMessage("source.page", {
+    count: props.pageWords ?? 0,
+    hasCount: Boolean(props.pageWords),
+  });
+  const videoLabel = uiMessage("source.media", {
+    kind: props.mediaKind ?? "video",
+    duration: videoMeta ?? "",
+    hasDuration: Boolean(videoMeta),
+  });
+  const videoSlidesLabel = uiMessage("source.mediaSlides", { kind: props.mediaKind ?? "video" });
 
   const sourceItems: SelectItem[] = props.mediaAvailable
     ? [
-        { value: "page", label: pageLabel },
-        { value: "video", label: videoLabel },
-        { value: "video-slides", label: videoSlidesLabel },
+        {
+          // i18n-ignore: Stored source mode; the label is a separate message descriptor.
+          value: "page",
+          label: pageLabel,
+        },
+        {
+          // i18n-ignore: Stored source mode; the label is a separate message descriptor.
+          value: "video",
+          label: videoLabel,
+        },
+        {
+          // i18n-ignore: Stored source mode; the label is a separate message descriptor.
+          value: "video-slides",
+          label: videoSlidesLabel,
+        },
       ]
-    : [{ value: "page", label: pageLabel }];
+    : [
+        {
+          // i18n-ignore: Stored source mode; the label is a separate message descriptor.
+          value: "page",
+          label: pageLabel,
+        },
+      ];
   const api = useSelect({
     id: "source",
     items: sourceItems,
@@ -65,13 +87,16 @@ function SummarizeControl(props: SummarizeControlProps) {
 
   const selectedValue = api.value[0] ?? "";
   const selectedLabel =
-    api.valueAsString || sourceItems.find((item) => item.value === selectedValue)?.label || "Page";
+    api.valueAsString ||
+    resolveText(
+      sourceItems.find((item) => item.value === selectedValue)?.label || uiMessage("page"),
+    );
 
   const content = (
     <SelectPopup api={api} pickerId="source">
       {sourceItems.map((item) => (
         <button key={item.value} className="pickerOption" {...api.getItemProps({ item })}>
-          {item.label}
+          <MessageText value={item.label} />
         </button>
       ))}
     </SelectPopup>
@@ -80,7 +105,11 @@ function SummarizeControl(props: SummarizeControlProps) {
   const triggerProps = api.getTriggerProps();
   const onClick = (event: MouseEvent) => {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const hit = event.clientX - rect.left >= rect.width - 28;
+    const inlinePosition = event.clientX - rect.left;
+    const hit =
+      getComputedStyle(event.currentTarget as HTMLElement).direction === "rtl"
+        ? inlinePosition < 28
+        : inlinePosition >= rect.width - 28;
     if (hit) {
       triggerProps.onClick?.(event);
       return;
@@ -90,7 +119,11 @@ function SummarizeControl(props: SummarizeControlProps) {
   };
   const onPointerDown = (event: PointerEvent) => {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const hit = event.clientX - rect.left >= rect.width - 28;
+    const inlinePosition = event.clientX - rect.left;
+    const hit =
+      getComputedStyle(event.currentTarget as HTMLElement).direction === "rtl"
+        ? inlinePosition < 28
+        : inlinePosition >= rect.width - 28;
     if (hit) {
       triggerProps.onPointerDown?.(event);
     }
@@ -127,7 +160,7 @@ function SummarizeControl(props: SummarizeControlProps) {
       <div className="picker summarizePicker" {...api.getRootProps()}>
         <button
           className="ghost summarizeButton isDropdown"
-          aria-label={`Summarize (${selectedLabel})`}
+          aria-label={extensionMessage("source.summarizeAction", { source: selectedLabel })}
           data-busy={props.busy ? "true" : "false"}
           disabled={!props.mediaAvailable && props.mode === "video"}
           {...rest}
@@ -135,26 +168,28 @@ function SummarizeControl(props: SummarizeControlProps) {
           onPointerDown={onPointerDown}
           onKeyDown={onKeyDown}
         >
-          Summarize
+          {extensionMessage("summarize")}
         </button>
         {content}
       </div>
       {showSlidesTextToggle ? (
         <fieldset className="summarizeSlidesToggle">
-          <legend className="summarizeSlidesToggle__label">Slides text source</legend>
+          <legend className="summarizeSlidesToggle__label">
+            {extensionMessage("slides.text.source")}
+          </legend>
           <button
             type="button"
             data-active={props.slidesTextMode === "transcript" ? "true" : "false"}
             onClick={() => props.onSlidesTextModeChange?.("transcript")}
           >
-            Transcript
+            {extensionMessage("transcript")}
           </button>
           <button
             type="button"
             data-active={props.slidesTextMode === "ocr" ? "true" : "false"}
             onClick={() => props.onSlidesTextModeChange?.("ocr")}
           >
-            OCR
+            {extensionMessage("ocr")}
           </button>
         </fieldset>
       ) : null}

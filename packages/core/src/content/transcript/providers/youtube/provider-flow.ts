@@ -1,3 +1,4 @@
+import type { TranscriptProgressStage } from "../../../link-preview/deps.js";
 import { normalizeTranscriptText } from "../../normalize.js";
 import type { TranscriptionConfig } from "../../transcription-config.js";
 import type {
@@ -61,7 +62,7 @@ export type YouTubeProviderFlow = {
   durationMetadata: DurationMetadata;
   canTranscribe: boolean;
   canRunYtDlp: boolean;
-  pushHint: (hint: string) => void;
+  pushHint: (hint: string, stage: TranscriptProgressStage) => void;
 };
 
 export async function loadYoutubeHtml(
@@ -161,7 +162,7 @@ export async function tryApifyTranscript(
 ): Promise<ProviderResult | null> {
   if (!flow.options.apifyApiToken) return null;
 
-  flow.pushHint(hint);
+  flow.pushHint(hint, "apify");
   flow.attemptedProviders.push("apify");
 
   const transcript = await fetchTranscriptWithApify(
@@ -186,7 +187,10 @@ export async function tryManualCaptionTranscript(
     return { text: null, source: null, attemptedProviders: flow.attemptedProviders };
   }
 
-  flow.pushHint("YouTube: checking creator captions only (skipping auto-generated)");
+  flow.pushHint(
+    "YouTube: checking creator captions only (skipping auto-generated)",
+    "creatorCaptions",
+  );
   flow.attemptedProviders.push("captionTracks");
 
   const transcript = await fetchTranscriptFromCaptionTracks(flow.options.fetch, {
@@ -211,7 +215,7 @@ export async function tryWebTranscript(flow: YouTubeProviderFlow): Promise<Provi
     return { text: null, source: null, attemptedProviders: flow.attemptedProviders };
   }
 
-  flow.pushHint("YouTube: checking captions (youtubei)");
+  flow.pushHint("YouTube: checking captions (youtubei)", "captions");
   const config = extractYoutubeiTranscriptConfig(flow.htmlText);
   if (config) {
     flow.attemptedProviders.push("youtubei");
@@ -239,6 +243,7 @@ export async function tryWebTranscript(flow: YouTubeProviderFlow): Promise<Provi
     config
       ? "YouTube: youtubei empty; checking caption tracks"
       : "YouTube: youtubei unavailable; checking caption tracks",
+    config ? "captionTracksEmpty" : "captionTracksUnavailable",
   );
   flow.attemptedProviders.push("captionTracks");
 
@@ -271,11 +276,11 @@ export async function tryYtDlpTranscript(args: {
   const { flow, mode } = args;
 
   if (mode === "auto") {
-    flow.pushHint("YouTube: captions unavailable; falling back to yt-dlp audio");
+    flow.pushHint("YouTube: captions unavailable; falling back to yt-dlp audio", "fallbackAudio");
   } else if (mode === "no-auto") {
-    flow.pushHint("YouTube: no creator captions; falling back to yt-dlp audio");
+    flow.pushHint("YouTube: no creator captions; falling back to yt-dlp audio", "noCreatorAudio");
   } else {
-    flow.pushHint("YouTube: downloading audio (yt-dlp)");
+    flow.pushHint("YouTube: downloading audio (yt-dlp)", "downloadAudio");
   }
 
   flow.attemptedProviders.push("yt-dlp");

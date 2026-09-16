@@ -1,7 +1,9 @@
+import type { LocalizedText, LocalizedMessage } from "../../lib/i18n";
 import { normalizePanelUrl } from "../../lib/panel-url";
 import { patchPanelState, setPendingSlidesRun } from "./panel-state-store";
 import { hasResolvedSlidesPayload } from "./slides-pending";
 import { resolveSlidesInputMode } from "./slides-session-state";
+import { isSlidesProgressKey } from "./stream-controller-policy";
 import type { PanelState, RunStart } from "./types";
 
 export function createSlidesRunRuntime(options: {
@@ -28,7 +30,7 @@ export function createSlidesRunRuntime(options: {
   resetSlidesSummaryState: () => void;
   setSlidesSummaryModel: (value: string | null) => void;
   shouldUseBrowserAiSlides: () => boolean;
-  headerSetStatus: (text: string) => void;
+  headerSetStatus: (text: LocalizedText) => void;
 }) {
   const ensureVideoMode = () => {
     if (resolveSlidesInputMode(options.panelState.slidesSession) === "video") return;
@@ -43,13 +45,14 @@ export function createSlidesRunRuntime(options: {
     options.panelState.slidesSession.slidesEnabled ||
     Boolean(options.panelState.ui?.settings.slidesEnabled);
 
-  const handleSlidesStatus = (text: string) => {
+  const handleSlidesStatus = (text: string, message?: LocalizedMessage) => {
     const trimmed = text.trim();
-    if (!trimmed || !/^slides?/i.test(trimmed)) return;
+    if (message ? !isSlidesProgressKey(message.key) : !trimmed || !/^slides?/i.test(trimmed))
+      return;
     options.setSlidesBusy(true);
     if (options.panelState.phase === "connecting" || options.panelState.phase === "streaming")
       return;
-    options.headerSetStatus(trimmed);
+    options.headerSetStatus(message ?? trimmed);
   };
 
   const stopSlidesSummaryStream = () => {

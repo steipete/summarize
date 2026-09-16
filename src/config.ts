@@ -15,6 +15,7 @@ import {
 } from "./config/sections.js";
 import { parseSpeakersConfig } from "./config/speakers.js";
 import type { SummarizeConfig } from "./config/types.js";
+import { CliError } from "./locale.js";
 
 export type {
   AnthropicConfig,
@@ -64,11 +65,11 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
     const value = parsed.language;
     if (typeof value === "undefined") return undefined;
     if (typeof value !== "string") {
-      throw new Error(`Invalid config file ${path}: "language" must be a string.`);
+      throw new CliError("error.configField", { path, field: "language", constraint: "string" });
     }
     const trimmed = value.trim();
     if (!trimmed) {
-      throw new Error(`Invalid config file ${path}: "language" must not be empty.`);
+      throw new CliError("error.configField", { path, field: "language", constraint: "empty" });
     }
     return trimmed;
   })();
@@ -77,11 +78,11 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
     const value = (parsed as Record<string, unknown>).prompt;
     if (typeof value === "undefined") return undefined;
     if (typeof value !== "string") {
-      throw new Error(`Invalid config file ${path}: "prompt" must be a string.`);
+      throw new CliError("error.configField", { path, field: "prompt", constraint: "string" });
     }
     const trimmed = value.trim();
     if (!trimmed) {
-      throw new Error(`Invalid config file ${path}: "prompt" must not be empty.`);
+      throw new CliError("error.configField", { path, field: "prompt", constraint: "empty" });
     }
     return trimmed;
   })();

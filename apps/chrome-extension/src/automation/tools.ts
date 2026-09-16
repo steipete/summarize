@@ -3,6 +3,7 @@ import type {
   AgentToolResultMessage as ToolResultMessage,
 } from "@steipete/summarize-core/runtime";
 import { hasDebuggerCapability } from "../lib/automation-capabilities";
+import { message as uiMessage } from "../lib/i18n";
 import { executeAskUserWhichElementTool } from "./ask-user-which-element";
 import { executeNavigateTool } from "./navigate";
 import { executeReplTool } from "./repl";
@@ -11,6 +12,7 @@ import { getActiveTabUrl } from "./tools/active-tab";
 import { executeArtifactsTool, type ArtifactsToolArgs } from "./tools/artifacts";
 import { executeDebuggerTool } from "./tools/debugger";
 import { executeSummarizeTool, type SummarizeToolArgs } from "./tools/summarize";
+import { getUserScriptsStatus, userScriptsGuidanceMessage } from "./userscripts";
 
 const TOOL_NAMES = [
   "navigate",
@@ -52,14 +54,22 @@ function buildToolResultMessage({
   };
 }
 
-function maybeNotifyUserScriptsNotice(message: string) {
-  if (typeof window === "undefined" || !/user scripts|userscripts/i.test(message)) return;
+async function maybeNotifyUserScriptsNotice(message: string) {
+  if (
+    typeof window === "undefined" ||
+    !(
+      /* i18n-ignore: English automation-tool error protocol; the notice itself is keyed. */ /user scripts|userscripts/i.test(
+        message,
+      )
+    )
+  )
+    return;
   window.dispatchEvent(
     new CustomEvent("summarize:automation-permissions", {
       detail: {
-        title: "User Scripts required",
-        message,
-        ctaLabel: "Open extension details",
+        title: uiMessage("automation.userScriptsRequired"),
+        message: userScriptsGuidanceMessage(await getUserScriptsStatus()),
+        ctaLabel: uiMessage("open.extension.details"),
         ctaAction: "extensions",
       },
     }),
@@ -184,7 +194,7 @@ export async function executeToolCall(toolCall: ToolCall): Promise<ToolResultMes
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (toolCall.name === "repl") maybeNotifyUserScriptsNotice(message);
+    if (toolCall.name === "repl") await maybeNotifyUserScriptsNotice(message).catch(() => {});
     return buildToolResultMessage({
       toolCallId: toolCall.id,
       toolName: toolCall.name,

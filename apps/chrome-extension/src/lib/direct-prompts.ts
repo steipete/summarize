@@ -69,6 +69,7 @@ export function buildDirectAgentSystemPrompt(options: {
   pageContent: string;
   automationEnabled: boolean;
 }): string {
+  // i18n-ignore: Model context, independent of interface language.
   return `${options.automationEnabled ? AUTOMATION_PROMPT : CHAT_PROMPT}
 
 Page URL: ${options.pageUrl}
@@ -86,6 +87,7 @@ export function normalizeDirectMessages(messages: Message[]): Message[] {
   );
 }
 
+// i18n-ignore: Tool schemas are the model protocol, independent of the UI locale.
 const TOOL_DEFINITIONS: Record<string, Tool> = {
   navigate: {
     name: "navigate",

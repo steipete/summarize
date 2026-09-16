@@ -1,3 +1,4 @@
+import { setText as setUiText, message as uiMessage } from "../../lib/i18n";
 import { isGeminiNanoModel } from "../../lib/model-routing";
 import type { Settings } from "../../lib/settings";
 import type { UiState } from "./types";
@@ -30,9 +31,14 @@ export function createDaemonHintRuntime(options: {
     const visible = (disabledByAdmin || !dismissedLocally) && shouldShowDaemonHint(state);
     const messageEl = options.hintEl.querySelector<HTMLElement>(".daemonHint__message");
     if (messageEl) {
-      messageEl.textContent = disabledByAdmin
-        ? "Local companion: Disabled by administrator. Direct and Browser modes remain available."
-        : "Works locally in Chrome. Connect the daemon for faster media, OCR, and more.";
+      setUiText(
+        messageEl,
+        disabledByAdmin
+          ? uiMessage(
+              "local.companion.disabled.by.administrator.direct.and.browser.modes.remain.available",
+            )
+          : uiMessage("works.locally.in.chrome.connect.the.daemon.for.faster.media.ocr.and.more"),
+      );
     }
     options.actionBtn.hidden = disabledByAdmin;
     options.closeBtn.hidden = disabledByAdmin;

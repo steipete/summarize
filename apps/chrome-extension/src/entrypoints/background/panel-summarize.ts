@@ -5,9 +5,15 @@ import {
   shouldPreferUrlMode,
 } from "@steipete/summarize-core/content/url";
 import { buildBrowserSummaryPayload } from "../../lib/browser-summary";
+import {
+  message as uiMessage,
+  readLocalizedMessage,
+  resolveText,
+  type LocalizedText,
+} from "../../lib/i18n";
 import { planMediaExtraction } from "../../lib/media-extraction-plan";
 import { resolveSummaryExecution } from "../../lib/model-routing";
-import type { BrowserAiSummaryInput, RunStart } from "../../lib/panel-contracts";
+import type { BgToPanel, RunStart } from "../../lib/panel-contracts";
 import type { Settings } from "../../lib/settings";
 import type { BrowserLocalMediaTranscript } from "./browser-local-transcript";
 import { createCachedExtract, type CachedExtract } from "./cached-extract";
@@ -32,23 +38,7 @@ type StoreLike<Session extends BackgroundSummarizeSession> = {
 };
 
 type SendFn = (
-  msg:
-    | { type: "run:error"; message: string }
-    | { type: "run:start"; run: RunStart }
-    | {
-        type: "slides:run";
-        ok: boolean;
-        runId?: string;
-        url?: string;
-        local?: boolean;
-        error?: string;
-      }
-    | {
-        type: "run:snapshot";
-        run: RunStart;
-        markdown: string;
-        browserAi?: BrowserAiSummaryInput;
-      },
+  msg: Extract<BgToPanel, { type: "run:error" | "run:start" | "slides:run" | "run:snapshot" }>,
 ) => void;
 
 function resolveBrowserAiLength(value: string): "short" | "medium" | "long" {
@@ -77,11 +67,13 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
   logPanel,
   transcribeYouTubeLocally = async () => ({
     ok: false,
-    error: "Local YouTube transcription is unavailable in this browser.",
+    error: resolveText(uiMessage("error.localTranscriptUnavailable", { kind: "youtube" }), "en"),
+    localized: uiMessage("error.localTranscriptUnavailable", { kind: "youtube" }),
   }),
   transcribeMediaLocally = async () => ({
     ok: false,
-    error: "Local browser media transcription is unavailable in this browser.",
+    error: resolveText(uiMessage("error.localTranscriptUnavailable", { kind: "media" }), "en"),
+    localized: uiMessage("error.localTranscriptUnavailable", { kind: "media" }),
   }),
   extractYouTubeTranscript = extractYouTubeTranscriptInTab,
   youtubeTranscriptTimeoutMs = 12_000,
@@ -94,7 +86,7 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
   getActiveTab: (windowId?: number) => Promise<chrome.tabs.Tab | null>;
   canSummarizeUrl: (url?: string | null) => boolean;
   panelSessionStore: StoreLike<Session>;
-  sendStatus: (status: string) => void;
+  sendStatus: (status: LocalizedText) => void;
   send: SendFn;
   fetchImpl: typeof fetch;
   daemonFetchImpl?: typeof fetch;
@@ -115,7 +107,7 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
           minDurationSeconds: number | null;
         };
   }) => Record<string, unknown>;
-  friendlyFetchError: (error: unknown, fallback: string) => string;
+  friendlyFetchError: typeof import("./daemon-client").friendlyFetchError;
   isDaemonUnreachableError: (error: unknown) => boolean;
   logPanel: (event: string, detail?: Record<string, unknown>) => void;
   transcribeYouTubeLocally?: (args: {
@@ -140,7 +132,8 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
   if (!isManual && !settings.autoSummarize) return;
   const useStandaloneExtraction = summaryExecution !== "daemon";
   if (summaryExecution === "daemon" && !settings.token.trim()) {
-    await emitState(session, "Setup required (missing token)");
+    await emitState(session, "");
+    sendStatus(uiMessage("setup.required.missing.token"));
     return;
   }
 
@@ -245,20 +238,24 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
       browserExtractionPlan.isYouTubeVideo ||
       isDirectMediaUrl(resolvedPayload.url) ||
       Boolean(resolvedPayload.media?.hasVideo || resolvedPayload.media?.hasAudio);
-    const localTranscriptError = preparedContent.localTranscriptError
-      ?.trim()
-      .replace(/[.!?]+$/, "");
+    const localTranscriptError =
+      readLocalizedMessage(preparedContent.localTranscriptMessage) ??
+      preparedContent.localTranscriptError?.trim().replace(/[.!?]+$/, "");
     const browserError =
       localTranscriptError && requiresMediaTranscript
-        ? `Could not transcribe this media in standalone mode: ${localTranscriptError}. Switch Runtime to Daemon for broader media support.`
+        ? uiMessage("error.standalone", { kind: "failed", error: localTranscriptError })
         : resolvedPayload.text.trim().length === 0
           ? browserExtractionPlan.localTranscriptKind
-            ? "No transcript text was available in standalone mode. Switch Runtime to Daemon for broader media support."
-            : "No readable text was available in standalone mode. Reload the page or switch Runtime to Daemon for URL extraction."
+            ? uiMessage("error.standalone", { kind: "noTranscript", error: "" })
+            : uiMessage("error.standalone", { kind: "noText", error: "" })
           : null;
     if (browserError) {
-      send({ type: "run:error", message: browserError });
-      sendStatus(`Error: ${browserError}`);
+      send({
+        type: "run:error",
+        message: resolveText(browserError, "en"),
+        localized: browserError,
+      });
+      sendStatus(uiMessage("error.message", { error: browserError }));
       clearCurrentRun();
       return;
     }
@@ -337,12 +334,13 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
       send({
         type: "slides:run",
         ok: false,
-        error: "Daemon slides require a daemon token. Open Settings to connect the daemon.",
+        error: resolveText(uiMessage("error.daemonSlidesToken"), "en"),
+        localized: uiMessage("error.daemonSlidesToken"),
       });
       return;
     }
 
-    sendStatus("Starting daemon slides…");
+    sendStatus(uiMessage("progress.daemonSlides"));
     try {
       const id = await startPanelDaemonSummary({
         extracted: resolvedPayload,
@@ -367,9 +365,9 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
       sendStatus("");
     } catch (error) {
       if (isSuperseded()) return;
-      const message = friendlyFetchError(error, "Daemon slide extraction failed");
-      send({ type: "slides:run", ok: false, error: message });
-      sendStatus(`Slides failed: ${message}`);
+      const { message, localized } = friendlyFetchError(error, "daemonSlides");
+      send({ type: "slides:run", ok: false, error: message, localized });
+      sendStatus(uiMessage("error.slidesFailed", { error: localized }));
     }
   };
 
@@ -409,7 +407,7 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
   }
 
   if (summaryExecution === "direct") {
-    sendStatus("Sending to provider…");
+    sendStatus(uiMessage("progress.provider"));
     try {
       const result = await summarizePanelDirectly({
         extracted: resolvedPayload,
@@ -436,15 +434,15 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
       return;
     } catch (error) {
       if (isSuperseded()) return;
-      const message = friendlyFetchError(error, "Direct provider request failed");
-      send({ type: "run:error", message });
-      sendStatus(`Error: ${message}`);
+      const { message, localized } = friendlyFetchError(error, "directProvider");
+      send({ type: "run:error", message, localized });
+      sendStatus(uiMessage("error.message", { error: localized }));
       clearCurrentRun();
       return;
     }
   }
 
-  sendStatus("Connecting…");
+  sendStatus(uiMessage("connecting"));
   session.inflightUrl = resolvedPayload.url;
 
   let id: string;
@@ -469,9 +467,9 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
     session.daemonStatus.markReady();
   } catch (err) {
     if (isSuperseded()) return;
-    const message = friendlyFetchError(err, "Daemon request failed");
-    send({ type: "run:error", message });
-    sendStatus(`Error: ${message}`);
+    const { message, localized } = friendlyFetchError(err, "daemonRequest");
+    send({ type: "run:error", message, localized });
+    sendStatus(uiMessage("error.message", { error: localized }));
     session.inflightUrl = null;
     session.inflightRequest = null;
     if (!isManual && isDaemonUnreachableError(err)) {

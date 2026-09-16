@@ -1,6 +1,9 @@
 function byId<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
-  if (!el) throw new Error(`Missing #${id}`);
+  if (!el) {
+    // i18n-ignore: Developer assertion for an invalid DOM or controller lifecycle; not displayed in the UI.
+    throw new Error(`Missing #${id}`);
+  }
   return el as T;
 }
 
@@ -8,7 +11,10 @@ export function createSidepanelDom() {
   const subtitleEl = byId<HTMLDivElement>("subtitle");
   const titleEl = byId<HTMLDivElement>("title");
   const headerEl = document.querySelector("header") as HTMLElement | null;
-  if (!headerEl) throw new Error("Missing <header>");
+  if (!headerEl) {
+    // i18n-ignore: Developer assertion for an invalid DOM or controller lifecycle; not displayed in the UI.
+    throw new Error("Missing <header>");
+  }
   const progressFillEl = byId<HTMLDivElement>("progressFill");
   const drawerEl = byId<HTMLElement>("drawer");
   const daemonHintEl = byId<HTMLDivElement>("daemonHint");
@@ -29,7 +35,10 @@ export function createSidepanelDom() {
   renderMarkdownHostEl.className = "render__markdownHost";
   renderEl.append(renderSlidesHostEl, renderMarkdownHostEl);
   const mainEl = document.querySelector("main") as HTMLElement | null;
-  if (!mainEl) throw new Error("Missing <main>");
+  if (!mainEl) {
+    // i18n-ignore: Developer assertion for an invalid DOM or controller lifecycle; not displayed in the UI.
+    throw new Error("Missing <main>");
+  }
   const metricsEl = byId<HTMLDivElement>("metrics");
   const metricsHomeEl = byId<HTMLDivElement>("metricsHome");
   const chatMetricsSlotEl = byId<HTMLDivElement>("chatMetricsSlot");
@@ -49,10 +58,16 @@ export function createSidepanelDom() {
   const lineLooseBtn = byId<HTMLButtonElement>("lineLoose");
   const advancedSettingsEl = byId<HTMLDetailsElement>("advancedSettings");
   const advancedSettingsSummaryEl = advancedSettingsEl.querySelector("summary");
-  if (!advancedSettingsSummaryEl) throw new Error("Missing advanced settings summary");
+  if (!advancedSettingsSummaryEl) {
+    // i18n-ignore: Developer assertion for an invalid DOM or controller lifecycle; not displayed in the UI.
+    throw new Error("Missing advanced settings summary");
+  }
   const advancedSettingsBodyEl =
     advancedSettingsEl.querySelector<HTMLElement>(".drawerAdvancedBody");
-  if (!advancedSettingsBodyEl) throw new Error("Missing advanced settings body");
+  if (!advancedSettingsBodyEl) {
+    // i18n-ignore: Developer assertion for an invalid DOM or controller lifecycle; not displayed in the UI.
+    throw new Error("Missing advanced settings body");
+  }
   const modelPresetEl = byId<HTMLSelectElement>("modelPreset");
   const modelCustomEl = byId<HTMLInputElement>("modelCustom");
   const modelRefreshBtn = byId<HTMLButtonElement>("modelRefresh");

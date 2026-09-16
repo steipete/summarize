@@ -1,7 +1,10 @@
+import type { MessageDescriptor } from "../localization/index.js";
+import type { MetricPart } from "../localization/presentation.js";
 export type SseMetaData = {
   model: string | null;
   modelLabel: string | null;
   inputSummary: string | null;
+  inputSummaryMessage?: MessageDescriptor | null;
   summaryFromCache?: boolean | null;
 };
 
@@ -22,6 +25,7 @@ export type SseSlidesData = {
 };
 
 export type SseMetricsData = {
+  parts?: MetricPart[];
   elapsedMs: number;
   summary: string;
   details: string | null;
@@ -32,12 +36,12 @@ export type SseMetricsData = {
 export type SseEvent<TAssistant = unknown> =
   | { event: "meta"; data: SseMetaData }
   | { event: "slides"; data: SseSlidesData }
-  | { event: "status"; data: { text: string } }
+  | { event: "status"; data: { text: string; message?: MessageDescriptor } }
   | { event: "chunk"; data: { text: string } }
   | { event: "assistant"; data: TAssistant }
   | { event: "metrics"; data: SseMetricsData }
   | { event: "done"; data: Record<string, never> }
-  | { event: "error"; data: { message: string } };
+  | { event: "error"; data: { message: string; localized?: MessageDescriptor } };
 
 export type RawSseMessage = { event: string; data: string };
 
@@ -126,7 +130,10 @@ export function parseSseEvent<TAssistant = unknown>(
     case "slides":
       return { event: "slides", data: JSON.parse(message.data) as SseSlidesData };
     case "status":
-      return { event: "status", data: JSON.parse(message.data) as { text: string } };
+      return {
+        event: "status",
+        data: JSON.parse(message.data) as { text: string; message?: MessageDescriptor },
+      };
     case "chunk":
       return { event: "chunk", data: JSON.parse(message.data) as { text: string } };
     case "assistant":
@@ -136,7 +143,10 @@ export function parseSseEvent<TAssistant = unknown>(
     case "done":
       return { event: "done", data: JSON.parse(message.data) as Record<string, never> };
     case "error":
-      return { event: "error", data: JSON.parse(message.data) as { message: string } };
+      return {
+        event: "error",
+        data: JSON.parse(message.data) as { message: string; localized?: MessageDescriptor },
+      };
     default:
       return null;
   }

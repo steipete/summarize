@@ -1,7 +1,8 @@
 import {
-  hasTurkishTranslation,
+  type CliMessageKey,
+  type CliMessage,
+  createCliTranslator,
   resolveCliLocaleFromEnv,
-  translateCliText,
 } from "../../../locale.js";
 import { createOscProgressController } from "../../../tty/osc-progress.js";
 import { startSpinner } from "../../../tty/spinner.js";
@@ -12,6 +13,7 @@ import { composeUrlFlowHooks, type UrlFlowContext } from "./types.js";
 
 function isMissingSlidesDependencyError(message: string): boolean {
   const lower = message.toLowerCase();
+  // i18n-ignore: Unformatted extraction/tool diagnostics; the UI warning is separately keyed.
   return (
     lower.includes("missing ffmpeg") ||
     lower.includes("install ffmpeg") ||
@@ -34,11 +36,11 @@ export function writeSlidesBackgroundFailureWarning({
   ctx.hooks.clearProgressForStdout();
   const locale = resolveCliLocaleFromEnv(ctx.io.env);
   ctx.io.stderr.write(
-    `${theme.warning(translateCliText("Warning:", locale))} ${translateCliText("--slides could not extract slide images:", locale)} ${message}\n`,
+    `${createCliTranslator(locale, { uiLabel: theme.warning })("warning.slidesFailed", { message })}\n`,
   );
   if (isMissingSlidesDependencyError(message)) {
     ctx.io.stderr.write(
-      `${theme.dim(translateCliText("Install ffmpeg + yt-dlp for --slides, and tesseract for --slides-ocr.", locale))}\n`,
+      `${theme.dim(createCliTranslator(locale)("install.ffmpeg.yt.dlp.for.slides.and.tesseract.for.slides.ocr"))}\n`,
     );
   }
   ctx.hooks.restoreProgressAfterStdout?.();
@@ -53,33 +55,33 @@ export function createUrlFlowProgress({
 }) {
   const { io, flags, hooks } = ctx;
   const locale = resolveCliLocaleFromEnv(io.env);
-  const localize = (text: string) => translateCliText(text, locale);
+  const t = createCliTranslator(locale);
+  const styled = createCliTranslator(locale, {
+    uiLabel: theme.label,
+    uiDetail: theme.dim,
+    default: theme.label,
+  });
   const oscProgress = createOscProgressController({
-    label: localize("Fetching website"),
+    label: t("fetching.website"),
     env: io.env,
     isTty: flags.progressEnabled,
     write: (data: string) => io.stderr.write(data),
   });
-  oscProgress.setIndeterminate(localize("Fetching website"));
+  oscProgress.setIndeterminate(t("fetching.website"));
   const spinner = startSpinner({
-    text: `${theme.label(localize("Fetching website"))}${theme.dim(` (${localize("connecting")}…)`)}`,
+    text: theme.label(t("progress.fetchStart")),
     enabled: flags.progressEnabled,
     stream: io.stderr,
     color: theme.palette.spinner,
   });
   const styleLabel = (text: string) => theme.label(text);
   const styleDim = (text: string) => theme.dim(text);
-  const renderStatus = (label: string, detail = "…") =>
-    `${styleLabel(localize(label))}${styleDim(detail)}`;
-  const renderStatusWithMeta = (label: string, meta: string, suffix = "…") =>
-    `${styleLabel(localize(label))} ${meta}${styleDim(suffix)}`;
-  const renderStatusFromText = (text: string) => {
-    if (hasTurkishTranslation(text)) text = localize(text);
-    const match = text.match(/^([^:]+):(.*)$/);
-    if (!match) return styleLabel(hasTurkishTranslation(text) ? localize(text) : text);
-    return `${styleLabel(hasTurkishTranslation(match[1]) ? localize(match[1]) : match[1])}${styleDim(`:${match[2]}`)}`;
-  };
+  const renderStatus = (key: CliMessageKey) => styled(key, { hasMeta: false, meta: "" });
+  const renderStatusWithMeta = (key: CliMessageKey, meta: string) =>
+    styled(key, { meta, hasMeta: Boolean(meta) });
+  const renderStatusFromText = (text: string) => styleLabel(text);
   const progressStatus = createUrlProgressStatus({
+    locale,
     enabled: flags.progressEnabled,
     spinner,
     oscProgress,
@@ -107,11 +109,17 @@ export function createUrlFlowProgress({
   const progressHooks =
     !hooks.onSlidesProgress && flags.progressEnabled
       ? composeUrlFlowHooks(hooks, {
-          onSlidesProgress: (text: string) => {
-            const match = text.match(/(\d{1,3})%/);
-            const percent = match ? Number(match[1]) : null;
+          onSlidesProgress: (text: string, message?: CliMessage) => {
+            // Public legacy callbacks only carried text; keep their OSC percentage working.
+            const legacyPercent = text.match(/\b(\d+(?:\.\d+)?)%/u)?.[1];
+            const percent =
+              typeof message?.values.percent === "number"
+                ? message.values.percent * 100
+                : legacyPercent
+                  ? Number(legacyPercent)
+                  : null;
             progressStatus.setSlides(
-              renderStatusFromText(text),
+              message ? styled(message.key, message.values) : renderStatusFromText(text),
               Number.isFinite(percent) && percent !== null ? percent : null,
             );
           },

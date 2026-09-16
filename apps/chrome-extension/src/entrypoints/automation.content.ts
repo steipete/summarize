@@ -1,6 +1,6 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { ALWAYS_ON_CONTENT_SCRIPT_EXCLUDE_MATCHES } from "../lib/content-script-matches";
-import { resolveExtensionLocale, translateExtensionText } from "../lib/i18n";
+import { resolveExtensionLocale, extensionMessage, type ExtensionLocale } from "../lib/i18n";
 import { loadSettings } from "../lib/settings";
 
 export type ElementInfo = {
@@ -93,7 +93,7 @@ function getElementInfo(element: Element): ElementInfo {
 
 async function createElementPicker(
   message: string | undefined,
-  locale: "en" | "tr",
+  locale: ExtensionLocale,
 ): Promise<ElementInfo> {
   if (window.__summarizeElementPicker) {
     throw new Error("Element picker already active");
@@ -141,14 +141,12 @@ async function createElementPicker(
     `;
 
     const bannerText = document.createElement("span");
-    bannerText.textContent = translateExtensionText(
-      message || "Click an element to select • ↑↓ to change depth",
-      locale,
-    );
+    bannerText.textContent =
+      message || extensionMessage("click.an.element.to.select.to.change.depth", {}, locale);
     banner.appendChild(bannerText);
 
     const cancelButton = document.createElement("button");
-    cancelButton.textContent = translateExtensionText("Cancel (Esc)", locale);
+    cancelButton.textContent = extensionMessage("cancel.esc", {}, locale);
     cancelButton.style.cssText = `
       background: #1f2937;
       border: none;
@@ -239,7 +237,7 @@ async function createElementPicker(
   });
 }
 
-function showReplOverlay(message: string | undefined, locale: "en" | "tr") {
+function showReplOverlay(message: string | undefined, locale: ExtensionLocale) {
   if (window.__summarizeReplOverlay) return;
   window.__summarizeReplOverlay = true;
 
@@ -247,6 +245,7 @@ function showReplOverlay(message: string | undefined, locale: "en" | "tr") {
   if (!document.getElementById(styleId)) {
     const style = document.createElement("style");
     style.id = styleId;
+    // i18n-ignore: Stylesheet source, not interface text.
     style.textContent = `
       @keyframes summarize-repl-pulse {
         0% { opacity: 0.3; }
@@ -296,14 +295,15 @@ function showReplOverlay(message: string | undefined, locale: "en" | "tr") {
   card.appendChild(spinner);
 
   const text = document.createElement("span");
-  text.textContent = translateExtensionText(
-    message ? `Running: ${message}` : "Running automation…",
+  text.textContent = extensionMessage(
+    "automation.running",
+    { message: message ?? "", hasMessage: Boolean(message) },
     locale,
   );
   card.appendChild(text);
 
   const abortBtn = document.createElement("button");
-  abortBtn.textContent = translateExtensionText("Abort (Esc)", locale);
+  abortBtn.textContent = extensionMessage("abort.esc", {}, locale);
   abortBtn.style.cssText = `
     background: #1f2937;
     border: none;

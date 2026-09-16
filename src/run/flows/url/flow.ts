@@ -1,13 +1,13 @@
 import type { ExtractedLinkContent } from "../../../content/index.js";
 import { buildUrlPrompt } from "../../../engine/web-prompt.js";
 import type { UrlSummaryResolution } from "../../../engine/web-summary.js";
+import { createCliTranslator, resolveCliLocaleFromEnv } from "../../../locale.js";
 import { type SlideExtractionResult } from "../../../slides/index.js";
 import {
   createThemeRenderer,
   resolveThemeNameFromSources,
   resolveTrueColor,
 } from "../../../tty/theme.js";
-import { UVX_TIP } from "../../constants.js";
 import { hasUvxCli } from "../../env.js";
 import {
   estimateWhisperTranscriptionCostUsd,
@@ -166,27 +166,33 @@ export async function executeUrlFlow({
     let emittedExtracted = extracted;
     activeHooks.onExtracted?.(extracted);
     ctx.perfTrace?.mark("url:extracted");
-    let extractionUi = deriveExtractionUi(extracted);
+    const locale = resolveCliLocaleFromEnv(io.env);
+    const t = createCliTranslator(locale);
+    let extractionUi = deriveExtractionUi(extracted, locale);
 
-    const formatSummaryProgress = (modelId?: string | null) => {
-      const dim = (value: string) => theme.dim(value);
-      const accent = (value: string) => theme.accent(value);
-      const sentLabel = `${dim("sent ")}${extractionUi.contentSizeLabel}${extractionUi.viaSourceLabel}`;
-      const modelLabel = modelId ? `${dim("model: ")}${accent(modelId)}` : "";
-      const meta = modelLabel ? `${sentLabel}${dim(", ")}${modelLabel}` : sentLabel;
-      return `${styleLabel("Summarizing")} ${dim("(")}${meta}${dim(")")}${dim("…")}`;
-    };
+    const formatSummaryProgress = (modelId?: string | null) =>
+      styleLabel(
+        t("progress.urlSummary", {
+          size: extractionUi.contentSizeLabel,
+          source: extractionUi.viaSourceLabel,
+          model: modelId ?? "",
+          hasModel: Boolean(modelId),
+        }),
+      );
 
     const updateSummaryProgress = () => {
       if (!flags.progressEnabled) return;
       websiteProgress?.stop?.();
       progressStatus.setSummary(
         flags.extractMode
-          ? `${styleLabel("Extracted")}${styleDim(
-              ` (${extractionUi.contentSizeLabel}${extractionUi.viaSourceLabel})`,
-            )}`
+          ? styleLabel(
+              t("progress.urlExtracted", {
+                size: extractionUi.contentSizeLabel,
+                source: extractionUi.viaSourceLabel,
+              }),
+            )
           : formatSummaryProgress(),
-        flags.extractMode ? null : "Summarizing",
+        flags.extractMode ? null : t("summarizing"),
       );
     };
 
@@ -228,7 +234,7 @@ export async function executeUrlFlow({
       !extracted.diagnostics.markdown.used &&
       !hasUvxCli(io.env)
     ) {
-      io.stderr.write(`${UVX_TIP}\n`);
+      io.stderr.write(`${t("tip.uvx")}\n`);
     }
 
     const videoOnlyResult = await handleVideoOnlyExtractedContent({
@@ -309,7 +315,7 @@ export async function executeUrlFlow({
       let extractedForOutput = extracted;
       if (markdown.transcriptMarkdownRequested && markdown.convertTranscriptToMarkdown) {
         if (flags.progressEnabled) {
-          spinner.setText(renderStatus("Converting transcript to markdown"));
+          spinner.setText(renderStatus("progress.transcriptMarkdown"));
         }
         const markdownContent = await markdown.convertTranscriptToMarkdown({
           title: extracted.title,
@@ -346,7 +352,7 @@ export async function executeUrlFlow({
     const onModelChosen = (modelId: string) => {
       activeHooks.onModelChosen?.(modelId);
       if (!flags.progressEnabled) return;
-      progressStatus.setSummary(formatSummaryProgress(modelId), "Summarizing");
+      progressStatus.setSummary(formatSummaryProgress(modelId), t("summarizing"));
     };
 
     const resolution = await executeExtractedUrlSummary({

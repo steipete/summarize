@@ -28,7 +28,10 @@ export async function executeAskUserWhichElementTool(
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(
-        message.toLowerCase().includes("cannot access") || message.toLowerCase().includes("denied")
+        message
+          .toLowerCase()
+          .includes(/* i18n-ignore: Chrome content-access diagnostic. */ "cannot access") ||
+          message.toLowerCase().includes("denied")
           ? `Chrome blocked content access (${message}). Check extension “Site access” → “On all sites”, then reload the tab.`
           : `Failed to inject automation content script (${message}). Check extension “Site access”, then reload the tab.`,
       );
@@ -49,6 +52,7 @@ export async function executeAskUserWhichElementTool(
       return response.result;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      // i18n-ignore: Chrome extension messaging diagnostics.
       const noReceiver =
         message.includes("Receiving end does not exist") ||
         message.includes("Could not establish connection");

@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { CliError } from "../locale.js";
 import { resolveCliEntrypointPathForService } from "./cli-entrypoint.js";
 import {
   installLaunchAgent,
@@ -59,6 +60,7 @@ export function resolveDaemonService(): DaemonService {
     return {
       label: "LaunchAgent",
       loadedText: "loaded",
+      // i18n-ignore: Legacy service-state token, rendered through the service-state message.
       notLoadedText: "not loaded",
       install: async (args) => {
         await installLaunchAgent(args);
@@ -94,16 +96,16 @@ export function resolveDaemonService(): DaemonService {
       isLoaded: async () => isScheduledTaskInstalled(),
     };
   }
-  throw new Error(`Daemon service install not supported on ${process.platform}`);
+  throw new CliError("service.unsupportedPlatform", { platform: process.platform });
 }
 
 function resolveRepoRootForDev(): string {
   const argv1 = process.argv[1];
-  if (!argv1) throw new Error("Unable to resolve repo root");
+  if (!argv1) throw new CliError("service.repoRootMissing");
   const normalized = path.resolve(argv1);
   const parts = normalized.split(path.sep);
   const srcIndex = parts.lastIndexOf("src");
-  if (srcIndex === -1) throw new Error("Dev mode requires running from repo (src/cli.ts)");
+  if (srcIndex === -1) throw new CliError("service.devRepoRequired");
   return parts.slice(0, srcIndex).join(path.sep);
 }
 

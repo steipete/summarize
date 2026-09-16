@@ -85,7 +85,10 @@ export async function executeSummaryAttempts<T extends SummaryResult>({
         lengthKey,
         languageKey,
       });
-      const cached = store.getJson<{ summary?: unknown; model?: unknown }>("summary", key);
+      const cached = store.getJson<{ summary?: unknown; model?: unknown }>(
+        /* i18n-ignore: Cache namespace identifier, not displayed copy. */ "summary",
+        key,
+      );
       const summary = cached && typeof cached.summary === "string" ? cached.summary.trim() : null;
       const cachedModelId = cached && typeof cached.model === "string" ? cached.model.trim() : null;
       if (summary) {
@@ -118,7 +121,10 @@ export async function executeSummaryAttempts<T extends SummaryResult>({
           lengthKey,
           languageKey,
         });
-        const summary = store.getText("summary", key);
+        const summary = store.getText(
+          /* i18n-ignore: Cache namespace identifier, not displayed copy. */ "summary",
+          key,
+        );
         if (!summary) continue;
         verbose("cache hit summary");
         onModelChosen?.(attempt.userModelId);

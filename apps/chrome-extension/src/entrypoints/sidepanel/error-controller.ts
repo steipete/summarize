@@ -1,3 +1,9 @@
+import {
+  setText as setUiText,
+  message as uiMessage,
+  resolveText,
+  type LocalizedText,
+} from "../../lib/i18n";
 type ErrorControllerOptions = {
   panelEl: HTMLElement;
   panelMessageEl: HTMLElement;
@@ -13,8 +19,8 @@ type ErrorControllerOptions = {
 
 export type ErrorController = {
   bindActions: (actions: { onRetry: () => void; onOpenLogs: () => void }) => void;
-  showPanelError: (message: string) => void;
-  showInlineError: (message: string) => void;
+  showPanelError: (message: LocalizedText) => void;
+  showInlineError: (message: LocalizedText) => void;
   clearPanelError: () => void;
   clearInlineError: () => void;
   clearAll: () => void;
@@ -22,12 +28,13 @@ export type ErrorController = {
 
 const stripInvisible = (message: string) => message.replace(/[\u200B-\u200D\uFEFF]/g, "");
 
-const hasMeaningfulMessage = (message: string) =>
-  stripInvisible(message).replace(/\s/g, "").length > 0;
+const hasMeaningfulMessage = (message: LocalizedText) =>
+  stripInvisible(resolveText(message)).replace(/\s/g, "").length > 0;
 
-const normalizeMessage = (message: string) => {
+const normalizeMessage = (message: LocalizedText): LocalizedText => {
+  if (typeof message !== "string") return message;
   const trimmed = stripInvisible(message).trim();
-  return trimmed.length > 0 ? trimmed : "Something went wrong.";
+  return trimmed.length > 0 ? trimmed : uiMessage("something.went.wrong.alternate");
 };
 
 export const createErrorController = (options: ErrorControllerOptions): ErrorController => {
@@ -46,35 +53,35 @@ export const createErrorController = (options: ErrorControllerOptions): ErrorCon
   let actionsBound = false;
 
   const hideInline = () => {
-    inlineMessageEl.textContent = "";
+    setUiText(inlineMessageEl, "");
     inlineEl.classList.add("hidden");
     inlineEl.style.display = "none";
   };
 
   const hidePanel = () => {
-    panelMessageEl.textContent = "";
+    setUiText(panelMessageEl, "");
     panelEl.classList.add("hidden");
     onPanelVisibilityChange?.();
   };
 
-  const showPanel = (message: string) => {
+  const showPanel = (message: LocalizedText) => {
     if (!hasMeaningfulMessage(message)) {
       hidePanel();
       return;
     }
     hideInline();
-    panelMessageEl.textContent = normalizeMessage(message);
+    setUiText(panelMessageEl, normalizeMessage(message));
     panelEl.classList.remove("hidden");
     onPanelVisibilityChange?.();
   };
 
-  const showInline = (message: string) => {
+  const showInline = (message: LocalizedText) => {
     if (!hasMeaningfulMessage(message)) {
       hideInline();
       return;
     }
     hidePanel();
-    inlineMessageEl.textContent = normalizeMessage(message);
+    setUiText(inlineMessageEl, normalizeMessage(message));
     inlineEl.classList.remove("hidden");
     inlineEl.style.display = "";
   };

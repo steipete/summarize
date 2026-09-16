@@ -32,7 +32,7 @@ export function createSummarizeControlView({
       slidesEnabled: state.slidesEnabled,
       mediaAvailable: state.mediaAvailable,
       busy: state.slidesBusy,
-      videoLabel: state.summarizeVideoLabel,
+      mediaKind: state.summarizeMediaKind,
       pageWords: state.summarizePageWords,
       videoDurationSeconds: state.summarizeVideoDurationSeconds,
       slidesTextMode: slidesTextController.getTextMode(),

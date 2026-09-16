@@ -6,6 +6,7 @@ import type {
 } from "../application/summarize-contracts.js";
 import type { CacheState } from "../cache.js";
 import type { MediaCache } from "../content/index.js";
+import { describeCliError, emitCliMessage } from "../locale.js";
 import type { ExecFileFn } from "../markitdown.js";
 import { execFileTracked } from "../processes.js";
 import { runWithProcessContext } from "../processes.js";
@@ -272,7 +273,7 @@ export async function executeSummarizeSession({
         return await runWithMode(primary);
       } catch (error) {
         if (!fallback || eventAdapter.state.emittedOutput) throw error;
-        eventAdapter.writeStatus("Primary failed. Trying fallback…");
+        emitCliMessage(eventAdapter.writeStatus, "en", "progress.primaryFallback");
         try {
           return await runWithMode(fallback);
         } catch (fallbackError) {
@@ -322,9 +323,13 @@ export async function executeSummarizeSession({
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    pushToSession(session, { event: "error", data: { message } }, onSessionEvent);
+    pushToSession(session, { event: "error", data: describeCliError(error) }, onSessionEvent);
     if (session.slidesRequested && !session.slideEvents.done) {
-      emitSlidesDone(session, { ok: false, error: message }, onSessionEvent);
+      emitSlidesDone(
+        session,
+        { ok: false, error: message, localized: describeCliError(error).localized },
+        onSessionEvent,
+      );
     }
     console.error("[summarize-daemon] summarize failed", error);
     requestLogger?.error?.({

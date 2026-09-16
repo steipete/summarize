@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { friendlyFetchError } from "../apps/chrome-extension/src/entrypoints/background/daemon-client.js";
 import { summarizeActiveTab } from "../apps/chrome-extension/src/entrypoints/background/panel-summarize.js";
 import { buildSummarizeRequestBody } from "../apps/chrome-extension/src/lib/daemon-payload.js";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 import { defaultSettings } from "../apps/chrome-extension/src/lib/settings.js";
 
 const youtubeUrl = "https://www.youtube.com/watch?v=KnUFH5GX_fI";
@@ -74,8 +76,7 @@ function createHarness() {
         extractFromTab: vi.fn(),
         urlsMatch: (left, right) => left === right,
         buildSummarizeRequestBody,
-        friendlyFetchError: (error, fallback) =>
-          error instanceof Error ? error.message : fallback,
+        friendlyFetchError,
         isDaemonUnreachableError: () => false,
         logPanel: vi.fn(),
         ...overrides,
@@ -976,6 +977,7 @@ describe("chrome panel summarize", () => {
         type: "run:error",
         message:
           "Could not transcribe this media in standalone mode: decoder unavailable. Switch Runtime to Daemon for broader media support.",
+        localized: message("error.standalone", { kind: "failed", error: "decoder unavailable" }),
       },
     ]);
     expect(harness.session.lastSummarizedUrl).toBeNull();
@@ -1055,6 +1057,7 @@ describe("chrome panel summarize", () => {
         type: "run:error",
         message:
           "No readable text was available in standalone mode. Reload the page or switch Runtime to Daemon for URL extraction.",
+        localized: message("error.standalone", { kind: "noText", error: "" }),
       },
     ]);
     expect(harness.session.lastSummarizedUrl).toBeNull();

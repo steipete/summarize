@@ -1,5 +1,7 @@
+import type { DaemonUiState } from "../../lib/daemon-status";
 import { hasDirectProviderCredentials } from "../../lib/model-routing";
 import type { UiState as PanelUiState } from "../../lib/panel-contracts";
+import type { DaemonCheck } from "./daemon-client";
 
 export type { PanelUiState };
 
@@ -24,10 +26,7 @@ type SessionLike = {
     updateStatus: (isReady: boolean) => void;
   };
   daemonStatus: {
-    resolve: (
-      state: { ok: boolean; authed: boolean; error?: string },
-      options: { keepReady: boolean },
-    ) => { ok: boolean; authed: boolean; error?: string };
+    resolve: (state: DaemonUiState, options: { keepReady: boolean }) => DaemonUiState;
   };
 };
 
@@ -48,8 +47,8 @@ export async function resolvePanelState<Session extends SessionLike>({
   checkRecovery?: boolean;
   loadSettings: typeof import("../../lib/settings").loadSettings;
   getActiveTab: (windowId: number) => Promise<chrome.tabs.Tab | null>;
-  daemonHealth: () => Promise<{ ok: boolean; error?: string }>;
-  daemonPing: (token: string) => Promise<{ ok: boolean; error?: string }>;
+  daemonHealth: () => Promise<DaemonCheck>;
+  daemonPing: (token: string) => Promise<DaemonCheck>;
   panelSessionStore: {
     isPanelOpen: (session: Session) => boolean;
     getCachedExtract: (tabId: number, url?: string | null) => CachedExtractLike | null;
@@ -85,7 +84,14 @@ export async function resolvePanelState<Session extends SessionLike>({
       })
     : (session.daemonRecovery.updateStatus(daemonReady), false);
   const daemon = session.daemonStatus.resolve(
-    { ok: health.ok, authed: authed.ok, error: health.error ?? authed.error },
+    {
+      ok: health.ok,
+      authed: authed.ok,
+      error: health.error ?? authed.error,
+      ...((health.error ? health.localized : authed.localized)
+        ? { localized: health.error ? health.localized : authed.localized }
+        : {}),
+    },
     {
       keepReady: Boolean(session.runController || session.agentController || session.inflightUrl),
     },

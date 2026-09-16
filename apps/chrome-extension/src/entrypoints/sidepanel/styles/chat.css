@@ -269,7 +269,7 @@
 }
 
 .inlineError__close {
-  margin-left: auto;
+  margin-inline-start: auto;
   padding: 4px 6px;
   min-width: auto;
   line-height: 1;

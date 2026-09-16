@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import type { MediaCache } from "../content/index.js";
+import { type CliProgressCallback, emitCliMessage } from "../locale.js";
 import { downloadRemoteVideo, downloadYoutubeVideo, resolveYoutubeStreamUrl } from "./download.js";
 import {
   buildSlideTimeline,
@@ -70,7 +71,7 @@ type ExtractSlidesArgs = {
       };
     }) => void;
     onSlidesTimeline?: ((slides: SlideExtractionResult) => void) | null;
-    onSlidesProgress?: ((text: string) => void) | null;
+    onSlidesProgress?: CliProgressCallback | null;
     onSlidesLog?: ((message: string) => void) | null;
   } | null;
 };
@@ -161,7 +162,7 @@ export async function extractSlidesForSource({
         await prepareSlidesDir(slidesDir);
         logSlidesTiming("prepare output dir", prepareStartedAt);
       }
-      reportSlidesProgress?.("preparing source", SLIDES_PROGRESS.PREPARE);
+      reportSlidesProgress?.("prepare", SLIDES_PROGRESS.PREPARE);
 
       const ytDlpBinary =
         ytDlpPath ??
@@ -198,7 +199,7 @@ export async function extractSlidesForSource({
 
       try {
         const ffmpegStartedAt = Date.now();
-        reportSlidesProgress?.("detecting scenes", SLIDES_PROGRESS.FETCH_VIDEO + 2);
+        reportSlidesProgress?.("detect", SLIDES_PROGRESS.FETCH_VIDEO + 2);
         const detection = await detectSlideTimestamps({
           ffmpegPath: ffmpegBinary,
           ffprobePath: ffprobeBinary,
@@ -217,7 +218,7 @@ export async function extractSlidesForSource({
               2 +
               ratio * (SLIDES_PROGRESS.DETECT_SCENES - (SLIDES_PROGRESS.FETCH_VIDEO + 2));
             reportSlidesProgress?.(
-              "detecting scenes",
+              "detect",
               mapped,
               total > 0 ? `(${completed}/${total})` : undefined,
             );
@@ -225,7 +226,7 @@ export async function extractSlidesForSource({
           logSlides,
           logSlidesTiming,
         });
-        reportSlidesProgress?.("detecting scenes", SLIDES_PROGRESS.DETECT_SCENES);
+        reportSlidesProgress?.("detect", SLIDES_PROGRESS.DETECT_SCENES);
         logSlidesTiming("ffmpeg scene-detect", ffmpegStartedAt);
 
         const interval = buildIntervalTimestamps({
@@ -292,7 +293,7 @@ export async function extractSlidesForSource({
         const reportFrameProgress = (completed: number, total: number) => {
           const ratio = total > 0 ? completed / total : 0;
           reportSlidesProgress?.(
-            "extracting frames",
+            "frames",
             SLIDES_PROGRESS.DETECT_SCENES +
               ratio * (SLIDES_PROGRESS.EXTRACT_FRAMES - SLIDES_PROGRESS.DETECT_SCENES),
             formatProgressCount(completed, total),
@@ -312,7 +313,7 @@ export async function extractSlidesForSource({
             timeoutMs,
             workers,
             onProgress: reportFrameProgress,
-            onStatus: hooks?.onSlidesProgress ?? null,
+            onThumbnailProgress: (percent) => reportSlidesProgress?.("thumbnails", percent),
             onSlide: onSlideChunk
               ? (slide) =>
                   onSlideChunk({
@@ -359,7 +360,7 @@ export async function extractSlidesForSource({
           const reportOcrProgress = (completed: number, total: number) => {
             const ratio = total > 0 ? completed / total : 0;
             reportSlidesProgress?.(
-              "running OCR",
+              "ocr",
               ocrStartPercent + ratio * (SLIDES_PROGRESS.OCR - ocrStartPercent),
               formatProgressCount(completed, total),
             );
@@ -377,7 +378,7 @@ export async function extractSlidesForSource({
           }
         }
 
-        reportSlidesProgress?.("finalizing", SLIDES_PROGRESS.FINAL - 1);
+        reportSlidesProgress?.("finalize", SLIDES_PROGRESS.FINAL - 1);
         emitFinalSlides({
           slides: slidesWithOcr,
           meta: chunkMeta,
@@ -398,7 +399,7 @@ export async function extractSlidesForSource({
         });
 
         await writeSlidesJson(result, slidesDir);
-        reportSlidesProgress?.("finalizing", SLIDES_PROGRESS.FINAL);
+        reportSlidesProgress?.("finalize", SLIDES_PROGRESS.FINAL);
         logSlidesTiming("slides total", totalStartedAt);
         return result;
       } finally {
@@ -408,7 +409,7 @@ export async function extractSlidesForSource({
       }
     },
     () => {
-      hooks?.onSlidesProgress?.("Slides: queued");
+      emitCliMessage(hooks?.onSlidesProgress, "en", "progress.slidesQueued");
     },
   );
 }

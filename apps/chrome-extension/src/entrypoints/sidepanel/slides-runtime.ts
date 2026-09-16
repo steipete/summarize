@@ -1,3 +1,4 @@
+import { message as uiMessage, type LocalizedText } from "../../lib/i18n";
 import {
   createBrowserAiSlidesRuntime,
   shouldUseBrowserAiForSlides,
@@ -40,7 +41,7 @@ export function createSidepanelSlidesRuntime({
   clearSummarySource: () => void;
   panelState: PanelState;
 
-  friendlyFetchError: (error: unknown, fallback: string) => string;
+  friendlyFetchError: typeof import("./setup-runtime").friendlyFetchError;
   getLengthValue: () => string;
   getToken: () => Promise<string>;
   resolveLocalSlides?: (
@@ -51,7 +52,7 @@ export function createSidepanelSlidesRuntime({
       : null
   >;
   getTranscriptTimedText: () => string | null;
-  headerSetStatus: (text: string) => void;
+  headerSetStatus: (text: LocalizedText) => void;
   hideSlideNotice: () => void;
   isStreaming: () => boolean;
   panelUrlsMatch: Parameters<typeof createSlidesSummaryController>[0]["panelUrlsMatch"];
@@ -60,7 +61,7 @@ export function createSidepanelSlidesRuntime({
   renderMarkdown: (markdown: string) => void;
   schedulePanelCacheSync: () => void;
   setSlidesBusy: (value: boolean) => void;
-  showSlideNotice: (message: string, opts?: { allowRetry?: boolean }) => void;
+  showSlideNotice: (message: LocalizedText, opts?: { allowRetry?: boolean }) => void;
   updateSlideSummaryFromMarkdown: Parameters<
     typeof createSlidesSummaryController
   >[0]["updateSlideSummaryFromMarkdown"];
@@ -111,11 +112,11 @@ export function createSidepanelSlidesRuntime({
         slidesSummaryController.applyMarkdown(markdown);
       }
     },
-    onStatus: (text) => {
-      slidesRunRuntime.handleSlidesStatus(text);
+    onStatus: (text, message) => {
+      slidesRunRuntime.handleSlidesStatus(text, message);
     },
     onError: (err) => {
-      const message = friendlyFetchError(err, "Slides stream failed");
+      const message = friendlyFetchError(err, uiMessage("error.slidesStream"));
       showSlideNotice(message, { allowRetry: true });
       setSlidesBusy(false);
       if (!isStreaming()) {

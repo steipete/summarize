@@ -5,6 +5,22 @@ import {
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/stream-controller-policy";
 
 describe("sidepanel stream controller policy", () => {
+  it("uses keyed phases independently of localized status text", () => {
+    expect(
+      shouldSurfaceStreamingStatus({
+        streamedAnyNonWhitespace: true,
+        statusText: "Slaytlar hazırlanıyor",
+        messageKey: "progress.slides",
+      }),
+    ).toBe(true);
+    expect(
+      shouldSurfaceStreamingStatus({
+        streamedAnyNonWhitespace: true,
+        statusText: "Slides: user-supplied label",
+        messageKey: "progress.fetchingPage",
+      }),
+    ).toBe(false);
+  });
   it("keeps slide status visible during streaming output", () => {
     expect(
       shouldSurfaceStreamingStatus({

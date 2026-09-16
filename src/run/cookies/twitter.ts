@@ -16,8 +16,11 @@ export type CookieExtractionResult = {
 
 const DEFAULT_SOURCES: BrowserName[] = ["chrome", "safari", "firefox"];
 
+// i18n-ignore: Literal environment-variable identifier for cookie selection.
 const ENV_COOKIE_SOURCE_KEYS = ["TWITTER_COOKIE_SOURCE"] as const;
+// i18n-ignore: Literal environment-variable identifier for browser profile selection.
 const ENV_CHROME_PROFILE_KEYS = ["TWITTER_CHROME_PROFILE"] as const;
+// i18n-ignore: Literal environment-variable identifier for browser profile selection.
 const ENV_FIREFOX_PROFILE_KEYS = ["TWITTER_FIREFOX_PROFILE"] as const;
 
 function normalizeValue(value: unknown): string | null {

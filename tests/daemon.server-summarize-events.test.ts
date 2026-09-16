@@ -86,6 +86,17 @@ function createAdapter(options?: { slidesRequested?: boolean; includeContentLog?
 }
 
 describe("daemon summarize event adapter", () => {
+  it("keeps legacy input summaries alongside numeric localized descriptors", () => {
+    const { adapter, session } = createAdapter();
+    adapter.handleEvent({
+      type: "content-extracted",
+      content: { ...extracted, wordCount: 1234, totalCharacters: 12000 },
+    });
+    expect(session.lastMeta).toMatchObject({
+      inputSummary: "1.2k words · 12k chars",
+      inputSummaryMessage: { key: "input.summary", values: { words: 1234, chars: 12000 } },
+    });
+  });
   it("translates semantic summary events and retains logging state", () => {
     const { adapter, session, onSessionEvent } = createAdapter();
 

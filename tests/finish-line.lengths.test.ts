@@ -3,6 +3,7 @@ import {
   buildLengthPartsForFinishLine,
   type ExtractedForLengths,
 } from "../src/run/finish-line-lengths.js";
+import { buildFinishLineText } from "../src/run/finish-line.js";
 
 const extracted = (url: string): ExtractedForLengths => ({
   url,
@@ -22,8 +23,18 @@ const extracted = (url: string): ExtractedForLengths => ({
 
 describe("finish line transcript lengths", () => {
   it("does not label lookalike hostnames as YouTube", () => {
-    expect(
-      buildLengthPartsForFinishLine(extracted("https://notyoutube.com/watch?v=abcdefghijk"), false),
-    ).toEqual(["txc=1m podcast · 160 words"]);
+    const text = buildFinishLineText({
+      elapsedMs: 1000,
+      model: null,
+      costUsd: null,
+      detailed: false,
+      report: { llm: [], services: { firecrawl: { requests: 0 }, apify: { requests: 0 } } },
+      extraParts: buildLengthPartsForFinishLine(
+        extracted("https://notyoutube.com/watch?v=abcdefghijk"),
+        false,
+      ),
+    });
+    expect(text.line).toContain("1m podcast · 160 words");
+    expect(text.line).not.toContain("YouTube");
   });
 });

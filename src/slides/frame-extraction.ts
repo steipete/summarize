@@ -147,7 +147,7 @@ export async function extractFramesAtTimestamps({
   timeoutMs,
   workers,
   onProgress,
-  onStatus,
+  onThumbnailProgress,
   onSlide,
   logSlides,
   logSlidesTiming,
@@ -161,7 +161,7 @@ export async function extractFramesAtTimestamps({
   timeoutMs: number;
   workers: number;
   onProgress?: ((completed: number, total: number) => void) | null;
-  onStatus?: ((text: string) => void) | null;
+  onThumbnailProgress?: ((percent: number) => void) | null;
   onSlide?: ((slide: SlideImage) => void) | null;
   logSlides?: ((message: string) => void) | null;
   logSlidesTiming?: ((label: string, startedAt: number) => number) | null;
@@ -457,16 +457,16 @@ export async function extractFramesAtTimestamps({
     const fixStartedAt = Date.now();
     const THUMB_START = 90;
     const THUMB_END = 96;
-    onStatus?.(`Slides: improving thumbnails ${THUMB_START}%`);
+    onThumbnailProgress?.(THUMB_START);
     logSlides?.(
       `thumbnail adjust start count=${fixTasks.length} range=±${FRAME_ADJUST_RANGE_SECONDS}s step=${FRAME_ADJUST_STEP_SECONDS}s`,
     );
     await runWithConcurrency(fixTasks, Math.min(4, workers), (completed, total) => {
       const ratio = total > 0 ? completed / total : 0;
       const percent = Math.round(THUMB_START + ratio * (THUMB_END - THUMB_START));
-      onStatus?.(`Slides: improving thumbnails ${percent}%`);
+      onThumbnailProgress?.(percent);
     });
-    onStatus?.(`Slides: improving thumbnails ${THUMB_END}%`);
+    onThumbnailProgress?.(THUMB_END);
     logSlidesTiming?.("thumbnail adjust done", fixStartedAt);
   }
   logSlidesTiming?.(

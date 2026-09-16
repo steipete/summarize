@@ -1,9 +1,6 @@
 import { isYouTubeUrl } from "@steipete/summarize-core/content/url";
-import {
-  formatCompactCount,
-  formatDurationSecondsSmart,
-  formatMinutesSmart,
-} from "../tty/format.js";
+import { cliMessage } from "../locale.js";
+import type { FinishPart } from "./finish-line-types.js";
 
 export type ExtractedForLengths = {
   url: string;
@@ -37,7 +34,7 @@ function inferMediaKindLabelForFinishLine(
   return "audio";
 }
 
-function buildCompactTranscriptPart(extracted: ExtractedForLengths): string | null {
+function buildCompactTranscriptPart(extracted: ExtractedForLengths): FinishPart | null {
   const isYouTube = extracted.siteName === "YouTube" || isYouTubeUrl(extracted.url);
   if (!isYouTube && !extracted.transcriptCharacters) return null;
 
@@ -52,12 +49,7 @@ function buildCompactTranscriptPart(extracted: ExtractedForLengths): string | nu
     typeof extracted.mediaDurationSeconds === "number" && extracted.mediaDurationSeconds > 0
       ? extracted.mediaDurationSeconds
       : null;
-  const duration =
-    exactDurationSeconds != null
-      ? formatDurationSecondsSmart(exactDurationSeconds)
-      : formatMinutesSmart(minutesEstimate);
 
-  const wordLabel = `${formatCompactCount(transcriptWords)} words`;
   const mediaKind = inferMediaKindLabelForFinishLine(extracted);
   const kindLabel = (() => {
     if (isYouTube) return "YouTube";
@@ -66,11 +58,17 @@ function buildCompactTranscriptPart(extracted: ExtractedForLengths): string | nu
     return null;
   })();
 
-  return kindLabel ? `${duration} ${kindLabel} · ${wordLabel}` : `${duration} · ${wordLabel}`;
+  return {
+    kind: "compactTranscript",
+    durationSeconds: exactDurationSeconds ?? minutesEstimate * 60,
+    approximate: exactDurationSeconds === null,
+    media: kindLabel ?? "generic",
+    words: transcriptWords,
+  };
 }
 
-function buildDetailedLengthPartsForExtracted(extracted: ExtractedForLengths): string[] {
-  const parts: string[] = [];
+function buildDetailedLengthPartsForExtracted(extracted: ExtractedForLengths): FinishPart[] {
+  const parts: FinishPart[] = [];
   const isYouTube = extracted.siteName === "YouTube" || isYouTubeUrl(extracted.url);
   if (!isYouTube && !extracted.transcriptCharacters) return parts;
 
@@ -81,25 +79,32 @@ function buildDetailedLengthPartsForExtracted(extracted: ExtractedForLengths): s
     extracted.totalCharacters > 0 &&
     transcriptChars / extracted.totalCharacters >= 0.95;
   if (!shouldOmitInput) {
-    parts.push(
-      `input=${formatCompactCount(extracted.totalCharacters)} chars (~${formatCompactCount(extracted.wordCount)} words)`,
-    );
+    parts.push({
+      kind: "length",
+      ...cliMessage("finish.inputLength", {
+        chars: extracted.totalCharacters,
+        words: extracted.wordCount,
+      }),
+    });
   }
 
   if (typeof extracted.transcriptCharacters === "number" && extracted.transcriptCharacters > 0) {
     const wordEstimate = Math.max(0, Math.round(extracted.transcriptCharacters / 6));
     const transcriptWords = extracted.transcriptWordCount ?? wordEstimate;
     const minutesEstimate = Math.max(0.1, transcriptWords / 160);
-    const details: string[] = [
-      `~${formatCompactCount(transcriptWords)} words`,
-      `${formatCompactCount(extracted.transcriptCharacters)} chars`,
-    ];
-    const durationPart =
+    const exactSeconds =
       typeof extracted.mediaDurationSeconds === "number" && extracted.mediaDurationSeconds > 0
-        ? formatDurationSecondsSmart(extracted.mediaDurationSeconds)
-        : formatMinutesSmart(minutesEstimate);
-
-    parts.push(`transcript=${durationPart} (${details.join(" · ")})`);
+        ? extracted.mediaDurationSeconds
+        : null;
+    parts.push({
+      kind: "length",
+      ...cliMessage("finish.transcriptLength", {
+        durationSeconds: exactSeconds ?? minutesEstimate * 60,
+        approximate: exactSeconds === null,
+        words: transcriptWords,
+        chars: extracted.transcriptCharacters,
+      }),
+    });
   }
 
   const hasTranscript =
@@ -124,12 +129,12 @@ function buildDetailedLengthPartsForExtracted(extracted: ExtractedForLengths): s
 export function buildLengthPartsForFinishLine(
   extracted: ExtractedForLengths,
   detailed: boolean,
-): string[] | null {
+): FinishPart[] | null {
   const compactTranscript = buildCompactTranscriptPart(extracted);
-  if (!detailed) return compactTranscript ? [`txc=${compactTranscript}`] : null;
+  if (!detailed) return compactTranscript ? [compactTranscript] : null;
 
   const parts = buildDetailedLengthPartsForExtracted(extracted);
   if (parts.length === 0 && !compactTranscript) return null;
-  if (compactTranscript) parts.unshift(`txc=${compactTranscript}`);
+  if (compactTranscript) parts.unshift(compactTranscript);
   return parts;
 }

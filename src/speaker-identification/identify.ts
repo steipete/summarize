@@ -13,6 +13,7 @@ import type {
   SpeakerIdentityMapping,
 } from "./types.js";
 
+// i18n-ignore: Canonical diarization speaker identifiers, independent of UI language.
 const GENERIC_SPEAKER_PATTERN = /^Speaker (?:\d+|[A-Z])$/;
 const MAX_ANCHOR_DISTANCE_MS = 5_000;
 

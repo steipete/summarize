@@ -1,13 +1,21 @@
+import { LocalizedError, message } from "../../lib/i18n";
+export const isSlidesProgressKey = (key: string) =>
+  /^progress\.(?:slides|extractSlides)/u.test(key);
 export function shouldSurfaceStreamingStatus({
   streamedAnyNonWhitespace,
   statusText,
+  messageKey,
 }: {
   streamedAnyNonWhitespace: boolean;
   statusText: string;
+  messageKey?: string;
 }): boolean {
   const trimmed = statusText.trim().toLowerCase();
-  const allowDuringStreaming =
-    trimmed.startsWith("slides:") || trimmed.startsWith("slides ") || trimmed.startsWith("slide:");
+  const allowDuringStreaming = messageKey
+    ? isSlidesProgressKey(messageKey)
+    : trimmed.startsWith("slides:") ||
+      trimmed.startsWith("slides ") ||
+      trimmed.startsWith("slide:");
   return !streamedAnyNonWhitespace || allowDuringStreaming;
 }
 
@@ -16,10 +24,10 @@ export function getTerminalStreamError(args: {
   streamedAnyNonWhitespace: boolean;
 }): Error | null {
   if (!args.sawDone) {
-    return new Error("Stream ended unexpectedly. The daemon may have stopped.");
+    return new LocalizedError(message("error.streamEnded"));
   }
   if (!args.streamedAnyNonWhitespace) {
-    return new Error("Model returned no output.");
+    return new LocalizedError(message("error.noOutput"));
   }
   return null;
 }

@@ -13,7 +13,15 @@ describe("finish line transcript label de-dupe", () => {
       },
       costUsd: null,
       detailed: false,
-      extraParts: ["txc=10 min YouTube · 1.7k words"],
+      extraParts: [
+        {
+          kind: "compactTranscript",
+          durationSeconds: 600,
+          approximate: true,
+          media: "YouTube",
+          words: 1700,
+        },
+      ],
     });
 
     const occurrences = text.line.match(/YouTube/g)?.length ?? 0;
@@ -31,7 +39,15 @@ describe("finish line transcript label de-dupe", () => {
       },
       costUsd: null,
       detailed: false,
-      extraParts: ["txc=45 min podcast · 12.4k words"],
+      extraParts: [
+        {
+          kind: "compactTranscript",
+          durationSeconds: 2700,
+          approximate: true,
+          media: "podcast",
+          words: 12400,
+        },
+      ],
     });
 
     expect(text.line).not.toContain("Spotify");

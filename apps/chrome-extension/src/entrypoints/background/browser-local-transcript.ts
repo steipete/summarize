@@ -14,7 +14,11 @@ export type BrowserLocalMediaTranscript =
       truncated: boolean;
       url: string;
     }
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      localized?: import("@steipete/summarize-core/localization").MessageDescriptor;
+    };
 
 const progressCallbacks = new Map<string, (status: string) => void>();
 const LOCAL_MEDIA_TRANSCRIPTION_TIMEOUT_MS = 15 * 60 * 1000;

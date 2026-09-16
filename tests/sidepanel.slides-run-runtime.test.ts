@@ -5,6 +5,7 @@ import type {
   PanelState,
   RunStart,
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/types";
+import { message as uiMessage } from "../apps/chrome-extension/src/lib/i18n";
 
 function createRun(overrides: Partial<RunStart> = {}): RunStart {
   return {
@@ -72,6 +73,18 @@ function createHarness(
 }
 
 describe("slides run runtime", () => {
+  it("accepts keyed slide extraction without depending on the legacy English text", () => {
+    const harness = createHarness();
+    const message = uiMessage("progress.extractSlides");
+    harness.runtime.handleSlidesStatus("", message);
+    expect(harness.calls.setSlidesBusy).toHaveBeenCalledWith(true);
+    expect(harness.calls.headerSetStatus).toHaveBeenCalledWith(message);
+    harness.runtime.handleSlidesStatus(
+      "Slides: misleading legacy text",
+      uiMessage("progress.summaryActive"),
+    );
+    expect(harness.calls.headerSetStatus).toHaveBeenCalledOnce();
+  });
   it("surfaces slide status only outside active summary phases", () => {
     const harness = createHarness();
 

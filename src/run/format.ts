@@ -15,9 +15,15 @@ export function formatOptionalNumber(value: number | null | undefined): string {
   return "none";
 }
 
-export function formatUSD(value: number): string {
+export function formatUSD(value: number, locale = "en"): string {
   if (!Number.isFinite(value)) return "n/a";
-  return `$${value.toFixed(4)}`;
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+    useGrouping: false,
+  }).format(value);
 }
 
 export function estimateWhisperTranscriptionCostUsd({

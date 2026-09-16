@@ -1,3 +1,4 @@
+import { type LocalizedText, setText as setUiText } from "../../lib/i18n";
 import { getLocalStorage, type LocalStorageLike } from "../../lib/local-storage";
 import { createErrorController } from "./error-controller";
 import { createHeaderController } from "./header-controller";
@@ -87,13 +88,13 @@ export function createSidepanelFeedbackRuntime({
 
   const hideSlideNotice = () => {
     slideNoticeEl.classList.add("hidden");
-    slideNoticeMessageEl.textContent = "";
+    setUiText(slideNoticeMessageEl, "");
     slideNoticeRetryBtn.hidden = true;
     headerController.updateHeaderOffset();
   };
 
-  const showSlideNotice = (message: string, options?: { allowRetry?: boolean }) => {
-    slideNoticeMessageEl.textContent = message;
+  const showSlideNotice = (message: LocalizedText, options?: { allowRetry?: boolean }) => {
+    setUiText(slideNoticeMessageEl, message);
     slideNoticeRetryBtn.hidden = !options?.allowRetry;
     slideNoticeEl.classList.remove("hidden");
     headerController.updateHeaderOffset();

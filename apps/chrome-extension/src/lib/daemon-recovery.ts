@@ -46,6 +46,7 @@ export function createDaemonRecovery() {
 export function isDaemonUnreachableError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
   const normalized = message.toLowerCase();
+  // i18n-ignore: Untranslated fetch/network diagnostics from the browser API.
   return (
     normalized.includes("failed to fetch") ||
     normalized.includes("networkerror") ||

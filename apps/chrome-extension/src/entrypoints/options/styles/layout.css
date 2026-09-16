@@ -362,7 +362,7 @@ form {
 .logsTable th,
 .logsTable td {
   padding: 6px 8px;
-  text-align: left;
+  text-align: start;
   vertical-align: top;
 }
 

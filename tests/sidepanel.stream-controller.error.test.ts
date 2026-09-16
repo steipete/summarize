@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { createStreamController } from "../apps/chrome-extension/src/entrypoints/sidepanel/stream-controller.js";
+import {
+  extensionMessage,
+  message,
+  type LocalizedMessage,
+} from "../apps/chrome-extension/src/lib/i18n";
 import { encodeSseEvent, type SseEvent } from "../packages/core/src/runtime/sse-events.js";
 
 const encoder = new TextEncoder();
@@ -124,6 +129,36 @@ describe("sidepanel stream controller error handling", () => {
     expect(phases.at(-1)).toBe("error");
     expect(phases).not.toContain("idle");
     expect(statuses.some((status) => status.includes("Error:"))).toBe(true);
+  });
+
+  it("keeps SSE error descriptors renderable in another locale after failure", async () => {
+    const statuses: LocalizedMessage[] = [];
+    const controller = createStreamController({
+      getToken: async () => "fixture-token",
+      onStatus: (_text, localized) => {
+        if (localized) statuses.push(localized);
+      },
+      onPhaseChange: () => {},
+      onMeta: () => {},
+      fetchImpl: async () =>
+        new Response(
+          streamFromEvents([
+            {
+              event: "error",
+              data: {
+                message: "legacy diagnostic",
+                localized: message("error.slidesFailedDefault"),
+              },
+            },
+          ]),
+          { status: 200 },
+        ),
+    });
+    await controller.start(run);
+    const final = statuses.at(-1)!;
+    const values = typeof final.values === "function" ? final.values() : final.values;
+    expect(extensionMessage(final.key, values, "en")).toBe("Error: Slides failed.");
+    expect(extensionMessage(final.key, values, "tr")).toBe("Hata: Slayt işlemi başarısız.");
   });
 
   it("keeps error phase when the fetch fails", async () => {

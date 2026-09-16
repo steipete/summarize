@@ -1,3 +1,10 @@
+import {
+  setText as setUiText,
+  message as uiMessage,
+  resolveText,
+  subscribeLocale,
+  type LocalizedText,
+} from "../../lib/i18n";
 import { splitStatusPercent } from "../../lib/status";
 import type { PanelPhase } from "./types";
 
@@ -7,9 +14,9 @@ type HeaderState = {
 };
 
 export type HeaderController = {
-  setBaseTitle: (text: string) => void;
-  setBaseSubtitle: (text: string) => void;
-  setStatus: (text: string) => void;
+  setBaseTitle: (text: LocalizedText) => void;
+  setBaseSubtitle: (text: LocalizedText) => void;
+  setStatus: (text: LocalizedText) => void;
   armProgress: () => void;
   stopProgress: () => void;
   setProgressOverride: (next: boolean) => void;
@@ -29,9 +36,9 @@ export function createHeaderController({
   progressFillEl: HTMLElement;
   getState: () => HeaderState;
 }): HeaderController {
-  let baseTitle = "Summarize";
-  let baseSubtitle = "";
-  let statusText = "";
+  let baseTitle: LocalizedText = uiMessage("brand.name");
+  let baseSubtitle: LocalizedText = "";
+  let statusText: LocalizedText = "";
   let showProgress = false;
   let progressOverride = false;
   let rafId: number | null = null;
@@ -69,27 +76,51 @@ export function createHeaderController({
     );
   };
 
+  const statusPresentation = () => {
+    if (typeof statusText === "string") {
+      const raw = statusText.trim();
+      const split = splitStatusPercent(raw);
+      return {
+        label: split.text || raw,
+        percent: split.percent ? Number.parseInt(split.percent, 10) : null,
+        active: isActiveStatus(raw),
+        error: raw.toLowerCase().startsWith("error:") || raw.toLowerCase().includes(" error"),
+      };
+    }
+    const values =
+      typeof statusText.values === "function" ? statusText.values() : statusText.values;
+    const hasPercent =
+      !Object.hasOwn(values, "hasPercent") ||
+      values.hasPercent === true ||
+      values.hasPercent === "true";
+    const fraction = hasPercent && typeof values.percent === "number" ? values.percent : null;
+    return {
+      label: resolveText(statusText),
+      percent: fraction !== null && Number.isFinite(fraction) ? fraction * 100 : null,
+      active:
+        statusText.key.startsWith("progress.") ||
+        ["connecting", "summarizing", "starting.scan", "loading"].includes(statusText.key),
+      error: statusText.key.startsWith("error."),
+    };
+  };
+
   const renderHeader = () => {
     const { phase } = getState();
     const isStreaming = phase === "connecting" || phase === "streaming";
-    const trimmed = statusText.trim();
-    const showStatus = trimmed.length > 0;
-    const split = showStatus
-      ? splitStatusPercent(trimmed)
-      : { text: "", percent: null as string | null };
-    const percentNum = split.percent ? Number.parseInt(split.percent, 10) : null;
-    const statusLabel = split.text || trimmed;
-    const isError =
-      showStatus &&
-      (trimmed.toLowerCase().startsWith("error:") || trimmed.toLowerCase().includes(" error"));
+    const presentation = statusPresentation();
+    const statusLabel = presentation.label;
+    const showStatus = statusLabel.length > 0;
+    const percentNum = presentation.percent;
+    const isError = showStatus && (presentation.error || phase === "error");
+    const subtitle = resolveText(baseSubtitle);
+    const title = resolveText(baseTitle);
     const isRunning = showProgress && !isError;
-    const allowStatusWithSubtitle = showStatus && (isRunning || isActiveStatus(trimmed));
-    const shouldShowStatus =
-      showStatus && (!isStreaming || !baseSubtitle || allowStatusWithSubtitle);
+    const allowStatusWithSubtitle = showStatus && (isRunning || presentation.active);
+    const shouldShowStatus = showStatus && (!isStreaming || !subtitle || allowStatusWithSubtitle);
 
-    if (baseTitle !== lastTitle) {
-      titleEl.textContent = baseTitle;
-      lastTitle = baseTitle;
+    if (title !== lastTitle) {
+      setUiText(titleEl, baseTitle);
+      lastTitle = title;
     }
 
     if (
@@ -130,13 +161,15 @@ export function createHeaderController({
       progressFillEl.style.display = progressDisplay;
       lastProgressDisplay = progressDisplay;
     }
-    const combinedSubtitle =
-      allowStatusWithSubtitle && baseSubtitle && !isError
-        ? `${statusLabel} · ${baseSubtitle}`
-        : statusLabel;
-    const nextSubtitle = isError ? statusLabel : shouldShowStatus ? combinedSubtitle : baseSubtitle;
+    const nextSubtitle = isError
+      ? statusLabel
+      : shouldShowStatus && allowStatusWithSubtitle && subtitle
+        ? resolveText(uiMessage("header.combinedStatus", { status: statusLabel, subtitle }))
+        : shouldShowStatus
+          ? statusLabel
+          : subtitle;
     if (nextSubtitle !== lastSubtitle) {
-      subtitleEl.textContent = nextSubtitle;
+      setUiText(subtitleEl, nextSubtitle);
       lastSubtitle = nextSubtitle;
     }
   };
@@ -154,33 +187,26 @@ export function createHeaderController({
     document.documentElement.style.setProperty("--header-height", `${height}px`);
   };
 
-  const setBaseSubtitle = (text: string) => {
+  const setBaseSubtitle = (text: LocalizedText) => {
     baseSubtitle = text;
     updateHeader();
   };
 
-  const setBaseTitle = (text: string) => {
-    const next = text.trim() || "Summarize";
+  const setBaseTitle = (text: LocalizedText) => {
+    const next = typeof text === "string" ? text.trim() || uiMessage("brand.name") : text;
     baseTitle = next;
     updateHeader();
   };
 
-  const setStatus = (text: string) => {
+  const setStatus = (text: LocalizedText) => {
     statusText = text;
-    const trimmed = text.trim();
-    const isError =
-      trimmed.length > 0 &&
-      (trimmed.toLowerCase().startsWith("error:") || trimmed.toLowerCase().includes(" error"));
-    const forceProgress = isActiveStatus(trimmed);
-    const split = splitStatusPercent(text);
+    const presentation = statusPresentation();
     const { phase } = getState();
-    if (split.percent && shouldAllowProgress(forceProgress)) {
+    if (presentation.percent !== null && shouldAllowProgress(presentation.active)) armProgress();
+    else if (presentation.label && shouldAllowProgress(presentation.active) && !presentation.error)
       armProgress();
-    } else if (trimmed && shouldAllowProgress(forceProgress) && !isError) {
-      armProgress();
-    } else if (!trimmed && !(phase === "connecting" || phase === "streaming")) {
+    else if (!presentation.label && !(phase === "connecting" || phase === "streaming"))
       stopProgress();
-    }
     updateHeader();
   };
 
@@ -202,13 +228,15 @@ export function createHeaderController({
     if (next) {
       if (!showProgress) showProgress = true;
     } else if (
-      !statusText.trim() &&
+      !resolveText(statusText).trim() &&
       !(getState().phase === "connecting" || getState().phase === "streaming")
     ) {
       showProgress = false;
     }
     updateHeader();
   };
+
+  subscribeLocale(updateHeader);
 
   return {
     setBaseTitle,

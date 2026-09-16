@@ -1,3 +1,4 @@
+import { message as uiMessage, resolveText, type LocalizedText } from "../../lib/i18n";
 import { planMediaExtraction } from "../../lib/media-extraction-plan";
 import type { Settings } from "../../lib/settings";
 import type { BrowserLocalMediaTranscript } from "./browser-local-transcript";
@@ -18,6 +19,7 @@ export type PreparedPanelContent = {
   title: string | null;
   transcriptTimedText: string | null;
   localTranscriptError: string | null;
+  localTranscriptMessage?: import("@steipete/summarize-core/localization").MessageDescriptor;
   source: CachedExtract["source"];
   diagnostics: CachedExtract["diagnostics"];
   prefersUrlMode: boolean;
@@ -33,7 +35,7 @@ type CommonPreparationOptions = {
   tabUrl: string;
   settings: Settings;
   requestedInputMode: "page" | "video" | null;
-  sendStatus: (status: string) => void;
+  sendStatus: (status: LocalizedText) => void;
   logPanel: (event: string, detail?: Record<string, unknown>) => void;
   urlsMatch: (left: string, right: string) => boolean;
 };
@@ -85,7 +87,7 @@ export async function preparePanelContent({
   if (extractionPlan.directYouTubeTranscript) {
     logPanel("extractor.route.start", { tabId: tab.id, preferUrl: prefersUrlMode });
     logPanel("extractor.route.preferUrlHardSwitch", { tabId: tab.id });
-    sendStatus(`Preparing video… (${reason})`);
+    sendStatus(uiMessage("progress.panelExtract", { stage: "video" }));
     logPanel("extract:url-direct", { reason, tabId: tab.id });
     const shouldProbeBrowserTranscript =
       !useBrowserSummary || (await hasYouTubeCaptionTracks(tab.id));
@@ -95,7 +97,11 @@ export async function preparePanelContent({
           youtubeTranscriptTimeoutMs,
           { ok: false as const, error: "YouTube caption lookup timed out." },
         )
-      : { ok: false as const, error: "YouTube player has no caption tracks." };
+      : {
+          ok: false as const,
+          // i18n-ignore: Transcript-probe diagnostic used only in logs and fallback decisions.
+          error: "YouTube player has no caption tracks.",
+        };
     if (browserTranscript.ok && !urlsMatch(browserTranscript.url, tabUrl)) {
       logPanel("extract:url-direct:browser-transcript-stale", {
         expectedUrl: tabUrl,
@@ -149,20 +155,20 @@ export async function preparePanelContent({
       error: browserTranscript.ok ? undefined : browserTranscript.error,
     });
   } else {
-    sendStatus(`Extracting… (${reason})`);
+    sendStatus(uiMessage("progress.panelExtract", { stage: "other" }));
     logPanel("extract:start", { reason, tabId: tab.id, maxChars: settings.maxChars });
     const statusFromExtractEvent = (event: string) => {
       if (!panelOpen()) return;
       if (event === "extract:attempt") {
-        sendStatus(`Extracting page content… (${reason})`);
+        sendStatus(uiMessage("progress.panelExtract", { stage: "page" }));
         return;
       }
       if (event === "extract:inject:ok") {
-        sendStatus(`Extracting: injecting… (${reason})`);
+        sendStatus(uiMessage("progress.panelExtract", { stage: "inject" }));
         return;
       }
       if (event === "extract:message:ok") {
-        sendStatus(`Extracting: reading… (${reason})`);
+        sendStatus(uiMessage("progress.panelExtract", { stage: "read" }));
       }
     };
     if (prefersUrlMode) {
@@ -306,12 +312,17 @@ export async function ensurePreparedPanelTranscript({
         : "extract:browser-media:local-transcript-failed",
       { error: localTranscript.error },
     );
-    return { ...content, localTranscriptError: localTranscript.error };
+    return {
+      ...content,
+      localTranscriptError: localTranscript.error,
+      localTranscriptMessage: localTranscript.localized,
+    };
   }
   if (!urlsMatch(localTranscript.url, tabUrl)) {
     return {
       ...content,
-      localTranscriptError: "The page changed before browser transcription completed.",
+      localTranscriptError: resolveText(uiMessage("error.transcriptPageChanged"), "en"),
+      localTranscriptMessage: uiMessage("error.transcriptPageChanged"),
     };
   }
   logPanel(
@@ -343,6 +354,7 @@ export async function ensurePreparedPanelTranscript({
     },
     transcriptTimedText: localTranscript.transcriptTimedText,
     localTranscriptError: null,
+    localTranscriptMessage: undefined,
   };
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createSidepanelBgMessageRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/bg-message-runtime";
 import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 import type { BgToPanel, UiState } from "../apps/chrome-extension/src/lib/panel-contracts";
 
 function buildPanelState() {
@@ -118,6 +119,16 @@ describe("sidepanel background message runtime", () => {
     expect(options.showSlideNotice).toHaveBeenCalledWith("capture failed", { allowRetry: true });
   });
 
+  it("retains validated error descriptors in panel state and slide notices", () => {
+    const { runtime, options } = createRuntime();
+    const localized = message("error.daemonTimeout");
+    runtime.handle({ type: "run:error", message: "legacy diagnostic", localized });
+    expect(options.setStatus).toHaveBeenCalledWith(localized);
+    expect(options.setPhase).toHaveBeenCalledWith("error", { error: localized });
+    runtime.handle({ type: "slides:run", ok: false, error: "legacy diagnostic", localized });
+    expect(options.showSlideNotice).toHaveBeenCalledWith(localized, { allowRetry: true });
+  });
+
   it("gates status updates while streaming and records errors", () => {
     const { runtime, options } = createRuntime({
       isStreaming: vi.fn(() => true),
@@ -135,7 +146,9 @@ describe("sidepanel background message runtime", () => {
     runtime.handle({ type: "run:error", message: "no daemon" });
 
     expect(options.setStatus).toHaveBeenCalledTimes(1);
-    expect(options.setStatus).toHaveBeenCalledWith("Error: no daemon");
+    expect(options.setStatus).toHaveBeenCalledWith(
+      message("error.message", { error: "no daemon" }),
+    );
     expect(options.setPhase).toHaveBeenCalledWith("error", { error: "no daemon" });
     expect(options.finishStreamingMessage).toHaveBeenCalled();
   });

@@ -1,3 +1,4 @@
+import { extensionMessage } from "../../lib/i18n";
 import type { PanelToBg } from "../../lib/panel-contracts";
 import { syncNavigationWithActiveTab } from "./active-tab-sync";
 import { createSidepanelChatRuntime } from "./chat-runtime";
@@ -118,14 +119,17 @@ export function createSidepanelSessionRuntime({
   let runActions: RunActions | null = null;
 
   const bindRunActions = (actions: RunActions) => {
-    if (runActions) throw new Error("sidepanel session run actions already bound");
+    if (runActions) {
+      // i18n-ignore: Developer assertion for an invalid DOM or controller lifecycle; not displayed in the UI.
+      throw new Error("sidepanel session run actions already bound");
+    }
     runActions = actions;
   };
 
   const clearCurrentView = async () => {
     panelState.retainedSlideSummary = null;
     if (panelState.chat.streaming) {
-      chatRuntime.requestAbort("Cleared");
+      chatRuntime.requestAbort(extensionMessage("chat.cleared"));
     }
     runActions?.abortSummaryStream();
     slidesRuntime.stopSlidesStream();

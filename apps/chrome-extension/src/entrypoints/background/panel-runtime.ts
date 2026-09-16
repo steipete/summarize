@@ -1,4 +1,5 @@
 import { logExtensionEvent } from "../../lib/extension-logs";
+import { resolveText, type LocalizedText } from "../../lib/i18n";
 import { resolvePanelState } from "./panel-state";
 import { summarizeActiveTab as runPanelSummarize } from "./panel-summarize";
 
@@ -58,8 +59,19 @@ export function createBackgroundPanelRuntime<
     }
   };
 
-  const sendStatus = (session: Session, status: string) => {
-    send(session, { type: "ui:status", status });
+  const sendStatus = (session: Session, status: LocalizedText) => {
+    send(session, {
+      type: "ui:status",
+      status: resolveText(status, "en"),
+      ...(typeof status === "string"
+        ? {}
+        : {
+            localized: {
+              key: status.key,
+              values: typeof status.values === "function" ? status.values() : status.values,
+            },
+          }),
+    });
   };
 
   const emitState = async (

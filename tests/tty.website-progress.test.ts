@@ -23,7 +23,7 @@ describe("tty website progress", () => {
       ok: true,
       textBytes: 1024,
     });
-    expect(setText).toHaveBeenLastCalledWith("X: got 1.0 KB…");
+    expect(setText).toHaveBeenLastCalledWith("X: 1,0 KB alındı…");
   });
   it("returns null when disabled", () => {
     expect(createWebsiteProgress({ enabled: false, spinner: { setText: vi.fn() } })).toBeNull();

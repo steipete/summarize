@@ -1,9 +1,37 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { CliError } from "../locale.js";
 
 const execFileAsync = promisify(execFile);
 
 export type DaemonCommandResult = { stdout: string; stderr: string; code: number };
+
+type ServiceCommand =
+  | "systemctl --user"
+  | "systemctl daemon-reload"
+  | "systemctl enable"
+  | "systemctl restart"
+  | "launchctl bootstrap"
+  | "launchctl kickstart"
+  | "schtasks"
+  | "schtasks create"
+  | "schtasks run"
+  | "taskkill";
+
+export function serviceCommandError(
+  command: ServiceCommand,
+  detail: string,
+  mode: "failed" | "unavailable" = "failed",
+  needsAdmin = false,
+): CliError {
+  return new CliError("service.commandError", {
+    command,
+    mode,
+    detail: detail.trim(),
+    hasDetail: Boolean(detail.trim()),
+    needsAdmin,
+  });
+}
 
 export async function execDaemonCommand(
   file: string,

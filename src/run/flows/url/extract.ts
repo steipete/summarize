@@ -1,6 +1,8 @@
 import type { ExtractedLinkContent, FetchLinkContentOptions } from "../../../content/index.js";
+import { type CliLocale, createCliTranslator } from "../../../locale.js";
 import { formatBytes } from "../../../tty/format.js";
 import { withBirdTip } from "../../bird.js";
+import type { FinishLabel } from "../../finish-line-types.js";
 import { buildSummaryFinishLabel } from "../../finish-line.js";
 import { formatOptionalNumber, formatOptionalString } from "../../format.js";
 import { writeVerbose } from "../../logging.js";
@@ -9,7 +11,7 @@ export type UrlExtractionUi = {
   contentSizeLabel: string;
   viaSourceLabel: string;
   footerParts: string[];
-  finishSourceLabel: string | null;
+  finishSourceLabel: FinishLabel | null;
 };
 
 export async function fetchLinkContentWithBirdTip({
@@ -35,9 +37,13 @@ export async function fetchLinkContentWithBirdTip({
   }
 }
 
-export function deriveExtractionUi(extracted: ExtractedLinkContent): UrlExtractionUi {
+export function deriveExtractionUi(
+  extracted: ExtractedLinkContent,
+  locale: CliLocale = "en",
+): UrlExtractionUi {
+  const t = createCliTranslator(locale);
   const extractedContentBytes = Buffer.byteLength(extracted.content, "utf8");
-  const contentSizeLabel = formatBytes(extractedContentBytes);
+  const contentSizeLabel = formatBytes(extractedContentBytes, locale);
   const twitterStrategy =
     extracted.diagnostics.strategy === "xurl" || extracted.diagnostics.strategy === "bird"
       ? extracted.diagnostics.strategy
@@ -68,17 +74,19 @@ export function deriveExtractionUi(extracted: ExtractedLinkContent): UrlExtracti
   if (extracted.diagnostics.markdown.used) {
     if (extracted.diagnostics.markdown.provider === "llm") {
       footerParts.push(
-        extracted.diagnostics.markdown.notes === "transcript" ? "transcript→md llm" : "html→md llm",
+        t("footer.markdown", { source: extracted.diagnostics.markdown.notes ?? "html" }),
       );
     } else {
       footerParts.push("markdown");
     }
   }
   if (extracted.diagnostics.transcript.textProvided) {
-    footerParts.push(`transcript ${extracted.diagnostics.transcript.provider ?? "unknown"}`);
+    footerParts.push(
+      t("footer.transcript", { provider: extracted.diagnostics.transcript.provider ?? "unknown" }),
+    );
   }
   if (extracted.isVideoOnly && extracted.video) {
-    footerParts.push(extracted.video.kind === "youtube" ? "video youtube" : "video url");
+    footerParts.push(t("footer.video", { source: extracted.video.kind }));
   }
 
   const finishSourceLabel = buildSummaryFinishLabel({

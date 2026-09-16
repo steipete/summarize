@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createChatQueueRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/chat-queue-runtime";
 import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import { renderSummaryEmptyState } from "../apps/chrome-extension/src/entrypoints/sidepanel/summary-renderer";
-import { applyExtensionLocale } from "../apps/chrome-extension/src/lib/i18n";
+import { applyExtensionLocale, message } from "../apps/chrome-extension/src/lib/i18n";
 
 const html = readFileSync("apps/chrome-extension/src/entrypoints/sidepanel/index.html", "utf8");
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -21,6 +21,7 @@ describe("sidepanel localized content preservation", () => {
   });
   afterEach(() => {
     stop();
+    applyExtensionLocale("en")();
     document.body.replaceChildren();
     document.body.removeAttribute("data-locale-ui");
   });
@@ -59,7 +60,7 @@ describe("sidepanel localized content preservation", () => {
       title.title = source;
       renderSummaryEmptyState({
         hostEl,
-        state: { label: "Summarize", message: "Try again", detail: source },
+        state: { label: "Summarize", message: message("try.again"), detail: source },
       });
       await flush();
       for (const locale of ["tr", "en", "tr"] as const) {

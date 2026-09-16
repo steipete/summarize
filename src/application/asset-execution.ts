@@ -1,3 +1,4 @@
+import { CliError } from "../locale.js";
 import { extractAssetContent } from "../run/flows/asset/extract.js";
 import { executeMediaFile } from "../run/flows/asset/media.js";
 import { executeAssetSummary } from "../run/flows/asset/summary.js";
@@ -144,11 +145,9 @@ export function createAcquiredAssetExecutor(
   const execute = async (input: ResolvedAssetInput): Promise<AcquiredAssetExecutionResult> => {
     const context = options.context;
     if (!context) {
-      throw new Error(
-        input.kind === "resolved-media"
-          ? "Resolved media execution requires prepared asset resources"
-          : "Resolved asset execution requires prepared asset resources",
-      );
+      throw new CliError("error.assetResourcesMissing", {
+        kind: input.kind === "resolved-media" ? "media" : "asset",
+      });
     }
     const executionOptions = { ...options, context };
     return input.kind === "resolved-media"

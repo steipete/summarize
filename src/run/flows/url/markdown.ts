@@ -6,6 +6,7 @@ import {
 } from "../../../llm/markdown-converters.js";
 import { parseGatewayStyleModelId } from "../../../llm/model-id.js";
 import { mergeRequestOptionsForProvider } from "../../../llm/model-options.js";
+import { CliError } from "../../../locale.js";
 import { convertToMarkdownWithMarkitdown } from "../../../markitdown.js";
 import { parseRequestedModelId } from "../../../model-spec.js";
 import { hasUvxCli } from "../../env.js";
@@ -52,7 +53,7 @@ export function createMarkdownConverters(
   // HTML markdown conversion (for non-YouTube URLs)
   const wantsHtmlMarkdown = ctx.flags.format === "markdown" && !options.isYoutubeUrl;
   if (wantsHtmlMarkdown && ctx.flags.markdownMode === "off") {
-    throw new Error("--format md conflicts with --markdown-mode off (use --format text)");
+    throw new CliError("error.markdownConflict");
   }
 
   // Transcript markdown conversion (for YouTube URLs, only when --markdown-mode llm is explicit)
@@ -70,14 +71,14 @@ export function createMarkdownConverters(
   const resolveMarkdownModel = (modelId: string): MarkdownModel => {
     const requested = parseRequestedModelId(modelId);
     if (requested.kind !== "fixed" || requested.transport === "cli") {
-      throw new Error(`Internal error: unsupported markdown model ${modelId}`);
+      throw new CliError("error.markdownModel", { modelId: String(modelId) });
     }
     const attempt = resolveFixedModelAttempt({
       requestedModel: requested,
       providerRuntime: ctx.model.summaryEngine.providerRuntime,
     });
     if (attempt.transport === "cli" || !attempt.llmModelId) {
-      throw new Error(`Internal error: unsupported markdown model ${modelId}`);
+      throw new CliError("error.markdownModel", { modelId: String(modelId) });
     }
     return attempt as MarkdownModel;
   };
@@ -95,7 +96,7 @@ export function createMarkdownConverters(
         providerRuntime: ctx.model.summaryEngine.providerRuntime,
       });
       if (attempt.transport === "cli" || !attempt.llmModelId) {
-        throw new Error("Internal error: unsupported fixed markdown model");
+        throw new CliError("error.markdownFixedModel");
       }
       return attempt as MarkdownModel;
     }
@@ -139,7 +140,7 @@ export function createMarkdownConverters(
           ? "GITHUB_TOKEN (or GH_TOKEN)"
           : (markdownModel?.requiredEnv ??
             "GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY)");
-    throw new Error(`--markdown-mode llm requires ${required}`);
+    throw new CliError("error.markdownKey", { required: String(required) });
   }
 
   const llmConverterOptions = markdownModel
@@ -228,7 +229,7 @@ export function createMarkdownConverters(
       }) => {
         if (effectiveMarkdownMode === "llm") {
           if (!llmHtmlToMarkdown) {
-            throw new Error("No HTML→Markdown converter configured");
+            throw new CliError("error.markdownConverter");
           }
           return llmHtmlToMarkdown(args);
         }
@@ -237,9 +238,7 @@ export function createMarkdownConverters(
           if (markitdownHtmlToMarkdown) {
             return await markitdownHtmlToMarkdown(args);
           }
-          throw new Error(
-            "No HTML→Markdown converter configured (install uvx/markitdown or use --markdown-mode llm)",
-          );
+          throw new CliError("error.markdownConverterSetup");
         }
 
         if (llmHtmlToMarkdown) {
@@ -255,7 +254,7 @@ export function createMarkdownConverters(
           return await markitdownHtmlToMarkdown(args);
         }
 
-        throw new Error("No HTML→Markdown converter configured");
+        throw new CliError("error.markdownConverter");
       }
     : null;
 

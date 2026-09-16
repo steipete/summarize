@@ -1,10 +1,12 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   createProcessesViewer,
   type ProcessesViewerElements,
 } from "../apps/chrome-extension/src/entrypoints/options/processes-viewer.js";
 import { applyExtensionLocale } from "../apps/chrome-extension/src/lib/i18n.js";
+
+afterEach(() => applyExtensionLocale("en")());
 
 const jsonResponse = (body: unknown) =>
   new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });

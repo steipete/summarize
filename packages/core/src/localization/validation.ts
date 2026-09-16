@@ -1,8 +1,8 @@
-import { IntlMessageFormat } from "intl-messageformat";
 import { isFallbackMessage } from "./index.js";
+import { parseMessageTemplate } from "./message-template.js";
 
 function messageSignature(message: string): string {
-  const ast = new IntlMessageFormat(message, "en", undefined, { ignoreTag: true }).getAst();
+  const { ast } = parseMessageTemplate(message);
   const argumentsByName = new Map<string, Set<string>>();
   const visit = (nodes: typeof ast) => {
     for (const node of nodes) {
@@ -10,6 +10,7 @@ function messageSignature(message: string): string {
       const types = argumentsByName.get(node.value) ?? new Set<string>();
       types.add(node.type === 6 ? `plural:${node.pluralType}` : String(node.type));
       argumentsByName.set(node.value, types);
+      if (node.type === 8) visit(node.children);
       if (node.type === 5 || node.type === 6) {
         if (node.type === 5) types.add(`choices:${Object.keys(node.options).sort().join(",")}`);
         if (node.type === 6) {

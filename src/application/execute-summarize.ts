@@ -2,6 +2,7 @@ import { isYouTubeUrl } from "@steipete/summarize-core/content/url";
 import type { ExtractedLinkContent } from "../content/index.js";
 import { buildUrlPrompt } from "../engine/web-prompt.js";
 import { resolveUrlSummaryExecution, type UrlSummaryResolution } from "../engine/web-summary.js";
+import { CliError } from "../locale.js";
 import type { UrlFlowContext } from "../run/flows/url/types.js";
 import { createAcquiredAssetExecutor } from "./asset-execution.js";
 import {
@@ -254,7 +255,7 @@ export async function executeSummarize(
     }
 
     if (request.extractOnly && executionInput.kind !== "url") {
-      throw new Error("Extract-only execution requires a URL input");
+      throw new CliError("error.extractUrlRequired");
     }
 
     const ctx = boundPrepared.urlFlowContext;
@@ -294,7 +295,7 @@ export async function executeSummarize(
       if (!slides) slides = urlResult.slides;
       if (!request.extractOnly) {
         if (urlResult.kind === "extraction") {
-          throw new Error("Internal error: summary execution returned extraction result");
+          throw new CliError("error.executionState", { kind: "extractionResult" });
         }
         if (urlResult.kind === "summary") {
           summaryDetails = {
@@ -329,12 +330,12 @@ export async function executeSummarize(
     }
 
     if (!extracted) {
-      throw new Error("Internal error: missing extracted content");
+      throw new CliError("error.executionState", { kind: "content" });
     }
 
     if (request.extractOnly) {
       if (!extractionDetails) {
-        throw new Error("Internal error: missing extraction details");
+        throw new CliError("error.executionState", { kind: "details" });
       }
       const result: ExtractionResult = {
         kind: "extraction",

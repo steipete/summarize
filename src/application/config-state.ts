@@ -4,6 +4,7 @@ import { parseEmbeddedVideoMode, parseVideoMode } from "../flags.js";
 import { type OutputLanguage, parseOutputLanguage } from "../language.js";
 import { parseOpenAiReasoningEffort, parseOpenAiServiceTier } from "../llm/model-options.js";
 import type { ModelRequestOptions, OpenAiReasoningEffort } from "../llm/model-options.js";
+import { CliError } from "../locale.js";
 import { parseBooleanEnv } from "./environment.js";
 
 export type ConfigState = {
@@ -124,7 +125,7 @@ export function resolveConfigState({
     if (input.serviceTierRaw) {
       const serviceTier = parseOpenAiServiceTier(input.serviceTierRaw, "--service-tier");
       if (options.serviceTier && options.serviceTier !== serviceTier) {
-        throw new Error("Use either --fast or --service-tier (not both with different values).");
+        throw new CliError("error.fastServiceTierConflict");
       }
       options.serviceTier = serviceTier;
     }

@@ -16,6 +16,7 @@ export function formatLlmRetryNotice(
         : typeof (notice.error as { message?: unknown } | null)?.message === "string"
           ? String((notice.error as { message?: unknown }).message)
           : "";
+  // i18n-ignore: Raw model/transport diagnostics used to classify retry notices.
   const reason = /empty summary/i.test(message)
     ? "empty output"
     : /timed out/i.test(message)
@@ -86,6 +87,7 @@ function errorStatusCode(error: unknown, depth = 0): number | null {
     }
   }
   const message = resolveLlmErrorMessage(error);
+  // i18n-ignore: HTTP status extraction from provider error protocols.
   const match =
     /\b(?:api|http)\s+(?:request\s+)?error\s*\((\d{3})\)/i.exec(message) ??
     /\bstatus(?: code)?\s*[:=]?\s*(\d{3})\b/i.exec(message) ??
@@ -129,6 +131,7 @@ function hasRetryableErrorCode(error: unknown): boolean {
   if (typeof code === "string" && retryableErrorCodes.has(code.toUpperCase())) return true;
 
   const message = resolveLlmErrorMessage(error);
+  // i18n-ignore: Provider error-code encodings, not UI copy.
   const patterns = [
     /\b([a-z][a-z0-9_]+)\s*:/gi,
     /\bfinish_reason\s*:\s*([a-z][a-z0-9_]+)/gi,
@@ -142,6 +145,7 @@ function hasRetryableErrorCode(error: unknown): boolean {
   );
 }
 
+// i18n-ignore: Retry classification of stable transport/provider diagnostics.
 const retryableErrorMessages = [
   /\btimed out\b/i,
   /\bempty summary\b/i,
@@ -285,6 +289,7 @@ export function shouldRetryGpt5WithoutTokenCap({
         : typeof (error as { message?: unknown })?.message === "string"
           ? String((error as { message?: unknown }).message)
           : "";
+  // i18n-ignore: Internal empty-response error protocol before UI formatting.
   return /empty summary/i.test(message);
 }
 
@@ -306,5 +311,6 @@ export function isGoogleEmptySummaryError(error: unknown): boolean {
         : typeof (error as { message?: unknown })?.message === "string"
           ? String((error as { message?: unknown }).message)
           : "";
+  // i18n-ignore: Internal empty-response error protocol before UI formatting.
   return /empty summary/i.test(message);
 }

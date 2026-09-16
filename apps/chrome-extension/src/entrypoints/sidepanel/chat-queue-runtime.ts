@@ -1,3 +1,6 @@
+import { message as uiMessage } from "../../lib/i18n";
+import type { LocalizedText } from "../../lib/i18n";
+import { setText as setUiText, setLocalizedAttribute as setUiAttribute } from "../../lib/i18n";
 import { patchPanelState } from "./panel-state-store";
 import type { PanelState } from "./types";
 
@@ -6,7 +9,7 @@ type ChatQueueRuntimeOpts = {
 
   chatQueueEl: HTMLElement;
   maxQueue: number;
-  setStatus: (value: string) => void;
+  setStatus: (value: LocalizedText) => void;
 };
 
 export function createChatQueueRuntime(opts: ChatQueueRuntimeOpts) {
@@ -39,14 +42,14 @@ export function createChatQueueRuntime(opts: ChatQueueRuntimeOpts) {
       const text = document.createElement("div");
       text.className = "chatQueueText";
       text.dataset.localeIgnore = "true";
-      text.textContent = item.text;
-      text.title = item.text;
+      setUiText(text, item.text);
+      setUiAttribute(text, "title", item.text);
 
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "chatQueueRemove";
-      remove.textContent = "x";
-      remove.setAttribute("aria-label", "Remove queued message");
+      setUiText(remove, "×");
+      setUiAttribute(remove, "aria-label", uiMessage("remove.queued.message"));
       remove.addEventListener("click", () => removeQueuedMessage(item.id));
 
       row.append(text, remove);
@@ -59,7 +62,7 @@ export function createChatQueueRuntime(opts: ChatQueueRuntimeOpts) {
     if (!text) return false;
     const queue = opts.panelState.chat.queue;
     if (queue.length >= opts.maxQueue) {
-      opts.setStatus(`Queue full (${opts.maxQueue}). Remove one to add more.`);
+      opts.setStatus(uiMessage("chat.queueFull", { count: opts.maxQueue }));
       return false;
     }
     patchPanelState(opts.panelState, "chat", {

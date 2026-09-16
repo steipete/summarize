@@ -1,3 +1,4 @@
+import { CliError } from "../locale.js";
 export type OpenRouterModelEntry = {
   id: string;
   contextLength: number | null;
@@ -23,7 +24,7 @@ export async function fetchOpenRouterCatalog(
     headers: { Accept: "application/json" },
   });
   if (!response.ok) {
-    throw new Error(`OpenRouter /models failed: HTTP ${response.status}`);
+    throw new CliError("error.openrouterModels", { status: String(response.status) });
   }
   return parseOpenRouterCatalog(await response.json());
 }

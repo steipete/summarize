@@ -16,7 +16,13 @@ export async function executeDebuggerTool(args: { action?: string; code?: string
   try {
     await chrome.debugger.attach({ tabId }, "1.3");
   } catch (error) {
-    if (!(error instanceof Error) || !error.message.includes("already attached")) throw error;
+    if (
+      !(error instanceof Error) ||
+      !error.message.includes(
+        /* i18n-ignore: Chrome debugger protocol diagnostic. */ "already attached",
+      )
+    )
+      throw error;
   }
 
   try {

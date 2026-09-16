@@ -103,7 +103,14 @@ function isPageHeadersOnly(markdown: string): boolean {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  return lines.length > 0 && lines.every((line) => /^#{1,6}\s+Page\s+\d+\s*$/i.test(line));
+  return (
+    lines.length > 0 &&
+    lines.every((line) =>
+      /* i18n-ignore: Page headings emitted by markitdown, not UI copy. */ /^#{1,6}\s+Page\s+\d+\s*$/i.test(
+        line,
+      ),
+    )
+  );
 }
 
 function isMeaningfulMarkdown(markdown: string): boolean {

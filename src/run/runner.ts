@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { CommanderError, type Command } from "commander";
-import { resolveCliLocaleFromArgs, translateCliText } from "../locale.js";
+import { resolveCliLocaleFromArgs } from "../locale.js";
 import type { ExecFileFn } from "../markitdown.js";
 import {
   handleDaemonCliRequest,
@@ -42,8 +42,9 @@ export async function runCli(
     const { normalizedArgv, preSeparatorArgv, envForRun } = prepareRunEnvironment(argv, inputEnv);
     perfTrace?.mark("cli:environment");
     const env = envForRun;
-    env.SUMMARIZE_LOCALE = resolveCliLocaleFromArgs(normalizedArgv, env);
-    const preflightArgv = stripCliLocaleArgs(preSeparatorArgv);
+    const locale = resolveCliLocaleFromArgs(normalizedArgv, env);
+    env.SUMMARIZE_LOCALE = locale;
+    const preflightArgv = stripCliLocaleArgs(preSeparatorArgv, locale);
 
     if (
       await handleImmediateCliRequests({
@@ -182,11 +183,11 @@ function buildCliProgram(options: {
   stderr: NodeJS.WritableStream;
 }): Command | null {
   const { normalizedArgv, envForRun, stdout, stderr } = options;
-  const program = buildProgram();
   const locale = resolveCliLocaleFromArgs(normalizedArgv, envForRun);
+  const program = buildProgram(locale);
   program.configureOutput({
     writeOut(str) {
-      stdout.write(translateCliText(str, locale));
+      stdout.write(str);
     },
     writeErr(str) {
       stderr.write(str);

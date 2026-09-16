@@ -5,9 +5,13 @@ import type { MediaCache } from "../content/index.js";
 import { isDirectMediaUrl } from "../content/index.js";
 import { buildSlidesMediaCacheKey, formatBytes } from "./download.js";
 import type * as downloads from "./download.js";
-import type { SlideSource } from "./types.js";
+import type { SlideSource, SlideProgressPhase } from "./types.js";
 
-export type SlidesIngestProgress = (label: string, percent: number, detail?: string) => void;
+export type SlidesIngestProgress = (
+  phase: SlideProgressPhase,
+  percent: number,
+  detail?: string,
+) => void;
 
 async function resolveLocalSlidesInputPath(url: string): Promise<string | null> {
   try {
@@ -61,7 +65,7 @@ export async function prepareSlidesInput({
   const warnings: string[] = [];
   const localInputPath = await resolveLocalSlidesInputPath(source.url);
   if (localInputPath) {
-    reportSlidesProgress?.("using local video", 35);
+    reportSlidesProgress?.("local", 35);
     return {
       inputPath: localInputPath,
       inputCleanup: null,
@@ -78,7 +82,7 @@ export async function prepareSlidesInput({
       typeof cachedMedia.sizeBytes === "number"
         ? `(${formatBytes(cachedMedia.sizeBytes)})`
         : undefined;
-    reportSlidesProgress?.("using cached video", 35, detail);
+    reportSlidesProgress?.("cached", 35, detail);
     return {
       inputPath: cachedMedia.filePath,
       inputCleanup: null,
@@ -107,13 +111,13 @@ export async function prepareSlidesInput({
     : "detect+extract";
   const onProgress = (percent: number, detail?: string) => {
     reportSlidesProgress?.(
-      "downloading video",
+      "download",
       6 + (Math.max(0, Math.min(100, percent)) / 100) * 29,
       detail,
     );
   };
 
-  reportSlidesProgress?.("downloading video", 6);
+  reportSlidesProgress?.("download", 6);
   const downloadStartedAt = Date.now();
   let inputCleanup: (() => Promise<void>) | null = null;
   try {
@@ -146,7 +150,7 @@ export async function prepareSlidesInput({
     if (!ytDlpOptions) {
       return { inputPath: source.url, inputCleanup: null, warnings };
     }
-    reportSlidesProgress?.("fetching video", 6);
+    reportSlidesProgress?.("fetch", 6);
     const streamStartedAt = Date.now();
     const streamUrl = await resolveYoutubeStreamUrl(ytDlpOptions);
     logSlidesTiming?.(`yt-dlp stream url (${timingDetail})`, streamStartedAt);

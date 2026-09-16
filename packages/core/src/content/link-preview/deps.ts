@@ -106,6 +106,7 @@ export type LinkPreviewProgressEvent =
     }
   | {
       kind: "transcript-start";
+      stage?: TranscriptProgressStage;
       url: string;
       service: "youtube" | "podcast" | "generic";
       hint: string | null;
@@ -209,3 +210,15 @@ export interface LinkPreviewDeps {
   resolveTwitterCookies?: ResolveTwitterCookies | null;
   onProgress?: ((event: LinkPreviewProgressEvent) => void) | null;
 }
+
+export type TranscriptProgressStage =
+  | "resolve"
+  | "nativeAudio"
+  | "creatorCaptions"
+  | "captions"
+  | "captionTracksEmpty"
+  | "captionTracksUnavailable"
+  | "apify"
+  | "fallbackAudio"
+  | "noCreatorAudio"
+  | "downloadAudio";

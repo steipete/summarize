@@ -1,4 +1,5 @@
 import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
+import { extensionMessage } from "../../lib/i18n";
 import type { PanelCachePayload } from "./panel-cache";
 import { isPanelChatAvailable } from "./panel-capabilities";
 import { patchPanelState } from "./panel-state-store";
@@ -76,7 +77,7 @@ type UiStateRuntimeOpts = {
   refreshSummarizeControl: () => void;
   updateDaemonHint: (state: UiState) => void;
   maybeShowSetup: (state: UiState) => SetupDisplay;
-  setPhase: (phase: PanelPhase, opts?: { error?: string | null }) => void;
+  setPhase: (phase: PanelPhase, opts?: { error?: PanelState["error"] }) => void;
   renderMarkdownDisplay: () => void;
   readCurrentModelValue: () => string;
   setModelValue: (value: string) => void;
@@ -182,7 +183,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
       : navigation.kind !== "none"
         ? preferUrlMode
         : mediaAvailable || preferUrlMode;
-    const nextVideoLabel = state.media?.hasAudio && !state.media.hasVideo ? "Audio" : "Video";
+    const nextMediaKind = state.media?.hasAudio && !state.media.hasVideo ? "audio" : "video";
 
     if (navigation.kind === "tab") {
       if (navigation.preserveChat) {
@@ -196,7 +197,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
         activeTabUrl: nextTabUrl,
       });
       if (opts.panelState.chat.streaming && navigation.shouldAbortChatStream) {
-        opts.requestAgentAbort("Tab changed");
+        opts.requestAgentAbort(extensionMessage("chat.tabChanged"));
       }
       if (navigation.shouldClearChat) {
         void opts.clearChatHistoryForActiveTab();
@@ -346,7 +347,9 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
     if (!opts.panelState.currentSource) {
       if (!ignoreTransientTabState) {
         opts.panelState.lastMeta = { inputSummary: null, model: null, modelLabel: null };
-        opts.headerController.setBaseTitle(nextTabTitle || nextTabUrl || "Summarize");
+        opts.headerController.setBaseTitle(
+          nextTabTitle || nextTabUrl || extensionMessage("brand.name"),
+        );
         opts.headerController.setBaseSubtitle("");
       }
     }
@@ -361,7 +364,7 @@ export function createUiStateRuntime(opts: UiStateRuntimeOpts) {
     }
     patchPanelState(opts.panelState, "slidesSession", {
       mediaAvailable: nextMediaAvailable,
-      summarizeVideoLabel: nextVideoLabel,
+      summarizeMediaKind: nextMediaKind,
       summarizePageWords: state.stats.pageWords,
       summarizeVideoDurationSeconds: state.stats.videoDurationSeconds,
     });

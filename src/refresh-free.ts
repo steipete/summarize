@@ -1,4 +1,5 @@
-import { resolveCliLocaleFromEnv, translateCliText } from "./locale.js";
+import { CliError, emitCliMessage, type CliProgressCallback } from "./locale.js";
+import { createCliTranslator, resolveCliLocaleFromEnv } from "./locale.js";
 import {
   benchmarkOpenRouterModels,
   refineBenchmarkCandidates,
@@ -30,6 +31,7 @@ export async function refreshFree({
   stderr,
   verbose = false,
   options = {},
+  onMessage,
 }: {
   env: Record<string, string | undefined>;
   fetchImpl: typeof fetch;
@@ -37,15 +39,16 @@ export async function refreshFree({
   stderr: NodeJS.WritableStream;
   verbose?: boolean;
   options?: Partial<GenerateFreeOptions>;
+  onMessage?: CliProgressCallback;
 }): Promise<void> {
-  const reporter = new RefreshFreeReporter({ stderr, env, verbose });
+  const reporter = new RefreshFreeReporter({ stderr, env, verbose, onMessage });
 
   const openrouterKey =
     typeof env.OPENROUTER_API_KEY === "string" && env.OPENROUTER_API_KEY.trim().length > 0
       ? env.OPENROUTER_API_KEY.trim()
       : null;
   if (!openrouterKey) {
-    throw new Error("Missing OPENROUTER_API_KEY (required for refresh-free)");
+    throw new CliError("error.openrouterKey");
   }
 
   const resolved: GenerateFreeOptions = {
@@ -78,11 +81,9 @@ export async function refreshFree({
     });
   if (freeModels.length === 0) {
     if (applyMaxAgeFilter) {
-      throw new Error(
-        `OpenRouter /models returned no :free models from the last ${MAX_AGE_DAYS} days`,
-      );
+      throw new CliError("error.noRecentFreeModels", { MAX_AGE_DAYS });
     }
-    throw new Error("OpenRouter /models returned no :free models");
+    throw new CliError("error.noFreeModels");
   }
 
   const ageFilteredCount = freeModelsAll.length - freeModelsAgeFiltered.length;
@@ -128,7 +129,7 @@ export async function refreshFree({
 
   const ok = benchmark.working;
   if (ok.length === 0) {
-    throw new Error(`No working :free models found (tested ${benchmark.testedCount})`);
+    throw new CliError("error.noWorkingFreeModels", { testedCount: benchmark.testedCount });
   }
 
   reporter.benchmarkResults({
@@ -167,8 +168,11 @@ export async function refreshFree({
     setDefault: resolved.setDefault,
   });
   stdout.write(
-    `${translateCliText("Wrote ", resolveCliLocaleFromEnv(env))}${configPath} (models.free)\n`,
+    `${createCliTranslator(resolveCliLocaleFromEnv(env))("refresh.wroteConfig", { path: configPath })}\n`,
   );
 
+  emitCliMessage(onMessage, resolveCliLocaleFromEnv(env), "refresh.wroteConfig", {
+    path: configPath,
+  });
   reporter.selectedModels(selectedIds, refined);
 }

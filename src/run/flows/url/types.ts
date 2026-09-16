@@ -9,6 +9,7 @@ import type {
 import type { RunMetricsReport } from "../../../costs.js";
 import type { StreamMode } from "../../../flags.js";
 import type { OutputLanguage } from "../../../language.js";
+import type { CliProgressCallback } from "../../../locale.js";
 import type { ExecFileFn } from "../../../markitdown.js";
 import type {
   SlideExtractionResult,
@@ -78,7 +79,7 @@ export type UrlFlowHooks = {
   onModelChosen?: ((modelId: string) => void) | null;
   onExtracted?: ((extracted: ExtractedLinkContent) => void) | null;
   onSlidesExtracted?: ((slides: SlideExtractionResult) => void) | null;
-  onSlidesProgress?: ((text: string) => void) | null;
+  onSlidesProgress?: CliProgressCallback | null;
   onSlidesDone?: ((result: { ok: boolean; error?: string | null }) => void) | null;
   onSlideChunk?: (chunk: {
     slide: SlideImage;

@@ -1,3 +1,4 @@
+import type { MessageDescriptor } from "@steipete/summarize-core/localization";
 import type {
   AgentAssistantMessage as AssistantMessage,
   AgentMessage as Message,
@@ -7,7 +8,7 @@ import type { SseSlidesData } from "./runtime-contracts";
 
 export type UiState = {
   panelOpen: boolean;
-  daemon: { ok: boolean; authed: boolean; error?: string };
+  daemon: { ok: boolean; authed: boolean; error?: string; localized?: MessageDescriptor };
   tab: { id: number | null; url: string | null; title: string | null };
   media: { hasVideo: boolean; hasAudio: boolean; hasCaptions: boolean } | null;
   stats: { pageWords: number | null; videoDurationSeconds: number | null };
@@ -55,6 +56,7 @@ export type RunStart = {
 
 type PanelCacheMeta = {
   inputSummary: string | null;
+  inputSummaryMessage?: MessageDescriptor | null;
   model: string | null;
   modelLabel: string | null;
 };
@@ -105,7 +107,7 @@ export type PanelToBg =
 
 export type BgToPanel =
   | { type: "ui:state"; state: UiState }
-  | { type: "ui:status"; status: string }
+  | { type: "ui:status"; status: string; localized?: MessageDescriptor }
   | { type: "run:start"; run: RunStart }
   | {
       type: "run:snapshot";
@@ -113,7 +115,7 @@ export type BgToPanel =
       markdown: string;
       browserAi?: BrowserAiSummaryInput;
     }
-  | { type: "run:error"; message: string }
+  | { type: "run:error"; message: string; localized?: MessageDescriptor }
   | { type: "ui:cache-cleared" }
   | {
       type: "slides:run";
@@ -122,6 +124,7 @@ export type BgToPanel =
       url?: string;
       local?: boolean;
       error?: string;
+      localized?: MessageDescriptor;
     }
   | {
       type: "slides:local";
@@ -130,7 +133,14 @@ export type BgToPanel =
       slides?: SseSlidesData;
       error?: string;
     }
-  | { type: "chat:history"; requestId: string; ok: boolean; messages?: Message[]; error?: string }
+  | {
+      type: "chat:history";
+      requestId: string;
+      ok: boolean;
+      messages?: Message[];
+      error?: string;
+      localized?: MessageDescriptor;
+    }
   | { type: "agent:chunk"; requestId: string; text: string }
   | {
       type: "agent:response";
@@ -138,6 +148,7 @@ export type BgToPanel =
       ok: boolean;
       assistant?: AssistantMessage;
       error?: string;
+      localized?: MessageDescriptor;
     }
   | {
       type: "slides:context";

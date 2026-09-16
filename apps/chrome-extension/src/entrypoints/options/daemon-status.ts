@@ -1,5 +1,7 @@
 import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
+import { extensionMessage } from "../../lib/i18n";
+import { setText as setUiText, message as uiMessage, type LocalizedText } from "../../lib/i18n";
 
 const DAEMON_STATUS_TIMEOUT_MS = 5000;
 const DAEMON_STATUS_RETRY_DELAY_MS = 400;
@@ -10,6 +12,7 @@ const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve
 function shouldRetryDaemon(err: unknown) {
   if (err instanceof DOMException && err.name === "AbortError") return true;
   const message = err instanceof Error ? err.message : "";
+  // i18n-ignore: Native fetch diagnostic; displayed recovery text is keyed separately.
   return message.toLowerCase() === "failed to fetch";
 }
 
@@ -17,37 +20,67 @@ function formatDaemonConnectionError(err: unknown) {
   const message = err instanceof Error ? err.message.trim() : "";
   const lower = message.toLowerCase();
   if (
-    lower.includes("receiving end does not exist") ||
-    lower.includes("extension context invalidated") ||
-    lower.includes("message port closed")
+    lower.includes(
+      /* i18n-ignore: Chrome extension messaging diagnostic. */ "receiving end does not exist",
+    ) ||
+    lower.includes(
+      /* i18n-ignore: Chrome extension messaging diagnostic. */ "extension context invalidated",
+    ) ||
+    lower.includes(/* i18n-ignore: Chrome extension messaging diagnostic. */ "message port closed")
   ) {
-    return "Extension context stale — reload the extension, then reopen the side panel";
+    return uiMessage("extension.context.stale.reload.the.extension.then.reopen.the.side.panel");
   }
   if (
-    lower.includes("host exited") ||
-    lower.includes("host has exited") ||
-    lower.includes("connection closed unexpectedly")
+    lower.includes(/* i18n-ignore: Chrome native-messaging diagnostic. */ "host exited") ||
+    lower.includes(/* i18n-ignore: Chrome native-messaging diagnostic. */ "host has exited") ||
+    lower.includes(
+      /* i18n-ignore: Chrome native-messaging diagnostic. */ "connection closed unexpectedly",
+    )
   ) {
-    return "Native host exited — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log";
-  }
-  if (lower.includes("failed to start native messaging host")) {
-    return "Native host failed to start — rerun the install command and verify launcher permissions";
-  }
-  if (lower.includes("error when communicating with the native messaging host")) {
-    return "Native host communication failed — run `summarize daemon status` and check ~/.summarize/logs/daemon.err.log";
+    return uiMessage(
+      "native.host.exited.run.summarize.daemon.status.and.check.summarize.logs.daemon.err.log",
+    );
   }
   if (
-    lower.includes("specified native messaging host not found") ||
-    lower.includes("native messaging host not found") ||
-    lower.includes("no such native application") ||
-    lower.includes("specified native messaging host is forbidden")
+    lower.includes(
+      /* i18n-ignore: Chrome native-messaging diagnostic. */ "failed to start native messaging host",
+    )
   ) {
-    return "Native host unavailable — rerun the install command, then reload the extension";
+    return uiMessage(
+      "native.host.failed.to.start.rerun.the.install.command.and.verify.launcher.permissions",
+    );
+  }
+  if (
+    lower.includes(
+      /* i18n-ignore: Chrome native-messaging diagnostic. */ "error when communicating with the native messaging host",
+    )
+  ) {
+    return uiMessage(
+      "native.host.communication.failed.run.summarize.daemon.status.and.check.summarize.logs.daemon.err.log",
+    );
+  }
+  if (
+    lower.includes(
+      /* i18n-ignore: Chrome native-messaging diagnostic. */ "specified native messaging host not found",
+    ) ||
+    lower.includes(
+      /* i18n-ignore: Chrome native-messaging diagnostic. */ "native messaging host not found",
+    ) ||
+    lower.includes(
+      /* i18n-ignore: Chrome native-messaging diagnostic. */ "no such native application",
+    ) ||
+    lower.includes(
+      /* i18n-ignore: Chrome native-messaging diagnostic. */ "specified native messaging host is forbidden",
+    )
+  ) {
+    return uiMessage("native.host.unavailable.rerun.the.install.command.then.reload.the.extension");
   }
   if (lower.includes("permission")) {
-    return "Local companion permission missing — enable it in Runtime settings";
+    return uiMessage("local.companion.permission.missing.enable.it.in.runtime.settings");
   }
-  return "Daemon unreachable — run `summarize daemon status`, verify the port, then reload the extension";
+  return uiMessage(
+    "daemon.unreachable.run.summarize.daemon.status.verify.the.port.then.reload.the.extension",
+  );
 }
 
 export function createDaemonStatusChecker({
@@ -61,12 +94,12 @@ export function createDaemonStatusChecker({
   getExtensionVersion: () => string;
   isDaemonMode?: () => boolean;
 }) {
-  const setDaemonStatus = (text: string, state?: "ok" | "warn" | "error") => {
+  const setDaemonStatus = (text: LocalizedText, state?: "ok" | "warn" | "error") => {
     const textEl = statusEl.querySelector<HTMLElement>(".daemonStatus__text");
     if (textEl) {
-      textEl.textContent = text;
+      setUiText(textEl, text);
     } else {
-      statusEl.textContent = text;
+      setUiText(statusEl, text);
     }
     if (state) {
       statusEl.dataset.state = state;
@@ -79,7 +112,10 @@ export function createDaemonStatusChecker({
 
   const setBrowserStatus = () => {
     daemonCheckId += 1;
-    setDaemonStatus("Daemon runtime off — choose Daemon for AI or media to connect", "warn");
+    setDaemonStatus(
+      uiMessage("daemon.runtime.off.choose.daemon.for.ai.or.media.to.connect"),
+      "warn",
+    );
   };
 
   const fetchWithRetry = async (url: string, options: RequestInit = {}) => {
@@ -99,7 +135,7 @@ export function createDaemonStatusChecker({
         window.clearTimeout(timeout);
       }
     }
-    throw new Error("health failed");
+    throw new Error(extensionMessage("error.healthFailed"));
   };
 
   const checkDaemonStatus = async (token: string) => {
@@ -111,11 +147,11 @@ export function createDaemonStatusChecker({
     const checkId = daemonCheckId;
     const trimmedToken = token.trim();
     if (!trimmedToken) {
-      setDaemonStatus("Add token to verify daemon connection", "warn");
+      setDaemonStatus(uiMessage("daemon.addToken"), "warn");
       return;
     }
 
-    setDaemonStatus("Checking daemon…");
+    setDaemonStatus(uiMessage("checking.daemon"));
 
     try {
       const origin = await getDaemonOrigin();
@@ -123,7 +159,7 @@ export function createDaemonStatusChecker({
       if (checkId !== daemonCheckId) return;
       if (!res.ok) {
         setDaemonStatus(
-          `Daemon error (${res.status} ${res.statusText}) — run \`summarize daemon status\``,
+          uiMessage("daemon.httpError", { code: String(res.status), status: res.statusText }),
           "error",
         );
         return;
@@ -131,7 +167,6 @@ export function createDaemonStatusChecker({
       const json = (await res.json()) as { version?: unknown };
       const daemonVersion = typeof json.version === "string" ? json.version.trim() : "";
       const extVersion = getExtensionVersion();
-      const versionNote = daemonVersion ? `v${daemonVersion}` : "version unknown";
 
       try {
         const ping = await fetchWithRetry(`${origin}/v1/ping`, {
@@ -140,7 +175,11 @@ export function createDaemonStatusChecker({
         if (checkId !== daemonCheckId) return;
         if (!ping.ok) {
           setDaemonStatus(
-            `Daemon ${versionNote} (token mismatch) — update token in side panel and Save`,
+            uiMessage("daemon.authProblem", {
+              version: daemonVersion,
+              hasVersion: Boolean(daemonVersion),
+              kind: "token",
+            }),
             "warn",
           );
           return;
@@ -148,18 +187,31 @@ export function createDaemonStatusChecker({
       } catch {
         if (checkId !== daemonCheckId) return;
         setDaemonStatus(
-          `Daemon ${versionNote} (auth failed) — update token in side panel and Save`,
+          uiMessage("daemon.authProblem", {
+            version: daemonVersion,
+            hasVersion: Boolean(daemonVersion),
+            kind: "auth",
+          }),
           "warn",
         );
         return;
       }
 
       if (daemonVersion && extVersion && daemonVersion !== extVersion) {
-        setDaemonStatus(`Daemon ${versionNote} (extension v${extVersion})`, "warn");
+        setDaemonStatus(
+          uiMessage("daemon.versionMismatch", { version: daemonVersion, extension: extVersion }),
+          "warn",
+        );
         return;
       }
 
-      setDaemonStatus(`Daemon ${versionNote} connected`, "ok");
+      setDaemonStatus(
+        uiMessage("daemon.connected", {
+          version: daemonVersion,
+          hasVersion: Boolean(daemonVersion),
+        }),
+        "ok",
+      );
     } catch (error) {
       if (checkId !== daemonCheckId) return;
       setDaemonStatus(formatDaemonConnectionError(error), "error");

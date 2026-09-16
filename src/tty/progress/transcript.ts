@@ -1,4 +1,5 @@
 import type { LinkPreviewProgressEvent } from "@steipete/summarize-core/content";
+import type { CliLocale } from "../../locale.js";
 import type { OscProgressController } from "../osc-progress.js";
 import type { ThemeRenderer } from "../theme.js";
 import {
@@ -13,7 +14,9 @@ export function createTranscriptProgressRenderer({
   spinner,
   oscProgress,
   theme,
+  locale = /* i18n-ignore: Default locale code for message/number formatting. */ "en",
 }: {
+  locale?: CliLocale;
   spinner: { setText: (text: string) => void; refresh?: () => void };
   oscProgress?: OscProgressController | null;
   theme?: ThemeRenderer | null;
@@ -45,11 +48,12 @@ export function createTranscriptProgressRenderer({
     renderTranscriptLine(state, {
       nowMs: Date.now(),
       theme,
+      locale,
     }) ?? "";
 
   const updateOsc = () => {
     if (!oscProgress) return;
-    const payload = resolveTranscriptOscPayload(state);
+    const payload = resolveTranscriptOscPayload(state, locale);
     if (!payload) return;
     if (typeof payload.percent === "number") {
       oscProgress.setPercent(payload.label, payload.percent);
@@ -83,7 +87,7 @@ export function createTranscriptProgressRenderer({
         applyTranscriptProgressEvent(state, event, Date.now());
         stopTicker();
         startTicker();
-        updateSpinner(renderTranscriptSimple(state, theme) ?? "", { force: true });
+        updateSpinner(renderTranscriptSimple(state, theme, locale) ?? "", { force: true });
         updateOsc();
         return;
       }

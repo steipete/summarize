@@ -2,6 +2,7 @@ import { formatTimestamp, parseTimestampSeconds } from "@steipete/summarize-core
 import type { ExtractedLinkContent } from "../content/index.js";
 
 const TIMED_TRANSCRIPT_LINE_RE = /^\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s+/;
+// i18n-ignore: Canonical model-output heading, independent of interface language.
 const KEY_MOMENTS_HEADING_RE = /^\s{0,3}(?:#{1,6}\s*)?Key moments\s*:?\s*$/i;
 const MARKDOWN_HEADING_RE = /^\s{0,3}#{1,6}\s+\S/;
 const KEY_MOMENT_LINE_RE =

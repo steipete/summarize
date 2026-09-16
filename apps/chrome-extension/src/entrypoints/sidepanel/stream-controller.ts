@@ -2,6 +2,18 @@ import { parseSseStream } from "@steipete/summarize-core/runtime";
 import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
 import {
+  resolveText,
+  extensionMessage,
+  message as uiMessage,
+  readLocalizedMessage,
+  LocalizedError,
+  localizedErrorText,
+  type LocalizedDescriptor,
+  type ExtensionMessageKey,
+  type LocalizedMessage,
+} from "../../lib/i18n";
+import { readMetricParts, type LocalizedMetricPart } from "../../lib/metrics";
+import {
   mergeStreamingChunk,
   parseSseEvent,
   type SseMetaData,
@@ -19,26 +31,32 @@ export type StreamController = {
 
 export type StreamControllerOptions = {
   getToken: () => Promise<string>;
-  onStatus: (text: string) => void;
+  onStatus: (text: string, message?: LocalizedMessage) => void;
   onPhaseChange: (phase: PanelPhase) => void;
   onMeta: (meta: SseMetaData) => void;
   onSlides?: ((slides: SseSlidesData) => void) | null;
-  onError?: ((error: unknown) => string) | null;
+  onError?: ((error: unknown) => string | LocalizedDescriptor) | null;
   fetchImpl?: typeof fetch;
   idleTimeoutMs?: number;
-  idleTimeoutMessage?: string;
+  idleTimeoutMessage?: string | LocalizedDescriptor;
   onReset?: (() => void) | null;
   onBaseTitle?: ((text: string) => void) | null;
   onBaseSubtitle?: ((text: string) => void) | null;
   onRememberUrl?: ((url: string) => void) | null;
   onSummaryFromCache?: ((value: boolean | null) => void) | null;
-  onMetrics?: ((summary: string) => void) | null;
+  onMetrics?: ((summary: string, parts?: LocalizedMetricPart[] | null) => void) | null;
   onRender?: ((markdown: string) => void) | null;
   onSyncWithActiveTab?: (() => Promise<void>) | null;
   onDone?: (() => void) | null;
 };
 
 export function createStreamController(options: StreamControllerOptions): StreamController {
+  const statusMessage = (
+    key: ExtensionMessageKey,
+    values: Parameters<typeof extensionMessage>[1] = {},
+  ) => {
+    options.onStatus(extensionMessage(key, values, "en"), uiMessage(key, values));
+  };
   const {
     getToken,
     onStatus,
@@ -57,7 +75,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
     onSyncWithActiveTab,
     onDone,
     idleTimeoutMs = 120_000,
-    idleTimeoutMessage = "No response from the daemon for a while. It may have stopped. Click “Try again”.",
+    idleTimeoutMessage = uiMessage("error.streamTimeout"),
   } = options;
   let controller: AbortController | null = null;
   let activeAbortState: { reason: "manual" | "timeout" | null } | null = null;
@@ -122,7 +140,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
       if (generation !== activeGeneration) return;
       starting = false;
       const message = onError ? onError(err) : err instanceof Error ? err.message : String(err);
-      onStatus(`Error: ${message}`);
+      statusMessage("error.message", { error: message });
       onPhaseChange("error");
       onDone?.();
       return;
@@ -130,7 +148,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
     if (generation !== activeGeneration) return;
     starting = false;
     if (!token) {
-      onStatus("Setup required (missing token)");
+      statusMessage("setup.required.missing.token");
       onPhaseChange("idle");
       return;
     }
@@ -151,7 +169,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
 
     onBaseTitle?.(run.title || run.url);
     onBaseSubtitle?.("");
-    onStatus("Connecting…");
+    statusMessage("connecting");
 
     try {
       const origin = await getDaemonOrigin();
@@ -161,9 +179,9 @@ export function createStreamController(options: StreamControllerOptions): Stream
       });
       if (generation !== activeGeneration) return;
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      if (!res.body) throw new Error("Missing stream body");
+      if (!res.body) throw new LocalizedError(uiMessage("error.streamBody"));
 
-      onStatus("Summarizing…");
+      statusMessage("summarizing");
       onPhaseChange("streaming");
 
       const iterator = parseSseStream(res.body);
@@ -171,7 +189,7 @@ export function createStreamController(options: StreamControllerOptions): Stream
         const { value: msg, done } = await nextSseMessage(
           iterator,
           idleTimeoutMs,
-          idleTimeoutMessage,
+          resolveText(idleTimeoutMessage),
         );
         if (done) break;
         if (generation !== activeGeneration) return;
@@ -203,12 +221,22 @@ export function createStreamController(options: StreamControllerOptions): Stream
           onSlides?.(event.data);
         } else if (event.event === "status") {
           const raw = typeof event.data.text === "string" ? event.data.text : "";
-          if (shouldSurfaceStreamingStatus({ streamedAnyNonWhitespace, statusText: raw })) {
-            onStatus(raw);
+          const localized = readLocalizedMessage(event.data.message);
+          if (
+            shouldSurfaceStreamingStatus({
+              streamedAnyNonWhitespace,
+              statusText: raw,
+              messageKey: localized?.key,
+            })
+          ) {
+            if (localized) onStatus(raw, localized);
+            else onStatus(raw);
           }
         } else if (event.event === "metrics") {
-          onMetrics?.(event.data.summary);
+          onMetrics?.(event.data.summary, readMetricParts(event.data.parts));
         } else if (event.event === "error") {
+          const localized = readLocalizedMessage(event.data.localized);
+          if (localized) throw new LocalizedError(localized);
           throw new Error(event.data.message);
         } else if (event.event === "done") {
           sawDone = true;
@@ -239,8 +267,12 @@ export function createStreamController(options: StreamControllerOptions): Stream
         return;
       }
       hadError = true;
-      const message = onError ? onError(err) : err instanceof Error ? err.message : String(err);
-      onStatus(`Error: ${message}`);
+      const failure =
+        abortState.reason === "timeout" && typeof idleTimeoutMessage !== "string"
+          ? new LocalizedError(idleTimeoutMessage)
+          : err;
+      const message = onError ? onError(failure) : localizedErrorText(failure);
+      statusMessage("error.message", { error: message });
       onPhaseChange("error");
       onDone?.();
     } finally {

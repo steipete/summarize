@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   createTranslator,
+  messageParameters,
   localeDirection,
   negotiateLocale,
 } from "../packages/core/src/localization/index.js";
@@ -16,6 +17,48 @@ const base = {
 };
 
 describe("shared localization runtime", () => {
+  it("negotiates only catalogs actually registered by a surface", () => {
+    expect(negotiateLocale("de", ["tr-TR"], ["en", "tr"])).toBe("tr");
+    expect(negotiateLocale("auto", ["de-DE"], ["en", "tr"])).toBe("en");
+  });
+  it("styles complete ICU messages without interpreting interpolated data or CLI placeholders", () => {
+    const styled = {
+      value:
+        "<uiLabel>{count, plural, one {# file} other {# files}}</uiLabel><uiDetail>: {path}; use <input></uiDetail>",
+    };
+    const t = createTranslator(styled, {}, "en", {
+      uiLabel: (text) => `[${text}]`,
+      uiDetail: (text) => `(${text})`,
+    });
+    expect(t("value", { count: 2, path: "<uiLabel>Try again</uiLabel>" })).toBe(
+      "[2 files](: <uiLabel>Try again</uiLabel>; use <input>)",
+    );
+    expect([...messageParameters(styled.value).keys()]).toEqual(["count", "path"]);
+    expect(
+      validateCatalogs(styled, {
+        tr: {
+          value:
+            "<uiLabel>{count, plural, other {# dosya}}</uiLabel><uiDetail>: {path}; <input> kullanın</uiDetail>",
+        },
+      }),
+    ).toEqual([]);
+    expect(
+      validateCatalogs(styled, {
+        tr: { value: "<uiLabel>{count, plural, other {# dosya}}</uiDetail>: {path}" },
+      })[0],
+    ).toContain("Unbalanced");
+    expect(() => createTranslator({ bad: "<uiLabel>Unclosed" }, {}, "en")("bad")).toThrow(
+      "Unclosed",
+    );
+    expect(
+      validateCatalogs(styled, {
+        tr: {
+          value:
+            "<uiLabel>{count, plural, other {# dosya}}</uiLabel><uiDetail>{missing}</uiDetail>",
+        },
+      }),
+    ).toContain("tr:value: Placeholder mismatch");
+  });
   it.each([
     ["de-AT", [], "de"],
     ["pt", [], "pt-BR"],
@@ -65,6 +108,63 @@ describe("shared localization runtime", () => {
     expect(t("user", { name: "A", mode: "ready" })).toBe("A: Ready");
     expect(localeDirection("de")).toBe("ltr");
     expect(localeDirection("ar")).toBe("rtl");
+  });
+
+  it("accepts JSON-shaped markers and rejects invalid fallback declarations at load time", () => {
+    const imported = { count: { fallback: "en", reason: "Reviewed fixture" } };
+    expect(createTranslator(base, { de: imported }, "de")("count", { count: 1 })).toBe("1 summary");
+    expect(() =>
+      createTranslator(
+        base,
+        { de: { count: { fallback: "fr", reason: "Wrong base" } } },
+        "de",
+      )("count", { count: 1 }),
+    ).toThrow("Invalid English fallback marker");
+    expect(() =>
+      createTranslator(
+        base,
+        { de: { count: { fallback: "en", reason: "" } } },
+        "de",
+      )("count", { count: 1 }),
+    ).toThrow("Invalid English fallback marker");
+  });
+
+  it("typechecks a reviewed fallback marker imported from JSON", () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "summarize-fallback-type-"));
+    try {
+      writeFileSync(
+        path.join(directory, "catalog.json"),
+        JSON.stringify({ count: { fallback: "en", reason: "Reviewed fixture" } }),
+      );
+      const source = path
+        .resolve("packages/core/src/localization/index.js")
+        .replaceAll(path.sep, "/");
+      const entry = path.join(directory, "consumer.mts");
+      writeFileSync(
+        entry,
+        `import raw from "./catalog.json" with { type: "json" };\nimport type { Catalog } from ${JSON.stringify(source)};\nconst catalog: Catalog = raw;\nvoid catalog;\n`,
+      );
+      expect(() =>
+        execFileSync(
+          process.execPath,
+          [
+            path.resolve("node_modules/typescript/bin/tsc"),
+            "--noEmit",
+            "--strict",
+            "--skipLibCheck",
+            "--module",
+            "NodeNext",
+            "--target",
+            "ES2022",
+            "--resolveJsonModule",
+            entry,
+          ],
+          { encoding: "utf8" },
+        ),
+      ).not.toThrow();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it("rejects missing, stale, empty, malformed, and mismatched messages", () => {

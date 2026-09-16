@@ -5,7 +5,9 @@ import {
   type Skill,
   saveSkill,
 } from "../../automation/skills-store";
-import { getActiveExtensionLocale, translateExtensionText } from "../../lib/i18n";
+import type { LocalizedText } from "../../lib/i18n";
+import { setText as setUiText, message as uiMessage } from "../../lib/i18n";
+import { extensionMessage } from "../../lib/i18n";
 
 type SkillConflict = { skill: Skill; selected: boolean };
 
@@ -22,8 +24,8 @@ export function createSkillsController({
     exportBtn: HTMLButtonElement;
     importBtn: HTMLButtonElement;
   };
-  setStatus: (text: string) => void;
-  flashStatus: (text: string, duration?: number) => void;
+  setStatus: (text: LocalizedText) => void;
+  flashStatus: (text: LocalizedText, duration?: number) => void;
 }) {
   let skillsCache: Skill[] = [];
   let skillsFiltered: Skill[] = [];
@@ -33,9 +35,12 @@ export function createSkillsController({
   let importedSkills: Skill[] = [];
 
   const updateSkillsEmptyState = () => {
-    elements.emptyEl.textContent = skillsSearchQuery
-      ? "No skills match your search."
-      : "No skills created yet.";
+    setUiText(
+      elements.emptyEl,
+      skillsSearchQuery
+        ? uiMessage("no.skills.match.your.search")
+        : uiMessage("no.skills.created.yet"),
+    );
     elements.emptyEl.hidden = skillsFiltered.length > 0 || importConflicts.length > 0;
   };
 
@@ -50,10 +55,7 @@ export function createSkillsController({
   };
 
   const deleteSkillWithPrompt = async (skill: Skill) => {
-    if (
-      !confirm(translateExtensionText(`Delete skill "${skill.name}"?`, getActiveExtensionLocale()))
-    )
-      return;
+    if (!confirm(extensionMessage("skills.deleteConfirm", { name: skill.name }))) return;
     await deleteSkill(skill.name);
     editingSkill = null;
     await loadSkills();
@@ -81,7 +83,7 @@ export function createSkillsController({
     importConflicts = [];
     importedSkills = [];
     await loadSkills();
-    flashStatus(`Imported ${toImport.length} skill(s).`);
+    flashStatus(uiMessage("skills.imported", { count: toImport.length }));
   };
 
   const renderSkills = () => {
@@ -92,10 +94,10 @@ export function createSkillsController({
       elements.conflictsEl.hidden = false;
       const title = document.createElement("div");
       title.className = "skillName";
-      title.textContent = "Import conflicts";
+      setUiText(title, uiMessage("skills.importConflicts"));
       const hint = document.createElement("div");
       hint.className = "hint";
-      hint.textContent = "Select which skills should overwrite existing entries.";
+      setUiText(hint, uiMessage("select.which.skills.should.overwrite.existing.entries"));
       const list = document.createElement("div");
       list.className = "skillsConflictsList";
 
@@ -117,17 +119,17 @@ export function createSkillsController({
         const name = document.createElement("div");
         name.className = "skillName";
         name.dataset.localeIgnore = "true";
-        name.textContent = conflict.skill.name;
+        setUiText(name, conflict.skill.name);
 
         const domains = document.createElement("div");
         domains.className = "skillDomains";
         domains.dataset.localeIgnore = "true";
-        domains.textContent = conflict.skill.domainPatterns.join(", ");
+        setUiText(domains, conflict.skill.domainPatterns.join(", "));
 
         const desc = document.createElement("div");
         desc.className = "skillDescription";
         desc.dataset.localeIgnore = "true";
-        desc.textContent = conflict.skill.shortDescription;
+        setUiText(desc, conflict.skill.shortDescription);
 
         content.append(name, domains, desc);
         row.append(checkbox, content);
@@ -139,7 +141,7 @@ export function createSkillsController({
       const cancelBtn = document.createElement("button");
       cancelBtn.type = "button";
       cancelBtn.className = "miniButton";
-      cancelBtn.textContent = "Cancel";
+      setUiText(cancelBtn, uiMessage("cancel"));
       cancelBtn.addEventListener("click", () => {
         importConflicts = [];
         importedSkills = [];
@@ -148,7 +150,7 @@ export function createSkillsController({
       const importBtn = document.createElement("button");
       importBtn.type = "button";
       importBtn.className = "miniButton";
-      importBtn.textContent = "Import selected";
+      setUiText(importBtn, uiMessage("import.selected"));
       importBtn.addEventListener("click", () => {
         void performImport(importedSkills);
       });
@@ -168,11 +170,11 @@ export function createSkillsController({
 
         const heading = document.createElement("div");
         heading.className = "skillName";
-        heading.textContent = `Edit skill: ${editingSkill.name}`;
+        setUiText(heading, uiMessage("skills.editHeading", { name: editingSkill.name }));
 
         const nameLabel = document.createElement("label");
         const nameLabelText = document.createElement("span");
-        nameLabelText.textContent = "Name";
+        setUiText(nameLabelText, uiMessage("name"));
         const nameInput = document.createElement("input");
         nameInput.type = "text";
         nameInput.value = editingSkill.name;
@@ -181,7 +183,7 @@ export function createSkillsController({
 
         const domainLabel = document.createElement("label");
         const domainLabelText = document.createElement("span");
-        domainLabelText.textContent = "Domain patterns (comma-separated)";
+        setUiText(domainLabelText, uiMessage("domain.patterns.comma.separated"));
         const domainInput = document.createElement("input");
         domainInput.type = "text";
         domainInput.value = editingSkill.domainPatterns.join(", ");
@@ -196,7 +198,7 @@ export function createSkillsController({
 
         const shortLabel = document.createElement("label");
         const shortText = document.createElement("span");
-        shortText.textContent = "Short description";
+        setUiText(shortText, uiMessage("short.description"));
         const shortInput = document.createElement("input");
         shortInput.type = "text";
         shortInput.value = editingSkill.shortDescription;
@@ -207,7 +209,7 @@ export function createSkillsController({
 
         const descriptionLabel = document.createElement("label");
         const descriptionText = document.createElement("span");
-        descriptionText.textContent = "Description (Markdown)";
+        setUiText(descriptionText, uiMessage("description.markdown"));
         const descriptionInput = document.createElement("textarea");
         descriptionInput.rows = 4;
         descriptionInput.value = editingSkill.description;
@@ -218,7 +220,7 @@ export function createSkillsController({
 
         const examplesLabel = document.createElement("label");
         const examplesText = document.createElement("span");
-        examplesText.textContent = "Examples (JavaScript)";
+        setUiText(examplesText, uiMessage("examples.javascript"));
         const examplesInput = document.createElement("textarea");
         examplesInput.rows = 4;
         examplesInput.value = editingSkill.examples;
@@ -229,7 +231,7 @@ export function createSkillsController({
 
         const libraryLabel = document.createElement("label");
         const libraryText = document.createElement("span");
-        libraryText.textContent = "Library code";
+        setUiText(libraryText, uiMessage("library.code"));
         const libraryInput = document.createElement("textarea");
         libraryInput.rows = 8;
         libraryInput.value = editingSkill.library;
@@ -243,7 +245,7 @@ export function createSkillsController({
         const cancelBtn = document.createElement("button");
         cancelBtn.type = "button";
         cancelBtn.className = "miniButton";
-        cancelBtn.textContent = "Cancel";
+        setUiText(cancelBtn, uiMessage("cancel"));
         cancelBtn.addEventListener("click", () => {
           editingSkill = null;
           renderSkills();
@@ -251,7 +253,7 @@ export function createSkillsController({
         const saveBtn = document.createElement("button");
         saveBtn.type = "button";
         saveBtn.className = "miniButton";
-        saveBtn.textContent = "Save";
+        setUiText(saveBtn, uiMessage("save"));
         saveBtn.addEventListener("click", () => {
           void saveEditingSkill();
         });
@@ -280,26 +282,26 @@ export function createSkillsController({
       const name = document.createElement("div");
       name.className = "skillName";
       name.dataset.localeIgnore = "true";
-      name.textContent = skill.name;
+      setUiText(name, skill.name);
 
       const domains = document.createElement("div");
       domains.className = "skillDomains";
       domains.dataset.localeIgnore = "true";
-      domains.textContent = skill.domainPatterns.join(", ");
+      setUiText(domains, skill.domainPatterns.join(", "));
 
       header.append(name, domains);
 
       const desc = document.createElement("div");
       desc.className = "skillDescription";
       desc.dataset.localeIgnore = "true";
-      desc.textContent = skill.shortDescription;
+      setUiText(desc, skill.shortDescription);
 
       const actions = document.createElement("div");
       actions.className = "skillActions";
       const editBtn = document.createElement("button");
       editBtn.type = "button";
       editBtn.className = "miniButton";
-      editBtn.textContent = "Edit";
+      setUiText(editBtn, uiMessage("edit"));
       editBtn.addEventListener("click", () => {
         editingSkill = { ...skill };
         renderSkills();
@@ -307,7 +309,7 @@ export function createSkillsController({
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "miniButton";
-      deleteBtn.textContent = "Delete";
+      setUiText(deleteBtn, uiMessage("delete"));
       deleteBtn.addEventListener("click", () => {
         void deleteSkillWithPrompt(skill);
       });
@@ -377,7 +379,7 @@ export function createSkillsController({
           const text = await file.text();
           const parsed = JSON.parse(text);
           if (!Array.isArray(parsed)) {
-            setStatus("Invalid skills file: expected an array.");
+            setStatus(uiMessage("invalid.skills.file.expected.an.array"));
             return;
           }
           const incoming = parsed
@@ -400,7 +402,9 @@ export function createSkillsController({
           await performImport(incoming);
         } catch (error) {
           setStatus(
-            `Failed to import skills: ${error instanceof Error ? error.message : String(error)}`,
+            uiMessage("skills.importFailed", {
+              error: error instanceof Error ? error.message : String(error),
+            }),
           );
         }
       })();

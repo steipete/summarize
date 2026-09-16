@@ -75,6 +75,7 @@ export function readCorsHeaders(req: http.IncomingMessage): Record<string, strin
 export function readBearerToken(req: http.IncomingMessage): string | null {
   const header = req.headers.authorization;
   if (typeof header !== "string") return null;
+  // i18n-ignore: HTTP Authorization scheme and framing.
   return header.match(/^Bearer\s+(.+)\s*$/i)?.[1]?.trim() || null;
 }
 

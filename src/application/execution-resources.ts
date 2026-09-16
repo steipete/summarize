@@ -106,8 +106,8 @@ export function bindSummarizeExecutionEvents(
         onSlidesExtracted: chainCallback(baseHooks.onSlidesExtracted, (slides) =>
           emit({ type: "slides-extracted", slides }),
         ),
-        onSlidesProgress: chainCallback(baseHooks.onSlidesProgress, (text) =>
-          emit({ type: "slides-progress", text }),
+        onSlidesProgress: chainCallback(baseHooks.onSlidesProgress, (text, message) =>
+          emit({ type: "slides-progress", text, ...(message ? { message } : {}) }),
         ),
         onSlidesDone: chainCallback(baseHooks.onSlidesDone, (result) =>
           emit({ type: "slides-completed", ...result }),

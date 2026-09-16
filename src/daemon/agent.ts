@@ -43,6 +43,7 @@ function assertAgentAssistantSucceeded(assistant: AssistantMessage): AssistantMe
   throw new Error(assistant.errorMessage || `Agent stopped with reason: ${assistant.stopReason}`);
 }
 
+// i18n-ignore: Tool schemas are the model protocol, independent of the UI locale.
 const TOOL_DEFINITIONS: Record<string, Tool> = {
   navigate: {
     name: "navigate",

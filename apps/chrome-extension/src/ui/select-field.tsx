@@ -1,5 +1,7 @@
 import type { ComponentChildren, JSX } from "preact";
 import { createPortal } from "preact/compat";
+import { resolveText, type LocalizedText } from "../lib/i18n";
+import { MessageText } from "./localized-text";
 import { getOverlayRoot } from "./portal";
 import type { SelectItem, useSelect } from "./select";
 
@@ -53,7 +55,7 @@ export function SelectField({
   items,
   ...popupProps
 }: PopupProps & {
-  label: string;
+  label: LocalizedText;
   labelClassName: string;
   triggerContent: (label: string, value: string) => JSX.Element;
   optionContent: (item: SelectItem) => JSX.Element;
@@ -61,10 +63,13 @@ export function SelectField({
 }) {
   const selectedValue = api.value[0] ?? "";
   const selectedLabel =
-    api.valueAsString || items.find((item) => item.value === selectedValue)?.label || "";
+    api.valueAsString ||
+    resolveText(items.find((item) => item.value === selectedValue)?.label || "");
   return (
     <label className={labelClassName} {...api.getLabelProps()}>
-      <span className="pickerTitle">{label}</span>
+      <span className="pickerTitle">
+        <MessageText value={label} />
+      </span>
       <div className="picker" {...api.getRootProps()}>
         <button className="pickerTrigger" {...api.getTriggerProps()}>
           {triggerContent(selectedLabel, selectedValue)}

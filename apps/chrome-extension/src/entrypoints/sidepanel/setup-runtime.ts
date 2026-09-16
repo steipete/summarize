@@ -1,3 +1,10 @@
+import {
+  message as uiMessage,
+  readLocalizedMessage,
+  localizedErrorText,
+  type LocalizedDescriptor,
+} from "../../lib/i18n";
+import type { LocalizedText } from "../../lib/i18n";
 import { isGeminiNanoModel } from "../../lib/model-routing";
 import { installStepsHtml, wireSetupButtons } from "./setup-view";
 import type { UiState } from "./types";
@@ -13,16 +20,27 @@ export function resolvePlatformKind(): PlatformKind {
 
   if (raw.includes("mac")) return "mac";
   if (raw.includes("win")) return "windows";
-  if (raw.includes("linux") || raw.includes("cros") || raw.includes("chrome os")) return "linux";
+  if (
+    raw.includes("linux") ||
+    raw.includes("cros") ||
+    raw.includes(/* i18n-ignore: Navigator platform identifier. */ "chrome os")
+  )
+    return "linux";
   return "other";
 }
 
-export function friendlyFetchError(err: unknown, context: string): string {
+export function friendlyFetchError(
+  err: unknown,
+  context: string | LocalizedDescriptor,
+): LocalizedDescriptor {
   const message = err instanceof Error ? err.message : String(err);
-  if (message.toLowerCase() === "failed to fetch") {
-    return `${context}: Failed to fetch (daemon unreachable or blocked by Chrome; try \`summarize daemon status\`, maybe \`summarize daemon restart\`, and check ~/.summarize/logs/daemon.err.log)`;
+  if (
+    message.toLowerCase() ===
+    /* i18n-ignore: Native fetch error before localized presentation. */ "failed to fetch"
+  ) {
+    return uiMessage("error.fetch", { context });
   }
-  return `${context}: ${message}`;
+  return uiMessage("error.context", { context, error: localizedErrorText(err) });
 }
 
 export function createSetupRuntime(options: {
@@ -32,7 +50,7 @@ export function createSetupRuntime(options: {
   ensureToken: () => Promise<string>;
   patchSettings: typeof import("../../lib/settings").patchSettings;
   generateToken: typeof import("../../lib/token").generateToken;
-  headerSetStatus: (text: string) => void;
+  headerSetStatus: (text: LocalizedText) => void;
   getStatusResetText: () => string;
 }) {
   const platformKind = resolvePlatformKind();
@@ -40,12 +58,11 @@ export function createSetupRuntime(options: {
   const renderSetup = async (
     token: string,
     copy: {
-      headline: string;
-      message: string;
+      headline: LocalizedText;
+      message: LocalizedText;
     } = {
-      headline: "Setup",
-      message:
-        "Install summarize, then register the daemon so the side panel can stream summaries.",
+      headline: uiMessage("setup"),
+      message: uiMessage("setup.intro"),
     },
   ) => {
     const daemonPort = await options.loadDaemonPort();
@@ -93,14 +110,12 @@ export function createSetupRuntime(options: {
     const copy =
       display === "advisory"
         ? {
-            headline: "Daemon capabilities unavailable",
-            message:
-              "Gemini Nano summaries work on-device. Install the daemon to enable the selected daemon-backed capabilities.",
+            headline: uiMessage("daemon.capabilities.unavailable"),
+            message: uiMessage("setup.advisory"),
           }
         : {
-            headline: "Setup",
-            message:
-              "Install summarize, then register the daemon so the side panel can stream summaries.",
+            headline: uiMessage("setup"),
+            message: uiMessage("setup.intro"),
           };
     if (!state.settings.tokenPresent) {
       void options.ensureToken().then((token) => {
@@ -117,8 +132,13 @@ export function createSetupRuntime(options: {
             token,
             daemonPort,
             headline:
-              display === "advisory" ? "Daemon capabilities unavailable" : "Daemon not reachable",
-            message: state.daemon.error ?? "Check that the LaunchAgent is installed.",
+              display === "advisory"
+                ? uiMessage("daemon.capabilities.unavailable")
+                : uiMessage("daemon.not.reachable"),
+            message:
+              readLocalizedMessage(state.daemon.localized) ??
+              state.daemon.error ??
+              uiMessage("check.that.the.launchagent.is.installed"),
             platformKind,
             showTroubleshooting: true,
           })}

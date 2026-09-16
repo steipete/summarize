@@ -46,6 +46,7 @@ async function sendReplOverlay(
     return;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
+    // i18n-ignore: Chrome extension messaging diagnostics.
     const noReceiver =
       msg.includes("Receiving end does not exist") ||
       msg.includes("Could not establish connection");

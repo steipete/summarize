@@ -1,3 +1,4 @@
+import { message as uiMessage, type LocalizedText } from "../../lib/i18n";
 import type { PanelPhase } from "./types";
 
 type SummaryEmptyStateInput = {
@@ -9,34 +10,34 @@ type SummaryEmptyStateInput = {
 };
 
 export type SummaryEmptyState = {
-  label: string;
-  message: string;
+  label: LocalizedText;
+  message: LocalizedText;
   detail: string | null;
 };
 
 export function buildSummaryEmptyState(input: SummaryEmptyStateInput): SummaryEmptyState | null {
   if (input.hasSlides) return null;
 
-  const subject = input.tabTitle?.trim() || input.tabUrl?.trim() || "this page";
+  const subject = input.tabTitle?.trim() || input.tabUrl?.trim() || null;
   if (!input.tabUrl) {
     return {
-      label: "No page",
-      message: "Open a page to summarize.",
+      label: uiMessage("no.page"),
+      message: uiMessage("open.a.page.to.summarize"),
       detail: null,
     };
   }
 
   if (input.phase === "connecting" || input.phase === "streaming" || input.autoSummarize) {
     return {
-      label: "Loading",
-      message: "Preparing summary",
+      label: uiMessage("loading.alternate"),
+      message: uiMessage("preparing.summary"),
       detail: subject,
     };
   }
 
   return {
-    label: "Ready",
-    message: "Click Summarize to start.",
+    label: uiMessage("ready"),
+    message: uiMessage("click.summarize.to.start"),
     detail: subject,
   };
 }

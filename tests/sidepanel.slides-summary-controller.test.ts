@@ -3,6 +3,7 @@ import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoint
 import { createSlidesSummaryController } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-summary-controller";
 import type { StreamControllerOptions } from "../apps/chrome-extension/src/entrypoints/sidepanel/stream-controller";
 import type { PanelState, UiState } from "../apps/chrome-extension/src/entrypoints/sidepanel/types";
+import { resolveText } from "../apps/chrome-extension/src/lib/i18n";
 
 let streamOptions: StreamControllerOptions | null = null;
 let streamOptionsList: StreamControllerOptions[] = [];
@@ -86,7 +87,7 @@ describe("slides summary controller", () => {
 
     const controller = createSlidesSummaryController({
       getToken: async () => "token",
-      friendlyFetchError: (_error, fallback) => fallback,
+      friendlyFetchError: (_error, fallback) => resolveText(fallback, "en"),
       panelUrlsMatch: (left, right) => left === right,
       getPanelState: () => panelState,
       getUiState: () => panelState.ui,
@@ -125,7 +126,7 @@ describe("slides summary controller", () => {
 
     const controller = createSlidesSummaryController({
       getToken: async () => "token",
-      friendlyFetchError: (_error, fallback) => fallback,
+      friendlyFetchError: (_error, fallback) => resolveText(fallback, "en"),
       panelUrlsMatch: (left, right) => left === right,
       getPanelState: () => panelState,
       getUiState: () => panelState.ui,
@@ -160,7 +161,7 @@ describe("slides summary controller", () => {
 
     const controller = createSlidesSummaryController({
       getToken: async () => "token",
-      friendlyFetchError: (_error, fallback) => fallback,
+      friendlyFetchError: (_error, fallback) => resolveText(fallback, "en"),
       panelUrlsMatch: (left, right) => left === right,
       getPanelState: () => panelState,
       getUiState: () => panelState.ui,
@@ -190,7 +191,7 @@ describe("slides summary controller", () => {
 
     const controller = createSlidesSummaryController({
       getToken: async () => "token",
-      friendlyFetchError: (_error, fallback) => fallback,
+      friendlyFetchError: (_error, fallback) => resolveText(fallback, "en"),
       panelUrlsMatch: (left, right) => left === right,
       getPanelState: () => panelState,
       getUiState: () => panelState.ui,
@@ -237,7 +238,7 @@ describe("slides summary controller", () => {
     const renderInlineSlidesFallback = vi.fn();
     const controller = createSlidesSummaryController({
       getToken: async () => "token",
-      friendlyFetchError: (_error, fallback) => fallback,
+      friendlyFetchError: (_error, fallback) => resolveText(fallback, "en"),
       panelUrlsMatch: (left, right) => left === right,
       getPanelState: () => panelState,
       getUiState: () => panelState.ui,
@@ -304,7 +305,7 @@ describe("slides summary controller", () => {
 
     const controller = createSlidesSummaryController({
       getToken: async () => "token",
-      friendlyFetchError: (_error, fallback) => fallback,
+      friendlyFetchError: (_error, fallback) => resolveText(fallback, "en"),
       panelUrlsMatch: (left, right) => left === right,
       getPanelState: () => panelState,
       getUiState: () => panelState.ui,
@@ -368,7 +369,7 @@ describe("slides summary controller", () => {
 
     const controller = createSlidesSummaryController({
       getToken: async () => "token",
-      friendlyFetchError: (_error, fallback) => fallback,
+      friendlyFetchError: (_error, fallback) => resolveText(fallback, "en"),
       panelUrlsMatch: (left, right) => left === right,
       getPanelState: () => panelState,
       getUiState: () => panelState.ui,
@@ -433,7 +434,7 @@ describe("slides summary controller", () => {
 
     const controller = createSlidesSummaryController({
       getToken: async () => "token",
-      friendlyFetchError: (_error, fallback) => fallback,
+      friendlyFetchError: (_error, fallback) => resolveText(fallback, "en"),
       panelUrlsMatch: (left, right) => left === right,
       getPanelState: () => panelState,
       getUiState: () => panelState.ui,

@@ -55,18 +55,19 @@ test("options renders Turkish interface without rewriting user skill metadata", 
   }
 });
 
-test("legacy profiles keep English on a Turkish browser", async ({}, testInfo) => {
+test("profiles without an explicit UI locale follow the browser", async ({}, testInfo) => {
   const harness = await launchExtension(getBrowserFromProject(testInfo.project.name));
   try {
     await harness.context.addInitScript(() => {
       Object.defineProperty(navigator, "language", { get: () => "tr-TR" });
+      Object.defineProperty(navigator, "languages", { get: () => ["tr-TR"] });
     });
     await seedSettings(harness, { language: "tr", model: "auto", autoSummarize: false });
     const page = await openExtensionPage(harness, "options.html", "#tabs");
     await page.click("#tab-ui");
     try {
-      await expect(page.locator("#uiLocale")).toHaveValue("en");
-      await expect(page.locator("html")).toHaveAttribute("lang", "en");
+      await expect(page.locator("#uiLocale")).toHaveValue("auto");
+      await expect(page.locator("html")).toHaveAttribute("lang", "tr");
     } finally {
       await page.locator("main").screenshot({ path: testInfo.outputPath("legacy-locale.png") });
     }

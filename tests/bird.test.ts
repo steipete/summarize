@@ -2,6 +2,7 @@ import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { CliError, describeCliError } from "../src/locale.js";
 import {
   readTweetWithBird,
   readTweetWithPreferredClient,
@@ -257,13 +258,37 @@ describe("tweet CLI helpers", () => {
         detail: "Unauthorized",
       }),
     );
-    await expect(
-      readTweetWithXurl({
-        url: "https://x.com/user/status/1",
-        timeoutMs: TEST_CLI_TIMEOUT_MS,
-        env: { PATH: unauthorizedXurl },
-      }),
-    ).rejects.toThrow(/xurl auth status.*install "bird"/);
+    const unauthorized = readTweetWithXurl({
+      url: "https://x.com/user/status/1",
+      timeoutMs: TEST_CLI_TIMEOUT_MS,
+      env: { PATH: unauthorizedXurl },
+    });
+    await expect(unauthorized).rejects.toThrow(/xurl auth status.*install "bird"/);
+    const authError = await unauthorized.catch((error) => error);
+    expect(authError).toBeInstanceOf(CliError);
+    expect(authError.format("tr")).toContain("Unauthorized");
+    expect(authError.format("tr")).toContain("xurl auth status");
+    expect(authError.format("tr")).not.toContain("xurl is installed");
+  });
+
+  it("preserves both clients' localized failures through aggregation and JSON", async () => {
+    const { binDir } = makeCliScript("xurl", "#!/bin/sh\n");
+    writeFileSync(join(binDir, "bird"), "#!/bin/sh\n");
+    chmodSync(join(binDir, "bird"), 0o755);
+    const error = await readTweetWithPreferredClient({
+      url: "https://x.com/fixture/status/1",
+      timeoutMs: TEST_CLI_TIMEOUT_MS,
+      env: { PATH: binDir },
+    }).catch((error) => error);
+    expect(error).toBeInstanceOf(CliError);
+    expect(error.message).toBe(
+      "xurl: xurl read returned empty output; bird: bird read returned empty output",
+    );
+    expect(error.format("tr")).not.toContain("returned empty output");
+    const wire = JSON.parse(JSON.stringify(describeCliError(error)));
+    expect(wire.localized.key).toBe("error.sequence");
+    expect(wire.localized.values.first.values.error.key).toBe("error.xurlEmpty");
+    expect(wire.localized.values.next.values.error.key).toBe("error.birdEmpty");
   });
 
   it("adds install tips only when neither xurl nor bird is available", () => {

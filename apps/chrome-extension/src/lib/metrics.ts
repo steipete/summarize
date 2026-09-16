@@ -1,3 +1,32 @@
+import { readLocalizedMessage, type LocalizedText } from "./i18n";
+
+// i18n-ignore: Legacy English daemon duration syntax; numeric descriptors supersede it.
+const legacyMinutePattern = /\bmin\b/i;
+
+export type LocalizedMetricPart = { text: LocalizedText; href?: string; model?: boolean };
+
+export function readMetricParts(raw: unknown): LocalizedMetricPart[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const parts: LocalizedMetricPart[] = [];
+  for (const part of raw) {
+    if (!part || typeof part !== "object") return null;
+    if (part.kind === "message") {
+      const message = readLocalizedMessage(part.message);
+      if (!message) return null;
+      parts.push({ text: message });
+    } else if (part.kind === "text" && typeof part.text === "string") {
+      parts.push({
+        text: part.text,
+        model: part.model === true,
+        ...(typeof part.href === "string" && /^https?:\/\//iu.test(part.href)
+          ? { href: part.href }
+          : {}),
+      });
+    } else return null;
+  }
+  return parts;
+}
+
 export type MetricsToken =
   | { kind: "text"; text: string }
   | { kind: "link"; text: string; href: string }
@@ -22,10 +51,17 @@ function resolveInputParts(inputSummary: string | null | undefined): {
         .filter(Boolean)
     : [];
 
-  const hasWords = parts.some((part) => /\bwords\b/i.test(part));
+  const hasWords = parts.some((part) => /\bwords?\b/i.test(part));
   const hasMediaDuration = parts.some((part) => {
-    if (!/\b(YouTube|podcast|video)\b/i.test(part)) return false;
-    return /\bmin\b/i.test(part) || /\b\d+m\b/i.test(part) || /\b\d+s\b/i.test(part);
+    if (
+      !(
+        /* i18n-ignore: Legacy English daemon footer; new metric parts bypass this parser. */ /\b(YouTube|podcast|video)\b/i.test(
+          part,
+        )
+      )
+    )
+      return false;
+    return legacyMinutePattern.test(part) || /\b\d+m\b/i.test(part) || /\b\d+s\b/i.test(part);
   });
 
   return { normalized: new Set(parts.map(normalize)), hasWords, hasMediaDuration };
@@ -38,11 +74,13 @@ function shouldOmitPart(
   const trimmed = raw.trim();
   if (!trimmed) return true;
   if (input.normalized.has(normalize(trimmed))) return true;
-  if (input.hasWords && /\bwords\b/i.test(trimmed)) return true;
+  if (input.hasWords && /\bwords?\b/i.test(trimmed)) return true;
   if (
     input.hasMediaDuration &&
-    /\b(YouTube|podcast|video)\b/i.test(trimmed) &&
-    (/\bmin\b/i.test(trimmed) || /\b\d+m\b/i.test(trimmed) || /\b\d+s\b/i.test(trimmed))
+    /* i18n-ignore: Legacy English daemon footer; new metric parts bypass this parser. */ /\b(YouTube|podcast|video)\b/i.test(
+      trimmed,
+    ) &&
+    (legacyMinutePattern.test(trimmed) || /\b\d+m\b/i.test(trimmed) || /\b\d+s\b/i.test(trimmed))
   ) {
     return true;
   }
@@ -96,6 +134,7 @@ export function buildMetricsTokens({
       continue;
     }
     if (sourceUrl && isHttpUrl(sourceUrl)) {
+      // i18n-ignore: Legacy English daemon footer; new metric parts bypass this parser.
       const sourceMatch = part.match(/\b(YouTube|podcast|video)\b/i);
       if (sourceMatch?.index != null) {
         const before = part.slice(0, sourceMatch.index);

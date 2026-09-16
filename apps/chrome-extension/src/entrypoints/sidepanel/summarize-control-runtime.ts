@@ -1,5 +1,6 @@
 import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
+import { message as uiMessage, type LocalizedText } from "../../lib/i18n";
 import type { Settings, SlidesLayout } from "../../lib/settings";
 import { patchPanelState } from "./panel-state-store";
 import type { SlideTextMode } from "./slides-state";
@@ -19,7 +20,7 @@ type SummarizeControlRuntimeOptions = {
 
   patchSettings: (patch: Partial<Settings>) => Promise<unknown>;
   loadSettings: () => Promise<Pick<Settings, "slideRuntime" | "token">>;
-  showSlideNotice: (message: string) => void;
+  showSlideNotice: (message: LocalizedText) => void;
   hideSlideNotice: () => void;
   setSlidesBusy: (value: boolean) => void;
   stopSlidesStream: () => void;
@@ -43,14 +44,14 @@ async function fetchSlideTools(
   tokenValue: string,
   requireOcr: boolean,
   fetchImpl: typeof fetch = daemonFetch,
-): Promise<{ ok: boolean; missing: string[] }> {
+): Promise<{ ok: boolean; missing: string[]; requirement?: "token" | "endpoint" }> {
   const token = tokenValue.trim();
-  if (!token) return { ok: false, missing: ["daemon token"] };
+  if (!token) return { ok: false, missing: [], requirement: "token" };
   const origin = await getDaemonOrigin();
   const res = await fetchImpl(`${origin}/v1/tools`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) return { ok: false, missing: ["daemon tools endpoint"] };
+  if (!res.ok) return { ok: false, missing: [], requirement: "endpoint" };
   const json = (await res.json()) as {
     ok?: boolean;
     tools?: {
@@ -59,7 +60,7 @@ async function fetchSlideTools(
       tesseract?: { available?: boolean };
     };
   };
-  if (!json.ok || !json.tools) return { ok: false, missing: ["daemon tools endpoint"] };
+  if (!json.ok || !json.tools) return { ok: false, missing: [], requirement: "endpoint" };
   const missing: string[] = [];
   if (!json.tools.ytDlp?.available) missing.push("yt-dlp");
   if (!json.tools.ffmpeg?.available) missing.push("ffmpeg");
@@ -95,7 +96,10 @@ export function createSummarizeControlRuntime(options: SummarizeControlRuntimeOp
         );
         if (!tools.ok) {
           options.showSlideNotice(
-            `Slide extraction requires ${tools.missing.join(", ")}. Install and restart the daemon.`,
+            uiMessage("slides.requiresTools", {
+              requirement: tools.requirement ?? "tools",
+              tools: tools.missing.join(", "),
+            }),
           );
           return;
         }

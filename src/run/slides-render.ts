@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { createCliTranslator, resolveCliLocaleFromEnv } from "../locale.js";
 import type { SlideImage } from "../slides/types.js";
 import { isRichTty, terminalWidth } from "./terminal.js";
 
@@ -186,6 +187,7 @@ export function createSlidesInlineRenderer({
   }) => Promise<{ rendered: number; protocol: InlineProtocol }>;
 } {
   const protocol = resolveInlineProtocol({ mode, env, stdout });
+  const t = createCliTranslator(resolveCliLocaleFromEnv(env));
   let nextId = 1;
 
   const renderSlide = async (slide: RenderSlide, label?: string | null) => {
@@ -196,11 +198,11 @@ export function createSlidesInlineRenderer({
     try {
       data = await fs.readFile(slide.imagePath);
     } catch {
-      stdout.write("(missing slide image)\n");
+      stdout.write(`${t("slides.imageUnavailable", { reason: "missing" })}\n`);
       return false;
     }
     if (data.length === 0) {
-      stdout.write("(empty slide image)\n");
+      stdout.write(`${t("slides.imageUnavailable", { reason: "empty" })}\n`);
       return false;
     }
     const termCols = terminalWidth(stdout, env);

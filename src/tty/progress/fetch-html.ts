@@ -1,4 +1,5 @@
 import type { LinkPreviewProgressEvent } from "@steipete/summarize-core/content";
+import { type CliLocale, createCliTranslator } from "../../locale.js";
 import { formatBytes, formatBytesPerSecond, formatElapsedMs } from "../format.js";
 import type { OscProgressController } from "../osc-progress.js";
 import type { ThemeRenderer } from "../theme.js";
@@ -7,7 +8,9 @@ export function createFetchHtmlProgressRenderer({
   spinner,
   oscProgress,
   theme,
+  locale = "en",
 }: {
+  locale?: CliLocale;
   spinner: { setText: (text: string) => void; refresh?: () => void };
   oscProgress?: OscProgressController | null;
   theme?: ThemeRenderer | null;
@@ -28,10 +31,16 @@ export function createFetchHtmlProgressRenderer({
   };
 
   let ticker: ReturnType<typeof setInterval> | null = null;
-  const styleLabel = (text: string) => (theme ? theme.label(text) : text);
-  const styleDim = (text: string) => (theme ? theme.dim(text) : text);
-  const renderLine = (label: string, detail: string) =>
-    theme ? `${styleLabel(label)}${styleDim(detail)}` : `${label}${detail}`;
+  const t = createCliTranslator(
+    locale,
+    theme
+      ? { uiLabel: theme.label, uiDetail: theme.dim, uiValue: theme.value, default: theme.label }
+      : undefined,
+  );
+  const renderMessage = (key: Parameters<typeof t>[0], values: Parameters<typeof t>[1] = {}) => {
+    const text = t(key, values);
+    return text;
+  };
 
   const updateSpinner = (text: string, options?: { force?: boolean }) => {
     const now = Date.now();
@@ -44,24 +53,23 @@ export function createFetchHtmlProgressRenderer({
   };
 
   const render = () => {
-    const label = "Fetching website";
-    const downloaded = formatBytes(state.downloadedBytes);
+    const downloaded = formatBytes(state.downloadedBytes, locale);
     const total =
       typeof state.totalBytes === "number" &&
       state.totalBytes > 0 &&
       state.downloadedBytes <= state.totalBytes
-        ? `/${formatBytes(state.totalBytes)}`
+        ? `/${formatBytes(state.totalBytes, locale)}`
         : "";
     const elapsedMs = typeof state.startedAtMs === "number" ? Date.now() - state.startedAtMs : 0;
-    const elapsed = formatElapsedMs(elapsedMs);
+    const elapsed = formatElapsedMs(elapsedMs, locale);
     if (state.downloadedBytes === 0 && !state.totalBytes) {
-      return renderLine(label, ` (connecting, ${elapsed})…`);
+      return renderMessage("progress.fetchConnecting", { elapsed });
     }
     const rate =
       elapsedMs > 0 && state.downloadedBytes > 0
-        ? `, ${formatBytesPerSecond(state.downloadedBytes / (elapsedMs / 1000))}`
+        ? `, ${formatBytesPerSecond(state.downloadedBytes / (elapsedMs / 1000), locale)}`
         : "";
-    return renderLine(label, ` (${downloaded}${total}, ${elapsed}${rate})…`);
+    return renderMessage("progress.fetchTransfer", { downloaded, total, elapsed, rate });
   };
 
   const startTicker = () => {
@@ -90,8 +98,8 @@ export function createFetchHtmlProgressRenderer({
         state.totalBytes = null;
         state.startedAtMs = Date.now();
         startTicker();
-        updateSpinner(renderLine("Fetching website", " (connecting)…"));
-        oscProgress?.setIndeterminate("Fetching website");
+        updateSpinner(renderMessage("progress.fetchStart"));
+        oscProgress?.setIndeterminate(t("fetching.website"));
         refreshSpinner();
         return;
       }
@@ -102,11 +110,11 @@ export function createFetchHtmlProgressRenderer({
         updateSpinner(render());
         if (typeof state.totalBytes === "number" && state.totalBytes > 0) {
           oscProgress?.setPercent(
-            "Fetching website",
+            t("fetching.website"),
             (state.downloadedBytes / state.totalBytes) * 100,
           );
         } else {
-          oscProgress?.setIndeterminate("Fetching website");
+          oscProgress?.setIndeterminate(t("fetching.website"));
         }
         refreshSpinner();
         return;

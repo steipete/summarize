@@ -88,9 +88,9 @@ describe("slides ingest", () => {
     );
     expect(result).toEqual({ inputPath: "/tmp/cached.mp4", inputCleanup: cleanup, warnings: [] });
     expect(options.reportSlidesProgress.mock.calls).toEqual([
-      ["downloading video", 6],
-      ["downloading video", 6, "starting"],
-      ["downloading video", 35, "finished"],
+      ["download", 6],
+      ["download", 6, "starting"],
+      ["download", 35, "finished"],
     ]);
     expect(options.logSlidesTiming).toHaveBeenCalledOnce();
     expect(options.resolveYoutubeStreamUrl).not.toHaveBeenCalled();
@@ -146,7 +146,7 @@ describe("slides ingest", () => {
 
     expect(result.inputPath).toBe("/tmp/cached.mp4");
     expect(result.inputCleanup).toBeNull();
-    expect(progress).toHaveBeenCalledWith("using cached video", 35, "(2KB)");
+    expect(progress).toHaveBeenCalledWith("cached", 35, "(2KB)");
   });
 
   it("falls back to a stream URL for YouTube when enabled", async () => {

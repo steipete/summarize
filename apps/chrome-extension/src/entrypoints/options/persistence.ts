@@ -1,7 +1,9 @@
+import { message as uiMessage } from "../../lib/i18n";
+import type { LocalizedText } from "../../lib/i18n";
 export function createOptionsSaveRuntime(options: {
   isInitializing: () => boolean;
-  setStatus: (text: string) => void;
-  flashStatus: (text: string, duration?: number) => void;
+  setStatus: (text: LocalizedText) => void;
+  flashStatus: (text: LocalizedText, duration?: number) => void;
   persist: () => Promise<void>;
 }) {
   const { isInitializing, setStatus, flashStatus, persist } = options;
@@ -13,7 +15,7 @@ export function createOptionsSaveRuntime(options: {
 
   const formatSaveError = (error: unknown) => {
     const message = error instanceof Error ? error.message.trim() : String(error).trim();
-    return message ? `Save failed: ${message}` : "Save failed";
+    return uiMessage("settings.saveFailed", { error: message, hasError: Boolean(message) });
   };
 
   const saveNow = async () => {
@@ -30,11 +32,11 @@ export function createOptionsSaveRuntime(options: {
     saveInFlight = true;
     saveQueued = false;
     const currentSeq = ++saveSequence;
-    setStatus("Saving…");
+    setStatus(uiMessage("settings.saving"));
     try {
       await persist();
       if (currentSeq === saveSequence) {
-        flashStatus("Saved");
+        flashStatus(uiMessage("saved"));
       }
     } catch (error) {
       if (currentSeq === saveSequence) {

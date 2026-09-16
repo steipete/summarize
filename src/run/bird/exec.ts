@@ -1,3 +1,4 @@
+import { CliError } from "../../locale.js";
 import { execFileTracked } from "../../processes.js";
 
 const stripAnsi = (value: string): string => value.replace(/\u001b\[[0-9;]*m/g, "");
@@ -26,7 +27,9 @@ export function execTweetCli(
         if (error) {
           const detail = stderrText || stdoutText;
           const suffix = detail ? `: ${detail}` : "";
-          reject(new Error(`${binary} read failed${suffix}`));
+          reject(
+            new CliError("error.tweetRead", { binary: String(binary), suffix: String(suffix) }),
+          );
           return;
         }
         resolve(stdoutText);

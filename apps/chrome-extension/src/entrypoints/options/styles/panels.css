@@ -51,7 +51,7 @@
 .processTable th,
 .processTable td {
   padding: 6px 8px;
-  text-align: left;
+  text-align: start;
   vertical-align: top;
 }
 
@@ -171,7 +171,7 @@
   font-size: 13px;
   letter-spacing: 0.2px;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
 }
 
 .sectionToggle::after {

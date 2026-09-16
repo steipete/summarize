@@ -1,3 +1,4 @@
+import type { MessageDescriptor } from "@steipete/summarize-core/localization";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { ALWAYS_ON_CONTENT_SCRIPT_EXCLUDE_MATCHES } from "../lib/content-script-matches";
 import { resolveCapabilityExecution } from "../lib/model-routing";
@@ -13,6 +14,7 @@ const HOVER_DELAY_MS = 420;
 const CACHE_TTL_MS = 12 * 60 * 1000;
 const TOOLTIP_ID = "__summarize_hover_tooltip__";
 const STYLE_ID = "__summarize_hover_tooltip_style__";
+// i18n-ignore: Filter raw provider/extraction diagnostics out of generated hover summaries.
 const ERRORISH_PATTERN =
   /(^error:|failed to load|failed to fetch|failed to connect|unable to load|unable to fetch|unable to connect|cannot access|cannot summarize|something went wrong|try again|technical error|privacy[- ]related|please disable|access denied|forbidden|captcha|verify you are human|enable javascript|cloudflare|rate limit|too many requests|temporarily unavailable|page not found|not found|404|403|500|shortened t\\.co|t\\.co url|no summary returned|summary failed|daemon unreachable|not logged in|log in to|login to|sign in to|formerly twitter|please provide the text content|provided content.*empty)/i;
 const titleCache = new WeakMap<HTMLElement, string | null>();
@@ -67,6 +69,7 @@ function ensureStyle() {
   if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement("style");
   style.id = STYLE_ID;
+  // i18n-ignore: Stylesheet source, not interface text.
   style.textContent = `
     #${TOOLTIP_ID} {
       position: fixed;
@@ -113,7 +116,13 @@ type Tooltip = {
 type HoverFromBg =
   | { type: "hover:chunk"; requestId: string; url: string; text: string }
   | { type: "hover:done"; requestId: string; url: string }
-  | { type: "hover:error"; requestId: string; url: string; message: string };
+  | {
+      type: "hover:error";
+      requestId: string;
+      url: string;
+      message: string;
+      localized?: MessageDescriptor;
+    };
 
 export function shouldHandleHoverTriggerEvent(event: Pick<Event, "isTrusted">): boolean {
   return event.isTrusted === true;
@@ -342,6 +351,7 @@ export default defineContentScript({
       }
 
       if (msg.type === "hover:error") {
+        // Hover errors keep a partial summary or hide the tooltip; diagnostics are never page content.
         if (!activeHasShown) hideTooltip();
       }
     });
@@ -413,14 +423,15 @@ export default defineContentScript({
           requestId: activeRequestId,
           url,
           title: anchor.textContent?.trim() || null,
-        })) as { ok?: boolean; error?: string };
+        })) as { ok?: boolean };
 
-        if (!res?.ok) throw new Error(res?.error || "Failed to start hover summary");
+        if (res?.ok) return;
       } catch {
-        logHover("start-failed", { url });
-        if (activeAnchor && activeUrl === url) {
-          if (!activeHasShown) hideTooltip();
-        }
+        // A failed start follows the same quiet tooltip policy as an explicit error response.
+      }
+      logHover("start-failed", { url });
+      if (activeAnchor && activeUrl === url) {
+        if (!activeHasShown) hideTooltip();
       }
     };
 

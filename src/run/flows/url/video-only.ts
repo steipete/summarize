@@ -1,5 +1,10 @@
 import { loadRemoteAsset } from "../../../content/asset.js";
 import { type ExtractedLinkContent } from "../../../content/index.js";
+import {
+  type CliMessageKey,
+  createCliTranslator,
+  resolveCliLocaleFromEnv,
+} from "../../../locale.js";
 import type { SlideExtractionResult } from "../../../slides/index.js";
 import { assertAssetMediaTypeSupported } from "../../attachments.js";
 import { writeVerbose } from "../../logging.js";
@@ -40,8 +45,8 @@ export async function handleVideoOnlyExtractedContent({
   isYoutubeUrl: boolean;
   fetchWithCache: (url: string) => Promise<ExtractedLinkContent>;
   runSlidesExtraction: () => Promise<SlideExtractionResult | null>;
-  renderStatus: (label: string, detail?: string) => string;
-  renderStatusWithMeta: (label: string, meta: string, suffix?: string) => string;
+  renderStatus: (key: CliMessageKey) => string;
+  renderStatusWithMeta: (key: CliMessageKey, meta: string) => string;
   spinner: { setText: (text: string) => void };
   styleDim: (text: string) => string;
   updateSummaryProgress: () => void;
@@ -64,7 +69,7 @@ export async function handleVideoOnlyExtractedContent({
       io.envForRun,
     );
     if (flags.progressEnabled) {
-      spinner.setText(renderStatus("Video-only page", ": fetching YouTube transcript…"));
+      spinner.setText(renderStatus("progress.videoTranscript"));
     }
     const nextExtracted = await fetchWithCache(extracted.video.url);
     return {
@@ -87,7 +92,7 @@ export async function handleVideoOnlyExtractedContent({
   }
 
   hooks.onExtracted?.(extracted);
-  if (flags.progressEnabled) spinner.setText(renderStatus("Downloading video"));
+  if (flags.progressEnabled) spinner.setText(renderStatus("progress.downloadVideo"));
   const loadedVideo = await loadRemoteAsset({
     url: extracted.video.url,
     fetchImpl: io.urlFetch ?? io.fetch,
@@ -95,7 +100,7 @@ export async function handleVideoOnlyExtractedContent({
   });
   assertAssetMediaTypeSupported({ attachment: loadedVideo.attachment, sizeLabel: null });
 
-  if (flags.progressEnabled) spinner.setText(renderStatus("Summarizing video"));
+  if (flags.progressEnabled) spinner.setText(renderStatus("progress.summarizeVideo"));
   const summary = await hooks.summarizeAsset({
     sourceKind: "asset-url",
     sourceLabel: loadedVideo.sourceLabel,
@@ -104,7 +109,7 @@ export async function handleVideoOnlyExtractedContent({
       hooks.onModelChosen?.(modelId);
       if (flags.progressEnabled) {
         const meta = `${styleDim("(")}${styleDim("model: ")}${accent(modelId)}${styleDim(")")}`;
-        spinner.setText(renderStatusWithMeta("Summarizing video", meta));
+        spinner.setText(renderStatusWithMeta("progress.summarizeVideo", meta));
       }
     },
   });
@@ -119,7 +124,13 @@ export async function handleVideoOnlyExtractedContent({
       footerParts: [
         ...extractionUi.footerParts,
         ...summary.footerParts,
-        ...(slideCount != null ? [`slides ${slideCount}`] : []),
+        ...(slideCount != null
+          ? [
+              createCliTranslator(resolveCliLocaleFromEnv(ctx.io.envForRun))("footer.slides", {
+                count: slideCount,
+              }),
+            ]
+          : []),
       ],
     },
   };

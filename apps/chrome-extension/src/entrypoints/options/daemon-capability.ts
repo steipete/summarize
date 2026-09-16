@@ -1,5 +1,7 @@
 import { hasDaemonPermission, requestDaemonPermission } from "../../lib/daemon-permission";
 import { type DaemonPolicy, defaultDaemonPolicy, readDaemonPolicy } from "../../lib/daemon-policy";
+import type { LocalizedText } from "../../lib/i18n";
+import { setText as setUiText, message as uiMessage } from "../../lib/i18n";
 
 type CapabilityState = {
   policy: DaemonPolicy;
@@ -19,7 +21,7 @@ export function createDaemonCapabilityController(options: {
     permissionGranted: false,
   };
   let requestPending = false;
-  let transientMessage = "";
+  let transientMessage: LocalizedText = "";
 
   const daemonRuntimeInputs = [
     ...options.summaryRuntimeRoot.querySelectorAll<HTMLInputElement>('input[value="daemon"]'),
@@ -36,12 +38,17 @@ export function createDaemonCapabilityController(options: {
     }
     options.enableBtn.hidden = disabledByAdmin || state.permissionGranted;
     options.enableBtn.disabled = requestPending;
-    options.statusEl.textContent = disabledByAdmin
-      ? "Disabled by administrator"
-      : transientMessage ||
-        (state.permissionGranted
-          ? "Enabled. Chrome allows this extension to use the installed local companion."
-          : "Not enabled. Chrome will ask before allowing local companion access.");
+    setUiText(
+      options.statusEl,
+      disabledByAdmin
+        ? uiMessage("disabled.by.administrator")
+        : transientMessage ||
+            (state.permissionGranted
+              ? uiMessage(
+                  "enabled.chrome.allows.this.extension.to.use.the.installed.local.companion",
+                )
+              : uiMessage("not.enabled.chrome.will.ask.before.allowing.local.companion.access")),
+    );
     options.statusEl.dataset.state = disabledByAdmin
       ? "managed"
       : state.permissionGranted
@@ -66,7 +73,7 @@ export function createDaemonCapabilityController(options: {
     }
     if (state.permissionGranted) return true;
     requestPending = true;
-    transientMessage = "Waiting for Chrome permission…";
+    transientMessage = uiMessage("waiting.for.chrome.permission");
     render();
     // skipContains keeps permissions.request() in the initiating click gesture.
     const result = await requestDaemonPermission({
@@ -78,8 +85,8 @@ export function createDaemonCapabilityController(options: {
     transientMessage = result.granted
       ? ""
       : result.reason === "managed"
-        ? "Disabled by administrator"
-        : "Permission denied. Direct and Browser modes remain active.";
+        ? uiMessage("disabled.by.administrator")
+        : uiMessage("permission.denied.direct.and.browser.modes.remain.active");
     render();
     options.onStateChanged?.();
     return result.granted;

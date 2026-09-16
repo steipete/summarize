@@ -70,6 +70,14 @@
     "./localization": {
       "types": "./dist/types/localization/index.d.ts",
       "import": "./dist/esm/localization/index.js"
+    },
+    "./localization/messages": {
+      "types": "./dist/types/localization/messages.d.ts",
+      "import": "./dist/esm/localization/messages.js"
+    },
+    "./localization/presentation": {
+      "types": "./dist/types/localization/presentation.d.ts",
+      "import": "./dist/esm/localization/presentation.js"
     }
   },
   "scripts": {

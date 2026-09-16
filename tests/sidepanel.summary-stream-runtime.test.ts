@@ -129,6 +129,7 @@ describe("sidepanel summary stream runtime", () => {
     });
 
     expect(panelState.lastMeta).toEqual({
+      inputSummaryMessage: null,
       inputSummary: "19m 33s YouTube",
       model: "openai/gpt-5.4",
       modelLabel: "GPT-5.4",
@@ -171,6 +172,7 @@ describe("sidepanel summary stream runtime", () => {
       stopSlides: false,
     });
     expect(panelState.lastMeta).toEqual({
+      inputSummaryMessage: null,
       inputSummary: null,
       model: "openai/gpt-5.4",
       modelLabel: "openai/gpt-5.4",
@@ -257,7 +259,7 @@ describe("sidepanel summary stream runtime", () => {
     expect(calls.handleSummaryFromCache).toHaveBeenCalledWith(null);
     expect(calls.headerArmProgress).not.toHaveBeenCalled();
     expect(calls.headerStopProgress).not.toHaveBeenCalled();
-    expect(calls.refreshSummaryMetrics).toHaveBeenCalledWith("summary");
+    expect(calls.refreshSummaryMetrics).toHaveBeenCalledWith("summary", undefined);
   });
 
   it("keeps prior meta fields when partial metadata arrives", () => {
@@ -271,6 +273,7 @@ describe("sidepanel summary stream runtime", () => {
     capturedOptions?.onMeta?.({ model: "new-model" });
 
     expect(panelState.lastMeta).toEqual({
+      inputSummaryMessage: null,
       inputSummary: "old input",
       model: "new-model",
       modelLabel: "Old Model",

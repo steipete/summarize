@@ -1,4 +1,5 @@
 import type { SummaryLength } from "@steipete/summarize-core";
+import { CliError } from "./locale.js";
 
 export type YoutubeMode = "auto" | "web" | "apify" | "yt-dlp" | "no-auto";
 export type FirecrawlMode = "off" | "auto" | "always";
@@ -29,13 +30,13 @@ export function parseYoutubeMode(raw: string): YoutubeMode {
   if (normalized === "auto" || normalized === "web" || normalized === "apify") return normalized;
   if (normalized === "yt-dlp") return "yt-dlp";
   if (normalized === "no-auto") return "no-auto";
-  throw new Error(`Unsupported --youtube: ${raw}`);
+  throw new CliError("error.unsupportedOption", { label: "--youtube", raw: String(raw) });
 }
 
 export function parseFirecrawlMode(raw: string): FirecrawlMode {
   const normalized = raw.trim().toLowerCase();
   if (normalized === "off" || normalized === "auto" || normalized === "always") return normalized;
-  throw new Error(`Unsupported --firecrawl: ${raw}`);
+  throw new CliError("error.unsupportedOption", { label: "--firecrawl", raw: String(raw) });
 }
 
 export function parseMarkdownMode(raw: string): MarkdownMode {
@@ -47,14 +48,14 @@ export function parseMarkdownMode(raw: string): MarkdownMode {
     normalized === "readability"
   )
     return normalized;
-  throw new Error(`Unsupported --markdown-mode: ${raw}`);
+  throw new CliError("error.unsupportedOption", { label: "--markdown-mode", raw: String(raw) });
 }
 
 export function parseExtractFormat(raw: string): ExtractFormat {
   const normalized = raw.trim().toLowerCase();
   if (normalized === "text" || normalized === "txt" || normalized === "plain") return "text";
   if (normalized === "md" || normalized === "markdown") return "markdown";
-  throw new Error(`Unsupported --format: ${raw}`);
+  throw new CliError("error.unsupportedOption", { label: "--format", raw: String(raw) });
 }
 
 export function parsePreprocessMode(raw: string): PreprocessMode {
@@ -63,13 +64,13 @@ export function parsePreprocessMode(raw: string): PreprocessMode {
     return normalized as PreprocessMode;
   }
   if (normalized === "on") return "always";
-  throw new Error(`Unsupported --preprocess: ${raw}`);
+  throw new CliError("error.unsupportedOption", { label: "--preprocess", raw: String(raw) });
 }
 
 export function parseStreamMode(raw: string): StreamMode {
   const normalized = raw.trim().toLowerCase();
   if (normalized === "auto" || normalized === "on" || normalized === "off") return normalized;
-  throw new Error(`Unsupported --stream: ${raw}`);
+  throw new CliError("error.unsupportedOption", { label: "--stream", raw: String(raw) });
 }
 
 export function parseMetricsMode(raw: string): MetricsMode {
@@ -77,7 +78,7 @@ export function parseMetricsMode(raw: string): MetricsMode {
   if (normalized === "off" || normalized === "on" || normalized === "detailed") {
     return normalized as MetricsMode;
   }
-  throw new Error(`Unsupported --metrics: ${raw}`);
+  throw new CliError("error.unsupportedOption", { label: "--metrics", raw: String(raw) });
 }
 
 export function parseVideoMode(raw: string): VideoMode {
@@ -85,7 +86,7 @@ export function parseVideoMode(raw: string): VideoMode {
   if (normalized === "auto" || normalized === "transcript" || normalized === "understand") {
     return normalized as VideoMode;
   }
-  throw new Error(`Unsupported --video-mode: ${raw}`);
+  throw new CliError("error.unsupportedOption", { label: "--video-mode", raw: String(raw) });
 }
 
 export function parseEmbeddedVideoMode(raw: string): EmbeddedVideoMode {
@@ -98,7 +99,7 @@ export function parseEmbeddedVideoMode(raw: string): EmbeddedVideoMode {
   ) {
     return normalized;
   }
-  throw new Error(`Unsupported --embedded-video: ${raw}`);
+  throw new CliError("error.unsupportedOption", { label: "--embedded-video", raw: String(raw) });
 }
 
 export function parseDiarizationMode(raw: string): DiarizationMode {
@@ -106,19 +107,19 @@ export function parseDiarizationMode(raw: string): DiarizationMode {
   if (normalized === "auto" || normalized === "elevenlabs" || normalized === "openai") {
     return normalized;
   }
-  throw new Error(`Unsupported --diarize: ${raw}`);
+  throw new CliError("error.unsupportedOption", { label: "--diarize", raw: String(raw) });
 }
 
 export function parseDurationMs(raw: string): number {
   const normalized = raw.trim();
   const match = DURATION_PATTERN.exec(normalized);
   if (!match?.groups) {
-    throw new Error(`Unsupported --timeout: ${raw}`);
+    throw new CliError("error.unsupportedOption", { label: "--timeout", raw: String(raw) });
   }
 
   const numeric = Number(match.groups.value);
   if (!Number.isFinite(numeric) || numeric <= 0) {
-    throw new Error(`Unsupported --timeout: ${raw}`);
+    throw new CliError("error.unsupportedOption", { label: "--timeout", raw: String(raw) });
   }
 
   const unit = match.groups.unit?.toLowerCase() ?? "s";
@@ -139,19 +140,24 @@ export function parseLengthArg(raw: string): LengthArg {
 
   const match = COUNT_PATTERN.exec(normalized);
   if (!match?.groups) {
-    throw new Error(`Unsupported --length: ${raw}`);
+    throw new CliError("error.unsupportedOption", { label: "--length", raw: String(raw) });
   }
 
   const numeric = Number(match.groups.value);
   if (!Number.isFinite(numeric) || numeric <= 0) {
-    throw new Error(`Unsupported --length: ${raw}`);
+    throw new CliError("error.unsupportedOption", { label: "--length", raw: String(raw) });
   }
 
   const unit = match.groups.unit?.toLowerCase() ?? null;
   const multiplier = unit === "k" ? 1000 : unit === "m" ? 1_000_000 : 1;
   const maxCharacters = Math.floor(numeric * multiplier);
   if (maxCharacters < MIN_LENGTH_CHARS) {
-    throw new Error(`Unsupported --length: ${raw} (minimum ${MIN_LENGTH_CHARS} chars)`);
+    throw new CliError("error.optionMinimum", {
+      label: "--length",
+      raw,
+      min: MIN_LENGTH_CHARS,
+      unit: "chars",
+    });
   }
   return { kind: "chars", maxCharacters };
 }
@@ -162,20 +168,29 @@ export function parseMaxExtractCharactersArg(raw: string | undefined): number | 
   if (!normalized) return null;
   const match = COUNT_PATTERN.exec(normalized);
   if (!match?.groups) {
-    throw new Error(`Unsupported --max-extract-characters: ${raw}`);
+    throw new CliError("error.unsupportedOption", {
+      label: "--max-extract-characters",
+      raw: String(raw),
+    });
   }
   const numeric = Number(match.groups.value);
   if (!Number.isFinite(numeric)) {
-    throw new Error(`Unsupported --max-extract-characters: ${raw}`);
+    throw new CliError("error.unsupportedOption", {
+      label: "--max-extract-characters",
+      raw: String(raw),
+    });
   }
   if (numeric <= 0) return null;
   const unit = match.groups.unit?.toLowerCase() ?? null;
   const multiplier = unit === "k" ? 1000 : unit === "m" ? 1_000_000 : 1;
   const maxCharacters = Math.floor(numeric * multiplier);
   if (maxCharacters < MIN_LENGTH_CHARS) {
-    throw new Error(
-      `Unsupported --max-extract-characters: ${raw} (minimum ${MIN_LENGTH_CHARS} chars)`,
-    );
+    throw new CliError("error.optionMinimum", {
+      label: "--max-extract-characters",
+      raw,
+      min: MIN_LENGTH_CHARS,
+      unit: "chars",
+    });
   }
   return maxCharacters;
 }
@@ -184,24 +199,38 @@ export function parseMaxOutputTokensArg(raw: string | undefined): number | null 
   if (raw === undefined || raw === null) return null;
   const normalized = raw.trim().toLowerCase();
   if (!normalized) {
-    throw new Error(`Unsupported --max-output-tokens: ${raw}`);
+    throw new CliError("error.unsupportedOption", {
+      label: "--max-output-tokens",
+      raw: String(raw),
+    });
   }
 
   const match = COUNT_PATTERN.exec(normalized);
   if (!match?.groups) {
-    throw new Error(`Unsupported --max-output-tokens: ${raw}`);
+    throw new CliError("error.unsupportedOption", {
+      label: "--max-output-tokens",
+      raw: String(raw),
+    });
   }
 
   const numeric = Number(match.groups.value);
   if (!Number.isFinite(numeric) || numeric <= 0) {
-    throw new Error(`Unsupported --max-output-tokens: ${raw}`);
+    throw new CliError("error.unsupportedOption", {
+      label: "--max-output-tokens",
+      raw: String(raw),
+    });
   }
 
   const unit = match.groups.unit?.toLowerCase() ?? null;
   const multiplier = unit === "k" ? 1000 : unit === "m" ? 1_000_000 : 1;
   const maxOutputTokens = Math.floor(numeric * multiplier);
   if (maxOutputTokens < MIN_MAX_OUTPUT_TOKENS) {
-    throw new Error(`Unsupported --max-output-tokens: ${raw} (minimum ${MIN_MAX_OUTPUT_TOKENS})`);
+    throw new CliError("error.optionMinimum", {
+      label: "--max-output-tokens",
+      raw,
+      min: MIN_MAX_OUTPUT_TOKENS,
+      unit: "none",
+    });
   }
   return maxOutputTokens;
 }
@@ -209,17 +238,22 @@ export function parseMaxOutputTokensArg(raw: string | undefined): number | null 
 export function parseRetriesArg(raw: string): number {
   const normalized = raw.trim();
   if (!normalized) {
-    throw new Error(`Unsupported --retries: ${raw}`);
+    throw new CliError("error.unsupportedOption", { label: "--retries", raw: String(raw) });
   }
   if (!/^\d+$/.test(normalized)) {
-    throw new Error(`Unsupported --retries: ${raw}`);
+    throw new CliError("error.unsupportedOption", { label: "--retries", raw: String(raw) });
   }
   const numeric = Number(normalized);
   if (!Number.isFinite(numeric) || !Number.isInteger(numeric)) {
-    throw new Error(`Unsupported --retries: ${raw}`);
+    throw new CliError("error.unsupportedOption", { label: "--retries", raw: String(raw) });
   }
   if (numeric < MIN_RETRIES || numeric > MAX_RETRIES) {
-    throw new Error(`Unsupported --retries: ${raw} (range ${MIN_RETRIES}-${MAX_RETRIES})`);
+    throw new CliError("error.optionRange", {
+      label: "--retries",
+      raw,
+      min: MIN_RETRIES,
+      max: MAX_RETRIES,
+    });
   }
   return numeric;
 }

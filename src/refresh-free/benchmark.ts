@@ -30,17 +30,18 @@ type GenerateModel = typeof generateTextWithModelId;
 
 function classifyOpenRouterRateLimit(message: string): "perMin" | "perDay" | null {
   const normalized = message.toLowerCase();
-  if (!normalized.includes("rate limit exceeded")) return null;
+  if (!normalized.includes(/* i18n-ignore: OpenRouter error protocol. */ "rate limit exceeded"))
+    return null;
   if (
     normalized.includes("per-day") ||
-    normalized.includes("per day") ||
+    normalized.includes(/* i18n-ignore: OpenRouter rate-limit diagnostic. */ "per day") ||
     normalized.includes("free-models-per-day")
   ) {
     return "perDay";
   }
   if (
     normalized.includes("per-min") ||
-    normalized.includes("per min") ||
+    normalized.includes(/* i18n-ignore: OpenRouter rate-limit diagnostic. */ "per min") ||
     normalized.includes("free-models-per-min")
   ) {
     return "perMin";
@@ -50,19 +51,34 @@ function classifyOpenRouterRateLimit(message: string): "perMin" | "perDay" | nul
 
 export function classifyBenchmarkFailure(message: string): BenchmarkFailureKind {
   const normalized = message.toLowerCase();
-  if (normalized.includes("empty summary")) return "empty";
+  if (
+    normalized.includes(
+      /* i18n-ignore: Benchmark error protocol, before presentation. */ "empty summary",
+    )
+  )
+    return "empty";
   const rateLimit = classifyOpenRouterRateLimit(message);
   if (rateLimit === "perMin") return "rateLimitMin";
   if (rateLimit === "perDay") return "rateLimitDay";
-  if (normalized.includes("no allowed providers are available")) return "noProviders";
   if (
-    normalized.includes("timed out") ||
+    normalized.includes(
+      /* i18n-ignore: OpenRouter provider-availability diagnostic. */ "no allowed providers are available",
+    )
+  )
+    return "noProviders";
+  if (
+    normalized.includes(/* i18n-ignore: Provider timeout diagnostic. */ "timed out") ||
     normalized.includes("timeout") ||
     normalized.includes("aborted")
   ) {
     return "timeout";
   }
-  if (normalized.includes("provider returned error") || normalized.includes("provider error")) {
+  if (
+    normalized.includes(
+      /* i18n-ignore: OpenRouter provider diagnostic. */ "provider returned error",
+    ) ||
+    normalized.includes(/* i18n-ignore: OpenRouter provider diagnostic. */ "provider error")
+  ) {
     return "providerError";
   }
   return "other";

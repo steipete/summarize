@@ -1,3 +1,6 @@
+import { readLocalizedMessage } from "../../lib/i18n";
+import type { LocalizedText } from "../../lib/i18n";
+import { message as uiMessage } from "../../lib/i18n";
 import type { BgToPanel, RunStart, UiState } from "../../lib/panel-contracts";
 import { shouldAcceptRunForCurrentPage, shouldAcceptSlidesForCurrentPage } from "./session-policy";
 import type { PanelState } from "./types";
@@ -5,9 +8,9 @@ import type { PanelState } from "./types";
 export function handleSidepanelBgMessage(options: {
   msg: BgToPanel;
   applyUiState: (state: UiState) => void;
-  setStatus: (text: string) => void;
+  setStatus: (text: LocalizedText) => void;
   isStreaming: () => boolean;
-  handleRunError: (message: string) => void;
+  handleRunError: (message: LocalizedText) => void;
   handleSlidesRun: (msg: Extract<BgToPanel, { type: "slides:run" }>) => void;
   handleSlidesLocal: (msg: Extract<BgToPanel, { type: "slides:local" }>) => void;
   handleSlidesContext: (msg: Extract<BgToPanel, { type: "slides:context" }>) => void;
@@ -25,10 +28,11 @@ export function handleSidepanelBgMessage(options: {
       options.applyUiState(msg.state);
       return;
     case "ui:status":
-      if (!options.isStreaming()) options.setStatus(msg.status);
+      if (!options.isStreaming())
+        options.setStatus(readLocalizedMessage(msg.localized) ?? msg.status);
       return;
     case "run:error":
-      options.handleRunError(msg.message);
+      options.handleRunError(readLocalizedMessage(msg.localized) ?? msg.message);
       return;
     case "slides:run":
       options.handleSlidesRun(msg);
@@ -73,12 +77,12 @@ export function createSidepanelBgMessageRuntime(options: {
   panelState: PanelState;
 
   applyUiState: (state: UiState) => void;
-  setStatus: (text: string) => void;
+  setStatus: (text: LocalizedText) => void;
   isStreaming: () => boolean;
-  setPhase: (phase: "error", opts?: { error?: string | null }) => void;
+  setPhase: (phase: "error", opts?: { error?: PanelState["error"] }) => void;
   finishStreamingMessage: () => void;
   setSlidesBusy: (busy: boolean) => void;
-  showSlideNotice: (message: string, opts?: { allowRetry?: boolean }) => void;
+  showSlideNotice: (message: LocalizedText, opts?: { allowRetry?: boolean }) => void;
   getActiveTabUrl: () => string | null;
   rememberPendingSlidesRun: (value: { runId: string; url: string | null; local?: boolean }) => void;
   startSlidesStreamForRunId: (
@@ -129,8 +133,14 @@ export function createSidepanelBgMessageRuntime(options: {
         setStatus: options.setStatus,
         isStreaming: options.isStreaming,
         handleRunError: (message) => {
-          const detail = message && message.trim().length > 0 ? message : "Something went wrong.";
-          options.setStatus(`Error: ${detail}`);
+          const detail = typeof message === "string" ? message.trim() : message;
+          options.setStatus(
+            typeof detail !== "string"
+              ? detail
+              : detail
+                ? uiMessage("error.message", { error: detail })
+                : uiMessage("something.went.wrong.alternate"),
+          );
           options.setPhase("error", { error: detail });
           if (options.panelState.chat.streaming) {
             options.finishStreamingMessage();
@@ -139,8 +149,9 @@ export function createSidepanelBgMessageRuntime(options: {
         handleSlidesRun: (slidesRun: SlidesRunMessage) => {
           if (!slidesRun.ok) {
             options.setSlidesBusy(false);
-            if (slidesRun.error) {
-              options.showSlideNotice(slidesRun.error, { allowRetry: true });
+            const detail = readLocalizedMessage(slidesRun.localized) ?? slidesRun.error;
+            if (detail) {
+              options.showSlideNotice(detail, { allowRetry: true });
             }
             return;
           }

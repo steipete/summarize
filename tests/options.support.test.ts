@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+// @vitest-environment happy-dom
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../apps/chrome-extension/src/automation/userscripts.js", () => ({
-  buildUserScriptsGuidance: vi.fn(() => "Enable User Scripts"),
+  userScriptsGuidanceMessage: vi.fn(() => "Enable User Scripts"),
   getUserScriptsStatus: vi.fn(async () => ({
     apiAvailable: false,
     permissionGranted: false,
@@ -10,7 +12,7 @@ vi.mock("../apps/chrome-extension/src/automation/userscripts.js", () => ({
 }));
 
 import {
-  buildUserScriptsGuidance,
+  userScriptsGuidanceMessage,
   getUserScriptsStatus,
 } from "../apps/chrome-extension/src/automation/userscripts.js";
 import {
@@ -21,15 +23,10 @@ import {
   getOptionalAutomationPermissions,
   resolveBuildInfoText,
 } from "../apps/chrome-extension/src/entrypoints/options/support.js";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 
 function createFakeElement() {
-  return {
-    textContent: "",
-    hidden: false,
-    toggleAttribute(name: string, force?: boolean) {
-      if (name === "hidden") this.hidden = Boolean(force);
-    },
-  } as unknown as HTMLElement;
+  return document.createElement("div");
 }
 
 function createFakeInput(value = "") {
@@ -42,11 +39,11 @@ function createFakeInput(value = "") {
 }
 
 describe("options support", () => {
+  afterEach(() => vi.unstubAllGlobals());
   beforeEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     vi.stubGlobal("chrome", {});
-    vi.stubGlobal("window", globalThis);
   });
 
   it("builds version text from injected or manifest values", () => {
@@ -122,7 +119,7 @@ describe("options support", () => {
     await copyTokenToClipboard({ tokenEl, flashStatus });
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith("abc123");
-    expect(flashStatus).toHaveBeenCalledWith("Token copied");
+    expect(flashStatus).toHaveBeenCalledWith(message("token.copied"));
   });
 
   it("uses execCommand fallback when clipboard write fails", async () => {
@@ -132,14 +129,12 @@ describe("options support", () => {
       clipboard: { writeText: vi.fn(async () => Promise.reject(new Error("boom"))) },
     });
     const execCommand = vi.fn(() => true);
-    vi.stubGlobal("document", {
-      execCommand,
-    });
+    document.execCommand = execCommand;
 
     await copyTokenToClipboard({ tokenEl, flashStatus });
 
     expect(execCommand).toHaveBeenCalledWith("copy");
-    expect(flashStatus).toHaveBeenCalledWith("Token copied");
+    expect(flashStatus).toHaveBeenCalledWith(message("token.copied"));
   });
 
   it("reports empty or failed token copies", async () => {
@@ -147,18 +142,16 @@ describe("options support", () => {
     const flashStatus = vi.fn();
 
     await copyTokenToClipboard({ tokenEl: emptyEl, flashStatus });
-    expect(flashStatus).toHaveBeenCalledWith("Token empty");
+    expect(flashStatus).toHaveBeenCalledWith(message("token.empty"));
 
     const tokenEl = createFakeInput("abc123");
     vi.stubGlobal("navigator", {
       clipboard: { writeText: vi.fn(async () => Promise.reject(new Error("boom"))) },
     });
-    vi.stubGlobal("document", {
-      execCommand: vi.fn(() => false),
-    });
+    document.execCommand = vi.fn(() => false);
 
     await copyTokenToClipboard({ tokenEl, flashStatus });
-    expect(flashStatus).toHaveBeenLastCalledWith("Copy failed");
+    expect(flashStatus).toHaveBeenLastCalledWith(message("copy.failed"));
   });
 
   it("uses only automation permissions declared optional by the browser build", () => {
@@ -172,10 +165,7 @@ describe("options support", () => {
   });
 
   it("updates automation permissions ui for disabled and satisfied states", async () => {
-    const automationPermissionsBtn = {
-      disabled: false,
-      textContent: "",
-    } as HTMLButtonElement;
+    const automationPermissionsBtn = document.createElement("button");
     const userScriptsNoticeEl = createFakeElement();
     const contains = vi
       .fn<(permissions: chrome.permissions.Permissions) => Promise<boolean>>()
@@ -222,10 +212,7 @@ describe("options support", () => {
   });
 
   it("shows guidance and handles denied automation permission requests", async () => {
-    const automationPermissionsBtn = {
-      disabled: false,
-      textContent: "",
-    } as HTMLButtonElement;
+    const automationPermissionsBtn = document.createElement("button");
     const userScriptsNoticeEl = createFakeElement();
     const flashStatus = vi.fn();
     const request = vi.fn(async () => false);
@@ -254,20 +241,17 @@ describe("options support", () => {
       flashStatus,
     });
     await controller.updateUi();
-    expect(buildUserScriptsGuidance).toHaveBeenCalled();
+    expect(userScriptsGuidanceMessage).toHaveBeenCalled();
     expect(userScriptsNoticeEl.hidden).toBe(false);
     expect(userScriptsNoticeEl.textContent).toBe("Enable User Scripts");
 
     await controller.requestPermissions();
     expect(request).toHaveBeenCalledWith({ permissions: ["userScripts"] });
-    expect(flashStatus).toHaveBeenCalledWith("Permission request denied");
+    expect(flashStatus).toHaveBeenCalledWith(message("permission.request.denied"));
   });
 
   it("opens Chrome extension settings when the required permission needs its browser toggle", async () => {
-    const automationPermissionsBtn = {
-      disabled: false,
-      textContent: "",
-    } as HTMLButtonElement;
+    const automationPermissionsBtn = document.createElement("button");
     const userScriptsNoticeEl = createFakeElement();
     const createTab = vi.fn(async () => undefined);
     const request = vi.fn(async () => true);
@@ -309,10 +293,7 @@ describe("options support", () => {
   });
 
   it("ignores permission requests when permissions api is missing or throws", async () => {
-    const automationPermissionsBtn = {
-      disabled: false,
-      textContent: "",
-    } as HTMLButtonElement;
+    const automationPermissionsBtn = document.createElement("button");
     const userScriptsNoticeEl = createFakeElement();
     const flashStatus = vi.fn();
 
@@ -349,6 +330,6 @@ describe("options support", () => {
       flashStatus,
     });
     await throwingController.requestPermissions();
-    expect(flashStatus).not.toHaveBeenCalledWith("Permission request denied");
+    expect(flashStatus).not.toHaveBeenCalledWith(message("permission.request.denied"));
   });
 });

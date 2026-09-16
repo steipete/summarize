@@ -31,12 +31,12 @@ label {
 .inputRow input {
   flex: 1 1 0%;
   min-width: 0;
-  padding-right: 46px;
+  padding-inline-end: 46px;
 }
 
 .inputCopyButton {
   position: absolute;
-  right: 6px;
+  inset-inline-end: 6px;
   top: 50%;
   transform: translateY(-50%);
 }
@@ -107,7 +107,7 @@ select {
 
 select {
   appearance: none;
-  padding-right: 34px;
+  padding-inline-end: 34px;
   background-image:
     linear-gradient(45deg, transparent 50%, var(--muted) 50%),
     linear-gradient(135deg, var(--muted) 50%, transparent 50%);
@@ -176,7 +176,7 @@ textarea {
 }
 
 .combo .row + .subtitle {
-  padding-left: 28px;
+  padding-inline-start: 28px;
 }
 
 .checkboxRoot {

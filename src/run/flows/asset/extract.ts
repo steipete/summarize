@@ -1,4 +1,5 @@
 import { applyContentBudget } from "@steipete/summarize-core/content";
+import { CliError } from "../../../locale.js";
 import {
   type AssetAttachment,
   getFileBytesFromAttachment,
@@ -45,25 +46,26 @@ export async function extractAssetContent({
 
   if (attachment.kind === "image") {
     const name = attachment.filename ?? "image";
-    throw new Error(`No extractable text found in ${name} (${attachment.mediaType}).`);
+    throw new CliError("error.noExtractableText", {
+      name: String(name),
+      mediaType: String(attachment.mediaType),
+    });
   }
 
   const fileBytes = getFileBytesFromAttachment(attachment);
   if (!fileBytes) {
-    throw new Error("Internal error: missing file bytes for extraction");
+    throw new CliError("error.extractMissingBytes");
   }
 
   if (ctx.preprocessMode === "off") {
-    throw new Error(
-      `This build does not support extracting binary files (${attachment.mediaType}). Enable preprocessing (e.g. --preprocess auto) and install uvx/markitdown.`,
-    );
+    throw new CliError("error.extractBinary", { mediaType: String(attachment.mediaType) });
   }
   if (!shouldMarkitdownConvertMediaType(attachment.mediaType)) {
     const name = attachment.filename ?? "file";
-    throw new Error(
-      `Unsupported file type: ${name} (${attachment.mediaType})\n` +
-        `This build can only extract text-like files. Convert this file to text first.`,
-    );
+    throw new CliError("error.extractUnsupported", {
+      name: String(name),
+      mediaType: String(attachment.mediaType),
+    });
   }
   const { markdown, usedOcr } = await convertAssetToMarkdown(ctx, attachment, fileBytes);
 

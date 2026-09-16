@@ -1,6 +1,9 @@
 function byId<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
-  if (!el) throw new Error(`Missing #${id}`);
+  if (!el) {
+    // i18n-ignore: Developer assertion for an invalid DOM or controller lifecycle; not displayed in the UI.
+    throw new Error(`Missing #${id}`);
+  }
   return el as T;
 }
 

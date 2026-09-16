@@ -65,6 +65,7 @@ export function createPerfTrace({
       if (finished) return;
       finished = true;
       mark("cli:finish", detail ?? null);
+      // i18n-ignore: Machine-readable prefix for opt-in performance diagnostics.
       stderr.write("[summarize:perf]\n");
       for (const event of events) {
         const suffix = event.detail ? ` ${event.detail}` : "";

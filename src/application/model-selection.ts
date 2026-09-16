@@ -1,6 +1,7 @@
 import type { CliProvider, ModelConfig, SummarizeConfig } from "../config.js";
 import type { LengthArg } from "../flags.js";
 import { mergeModelRequestOptions } from "../llm/model-options.js";
+import { CliError } from "../locale.js";
 import type { RequestedModel } from "../model-spec.js";
 import { parseRequestedModelId } from "../model-spec.js";
 import type { RunContextState } from "./context.js";
@@ -191,15 +192,16 @@ export function resolveModelSelection({
         );
       }
       if ("mode" in namedModelConfig && namedModelConfig.mode === "auto") return { kind: "auto" };
-      throw new Error(
-        `Invalid model "${namedModelMatch?.name ?? requestedModelInput}": unsupported model config`,
-      );
+      throw new CliError("error.namedModelInvalid", {
+        model: namedModelMatch?.name ?? requestedModelInput,
+      });
     }
 
     if (requestedModelInputLower !== "auto" && !requestedModelInput.includes("/")) {
-      throw new Error(
-        `Unknown model "${requestedModelInput}". Define it in ${configPath ?? "~/.summarize/config.json"} under "models", or use a provider-prefixed id like openai/...`,
-      );
+      throw new CliError("error.namedModelUnknown", {
+        model: requestedModelInput,
+        path: configPath ?? "~/.summarize/config.json",
+      });
     }
 
     return applyModelConfigOptions(parseRequestedModelId(requestedModelInput), selectedModelConfig);

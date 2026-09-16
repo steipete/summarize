@@ -1,8 +1,10 @@
 import { resolveBundledFfmpegCommand } from "@steipete/summarize-core/ffmpeg";
 import { resolveExecutableInPath } from "../application/environment.js";
+import { type CliProgressCallback, createCliTranslator, cliMessage } from "../locale.js";
 import { canSpawnCommand } from "../run/env.js";
 import type { ProcessCommand } from "./process.js";
 import { clamp } from "./scene-detection.js";
+import type { SlideProgressPhase } from "./types.js";
 
 const DEFAULT_SLIDES_WORKERS = 8;
 const DEFAULT_SLIDES_SAMPLE_COUNT = 8;
@@ -86,20 +88,24 @@ export async function resolveRunnableTool({
   return null;
 }
 
-export function createSlidesProgress(
-  onSlidesProgress: ((text: string) => void) | null | undefined,
-) {
+export function createSlidesProgress(onSlidesProgress: CliProgressCallback | null | undefined) {
   if (!onSlidesProgress) return null;
   let lastText = "";
   let lastPercent = 0;
-  return (label: string, percent: number, detail?: string) => {
+  const t = createCliTranslator("en");
+  return (phase: SlideProgressPhase, percent: number, detail?: string) => {
     const clamped = clamp(Math.round(percent), 0, 100);
     const nextPercent = Math.max(lastPercent, clamped);
-    const suffix = detail ? ` ${detail}` : "";
-    const text = `Slides: ${label}${suffix} ${nextPercent}%`;
+    const message = cliMessage("progress.slides", {
+      phase,
+      detail: detail ?? "",
+      hasDetail: Boolean(detail),
+      percent: nextPercent / 100,
+    });
+    const text = t(message.key, message.values);
     if (text === lastText) return;
     lastText = text;
     lastPercent = nextPercent;
-    onSlidesProgress(text);
+    onSlidesProgress(text, message);
   };
 }

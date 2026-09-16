@@ -17,6 +17,10 @@ import {
   resolveUrlSummaryExecution,
   type UrlSummaryResolution,
 } from "../../../engine/web-summary.js";
+import { cliMessage } from "../../../locale.js";
+import { createCliTranslator, resolveCliLocaleFromEnv } from "../../../locale.js";
+import type { CliMessage } from "../../../locale.js";
+import type { FinishLabel } from "../../finish-line-types.js";
 import { buildExtractFinishLabel, writeFinishLine } from "../../finish-line.js";
 import { writeVerbose } from "../../logging.js";
 import { prepareMarkdownForTerminal } from "../../markdown.js";
@@ -57,8 +61,8 @@ async function writeUrlMetricsFinishLine({
   extracted: ExtractedLinkContent;
   report: RunMetricsReport | null;
   transcriptionCostLabel: string | null;
-  label: string | null;
-  elapsedLabel?: string | null;
+  label: FinishLabel | null;
+  elapsedLabel?: string | CliMessage | null;
   model: string | null;
   clearProgress?: boolean;
 }) {
@@ -192,9 +196,12 @@ export async function outputExtractedUrl({
     extracted.transcriptTimedText &&
     extracted.transcriptSource &&
     extracted.content.toLowerCase().startsWith("transcript:")
-      ? `Transcript:\n${extracted.transcriptTimedText}`
+      ? /* i18n-ignore: Stable extracted-content heading, independent of interface locale. */ `Transcript:\n${extracted.transcriptTimedText}`
       : extracted.content;
-  const sourceMetricsHeader = formatSourceMetricsHeader(extracted.sourceMetrics);
+  const sourceMetricsHeader = formatSourceMetricsHeader(
+    extracted.sourceMetrics,
+    resolveCliLocaleFromEnv(ctx.io.env),
+  );
   const extractWithMetrics = sourceMetricsHeader
     ? `${sourceMetricsHeader}\n\n${extractCandidate}`
     : extractCandidate;
@@ -223,7 +230,13 @@ export async function outputExtractedUrl({
         : interleaved;
     await slidesOutput.renderFromText(interleavedWithMetrics);
     hooks.restoreProgressAfterStdout?.();
-    const slideFooter = slides ? [`slides ${slides.slides.length}`] : [];
+    const slideFooter = slides
+      ? [
+          createCliTranslator(resolveCliLocaleFromEnv(io.envForRun))("footer.slides", {
+            count: slides.slides.length,
+          }),
+        ]
+      : [];
     hooks.writeViaFooter([...extractionUi.footerParts, ...slideFooter]);
     const report = flags.shouldComputeReport ? await hooks.buildReport() : null;
     if (flags.metricsEnabled && report) {
@@ -267,7 +280,13 @@ export async function outputExtractedUrl({
     io.stdout.write("\n");
   }
   hooks.restoreProgressAfterStdout?.();
-  const slideFooter = slides ? [`slides ${slides.slides.length}`] : [];
+  const slideFooter = slides
+    ? [
+        createCliTranslator(resolveCliLocaleFromEnv(io.envForRun))("footer.slides", {
+          count: slides.slides.length,
+        }),
+      ]
+    : [];
   hooks.writeViaFooter([...extractionUi.footerParts, ...slideFooter]);
   const report = flags.shouldComputeReport ? await hooks.buildReport() : null;
   await writeUrlMetricsFinishLine({
@@ -391,7 +410,7 @@ export async function presentExtractedUrlSummary({
       report: finishReport,
       transcriptionCostLabel,
       label: extractionUi.finishSourceLabel,
-      elapsedLabel: summaryFromCache ? "Cached" : null,
+      elapsedLabel: summaryFromCache ? cliMessage("finish.cached") : null,
       model: llm.model,
     });
     return;
@@ -444,7 +463,7 @@ export async function presentExtractedUrlSummary({
     report,
     transcriptionCostLabel,
     label: extractionUi.finishSourceLabel,
-    elapsedLabel: summaryFromCache ? "Cached" : null,
+    elapsedLabel: summaryFromCache ? cliMessage("finish.cached") : null,
     model: llm.canonical,
   });
 }

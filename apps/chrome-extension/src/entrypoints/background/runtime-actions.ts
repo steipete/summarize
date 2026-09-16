@@ -90,7 +90,12 @@ async function dispatchNativeInput(
   try {
     await chrome.debugger.attach({ tabId }, "1.3");
   } catch (err) {
-    if (!(err instanceof Error) || !err.message.includes("already attached")) {
+    if (
+      !(err instanceof Error) ||
+      !err.message.includes(
+        /* i18n-ignore: Chrome debugger protocol diagnostic. */ "already attached",
+      )
+    ) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }
   }

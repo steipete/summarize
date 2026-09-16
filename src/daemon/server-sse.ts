@@ -36,6 +36,7 @@ export function attachBufferedSseSession({
   }
 
   const keepalive = setInterval(() => {
+    // i18n-ignore: SSE comment frame, never displayed as interface text.
     res.write(`: keepalive ${Date.now()}\n\n`);
   }, 15_000);
   keepalive.unref();

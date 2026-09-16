@@ -9,7 +9,7 @@ export type SlidesSessionState = {
   inputMode: InputMode;
   inputModeOverride: InputMode | null;
   mediaAvailable: boolean;
-  summarizeVideoLabel: string;
+  summarizeMediaKind: "audio" | "video";
   summarizePageWords: number | null;
   summarizeVideoDurationSeconds: number | null;
   slidesBusy: boolean;
@@ -35,7 +35,7 @@ export function createInitialSlidesSessionState(options: {
     inputMode: "page",
     inputModeOverride: null,
     mediaAvailable: false,
-    summarizeVideoLabel: "Video",
+    summarizeMediaKind: "video",
     summarizePageWords: null,
     summarizeVideoDurationSeconds: null,
     slidesBusy: false,

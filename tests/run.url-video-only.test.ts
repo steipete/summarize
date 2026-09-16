@@ -1,6 +1,7 @@
 import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import type { ExtractedLinkContent } from "../src/content/index.js";
+import { createCliTranslator } from "../src/locale.js";
 import type { UrlExtractionUi } from "../src/run/flows/url/extract.js";
 import type { UrlFlowContext } from "../src/run/flows/url/types.js";
 import { handleVideoOnlyExtractedContent } from "../src/run/flows/url/video-only.js";
@@ -133,8 +134,9 @@ describe("handleVideoOnlyExtractedContent", () => {
       isYoutubeUrl: false,
       fetchWithCache,
       runSlidesExtraction,
-      renderStatus: (label, detail = "") => `${label}${detail}`,
-      renderStatusWithMeta: (label, meta) => `${label} ${meta}`,
+      renderStatus: (key) => createCliTranslator("en")(key, { hasMeta: false, meta: "" }),
+      renderStatusWithMeta: (key, meta) =>
+        createCliTranslator("en")(key, { hasMeta: Boolean(meta), meta }),
       spinner,
       styleDim: (text) => text,
       updateSummaryProgress: vi.fn(),
@@ -183,8 +185,9 @@ describe("handleVideoOnlyExtractedContent", () => {
       isYoutubeUrl: false,
       fetchWithCache,
       runSlidesExtraction,
-      renderStatus: (label, detail = "") => `${label}${detail}`,
-      renderStatusWithMeta: (label, meta) => `${label} ${meta}`,
+      renderStatus: (key) => createCliTranslator("en")(key, { hasMeta: false, meta: "" }),
+      renderStatusWithMeta: (key, meta) =>
+        createCliTranslator("en")(key, { hasMeta: Boolean(meta), meta }),
       spinner,
       styleDim: (text) => text,
       updateSummaryProgress: vi.fn(),
@@ -214,8 +217,9 @@ describe("handleVideoOnlyExtractedContent", () => {
       isYoutubeUrl: false,
       fetchWithCache: vi.fn(),
       runSlidesExtraction,
-      renderStatus: (label, detail = "") => `${label}${detail}`,
-      renderStatusWithMeta: (label, meta) => `${label} ${meta}`,
+      renderStatus: (key) => createCliTranslator("en")(key, { hasMeta: false, meta: "" }),
+      renderStatusWithMeta: (key, meta) =>
+        createCliTranslator("en")(key, { hasMeta: Boolean(meta), meta }),
       spinner,
       styleDim: (text) => text,
       updateSummaryProgress: vi.fn(),
@@ -300,8 +304,9 @@ describe("handleVideoOnlyExtractedContent", () => {
         ],
         warnings: [],
       })),
-      renderStatus: (label, detail = "") => `${label}${detail}`,
-      renderStatusWithMeta: (label, meta) => `${label} ${meta}`,
+      renderStatus: (key) => createCliTranslator("en")(key, { hasMeta: false, meta: "" }),
+      renderStatusWithMeta: (key, meta) =>
+        createCliTranslator("en")(key, { hasMeta: Boolean(meta), meta }),
       spinner,
       styleDim: (text) => text,
       updateSummaryProgress,
@@ -338,10 +343,10 @@ describe("handleVideoOnlyExtractedContent", () => {
     expect(onModelChosen).toHaveBeenCalledWith("google/gemini-2.5-pro");
     expect(writeViaFooter).not.toHaveBeenCalled();
     expect(updateSummaryProgress).toHaveBeenCalledTimes(1);
-    expect(spinner.setText).toHaveBeenCalledWith("Downloading video");
-    expect(spinner.setText).toHaveBeenCalledWith("Summarizing video");
+    expect(spinner.setText).toHaveBeenCalledWith("Downloading video…");
+    expect(spinner.setText).toHaveBeenCalledWith("Summarizing video…");
     expect(spinner.setText).toHaveBeenCalledWith(
-      "Summarizing video (model: google/gemini-2.5-pro)",
+      "Summarizing video (model: google/gemini-2.5-pro)…",
     );
   });
 });

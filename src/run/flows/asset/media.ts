@@ -1,10 +1,9 @@
+import { statSync } from "node:fs";
 /**
  * Media file transcription handler for local audio/video files.
  * Phase 2: Transcript provider integration
  * Phase 2.2: Local file path handling for transcript caching
  */
-
-import { statSync } from "node:fs";
 import { isAbsolute, resolve as resolvePath } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -13,7 +12,8 @@ import {
   type ExtractedLinkContent,
 } from "../../../content/index.js";
 import { createFirecrawlScraper } from "../../../firecrawl.js";
-import { resolveCliLocaleFromEnv, translateCliText } from "../../../locale.js";
+import { CliError } from "../../../locale.js";
+import { createCliTranslator, resolveCliLocaleFromEnv } from "../../../locale.js";
 import {
   identifySpeakersInExtractedContent,
   rememberSpeakerMappings,
@@ -111,13 +111,13 @@ export async function executeMediaFile(
   const ytDlpPath = ctx.env.YT_DLP_PATH || ((await isBinaryAvailable("yt-dlp")) ? "yt-dlp" : null);
 
   if (ctx.transcriptDiarization === "elevenlabs" && !elevenlabsKey) {
-    throw new Error("Speaker diarization with ElevenLabs requires ELEVENLABS_API_KEY");
+    throw new CliError("error.elevenlabsKey");
   }
   if (ctx.transcriptDiarization === "openai" && !openaiKey) {
-    throw new Error("Speaker diarization with OpenAI requires OPENAI_API_KEY");
+    throw new CliError("error.openaiDiarizationKey");
   }
   if (ctx.transcriptDiarization === "auto" && !elevenlabsKey && !openaiKey) {
-    throw new Error("Speaker diarization requires ELEVENLABS_API_KEY or OPENAI_API_KEY");
+    throw new CliError("error.diarizationKey");
   }
 
   const transcription = {
@@ -135,34 +135,7 @@ export async function executeMediaFile(
     ctx.transcriptDiarization !== null || availability.hasAnyProvider;
 
   if (!hasAnyTranscriptionProvider) {
-    throw new Error(`Media file transcription requires one of the following:
-
-1. Local ONNX (Parakeet or Canary):
-   Run summarize transcriber setup
-
-2. Groq Whisper (fast, free tier):
-   Set GROQ_API_KEY=gsk_...
-
-3. Gemini audio transcription:
-   Set GEMINI_API_KEY=...
-
-4. AssemblyAI transcription:
-   Set ASSEMBLYAI_API_KEY=...
-
-5. OpenAI Whisper:
-   Set OPENAI_API_KEY=sk-...
-
-6. FAL Whisper:
-   Set FAL_KEY=...
-
-7. Deepgram:
-   Set DEEPGRAM_API_KEY=...
-
-8. Local whisper.cpp:
-   brew install whisper-cpp
-   Ensure whisper-cli is on your PATH (or set SUMMARIZE_WHISPER_CPP_BINARY)
-
-See: summarize transcriber help`);
+    throw new CliError("error.transcriptionSetup");
   }
 
   const isHttpUrl = (value: string): boolean => {
@@ -196,14 +169,15 @@ See: summarize transcriber help`);
       const maxSizeBytes = MAX_LOCAL_MEDIA_BYTES;
 
       if (fileSizeBytes === 0) {
-        throw new Error("Media file is empty (0 bytes). Please provide a valid audio/video file.");
+        throw new CliError("error.emptyMedia");
       }
 
       if (fileSizeBytes > maxSizeBytes) {
         const fileSizeMB = Math.round(fileSizeBytes / (1024 * 1024));
-        throw new Error(
-          `Media file is too large (${fileSizeMB} MB). Maximum supported size is ${MAX_LOCAL_MEDIA_LABEL}.`,
-        );
+        throw new CliError("error.mediaTooLarge", {
+          fileSizeMB,
+          MAX_LOCAL_MEDIA_LABEL: String(MAX_LOCAL_MEDIA_LABEL),
+        });
       }
     } catch (error) {
       if (
@@ -213,9 +187,9 @@ See: summarize transcriber help`);
         throw error; // Re-throw our validation errors
       }
       // For other statSync errors (e.g., file not found), let them bubble up
-      throw new Error(
-        `Unable to access media file: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
+      throw new CliError("error.mediaAccess", {
+        value: String(error instanceof Error ? error.message : "Unknown error"),
+      });
     }
   }
 
@@ -306,7 +280,9 @@ See: summarize transcriber help`);
       if (identified.warning) {
         writeVerbose(ctx.stderr, ctx.verbose, identified.warning, ctx.verboseColor, ctx.envForRun);
         const locale = resolveCliLocaleFromEnv(ctx.envForRun);
-        ctx.stderr.write(`${translateCliText("Warning:", locale)} ${identified.warning}\n`);
+        ctx.stderr.write(
+          `${createCliTranslator(locale)("warning.detail", { message: identified.warning })}\n`,
+        );
       }
       if (ctx.speakerIdentification.remember) {
         if (!ctx.configPath || !identified.transcriptHash) {
@@ -331,11 +307,7 @@ See: summarize transcriber help`);
 
     // Check if we got a transcript
     if (!extracted.content || extracted.content.trim().length === 0) {
-      throw new Error(`Failed to transcribe media file. Check that:
-  - Audio/video format is supported (MP3, WAV, M4A, OGG, FLAC, MP4, MOV, WEBM)
-  - Transcription provider is configured
-  - File is readable
-  - Media file is not corrupted`);
+      throw new CliError("error.transcriptionChecks");
     }
 
     // Create a text-based attachment from the transcript
@@ -384,9 +356,9 @@ See: summarize transcriber help`);
     if (error instanceof Error && error.message.includes("transcribe")) {
       throw error;
     }
-    throw new Error(
-      `Transcription failed: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    throw new CliError("error.transcriptionFailed", {
+      value: String(error instanceof Error ? error.message : String(error)),
+    });
   }
 }
 

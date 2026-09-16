@@ -1,7 +1,8 @@
 import type { Command } from "commander";
 import { readCliOptionValue } from "../cli-args.js";
 import { handleDaemonRequest } from "../daemon/cli.js";
-import { resolveCliLocaleFromArgs, translateCliText } from "../locale.js";
+import { CliError } from "../locale.js";
+import { resolveCliLocaleFromArgs } from "../locale.js";
 import { refreshFree } from "../refresh-free.js";
 import {
   applyHelpStyle,
@@ -29,25 +30,25 @@ export function handleHelpRequest({
 }: HelpContext): boolean {
   if (normalizedArgv[0]?.toLowerCase() !== "help") return false;
   const locale = resolveCliLocaleFromArgs(normalizedArgv, envForRun);
-  const writeHelp = (text: string) => stdout.write(`${translateCliText(text, locale)}\n`);
+  const writeHelp = (text: string) => stdout.write(`${text}\n`);
   const topic = normalizedArgv[1]?.toLowerCase();
   if (topic === "refresh-free") {
-    writeHelp(buildRefreshFreeHelp());
+    writeHelp(buildRefreshFreeHelp(locale));
     return true;
   }
   if (topic === "daemon") {
-    writeHelp(buildDaemonHelp());
+    writeHelp(buildDaemonHelp(locale));
     return true;
   }
   if (topic === "status") {
-    writeHelp(buildStatusHelp());
+    writeHelp(buildStatusHelp(locale));
     return true;
   }
   if (topic === "slides") {
-    const slidesProgram: Command = buildSlidesProgram();
+    const slidesProgram: Command = buildSlidesProgram(locale);
     slidesProgram.configureOutput({
       writeOut(str) {
-        stdout.write(translateCliText(str, locale));
+        stdout.write(str);
       },
       writeErr(str) {
         stderr.write(str);
@@ -58,14 +59,14 @@ export function handleHelpRequest({
     return true;
   }
   if (topic === "transcriber") {
-    writeHelp(buildTranscriberHelp());
+    writeHelp(buildTranscriberHelp(locale));
     return true;
   }
 
-  const program: Command = buildProgram();
+  const program: Command = buildProgram(locale);
   program.configureOutput({
     writeOut(str) {
-      stdout.write(translateCliText(str, locale));
+      stdout.write(str);
     },
     writeErr(str) {
       stderr.write(str);
@@ -118,18 +119,14 @@ export async function handleRefreshFreeRequest({
   })();
 
   if (help) {
-    stdout.write(
-      `${translateCliText(buildRefreshFreeHelp(), resolveCliLocaleFromArgs(normalizedArgv, envForRun))}\n`,
-    );
+    stdout.write(`${buildRefreshFreeHelp(resolveCliLocaleFromArgs(normalizedArgv, envForRun))}\n`);
     return true;
   }
 
-  if (!Number.isFinite(runs) || runs < 0) throw new Error("--runs must be >= 0");
-  if (!Number.isFinite(smart) || smart < 0) throw new Error("--smart must be >= 0");
-  if (!Number.isFinite(minParams) || minParams < 0)
-    throw new Error("--min-params must be >= 0 (e.g. 27b)");
-  if (!Number.isFinite(maxAgeDays) || maxAgeDays < 0)
-    throw new Error("--max-age-days must be >= 0");
+  if (!Number.isFinite(runs) || runs < 0) throw new CliError("error.invalidRuns");
+  if (!Number.isFinite(smart) || smart < 0) throw new CliError("error.invalidSmart");
+  if (!Number.isFinite(minParams) || minParams < 0) throw new CliError("error.invalidMinParams");
+  if (!Number.isFinite(maxAgeDays) || maxAgeDays < 0) throw new CliError("error.invalidMaxAge");
 
   await refreshFree({
     env: envForRun,

@@ -1,4 +1,5 @@
 import { logExtensionEvent } from "../../lib/extension-logs";
+import { message as uiMessage, type LocalizedText } from "../../lib/i18n";
 import type { BrowserAiSummaryInput } from "../../lib/panel-contracts";
 import {
   browserAiErrorDetail,
@@ -24,7 +25,7 @@ type RuntimeOptions = {
   getApi?: () => BrowserSummarizerApi | null;
   getLanguageModelApi?: () => BrowserLanguageModelApi | null;
   isUserActive?: () => boolean;
-  setStatus: (status: string) => void;
+  setStatus: (status: LocalizedText) => void;
 };
 
 export type BrowserAiRequestKey = "summary" | "slides";
@@ -54,7 +55,11 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     `${requestKey}:${length}`;
   const promptSessionKey = (requestKey: BrowserAiRequestKey, imageInput: boolean) =>
     `${requestKey}:${imageInput ? "image" : "text"}`;
-  const setOwnedStatus = (requestKey: BrowserAiRequestKey, owner: symbol, status: string) => {
+  const setOwnedStatus = (
+    requestKey: BrowserAiRequestKey,
+    owner: symbol,
+    status: LocalizedText,
+  ) => {
     statusOwner = { requestKey, token: owner };
     options.setStatus(status);
   };
@@ -68,11 +73,15 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     (requestKey: BrowserAiRequestKey, statusToken: symbol) => (monitor: EventTarget) => {
       monitor.addEventListener("downloadprogress", (event) => {
         const loaded = (event as Event & { loaded?: number }).loaded;
-        const percent =
-          typeof loaded === "number" && Number.isFinite(loaded)
-            ? ` ${Math.round(loaded * 100)}%`
-            : "";
-        setOwnedStatus(requestKey, statusToken, `Downloading on-device AI…${percent}`);
+        const hasPercent = typeof loaded === "number" && Number.isFinite(loaded);
+        setOwnedStatus(
+          requestKey,
+          statusToken,
+          uiMessage("progress.browser.download", {
+            hasPercent,
+            percent: hasPercent ? Math.max(0, Math.min(1, loaded)) : 0,
+          }),
+        );
       });
     };
 
@@ -243,12 +252,12 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     input,
     context,
     requestKey = "summary",
-    status = "Summarizing with on-device AI…",
+    status = uiMessage("progress.browser.summary"),
   }: {
     input: BrowserAiSummaryInput;
     context?: string;
     requestKey?: BrowserAiRequestKey;
-    status?: string;
+    status?: LocalizedText;
   }): Promise<string | null> => {
     const { controller, statusToken, isCurrent, finish } = beginRequest(requestKey, "summary");
     const session = await ensureSession(input.length, requestKey, statusToken);
@@ -306,12 +315,12 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     input,
     responseConstraint,
     requestKey = "slides",
-    status = "Summarizing with on-device AI…",
+    status = uiMessage("progress.browser.summary"),
   }: {
     input: BrowserAiPromptInput;
     responseConstraint: RegExp;
     requestKey?: BrowserAiRequestKey;
-    status?: string;
+    status?: LocalizedText;
   }): Promise<BrowserAiPromptResult | null> => {
     const { controller, statusToken, isCurrent, finish } = beginRequest(requestKey, "prompt");
     const imageInput = promptUsesImages(input);

@@ -29,6 +29,14 @@ export function createVitestConfig({
     resolve: {
       alias: [
         {
+          find: /^@steipete\/summarize-core\/localization$/,
+          replacement: resolve(rootDir, "packages/core/src/localization/index.ts"),
+        },
+        {
+          find: /^@steipete\/summarize-core\/localization\/(.+)$/,
+          replacement: resolve(rootDir, "packages/core/src/localization/$1.ts"),
+        },
+        {
           find: /^@steipete\/summarize-core\/content$/,
           replacement: resolve(rootDir, "packages/core/src/content/index.ts"),
         },

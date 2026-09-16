@@ -1,5 +1,7 @@
 import type { JSX } from "preact";
+import { message as uiMessage, extensionMessage } from "../../lib/i18n";
 import type { ColorMode, ColorScheme } from "../../lib/theme";
+import { MessageText } from "../../ui/localized-text";
 import { mountComponent } from "../../ui/mount";
 import { type SelectItem, useSelect } from "../../ui/select";
 import { SelectField } from "../../ui/select-field";
@@ -61,10 +63,11 @@ const modeIcons: Record<string, JSX.Element> = {
   ),
 };
 
+// i18n-ignore: CSS font-family identifiers; displayed labels are keyed or font names.
 const fontItems: SelectItem[] = [
   {
     value: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
-    label: "San Francisco",
+    label: uiMessage("san.francisco"),
   },
   { value: "Georgia, serif", label: "Georgia" },
   { value: "Iowan Old Style, Palatino, serif", label: "Iowan" },
@@ -108,53 +111,63 @@ function SidepanelPickers(props: SidepanelPickerProps) {
   return (
     <>
       <SelectField
-        label="Scheme"
+        label={uiMessage("scheme")}
         labelClassName="scheme"
         pickerId="scheme"
         api={schemeApi}
         items={schemeItems}
         triggerContent={(label, value) => (
           <>
-            <span className="scheme-label">{label || "Slate"}</span>
+            <span className="scheme-label">{label || extensionMessage("slate")}</span>
             <SchemeChips scheme={value || "slate"} />
           </>
         )}
         optionContent={(item) => (
           <>
-            <span className="scheme-label">{item.label}</span>
+            <span className="scheme-label">
+              <MessageText value={item.label} />
+            </span>
             <SchemeChips scheme={item.value} />
           </>
         )}
       />
       <SelectField
-        label="Mode"
+        label={uiMessage("mode")}
         labelClassName="mode"
         pickerId="mode"
         api={modeApi}
         items={modeItems}
         triggerContent={(label, value) => (
           <>
-            <span>{label || "System"}</span>
+            <span>{label || extensionMessage("system")}</span>
             <span className="modeIcon">{modeIcons[value] ?? null}</span>
           </>
         )}
         optionContent={(item) => (
           <>
-            <span>{item.label}</span>
+            <span>
+              <MessageText value={item.label} />
+            </span>
             <span className="modeIcon">{modeIcons[item.value] ?? null}</span>
           </>
         )}
       />
       <SelectField
-        label="Font"
+        label={uiMessage("font")}
         labelClassName="font"
         pickerId="font"
         api={fontApi}
         items={fontItems}
         triggerContent={(label, value) => (
-          <span style={value ? { fontFamily: value } : undefined}>{label || "San Francisco"}</span>
+          <span style={value ? { fontFamily: value } : undefined}>
+            {label || extensionMessage("san.francisco")}
+          </span>
         )}
-        optionContent={(item) => <span style={{ fontFamily: item.value }}>{item.label}</span>}
+        optionContent={(item) => (
+          <span style={{ fontFamily: item.value }}>
+            <MessageText value={item.label} />
+          </span>
+        )}
       />
     </>
   );

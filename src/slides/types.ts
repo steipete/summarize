@@ -45,3 +45,15 @@ export type SlideExtractionResult = {
   slides: SlideImage[];
   warnings: string[];
 };
+
+export type SlideProgressPhase =
+  | "local"
+  | "cached"
+  | "download"
+  | "fetch"
+  | "prepare"
+  | "detect"
+  | "frames"
+  | "ocr"
+  | "finalize"
+  | "thumbnails";

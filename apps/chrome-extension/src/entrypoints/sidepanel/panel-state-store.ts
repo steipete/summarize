@@ -75,7 +75,7 @@ export function patchPanelState<
 export function setPanelPhase(
   state: PanelState,
   phase: PanelState["phase"],
-  error?: string | null,
+  error?: PanelState["error"],
 ) {
   state.phase = phase;
   state.error = phase === "error" ? (error ?? state.error) : null;

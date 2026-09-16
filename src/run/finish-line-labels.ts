@@ -1,4 +1,4 @@
-import { formatCompactCount } from "../tty/format.js";
+import type { FinishLabel } from "./finish-line-types.js";
 
 export type ExtractDiagnosticsForFinishLine = {
   strategy: "bird" | "xurl" | "twitter-syndication" | "nitter" | "firecrawl" | "html";
@@ -12,22 +12,26 @@ export function buildExtractFinishLabel(args: {
   format: "text" | "markdown";
   markdownMode: "off" | "auto" | "llm" | "readability";
   hasMarkdownLlmCall: boolean;
-}): string {
-  const base = args.format === "markdown" ? "markdown" : "text";
+}): FinishLabel {
+  const finish = (via: string | null = null): FinishLabel => ({
+    kind: "extract",
+    format: args.format,
+    via,
+  });
 
   const transcriptProvided = Boolean(args.extracted.diagnostics.transcript?.textProvided);
   if (transcriptProvided) {
     const provider = args.extracted.diagnostics.transcript?.provider;
-    return provider ? `${base} via transcript/${provider}` : `${base} via transcript`;
+    return finish(provider ? `transcript/${provider}` : "transcript");
   }
 
   if (args.format === "markdown") {
     const strategy = String(args.extracted.diagnostics.strategy ?? "");
     const firecrawlUsed =
       strategy === "firecrawl" || Boolean(args.extracted.diagnostics.firecrawl?.used);
-    if (firecrawlUsed) return `${base} via firecrawl`;
+    if (firecrawlUsed) return finish("firecrawl");
     if (strategy === "html" && args.markdownMode === "readability") {
-      return `${base} via readability`;
+      return finish("readability");
     }
 
     const mdUsed = Boolean(args.extracted.diagnostics.markdown?.used);
@@ -35,33 +39,39 @@ export function buildExtractFinishLabel(args: {
     const mdNotes = args.extracted.diagnostics.markdown.notes ?? null;
 
     if (mdUsed && mdProvider === "firecrawl") {
-      return `${base} via firecrawl`;
+      return finish("firecrawl");
     }
-    if (mdUsed && mdNotes && mdNotes.toLowerCase().includes("readability html used")) {
-      return `${base} via readability`;
+    if (
+      mdUsed &&
+      mdNotes &&
+      mdNotes
+        .toLowerCase()
+        .includes(/* i18n-ignore: Core extraction diagnostic marker. */ "readability html used")
+    ) {
+      return finish("readability");
     }
     if (mdUsed) {
-      if (args.markdownMode === "readability") return `${base} via readability`;
-      if (args.hasMarkdownLlmCall) return `${base} via llm`;
-      if (mdNotes === "markitdown+ocr") return `${base} via markitdown+ocr`;
-      return `${base} via markitdown`;
+      if (args.markdownMode === "readability") return finish("readability");
+      if (args.hasMarkdownLlmCall) return finish("llm");
+      if (mdNotes === "markitdown+ocr") return finish("markitdown+ocr");
+      return finish("markitdown");
     }
   }
 
   const strategy = String(args.extracted.diagnostics.strategy ?? "");
   if (strategy === "firecrawl" || args.extracted.diagnostics.firecrawl?.used) {
-    return `${base} via firecrawl`;
+    return finish("firecrawl");
   }
-  if (strategy === "xurl") return `${base} via xurl`;
-  if (strategy === "bird") return `${base} via bird`;
-  if (strategy === "twitter-syndication") return `${base} via twitter-syndication`;
-  if (strategy === "nitter") return `${base} via nitter`;
-  return base;
+  if (strategy === "xurl") return finish("xurl");
+  if (strategy === "bird") return finish("bird");
+  if (strategy === "twitter-syndication") return finish("twitter-syndication");
+  if (strategy === "nitter") return finish("nitter");
+  return finish();
 }
 
 export function buildSummaryFinishLabel(args: {
   extracted: { diagnostics: ExtractDiagnosticsForFinishLine; wordCount: number };
-}): string | null {
+}): FinishLabel | null {
   const strategy = String(args.extracted.diagnostics.strategy ?? "");
   const sources: string[] = [];
   if (strategy === "xurl") sources.push("xurl");
@@ -76,13 +86,7 @@ export function buildSummaryFinishLabel(args: {
     typeof args.extracted.wordCount === "number" && Number.isFinite(args.extracted.wordCount)
       ? args.extracted.wordCount
       : 0;
-  const wordLabel = words > 0 ? `${formatCompactCount(words)} words` : null;
-  if (transcriptProvided) {
-    if (sources.length === 0) return null;
-    return `via ${sources.join("+")}`;
-  }
-  if (sources.length === 0 && !wordLabel) return null;
-  if (wordLabel && sources.length > 0) return `${wordLabel} via ${sources.join("+")}`;
-  if (wordLabel) return wordLabel;
-  return `via ${sources.join("+")}`;
+  if (transcriptProvided && sources.length === 0) return null;
+  if (!transcriptProvided && sources.length === 0 && words <= 0) return null;
+  return { kind: "summary", words: transcriptProvided ? 0 : words, sources };
 }

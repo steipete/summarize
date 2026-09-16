@@ -1,10 +1,22 @@
+import type { MessageDescriptor } from "@steipete/summarize-core/localization";
 import type {
   AgentAssistantMessage as AssistantMessage,
   AgentMessage as Message,
 } from "@steipete/summarize-core/runtime";
+import { LocalizedError, message } from "../../lib/i18n";
 
-export type AgentResponse = { ok: boolean; assistant?: AssistantMessage; error?: string };
-export type ChatHistoryResponse = { ok: boolean; messages?: Message[]; error?: string };
+export type AgentResponse = {
+  ok: boolean;
+  assistant?: AssistantMessage;
+  error?: string;
+  localized?: MessageDescriptor;
+};
+export type ChatHistoryResponse = {
+  ok: boolean;
+  messages?: Message[];
+  error?: string;
+  localized?: MessageDescriptor;
+};
 
 type PendingAgentRequest = {
   resolve: (response: AgentResponse) => void;
@@ -78,11 +90,17 @@ export function createChatSession({
       ok: boolean;
       assistant?: AssistantMessage;
       error?: string;
+      localized?: MessageDescriptor;
     }) {
       const pending = pendingAgentRequests.get(msg.requestId);
       if (!pending) return;
       pendingAgentRequests.delete(msg.requestId);
-      pending.resolve({ ok: msg.ok, assistant: msg.assistant, error: msg.error });
+      pending.resolve({
+        ok: msg.ok,
+        assistant: msg.assistant,
+        error: msg.error,
+        ...(msg.localized ? { localized: msg.localized } : {}),
+      });
     },
     handleAgentChunk(msg: { requestId: string; text: string }) {
       const pending = pendingAgentRequests.get(msg.requestId);
@@ -94,11 +112,17 @@ export function createChatSession({
       ok: boolean;
       messages?: Message[];
       error?: string;
+      localized?: MessageDescriptor;
     }) {
       const pending = pendingChatHistoryRequests.get(msg.requestId);
       if (!pending) return;
       pendingChatHistoryRequests.delete(msg.requestId);
-      pending.resolve({ ok: msg.ok, messages: msg.messages, error: msg.error });
+      pending.resolve({
+        ok: msg.ok,
+        messages: msg.messages,
+        error: msg.error,
+        ...(msg.localized ? { localized: msg.localized } : {}),
+      });
     },
     requestAgent(
       messages: Message[],
@@ -110,7 +134,7 @@ export function createChatSession({
       return new Promise<AgentResponse>((resolve, reject) => {
         const timeout = globalThis.setTimeout(() => {
           pendingAgentRequests.delete(requestId);
-          reject(new Error("Agent request timed out"));
+          reject(new LocalizedError(message("error.agentTimeout")));
         }, agentTimeoutMs);
         pendingAgentRequests.set(requestId, {
           resolve: (result) => {
@@ -131,7 +155,7 @@ export function createChatSession({
       return new Promise<ChatHistoryResponse>((resolve, reject) => {
         const timeout = globalThis.setTimeout(() => {
           pendingChatHistoryRequests.delete(requestId);
-          reject(new Error("Chat history request timed out"));
+          reject(new LocalizedError(message("error.chatHistoryTimeout")));
         }, historyTimeoutMs);
         pendingChatHistoryRequests.set(requestId, {
           resolve: (result) => {

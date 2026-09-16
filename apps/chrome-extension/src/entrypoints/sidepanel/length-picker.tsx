@@ -2,7 +2,15 @@ import type { SummaryLength } from "@steipete/summarize-core";
 import { SUMMARY_LENGTH_SPECS } from "@steipete/summarize-core/prompts";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { readPresetOrCustomValue, resolvePresetOrCustom } from "../../lib/combo";
+import {
+  message as uiMessage,
+  extensionMessage,
+  resolveText,
+  type LocalizedText,
+  type ExtensionMessageKey,
+} from "../../lib/i18n";
 import { defaultSettings } from "../../lib/settings";
+import { MessageText } from "../../ui/localized-text";
 import { mountComponent } from "../../ui/mount";
 import { type SelectItem, useSelect } from "../../ui/select";
 import { SelectPopup } from "../../ui/select-field";
@@ -16,37 +24,66 @@ const lengthPresets = ["short", "medium", "long", "xl", "xxl", "20k"];
 const MIN_CUSTOM_LENGTH_CHARS = 10;
 const LENGTH_COUNT_PATTERN = /^(?<value>\d+(?:\.\d+)?)(?<unit>k|m)?$/i;
 
-type LengthItem = SelectItem & { tooltip?: string };
+type LengthItem = SelectItem & { tooltip?: LocalizedText };
 
-const lengthLabels: Record<SummaryLength, string> = {
-  short: "Short",
-  medium: "Medium",
-  long: "Long",
-  xl: "Extra Large (XL)",
-  xxl: "Extra Extra Large (XXL)",
+const tooltipKeys: Record<SummaryLength, ExtensionMessageKey> = {
+  short: "length.shortTooltip",
+  medium: "length.mediumTooltip",
+  long: "length.longTooltip",
+  xl: "length.xlTooltip",
+  xxl: "length.xxlTooltip",
 };
-
-const formatCount = (value: number) => value.toLocaleString();
-
-const formatLengthTooltip = (preset: SummaryLength): string => {
+const formatLengthTooltip = (preset: SummaryLength): LocalizedText => {
   const spec = SUMMARY_LENGTH_SPECS[preset];
-  return `${lengthLabels[preset]}: target ~${formatCount(spec.targetCharacters)} chars (${formatCount(
-    spec.minCharacters,
-  )}-${formatCount(spec.maxCharacters)}). ${spec.formatting}`;
+  return uiMessage(tooltipKeys[preset], {
+    target: spec.targetCharacters,
+    min: spec.minCharacters,
+    max: spec.maxCharacters,
+  });
 };
 
 const lengthItems: LengthItem[] = [
-  { value: "short", label: "Short", tooltip: formatLengthTooltip("short") },
-  { value: "medium", label: "Medium", tooltip: formatLengthTooltip("medium") },
-  { value: "long", label: "Long", tooltip: formatLengthTooltip("long") },
-  { value: "xl", label: "XL", tooltip: formatLengthTooltip("xl") },
-  { value: "xxl", label: "XXL", tooltip: formatLengthTooltip("xxl") },
+  {
+    // i18n-ignore: Stored length identifier; the label and tooltip are localized separately.
+    value: "short",
+    label: uiMessage("short"),
+    tooltip: formatLengthTooltip("short"),
+  },
+  {
+    // i18n-ignore: Stored length identifier; the label and tooltip are localized separately.
+    value: "medium",
+    label: uiMessage("medium"),
+    tooltip: formatLengthTooltip("medium"),
+  },
+  {
+    // i18n-ignore: Stored length identifier; the label and tooltip are localized separately.
+    value: "long",
+    label: uiMessage("long"),
+    tooltip: formatLengthTooltip("long"),
+  },
+  {
+    // i18n-ignore: Stored length identifier; XL is the invariant compact size label.
+    value: "xl",
+    label: "XL",
+    tooltip: formatLengthTooltip("xl"),
+  },
+  {
+    // i18n-ignore: Stored length identifier; XXL is the invariant compact size label.
+    value: "xxl",
+    label: "XXL",
+    tooltip: formatLengthTooltip("xxl"),
+  },
   {
     value: "20k",
     label: "20k",
-    tooltip: "Custom target around 20,000 characters (soft guideline).",
+    tooltip: uiMessage("custom.target.around.20.000.characters.soft.guideline"),
   },
-  { value: "custom", label: "Custom…", tooltip: "Set a custom length like 1500, 20k, or 1.5k." },
+  {
+    // i18n-ignore: Stored length identifier; the label and tooltip are localized separately.
+    value: "custom",
+    label: uiMessage("custom"),
+    tooltip: uiMessage("set.a.custom.length.like.1500.20k.or.1.5k"),
+  },
 ];
 
 function LengthField({
@@ -128,10 +165,10 @@ function LengthField({
           key={item.value}
           className="pickerOption"
           style={item.value === "custom" ? { gridColumn: "1 / -1" } : undefined}
-          title={item.tooltip}
+          title={item.tooltip ? resolveText(item.tooltip) : undefined}
           {...api.getItemProps({ item })}
         >
-          {item.label}
+          <MessageText value={item.label} />
         </button>
       ))}
     </SelectPopup>
@@ -139,7 +176,7 @@ function LengthField({
 
   return (
     <label className="length mini" {...resolvedLabelProps}>
-      <span className="pickerTitle">Length</span>
+      <span className="pickerTitle">{extensionMessage("length")}</span>
       <div className="combo">
         <div className="picker" {...api.getRootProps()}>
           {presetValue === "custom" ? (
@@ -148,7 +185,7 @@ function LengthField({
                 ref={inputRef}
                 id="lengthCustom"
                 type="text"
-                placeholder="Custom (e.g. 20k)"
+                placeholder={extensionMessage("custom.e.g.20k")}
                 autocapitalize="off"
                 autocomplete="off"
                 spellcheck={false}
@@ -169,12 +206,12 @@ function LengthField({
                 }}
               />
               <button className="pickerTrigger presetsTrigger" {...api.getTriggerProps()}>
-                Presets
+                {extensionMessage("presets")}
               </button>
             </div>
           ) : (
             <button className="pickerTrigger" {...api.getTriggerProps()}>
-              <span>{api.valueAsString || "Length"}</span>
+              <span>{api.valueAsString || extensionMessage("length")}</span>
             </button>
           )}
           {content}

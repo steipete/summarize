@@ -1,5 +1,10 @@
 import type MarkdownIt from "markdown-it";
 import {
+  setText as setUiText,
+  message as uiMessage,
+  setLocalizedAttribute as setUiAttribute,
+} from "../../lib/i18n";
+import {
   buildChatRequestMessages,
   type ChatHistoryLimits,
   computeChatContextUsage,
@@ -35,8 +40,6 @@ export class ChatController {
 
   private readonly scrollToBottom?: () => void;
   private readonly onNewContent?: () => void;
-  private readonly typingIndicatorHtml =
-    '<span class="chatTyping" aria-label="Typing"><span></span><span></span><span></span></span>';
 
   private readonly timestampPattern = /\[(\d{1,2}:\d{2}(?::\d{2})?)\]/g;
 
@@ -51,6 +54,18 @@ export class ChatController {
 
     this.scrollToBottom = opts.scrollToBottom;
     this.onNewContent = opts.onNewContent;
+  }
+
+  private renderTypingIndicator(target: HTMLElement) {
+    const indicator = document.createElement("span");
+    indicator.className = "chatTyping";
+    setUiAttribute(indicator, "aria-label", uiMessage("typing"));
+    indicator.append(
+      document.createElement("span"),
+      document.createElement("span"),
+      document.createElement("span"),
+    );
+    target.replaceChildren(indicator);
   }
 
   getMessages(): ChatMessage[] {
@@ -145,7 +160,7 @@ export class ChatController {
           msgEl.innerHTML = this.markdown.render(this.linkifyTimestamps(content));
           msgEl.removeAttribute("data-placeholder");
         } else {
-          msgEl.innerHTML = this.typingIndicatorHtml;
+          this.renderTypingIndicator(msgEl);
           msgEl.setAttribute("data-placeholder", "true");
         }
         msgEl.classList.add("streaming");
@@ -191,14 +206,21 @@ export class ChatController {
 
   private updateContextStatus() {
     if (!this.hasUserMessages()) {
-      this.contextEl.textContent = "";
+      setUiText(this.contextEl, "");
       this.contextEl.removeAttribute("data-state");
       this.contextEl.classList.add("isHidden");
       return;
     }
     const usage = computeChatContextUsage(this.getMessages(), this.limits);
     this.contextEl.classList.remove("isHidden");
-    this.contextEl.textContent = `Context ${usage.percent}% · ${usage.totalMessages} msgs · ${usage.totalChars.toLocaleString()} chars`;
+    setUiText(
+      this.contextEl,
+      uiMessage("chat.context", {
+        percent: usage.percent / 100,
+        messages: usage.totalMessages,
+        chars: usage.totalChars,
+      }),
+    );
     if (usage.percent >= 85) {
       this.contextEl.dataset.state = "warn";
     } else {
@@ -221,11 +243,23 @@ export class ChatController {
 
     if (message.role === "assistant") {
       const { text, toolCalls } = splitAssistantMessage(message);
-      const rendered = buildAssistantMarkdown(text, toolCalls);
-      if (rendered.trim()) {
-        msgEl.innerHTML = this.markdown.render(this.linkifyTimestamps(rendered));
+      if (text.trim() || toolCalls.length) {
+        msgEl.innerHTML = this.markdown.render(this.linkifyTimestamps(text));
+        if (text.trim() && toolCalls.length) msgEl.append(document.createElement("hr"));
+        for (const call of toolCalls) {
+          const heading = document.createElement("p");
+          const strong = document.createElement("strong");
+          setUiText(strong, uiMessage("chat.tool", { name: call.name }));
+          heading.append(strong);
+          const pre = document.createElement("pre");
+          const code = document.createElement("code");
+          code.className = "language-json";
+          setUiText(code, JSON.stringify(call.arguments, null, 2));
+          pre.append(code);
+          msgEl.append(heading, pre);
+        }
       } else {
-        msgEl.innerHTML = this.typingIndicatorHtml;
+        this.renderTypingIndicator(msgEl);
         msgEl.classList.add("streaming");
         msgEl.setAttribute("data-placeholder", "true");
       }
@@ -234,9 +268,19 @@ export class ChatController {
       msgEl.classList.add("tool");
       if (message.isError) msgEl.classList.add("error");
       const output = extractText(message);
-      const header = `Tool result: ${message.toolName}${message.isError ? " (error)" : ""}`;
-      const body = output ? `\n\n\`\`\`\n${output}\n\`\`\`` : "";
-      msgEl.innerHTML = this.markdown.render(`${header}${body}`);
+      const heading = document.createElement("p");
+      setUiText(
+        heading,
+        uiMessage("chat.toolResult", { name: message.toolName, error: Boolean(message.isError) }),
+      );
+      msgEl.replaceChildren(heading);
+      if (output) {
+        const pre = document.createElement("pre");
+        const code = document.createElement("code");
+        setUiText(code, output);
+        pre.append(code);
+        msgEl.append(pre);
+      }
       const attachments = extractAttachments(message);
       if (attachments.length > 0) {
         const list = document.createElement("div");
@@ -245,7 +289,14 @@ export class ChatController {
           const link = document.createElement("button");
           link.type = "button";
           link.className = "chatAttachment";
-          link.textContent = `${file.fileName} (${file.mimeType || "file"})`;
+          setUiText(
+            link,
+            uiMessage("chat.attachment", {
+              name: file.fileName,
+              type: file.mimeType ?? "",
+              hasType: Boolean(file.mimeType),
+            }),
+          );
           link.addEventListener("click", () => {
             const blob = base64ToBlob(file.contentBase64, file.mimeType);
             const url = URL.createObjectURL(blob);
@@ -260,7 +311,7 @@ export class ChatController {
         msgEl.appendChild(list);
       }
     } else {
-      msgEl.textContent = extractText(message);
+      setUiText(msgEl, extractText(message));
     }
 
     return msgEl;
@@ -340,19 +391,4 @@ function splitAssistantMessage(message: ChatMessage): {
     .filter((part) => part.type === "toolCall")
     .map((call) => ({ name: call.name, arguments: call.arguments }));
   return { text, toolCalls };
-}
-
-function buildAssistantMarkdown(
-  text: string,
-  toolCalls: Array<{ name: string; arguments: Record<string, unknown> }>,
-): string {
-  if (!toolCalls.length) return text;
-  const calls = toolCalls
-    .map(
-      (call) =>
-        `**Tool:** ${call.name}\n\n\`\`\`json\n${JSON.stringify(call.arguments, null, 2)}\n\`\`\``,
-    )
-    .join("\n\n");
-  if (!text.trim()) return calls;
-  return `${text}\n\n---\n\n${calls}`;
 }

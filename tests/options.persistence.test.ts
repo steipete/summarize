@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createOptionsSaveRuntime } from "../apps/chrome-extension/src/entrypoints/options/persistence.js";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 
 describe("options persistence", () => {
   it("debounces autosave and flushes one queued rerun", async () => {
@@ -56,8 +57,10 @@ describe("options persistence", () => {
 
     await expect(runtime.saveNow()).resolves.toBeUndefined();
 
-    expect(setStatus).toHaveBeenLastCalledWith("Save failed: storage unavailable");
-    expect(flashStatus).not.toHaveBeenCalledWith("Saved");
+    expect(setStatus).toHaveBeenLastCalledWith(
+      message("settings.saveFailed", { error: "storage unavailable", hasError: true }),
+    );
+    expect(flashStatus).not.toHaveBeenCalledWith(message("saved"));
   });
 
   it("handles autosave failures without an unhandled rejection", async () => {
@@ -78,8 +81,10 @@ describe("options persistence", () => {
     runtime.scheduleAutoSave(10);
     await vi.advanceTimersByTimeAsync(10);
 
-    expect(setStatus).toHaveBeenLastCalledWith("Save failed: quota exceeded");
-    expect(flashStatus).not.toHaveBeenCalledWith("Saved");
+    expect(setStatus).toHaveBeenLastCalledWith(
+      message("settings.saveFailed", { error: "quota exceeded", hasError: true }),
+    );
+    expect(flashStatus).not.toHaveBeenCalledWith(message("saved"));
     vi.useRealTimers();
   });
 });

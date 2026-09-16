@@ -10,7 +10,12 @@ export function sanitizeSlideSummaryTitle(title: string): string {
   const normalized = title.trim().replace(/\s+/g, " ");
   if (!normalized) return "";
   const lowered = normalized.toLowerCase();
-  if (lowered === "summary" || lowered === "slide summary") return "";
+  if (
+    lowered === "summary" ||
+    lowered ===
+      /* i18n-ignore: Canonical model-output heading, independent of UI locale. */ "slide summary"
+  )
+    return "";
   return normalized;
 }
 

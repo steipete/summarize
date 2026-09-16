@@ -30,6 +30,7 @@ export function createBrowserAiSnapshotRuntime(options: {
     void options.browserAi
       .summarize({
         input: browserAi,
+        // i18n-ignore: Instructions for the summary model, not interface copy.
         context: snapshot.run.title
           ? `Summarize the page or media titled "${snapshot.run.title}".`
           : undefined,

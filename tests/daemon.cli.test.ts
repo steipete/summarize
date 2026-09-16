@@ -150,7 +150,7 @@ describe("daemon cli", () => {
         stderr: new PassThrough(),
       });
       expect(text).toContain("Chrome yerel mesajlaşma ana makinesi: kurulu");
-      expect(text).toContain("Daemon çalışıyor: 127.0.0.1:9931");
+      expect(text).toContain("Daemon: 127.0.0.1:9931 üzerinde çalışıyor");
       expect(text).toContain("Kimlik doğrulama: tamam");
       expect(text).toContain(
         platform === "darwin"

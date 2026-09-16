@@ -1,74 +1,82 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   applyExtensionLocale,
-  extensionTranslationKeys,
   getActiveExtensionLocale,
   resolveExtensionLocale,
-  translateExtensionText,
+  extensionMessage,
+  message,
+  readLocalizedMessage,
+  setText,
+  setLocalizedAttribute,
 } from "../apps/chrome-extension/src/lib/i18n.js";
 import {
-  cliTranslationKeys,
-  hasTurkishTranslation,
+  createCliTranslator,
+  CliError,
+  describeCliError,
   resolveCliLocale,
   resolveCliLocaleFromArgs,
   resolveCliLocaleFromEnv,
-  translateCliText,
 } from "../src/locale.js";
+import englishMessages from "../src/localization/en.json";
+import { withBirdTip } from "../src/run/bird.js";
+import { withUvxTip } from "../src/run/tips.js";
 
-describe("locale selection and fallback", () => {
-  it("covers Syndication progress while preserving the provider identifier", () => {
-    expect(translateCliText("X: fetching via syndication API…", "tr")).toBe(
-      "X: Syndication API üzerinden alınıyor…",
-    );
-    expect(translateCliText("X: syndication failed; fallback…", "tr")).toBe(
-      "X: Syndication başarısız; alternatif deneniyor…",
-    );
-    expect(translateExtensionText("X: extracting tweet (syndication API)…", "tr")).toBe(
-      "X: gönderi çıkarılıyor (Syndication API)…",
-    );
-    expect(translateExtensionText("X: extracted tweet", "tr")).toBe("X: gönderi çıkarıldı");
-    expect(translateExtensionText("X: extract failed", "tr")).toBe("X: gönderi çıkarılamadı");
-    expect(translateCliText("via twitter-syndication", "tr")).toContain("twitter-syndication");
+describe("CLI locale selection and keyed messages", () => {
+  it("keeps nested owned errors locale-neutral across the daemon wire", () => {
+    const inner = new CliError("error.preprocessMissing", { mediaType: "application/pdf" });
+    for (const wrapped of [
+      withUvxTip(inner, { PATH: "" }),
+      withBirdTip(inner, "https://x.com/example/status/123", { PATH: "" }),
+    ]) {
+      const wire = JSON.parse(JSON.stringify(describeCliError(wrapped)));
+      expect(wire.message).toContain("Missing uvx/markitdown");
+      const descriptor = readLocalizedMessage(wire.localized)!;
+      expect(descriptor.values.message).toEqual(inner.descriptor());
+      const rendered = extensionMessage(descriptor.key, descriptor.values, "tr");
+      expect(rendered).toContain("application/pdf ön işlemesi için uvx/markitdown eksik.");
+      expect(rendered).toContain("İpucu:");
+      expect(rendered).not.toContain("Missing");
+      expect((wrapped as CliError).format("tr")).toBe(rendered);
+    }
   });
-  it("selects Turkish from aliases and falls back to English", () => {
+  it("uses explicit preferences before system locale and falls back for unregistered catalogs", () => {
     expect(resolveCliLocale("tr-TR")).toBe("tr");
     expect(resolveCliLocale("turkish")).toBe("tr");
     expect(resolveCliLocale("fr")).toBe("en");
-    expect(resolveCliLocaleFromEnv({ SUMMARIZE_LOCALE: "tr_TR.UTF-8" })).toBe("tr");
-    expect(resolveCliLocaleFromEnv({ LANG: "tr_TR.UTF-8" })).toBe("en");
+    expect(resolveCliLocale("zh-TW")).toBe("en");
+    expect(resolveCliLocale("pt-PT")).toBe("en");
+    expect(resolveCliLocale("unknown")).toBe("en");
+    expect(resolveCliLocaleFromEnv({ SUMMARIZE_LOCALE: "tr_TR.UTF-8", LANG: "de_DE.UTF-8" })).toBe(
+      "tr",
+    );
+    expect(resolveCliLocaleFromEnv({ LANG: "tr_TR.UTF-8" })).toBe("tr");
+    expect(
+      resolveCliLocaleFromEnv({ LANG: "de_DE.UTF-8", LC_MESSAGES: "ja_JP.UTF-8", LC_ALL: "C" }),
+    ).toBe("en");
+    expect(resolveCliLocaleFromEnv({ SUMMARIZE_LOCALE: "tr", LANG: "de_DE.UTF-8" }, "auto")).toBe(
+      "en",
+    );
     expect(resolveCliLocaleFromArgs(["--locale", "tr"], {})).toBe("tr");
-    expect(resolveCliLocaleFromArgs(["--locale=tr"], {})).toBe("tr");
+    expect(resolveCliLocaleFromArgs(["--locale=tr", "--locale=en"], {})).toBe("en");
     expect(resolveCliLocaleFromArgs(["--", "--locale=tr"], {})).toBe("en");
     expect(resolveCliLocaleFromArgs(["--locale", "tr", "--", "--locale=en"], {})).toBe("tr");
   });
 
-  it("translates representative CLI text without touching technical identifiers", () => {
-    const help = translateCliText(
-      "Usage: summarize <input> [flags]\n  --language, --lang <language>\n  --model openai/gpt-5-mini",
-      "tr",
+  it("translates complete messages while retaining command and provider identifiers", () => {
+    const t = createCliTranslator("tr");
+    expect(t("x.fetching.via.syndication.api")).toBe("X: Syndication API üzerinden alınıyor…");
+    expect(t("x.syndication.failed.fallback")).toBe(
+      "X: Syndication başarısız; alternatif deneniyor…",
     );
-    expect(help).toContain("Kullanım: summarize <input> [flags]");
-    expect(help).toContain("--language, --lang <language>");
-    expect(help).toContain("openai/gpt-5-mini");
-    const technical = translateCliText(
-      "OpenAI service tier: default, fast, priority, flex. https://example.com/default --model openai/gpt-5 service_tier=priority",
-      "tr",
+    expect(t("status.model", { model: "openai/gpt-5-mini", source: "config" })).toBe(
+      "Model: openai/gpt-5-mini (yapılandırma)",
     );
-    expect(technical).toContain("default, fast, priority, flex");
-    expect(technical).toContain("https://example.com/default");
-    expect(technical).toContain("--model openai/gpt-5");
-    expect(technical).toContain("service_tier=priority");
-    expect(translateCliText("Fetching website", "tr")).toBe("Web sitesi alınıyor");
-    expect(translateCliText("Fetching website", "en")).toBe("Fetching website");
-  });
-
-  it("keeps translation keys explicit for coverage checks", () => {
-    expect(cliTranslationKeys.length).toBeGreaterThan(30);
-    expect(extensionTranslationKeys.length).toBeGreaterThan(80);
-    expect(hasTurkishTranslation("Try again")).toBe(true);
-    expect(hasTurkishTranslation("provider/model")).toBe(false);
+    expect(t("help.usage.summarize.input.flags")).toBe("Kullanım: summarize <input> [flags]");
+    expect(t("fetching.website")).toBe("Web sitesi alınıyor");
+    expect(createCliTranslator("en")("fetching.website")).toBe("Fetching website");
+    expect(Object.keys(englishMessages).length).toBeGreaterThan(30);
   });
 
   it.each([
@@ -83,92 +91,130 @@ describe("locale selection and fallback", () => {
     "/home/me/Projects (old)/config.json",
     "/home/me/Projects, old;/config.json",
     "https://example.com/Copy%20failed/slide.png",
-  ])("preserves technical paths before multiword replacements: %s", (value) => {
-    const translated = translateCliText(`Copy failed: (${value})`, "tr", [value]);
-    expect(translated).toBe(`Kopyalama başarısız: (${value})`);
-    expect(translateCliText(`Wrote ${value}`, "tr", [value])).toContain(value);
+    "{count, plural, other {not a message}}",
+  ])("keeps interpolated data verbatim: %s", (path) => {
+    const t = createCliTranslator("tr");
+    expect(t("slides.image", { index: 3, timestamp: "1:23", path })).toBe(
+      `Slayt 3 · 1:23 (${path})`,
+    );
+    expect(t("refresh.wroteConfig", { path })).toBe(`Yazıldı: ${path} (models.free)`);
   });
 
-  it("still translates fixed help descriptions containing a literal configuration path", () => {
-    const help =
-      "Output language: auto (match source), en, de, english, german, ... (default: auto; configurable in ~/.summarize/config.json via output.language)";
-    expect(translateCliText(help, "tr")).toContain("Çıktı dili:");
-    expect(translateCliText(help, "tr")).toContain("~/.summarize/config.json");
-    expect(translateCliText('Copy failed: "Copy failed"', "tr", ['"Copy failed"'])).toBe(
-      'Kopyalama başarısız: "Copy failed"',
+  it("preserves raw diagnostics and literal command placeholders", () => {
+    const t = createCliTranslator("tr");
+    expect(t("warning.detail", { message: 'Copy failed: "Copy failed"' })).toBe(
+      'Uyarı: Copy failed: "Copy failed"',
     );
-    expect(translateCliText("Wrote old/0.json", "tr", ["old/0.json", "0", ""])).toContain(
-      "old/0.json",
-    );
+    const help = t("help.environment", { themes: "aurora, ember, moss, mono" });
+    expect(help).toContain("{input}");
+    expect(help).toContain("OPENAI_API_KEY");
+    expect(help).toContain("aurora, ember, moss, mono");
   });
 });
 
 describe("extension locale", () => {
+  it("keeps the product name distinct from the translated summarize action", () => {
+    expect(extensionMessage("brand.name", {}, "tr")).toBe("Summarize");
+    expect(extensionMessage("summarize", {}, "tr")).toBe("Özetle");
+    expect(extensionMessage("source.summarizeAction", { source: "Video" }, "tr")).toBe(
+      "Özetle (Video)",
+    );
+  });
+  afterEach(() => {
+    applyExtensionLocale("en")();
+    document.body.replaceChildren();
+  });
+
   it.each(["Delete", "Copy failed", 'name with "quotes"'])(
     "localizes deletion confirmations while preserving the skill name: %s",
     (name) => {
-      expect(translateExtensionText(`Delete skill "${name}"?`, "tr")).toBe(
+      expect(extensionMessage("skills.deleteConfirm", { name }, "tr")).toBe(
         `"${name}" yeteneği silinsin mi?`,
       );
     },
   );
-  it.each(["constructor", "toString", "__proto__"])(
-    "preserves unknown prototype-shaped text: %s",
-    (text) => {
-      expect(translateExtensionText(text, "tr")).toBe(text);
-    },
-  );
-  it("uses explicit locale before browser detection and detects Turkish", () => {
+
+  it("validates descriptors without treating opaque strings as keys", () => {
+    const nested = { key: "error.withUvxTip", values: { message: { key: "unknown", values: {} } } };
+    expect(readLocalizedMessage(nested)).toBeUndefined();
+    const cyclic = { key: "error.withUvxTip", values: {} as Record<string, unknown> };
+    cyclic.values.message = cyclic;
+    expect(readLocalizedMessage(cyclic)).toBeUndefined();
+    for (const key of ["constructor", "toString", "__proto__", "Copy failed"]) {
+      expect(readLocalizedMessage({ key, values: {} })).toBeUndefined();
+    }
+    expect(readLocalizedMessage({ key: "skills.deleteConfirm", values: {} })).toBeUndefined();
+    expect(
+      readLocalizedMessage({
+        key: "chat.context",
+        values: { percent: "50", messages: 2, chars: 3 },
+      }),
+    ).toBeUndefined();
+    expect(
+      readLocalizedMessage({
+        key: "chat.context",
+        values: { percent: NaN, messages: 2, chars: 3 },
+      }),
+    ).toBeUndefined();
+    expect(
+      readLocalizedMessage({
+        key: "chat.context",
+        values: { percent: 0.5, messages: 2, chars: 3 },
+      }),
+    ).toEqual(message("chat.context", { percent: 0.5, messages: 2, chars: 3 }));
+  });
+
+  it("uses explicit locale before ordered browser preferences and region fallbacks", () => {
     expect(resolveExtensionLocale("tr", "en-US")).toBe("tr");
     expect(resolveExtensionLocale("en", "tr-TR")).toBe("en");
-    expect(resolveExtensionLocale("auto", "tr-TR")).toBe("tr");
+    expect(resolveExtensionLocale("auto", ["unsupported", "tr-TR"])).toBe("tr");
     expect(resolveExtensionLocale("auto", "fr-FR")).toBe("en");
+    expect(resolveExtensionLocale("auto", "zh-TW")).toBe("en");
   });
 
-  it("translates extension labels and preserves dynamic values", () => {
-    expect(translateExtensionText("Try again", "tr")).toBe("Tekrar dene");
-    expect(translateExtensionText("Page · 123 words", "tr")).toBe("Sayfa · 123 kelime");
-    expect(translateExtensionText("custom model id", "tr")).toBe("özel model kimliği");
-    expect(translateExtensionText("--model openai/gpt-5", "tr")).toBe("--model openai/gpt-5");
-    expect(translateExtensionText("Slide 3", "tr")).toBe("Slayt 3");
-    expect(translateExtensionText("123 words", "tr")).toBe("123 kelime");
-    expect(translateExtensionText("Context 50% · 2 msgs · 1,024 chars", "tr")).toBe(
-      "Bağlam 50% · 2 mesaj · 1,024 karakter",
-    );
-    expect(translateExtensionText("Queue full (3). Remove one to add more.", "tr")).toBe(
-      "Kuyruk dolu (3). Daha fazla eklemek için birini kaldırın.",
-    );
-  });
-
-  it("translates existing and later UI nodes without touching ignored content", async () => {
+  it("updates explicit text and attribute bindings while preserving page and user content", async () => {
     document.body.innerHTML = `
-      <main data-locale-ui>
-        <button id="retry" title="Try again">Try again</button>
-        <div id="dynamic"></div>
-        <div data-locale-ignore="true"><span>Try again</span></div>
-      </main>
-      <div id="content">Try again</div>
-    `;
-    const stop = applyExtensionLocale("tr");
+      <button id="retry" data-i18n="try.again" data-i18n-title="try.again"></button>
+      <div id="dynamic"></div>
+      <code id="code" data-i18n-title="try.again">Try again</code>
+      <pre id="pre" data-i18n-aria-label="try.again">Try again</pre>
+      <input type="button" data-i18n-value="try.again">
+      <select><option data-i18n-label="try.again"></option></select>
+      <div data-locale-ignore><span data-i18n="try.again">Try again</span><button id="trusted"></button></div>
+      <div id="content">Try again</div>`;
+    const dynamic = document.querySelector<HTMLElement>("#dynamic")!;
+    const trusted = document.querySelector<HTMLElement>("#trusted")!;
+    applyExtensionLocale("tr");
+    setText(dynamic, message("skills.deleteConfirm", { name: "Try again" }));
+    setLocalizedAttribute(dynamic, "title", message("try.again"));
+    setText(trusted, message("try.again"));
     expect(getActiveExtensionLocale()).toBe("tr");
+    expect(document.querySelector("#code")?.getAttribute("title")).toBe("Tekrar dene");
+    expect(document.querySelector("#pre")?.getAttribute("aria-label")).toBe("Tekrar dene");
+    expect(document.querySelector("#code")?.textContent).toBe("Try again");
+    expect(document.querySelector("#pre")?.textContent).toBe("Try again");
     expect(document.querySelector("#retry")?.textContent).toBe("Tekrar dene");
+    expect(document.querySelector("input")?.value).toBe("Tekrar dene");
+    expect(document.querySelector("option")?.getAttribute("label")).toBe("Tekrar dene");
     expect(document.querySelector("#retry")?.getAttribute("title")).toBe("Tekrar dene");
-    expect(document.querySelector("[data-locale-ignore]")?.textContent?.trim()).toBe("Try again");
+    expect(dynamic.textContent).toBe('"Try again" yeteneği silinsin mi?');
+    expect(dynamic.title).toBe("Tekrar dene");
+    expect(trusted.textContent).toBe("Tekrar dene");
+    expect(document.querySelector("[data-locale-ignore] span")?.textContent).toBe("Try again");
     expect(document.querySelector("#content")?.textContent).toBe("Try again");
-
-    const dynamic = document.querySelector<HTMLElement>("#dynamic");
-    if (!dynamic) throw new Error("dynamic test node missing");
-    dynamic.textContent = "Loading logs…";
-    const content = document.querySelector<HTMLElement>("#content");
-    if (!content) throw new Error("content test node missing");
-    content.textContent = "Loading logs…";
+    const added = document.createElement("button");
+    added.dataset.i18n = "try.again";
+    document.body.append(added);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(dynamic.textContent).toBe("Günlükler yükleniyor…");
-    expect(content.textContent).toBe("Loading logs…");
-
-    stop();
+    expect(added.textContent).toBe("Tekrar dene");
     applyExtensionLocale("en")();
-    expect(getActiveExtensionLocale()).toBe("en");
-    expect(document.querySelector("#retry")?.textContent).toBe("Try again");
+    expect(document.querySelector("input")?.value).toBe("Try again");
+    expect(document.querySelector("option")?.getAttribute("label")).toBe("Try again");
+    expect(dynamic.textContent).toBe('Delete skill "Try again"?');
+    expect(dynamic.title).toBe("Try again");
+    expect(trusted.textContent).toBe("Try again");
+    setText(dynamic, "Try again");
+    applyExtensionLocale("tr")();
+    expect(dynamic.textContent).toBe("Try again");
   });
 });

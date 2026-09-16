@@ -1,3 +1,4 @@
+import { extensionMessage } from "../../lib/i18n";
 import type { BrowserAiSummaryInput } from "../../lib/panel-contracts";
 import { normalizePanelUrl, panelUrlsMatch } from "../../lib/panel-url";
 import {
@@ -100,7 +101,7 @@ export function createSummaryRunRuntime({
       : preserveActiveLocalSlideRun
         ? (activeSlidesRun?.runId ?? null)
         : null;
-    view.setHeaderTitle(run.title || run.url || "Summarize");
+    view.setHeaderTitle(run.title || run.url || extensionMessage("brand.name"));
     view.setHeaderSubtitle("");
     const fallbackModel = panelState.ui?.settings.model ?? null;
     attachPanelRun(panelState, {
@@ -163,7 +164,7 @@ export function createSummaryRunRuntime({
       summaryFromCache: null,
       ...(preservedSlides ? { slides: preservedSlides } : {}),
     });
-    view.setHeaderTitle(payload.run.title || payload.run.url || "Summarize");
+    view.setHeaderTitle(payload.run.title || payload.run.url || extensionMessage("brand.name"));
     view.setHeaderSubtitle("");
     if (preservedSlides) {
       slides.setTranscriptTimedText(preservedSlides.transcriptTimedText ?? null);

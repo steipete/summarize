@@ -1,8 +1,9 @@
 import { isTwitterStatusUrl } from "@steipete/summarize-core/content/url";
+import { CliError, cliMessage, type CliMessage } from "../locale.js";
 import { execTweetCli } from "./bird/exec.js";
 import { parseBirdTweetPayload, parseXurlTweetPayload } from "./bird/parse.js";
 import type { BirdTweetPayload, TweetCliClient } from "./bird/types.js";
-import { BIRD_TIP, TWITTER_HOSTS } from "./constants.js";
+import { TWITTER_HOSTS } from "./constants.js";
 import { hasBirdCli, hasXurlCli } from "./env.js";
 
 export type { TweetCliClient } from "./bird/types.js";
@@ -39,7 +40,7 @@ export async function readTweetWithXurl(args: {
 }): Promise<BirdTweetPayload> {
   const tweetId = parseTweetId(args.url);
   if (!tweetId) {
-    throw new Error("xurl read requires a tweet status URL or id");
+    throw new CliError("error.xurlInput");
   }
   const stdout = await execTweetCli(
     "xurl",
@@ -48,20 +49,24 @@ export async function readTweetWithXurl(args: {
     args.env,
   );
   if (!stdout) {
-    throw new Error("xurl read returned empty output");
+    throw new CliError("error.xurlEmpty");
   }
   try {
     return parseXurlTweetPayload(JSON.parse(stdout));
   } catch (parseError) {
     if (
       parseError instanceof Error &&
-      (parseError.message.startsWith("xurl read returned") ||
-        parseError.message.startsWith("xurl API error"))
+      (parseError.message.startsWith(
+        /* i18n-ignore: CliError.message is a stable English API diagnostic. */ "xurl read returned",
+      ) ||
+        parseError.message.startsWith(
+          /* i18n-ignore: CliError.message is a stable English API diagnostic. */ "xurl API error",
+        ))
     ) {
       throw parseError;
     }
     const message = parseError instanceof Error ? parseError.message : String(parseError);
-    throw new Error(`xurl read returned invalid JSON: ${message}`);
+    throw new CliError("error.xurlJson", { message: String(message) });
   }
 }
 
@@ -77,16 +82,21 @@ export async function readTweetWithBird(args: {
     args.env,
   );
   if (!stdout) {
-    throw new Error("bird read returned empty output");
+    throw new CliError("error.birdEmpty");
   }
   try {
     return parseBirdTweetPayload(JSON.parse(stdout));
   } catch (parseError) {
-    if (parseError instanceof Error && parseError.message.startsWith("bird read returned")) {
+    if (
+      parseError instanceof Error &&
+      parseError.message.startsWith(
+        /* i18n-ignore: CliError.message is a stable English API diagnostic. */ "bird read returned",
+      )
+    ) {
       throw parseError;
     }
     const message = parseError instanceof Error ? parseError.message : String(parseError);
-    throw new Error(`bird read returned invalid JSON: ${message}`);
+    throw new CliError("error.birdJson", { message: String(message) });
   }
 }
 
@@ -103,20 +113,29 @@ export async function readTweetWithPreferredClient(args: {
     attempts.push(["bird", () => readTweetWithBird(args)]);
   }
 
-  const errors: string[] = [];
+  let failure: CliMessage | undefined;
   for (const [client, run] of attempts) {
     try {
       const tweet = await run();
       return { ...tweet, client };
     } catch (error) {
-      errors.push(`${client}: ${error instanceof Error ? error.message : String(error)}`);
+      const next = cliMessage("error.tweetClient", {
+        client,
+        error:
+          error instanceof CliError
+            ? error.descriptor()
+            : error instanceof Error
+              ? error.message
+              : String(error),
+      });
+      failure = failure ? cliMessage("error.sequence", { first: failure, next }) : next;
     }
   }
 
-  if (errors.length > 0) {
-    throw new Error(errors.join("; "));
+  if (failure) {
+    throw new CliError(failure.key, failure.values);
   }
-  throw new Error("No X CLI available");
+  throw new CliError("error.noTwitterCli");
 }
 
 export function withBirdTip(
@@ -127,7 +146,16 @@ export function withBirdTip(
   if (!url || !isTwitterStatusUrl(url) || hasXurlCli(env) || hasBirdCli(env)) {
     return error instanceof Error ? error : new Error(String(error));
   }
-  const message = error instanceof Error ? error.message : String(error);
-  const combined = `${message}\n${BIRD_TIP}`;
-  return error instanceof Error ? new Error(combined, { cause: error }) : new Error(combined);
+  return new CliError(
+    "error.withTwitterTip",
+    {
+      message:
+        error instanceof CliError
+          ? error.descriptor()
+          : error instanceof Error
+            ? error.message
+            : String(error),
+    },
+    error instanceof Error ? { cause: error } : undefined,
+  );
 }

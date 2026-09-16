@@ -1,16 +1,11 @@
+import type { InputSummaryArgs } from "@steipete/summarize-core/localization/presentation";
 import {
   formatCompactCount,
   formatDurationSecondsSmart,
   formatMinutesSmart,
 } from "../tty/format.js";
-
-export type InputSummaryArgs = {
-  kindLabel: string | null;
-  durationSeconds: number | null;
-  words: number | null;
-  characters: number | null;
-  isDurationApproximate?: boolean;
-};
+export type { InputSummaryArgs } from "@steipete/summarize-core/localization/presentation";
+export { buildInputSummaryMessage } from "@steipete/summarize-core/localization/presentation";
 
 export function estimateDurationSecondsFromWords(words: number, { minSeconds = 60 } = {}): number {
   const safe = typeof words === "number" && Number.isFinite(words) ? words : 0;
@@ -24,6 +19,7 @@ export function countWords(text: string): number {
   return trimmed.split(/\s+/).length;
 }
 
+/** Legacy daemon wire text stays stable; current UIs render inputSummaryMessage instead. */
 export function formatInputSummary({
   kindLabel,
   durationSeconds,

@@ -1,3 +1,4 @@
+import { CliError } from "../locale.js";
 import { DAEMON_HOST } from "./constants.js";
 
 export async function sleep(ms: number): Promise<void> {
@@ -25,7 +26,7 @@ export async function waitForHealth({
     }
     await sleep(200);
   }
-  throw new Error(`Daemon not reachable at ${url}`);
+  throw new CliError("service.healthUnreachable", { address: url });
 }
 
 export async function waitForHealthWithRetries({
@@ -55,7 +56,7 @@ export async function waitForHealthWithRetries({
   }
   throw lastError instanceof Error
     ? lastError
-    : new Error(`Daemon not reachable at ${DAEMON_HOST}:${port}`);
+    : new CliError("service.healthUnreachable", { address: `${DAEMON_HOST}:${port}` });
 }
 
 export async function checkAuth({

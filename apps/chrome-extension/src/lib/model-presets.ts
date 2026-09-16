@@ -1,5 +1,13 @@
 import { daemonFetch } from "./daemon-fetch";
 import { getDaemonOrigin } from "./daemon-url";
+import {
+  readLocalizedMessage,
+  resolveText,
+  message as uiMessage,
+  setText as setUiText,
+  setLocalizedAttribute,
+  type LocalizedText,
+} from "./i18n";
 
 export function createModelPresetsController({
   presetEl,
@@ -20,16 +28,17 @@ export function createModelPresetsController({
 }) {
   const setDefaultPresets = () => {
     presetEl.innerHTML = "";
-    for (const [value, label] of [
-      ["auto", "Auto"],
-      ["browser/gemini-nano", "Gemini Nano (on-device)"],
-      ["gpt-fast", "GPT Fast"],
-      ...(includeFree ? [["free", "Free"]] : []),
-      ["custom", "Custom…"],
-    ]) {
+    const defaults: Array<[string, LocalizedText]> = [
+      ["auto", uiMessage("auto")],
+      ["browser/gemini-nano", uiMessage("gemini.nano.on.device")],
+      ["gpt-fast", uiMessage("gpt.fast")],
+      ...(includeFree ? [["free", uiMessage("free")] as [string, LocalizedText]] : []),
+      ["custom", uiMessage("custom")],
+    ];
+    for (const [value, label] of defaults) {
       const option = document.createElement("option");
       option.value = value;
-      option.textContent = label;
+      setUiText(option, label);
       presetEl.append(option);
     }
   };
@@ -37,6 +46,7 @@ export function createModelPresetsController({
     providers?: unknown;
     localModelsSource?: unknown;
   }) => {
+    // i18n-ignore: Literal model IDs accepted by the custom-model input.
     const hints = ["auto", "gpt-fast"];
     if (discovery.providers && typeof discovery.providers === "object") {
       const providers = discovery.providers as Record<string, unknown>;
@@ -65,9 +75,16 @@ export function createModelPresetsController({
         if (providers[provider] === true) hints.push(hint);
       }
     }
-    if (discovery.localModelsSource && typeof discovery.localModelsSource === "object")
-      hints.push("local: openai/<id>");
-    customEl.placeholder = hints.join(" / ");
+    setLocalizedAttribute(
+      customEl,
+      "placeholder",
+      uiMessage("model.placeholder", {
+        hints: hints.join(" / "),
+        hasLocal: Boolean(
+          discovery.localModelsSource && typeof discovery.localModelsSource === "object",
+        ),
+      }),
+    );
   };
   const readCurrentValue = () =>
     presetEl.value === "custom" ? customEl.value || defaultValue : presetEl.value || defaultValue;
@@ -79,6 +96,7 @@ export function createModelPresetsController({
     const next = value.trim() || defaultValue;
     const hasPreset =
       next !== "custom" && Array.from(presetEl.options).some((option) => option.value === next);
+    // i18n-ignore: Select option identifier; the displayed label has its own message binding.
     presetEl.value = hasPreset ? next : "custom";
     updateRowUI();
     if (!hasPreset) customEl.value = next;
@@ -86,6 +104,7 @@ export function createModelPresetsController({
   const captureSelection = () => ({ presetValue: presetEl.value, customValue: customEl.value });
   const restoreSelection = (selection: ReturnType<typeof captureSelection>) => {
     if (selection.presetValue === "custom") {
+      // i18n-ignore: Select option identifier; the displayed label has its own message binding.
       presetEl.value = "custom";
       updateRowUI();
       customEl.value = selection.customValue;
@@ -123,13 +142,17 @@ export function createModelPresetsController({
       if (record.ok !== true) return;
       setPlaceholderFromDiscovery(record);
       if (!Array.isArray(record.options)) return;
-      const options = record.options.flatMap((item): Array<{ id: string; label: string }> => {
-        if (!item || typeof item !== "object") return [];
-        const option = item as { id?: unknown; label?: unknown };
-        const id = typeof option.id === "string" ? option.id.trim() : "";
-        const label = typeof option.label === "string" ? option.label.trim() : "";
-        return id ? [{ id, label }] : [];
-      });
+      const options = record.options.flatMap(
+        (item): Array<{ id: string; label: LocalizedText }> => {
+          if (!item || typeof item !== "object") return [];
+          const option = item as { id?: unknown; label?: unknown; labelMessage?: unknown };
+          const id = typeof option.id === "string" ? option.id.trim() : "";
+          const label =
+            readLocalizedMessage(option.labelMessage) ??
+            (typeof option.label === "string" ? option.label.trim() : "");
+          return id ? [{ id, label }] : [];
+        },
+      );
       const selection = captureSelection();
       setDefaultPresets();
       const seen = new Set(Array.from(presetEl.options).map((option) => option.value));
@@ -138,7 +161,14 @@ export function createModelPresetsController({
         seen.add(option.id);
         const element = document.createElement("option");
         element.value = option.id;
-        element.textContent = option.label ? `${option.id} — ${option.label}` : option.id;
+        setUiText(
+          element,
+          uiMessage("model.option", () => ({
+            id: option.id,
+            label: resolveText(option.label),
+            hasLabel: Boolean(resolveText(option.label)),
+          })),
+        );
         presetEl.append(element);
       }
       restoreSelection(selection);

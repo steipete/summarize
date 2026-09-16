@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileTypeFromBuffer } from "file-type";
+import { CliError } from "../locale.js";
 
 const DEFAULT_STDIN_MAX_BYTES = 50 * 1024 * 1024;
 
@@ -10,7 +11,7 @@ function toBufferChunk(chunk: unknown): Buffer {
   if (chunk instanceof ArrayBuffer) return Buffer.from(chunk);
   if (chunk instanceof Uint8Array) return Buffer.from(chunk);
   if (typeof chunk === "string") return Buffer.from(chunk);
-  throw new Error(`Unsupported stdin chunk type: ${typeof chunk}`);
+  throw new CliError("error.stdinChunkType", { type: typeof chunk });
 }
 
 async function readStreamToBuffer(
@@ -23,9 +24,7 @@ async function readStreamToBuffer(
     const buffer = toBufferChunk(chunk);
     totalSize += buffer.length;
     if (totalSize > maxBytes) {
-      throw new Error(
-        `Stdin content exceeds maximum size of ${(maxBytes / 1024 / 1024).toFixed(1)}MB`,
-      );
+      throw new CliError("error.stdinTooLarge", { maxMb: maxBytes / 1024 / 1024 });
     }
     chunks.push(buffer);
   }
@@ -70,12 +69,12 @@ export async function createTempFileFromStdin({
 }): Promise<StdinTempFile> {
   const bytes = await readStreamToBuffer(stream, maxBytes);
   if (bytes.length === 0) {
-    throw new Error("Stdin is empty");
+    throw new CliError("error.stdinEmpty");
   }
 
   const { extension, kind, decodedText } = await resolveStdinExtensionAndKind(bytes);
   if (kind === "text" && !decodedText?.trim()) {
-    throw new Error("Stdin is empty");
+    throw new CliError("error.stdinEmpty");
   }
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "summarize-stdin-"));

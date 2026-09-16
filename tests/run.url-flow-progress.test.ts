@@ -63,13 +63,13 @@ function createContext(overrides: Record<string, unknown> = {}) {
 }
 
 describe("url flow progress", () => {
-  it("translates known full statuses while preserving opaque diagnostic suffixes", () => {
+  it("translates keyed statuses while preserving opaque diagnostics", () => {
     const ctx = createContext({
       io: { env: { SUMMARIZE_LOCALE: "tr" }, stderr: { write: vi.fn() } },
       flags: { progressEnabled: false },
     });
     const progress = createUrlFlowProgress({ ctx: ctx as never, theme: createTheme() as never });
-    expect(progress.renderStatusFromText("X: fetching via syndication API…")).toBe(
+    expect(progress.renderStatus("x.fetching.via.syndication.api")).toBe(
       "<l>X</l><d>: Syndication API üzerinden alınıyor…</d>",
     );
     expect(progress.renderStatusFromText("Error: Copy failed: /path/cache.json")).toContain(
@@ -78,6 +78,7 @@ describe("url flow progress", () => {
     progress.stopProgress();
   });
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -140,8 +141,15 @@ describe("url flow progress", () => {
 
     expect(ctx.hooks.onSlidesProgress).toBeUndefined();
     progress.hooks.onSlidesProgress?.("Slides: detecting scenes 35%");
-    expect(spinner.setText).toHaveBeenCalledWith("<l>Slides</l><d>: detecting scenes 35%</d>");
+    expect(spinner.setText).toHaveBeenCalledWith("<l>Slides: detecting scenes 35%</l>");
     expect(osc.setPercent).toHaveBeenCalledWith("Slides", 35);
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 1000);
+    progress.hooks.onSlidesProgress?.("Opaque callback text", {
+      key: "progress.slides",
+      values: { phase: "detect", detail: "", hasDetail: false, percent: 0.42 },
+    });
+    expect(osc.setPercent).toHaveBeenCalledWith("Slides", 42);
+    expect(spinner.setText).toHaveBeenCalledWith("<l>Slides: detecting scenes 42%</l>");
 
     progress.hooks.onSlidesProgress?.("Slides: extracting");
     expect(osc.setIndeterminate).toHaveBeenCalledWith("Slides");

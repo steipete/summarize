@@ -1,6 +1,7 @@
 import type { SummaryLength } from "@steipete/summarize-core";
 import type { ExtractedLinkContent } from "../../../content/index.js";
 import type { SummaryStreamHandler } from "../../../engine/events.js";
+import { resolveCliLocaleFromEnv } from "../../../locale.js";
 import type { SlideExtractionResult, SlideImage, SlideSourceKind } from "../../../slides/index.js";
 import {
   createThemeRenderer,
@@ -81,6 +82,7 @@ export function createSlidesTerminalOutput({
   const state = createSlideOutputState(slides);
   state.setMeta({ sourceUrl: extracted.url });
   const noteInlineUnsupported = createInlineSlidesUnsupportedNotifier({
+    locale: resolveCliLocaleFromEnv(io.envForRun),
     inlineNoticeEnabled,
     io: { stderr: io.stderr },
     richTty: isRichTty(io.stdout),
@@ -106,6 +108,7 @@ export function createSlidesTerminalOutput({
   };
 
   const renderSlide = createSlidesTerminalRenderer({
+    locale: resolveCliLocaleFromEnv(io.envForRun),
     io,
     flags,
     inlineEnabled,

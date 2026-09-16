@@ -1,5 +1,5 @@
 import type { LinkPreviewProgressEvent } from "@steipete/summarize-core/content";
-import { type CliLocale, hasTurkishTranslation, translateCliText } from "../locale.js";
+import { type CliLocale, createCliTranslator } from "../locale.js";
 import { formatBytes } from "./format.js";
 import type { OscProgressController } from "./osc-progress.js";
 import { createFetchHtmlProgressRenderer } from "./progress/fetch-html.js";
@@ -24,21 +24,18 @@ export function createWebsiteProgress({
 } | null {
   if (!enabled) return null;
 
-  const fetchRenderer = createFetchHtmlProgressRenderer({ spinner, oscProgress, theme });
-  const transcriptRenderer = createTranscriptProgressRenderer({ spinner, oscProgress, theme });
+  const fetchRenderer = createFetchHtmlProgressRenderer({ spinner, oscProgress, theme, locale });
+  const transcriptRenderer = createTranscriptProgressRenderer({
+    spinner,
+    oscProgress,
+    theme,
+    locale,
+  });
 
-  const styleLabel = (text: string) => (theme ? theme.label(text) : text);
-  const styleDim = (text: string) => (theme ? theme.dim(text) : text);
-  const renderStatus = (label: string, detail: string) => {
-    const message = `${label}${detail}`;
-    if (hasTurkishTranslation(message)) {
-      const translated = translateCliText(message, locale);
-      const separator = translated.indexOf(":");
-      return theme && separator >= 0
-        ? `${styleLabel(translated.slice(0, separator))}${styleDim(translated.slice(separator))}`
-        : translated;
-    }
-    return theme ? `${styleLabel(label)}${styleDim(detail)}` : message;
+  const t = createCliTranslator(locale);
+  const renderMessage = (key: Parameters<typeof t>[0], values: Parameters<typeof t>[1] = {}) => {
+    const text = t(key, values);
+    return theme ? theme.label(text) : text;
   };
   const renderTweetCliLabel = (client?: "xurl" | "bird" | null) =>
     client === "xurl" ? "Xurl" : client === "bird" ? "Bird" : "X";
@@ -46,14 +43,6 @@ export function createWebsiteProgress({
   const stopAll = () => {
     fetchRenderer.stop();
     transcriptRenderer.stop();
-  };
-
-  const formatFirecrawlReason = (reason: string) => {
-    const lower = reason.toLowerCase();
-    if (lower.includes("forced")) return "forced";
-    if (lower.includes("html fetch failed")) return "fallback: HTML fetch failed";
-    if (lower.includes("blocked") || lower.includes("thin")) return "fallback: blocked/thin HTML";
-    return reason;
   };
 
   return {
@@ -64,7 +53,9 @@ export function createWebsiteProgress({
 
       if (event.kind === "bird-start") {
         stopAll();
-        spinner.setText(renderStatus(renderTweetCliLabel(event.client), ": reading tweet…"));
+        spinner.setText(
+          renderMessage("progress.tweet.reading", { provider: renderTweetCliLabel(event.client) }),
+        );
         return;
       }
 
@@ -72,82 +63,120 @@ export function createWebsiteProgress({
         stopAll();
         const label = renderTweetCliLabel(event.client);
         if (event.ok && typeof event.textBytes === "number") {
-          spinner.setText(renderStatus(label, `: got ${formatBytes(event.textBytes)}…`));
+          spinner.setText(
+            renderMessage("progress.received", {
+              provider: label,
+              size: formatBytes(event.textBytes, locale),
+            }),
+          );
           return;
         }
-        spinner.setText(renderStatus(label, ": failed; fallback…"));
+        spinner.setText(renderMessage("progress.failedFallback", { provider: label }));
         return;
       }
 
       if (event.kind === "nitter-start") {
         stopAll();
-        spinner.setText(renderStatus("Nitter", ": fetching…"));
+        spinner.setText(renderMessage("progress.fetching", { provider: "Nitter" }));
         return;
       }
 
       if (event.kind === "nitter-done") {
         stopAll();
         if (event.ok && typeof event.textBytes === "number") {
-          spinner.setText(renderStatus("Nitter", `: got ${formatBytes(event.textBytes)}…`));
+          spinner.setText(
+            renderMessage("progress.received", {
+              provider: "Nitter",
+              size: formatBytes(event.textBytes, locale),
+            }),
+          );
           return;
         }
-        spinner.setText(renderStatus("Nitter", ": failed; fallback…"));
+        spinner.setText(renderMessage("progress.failedFallback", { provider: "Nitter" }));
         return;
       }
 
       if (event.kind === "twitter-syndication-start") {
         stopAll();
-        spinner.setText(renderStatus("X", ": fetching via syndication API…"));
+        spinner.setText(renderMessage("x.fetching.via.syndication.api"));
         return;
       }
 
       if (event.kind === "twitter-syndication-done") {
         stopAll();
         if (event.ok && typeof event.textBytes === "number") {
-          spinner.setText(renderStatus("X", `: got ${formatBytes(event.textBytes)}…`));
+          spinner.setText(
+            renderMessage("progress.received", {
+              provider: "X",
+              size: formatBytes(event.textBytes, locale),
+            }),
+          );
           return;
         }
-        spinner.setText(renderStatus("X", ": syndication failed; fallback…"));
+        spinner.setText(renderMessage("x.syndication.failed.fallback"));
         return;
       }
 
       if (event.kind === "firecrawl-start") {
         stopAll();
-        const reason = event.reason ? formatFirecrawlReason(event.reason) : "";
-        const suffix = reason ? ` (${reason})` : "";
-        spinner.setText(renderStatus("Firecrawl", `: scraping${suffix}…`));
+        const reason = event.reason ?? "";
+        const lower = reason.toLowerCase();
+        const reasonKind = lower.includes("forced")
+          ? "forced"
+          : lower.includes(
+                /* i18n-ignore: Legacy core extraction reason, translated through reasonKind. */ "html fetch failed",
+              )
+            ? "fetchFailed"
+            : lower.includes("blocked") || lower.includes("thin")
+              ? "blocked"
+              : "other";
+        spinner.setText(
+          renderMessage("progress.scraping", { reason, reasonKind, hasReason: Boolean(reason) }),
+        );
         return;
       }
 
       if (event.kind === "firecrawl-done") {
         stopAll();
         if (event.ok && typeof event.markdownBytes === "number") {
-          spinner.setText(renderStatus("Firecrawl", `: got ${formatBytes(event.markdownBytes)}…`));
+          spinner.setText(
+            renderMessage("progress.received", {
+              provider: "Firecrawl",
+              size: formatBytes(event.markdownBytes, locale),
+            }),
+          );
           return;
         }
-        spinner.setText(renderStatus("Firecrawl", ": no content; fallback…"));
+        spinner.setText(renderMessage("progress.noContentFallback", { provider: "Firecrawl" }));
         return;
       }
 
       if (event.kind === "transcript-start") {
         stopAll();
-        const label = event.hint?.trim();
-        const text = label && label.length > 0 ? label : "Transcribing";
-        spinner.setText(theme ? `${styleLabel(text)}${styleDim("…")}` : `${text}…`);
+        // i18n-ignore: Legacy core progress hints; typed stage IDs take precedence.
+        const stage =
+          event.stage ??
+          (event.hint === "YouTube: resolving transcript" ||
+          event.hint === "Podcast: resolving transcript"
+            ? "resolve"
+            : null);
+        if (stage)
+          spinner.setText(
+            renderMessage("progress.transcriptHint", { stage, service: event.service }),
+          );
+        else if (event.hint)
+          spinner.setText(theme ? theme.label(`${event.hint}…`) : `${event.hint}…`);
+        else spinner.setText(renderMessage("progress.transcribing"));
         return;
       }
 
       if (event.kind === "transcript-done") {
         stopAll();
         if (event.ok) {
-          spinner.setText(theme ? `${styleLabel("Transcribed")}${styleDim("…")}` : "Transcribed…");
+          spinner.setText(renderMessage("progress.transcribed"));
           return;
         }
-        spinner.setText(
-          theme
-            ? `${styleLabel("Transcript unavailable")}${styleDim("…")}`
-            : "Transcript unavailable…",
-        );
+        spinner.setText(renderMessage("progress.transcriptUnavailable"));
       }
     },
   };

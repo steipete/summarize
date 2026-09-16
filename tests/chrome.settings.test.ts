@@ -75,18 +75,17 @@ describe("chrome/settings", () => {
     expect((await loadSettings()).uiLocale).toBe("tr");
 
     storage.settings = { uiLocale: "fr" };
-    expect((await loadSettings()).uiLocale).toBe("en");
+    expect((await loadSettings()).uiLocale).toBe("fr");
   });
 
-  it("preserves English for legacy profiles until they explicitly choose a locale", async () => {
+  it("uses browser negotiation for missing settings and preserves explicit English", async () => {
     storage.settings = { model: "auto", language: "tr", token: "legacy" };
-    expect((await loadSettings()).uiLocale).toBe("en");
-
-    await patchSettings({ length: "short" });
-    expect((await loadSettings()).uiLocale).toBe("en");
-
-    await patchSettings({ uiLocale: "auto" });
     expect((await loadSettings()).uiLocale).toBe("auto");
+    await patchSettings({ length: "short" });
+    expect((await loadSettings()).uiLocale).toBe("auto");
+    await patchSettings({ uiLocale: "en" });
+    expect((await loadSettings()).uiLocale).toBe("en");
+    expect((await loadSettings()).language).toBe("tr");
   });
 
   it("patches settings and persists them", async () => {

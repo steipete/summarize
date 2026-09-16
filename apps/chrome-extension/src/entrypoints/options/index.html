@@ -3,24 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Summarize Settings</title>
+    <title data-i18n="summarize.settings"></title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body data-locale-ui>
     <main>
       <div class="top">
-        <h1>Summarize Settings</h1>
+        <h1 data-i18n="summarize.settings"></h1>
         <div class="topMeta">
           <div id="daemonStatus" class="daemonStatus daemonStatus--compact" data-state="warn">
             <span class="daemonStatus__dot" aria-hidden="true"></span>
-            <span class="daemonStatus__text">Checking daemon…</span>
+            <span class="daemonStatus__text" data-i18n="checking.daemon"></span>
           </div>
           <div id="buildInfo" class="buildInfo"></div>
           <span id="status" class="status" aria-live="polite"></span>
         </div>
       </div>
       <form id="form">
-        <div id="tabs" class="tabs" role="tablist" aria-label="Settings sections">
+        <div
+          id="tabs"
+          class="tabs"
+          role="tablist"
+          data-i18n-aria-label="settings.sections"
+          aria-label=""
+        >
           <button
             id="tab-general"
             class="tabButton"
@@ -29,9 +35,8 @@
             data-tab="general"
             aria-controls="panel-general"
             aria-selected="true"
-          >
-            General
-          </button>
+            data-i18n="general"
+          ></button>
           <button
             id="tab-ui"
             class="tabButton"
@@ -40,9 +45,8 @@
             data-tab="ui"
             aria-controls="panel-ui"
             aria-selected="false"
-          >
-            UI
-          </button>
+            data-i18n="ui"
+          ></button>
           <button
             id="tab-runtime"
             class="tabButton"
@@ -51,9 +55,8 @@
             data-tab="runtime"
             aria-controls="panel-runtime"
             aria-selected="false"
-          >
-            Runtime
-          </button>
+            data-i18n="runtime"
+          ></button>
           <button
             id="tab-model"
             class="tabButton"
@@ -62,9 +65,8 @@
             data-tab="model"
             aria-controls="panel-model"
             aria-selected="false"
-          >
-            Model
-          </button>
+            data-i18n="model"
+          ></button>
           <button
             id="tab-skills"
             class="tabButton"
@@ -73,9 +75,8 @@
             data-tab="skills"
             aria-controls="panel-skills"
             aria-selected="false"
-          >
-            Skills
-          </button>
+            data-i18n="skills"
+          ></button>
           <button
             id="tab-advanced"
             class="tabButton"
@@ -84,9 +85,8 @@
             data-tab="advanced"
             aria-controls="panel-advanced"
             aria-selected="false"
-          >
-            Advanced
-          </button>
+            data-i18n="advanced"
+          ></button>
           <button
             id="tab-processes"
             class="tabButton"
@@ -95,9 +95,8 @@
             data-tab="processes"
             aria-controls="panel-processes"
             aria-selected="false"
-          >
-            Processes
-          </button>
+            data-i18n="processes"
+          ></button>
           <button
             id="tab-logs"
             class="tabButton"
@@ -106,9 +105,8 @@
             data-tab="logs"
             aria-controls="panel-logs"
             aria-selected="false"
-          >
-            Logs
-          </button>
+            data-i18n="logs"
+          ></button>
         </div>
 
         <div
@@ -121,28 +119,33 @@
           <section class="section">
             <div class="combo">
               <div id="autoToggle" class="row"></div>
-              <span class="subtitle">Auto-summarize when the panel is open.</span>
+              <span class="subtitle" data-i18n="auto.summarize.when.the.panel.is.open"></span>
             </div>
             <div class="combo">
               <div id="chatToggle"></div>
-              <span class="subtitle">
-                Enable Chat in the side panel with a direct provider or the daemon.
-              </span>
+              <span
+                class="subtitle"
+                data-i18n="enable.chat.in.the.side.panel.with.a.direct.provider.or.the.daemon"
+              ></span>
             </div>
             <div class="combo">
               <div id="automationToggle"></div>
-              <span class="subtitle">
-                Enable website automation tools with a direct provider or the daemon.
-              </span>
+              <span
+                class="subtitle"
+                data-i18n="enable.website.automation.tools.with.a.direct.provider.or.the.daemon"
+              ></span>
             </div>
             <div class="combo">
-              <button id="automationPermissions" type="button" class="miniButton">
-                Enable automation permissions
-              </button>
-              <span class="subtitle permissionHint">
-                Optional for summarization. Grants <code>userScripts</code> for page-context
-                automation. Debugger-enabled builds add native input and the debugger tool.
-              </span>
+              <button
+                id="automationPermissions"
+                type="button"
+                class="miniButton"
+                data-i18n="enable.automation.permissions"
+              ></button>
+              <span
+                class="subtitle permissionHint"
+                data-i18n="settings.automationPermissionHint"
+              ></span>
             </div>
             <div id="userScriptsNotice" class="notice" hidden></div>
           </section>
@@ -158,48 +161,51 @@
         >
           <section class="section runtimeSection">
             <header class="advancedHead">
-              <h2>Runtime</h2>
-              <div class="hint">
-                Choose how Chrome connects to AI independently from media and slide extraction.
-              </div>
+              <h2 data-i18n="runtime"></h2>
+              <div
+                class="hint"
+                data-i18n="choose.how.chrome.connects.to.ai.independently.from.media.and.slide.extraction"
+              ></div>
             </header>
             <div class="advancedFields">
               <div class="subgroup">
                 <div class="subgroupHead">
-                  <span class="subgroupTitle">AI connection</span>
+                  <span class="subgroupTitle" data-i18n="ai.connection"></span>
                 </div>
                 <div class="subgroupBody">
                   <div
                     id="summaryRuntimeMode"
                     class="runtimeModeGrid"
                     role="radiogroup"
-                    aria-label="AI connection"
+                    data-i18n-aria-label="ai.connection"
+                    aria-label=""
                   >
                     <label class="runtimeModeCard">
                       <input type="radio" name="summaryRuntimeMode" value="direct" />
-                      <div class="runtimeModeTitle">Direct</div>
-                      <div class="runtimeModeText">
-                        Runs Gemini Nano on-device or calls your configured provider directly from
-                        Chrome.
-                      </div>
+                      <div class="runtimeModeTitle" data-i18n="direct"></div>
+                      <div
+                        class="runtimeModeText"
+                        data-i18n="runs.gemini.nano.on.device.or.calls.your.configured.provider.directly.from.chrome"
+                      ></div>
                     </label>
                     <label class="runtimeModeCard">
                       <input type="radio" name="summaryRuntimeMode" value="daemon" />
-                      <div class="runtimeModeTitle">Daemon</div>
-                      <div class="runtimeModeText">
-                        Uses the local Summarize daemon and its configured providers and tools.
-                      </div>
+                      <div class="runtimeModeTitle" data-i18n="daemon"></div>
+                      <div
+                        class="runtimeModeText"
+                        data-i18n="uses.the.local.summarize.daemon.and.its.configured.providers.and.tools"
+                      ></div>
                     </label>
                   </div>
                 </div>
               </div>
               <div class="subgroup">
                 <div class="subgroupHead">
-                  <span class="subgroupTitle">Direct provider</span>
+                  <span class="subgroupTitle" data-i18n="direct.provider"></span>
                 </div>
                 <div class="subgroupBody">
                   <label class="field">
-                    <span>Provider</span>
+                    <span data-i18n="provider"></span>
                     <select id="provider">
                       <option value="openai">OpenAI</option>
                       <option value="openrouter">OpenRouter</option>
@@ -214,54 +220,58 @@
                     </select>
                   </label>
                   <label class="field">
-                    <span>API key</span>
+                    <span data-i18n="api.key"></span>
                     <input
                       id="providerApiKey"
                       type="password"
                       autocomplete="off"
-                      placeholder="Stored locally in this Chrome profile"
+                      data-i18n-placeholder="stored.locally.in.this.chrome.profile"
+                      placeholder=""
                     />
                   </label>
                   <label class="field">
-                    <span>Base URL override</span>
+                    <span data-i18n="base.url.override"></span>
                     <input
                       id="providerBaseUrl"
                       type="url"
                       autocomplete="off"
-                      placeholder="Use provider default"
+                      data-i18n-placeholder="use.provider.default"
+                      placeholder=""
                     />
                   </label>
-                  <div class="hint">
-                    Keys are stored in <code>chrome.storage.local</code> and sent only to the
-                    selected provider.
-                  </div>
+                  <div
+                    class="hint"
+                    data-i18n="keys.are.stored.in.chrome.storage.local.and.sent.only.to.the.selected.provider"
+                  ></div>
                 </div>
               </div>
               <div class="subgroup">
                 <div class="subgroupHead">
-                  <span class="subgroupTitle">Media and slide runtime</span>
+                  <span class="subgroupTitle" data-i18n="media.and.slide.runtime"></span>
                 </div>
                 <div class="subgroupBody">
                   <div
                     id="slideRuntimeMode"
                     class="runtimeModeGrid"
                     role="radiogroup"
-                    aria-label="Media and slide runtime"
+                    data-i18n-aria-label="media.and.slide.runtime"
+                    aria-label=""
                   >
                     <label class="runtimeModeCard">
                       <input type="radio" name="slideRuntimeMode" value="browser" />
-                      <div class="runtimeModeTitle">Browser</div>
-                      <div class="runtimeModeText">
-                        Browser transcription and frame capture. Fully daemonless for supported
-                        media.
-                      </div>
+                      <div class="runtimeModeTitle" data-i18n="browser"></div>
+                      <div
+                        class="runtimeModeText"
+                        data-i18n="browser.transcription.and.frame.capture.fully.daemonless.for.supported.media"
+                      ></div>
                     </label>
                     <label class="runtimeModeCard">
                       <input type="radio" name="slideRuntimeMode" value="daemon" />
-                      <div class="runtimeModeTitle">Daemon</div>
-                      <div class="runtimeModeText">
-                        Broader native media support and OCR through local tools.
-                      </div>
+                      <div class="runtimeModeTitle" data-i18n="daemon"></div>
+                      <div
+                        class="runtimeModeText"
+                        data-i18n="broader.native.media.support.and.ocr.through.local.tools"
+                      ></div>
                     </label>
                   </div>
                 </div>
@@ -271,28 +281,41 @@
 
           <section class="section">
             <div class="sectionTitleRow">
-              <h2>Browser cache</h2>
-              <button id="browserCacheClear" type="button" class="miniButton">Clear</button>
+              <h2 data-i18n="browser.cache"></h2>
+              <button
+                id="browserCacheClear"
+                type="button"
+                class="miniButton"
+                data-i18n="clear"
+              ></button>
             </div>
-            <div id="browserCacheStatus" class="cacheStatus">Loading...</div>
-            <div class="hint">
-              Browser mode keeps summaries, slide text, transcripts, and thumbnails for 30 days.
-            </div>
+            <div id="browserCacheStatus" class="cacheStatus" data-i18n="loading"></div>
+            <div
+              class="hint"
+              data-i18n="browser.mode.keeps.summaries.slide.text.transcripts.and.thumbnails.for.30.days"
+            ></div>
           </section>
 
           <section class="section">
-            <h2>Daemon</h2>
+            <h2 data-i18n="daemon"></h2>
             <div class="sectionTitleRow">
-              <div id="daemonCapabilityStatus" class="hint" role="status" aria-live="polite">
-                Checking local companion permission…
-              </div>
-              <button id="daemonPermissionEnable" type="button" class="miniButton">
-                Enable local companion
-              </button>
+              <div
+                id="daemonCapabilityStatus"
+                class="hint"
+                role="status"
+                aria-live="polite"
+                data-i18n="checking.local.companion.permission"
+              ></div>
+              <button
+                id="daemonPermissionEnable"
+                type="button"
+                class="miniButton"
+                data-i18n="enable.local.companion"
+              ></button>
             </div>
             <div id="daemonFields">
               <label>
-                <span>Port</span>
+                <span data-i18n="port"></span>
                 <input
                   id="daemonPort"
                   type="number"
@@ -302,20 +325,19 @@
                   placeholder="8787"
                 />
               </label>
-              <div class="hint">
-                Local Summarize daemon port (default 8787). Must match the running daemon — see
-                <code>summarize daemon status</code>.
-              </div>
+              <div class="hint" data-i18n="settings.daemonPortHint"></div>
               <label>
-                <span>Token</span>
+                <span data-i18n="token"></span>
                 <div class="inputRow">
-                  <input id="token" type="text" placeholder="(generated in side panel)" />
+                  <input id="token" type="text" data-i18n-placeholder="settings.generatedToken" />
                   <button
                     id="tokenCopy"
                     type="button"
                     class="iconButton inputCopyButton"
-                    aria-label="Copy token"
-                    title="Copy token"
+                    data-i18n-aria-label="copy.token"
+                    aria-label=""
+                    data-i18n-title="copy.token"
+                    title=""
                   >
                     <svg class="copyIcon" viewBox="0 0 16 16" aria-hidden="true">
                       <path
@@ -328,9 +350,10 @@
                   </button>
                 </div>
               </label>
-              <div class="hint">
-                Used only for Daemon mode or daemon-backed media. Direct mode does not need it.
-              </div>
+              <div
+                class="hint"
+                data-i18n="used.only.for.daemon.mode.or.daemon.backed.media.direct.mode.does.not.need.it"
+              ></div>
             </div>
           </section>
         </div>
@@ -344,23 +367,23 @@
           hidden
         >
           <section class="section">
-            <h2>UI</h2>
+            <h2 data-i18n="ui"></h2>
             <div class="uiGrid">
               <div id="pickersRoot"></div>
               <label>
-                <span>Interface language</span>
+                <span data-i18n="interface.language"></span>
                 <select id="uiLocale">
-                  <option value="auto">Automatic (browser)</option>
-                  <option value="en">English</option>
-                  <option value="tr">Turkish</option>
+                  <option value="auto" data-i18n="automatic.browser"></option>
+                  <option value="en" data-i18n="english"></option>
+                  <option value="tr" data-i18n="turkish"></option>
                 </select>
               </label>
               <label>
-                <span>Font family (CSS)</span>
+                <span data-i18n="font.family.css"></span>
                 <input id="fontFamily" type="text" />
               </label>
               <label>
-                <span>Font size</span>
+                <span data-i18n="font.size"></span>
                 <input id="fontSize" type="number" min="12" max="20" step="1" />
               </label>
             </div>
@@ -376,40 +399,41 @@
           hidden
         >
           <section class="section">
-            <h2>Prompt · Language · Model</h2>
+            <h2 data-i18n="prompt.language.model"></h2>
             <label>
-              <span>Language</span>
+              <span data-i18n="language"></span>
               <div class="combo">
                 <select id="languagePreset">
-                  <option value="auto">Auto (detect)</option>
-                  <option value="en">English</option>
-                  <option value="de">German</option>
-                  <option value="es">Spanish</option>
-                  <option value="fr">French</option>
-                  <option value="it">Italian</option>
-                  <option value="pt">Portuguese</option>
-                  <option value="nl">Dutch</option>
-                  <option value="sv">Swedish</option>
-                  <option value="no">Norwegian</option>
-                  <option value="da">Danish</option>
-                  <option value="fi">Finnish</option>
-                  <option value="pl">Polish</option>
-                  <option value="cs">Czech</option>
-                  <option value="tr">Turkish</option>
-                  <option value="ru">Russian</option>
-                  <option value="uk">Ukrainian</option>
-                  <option value="ar">Arabic</option>
-                  <option value="hi">Hindi</option>
-                  <option value="ja">Japanese</option>
-                  <option value="ko">Korean</option>
-                  <option value="zh-cn">Chinese (Simplified)</option>
-                  <option value="zh-tw">Chinese (Traditional)</option>
-                  <option value="custom">Custom…</option>
+                  <option value="auto" data-i18n="auto.detect"></option>
+                  <option value="en" data-i18n="english"></option>
+                  <option value="de" data-i18n="german"></option>
+                  <option value="es" data-i18n="spanish"></option>
+                  <option value="fr" data-i18n="french"></option>
+                  <option value="it" data-i18n="italian"></option>
+                  <option value="pt" data-i18n="portuguese"></option>
+                  <option value="nl" data-i18n="dutch"></option>
+                  <option value="sv" data-i18n="swedish"></option>
+                  <option value="no" data-i18n="norwegian"></option>
+                  <option value="da" data-i18n="danish"></option>
+                  <option value="fi" data-i18n="finnish"></option>
+                  <option value="pl" data-i18n="polish"></option>
+                  <option value="cs" data-i18n="czech"></option>
+                  <option value="tr" data-i18n="turkish"></option>
+                  <option value="ru" data-i18n="russian"></option>
+                  <option value="uk" data-i18n="ukrainian"></option>
+                  <option value="ar" data-i18n="arabic"></option>
+                  <option value="hi" data-i18n="hindi"></option>
+                  <option value="ja" data-i18n="japanese"></option>
+                  <option value="ko" data-i18n="korean"></option>
+                  <option value="zh-cn" data-i18n="chinese.simplified"></option>
+                  <option value="zh-tw" data-i18n="chinese.traditional"></option>
+                  <option value="custom" data-i18n="custom"></option>
                 </select>
                 <input
                   id="languageCustom"
                   type="text"
-                  placeholder="Custom (e.g. en-US / Portuguese (Brazil))"
+                  data-i18n-placeholder="custom.e.g.en.us.portuguese.brazil"
+                  placeholder=""
                   autocapitalize="off"
                   autocomplete="off"
                   spellcheck="false"
@@ -418,41 +442,37 @@
               </div>
             </label>
             <label>
-              <span>Model</span>
+              <span data-i18n="model"></span>
               <div class="combo">
                 <select id="modelPreset">
-                  <option value="auto">Auto</option>
-                  <option value="browser/gemini-nano">Gemini Nano (on-device)</option>
-                  <option value="gpt-fast">GPT Fast</option>
-                  <option value="custom">Custom…</option>
+                  <option value="auto" data-i18n="auto"></option>
+                  <option value="browser/gemini-nano" data-i18n="gemini.nano.on.device"></option>
+                  <option value="gpt-fast" data-i18n="gpt.fast"></option>
+                  <option value="custom" data-i18n="custom"></option>
                 </select>
                 <input
                   id="modelCustom"
                   type="text"
-                  placeholder="auto"
+                  data-i18n-placeholder="custom.model.id"
                   autocapitalize="off"
                   autocomplete="off"
                   spellcheck="false"
                   hidden
                 />
               </div>
-              <div class="hint">
-                Auto uses the configured direct provider, or Gemini Nano when no provider is
-                configured. In Daemon mode, Auto uses the daemon. Selecting Gemini Nano always keeps
-                summaries on-device. A provider prefix such as
-                <code>anthropic/...</code> overrides the selected direct provider.
-              </div>
+              <div class="hint" data-i18n="settings.modelHint"></div>
             </label>
             <label>
-              <span>Prompt override</span>
+              <span data-i18n="prompt.override"></span>
               <textarea
                 id="promptOverride"
                 rows="6"
-                placeholder="Custom instructions (prefix). Context + content still appended."
+                data-i18n-placeholder="custom.instructions.prefix.context.content.still.appended"
+                placeholder=""
               ></textarea>
             </label>
             <label>
-              <span>Max chars (extracted)</span>
+              <span data-i18n="max.chars.extracted"></span>
               <input id="maxChars" type="number" min="20000" step="10000" />
             </label>
           </section>
@@ -467,25 +487,42 @@
           hidden
         >
           <section class="section">
-            <h2>Automation Skills</h2>
-            <div class="hint">
-              Manage reusable JavaScript libraries for domain-specific automation.
-            </div>
+            <h2 data-i18n="automation.skills"></h2>
+            <div
+              class="hint"
+              data-i18n="manage.reusable.javascript.libraries.for.domain.specific.automation"
+            ></div>
             <div class="skillsActions">
-              <button id="skillsExport" type="button" class="miniButton">Export skills</button>
-              <button id="skillsImport" type="button" class="miniButton">Import skills</button>
+              <button
+                id="skillsExport"
+                type="button"
+                class="miniButton"
+                data-i18n="export.skills"
+              ></button>
+              <button
+                id="skillsImport"
+                type="button"
+                class="miniButton"
+                data-i18n="import.skills"
+              ></button>
             </div>
             <label>
-              <span>Search</span>
+              <span data-i18n="search"></span>
               <input
                 id="skillsSearch"
                 type="text"
-                placeholder="Search by name, domain, or description"
+                data-i18n-placeholder="search.by.name.domain.or.description"
+                placeholder=""
               />
             </label>
             <div id="skillsImportConflicts" class="skillsConflicts" hidden></div>
             <div id="skillsList" class="skillsList"></div>
-            <div id="skillsEmpty" class="skillsEmpty" hidden>No skills created yet.</div>
+            <div
+              id="skillsEmpty"
+              class="skillsEmpty"
+              hidden
+              data-i18n="no.skills.created.yet"
+            ></div>
           </section>
         </div>
 
@@ -499,192 +536,219 @@
         >
           <section class="section advancedSection">
             <header class="advancedHead">
-              <h2>Advanced Overrides</h2>
-              <div class="hint">
-                Values here override daemon config. Leave blank to use the daemon default.
-              </div>
+              <h2 data-i18n="advanced.overrides"></h2>
+              <div
+                class="hint"
+                data-i18n="values.here.override.daemon.config.leave.blank.to.use.the.daemon.default"
+              ></div>
             </header>
             <div id="advancedFields" class="advancedFields">
               <div class="subgroup">
                 <div class="subgroupHead">
-                  <span class="subgroupTitle">Logging</span>
+                  <span class="subgroupTitle" data-i18n="logging"></span>
                 </div>
                 <div class="subgroupBody">
                   <div class="toggleField">
                     <div id="extendedLoggingToggle"></div>
-                    <span class="toggleHint">
-                      Include full input + output in daemon logs. Large; only when daemon logging is
-                      enabled.
-                    </span>
+                    <span
+                      class="toggleHint"
+                      data-i18n="include.full.input.output.in.daemon.logs.large.only.when.daemon.logging.is.enabled"
+                    ></span>
                   </div>
                 </div>
               </div>
 
               <div class="subgroup">
                 <div class="subgroupHead">
-                  <span class="subgroupTitle">Auto model fallback</span>
+                  <span class="subgroupTitle" data-i18n="auto.model.fallback"></span>
                 </div>
                 <div class="subgroupBody">
                   <div class="toggleField">
                     <div id="autoCliFallbackToggle"></div>
-                    <span class="toggleHint">
-                      When model is Auto, try coding CLIs if no API model key is configured.
-                    </span>
+                    <span
+                      class="toggleHint"
+                      data-i18n="when.model.is.auto.try.coding.clis.if.no.api.model.key.is.configured"
+                    ></span>
                   </div>
                   <label class="field">
-                    <span>Auto CLI order</span>
+                    <span data-i18n="auto.cli.order"></span>
                     <input
                       id="autoCliOrder"
                       type="text"
                       placeholder="claude,gemini,codex,agent,openclaw,opencode,copilot,pi"
                     />
-                    <span class="subtitle">
-                      Comma-separated providers (claude, gemini, codex, agent, openclaw, opencode,
-                      copilot, pi).
-                    </span>
+                    <span
+                      class="subtitle"
+                      data-i18n="comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi"
+                    ></span>
                   </label>
                 </div>
               </div>
 
               <div class="subgroup">
                 <div class="subgroupHead">
-                  <span class="subgroupTitle">Summary display</span>
+                  <span class="subgroupTitle" data-i18n="summary.display"></span>
                 </div>
                 <div class="subgroupBody">
                   <div class="toggleField">
                     <div id="summaryTimestampsToggle"></div>
-                    <span class="toggleHint">
-                      Include clickable timestamps in summaries for media (default on).
-                    </span>
+                    <span
+                      class="toggleHint"
+                      data-i18n="include.clickable.timestamps.in.summaries.for.media.default.on"
+                    ></span>
                   </div>
                   <div class="toggleField">
                     <div id="slidesParallelToggle"></div>
-                    <span class="toggleHint">
-                      Show summary first while slides extract in parallel.
-                    </span>
+                    <span
+                      class="toggleHint"
+                      data-i18n="show.summary.first.while.slides.extract.in.parallel"
+                    ></span>
                   </div>
                   <div class="toggleField">
                     <div id="slidesOcrToggle"></div>
-                    <span class="toggleHint">Allow OCR text for slides (off by default).</span>
+                    <span
+                      class="toggleHint"
+                      data-i18n="allow.ocr.text.for.slides.off.by.default"
+                    ></span>
                   </div>
                   <div class="toggleField">
                     <div id="hoverSummariesToggle"></div>
-                    <span class="toggleHint">
-                      Show hover summary tooltips in pages. Experimental, default off.
-                    </span>
+                    <span
+                      class="toggleHint"
+                      data-i18n="show.hover.summary.tooltips.in.pages.experimental.default.off"
+                    ></span>
                   </div>
                   <label class="field">
                     <div class="labelRow">
-                      <span>Hover summary prompt</span>
-                      <button id="hoverPromptReset" type="button" class="miniButton">Reset</button>
+                      <span data-i18n="hover.summary.prompt"></span>
+                      <button
+                        id="hoverPromptReset"
+                        type="button"
+                        class="miniButton"
+                        data-i18n="reset"
+                      ></button>
                     </div>
                     <textarea id="hoverPrompt" rows="3"></textarea>
-                    <span class="subtitle">Prompt used for hover summaries in pages.</span>
+                    <span
+                      class="subtitle"
+                      data-i18n="prompt.used.for.hover.summaries.in.pages"
+                    ></span>
                   </label>
                 </div>
               </div>
 
               <div class="subgroup">
                 <div class="subgroupHead">
-                  <span class="subgroupTitle">Pipeline</span>
+                  <span class="subgroupTitle" data-i18n="pipeline"></span>
                 </div>
                 <div class="subgroupBody advancedGrid">
                   <label class="field">
-                    <span>Pipeline mode</span>
+                    <span data-i18n="pipeline.mode"></span>
                     <select id="requestMode">
-                      <option value="">Default (auto)</option>
-                      <option value="page">Page (use visible text)</option>
-                      <option value="url">URL (force URL extraction)</option>
+                      <option value="" data-i18n="default.auto"></option>
+                      <option value="page" data-i18n="page.use.visible.text"></option>
+                      <option value="url" data-i18n="url.force.url.extraction"></option>
                     </select>
-                    <span class="subtitle">Page text vs URL extraction.</span>
+                    <span class="subtitle" data-i18n="page.text.vs.url.extraction"></span>
                   </label>
                   <label class="field">
                     <span>Firecrawl</span>
                     <select id="firecrawlMode">
-                      <option value="">Default (auto)</option>
-                      <option value="off">Off</option>
-                      <option value="auto">Auto</option>
-                      <option value="always">Always</option>
+                      <option value="" data-i18n="default.auto"></option>
+                      <option value="off" data-i18n="off"></option>
+                      <option value="auto" data-i18n="auto"></option>
+                      <option value="always" data-i18n="always"></option>
                     </select>
-                    <span class="subtitle">Fetches + cleans pages to Markdown via API.</span>
+                    <span
+                      class="subtitle"
+                      data-i18n="fetches.cleans.pages.to.markdown.via.api"
+                    ></span>
                   </label>
                   <label class="field">
-                    <span>Markdown mode</span>
+                    <span data-i18n="markdown.mode"></span>
                     <select id="markdownMode">
-                      <option value="">Default (readability)</option>
-                      <option value="readability">Readability</option>
+                      <option value="" data-i18n="default.readability"></option>
+                      <option value="readability" data-i18n="readability"></option>
                       <option value="llm">LLM</option>
-                      <option value="auto">Auto</option>
-                      <option value="off">Off</option>
+                      <option value="auto" data-i18n="auto"></option>
+                      <option value="off" data-i18n="off"></option>
                     </select>
-                    <span class="subtitle">HTML → Markdown conversion strategy.</span>
+                    <span class="subtitle" data-i18n="html.markdown.conversion.strategy"></span>
                   </label>
                   <label class="field">
-                    <span>Preprocess</span>
+                    <span data-i18n="preprocess"></span>
                     <select id="preprocessMode">
-                      <option value="">Default (off)</option>
-                      <option value="off">Off</option>
-                      <option value="auto">Auto</option>
-                      <option value="always">Always</option>
+                      <option value="" data-i18n="default.off"></option>
+                      <option value="off" data-i18n="off"></option>
+                      <option value="auto" data-i18n="auto"></option>
+                      <option value="always" data-i18n="always"></option>
                     </select>
-                    <span class="subtitle">
-                      Convert PDF/Doc files to text first for better model compatibility.
-                    </span>
+                    <span
+                      class="subtitle"
+                      data-i18n="convert.pdf.doc.files.to.text.first.for.better.model.compatibility"
+                    ></span>
                   </label>
                 </div>
               </div>
 
               <div class="subgroup">
                 <div class="subgroupHead">
-                  <span class="subgroupTitle">Media</span>
+                  <span class="subgroupTitle" data-i18n="media"></span>
                 </div>
                 <div class="subgroupBody advancedGrid">
                   <label class="field">
-                    <span>YouTube mode</span>
+                    <span data-i18n="youtube.mode"></span>
                     <select id="youtubeMode">
-                      <option value="">Default (config)</option>
-                      <option value="auto">Auto (best transcript)</option>
-                      <option value="no-auto">No auto captions</option>
+                      <option value="" data-i18n="default.config"></option>
+                      <option value="auto" data-i18n="auto.best.transcript"></option>
+                      <option value="no-auto" data-i18n="no.auto.captions"></option>
                       <option value="yt-dlp">yt-dlp</option>
-                      <option value="web">Web</option>
+                      <option value="web" data-i18n="web"></option>
                       <option value="apify">Apify</option>
                     </select>
-                    <span class="subtitle">
-                      Auto picks best; Web uses captions; yt-dlp extracts audio; Apify is fallback.
-                    </span>
+                    <span
+                      class="subtitle"
+                      data-i18n="auto.picks.best.web.uses.captions.yt.dlp.extracts.audio.apify.is.fallback"
+                    ></span>
                   </label>
                   <label class="field">
-                    <span>Transcriber</span>
+                    <span data-i18n="transcriber"></span>
                     <select id="transcriber">
-                      <option value="">Default (daemon config)</option>
-                      <option value="whisper">Whisper (default)</option>
+                      <option value="" data-i18n="default.daemon.config"></option>
+                      <option value="whisper" data-i18n="whisper.default"></option>
                       <option value="parakeet">NVIDIA Parakeet</option>
                       <option value="canary">NVIDIA Canary</option>
                     </select>
-                    <span class="subtitle">Override the daemon's default transcriber.</span>
+                    <span
+                      class="subtitle"
+                      data-i18n="override.the.daemon.s.default.transcriber"
+                    ></span>
                   </label>
                 </div>
               </div>
 
               <div class="subgroup">
                 <div class="subgroupHead">
-                  <span class="subgroupTitle">Limits</span>
+                  <span class="subgroupTitle" data-i18n="limits"></span>
                 </div>
                 <div class="subgroupBody advancedGrid advancedGrid--thirds">
                   <label class="field">
-                    <span>Timeout</span>
+                    <span data-i18n="timeout"></span>
                     <input id="timeout" type="text" placeholder="2m" />
-                    <span class="subtitle">Overall fetch + model timeout (e.g. 90s, 2m).</span>
+                    <span
+                      class="subtitle"
+                      data-i18n="overall.fetch.model.timeout.e.g.90s.2m"
+                    ></span>
                   </label>
                   <label class="field">
-                    <span>Retries</span>
+                    <span data-i18n="retries"></span>
                     <input id="retries" type="number" min="0" max="5" step="1" />
-                    <span class="subtitle">LLM retry attempts on timeout (0–5).</span>
+                    <span class="subtitle" data-i18n="llm.retry.attempts.on.timeout.0.5"></span>
                   </label>
                   <label class="field">
-                    <span>Max output tokens</span>
+                    <span data-i18n="max.output.tokens"></span>
                     <input id="maxOutputTokens" type="text" placeholder="2k" />
-                    <span class="subtitle">Hard cap for model output (e.g. 2k).</span>
+                    <span class="subtitle" data-i18n="hard.cap.for.model.output.e.g.2k"></span>
                   </label>
                 </div>
               </div>
@@ -703,38 +767,44 @@
           <section class="section">
             <div class="processHeader">
               <div>
-                <h2>Process Manager</h2>
-                <div class="hint">
-                  Track external tools spawned by the daemon (ffmpeg, yt-dlp, tesseract).
-                </div>
+                <h2 data-i18n="process.manager"></h2>
+                <div
+                  class="hint"
+                  data-i18n="track.external.tools.spawned.by.the.daemon.ffmpeg.yt.dlp.tesseract"
+                ></div>
               </div>
               <div class="processActions">
                 <label class="logsToggle">
                   <input id="processesAuto" type="checkbox" checked />
-                  Auto refresh
+                  <span data-i18n="auto.refresh"></span>
                 </label>
-                <button id="processesRefresh" type="button" class="miniButton">Refresh</button>
+                <button
+                  id="processesRefresh"
+                  type="button"
+                  class="miniButton"
+                  data-i18n="refresh"
+                ></button>
               </div>
             </div>
             <div class="processControls">
               <label class="processControl">
-                <span>Show completed</span>
+                <span data-i18n="show.completed"></span>
                 <input id="processesShowCompleted" type="checkbox" />
               </label>
               <label class="processControl">
-                <span>Limit</span>
+                <span data-i18n="limit"></span>
                 <input id="processesLimit" type="number" min="10" max="200" step="10" value="80" />
               </label>
               <label class="processControl">
-                <span>Log tail</span>
+                <span data-i18n="log.tail"></span>
                 <input id="processesTail" type="number" min="20" max="1000" step="20" value="200" />
               </label>
               <label class="processControl">
-                <span>Stream</span>
+                <span data-i18n="stream"></span>
                 <select id="processesStream">
-                  <option value="merged">Merged</option>
-                  <option value="stdout">Stdout</option>
-                  <option value="stderr">Stderr</option>
+                  <option value="merged" data-i18n="merged"></option>
+                  <option value="stdout" data-i18n="stdout"></option>
+                  <option value="stderr" data-i18n="stderr"></option>
                 </select>
               </label>
             </div>
@@ -743,13 +813,13 @@
               <table id="processesTable" class="processTable">
                 <thead>
                   <tr>
-                    <th>Tool</th>
+                    <th data-i18n="tool"></th>
                     <th>PID</th>
-                    <th>Status</th>
-                    <th>Elapsed</th>
-                    <th>Progress</th>
-                    <th>Run</th>
-                    <th>Command</th>
+                    <th data-i18n="status"></th>
+                    <th data-i18n="elapsed"></th>
+                    <th data-i18n="progress"></th>
+                    <th data-i18n="run"></th>
+                    <th data-i18n="command"></th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -757,13 +827,15 @@
             </div>
             <div class="processLogs">
               <div class="processLogsHeader">
-                <div id="processesLogsTitle" class="processLogsTitle">Logs</div>
+                <div id="processesLogsTitle" class="processLogsTitle" data-i18n="logs"></div>
                 <button
                   id="processesLogsCopy"
                   type="button"
                   class="iconButton processLogsCopy"
-                  aria-label="Copy logs"
-                  title="Copy logs"
+                  data-i18n-aria-label="copy.logs"
+                  aria-label=""
+                  data-i18n-title="copy.logs"
+                  title=""
                 >
                   <svg class="copyIcon" viewBox="0 0 16 16" aria-hidden="true">
                     <path
@@ -790,18 +862,23 @@
         >
           <section class="section">
             <div class="logsHeader">
-              <h2>Logs</h2>
+              <h2 data-i18n="logs"></h2>
               <div class="logsActions">
-                <button id="logsRefresh" type="button" class="miniButton">Refresh</button>
+                <button
+                  id="logsRefresh"
+                  type="button"
+                  class="miniButton"
+                  data-i18n="refresh"
+                ></button>
                 <label class="logsAuto">
                   <input id="logsAuto" type="checkbox" />
-                  <span>Auto refresh</span>
+                  <span data-i18n="auto.refresh"></span>
                 </label>
               </div>
             </div>
             <div class="logsControls">
               <label>
-                <span>Source</span>
+                <span data-i18n="source"></span>
                 <select id="logsSource">
                   <option value="extension">extension.log</option>
                   <option value="daemon">daemon.jsonl</option>
@@ -810,32 +887,32 @@
                 </select>
               </label>
               <label>
-                <span>Tail lines</span>
+                <span data-i18n="tail.lines"></span>
                 <input id="logsTail" type="number" min="100" max="5000" step="100" value="800" />
               </label>
             </div>
             <div class="logsFilters">
               <label class="logsToggle">
                 <input id="logsParsed" type="checkbox" checked />
-                <span>Parsed</span>
+                <span data-i18n="parsed"></span>
               </label>
               <div class="logsLevelFilters">
-                <span class="logsFilterLabel">Levels</span>
+                <span class="logsFilterLabel" data-i18n="levels"></span>
                 <label>
                   <input type="checkbox" data-log-level="info" checked />
-                  <span>Info</span>
+                  <span data-i18n="info"></span>
                 </label>
                 <label>
                   <input type="checkbox" data-log-level="warn" checked />
-                  <span>Warn</span>
+                  <span data-i18n="warn"></span>
                 </label>
                 <label>
                   <input type="checkbox" data-log-level="error" checked />
-                  <span>Error</span>
+                  <span data-i18n="error"></span>
                 </label>
                 <label>
                   <input type="checkbox" data-log-level="verbose" checked />
-                  <span>Verbose</span>
+                  <span data-i18n="verbose"></span>
                 </label>
               </div>
             </div>
@@ -844,10 +921,10 @@
               <table id="logsTable" class="logsTable" hidden>
                 <thead>
                   <tr>
-                    <th>Time</th>
-                    <th>Level</th>
-                    <th>Event</th>
-                    <th>Details</th>
+                    <th data-i18n="time"></th>
+                    <th data-i18n="level"></th>
+                    <th data-i18n="event"></th>
+                    <th data-i18n="details"></th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -858,18 +935,27 @@
         </div>
       </form>
       <div class="pageFooter hint">
-        <a href="https://summarize.sh" target="_blank" rel="noopener noreferrer">Summarize</a> made
-        by
-        <a href="https://steipete.me" target="_blank" rel="noopener noreferrer"
-          >Peter Steinberger</a
-        >
-        · MIT licensed ·
+        <a
+          href="https://summarize.sh"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-i18n="brand.name"
+        ></a>
+        ·
+        <a
+          href="https://steipete.me"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-i18n="footer.madeBy"
+          data-i18n-values='{"author":"Peter Steinberger"}'
+        ></a>
+        <span data-i18n="mit.licensed.alternate"></span>
         <a
           href="https://github.com/steipete/summarize/issues"
           target="_blank"
           rel="noopener noreferrer"
-          >Report issues on GitHub</a
-        >
+          data-i18n="report.issues.on.github"
+        ></a>
       </div>
     </main>
     <script type="module" src="./main.ts"></script>

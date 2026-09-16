@@ -1,4 +1,6 @@
+import type { MessageDescriptor } from "@steipete/summarize-core/localization";
 import { type SseEvent, type SseSlidesData } from "@steipete/summarize-core/runtime";
+import { cliMessage, createCliTranslator, type CliMessage } from "../locale.js";
 import type { SlideExtractionResult } from "../slides/index.js";
 import {
   closeBufferedSseChannel,
@@ -15,11 +17,12 @@ export type Session = {
   summaryEvents: BufferedSseChannel;
   slideEvents: BufferedSseChannel;
   slidesRequested: boolean;
-  slidesLastStatus: string | null;
+  slidesLastStatus: Extract<SessionEvent, { event: "status" }>["data"] | null;
   lastMeta: {
     model: string | null;
     modelLabel: string | null;
     inputSummary: string | null;
+    inputSummaryMessage?: MessageDescriptor | null;
     summaryFromCache: boolean | null;
   };
   transcriptTimedText: string | null;
@@ -72,7 +75,7 @@ export function pushSlidesToSession(
     session.slideEvents.done = true;
     closeBufferedSseChannel(session.slideEvents);
   }
-  if (event.event === "status") session.slidesLastStatus = event.data.text;
+  if (event.event === "status") session.slidesLastStatus = event.data;
 }
 
 export function emitMeta(
@@ -81,11 +84,18 @@ export function emitMeta(
     model?: string | null;
     modelLabel?: string | null;
     inputSummary?: string | null;
+    inputSummaryMessage?: MessageDescriptor | null;
     summaryFromCache?: boolean | null;
   },
   onSessionEvent?: ((event: SessionEvent, sessionId: string) => void) | null,
 ) {
   session.lastMeta = {
+    inputSummaryMessage:
+      typeof data.inputSummary === "string"
+        ? (data.inputSummaryMessage ?? null)
+        : data.inputSummaryMessage === null
+          ? null
+          : session.lastMeta.inputSummaryMessage,
     model: typeof data.model === "string" ? data.model : session.lastMeta.model,
     modelLabel: typeof data.modelLabel === "string" ? data.modelLabel : session.lastMeta.modelLabel,
     inputSummary:
@@ -111,20 +121,35 @@ export function emitSlidesStatus(
   session: Session,
   text: string,
   onSessionEvent?: ((event: SessionEvent, sessionId: string) => void) | null,
+  message?: CliMessage,
 ) {
   const trimmed = text.trim();
   if (!trimmed) return;
-  pushSlidesToSession(session, { event: "status", data: { text: trimmed } }, onSessionEvent);
+  pushSlidesToSession(
+    session,
+    { event: "status", data: { text: trimmed, ...(message ? { message } : {}) } },
+    onSessionEvent,
+  );
 }
 
 export function emitSlidesDone(
   session: Session,
-  result: { ok: boolean; error?: string | null },
+  result: { ok: boolean; error?: string | null; localized?: CliMessage },
   onSessionEvent?: ((event: SessionEvent, sessionId: string) => void) | null,
 ) {
   if (!result.ok) {
-    const message = result.error?.trim() || "Slides failed.";
-    pushSlidesToSession(session, { event: "error", data: { message } }, onSessionEvent);
+    const localized =
+      result.localized ??
+      (!result.error?.trim() ? cliMessage("error.slidesFailedDefault") : undefined);
+    const message = result.error?.trim() || createCliTranslator("en")("error.slidesFailedDefault");
+    pushSlidesToSession(
+      session,
+      {
+        event: "error",
+        data: { message, ...(localized ? { localized } : {}) },
+      },
+      onSessionEvent,
+    );
   }
   pushSlidesToSession(session, { event: "done", data: {} }, onSessionEvent);
 }

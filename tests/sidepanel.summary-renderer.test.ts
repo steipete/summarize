@@ -1,10 +1,10 @@
-// @vitest-environment happy-dom
-
 import { describe, expect, it, vi } from "vitest";
+// @vitest-environment happy-dom
 import {
   renderSummaryEmptyState,
   renderSummaryMarkdownDisplay,
 } from "../apps/chrome-extension/src/entrypoints/sidepanel/summary-renderer.js";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 
 describe("sidepanel summary renderer", () => {
   function createHeaderCopyButton() {
@@ -112,7 +112,7 @@ describe("sidepanel summary renderer", () => {
     await Promise.resolve();
 
     expect(writeText).toHaveBeenCalledWith("# Title\n\nBody");
-    expect(setStatus).toHaveBeenCalledWith("Copied");
+    expect(setStatus).toHaveBeenCalledWith(message("copied"));
   });
 
   it("reports empty copy attempts without touching the clipboard", async () => {
@@ -145,7 +145,7 @@ describe("sidepanel summary renderer", () => {
     expect(hostEl.textContent).toContain("Summarize");
     expect(copyButtonEl.classList.contains("hidden")).toBe(true);
     expect(writeText).not.toHaveBeenCalled();
-    expect(setStatus).not.toHaveBeenCalledWith("Copied");
+    expect(setStatus).not.toHaveBeenCalledWith(message("copied"));
   });
 
   it("falls back to execCommand copy when clipboard write fails", async () => {
@@ -183,7 +183,7 @@ describe("sidepanel summary renderer", () => {
     await Promise.resolve();
 
     expect(execCommand).toHaveBeenCalledWith("copy");
-    expect(setStatus).toHaveBeenCalledWith("Copied");
+    expect(setStatus).toHaveBeenCalledWith(message("copied"));
   });
 
   it("surfaces a failed execCommand fallback", async () => {
@@ -221,7 +221,7 @@ describe("sidepanel summary renderer", () => {
     await Promise.resolve();
 
     expect(execCommand).toHaveBeenCalledWith("copy");
-    expect(setStatus).toHaveBeenCalledWith("Copy failed");
+    expect(setStatus).toHaveBeenCalledWith(message("copy.failed"));
   });
 
   it("falls back to the empty state and reports markdown render errors", () => {
@@ -270,7 +270,9 @@ describe("sidepanel summary renderer", () => {
       tabTitle: "Video",
       tabUrl: "https://example.com/watch",
     });
-    expect(setStatus).toHaveBeenCalledWith(expect.stringContaining("broken markdown"));
+    expect(setStatus).toHaveBeenCalledWith(
+      message("error.message", { error: expect.stringContaining("broken markdown") }),
+    );
 
     renderSummaryMarkdownDisplay({
       activeTabUrl: "https://example.com/watch",
@@ -294,6 +296,6 @@ describe("sidepanel summary renderer", () => {
       tabTitle: "Video",
       tabUrl: "https://example.com/watch",
     });
-    expect(setStatus).toHaveBeenCalledWith("Error: bad markdown");
+    expect(setStatus).toHaveBeenCalledWith(message("error.message", { error: "bad markdown" }));
   });
 });

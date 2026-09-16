@@ -1,3 +1,4 @@
+import { extensionMessage } from "../../lib/i18n";
 import { isBrowserAiQuotaError, type BrowserSummarizerSession } from "./browser-ai-contracts";
 
 function splitLongUnit(value: string, target: number): string[] {
@@ -70,9 +71,9 @@ export async function summarizeRecursively({
   signal?: AbortSignal;
   depth?: number;
 }): Promise<string> {
-  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  if (signal?.aborted) throw new DOMException(extensionMessage("error.aborted"), "AbortError");
   if (depth > 8) {
-    throw new DOMException("Input exceeds the on-device context window", "QuotaExceededError");
+    throw new DOMException(extensionMessage("error.contextWindow"), "QuotaExceededError");
   }
 
   const inputQuota = session.inputQuota;

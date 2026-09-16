@@ -1,4 +1,5 @@
 import { daemonOrigin } from "../../lib/daemon-url";
+import { LocalizedError, readLocalizedMessage } from "../../lib/i18n";
 import type { Settings } from "../../lib/settings";
 import type { ExtractResponse } from "./content-script-bridge";
 
@@ -55,8 +56,15 @@ export async function startPanelDaemonSummary(options: {
     body: JSON.stringify(body),
     signal: options.signal,
   });
-  const json = (await response.json()) as { ok: boolean; id?: string; error?: string };
+  const json = (await response.json()) as {
+    ok: boolean;
+    id?: string;
+    error?: string;
+    localized?: unknown;
+  };
   if (!response.ok || !json.ok || !json.id) {
+    const localized = readLocalizedMessage(json.localized);
+    if (localized) throw new LocalizedError(localized);
     throw new Error(json.error || `${response.status} ${response.statusText}`);
   }
   return json.id;

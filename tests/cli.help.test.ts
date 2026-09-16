@@ -1,6 +1,9 @@
 import { Writable } from "node:stream";
+import { stripVTControlCharacters } from "node:util";
+import { availableUiLocales } from "@steipete/summarize-core/localization/messages";
 import { describe, expect, it } from "vitest";
 import { runCli } from "../src/run.js";
+import { applyHelpStyle, buildProgram, buildSlidesProgram } from "../src/run/help.js";
 
 const collectStream = () => {
   let text = "";
@@ -14,6 +17,32 @@ const collectStream = () => {
 };
 
 describe("--help output", () => {
+  it.each([buildProgram, buildSlidesProgram])(
+    "preserves localized descriptions when styling %s",
+    (build) => {
+      const program = build("tr");
+      const original = program.configureHelp();
+      const stdout = collectStream();
+      applyHelpStyle(program, { FORCE_COLOR: "1", SUMMARIZE_LOCALE: "tr" }, stdout.stream);
+      expect(program.configureHelp().optionDescription).toBe(original.optionDescription);
+      expect(program.configureHelp().argumentDescription).toBe(original.argumentDescription);
+      const help = stripVTControlCharacters(program.helpInformation());
+      expect(help).toContain("seçenekler:");
+      expect(help).toContain("varsayılan:");
+      expect(help).not.toContain("choices:");
+      expect(help).not.toContain("default:");
+    },
+  );
+  it("advertises exactly the registered interface locales", () => {
+    const option = buildProgram("en").options.find((item) => item.long === "--locale");
+    const list = new Intl.ListFormat("en", { type: "disjunction" }).format([
+      "auto",
+      ...availableUiLocales,
+    ]);
+    expect(option?.description).toBe(
+      `UI language: ${list}. auto follows the system (also SUMMARIZE_LOCALE). Independent of --language.`,
+    );
+  });
   it("prints examples without ANSI when not a TTY", async () => {
     const stdout = collectStream();
     const stderr = collectStream();

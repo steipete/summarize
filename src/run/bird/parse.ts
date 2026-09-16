@@ -1,3 +1,4 @@
+import { CliError } from "../../locale.js";
 import { extractMediaFromBirdRaw, extractMediaFromXurlRaw } from "./media.js";
 import type { BirdTweetPayload } from "./types.js";
 
@@ -10,20 +11,23 @@ const asString = (value: unknown): string | null => (typeof value === "string" ?
 
 const asNumber = (value: unknown): number | null => (typeof value === "number" ? value : null);
 
-function resolveXurlTopLevelError(root: Record<string, unknown> | null): string | null {
+function resolveXurlTopLevelError(root: Record<string, unknown> | null): CliError | null {
   if (!root) return null;
   const status = asNumber(root.status);
   const title = asString(root.title)?.trim();
   const detail = asString(root.detail)?.trim();
   if (!status && !title && !detail) return null;
 
-  const label = detail || title || "request failed";
-  const statusText = status ? ` (${status})` : "";
-  const base = `xurl API error: ${label}${statusText}`;
-  if (status === 401 || /unauthorized/i.test(label)) {
-    return `${base}. xurl is installed but is not authorized for this request; run "xurl auth status" and configure OAuth credentials, or install "bird" for fallback.`;
-  }
-  return base;
+  const label = detail || title || "";
+  const unauthorized =
+    status === 401 || /* i18n-ignore: External X API diagnostic. */ /unauthorized/i.test(label);
+  return new CliError("error.xurlTopLevel", {
+    message: label,
+    hasMessage: Boolean(label),
+    status: status ?? 0,
+    hasStatus: Boolean(status),
+    unauthorized,
+  });
 }
 
 function resolveXurlArticleText(article: Record<string, unknown> | null): string | null {
@@ -62,23 +66,23 @@ function resolveXurlTweetText(data: Record<string, unknown>): string | null {
 export function parseXurlTweetPayload(raw: unknown): BirdTweetPayload {
   const root = asRecord(raw);
   const topLevelError = resolveXurlTopLevelError(root);
-  if (topLevelError) throw new Error(topLevelError);
+  if (topLevelError) throw topLevelError;
 
   const errors = asArray(root?.errors);
   if (errors && errors.length > 0) {
     const first = asRecord(errors[0]);
     const message = asString(first?.message);
-    if (message) throw new Error(`xurl API error: ${message}`);
+    if (message) throw new CliError("error.xurlApi", { message: String(message) });
   }
 
   const data = asRecord(root?.data);
   if (!data) {
-    throw new Error("xurl read returned invalid payload");
+    throw new CliError("error.xurlPayload");
   }
 
   const text = resolveXurlTweetText(data);
   if (!text) {
-    throw new Error("xurl read returned invalid payload");
+    throw new CliError("error.xurlPayload");
   }
 
   const includes = asRecord(root?.includes);
@@ -109,7 +113,7 @@ export function parseBirdTweetPayload(raw: unknown): BirdTweetPayload {
     | Array<BirdTweetPayload & { _raw?: unknown }>;
   const tweet = Array.isArray(parsed) ? parsed[0] : parsed;
   if (!tweet || typeof tweet.text !== "string") {
-    throw new Error("bird read returned invalid payload");
+    throw new CliError("error.birdPayload");
   }
   const { _raw, ...rest } = tweet as BirdTweetPayload & { _raw?: unknown };
   const media = extractMediaFromBirdRaw(_raw);

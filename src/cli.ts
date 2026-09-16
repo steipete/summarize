@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { runCliMain } from "./cli-main.js";
+import { cliErrorText, resolveCliLocaleFromArgs } from "./locale.js";
 
 void runCliMain({
   argv: process.argv.slice(2),
@@ -13,7 +14,7 @@ void runCliMain({
   },
 }).catch((error) => {
   // Last-resort fallback; runCliMain should already format errors nicely.
-  const message = error instanceof Error ? error.message : error ? String(error) : "Unknown error";
+  const message = cliErrorText(error, resolveCliLocaleFromArgs(process.argv.slice(2), process.env));
   process.stderr.write(`${message}\n`);
   process.exitCode = 1;
 });

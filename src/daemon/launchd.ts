@@ -1,11 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execDaemonCommand, type DaemonCommandResult } from "./command.js";
+import { CliError, createCliTranslator, resolveCliLocaleFromEnv } from "../locale.js";
+import { execDaemonCommand, serviceCommandError, type DaemonCommandResult } from "./command.js";
 import { DAEMON_LAUNCH_AGENT_LABEL } from "./constants.js";
 
 function resolveHomeDir(env: Record<string, string | undefined>): string {
   const home = env.HOME?.trim() || env.USERPROFILE?.trim();
-  if (!home) throw new Error("Missing HOME");
+  if (!home) throw new CliError("error.missingHome");
   return home;
 }
 
@@ -52,11 +53,13 @@ export async function readLaunchAgentProgramArguments(
   const plistPath = resolveLaunchAgentPlistPath(env);
   try {
     const plist = await fs.readFile(plistPath, "utf8");
+    // i18n-ignore: launchd plist schema keys, not interface text.
     const programMatch = plist.match(/<key>ProgramArguments<\/key>\s*<array>([\s\S]*?)<\/array>/i);
     if (!programMatch) return null;
     const args = Array.from(programMatch[1].matchAll(/<string>([\s\S]*?)<\/string>/gi)).map(
       (match) => plistUnescape(match[1] ?? "").trim(),
     );
+    // i18n-ignore: launchd plist schema keys, not interface text.
     const workingDirMatch = plist.match(
       /<key>WorkingDirectory<\/key>\s*<string>([\s\S]*?)<\/string>/i,
     );
@@ -86,11 +89,13 @@ export function buildLaunchAgentPlist({
   const argsXml = programArguments
     .map((arg) => `\n      <string>${plistEscape(arg)}</string>`)
     .join("");
+  // i18n-ignore: launchd plist schema, not interface copy.
   const workingDirXml = workingDirectory
     ? `
     <key>WorkingDirectory</key>
     <string>${plistEscape(workingDirectory)}</string>`
     : "";
+  // i18n-ignore: launchd plist schema, not interface copy.
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -180,7 +185,9 @@ export async function uninstallLaunchAgent({
   try {
     await fs.access(plistPath);
   } catch {
-    stdout.write(`LaunchAgent not found at ${plistPath}\n`);
+    stdout.write(
+      `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.launchMissing", { path: plistPath })}\n`,
+    );
     return;
   }
 
@@ -190,10 +197,14 @@ export async function uninstallLaunchAgent({
   try {
     await fs.mkdir(trashDir, { recursive: true });
     await fs.rename(plistPath, dest);
-    stdout.write(`Moved LaunchAgent to Trash: ${dest}\n`);
+    stdout.write(
+      `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.launchTrashed", { path: dest })}\n`,
+    );
   } catch {
     // If rename fails (e.g. different volume), leave it and just report.
-    stdout.write(`LaunchAgent remains at ${plistPath} (could not move to Trash)\n`);
+    stdout.write(
+      `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.launchRemains", { path: plistPath })}\n`,
+    );
   }
 }
 
@@ -238,21 +249,29 @@ export async function installLaunchAgent({
     lastBootstrap = boot;
   }
   if (!installedDomain) {
-    const details = lastBootstrap?.stderr || lastBootstrap?.stdout || "unknown error";
-    throw new Error(`launchctl bootstrap failed: ${details}`.trim());
+    const details = lastBootstrap?.stderr || lastBootstrap?.stdout || "";
+    throw serviceCommandError("launchctl bootstrap", details);
   }
   await execLaunchctl(["enable", `${installedDomain}/${DAEMON_LAUNCH_AGENT_LABEL}`]);
   await execLaunchctl(["kickstart", "-k", `${installedDomain}/${DAEMON_LAUNCH_AGENT_LABEL}`]);
 
-  stdout.write(`Installed LaunchAgent: ${plistPath}\n`);
-  stdout.write(`Launch domain: ${installedDomain}\n`);
-  stdout.write(`Logs: ${stdoutPath}\n`);
+  stdout.write(
+    `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.launchInstalled", { path: plistPath })}\n`,
+  );
+  stdout.write(
+    `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.launchDomain", { domain: installedDomain })}\n`,
+  );
+  stdout.write(
+    `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.logs", { path: stdoutPath })}\n`,
+  );
   return { plistPath };
 }
 
 export async function restartLaunchAgent({
   stdout,
+  env = {},
 }: {
+  env?: Record<string, string | undefined>;
   stdout: NodeJS.WritableStream;
 }): Promise<void> {
   const label = DAEMON_LAUNCH_AGENT_LABEL;
@@ -261,12 +280,12 @@ export async function restartLaunchAgent({
   for (const domain of domains) {
     const res = await execLaunchctl(["kickstart", "-k", `${domain}/${label}`]);
     if (res.code === 0) {
-      stdout.write(`Restarted LaunchAgent: ${domain}/${label}\n`);
+      stdout.write(
+        `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.launchRestarted", { target: `${domain}/${label}` })}\n`,
+      );
       return;
     }
     lastResult = res;
   }
-  throw new Error(
-    `launchctl kickstart failed: ${lastResult?.stderr || lastResult?.stdout || "unknown error"}`.trim(),
-  );
+  throw serviceCommandError("launchctl kickstart", lastResult?.stderr || lastResult?.stdout || "");
 }

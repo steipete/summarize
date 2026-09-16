@@ -138,6 +138,7 @@ function classifyResponseHeaders(headers: Headers): UrlKind | null {
 
 function looksLikeHtml(bytes: Uint8Array): boolean {
   const head = new TextDecoder().decode(bytes.slice(0, 256)).trimStart().toLowerCase();
+  // i18n-ignore: HTML file signature used for content sniffing.
   return head.startsWith("<!doctype html") || head.startsWith("<html") || head.startsWith("<head");
 }
 

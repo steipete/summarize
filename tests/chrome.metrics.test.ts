@@ -1,7 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { buildMetricsParts, buildMetricsTokens } from "../apps/chrome-extension/src/lib/metrics.js";
+import {
+  buildMetricsParts,
+  buildMetricsTokens,
+  readMetricParts,
+} from "../apps/chrome-extension/src/lib/metrics.js";
 
 describe("chrome metrics", () => {
+  it("validates numeric descriptors and permits only HTTP source links", () => {
+    expect(
+      readMetricParts([{ kind: "message", message: { key: "metrics.elapsed", values: {} } }]),
+    ).toBeNull();
+    expect(
+      readMetricParts([{ kind: "message", message: { key: "not.a.message", values: {} } }]),
+    ).toBeNull();
+    expect(
+      readMetricParts([{ kind: "text", text: "Try again", href: "javascript:alert(1)" }]),
+    ).toEqual([{ text: "Try again", model: false }]);
+    expect(
+      readMetricParts([{ kind: "text", text: "Try again", href: "https://example.com" }]),
+    ).toEqual([{ text: "Try again", model: false, href: "https://example.com" }]);
+  });
   it("omits input summary duplicates", () => {
     const summary = "7.5s · example.com · 2.1k words · openrouter/foo/bar";
     const parts = buildMetricsParts({

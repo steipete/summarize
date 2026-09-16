@@ -1,7 +1,4 @@
-import type {
-  AgentAssistantMessage as AssistantMessage,
-  AgentMessage as Message,
-} from "@steipete/summarize-core/runtime";
+import type { AgentMessage as Message } from "@steipete/summarize-core/runtime";
 import { readAgentResponse } from "../../lib/agent-response";
 import { buildChatPageContent } from "../../lib/chat-context";
 import { daemonOrigin } from "../../lib/daemon-url";
@@ -11,7 +8,14 @@ import {
   resolveDirectTools,
 } from "../../lib/direct-prompts";
 import { streamDirectModel } from "../../lib/direct-provider";
+import {
+  LocalizedError,
+  readLocalizedMessage,
+  message as uiMessage,
+  type LocalizedText,
+} from "../../lib/i18n";
 import { resolveCapabilityExecution, resolveCapabilityModel } from "../../lib/model-routing";
+import type { BgToPanel } from "../../lib/panel-contracts";
 import { getProviderSettings, type Settings } from "../../lib/settings";
 import type { CachedExtract } from "./extract-cache";
 
@@ -20,23 +24,10 @@ type BackgroundChatSession = {
 };
 
 type SendFn = (
-  msg:
-    | { type: "run:error"; message: string }
-    | { type: "agent:chunk"; requestId: string; text: string }
-    | {
-        type: "agent:response";
-        requestId: string;
-        ok: boolean;
-        assistant?: AssistantMessage;
-        error?: string;
-      }
-    | {
-        type: "chat:history";
-        requestId: string;
-        ok: boolean;
-        messages?: Message[];
-        error?: string;
-      },
+  msg: Extract<
+    BgToPanel,
+    { type: "run:error" | "agent:chunk" | "agent:response" | "chat:history" }
+  >,
 ) => void;
 
 function buildChatRequestContext({
@@ -111,10 +102,10 @@ export async function handlePanelAgentRequest({
   cachedExtract: CachedExtract;
   slidesText?: { count: number; text: string } | null;
   send: SendFn;
-  sendStatus: (status: string) => void;
+  sendStatus: (status: LocalizedText) => void;
   fetchImpl: typeof fetch;
   daemonFetchImpl?: typeof fetch;
-  friendlyFetchError: (error: unknown, fallback: string) => string;
+  friendlyFetchError: typeof import("./daemon-client").friendlyFetchError;
 }) {
   session.agentController?.abort();
   const agentController = new AbortController();
@@ -130,7 +121,7 @@ export async function handlePanelAgentRequest({
     slidesText,
   });
 
-  sendStatus("Sending to AI…");
+  sendStatus(uiMessage("progress.sendingAi"));
   const capabilityExecution = resolveCapabilityExecution(settings);
   const capabilityModel = resolveCapabilityModel(settings.model);
 
@@ -165,7 +156,7 @@ export async function handlePanelAgentRequest({
           });
         }
       }
-      if (!sawAssistant) throw new Error("Provider stream ended without a response.");
+      if (!sawAssistant) throw new LocalizedError(uiMessage("error.providerStreamEmpty"));
       sendStatus("");
       return;
     }
@@ -195,10 +186,20 @@ export async function handlePanelAgentRequest({
     });
     if (!res.ok) {
       const rawText = await res.text().catch(() => "");
-      const isMissingAgent = res.status === 404 || rawText.trim().toLowerCase() === "not found";
-      const error = isMissingAgent
-        ? "Daemon does not support /v1/agent. Restart the daemon after updating (summarize daemon restart)."
-        : rawText.trim() || `${res.status} ${res.statusText}`;
+      const isMissingAgent =
+        res.status === 404 ||
+        rawText.trim().toLowerCase() ===
+          /* i18n-ignore: Legacy daemon HTTP response body. */ "not found";
+      if (isMissingAgent) throw new LocalizedError(uiMessage("error.daemonAgentUnavailable"));
+      let body: { localized?: unknown; error?: string } | null = null;
+      try {
+        body = JSON.parse(rawText);
+      } catch {
+        /* Non-JSON diagnostics remain opaque. */
+      }
+      const localized = readLocalizedMessage(body?.localized);
+      if (localized) throw new LocalizedError(localized);
+      const error = body?.error || rawText.trim() || `${res.status} ${res.statusText}`;
       throw new Error(error);
     }
 
@@ -214,20 +215,18 @@ export async function handlePanelAgentRequest({
     }
 
     if (!sawAssistant) {
-      throw new Error("Agent stream ended without a response.");
+      throw new LocalizedError(uiMessage("error.agentStreamEmpty"));
     }
 
     sendStatus("");
   } catch (err) {
     if (agentController.signal.aborted) return;
-    const message = friendlyFetchError(
+    const { message, localized } = friendlyFetchError(
       err,
-      capabilityExecution === "direct"
-        ? "Direct chat request failed"
-        : "Daemon chat request failed",
+      capabilityExecution === "direct" ? "directChat" : "daemonChat",
     );
-    send({ type: "agent:response", requestId, ok: false, error: message });
-    sendStatus(`Error: ${message}`);
+    send({ type: "agent:response", requestId, ok: false, error: message, localized });
+    sendStatus(uiMessage("error.message", { error: localized }));
   } finally {
     if (session.agentController === agentController) {
       session.agentController = null;
@@ -252,7 +251,7 @@ export async function handlePanelChatHistoryRequest({
   send: SendFn;
   fetchImpl: typeof fetch;
   daemonFetchImpl?: typeof fetch;
-  friendlyFetchError: (error: unknown, fallback: string) => string;
+  friendlyFetchError: typeof import("./daemon-client").friendlyFetchError;
 }) {
   const capabilityExecution = resolveCapabilityExecution(settings);
   if (capabilityExecution === "direct") {
@@ -287,7 +286,12 @@ export async function handlePanelChatHistoryRequest({
       }),
     });
     const rawText = await res.text();
-    type HistoryResponse = { ok?: boolean; messages?: Message[]; error?: string };
+    type HistoryResponse = {
+      ok?: boolean;
+      messages?: Message[];
+      error?: string;
+      localized?: unknown;
+    };
     let json: HistoryResponse | null = null;
     if (rawText) {
       try {
@@ -297,6 +301,8 @@ export async function handlePanelChatHistoryRequest({
       }
     }
     if (!res.ok || !json?.ok) {
+      const localized = readLocalizedMessage(json?.localized);
+      if (localized) throw new LocalizedError(localized);
       const error = json?.error ?? (rawText.trim() || `${res.status} ${res.statusText}`);
       throw new Error(error);
     }
@@ -307,7 +313,7 @@ export async function handlePanelChatHistoryRequest({
       messages: Array.isArray(json?.messages) ? json.messages : undefined,
     });
   } catch (err) {
-    const message = friendlyFetchError(err, "Chat history request failed");
-    send({ type: "chat:history", requestId, ok: false, error: message });
+    const { message, localized } = friendlyFetchError(err, "chatHistory");
+    send({ type: "chat:history", requestId, ok: false, error: message, localized });
   }
 }

@@ -61,7 +61,9 @@ export async function runModelAttempts<T>({
       if (
         isNamedModelSelection &&
         error instanceof Error &&
-        /No allowed providers are available for the selected model/i.test(error.message)
+        /* i18n-ignore: OpenRouter provider-availability diagnostic. */ /No allowed providers are available for the selected model/i.test(
+          error.message,
+        )
       ) {
         sawOpenRouterNoAllowedProviders = true;
       }

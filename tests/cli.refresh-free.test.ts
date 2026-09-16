@@ -48,7 +48,7 @@ describe("refresh-free", () => {
       stderr: stderr.stream,
     });
 
-    expect(stderr.getText()).toContain("runs=3");
+    expect(stderr.getText()).toContain(locale === "tr" ? "çalıştırma=3" : "runs=3");
     const configPath = join(root, ".summarize", "config.json");
     const config = JSON.parse(readFileSync(configPath, "utf8")) as {
       models?: { free?: { rules?: Array<{ candidates?: string[] }> } };

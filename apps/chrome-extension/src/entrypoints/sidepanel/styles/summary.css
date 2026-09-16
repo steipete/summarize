@@ -160,6 +160,7 @@ button.setup__pill.isActive {
 
 .setup__codeRow {
   position: relative;
+  direction: ltr;
 }
 
 .setup__codeRow code {

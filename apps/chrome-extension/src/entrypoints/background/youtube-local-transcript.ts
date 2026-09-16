@@ -17,7 +17,11 @@ export type BrowserYoutubeLocalTranscript =
       durationSeconds: number | null;
       mediaSource: "sabr" | "player" | "android-vr";
     }
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      localized?: import("@steipete/summarize-core/localization").MessageDescriptor;
+    };
 
 const progressCallbacks = new Map<string, (status: string) => void>();
 const LOCAL_TRANSCRIPTION_TIMEOUT_MS = 15 * 60 * 1000;

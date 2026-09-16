@@ -5,6 +5,7 @@ import {
   preparePanelContent,
   type PreparedPanelContent,
 } from "../apps/chrome-extension/src/entrypoints/background/panel-content-preparation.js";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 import { defaultSettings } from "../apps/chrome-extension/src/lib/settings.js";
 
 const articleUrl = "https://example.com/article";
@@ -110,9 +111,15 @@ describe("chrome panel content preparation", () => {
         signal: harness.args.signal,
       }),
     );
-    expect(harness.sendStatus).toHaveBeenCalledWith("Extracting page content… (manual)");
-    expect(harness.sendStatus).toHaveBeenCalledWith("Extracting: injecting… (manual)");
-    expect(harness.sendStatus).toHaveBeenCalledWith("Extracting: reading… (manual)");
+    expect(harness.sendStatus).toHaveBeenCalledWith(
+      message("progress.panelExtract", { stage: "page" }),
+    );
+    expect(harness.sendStatus).toHaveBeenCalledWith(
+      message("progress.panelExtract", { stage: "inject" }),
+    );
+    expect(harness.sendStatus).toHaveBeenCalledWith(
+      message("progress.panelExtract", { stage: "read" }),
+    );
   });
 
   it("uses content-script extraction for URL-preferred non-YouTube pages", async () => {
@@ -372,7 +379,8 @@ describe("chrome panel content preparation", () => {
 
     expect(result).toEqual({
       ...content,
-      localTranscriptError: "The page changed before browser transcription completed.",
+      localTranscriptError: "The page changed before browser transcription completed",
+      localTranscriptMessage: message("error.transcriptPageChanged"),
     });
   });
 

@@ -1,8 +1,7 @@
-export const TWITTER_CLI_TIP =
-  "Tip: Install xurl (preferred) or bird for better X support: brew install --cask xdevplatform/tap/xurl";
+import { createCliTranslator } from "../locale.js";
+export const TWITTER_CLI_TIP = createCliTranslator("en")("tip.twitter");
 export const BIRD_TIP = TWITTER_CLI_TIP;
-export const UVX_TIP =
-  "Tip: Install uv (uvx) for local Markdown conversion: brew install uv (or set UVX_PATH to your uvx binary).";
+export const UVX_TIP = createCliTranslator("en")("tip.uvx");
 export const SUPPORT_URL = "https://github.com/steipete/summarize";
 export const TWITTER_HOSTS = new Set(["x.com", "twitter.com", "mobile.twitter.com"]);
 export const MAX_TEXT_BYTES_DEFAULT = 10 * 1024 * 1024;

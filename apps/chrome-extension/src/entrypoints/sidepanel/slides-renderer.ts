@@ -1,3 +1,8 @@
+import {
+  setText as setUiText,
+  message as uiMessage,
+  setLocalizedAttribute as setUiAttribute,
+} from "../../lib/i18n";
 import type { SseSlidesData } from "../../lib/runtime-contracts";
 import type { SlidesLayout } from "../../lib/settings";
 import { resolveSlidesRenderLayout } from "./slides-view-policy";
@@ -138,11 +143,15 @@ export function createSlidesRenderer({
     if (!title || !toggle || !grid) return;
 
     const total = allSlides.length;
-    title.textContent =
-      !state.slidesExpanded && total > slides.length
-        ? `Slides (${total}) · showing ${slides.length}`
-        : `Slides (${total})`;
-    toggle.textContent = state.slidesExpanded ? "Collapse" : "Expand";
+    setUiText(
+      title,
+      uiMessage("slides.countTitle", {
+        total,
+        shown: slides.length,
+        partial: !state.slidesExpanded && total > slides.length,
+      }),
+    );
+    setUiText(toggle, state.slidesExpanded ? uiMessage("collapse") : uiMessage("expand"));
     toggle.setAttribute("aria-pressed", state.slidesExpanded ? "true" : "false");
     grid.classList.toggle("isExpanded", state.slidesExpanded);
 
@@ -170,7 +179,7 @@ export function createSlidesRenderer({
         const thumb = document.createElement("div");
         thumb.className = "slideStrip__thumb";
         const img = document.createElement("img");
-        img.alt = `Slide ${slide.index}`;
+        setUiAttribute(img, "alt", uiMessage("slides.imageAlt", { index: slide.index }));
         img.className = "slideStrip__thumbImage";
         thumb.appendChild(img);
 
@@ -207,7 +216,7 @@ export function createSlidesRenderer({
             button.appendChild(description);
             return description;
           })();
-        textEl.textContent = state.descriptions.get(slide.index) ?? "";
+        setUiText(textEl, state.descriptions.get(slide.index) ?? "");
       } else {
         existingText?.remove();
       }
@@ -284,7 +293,7 @@ export function createSlidesRenderer({
         const thumb = document.createElement("div");
         thumb.className = "slideInline__thumb slideGallery__thumb isPlaceholder";
         const img = document.createElement("img");
-        img.alt = `Slide ${slide.index}`;
+        setUiAttribute(img, "alt", uiMessage("slides.imageAlt", { index: slide.index }));
         img.className = "slideInline__thumbImage";
         thumb.appendChild(img);
         media.appendChild(thumb);
@@ -317,7 +326,7 @@ export function createSlidesRenderer({
         state.titles.get(slide.index) ?? null,
         slides.length,
       );
-      text.textContent = state.descriptions.get(slide.index) ?? "";
+      setUiText(text, state.descriptions.get(slide.index) ?? "");
       bindSeek(item, slide.timestamp);
       list.appendChild(item);
     }
@@ -349,7 +358,7 @@ export function createSlidesRenderer({
       const thumb = document.createElement("div");
       thumb.className = "slideInline__thumb isPlaceholder";
       const img = document.createElement("img");
-      img.alt = `Slide ${index}`;
+      setUiAttribute(img, "alt", uiMessage("slides.imageAlt", { index }));
       img.className = "slideInline__thumbImage";
       updateThumb(img, thumb, slide.imageUrl);
       const caption = document.createElement("div");

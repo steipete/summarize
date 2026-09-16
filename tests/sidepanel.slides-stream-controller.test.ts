@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createSlidesStreamController } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-stream-controller.js";
+import { LocalizedError, extensionMessage, message } from "../apps/chrome-extension/src/lib/i18n";
 import { encodeSseEvent, type SseEvent } from "../packages/core/src/runtime/sse-events.js";
 
 const encoder = new TextEncoder();
@@ -95,6 +96,30 @@ describe("sidepanel slides stream controller", () => {
     await controller.start("run-1");
 
     expect(errors.some((msg) => msg.includes("slides crashed"))).toBe(true);
+  });
+
+  it("preserves a localized error through the slides stream callback", async () => {
+    let failure: unknown;
+    const localized = message("error.slidesFailedDefault");
+    const controller = createSlidesStreamController({
+      getToken: async () => "fixture-token",
+      onSlides: () => {},
+      onError: (error) => {
+        failure = error;
+        return "";
+      },
+      fetchImpl: async () =>
+        new Response(
+          streamFromEvents([{ event: "error", data: { message: "legacy", localized } }]),
+          { status: 200 },
+        ),
+    });
+    await controller.start("fixture-run");
+    expect(failure).toBeInstanceOf(LocalizedError);
+    const descriptor = (failure as LocalizedError).localized;
+    expect(extensionMessage(descriptor.key, descriptor.values, "tr")).toBe(
+      "Slayt işlemi başarısız.",
+    );
   });
 
   it("reports errors when the stream ends without done", async () => {

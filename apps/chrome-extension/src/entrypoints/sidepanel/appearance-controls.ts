@@ -1,3 +1,4 @@
+import { message as uiMessage } from "../../lib/i18n";
 import { defaultSettings, type Settings } from "../../lib/settings";
 import { applyTheme, type ColorMode, type ColorScheme } from "../../lib/theme";
 import { mountCheckbox } from "../../ui/checkbox";
@@ -24,7 +25,7 @@ export function createAppearanceControls(options: {
   const updateAutoToggle = () => {
     autoToggle.update({
       id: "sidepanel-auto",
-      label: "Auto summarize",
+      label: uiMessage("auto.summarize"),
       checked: autoValue,
       onCheckedChange: (checked) => {
         autoValue = checked;
@@ -77,7 +78,7 @@ export function createAppearanceControls(options: {
 
   const autoToggle = mountCheckbox(options.autoToggleRoot, {
     id: "sidepanel-auto",
-    label: "Auto summarize",
+    label: uiMessage("auto.summarize"),
     checked: autoValue,
     onCheckedChange: (checked) => {
       autoValue = checked;

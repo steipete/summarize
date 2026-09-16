@@ -1,4 +1,5 @@
 import type { LinkPreviewProgressEvent } from "@steipete/summarize-core/content";
+import { type CliLocale, createCliTranslator } from "../../locale.js";
 import {
   formatBytes,
   formatBytesPerSecond,
@@ -104,9 +105,11 @@ export function applyTranscriptProgressEvent(
 export function renderTranscriptSimple(
   state: TranscriptProgressState,
   theme?: ThemeRenderer | null,
+  locale: CliLocale = /* i18n-ignore: Default locale code for message/number formatting. */ "en",
 ): string | null {
-  if (state.phase === "download") return renderSimple(downloadTitle(state), theme);
-  if (state.phase === "whisper") return renderSimple("Transcribing", theme);
+  if (state.phase === "download") return renderSimple(downloadTitle(state, locale), theme);
+  if (state.phase === "whisper")
+    return renderSimple(createCliTranslator(locale)("transcribing"), theme);
   return null;
 }
 
@@ -115,24 +118,30 @@ export function renderTranscriptLine(
   {
     nowMs,
     theme,
+    locale = "en",
   }: {
     nowMs: number;
     theme?: ThemeRenderer | null;
+    locale?: CliLocale;
   },
 ): string | null {
-  if (state.phase === "download") return renderDownloadLine(state, nowMs, theme);
-  if (state.phase === "whisper") return renderWhisperLine(state, nowMs, theme);
+  if (state.phase === "download") return renderDownloadLine(state, nowMs, locale, theme);
+  if (state.phase === "whisper") return renderWhisperLine(state, nowMs, locale, theme);
   return null;
 }
 
 export function resolveTranscriptOscPayload(
   state: TranscriptProgressState,
+  locale: CliLocale = /* i18n-ignore: Default locale code for message/number formatting. */ "en",
 ): { label: string; percent: number | null } | null {
   if (state.phase === "download") {
-    return { label: downloadTitle(state), percent: resolveDownloadPercent(state) };
+    return { label: downloadTitle(state, locale), percent: resolveDownloadPercent(state) };
   }
   if (state.phase === "whisper") {
-    return { label: "Transcribing", percent: resolveWhisperPercent(state) };
+    return {
+      label: createCliTranslator(locale)("transcribing"),
+      percent: resolveWhisperPercent(state),
+    };
   }
   return null;
 }
@@ -140,43 +149,47 @@ export function resolveTranscriptOscPayload(
 function renderDownloadLine(
   state: TranscriptProgressState,
   nowMs: number,
+  locale: CliLocale,
   theme?: ThemeRenderer | null,
 ): string {
-  const downloaded = formatBytes(state.downloadedBytes);
+  const downloaded = formatBytes(state.downloadedBytes, locale);
   const total =
     typeof state.totalBytes === "number" &&
     state.totalBytes > 0 &&
     state.downloadedBytes <= state.totalBytes
-      ? `/${formatBytes(state.totalBytes)}`
+      ? `/${formatBytes(state.totalBytes, locale)}`
       : "";
   const elapsedMs = typeof state.startedAtMs === "number" ? nowMs - state.startedAtMs : 0;
-  const elapsed = formatElapsedMs(elapsedMs);
+  const elapsed = formatElapsedMs(elapsedMs, locale);
   const rate =
     elapsedMs > 0 && state.downloadedBytes > 0
-      ? `, ${formatBytesPerSecond(state.downloadedBytes / (elapsedMs / 1000))}`
+      ? `, ${formatBytesPerSecond(state.downloadedBytes / (elapsedMs / 1000), locale)}`
       : "";
-  const svcLabel =
-    state.service === "podcast" ? "podcast" : state.service === "youtube" ? "youtube" : "";
-  return renderLine(
-    `Downloading ${state.mediaKind === "video" ? "video" : "audio"}`,
-    ` (${svcLabel ? `${svcLabel}, ` : ""}${downloaded}${total}, ${elapsed}${rate})…`,
-    null,
-    theme,
-  );
+  const text = createCliTranslator(
+    locale,
+    theme ? { uiLabel: theme.label, uiDetail: theme.dim, uiValue: theme.value } : undefined,
+  )("progress.mediaDownload", {
+    kind: state.mediaKind,
+    service: state.service,
+    downloaded,
+    total,
+    elapsed,
+    rate,
+  });
+  return text;
 }
 
 function renderWhisperLine(
   state: TranscriptProgressState,
   nowMs: number,
+  locale: CliLocale,
   theme?: ThemeRenderer | null,
 ): string {
   const provider = formatProvider(firstChainPart(state.whisperProviderHint));
   const modelId = firstChainPart(state.whisperModelId);
   const providerLabel = modelId ? `${provider}, ${modelId}` : provider;
-  const svc =
-    state.service === "podcast" ? "podcast" : state.service === "youtube" ? "youtube" : "media";
   const elapsedMs = typeof state.startedAtMs === "number" ? nowMs - state.startedAtMs : 0;
-  const elapsed = formatElapsedMs(elapsedMs);
+  const elapsed = formatElapsedMs(elapsedMs, locale);
   const percent =
     typeof state.whisperProcessedSeconds === "number" &&
     typeof state.whisperTotalSeconds === "number" &&
@@ -193,11 +206,12 @@ function renderWhisperLine(
     typeof state.whisperProcessedSeconds === "number" &&
     typeof state.whisperTotalSeconds === "number" &&
     state.whisperTotalSeconds > 0
-      ? `, ${formatDurationSecondsSmart(state.whisperProcessedSeconds)}/${formatDurationSecondsSmart(
+      ? `, ${formatDurationSecondsSmart(state.whisperProcessedSeconds, locale)}/${formatDurationSecondsSmart(
           state.whisperTotalSeconds,
+          locale,
         )}`
       : typeof state.whisperTotalSeconds === "number" && state.whisperTotalSeconds > 0
-        ? `, ${formatDurationSecondsSmart(state.whisperTotalSeconds)}`
+        ? `, ${formatDurationSecondsSmart(state.whisperTotalSeconds, locale)}`
         : "";
   const parts =
     typeof state.whisperPartIndex === "number" &&
@@ -206,31 +220,27 @@ function renderWhisperLine(
     state.whisperParts > 0
       ? `, ${state.whisperPartIndex}/${state.whisperParts}`
       : "";
-  return renderLine(
-    "Transcribing",
-    ` (${svc}, ${providerLabel}${duration}${parts}, ${elapsed})…`,
-    typeof percent === "number" ? `${percent}%` : null,
-    theme,
-  );
-}
-
-function renderLine(
-  label: string,
-  detail: string,
-  percentLabel: string | null,
-  theme?: ThemeRenderer | null,
-): string {
-  if (!theme) return `${label}${percentLabel ? ` ${percentLabel}` : ""}${detail}`;
-  const percent = percentLabel ? ` ${theme.value(percentLabel)}` : "";
-  return `${theme.label(label)}${percent}${theme.dim(detail)}`;
+  const text = createCliTranslator(
+    locale,
+    theme ? { uiLabel: theme.label, uiDetail: theme.dim, uiValue: theme.value } : undefined,
+  )("progress.transcription", {
+    service: state.service,
+    provider: providerLabel,
+    duration,
+    parts,
+    elapsed,
+    percent: (percent ?? 0) / 100,
+    hasPercent: percent !== null,
+  });
+  return text;
 }
 
 function renderSimple(label: string, theme?: ThemeRenderer | null): string {
   return theme ? `${theme.label(label)}${theme.dim("…")}` : `${label}…`;
 }
 
-function downloadTitle(state: TranscriptProgressState): string {
-  return state.mediaKind === "video" ? "Downloading video" : "Downloading audio";
+function downloadTitle(state: TranscriptProgressState, locale: CliLocale): string {
+  return createCliTranslator(locale)("progress.mediaDownloadLabel", { kind: state.mediaKind });
 }
 
 function resolveDownloadPercent(state: TranscriptProgressState): number | null {

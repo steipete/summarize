@@ -81,6 +81,7 @@ export async function outputExtractedAsset({
       metrics: flags.metricsEnabled ? report : null,
       summary: null,
     };
+    // i18n-ignore: --json emits the stable machine schema and literal extracted content.
     io.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
     hooks.restoreProgressAfterStdout?.();
     if (flags.metricsEnabled && report) {

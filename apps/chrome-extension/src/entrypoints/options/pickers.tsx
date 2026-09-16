@@ -1,4 +1,6 @@
+import { message as uiMessage, extensionMessage } from "../../lib/i18n";
 import type { ColorMode, ColorScheme } from "../../lib/theme";
+import { MessageText } from "../../ui/localized-text";
 import { mountComponent } from "../../ui/mount";
 import { useSelect } from "../../ui/select";
 import { SelectField } from "../../ui/select-field";
@@ -40,7 +42,7 @@ function OptionsPickers(props: OptionsPickerProps) {
   return (
     <>
       <SelectField
-        label="Color scheme"
+        label={uiMessage("color.scheme")}
         labelClassName="scheme"
         api={schemeApi}
         matchTriggerWidth
@@ -48,26 +50,32 @@ function OptionsPickers(props: OptionsPickerProps) {
         items={schemeItems}
         triggerContent={(label, value) => (
           <>
-            <span className="scheme-label">{label || "Slate"}</span>
+            <span className="scheme-label">{label || extensionMessage("slate")}</span>
             <SchemeChips scheme={value || "slate"} />
           </>
         )}
         optionContent={(item) => (
           <>
-            <span className="scheme-label">{item.label}</span>
+            <span className="scheme-label">
+              <MessageText value={item.label} />
+            </span>
             <SchemeChips scheme={item.value} />
           </>
         )}
       />
       <SelectField
-        label="Appearance"
+        label={uiMessage("appearance")}
         labelClassName="mode"
         api={modeApi}
         matchTriggerWidth
         positionerStyle={{ pointerEvents: modeApi.open ? "auto" : "none" }}
         items={modeItems}
-        triggerContent={(label) => <span>{label || "System"}</span>}
-        optionContent={(item) => <span>{item.label}</span>}
+        triggerContent={(label) => <span>{label || extensionMessage("system")}</span>}
+        optionContent={(item) => (
+          <span>
+            <MessageText value={item.label} />
+          </span>
+        )}
       />
     </>
   );

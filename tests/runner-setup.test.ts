@@ -15,7 +15,7 @@ describe("runner setup", () => {
   it.each([["--locale"], ["--locale", "--json"], ["--locale="], ["--locale", "--", "file.txt"]])(
     "rejects missing locale values without consuming other options: %j",
     (...argv) => {
-      expect(() => stripCliLocaleArgs(argv)).toThrow("--locale requires a value");
+      expect(() => stripCliLocaleArgs(argv)).toThrow("--locale requires a locale or auto.");
     },
   );
   it("strips only complete locale options before the separator", () => {

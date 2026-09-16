@@ -1,3 +1,5 @@
+import type { LocalizedText } from "../lib/i18n";
+import { MessageText } from "./localized-text";
 import { mountComponent } from "./mount";
 
 function Checkmark() {
@@ -16,7 +18,7 @@ function CheckboxField({
   onCheckedChange,
 }: {
   id: string;
-  label: string;
+  label: LocalizedText;
   checked: boolean;
   disabled?: boolean;
   onCheckedChange: (checked: boolean) => void;
@@ -43,7 +45,7 @@ function CheckboxField({
         </span>
       </span>
       <span className="checkboxLabel" data-disabled={disabled ? "" : undefined}>
-        {label}
+        <MessageText value={label} />
       </span>
     </label>
   );
@@ -53,7 +55,7 @@ export function mountCheckbox(
   root: HTMLElement,
   props: {
     id: string;
-    label: string;
+    label: LocalizedText;
     checked: boolean;
     disabled?: boolean;
     onCheckedChange: (checked: boolean) => void;

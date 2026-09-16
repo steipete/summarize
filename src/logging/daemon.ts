@@ -149,9 +149,11 @@ export function createDaemonLogger({
       const entry = { ...payload, ...context };
       if (resolved.format === "pretty") {
         const displayName = name === ROOT_LOGGER_NAME ? name : `${ROOT_LOGGER_NAME}:${name}`;
+        // i18n-ignore: Diagnostic log fields and logger names retain their protocol spelling.
         writer.write(formatPrettyLine({ timestamp, level, name: displayName, payload: entry }));
         return;
       }
+      // i18n-ignore: Structured diagnostic log schema, not localized interface copy.
       writer.write(
         safeJsonStringify({
           ...entry,

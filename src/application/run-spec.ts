@@ -179,7 +179,7 @@ export function resolveSummarizeRun({
       lengthInstruction: promptOverride ? buildPromptLengthInstruction(lengthArg) : null,
       languageInstruction:
         promptOverride && outputLanguage.kind === "fixed"
-          ? `Output should be ${outputLanguage.label}.`
+          ? /* i18n-ignore: Model instruction controlled by summary output language, not UI locale. */ `Output should be ${outputLanguage.label}.`
           : null,
       maxOutputTokensArg,
       allowAutoCliFallback: overrides.autoCliFallbackEnabled === true,

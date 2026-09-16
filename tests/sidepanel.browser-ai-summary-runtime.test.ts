@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
 import { createBrowserAiSummaryRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/browser-ai-summary-runtime";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 
 describe("sidepanel browser AI summary runtime", () => {
   it("prewarms from user activation and reuses the created Gemini Nano summarizer", async () => {
@@ -97,7 +98,9 @@ describe("sidepanel browser AI summary runtime", () => {
         input: { text: "Source", length: "short", keyMoments: [] },
       }),
     ).resolves.toBeNull();
-    expect(setStatus).toHaveBeenCalledWith("Downloading on-device AI… 50%");
+    expect(setStatus).toHaveBeenCalledWith(
+      message("progress.browser.download", { percent: 0.5, hasPercent: true }),
+    );
     expect(setStatus).toHaveBeenLastCalledWith("");
   });
 

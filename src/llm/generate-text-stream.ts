@@ -257,7 +257,11 @@ export async function streamTextWithContext({
   const controller = new AbortController();
   let lastError: unknown = null;
   const setLastError = (error: unknown) => {
-    if ((lastError as Error | null)?.message === "LLM request timed out") return;
+    if (
+      (lastError as Error | null)?.message ===
+      /* i18n-ignore: Stable LLM timeout error, before UI formatting. */ "LLM request timed out"
+    )
+      return;
     lastError = error;
   };
 

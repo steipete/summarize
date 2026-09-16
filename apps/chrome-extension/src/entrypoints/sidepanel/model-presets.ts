@@ -2,6 +2,9 @@ import { parseSseStream } from "@steipete/summarize-core/runtime";
 import { readPresetOrCustomValue } from "../../lib/combo";
 import { daemonFetch } from "../../lib/daemon-fetch";
 import { daemonOrigin } from "../../lib/daemon-url";
+import { LocalizedError, readLocalizedMessage } from "../../lib/i18n";
+import type { LocalizedText } from "../../lib/i18n";
+import { setText as setUiText, message as uiMessage } from "../../lib/i18n";
 import { createModelPresetsController as createSharedModelPresetsController } from "../../lib/model-presets";
 import { parseSseEvent } from "../../lib/runtime-contracts";
 import type { Settings } from "../../lib/settings";
@@ -26,13 +29,13 @@ export function createModelPresetsController({
   modelRowEl: HTMLElement;
   defaultModel: string;
   loadSettings: () => Promise<Settings>;
-  friendlyFetchError: (error: unknown, context: string) => string;
+  friendlyFetchError: typeof import("./setup-runtime").friendlyFetchError;
   fetchImpl?: typeof fetch;
 }) {
   let refreshFreeRunning = false;
 
-  const setStatus = (text: string, state: StatusState = "idle") => {
-    modelStatusEl.textContent = text;
+  const setStatus = (text: LocalizedText, state: StatusState = "idle") => {
+    setUiText(modelStatusEl, text);
     if (state === "idle") {
       modelStatusEl.removeAttribute("data-state");
     } else {
@@ -66,12 +69,12 @@ export function createModelPresetsController({
     const token = settings.token.trim();
     const origin = daemonOrigin(settings.daemonPort);
     if (!token) {
-      setStatus("Setup required (missing token).", "error");
+      setStatus(uiMessage("setup.required.missing.token"), "error");
       return;
     }
     refreshFreeRunning = true;
     modelRefreshBtn.disabled = true;
-    setStatus("Starting scan…", "running");
+    setStatus(uiMessage("starting.scan"), "running");
     let winnerModel: string | null = null;
 
     try {
@@ -93,7 +96,7 @@ export function createModelPresetsController({
       });
       if (!streamResponse.ok)
         throw new Error(`${streamResponse.status} ${streamResponse.statusText}`);
-      if (!streamResponse.body) throw new Error("Missing stream body");
+      if (!streamResponse.body) throw new LocalizedError(uiMessage("error.streamBody"));
 
       for await (const raw of parseSseStream(streamResponse.body)) {
         const event = parseSseEvent(raw);
@@ -102,23 +105,36 @@ export function createModelPresetsController({
           const text = event.data.text.trim();
           if (text) {
             if (!winnerModel) {
-              const match = text.match(/^-\s+([^\s]+)/);
-              if (match?.[1]) winnerModel = match[1];
+              const descriptor = event.data.message;
+              if (
+                descriptor?.key === "refresh.candidate" &&
+                typeof descriptor.values.model === "string"
+              )
+                winnerModel = descriptor.values.model;
+              else if (!descriptor) {
+                // Older daemons only supplied the human-readable candidate line.
+                const match = text.match(/^-\s+([^\s]+)/);
+                if (match?.[1]) winnerModel = match[1];
+              }
             }
-            setStatus(text, "running");
+            setStatus(readLocalizedMessage(event.data.message) ?? text, "running");
           }
         } else if (event.event === "error") {
+          const localized = readLocalizedMessage(event.data.localized);
+          if (localized) throw new LocalizedError(localized);
           throw new Error(event.data.message);
         } else if (event.event === "done") {
           break;
         }
       }
 
-      const winnerNote = winnerModel ? ` Top: ${winnerModel}` : "";
-      setStatus(`Free models updated.${winnerNote}`, "ok");
+      setStatus(
+        uiMessage("models.updated", { model: winnerModel ?? "", hasWinner: Boolean(winnerModel) }),
+        "ok",
+      );
       await refreshPresets(token);
     } catch (error) {
-      setStatus(friendlyFetchError(error, "Refresh free failed"), "error");
+      setStatus(friendlyFetchError(error, uiMessage("refresh.free.failed")), "error");
     } finally {
       refreshFreeRunning = false;
       modelRefreshBtn.disabled = false;

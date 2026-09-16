@@ -64,7 +64,7 @@ describe("Twitter Syndication API Extraction", () => {
       markdownMode: "off",
       hasMarkdownLlmCall: false,
     });
-    expect(label).toBe("text via twitter-syndication");
+    expect(label).toEqual({ kind: "extract", format: "text", via: "twitter-syndication" });
 
     const extractionUi = deriveExtractionUi(result);
     expect(extractionUi.viaSourceLabel).toBe(", twitter-syndication");

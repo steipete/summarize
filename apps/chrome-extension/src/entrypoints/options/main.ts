@@ -1,4 +1,7 @@
+import { availableUiLocales } from "@steipete/summarize-core/localization/messages";
 import type { CacheStats } from "@steipete/summarize-core/runtime";
+import { uiNumber } from "../../lib/i18n";
+import { setText as setUiText, message as uiMessage } from "../../lib/i18n";
 import { applyExtensionLocale, resolveExtensionLocale } from "../../lib/i18n";
 import { createModelPresetsController } from "../../lib/model-presets";
 import { defaultSettings, loadSettings, saveSettings } from "../../lib/settings";
@@ -27,6 +30,19 @@ declare const __SUMMARIZE_GIT_HASH__: string;
 declare const __SUMMARIZE_VERSION__: string;
 
 const elements = getOptionsElements();
+const automaticLocaleOption = document.createElement("option");
+// i18n-ignore: Locale-setting identifier; the visible option label is bound below.
+automaticLocaleOption.value = "auto";
+setUiText(automaticLocaleOption, uiMessage("automatic.browser"));
+elements.uiLocaleEl.replaceChildren(
+  automaticLocaleOption,
+  ...availableUiLocales.map((locale) => {
+    const option = document.createElement("option");
+    option.value = locale;
+    setUiText(option, new Intl.DisplayNames([locale], { type: "language" }).of(locale) ?? locale);
+    return option;
+  }),
+);
 
 const resolveActiveTab = () => resolveActiveOptionsTab(elements.tabButtons);
 
@@ -79,7 +95,11 @@ const ensureSkillsLoaded = async () => {
 
 const loadSkillsTab = () => {
   void ensureSkillsLoaded().catch((error) => {
-    setStatus(`Failed to load skills: ${error instanceof Error ? error.message : String(error)}`);
+    setStatus(
+      uiMessage("skills.loadFailed", {
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
   });
 };
 
@@ -208,11 +228,14 @@ daemonCapability = createDaemonCapabilityController({
 refreshRuntimeStatus = (token = elements.tokenEl.value) => {
   const capability = daemonCapability?.getState();
   if (capability && !capability.policy.daemonAllowed) {
-    setDaemonStatus("Disabled by administrator", "warn");
+    setDaemonStatus(uiMessage("disabled.by.administrator"), "warn");
     return;
   }
   if (capability && !capability.permissionGranted) {
-    setDaemonStatus("Local companion permission missing — enable it in Runtime settings", "warn");
+    setDaemonStatus(
+      uiMessage("local.companion.permission.missing.enable.it.in.runtime.settings"),
+      "warn",
+    );
     return;
   }
   void checkDaemonStatus(token);
@@ -228,7 +251,7 @@ function formatBytes(bytes: number): string {
     unitIndex += 1;
   }
   const precision = value >= 10 || unitIndex === 0 ? 0 : 1;
-  return `${value.toFixed(precision)} ${units[unitIndex]}`;
+  return `${uiNumber(value, { minimumFractionDigits: precision, maximumFractionDigits: precision, useGrouping: false })} ${units[unitIndex]}`;
 }
 
 async function sendBrowserCacheMessage(type: "browser-cache:stats" | "browser-cache:clear") {
@@ -240,42 +263,46 @@ async function sendBrowserCacheMessage(type: "browser-cache:stats" | "browser-ca
 
 function renderBrowserCacheStatus(stats: CacheStats | null | undefined) {
   if (!stats) {
-    elements.browserCacheStatusEl.textContent = "Unavailable";
+    setUiText(elements.browserCacheStatusEl, uiMessage("unavailable"));
     return;
   }
-  const entryLabel = stats.totalEntries === 1 ? "entry" : "entries";
-  elements.browserCacheStatusEl.textContent = `${stats.totalEntries} ${entryLabel} · ${formatBytes(
-    stats.sizeBytes,
-  )} · expires after 30 days`;
+  setUiText(
+    elements.browserCacheStatusEl,
+    uiMessage("cache.stats", () => ({
+      count: stats.totalEntries,
+      size: formatBytes(stats.sizeBytes),
+      days: 30,
+    })),
+  );
 }
 
 refreshBrowserCacheStatus = () => {
-  elements.browserCacheStatusEl.textContent = "Loading...";
+  setUiText(elements.browserCacheStatusEl, uiMessage("loading"));
   void sendBrowserCacheMessage("browser-cache:stats")
     .then((response) => {
       renderBrowserCacheStatus(response.ok ? response.stats : null);
     })
     .catch(() => {
-      elements.browserCacheStatusEl.textContent = "Unavailable";
+      setUiText(elements.browserCacheStatusEl, uiMessage("unavailable"));
     });
 };
 
 elements.browserCacheClearBtn.addEventListener("click", () => {
   elements.browserCacheClearBtn.disabled = true;
-  elements.browserCacheStatusEl.textContent = "Clearing...";
+  setUiText(elements.browserCacheStatusEl, uiMessage("clearing"));
   void sendBrowserCacheMessage("browser-cache:clear")
     .then((response) => {
       if (!response.ok) {
         renderBrowserCacheStatus(null);
-        setStatus("Failed to clear browser cache");
+        setStatus(uiMessage("failed.to.clear.browser.cache"));
         return;
       }
       renderBrowserCacheStatus(response.stats);
-      flashStatus("Browser cache cleared");
+      flashStatus(uiMessage("browser.cache.cleared"));
     })
     .catch(() => {
-      elements.browserCacheStatusEl.textContent = "Clear failed";
-      setStatus("Failed to clear browser cache");
+      setUiText(elements.browserCacheStatusEl, uiMessage("clear.failed"));
+      setStatus(uiMessage("failed.to.clear.browser.cache"));
     })
     .finally(() => {
       elements.browserCacheClearBtn.disabled = false;
@@ -405,7 +432,7 @@ bindOptionsInputs({
 });
 
 elements.uiLocaleEl.addEventListener("change", () => {
-  applyExtensionLocale(resolveExtensionLocale(elements.uiLocaleEl.value as "auto" | "en" | "tr"));
+  applyExtensionLocale(resolveExtensionLocale(elements.uiLocaleEl.value));
 });
 
 applyBuildInfo(elements.buildInfoEl, {

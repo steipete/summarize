@@ -1,11 +1,22 @@
+import {
+  buildMetricParts,
+  type MetricPart,
+} from "@steipete/summarize-core/localization/presentation";
 import type { SummaryResult } from "../application/summarize-contracts.js";
 import { isYouTubeUrl } from "../content/index.js";
 import type { ExtractedLinkContent } from "../content/index.js";
 import type { RunMetricsReport } from "../costs.js";
+import { cliMessage } from "../locale.js";
 import { buildFinishLineVariants, buildLengthPartsForFinishLine } from "../run/finish-line.js";
-import { estimateDurationSecondsFromWords, formatInputSummary } from "./meta.js";
+import { sumNumbersOrNull } from "../shared/numbers.js";
+import {
+  estimateDurationSecondsFromWords,
+  buildInputSummaryMessage,
+  formatInputSummary,
+} from "./meta.js";
 
 export type VisiblePageMetrics = {
+  parts: MetricPart[];
   elapsedMs: number;
   summary: string;
   details: string | null;
@@ -22,7 +33,7 @@ function guessSiteName(url: string): string | null {
   }
 }
 
-export function buildInputSummaryForExtracted(extracted: ExtractedLinkContent): string | null {
+export function buildInputSummaryForExtracted(extracted: ExtractedLinkContent) {
   const isYouTube = extracted.siteName === "YouTube" || isYouTubeUrl(extracted.url);
   const transcriptChars =
     typeof extracted.transcriptCharacters === "number" && extracted.transcriptCharacters > 0
@@ -51,13 +62,17 @@ export function buildInputSummaryForExtracted(extracted: ExtractedLinkContent): 
     return "podcast";
   })();
 
-  return formatInputSummary({
+  const args = {
     kindLabel,
     durationSeconds,
     words: hasTranscript ? transcriptWords : extracted.wordCount,
     characters: hasTranscript ? transcriptChars : extracted.totalCharacters,
     isDurationApproximate,
-  });
+  };
+  return {
+    inputSummary: formatInputSummary(args),
+    inputSummaryMessage: buildInputSummaryMessage(args),
+  };
 }
 
 export function buildDaemonSummaryMetrics(result: SummaryResult): VisiblePageMetrics {
@@ -71,7 +86,7 @@ export function buildDaemonSummaryMetrics(result: SummaryResult): VisiblePageMet
     : null;
   const { compact, detailed } = buildFinishLineVariants({
     elapsedMs: result.elapsedMs,
-    elapsedLabel: result.summaryFromCache ? "Cached" : null,
+    elapsedLabel: result.summaryFromCache ? cliMessage("finish.cached") : null,
     label,
     model: result.usedModel,
     report: result.report satisfies RunMetricsReport,
@@ -81,6 +96,17 @@ export function buildDaemonSummaryMetrics(result: SummaryResult): VisiblePageMet
   });
 
   return {
+    parts: buildMetricParts({
+      elapsedMs: result.elapsedMs,
+      cached: result.summaryFromCache,
+      costUsd: result.costUsd,
+      source: label,
+      sourceUrl: result.extracted.url,
+      model: result.usedModel,
+      promptTokens: sumNumbersOrNull(result.report.llm.map((row) => row.promptTokens)),
+      completionTokens: sumNumbersOrNull(result.report.llm.map((row) => row.completionTokens)),
+      totalTokens: sumNumbersOrNull(result.report.llm.map((row) => row.totalTokens)),
+    }),
     elapsedMs: result.elapsedMs,
     summary: compact.line,
     details: compact.details,

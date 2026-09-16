@@ -14,6 +14,7 @@ export function isGoogleStreamingUnsupportedError(error: unknown): boolean {
     url.includes(":streamGenerateContent") || errorText.includes("streamGenerateContent");
   if (!isStreamEndpoint) return false;
 
+  // i18n-ignore: Google API diagnostics, independent of UI locale.
   return (
     /does not support/i.test(errorText) ||
     /not supported/i.test(errorText) ||
@@ -32,6 +33,7 @@ export function isStreamingTimeoutError(error: unknown): boolean {
         : typeof (error as { message?: unknown }).message === "string"
           ? String((error as { message?: unknown }).message)
           : "";
+  // i18n-ignore: Transport timeout diagnostic before UI formatting.
   return /timed out/i.test(message);
 }
 

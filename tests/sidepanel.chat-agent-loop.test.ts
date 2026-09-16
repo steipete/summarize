@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { runChatAgentLoop } from "../apps/chrome-extension/src/entrypoints/sidepanel/chat-agent-loop.js";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 
 function createController() {
   return {
@@ -150,17 +151,20 @@ describe("sidepanel chat agent loop", () => {
     expect(executeToolCall).not.toHaveBeenCalled();
   });
 
-  it("removes the placeholder message on request failure", async () => {
-    const controller = createController();
-    const chatSession = {
-      isAbortRequested: vi.fn(() => false),
-      requestAgent: vi.fn(async () => {
-        throw new Error("boom");
-      }),
-    };
+  it.each(["throw", "descriptor"])(
+    "removes the placeholder message on request failure (%s)",
+    async (kind) => {
+      const controller = createController();
+      const localized = message("error.agentStreamEmpty");
+      const chatSession = {
+        isAbortRequested: vi.fn(() => false),
+        requestAgent: vi.fn(async () => {
+          if (kind === "descriptor") return { ok: false, error: "legacy", localized };
+          throw new Error("boom");
+        }),
+      };
 
-    await expect(
-      runChatAgentLoop({
+      const request = runChatAgentLoop({
         automationEnabled: false,
         summaryMarkdown: null,
         chatController: controller as never,
@@ -174,9 +178,11 @@ describe("sidepanel chat agent loop", () => {
         markAgentNavigationResult: vi.fn(),
         scrollToBottom: vi.fn(),
         wrapMessage: vi.fn((message) => ({ ...message, id: "wrapped" }) as never),
-      }),
-    ).rejects.toThrow("boom");
+      });
+      if (kind === "descriptor") await expect(request).rejects.toMatchObject({ localized });
+      else await expect(request).rejects.toThrow("boom");
 
-    expect(controller.removeMessage).toHaveBeenCalledWith("stream");
-  });
+      expect(controller.removeMessage).toHaveBeenCalledWith("stream");
+    },
+  );
 });

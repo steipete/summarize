@@ -2,6 +2,7 @@ import type http from "node:http";
 import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import { encodeSseEvent, type SseEvent } from "@steipete/summarize-core/runtime";
 import type { CacheState } from "../cache.js";
+import { describeCliError } from "../locale.js";
 import { runWithProcessContext } from "../processes.js";
 import { type AgentCacheInput, readAgentHistory, writeAgentHistory } from "./agent-cache.js";
 import { completeAgentResponse, streamAgentResponse } from "./agent.js";
@@ -152,9 +153,8 @@ export async function handleAgentRoute({
     res.end();
   } catch (error) {
     if (controller.signal.aborted) return true;
-    const message = error instanceof Error ? error.message : String(error);
     console.error("[summarize-daemon] agent failed", error);
-    writeEvent({ event: "error", data: { message } });
+    writeEvent({ event: "error", data: describeCliError(error) });
     writeEvent({ event: "done", data: {} });
     res.end();
   }

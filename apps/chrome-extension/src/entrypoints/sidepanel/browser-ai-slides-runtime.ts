@@ -2,6 +2,7 @@ import { normalizeBrowserAiGeneratedPoints } from "../../lib/browser-summary";
 import { daemonFetch } from "../../lib/daemon-fetch";
 import { daemonOrigin } from "../../lib/daemon-url";
 import { logExtensionEvent } from "../../lib/extension-logs";
+import { message as uiMessage } from "../../lib/i18n";
 import { isGeminiNanoModel } from "../../lib/model-routing";
 import { loadSettings } from "../../lib/settings";
 import {
@@ -105,11 +106,13 @@ function buildSlideBlock({
   if (!body) return `[slide:${index}]\n## Interlude`;
   if (/^interlude[.!]?$/i.test(body)) return `[slide:${index}]\n## Interlude`;
   const parsed = splitSlideTitleFromText({ text: body, slideIndex: index, total });
+  // i18n-ignore: Fallback heading in generated summary output, independent of UI locale.
   const headline = sanitizeHeadline(parsed.title ?? "") || "Key point";
   return `[slide:${index}]\n## ${headline}\n${body}`;
 }
 
 function buildBatchInstructions(title: string | null): string[] {
+  // i18n-ignore: Instructions for the summary model, independent of UI locale.
   return [
     "Summarize every numbered lecture segment below.",
     "Output exactly one line per index in this format: [slide:N] concise factual sentence.",
@@ -125,7 +128,11 @@ function buildBatchPrompt(slides: SlideSource[], title: string | null): string {
     ...buildBatchInstructions(title),
     "",
     slides
-      .map((slide) => `INDEX ${slide.index}\n${slide.text || "No transcript context available."}`)
+      .map(
+        (slide) =>
+          // i18n-ignore: Indexed model input, not interface copy.
+          `INDEX ${slide.index}\n${slide.text || "No transcript context available."}`,
+      )
       .join("\n\n"),
   ].join("\n");
 }
@@ -144,6 +151,7 @@ function buildBatchInput(
   for (const slide of slides) {
     content.push({
       type: "text",
+      // i18n-ignore: Indexed model input and image label, not interface copy.
       value: `INDEX ${slide.index}\nTranscript context:\n${
         slide.text || "No transcript context available."
       }\nVisual frame:`,
@@ -359,8 +367,8 @@ export function createBrowserAiSlidesRuntime(options: {
         requestKey: "slides",
         status:
           batch.length === 1
-            ? `Summarizing slide ${firstIndex} with on-device AI…`
-            : `Summarizing slides ${firstIndex}–${lastIndex} with on-device AI…`,
+            ? uiMessage("progress.browser.slide", { index: firstIndex })
+            : uiMessage("progress.browser.slideRange", { first: firstIndex, last: lastIndex }),
       });
       if (!isCurrent()) return false;
       if (!result) {
@@ -394,6 +402,7 @@ export function createBrowserAiSlidesRuntime(options: {
       fallbackCalls += 1;
       const result = await options.browserAi.summarize({
         input: { text: slide.text, length: "short", keyMoments: [] },
+        // i18n-ignore: Instructions for the summary model, not interface copy.
         context: [
           `Summarize slide ${offset + 1} of ${ordered.length}.`,
           "Return only one or two concise factual sentences in plain text.",
@@ -405,7 +414,10 @@ export function createBrowserAiSlidesRuntime(options: {
           .filter(Boolean)
           .join(" "),
         requestKey: "slides",
-        status: `Summarizing slide ${offset + 1} of ${ordered.length} with on-device AI…`,
+        status: uiMessage("progress.browser.slidePosition", {
+          index: offset + 1,
+          total: ordered.length,
+        }),
       });
       if (!isCurrent()) return;
       const body = result ? normalizeSlideBody(result) : "";

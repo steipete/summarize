@@ -3,14 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Summarize</title>
+    <title data-i18n="brand.name">Summarize</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body data-locale-ui>
     <header>
       <div class="headerRow">
         <div class="brand">
-          <div id="title" class="title" data-locale-ignore="true">Summarize</div>
+          <div id="title" class="title" data-i18n="brand.name" data-locale-ignore="true" dir="auto">
+            Summarize
+          </div>
           <div id="subtitle" class="subtitle"></div>
         </div>
         <div class="controls">
@@ -19,8 +21,10 @@
             id="summaryCopy"
             type="button"
             class="ghost icon summaryCopy hidden"
-            aria-label="Copy summary"
-            title="Copy summary"
+            data-i18n-aria-label="copy.summary"
+            aria-label=""
+            data-i18n-title="copy.summary"
+            title=""
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -28,7 +32,13 @@
               />
             </svg>
           </button>
-          <button id="drawerToggle" type="button" class="ghost icon" aria-label="Settings">
+          <button
+            id="drawerToggle"
+            type="button"
+            class="ghost icon"
+            data-i18n-aria-label="settings"
+            aria-label=""
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path
                 d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.18 7.18 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 1h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.12.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 7.48a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.83 14.52a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.51.4 1.05.71 1.63.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.58-.23 1.12-.54 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z"
@@ -43,29 +53,40 @@
       <div id="slideNotice" class="slideNotice hidden" role="status" aria-live="polite">
         <span id="slideNoticeMessage" class="slideNotice__message"></span>
         <div class="slideNotice__actions">
-          <button id="slideNoticeRetry" type="button" class="ghost small">Try again</button>
+          <button
+            id="slideNoticeRetry"
+            type="button"
+            class="ghost small"
+            data-i18n="try.again"
+          ></button>
         </div>
       </div>
       <div id="error" class="error hidden" role="status" aria-live="polite">
         <div class="error__content">
-          <div class="error__title">Something went wrong</div>
+          <div class="error__title" data-i18n="something.went.wrong"></div>
           <p id="errorMessage" class="error__message"></p>
         </div>
         <div class="error__actions">
-          <button id="errorRetry" type="button" class="ghost small">Try again</button>
-          <button id="errorLogs" type="button" class="ghost small">View logs</button>
+          <button id="errorRetry" type="button" class="ghost small" data-i18n="try.again"></button>
+          <button id="errorLogs" type="button" class="ghost small" data-i18n="view.logs"></button>
         </div>
       </div>
     </header>
 
-    <section id="drawer" class="drawer hidden" aria-label="Controls">
+    <section id="drawer" class="drawer hidden" data-i18n-aria-label="controls" aria-label="">
       <div class="drawerGrid">
         <div id="pickersRoot"></div>
         <div id="lengthRoot"></div>
         <div class="size">
-          <span>Size</span>
-          <div class="sizeControl" role="group" aria-label="Text size">
-            <button id="sizeSm" type="button" class="ghost sizeBtn" aria-label="Smaller text">
+          <span data-i18n="size"></span>
+          <div class="sizeControl" role="group" data-i18n-aria-label="text.size" aria-label="">
+            <button
+              id="sizeSm"
+              type="button"
+              class="ghost sizeBtn"
+              data-i18n-aria-label="smaller.text"
+              aria-label=""
+            >
               A
             </button>
             <span class="sizeDivider" aria-hidden="true"></span>
@@ -73,20 +94,27 @@
               id="sizeLg"
               type="button"
               class="ghost sizeBtn sizeBtnLg"
-              aria-label="Larger text"
+              data-i18n-aria-label="larger.text"
+              aria-label=""
             >
               A
             </button>
           </div>
         </div>
         <div class="lineHeight">
-          <span>Line</span>
-          <div class="lineHeightControl" role="group" aria-label="Line height">
+          <span data-i18n="line"></span>
+          <div
+            class="lineHeightControl"
+            role="group"
+            data-i18n-aria-label="line.height"
+            aria-label=""
+          >
             <button
               id="lineTight"
               type="button"
               class="ghost lineHeightBtn"
-              aria-label="Tighter line height"
+              data-i18n-aria-label="tighter.line.height"
+              aria-label=""
             >
               <svg class="lineIcon lineIconTight" viewBox="0 0 16 12" aria-hidden="true">
                 <path d="M2 2H14M2 5H14M2 8H14" />
@@ -97,7 +125,8 @@
               id="lineLoose"
               type="button"
               class="ghost lineHeightBtn"
-              aria-label="Looser line height"
+              data-i18n-aria-label="looser.line.height"
+              aria-label=""
             >
               <svg class="lineIcon lineIconLoose" viewBox="0 0 16 12" aria-hidden="true">
                 <path d="M2 1H14M2 6H14M2 11H14" />
@@ -108,21 +137,22 @@
       </div>
 
       <details id="advancedSettings" class="drawerAdvanced">
-        <summary>Advanced</summary>
+        <summary data-i18n="advanced"></summary>
         <div class="drawerAdvancedBody">
           <label class="wide">
-            <span>Model</span>
+            <span data-i18n="model"></span>
             <div id="modelRow" class="combo modelRow">
               <select id="modelPreset">
-                <option value="auto">Auto</option>
-                <option value="gpt-fast">GPT Fast</option>
-                <option value="free">Free</option>
-                <option value="custom">Custom…</option>
+                <option value="auto" data-i18n="auto"></option>
+                <option value="gpt-fast" data-i18n="gpt.fast"></option>
+                <option value="free" data-i18n="free"></option>
+                <option value="custom" data-i18n="custom"></option>
               </select>
               <input
                 id="modelCustom"
                 type="text"
-                placeholder="custom model id"
+                data-i18n-placeholder="custom.model.id"
+                placeholder=""
                 autocapitalize="off"
                 autocomplete="off"
                 spellcheck="false"
@@ -132,31 +162,41 @@
                 id="modelRefresh"
                 type="button"
                 class="ghost small"
-                title="Refresh free models"
-              >
-                Scan free
-              </button>
+                data-i18n-title="refresh.free.models"
+                title=""
+                data-i18n="scan.free"
+              ></button>
             </div>
             <div id="modelStatus" class="modelStatus" role="status" aria-live="polite"></div>
           </label>
           <label class="wide">
-            <span>Slides view</span>
+            <span data-i18n="slides.view"></span>
             <select id="slidesLayout">
-              <option value="strip">Summary + strip</option>
-              <option value="gallery">Slides only</option>
+              <option value="strip" data-i18n="summary.strip"></option>
+              <option value="gallery" data-i18n="slides.only"></option>
             </select>
           </label>
           <div class="drawerAdvancedRow">
             <div class="drawerActions drawerAdvancedActions">
               <div id="autoToggle" class="toggleRow"></div>
               <div class="drawerAdvancedButtons">
-                <button id="refresh" type="button" class="ghost" title="Refresh (Shift+Enter)">
-                  Refresh
-                </button>
-                <button id="clear" type="button" class="ghost" title="Clear summary + chat">
-                  Clear
-                </button>
-                <button id="advanced" type="button" class="ghost">Advanced</button>
+                <button
+                  id="refresh"
+                  type="button"
+                  class="ghost"
+                  data-i18n-title="refresh.shift.enter"
+                  title=""
+                  data-i18n="refresh"
+                ></button>
+                <button
+                  id="clear"
+                  type="button"
+                  class="ghost"
+                  data-i18n-title="clear.summary.chat"
+                  title=""
+                  data-i18n="clear"
+                ></button>
+                <button id="advanced" type="button" class="ghost" data-i18n="advanced"></button>
               </div>
             </div>
           </div>
@@ -166,17 +206,25 @@
 
     <main>
       <div id="daemonHint" class="daemonHint hidden" role="status">
-        <span class="daemonHint__message">
-          Works locally in Chrome. Connect the daemon for faster media, OCR, and more.
-        </span>
+        <span
+          class="daemonHint__message"
+          data-i18n="works.locally.in.chrome.connect.the.daemon.for.faster.media.ocr.and.more"
+        ></span>
         <div class="daemonHint__actions">
-          <button id="daemonHintAction" type="button" class="ghost small">Connect</button>
+          <button
+            id="daemonHintAction"
+            type="button"
+            class="ghost small"
+            data-i18n="connect"
+          ></button>
           <button
             id="daemonHintClose"
             type="button"
             class="ghost daemonHint__close"
-            aria-label="Dismiss daemon hint"
-            title="Dismiss"
+            data-i18n-aria-label="dismiss.daemon.hint"
+            aria-label=""
+            data-i18n-title="dismiss"
+            title=""
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -187,7 +235,7 @@
         </div>
       </div>
       <div id="setup" class="setup hidden"></div>
-      <article id="render" class="render"></article>
+      <article id="render" class="render" dir="auto"></article>
       <pre id="raw" class="raw hidden"></pre>
 
       <div id="metricsHome">
@@ -201,9 +249,12 @@
           <div id="automationNoticeTitle" class="automationNotice__title"></div>
           <div id="automationNoticeMessage" class="automationNotice__message"></div>
           <div class="automationNotice__actions">
-            <button id="automationNoticeAction" type="button" class="ghost small">
-              Open extension details
-            </button>
+            <button
+              id="automationNoticeAction"
+              type="button"
+              class="ghost small"
+              data-i18n="open.extension.details"
+            ></button>
           </div>
         </div>
         <div id="chatMetricsSlot" class="chatMetricsSlot"></div>
@@ -211,23 +262,39 @@
     </main>
 
     <div id="chatDock" class="chatDock">
-      <button id="chatJump" type="button" class="chatJump" aria-label="Jump to latest">
-        Jump to latest
-      </button>
+      <button
+        id="chatJump"
+        type="button"
+        class="chatJump"
+        data-i18n-aria-label="jump.to.latest"
+        aria-label=""
+        data-i18n="jump.to.latest"
+      ></button>
       <div id="chatQueue" class="chatQueue isHidden" aria-live="polite"></div>
       <div id="inlineError" class="inlineError hidden" role="alert">
         <div class="inlineError__content">
           <div class="inlineError__text" id="inlineErrorMessage"></div>
           <div class="inlineError__actions">
-            <button id="inlineErrorRetry" type="button" class="ghost small">Try again</button>
-            <button id="inlineErrorLogs" type="button" class="ghost small">View logs</button>
+            <button
+              id="inlineErrorRetry"
+              type="button"
+              class="ghost small"
+              data-i18n="try.again"
+            ></button>
+            <button
+              id="inlineErrorLogs"
+              type="button"
+              class="ghost small"
+              data-i18n="view.logs"
+            ></button>
           </div>
         </div>
         <button
           id="inlineErrorClose"
           type="button"
           class="ghost inlineError__close"
-          aria-label="Dismiss error"
+          data-i18n-aria-label="dismiss.error"
+          aria-label=""
         >
           ✕
         </button>
@@ -235,11 +302,19 @@
       <div class="chatInputRow">
         <textarea
           id="chatInput"
+          dir="auto"
           class="chatInput"
-          placeholder="Ask about this page..."
+          data-i18n-placeholder="ask.about.this.page"
+          placeholder=""
           rows="1"
         ></textarea>
-        <button id="chatSend" type="button" class="ghost chatSendBtn" aria-label="Send">
+        <button
+          id="chatSend"
+          type="button"
+          class="ghost chatSendBtn"
+          data-i18n-aria-label="send"
+          aria-label=""
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
           </svg>

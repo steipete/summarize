@@ -201,6 +201,7 @@ function formatThread(
   const postData = thread.post.data;
   const state = { totalChars: 0, truncated: false, comments: 0 };
   const lines: string[] = [];
+  // i18n-ignore: Extracted source-document title, independent of interface locale.
   const title = cleanText(postData.title) || fallback.title || "Reddit thread";
   const subreddit = cleanText(postData.subreddit) || fallback.subreddit;
   const author = cleanText(postData.author) || "[unknown]";

@@ -1,9 +1,12 @@
+import type { MessageDescriptor } from "@steipete/summarize-core/localization";
 import type {
   AgentMessage as Message,
   AgentToolCall as ToolCall,
   AgentToolResultMessage as ToolResultMessage,
 } from "@steipete/summarize-core/runtime";
 import { executeToolCall, getAutomationToolNames } from "../../automation/tools";
+import { message as uiMessage, extensionMessage, type LocalizedText } from "../../lib/i18n";
+import { setText as setUiText } from "../../lib/i18n";
 import { runChatAgentLoop } from "./chat-agent-loop";
 import type { ChatController } from "./chat-controller";
 import { buildEmptyUsage } from "./chat-history-store";
@@ -21,7 +24,7 @@ type AutomationChatSession = {
     tools: string[],
     summary?: string | null,
     opts?: { onChunk?: (text: string) => void },
-  ) => Promise<{ ok: boolean; assistant?: Message; error?: string }>;
+  ) => Promise<{ ok: boolean; assistant?: Message; error?: string; localized?: MessageDescriptor }>;
 };
 
 type RuntimeMessageListener = (
@@ -87,16 +90,16 @@ export function createAutomationRuntime({
     ctaAction,
     sticky,
   }: {
-    title: string;
-    message: string;
-    ctaLabel?: string;
+    title: LocalizedText;
+    message: LocalizedText;
+    ctaLabel?: LocalizedText;
     ctaAction?: AutomationNoticeAction;
     sticky?: boolean;
   }) => {
     patchPanelState(panelState, "panelSession", { automationNoticeSticky: Boolean(sticky) });
-    automationNoticeTitleEl.textContent = title;
-    automationNoticeMessageEl.textContent = message;
-    automationNoticeActionBtn.textContent = ctaLabel || "Open extension details";
+    setUiText(automationNoticeTitleEl, title);
+    setUiText(automationNoticeMessageEl, message);
+    setUiText(automationNoticeActionBtn, ctaLabel || uiMessage("open.extension.details"));
     automationNoticeActionBtn.onclick = () => {
       if (ctaAction === "options") {
         void chrome.runtime.openOptionsPage();
@@ -110,15 +113,15 @@ export function createAutomationRuntime({
   eventTarget.addEventListener("summarize:automation-permissions", ((event: CustomEvent) => {
     const detail = event.detail as
       | {
-          title?: string;
-          message?: string;
-          ctaLabel?: string;
+          title?: LocalizedText;
+          message?: LocalizedText;
+          ctaLabel?: LocalizedText;
           ctaAction?: AutomationNoticeAction;
         }
       | undefined;
     if (!detail?.message) return;
     showNotice({
-      title: detail.title ?? "Automation permission required",
+      title: detail.title ?? uiMessage("automation.permissionRequired"),
       message: detail.message,
       ctaLabel: detail.ctaLabel,
       ctaAction: detail.ctaAction,
@@ -133,7 +136,7 @@ export function createAutomationRuntime({
   addRuntimeMessageListener((raw, _sender, sendResponse) => {
     if (!raw || typeof raw !== "object") return;
     if ((raw as { type?: string }).type !== "automation:abort-agent") return;
-    requestAbort("Agent aborted");
+    requestAbort(extensionMessage("chat.agentAborted"));
     sendResponse?.({ ok: true });
     return true;
   });
@@ -166,12 +169,10 @@ export function createAutomationRuntime({
 
   const confirmToolCall = async (call: ToolCall) =>
     window.confirm(
-      [
-        "Summarize agent wants to run an automation tool.",
-        "Only approve this if you expected the current task to control the browser or extension automation.",
-        "",
-        `${call.name}\n\n${call.arguments ? JSON.stringify(call.arguments, null, 2) : "{}"}`,
-      ].join("\n"),
+      extensionMessage("automation.confirm", {
+        tool: call.name,
+        arguments: call.arguments ? JSON.stringify(call.arguments, null, 2) : "{}",
+      }),
     );
 
   const runAgentLoop = async () => {

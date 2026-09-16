@@ -1,6 +1,7 @@
 import type http from "node:http";
 import type { CacheState } from "../cache.js";
 import type { MediaCache } from "../content/index.js";
+import { describeCliError } from "../locale.js";
 import type { DaemonLogger } from "../logging/daemon.js";
 import { refreshCacheStoreIfMissing } from "../run/cache-state.js";
 import { json } from "./server-http.js";
@@ -255,9 +256,13 @@ export async function handleSummarizeRoute({
     if (activeRequestKey && session) {
       runtime.clearActiveSummarizeRequest(activeRequestKey, session.id);
       const message = error instanceof Error ? error.message : String(error);
-      pushToSession(session, { event: "error", data: { message } }, onSessionEvent);
+      pushToSession(session, { event: "error", data: describeCliError(error) }, onSessionEvent);
       if (session.slidesRequested) {
-        emitSlidesDone(session, { ok: false, error: message }, onSessionEvent);
+        emitSlidesDone(
+          session,
+          { ok: false, error: message, localized: describeCliError(error).localized },
+          onSessionEvent,
+        );
       }
       scheduleSessionCleanup({
         sessions: runtime.sessions,

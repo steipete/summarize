@@ -1,5 +1,7 @@
 import type { SseSlidesData } from "@steipete/summarize-core/runtime";
 import type { SummarizeEvent } from "../application/summarize-contracts.js";
+import { cliMessage } from "../locale.js";
+import { createCliTranslator, type CliMessage } from "../locale.js";
 import { formatModelLabelForDisplay } from "../run/finish-line.js";
 import type { SlideExtractionResult, SlideSourceKind } from "../slides/index.js";
 import {
@@ -12,7 +14,7 @@ import {
   type SessionEvent,
 } from "./server-session.js";
 import { buildInputSummaryForExtracted } from "./summarize-presentation.js";
-import { formatProgress } from "./summarize-progress.js";
+import { describeProgress, formatProgress } from "./summarize-progress.js";
 
 type LoggerLike = {
   info?: (payload: Record<string, unknown>) => void;
@@ -150,10 +152,15 @@ export function createDaemonSummarizeEventAdapter({
   const slideLogState = createSlideLogState(slidesRequested);
   let liveSlides: SlideExtractionResult | null = null;
 
-  const writeStatus = (text: string) => {
-    const clean = text.trim();
+  const wireMessage = createCliTranslator("en");
+  const writeStatus = (text: string, message?: CliMessage) => {
+    const clean = (message ? wireMessage(message.key, message.values) : text).trim();
     if (!clean) return;
-    pushToSession(session, { event: "status", data: { text: clean } }, onSessionEvent);
+    pushToSession(
+      session,
+      { event: "status", data: { text: clean, ...(message ? { message } : {}) } },
+      onSessionEvent,
+    );
   };
 
   const startSlides = () => {
@@ -188,12 +195,16 @@ export function createDaemonSummarizeEventAdapter({
       return;
     }
     if (event.type === "extraction-started") {
-      writeStatus("Extracting…");
+      writeStatus("", cliMessage("progress.extractionActive"));
       return;
     }
     if (event.type === "extraction-progress") {
-      const message = formatProgress(event.event);
-      if (message) writeStatus(message);
+      const message = describeProgress(event.event);
+      if (message) writeStatus("", message);
+      else {
+        const text = formatProgress(event.event);
+        if (text) writeStatus(text);
+      }
       return;
     }
     if (event.type === "content-extracted") {
@@ -201,13 +212,17 @@ export function createDaemonSummarizeEventAdapter({
       if (includeContentLog) {
         state.extracted = event.content as unknown as Record<string, unknown>;
       }
-      const inputSummary = buildInputSummaryForExtracted(event.content);
+      const { inputSummary, inputSummaryMessage } = buildInputSummaryForExtracted(event.content);
       if (inputSummary) state.inputSummary = inputSummary;
-      emitMeta(session, { inputSummary, summaryFromCache: null }, onSessionEvent);
+      emitMeta(
+        session,
+        { inputSummary, inputSummaryMessage, summaryFromCache: null },
+        onSessionEvent,
+      );
       return;
     }
     if (event.type === "summary-started") {
-      writeStatus("Summarizing…");
+      writeStatus("", cliMessage("progress.summaryActive"));
       return;
     }
     if (event.type === "summary-cache") {
@@ -255,7 +270,9 @@ export function createDaemonSummarizeEventAdapter({
       return;
     }
     if (event.type === "slides-progress") {
-      const clean = event.text.trim();
+      const clean = (
+        event.message ? wireMessage(event.message.key, event.message.values) : event.text
+      ).trim();
       if (!clean) return;
       slideLogState.lastStatus = clean;
       slideLogState.statusCount += 1;
@@ -263,7 +280,12 @@ export function createDaemonSummarizeEventAdapter({
         slideLogState.cacheHit = true;
       }
       const progressMatch = clean.match(/(\d+)%/);
-      const progress = progressMatch ? Number(progressMatch[1]) : null;
+      const progress =
+        typeof event.message?.values.percent === "number"
+          ? event.message.values.percent * 100
+          : progressMatch
+            ? Number(progressMatch[1])
+            : null;
       if (includeContentLog) {
         requestLogger?.info?.({
           event: "slides.status",
@@ -273,8 +295,8 @@ export function createDaemonSummarizeEventAdapter({
           ...(progress !== null ? { progress } : {}),
         });
       }
-      emitSlidesStatus(session, clean, onSessionEvent);
-      writeStatus(clean);
+      emitSlidesStatus(session, clean, onSessionEvent, event.message);
+      writeStatus(clean, event.message);
       return;
     }
     if (event.type !== "slide") return;

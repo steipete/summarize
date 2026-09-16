@@ -53,6 +53,7 @@ export function buildSystemPrompt({
   automationEnabled: boolean;
 }): string {
   const base = getAgentPrompt(automationEnabled);
+  // i18n-ignore: Model context, independent of interface language.
   return `${base}
 
 Page URL: ${pageUrl}

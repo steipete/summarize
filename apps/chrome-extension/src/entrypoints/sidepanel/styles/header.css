@@ -87,7 +87,7 @@ header {
 }
 
 .summarizeButton.isDropdown {
-  padding-right: 28px;
+  padding-inline-end: 28px;
 }
 
 .summarizeButton.isDropdown::after {
@@ -97,7 +97,7 @@ header {
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
   position: absolute;
-  right: 12px;
+  inset-inline-end: 12px;
   top: 50%;
   transform: translateY(calc(-50% - 2px)) rotate(45deg);
   pointer-events: none;

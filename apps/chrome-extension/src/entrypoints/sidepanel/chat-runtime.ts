@@ -1,5 +1,6 @@
 import type { AgentMessage as Message } from "@steipete/summarize-core/runtime";
 import type MarkdownIt from "markdown-it";
+import type { LocalizedText } from "../../lib/i18n";
 import type { BgToPanel, PanelToBg } from "../../lib/panel-contracts";
 import { createAutomationRuntime } from "./automation-runtime";
 import { ChatController } from "./chat-controller";
@@ -78,9 +79,9 @@ export function createSidepanelChatRuntime({
   getActiveTabUrl: () => string | null;
   navigationRuntime: NavigationRuntime;
   send: (message: PanelToBg) => Promise<void>;
-  setStatus: (value: string) => void;
+  setStatus: (value: LocalizedText) => void;
   clearErrors: () => void;
-  showInlineError: (message: string) => void;
+  showInlineError: (message: LocalizedText) => void;
   clearChatMetrics: () => void;
   setChatMetricsMode: () => void;
   setLastActionChat: () => void;

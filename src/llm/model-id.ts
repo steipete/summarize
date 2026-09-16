@@ -1,3 +1,4 @@
+import { CliError } from "../locale.js";
 import { resolveGitHubCopilotBackendModelId } from "./github-models.js";
 import { isGatewayProvider, type GatewayProvider } from "./provider-registry.js";
 
@@ -32,7 +33,7 @@ const ANTHROPIC_MODEL_ALIASES: Record<string, string> = {
 export function normalizeGatewayStyleModelId(raw: string): string {
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
-    throw new Error("Missing model id");
+    throw new CliError("error.modelIdMissing", { afterPrefix: false });
   }
 
   const lower = trimmed.toLowerCase();
@@ -66,17 +67,15 @@ export function normalizeGatewayStyleModelId(raw: string): string {
   if (provider === "github-copilot") {
     const resolved = resolveGitHubCopilotBackendModelId(model);
     if (resolved.trim().length === 0) {
-      throw new Error("Missing model id after provider prefix");
+      throw new CliError("error.modelIdMissing", { afterPrefix: true });
     }
     return `github-copilot/${resolved}`;
   }
   if (!isGatewayProvider(provider)) {
-    throw new Error(
-      `Unsupported model provider "${provider}". Use xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/..., or ollama/...`,
-    );
+    throw new CliError("error.modelProvider", { provider });
   }
   if (model.trim().length === 0) {
-    throw new Error("Missing model id after provider prefix");
+    throw new CliError("error.modelIdMissing", { afterPrefix: true });
   }
   return `${provider}/${model}`;
 }

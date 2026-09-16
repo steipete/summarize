@@ -5,6 +5,7 @@ import { buildDaemonRequestBody, buildSummarizeRequestBody } from "../lib/daemon
 import { createDaemonRecovery, isDaemonUnreachableError } from "../lib/daemon-recovery";
 import { createDaemonStatusTracker } from "../lib/daemon-status";
 import { logExtensionEvent } from "../lib/extension-logs";
+import { message as uiMessage } from "../lib/i18n";
 import type { BgToPanel, PanelCachePayload, PanelToBg } from "../lib/panel-contracts";
 import {
   isPanelContentUrl as canSummarizeUrl,
@@ -283,7 +284,7 @@ export default defineBackground(() => {
         if (!tab?.id) return;
         const result = await seekInTab(tab.id, seconds);
         if (!result.ok) {
-          sendStatus(session, `Seek failed: ${result.error}`);
+          sendStatus(session, uiMessage("error.seekFailed", { error: result.error }));
         }
       })();
     },

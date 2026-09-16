@@ -1,241 +1,288 @@
-import englishMessages from "../localization/en.json" with { type: "json" };
-import turkishMessages from "../localization/tr.json" with { type: "json" };
-export type ExtensionLocale = "en" | "tr";
-export type ExtensionLocaleSetting = "auto" | ExtensionLocale;
+import {
+  createTranslator,
+  messageParameters,
+  LOCALIZED_ATTRIBUTES,
+  localeDirection,
+  negotiateLocale,
+  type LocaleSetting,
+  type MessageValues,
+  type UiLocale,
+  type Catalog,
+  type MessageDescriptor,
+} from "@steipete/summarize-core/localization";
+import {
+  sharedEnglishMessages,
+  sharedMessageCatalogs,
+  availableUiLocales,
+  type RegisteredUiLocale,
+} from "@steipete/summarize-core/localization/messages";
+import ownEnglish from "../localization/en.json";
+import ownTurkish from "../localization/tr.json";
+const english = { ...sharedEnglishMessages, ...ownEnglish };
+const turkish = { ...sharedMessageCatalogs.tr, ...ownTurkish };
 
-const TURKISH: Readonly<Record<string, string>> = Object.fromEntries(
-  Object.entries(englishMessages).map(([key, source]) => [
-    source,
-    turkishMessages[key as keyof typeof turkishMessages],
-  ]),
-);
+export type ExtensionLocale = UiLocale;
+export type ExtensionLocaleSetting = LocaleSetting;
+export type ExtensionMessageKey = keyof typeof english;
+export type MessageValuesSource = MessageValues | (() => MessageValues);
+export type LocalizedMessage = { key: ExtensionMessageKey; values: MessageValuesSource };
+export type LocalizedDescriptor = { key: ExtensionMessageKey; values: MessageValues };
+export type LocalizedText = string | LocalizedMessage;
+
+const catalogs = { en: english, tr: turkish } satisfies Record<RegisteredUiLocale, Catalog>;
+const translators = new Map<ExtensionLocale, ReturnType<typeof createTranslator<typeof english>>>();
+let activeLocale: ExtensionLocale = "en";
+let observer: MutationObserver | null = null;
+const valuesByElement = new WeakMap<Element, Map<string, LocalizedMessage>>();
+const listeners = new Set<() => void>();
+const attributes = LOCALIZED_ATTRIBUTES;
 
 export function resolveExtensionLocale(
-  setting: ExtensionLocaleSetting = "auto",
-  browserLanguage = typeof navigator === "undefined" ? "" : navigator.language,
+  setting: string = "auto",
+  browserLanguages: string | readonly string[] = typeof navigator === "undefined"
+    ? []
+    : navigator.languages,
 ): ExtensionLocale {
-  if (setting === "tr" || setting === "en") return setting;
-  return browserLanguage.toLowerCase().startsWith("tr") ? "tr" : "en";
-}
-
-export function translateExtensionText(text: string, locale: ExtensionLocale): string {
-  if (locale === "en") return text;
-  const leading = text.match(/^\s*/)?.[0] ?? "";
-  const trailing = text.match(/\s*$/)?.[0] ?? "";
-  const normalized = text.trim().replaceAll(/\s+/g, " ");
-  const exact = Object.hasOwn(TURKISH, text)
-    ? TURKISH[text]
-    : Object.hasOwn(TURKISH, normalized)
-      ? TURKISH[normalized]
-      : undefined;
-  if (exact) return `${leading}${exact}${trailing}`;
-  const source = text.trim();
-  let translated: string | null = null;
-  if (source.startsWith("Page · ")) {
-    translated = `Sayfa · ${source.slice("Page · ".length).replace(/(\d+) words$/, "$1 kelime")}`;
-  } else if (source.startsWith("Context ")) {
-    const context = source.match(/^Context (.+?)% · (.+?) msgs · (.+?) chars$/);
-    translated = context
-      ? `Bağlam ${context[1]}% · ${context[2]} mesaj · ${context[3]} karakter`
-      : `Bağlam ${source.slice("Context ".length)}`;
-  } else if (source.startsWith("Running: ")) {
-    translated = `Çalışıyor: ${source.slice("Running: ".length)}`;
-  } else if (source.startsWith("Failed to load skills: ")) {
-    translated = `Yetenekler yüklenemedi: ${source.slice("Failed to load skills: ".length)}`;
-  } else if (source.startsWith("Edit skill: ")) {
-    translated = `Yeteneği düzenle: ${source.slice("Edit skill: ".length)}`;
-  } else if (source.startsWith('Delete skill "') && source.endsWith('"?')) {
-    translated = `"${source.slice('Delete skill "'.length, -2)}" yeteneği silinsin mi?`;
-  } else if (source.startsWith("Delete skill: ")) {
-    translated = `Yeteneği sil: ${source.slice("Delete skill: ".length)}`;
-  } else if (source.startsWith("Daemon error (")) {
-    translated = `Daemon hatası (${source.slice("Daemon error (".length)}`;
-  } else if (source.startsWith("Daemon ") && source.endsWith(" connected")) {
-    translated = `Daemon ${source.slice("Daemon ".length, -" connected".length)} bağlandı`;
-  } else if (source.startsWith("Daemon ") && source.includes(" (token mismatch) — ")) {
-    translated = source.replace(
-      " (token mismatch) — update token in side panel and Save",
-      " (token uyuşmazlığı) — yan panelde token'ı güncelleyin ve Kaydet'e tıklayın",
-    );
-  } else if (source.startsWith("Daemon ") && source.includes(" (auth failed) — ")) {
-    translated = source.replace(
-      " (auth failed) — update token in side panel and Save",
-      " (kimlik doğrulama başarısız) — yan panelde token'ı güncelleyin ve Kaydet'e tıklayın",
-    );
-  } else if (source.startsWith("Slides (") && source.includes(") · showing ")) {
-    translated = source
-      .replace(/^Slides \(/, "Slaytlar (")
-      .replace(") · showing ", ") · gösterilen ");
-  } else if (source.startsWith("Slides (")) {
-    translated = `Slaytlar ${source.slice("Slides ".length)}`;
-  } else if (source.startsWith("Slide ")) {
-    translated = `Slayt ${source.slice("Slide ".length)}`;
-  } else if (source.startsWith("Logs · ")) {
-    translated = `Günlükler · ${source.slice("Logs · ".length)}`;
-  } else if (/^\d+ words$/.test(source)) {
-    translated = `${source.slice(0, -" words".length)} kelime`;
-  } else if (/^\d+ entries · /.test(source)) {
-    translated = source.replace(" entries · ", " girdi · ");
-  } else if (/^\d+ processes$/.test(source)) {
-    translated = source.replace(" processes", " işlem");
-  } else if (/^Imported \d+ skill\(s\)\.$/.test(source)) {
-    translated = source.replace(/^Imported (\d+) skill\(s\)\.$/, "$1 yetenek içe aktarıldı.");
-  } else if (/^Queue full \(\d+\)\. Remove one to add more\.$/.test(source)) {
-    translated = source.replace(
-      /^Queue full \((\d+)\)\. Remove one to add more\.$/,
-      "Kuyruk dolu ($1). Daha fazla eklemek için birini kaldırın.",
-    );
-  } else if (/^Tool result: /.test(source)) {
-    translated = source.replace(/^Tool result:/, "Araç sonucu:").replace(" (error)", " (hata)");
-  } else if (/^Error: /.test(source)) {
-    translated = source.replace(/^Error:/, "Hata:");
-  } else if (/^1\) Install summarize \(/.test(source)) {
-    translated = source.replace(/^1\) Install summarize/, "1) summarize'ı kur");
-  } else if (/^2\) Register the daemon \(/.test(source)) {
-    translated = source.replace(/^2\) Register the daemon/, "2) Daemon'u kaydet");
-  } else if (/^Chrome \d+ detected\./.test(source)) {
-    translated = source
-      .replace(/^Chrome (\d+) detected\./, "Chrome $1 algılandı.")
-      .replace("To enable User Scripts:", "User Scripts'i etkinleştirmek için:")
-      .replace("Go to", "Şuraya gidin:")
-      .replace("Find this extension and click", "Bu uzantıyı bulun ve tıklayın")
-      .replace("Enable the", "Şunu etkinleştirin:")
-      .replace("toggle", "anahtarı")
-      .replace("Reload the page and try again", "Sayfayı yeniden yükleyip tekrar deneyin")
-      .replace("Enable Developer mode in", "Şurada Geliştirici modunu etkinleştirin:")
-      .replace(
-        "then reload the extension and try again",
-        "ardından uzantıyı yeniden yükleyip tekrar deneyin",
-      )
-      .replace(
-        "The userScripts API requires Chrome 120 or higher. Please update Chrome.",
-        "userScripts API'si Chrome 120 veya üzerini gerektirir. Lütfen Chrome'u güncelleyin.",
-      );
-  } else if (source === "just now") {
-    translated = "şimdi";
-  } else if (/^\d+[smhd] ago$/.test(source)) {
-    translated = source.replace(/^(\d+)([smhd]) ago$/, (_, value: string, unit: string) => {
-      const units: Record<string, string> = { s: "saniye", m: "dakika", h: "saat", d: "gün" };
-      return `${value} ${units[unit] ?? unit} önce`;
-    });
-  } else if (/^size .+ · updated .+/.test(source)) {
-    translated = source
-      .replace(/^size /, "boyut ")
-      .replace(" · updated ", " · güncellendi ")
-      .replace(" · tail truncated", " · kuyruk kısaltıldı");
-  } else if (/^size /.test(source)) {
-    translated = source
-      .replace(/^size /, "boyut ")
-      .replace(" · tail truncated", " · kuyruk kısaltıldı");
-  } else if (/^updated /.test(source)) {
-    translated = source
-      .replace(/^updated /, "güncellendi ")
-      .replace(" · tail truncated", " · kuyruk kısaltıldı");
-  }
-  return translated == null ? text : `${leading}${translated}${trailing}`;
-}
-
-const TRANSLATABLE_ATTRIBUTES = ["aria-label", "title", "placeholder"] as const;
-let activeObserver: MutationObserver | null = null;
-let activeLocale: ExtensionLocale = "en";
-const originalText = new WeakMap<Text, string>();
-const lastTranslatedText = new WeakMap<Text, string>();
-const originalAttributes = new WeakMap<Element, Map<string, string>>();
-const lastTranslatedAttributes = new WeakMap<Element, Map<string, string>>();
-
-function isApplicationUi(node: Node): boolean {
-  const element = node instanceof Element ? node : node.parentElement;
-  return Boolean(
-    element?.closest("[data-locale-ui]") &&
-    !element.closest("code, pre, script, style, [data-locale-ignore]"),
+  return negotiateLocale(
+    setting,
+    typeof browserLanguages === "string" ? [browserLanguages] : browserLanguages,
+    availableUiLocales,
   );
 }
 
-/** Apply the selected locale to static HTML and to later-rendered extension UI nodes. */
-export function applyExtensionLocale(locale: ExtensionLocale): () => void {
-  activeObserver?.disconnect();
-  activeLocale = locale;
-  document.documentElement.lang = locale;
-  const translateTextNode = (textNode: Text) => {
-    const current = textNode.nodeValue ?? "";
-    if (!current.trim() || !isApplicationUi(textNode)) return;
-    const source = originalText.get(textNode);
-    const lastTranslated = lastTranslatedText.get(textNode);
-    const resolvedSource =
-      source === undefined ||
-      (lastTranslated !== undefined && current !== lastTranslated && current !== source)
-        ? current
-        : (source ?? current);
-    originalText.set(textNode, resolvedSource);
-    const translated = translateExtensionText(resolvedSource, locale);
-    if (current !== translated) textNode.nodeValue = translated;
-    lastTranslatedText.set(textNode, translated);
-  };
-  const translateElementAttributes = (element: Element) => {
-    if (!isApplicationUi(element)) return;
-    for (const attribute of TRANSLATABLE_ATTRIBUTES) {
-      const value = element.getAttribute(attribute);
-      if (!value) continue;
-      const sources = originalAttributes.get(element) ?? new Map<string, string>();
-      const lastTranslated = lastTranslatedAttributes.get(element)?.get(attribute);
-      const source = sources.get(attribute);
-      const resolvedSource =
-        source === undefined ||
-        (lastTranslated !== undefined && value !== lastTranslated && value !== source)
-          ? value
-          : (source ?? value);
-      sources.set(attribute, resolvedSource);
-      originalAttributes.set(element, sources);
-      const translated = translateExtensionText(resolvedSource, locale);
-      if (value !== translated) element.setAttribute(attribute, translated);
-      const translatedValues = lastTranslatedAttributes.get(element) ?? new Map<string, string>();
-      translatedValues.set(attribute, translated);
-      lastTranslatedAttributes.set(element, translatedValues);
-    }
-  };
-  const translate = (root: ParentNode) => {
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    const textNodes: Text[] = [];
-    let node: Node | null;
-    while ((node = walker.nextNode())) {
-      if (node.nodeValue?.trim() && isApplicationUi(node)) textNodes.push(node as Text);
-    }
-    for (const textNode of textNodes) translateTextNode(textNode);
-
-    if (root instanceof Element) translateElementAttributes(root);
-    for (const element of root.querySelectorAll("*")) {
-      translateElementAttributes(element);
-    }
-  };
-
-  translate(document);
-  const observer = new MutationObserver((records) => {
-    for (const record of records) {
-      for (const node of record.addedNodes) {
-        if (node.nodeType === Node.ELEMENT_NODE) translate(node as Element);
-        else if (node.nodeType === Node.TEXT_NODE) translateTextNode(node as Text);
-      }
-      if (record.type === "characterData" && record.target.nodeType === Node.TEXT_NODE) {
-        translateTextNode(record.target as Text);
-      }
-      if (record.type === "attributes" && record.target.nodeType === Node.ELEMENT_NODE) {
-        translateElementAttributes(record.target as Element);
-      }
-    }
-  });
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-    characterData: true,
-    attributes: true,
-    attributeFilter: [...TRANSLATABLE_ATTRIBUTES],
-  });
-  activeObserver = observer;
-  return () => observer.disconnect();
+export function extensionMessage(
+  key: ExtensionMessageKey,
+  values: MessageValues = {},
+  locale = activeLocale,
+): string {
+  let translate = translators.get(locale);
+  if (!translate) {
+    translate = createTranslator(english, catalogs, locale);
+    translators.set(locale, translate);
+  }
+  return translate(key, values);
 }
 
-export const extensionTranslationKeys = Object.keys(TURKISH);
+export function message(key: ExtensionMessageKey, values?: MessageValues): LocalizedDescriptor;
+export function message(key: ExtensionMessageKey, values: MessageValuesSource): LocalizedMessage;
+export function message(
+  key: ExtensionMessageKey,
+  values: MessageValuesSource = {},
+): LocalizedMessage {
+  return { key, values };
+}
+
+export function resolveText(value: LocalizedText, locale = activeLocale): string {
+  return typeof value === "string"
+    ? value
+    : extensionMessage(
+        value.key,
+        typeof value.values === "function" ? value.values() : value.values,
+        locale,
+      );
+}
+
+/** Owned errors retain their descriptor across catches; native/provider diagnostics remain text. */
+export class LocalizedError extends Error {
+  constructor(
+    readonly localized: LocalizedDescriptor,
+    options?: ErrorOptions,
+  ) {
+    super(resolveText(localized, "en"), options);
+  }
+}
+
+export function localizedErrorText(error: unknown): string | LocalizedDescriptor {
+  return error instanceof LocalizedError
+    ? error.localized
+    : error instanceof Error
+      ? error.message
+      : String(error);
+}
+
+/** Bind the key, not rendered words, so a locale change can redraw without touching user content. */
+export function setText(element: Element, value: LocalizedText): void {
+  if (typeof value === "string") {
+    element.removeAttribute("data-i18n");
+    valuesByElement.get(element)?.delete("text");
+    element.textContent = value;
+    return;
+  }
+  element.setAttribute("data-i18n", value.key);
+  const values = valuesByElement.get(element) ?? new Map<string, LocalizedMessage>();
+  values.set("text", value);
+  valuesByElement.set(element, values);
+  element.textContent = resolveText(value);
+}
+
+export function setLocalizedAttribute(
+  element: Element,
+  attribute: (typeof attributes)[number],
+  value: LocalizedText,
+): void {
+  if (typeof value === "string") {
+    element.removeAttribute(`data-i18n-${attribute}`);
+    valuesByElement.get(element)?.delete(attribute);
+    element.setAttribute(attribute, value);
+    return;
+  }
+  element.setAttribute(`data-i18n-${attribute}`, value.key);
+  const values = valuesByElement.get(element) ?? new Map<string, LocalizedMessage>();
+  values.set(attribute, value);
+  valuesByElement.set(element, values);
+  element.setAttribute(attribute, resolveText(value));
+}
+
+function renderElement(element: Element): void {
+  if (element.closest("script, style")) return;
+  const ignoredContent = Boolean(element.closest("[data-locale-ignore]"));
+  for (const attribute of ["text", ...attributes]) {
+    const key = element.getAttribute(attribute === "text" ? "data-i18n" : `data-i18n-${attribute}`);
+    if (!key || !Object.hasOwn(english, key)) continue;
+    const binding = valuesByElement.get(element)?.get(attribute);
+    if (ignoredContent && binding?.key !== key) continue;
+    let source = binding?.key === key ? binding.values : undefined;
+    const serialized = element.getAttribute("data-i18n-values");
+    if (!source && serialized) {
+      try {
+        const decoded = readLocalizedMessage({ key, values: JSON.parse(serialized) });
+        if (!decoded) continue;
+        source = decoded.values;
+      } catch {
+        continue;
+      }
+    }
+    const text = extensionMessage(
+      key as ExtensionMessageKey,
+      typeof source === "function" ? source() : source,
+    );
+    if (attribute === "text") {
+      if (element.textContent !== text) element.textContent = text;
+    } else if (element.getAttribute(attribute) !== text) element.setAttribute(attribute, text);
+  }
+}
+
+const selector = ["[data-i18n]", ...attributes.map((attribute) => `[data-i18n-${attribute}]`)].join(
+  ",",
+);
+function renderTree(root: ParentNode): void {
+  if (root instanceof Element) renderElement(root);
+  for (const element of root.querySelectorAll(selector)) renderElement(element);
+}
+
+export function applyExtensionLocale(locale: ExtensionLocale): () => void {
+  observer?.disconnect();
+  activeLocale = locale;
+  document.documentElement.lang = locale;
+  document.documentElement.dir = localeDirection(locale);
+  renderTree(document);
+  for (const listener of listeners) listener();
+  const currentObserver = new MutationObserver((records) => {
+    for (const record of records) {
+      if (record.type === "attributes") renderElement(record.target as Element);
+      for (const node of record.addedNodes) if (node instanceof Element) renderTree(node);
+    }
+  });
+  currentObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: [
+      "data-i18n",
+      "data-i18n-values",
+      ...attributes.map((attribute) => `data-i18n-${attribute}`),
+    ],
+  });
+  observer = currentObserver;
+  return () => currentObserver.disconnect();
+}
+
+export function subscribeLocale(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
 
 export function getActiveExtensionLocale(): ExtensionLocale {
   return activeLocale;
+}
+
+export function uiNumber(value: number, options: Intl.NumberFormatOptions = {}): string {
+  return new Intl.NumberFormat(activeLocale, options).format(value);
+}
+export function uiDate(
+  value: number | Date,
+  options: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" },
+): string {
+  return new Intl.DateTimeFormat(activeLocale, options).format(value);
+}
+export function uiRelativeTime(value: number, unit: Intl.RelativeTimeFormatUnit): string {
+  return new Intl.RelativeTimeFormat(activeLocale, { numeric: "auto", style: "short" }).format(
+    value,
+    unit,
+  );
+}
+
+const parameterCache = new Map<string, ReturnType<typeof messageParameters>>();
+export function readLocalizedMessage(
+  raw: unknown,
+  depth = 0,
+): (MessageDescriptor & { key: ExtensionMessageKey }) | undefined {
+  if (
+    depth > 16 ||
+    !raw ||
+    typeof raw !== "object" ||
+    !("key" in raw) ||
+    typeof raw.key !== "string" ||
+    !Object.hasOwn(english, raw.key) ||
+    !("values" in raw)
+  )
+    return undefined;
+  const values = raw.values;
+  if (!values || typeof values !== "object" || Array.isArray(values)) return undefined;
+  if (
+    Object.values(values).some(
+      (value) =>
+        (!["string", "number", "boolean"].includes(typeof value) &&
+          !readLocalizedMessage(value, depth + 1)) ||
+        (typeof value === "number" && !Number.isFinite(value)),
+    )
+  )
+    return undefined;
+  const key = raw.key as ExtensionMessageKey;
+  let parameters = parameterCache.get(key);
+  if (!parameters) {
+    parameters = messageParameters(english[key]);
+    parameterCache.set(key, parameters);
+  }
+  for (const [name, types] of parameters) {
+    if (!Object.hasOwn(values, name)) return undefined;
+    const value = (values as MessageValues)[name];
+    if ((types.has("number") || types.has("date")) && typeof value !== "number") return undefined;
+    if (types.has("select") && typeof value === "object") return undefined;
+  }
+  return { key, values: values as MessageValues };
+}
+
+export function escapeUiHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+/** For existing HTML template renderers. Catalogs and arguments always render as text. */
+export function localizedHtml(value: LocalizedText): string {
+  if (typeof value === "string") return escapeUiHtml(value);
+  const source = typeof value.values === "function" ? value.values() : value.values;
+  const values = Object.fromEntries(
+    Object.entries(source).map(([key, value]) => [
+      key,
+      value instanceof Date ? value.getTime() : value,
+    ]),
+  );
+  return `<span data-i18n="${escapeUiHtml(value.key)}" data-i18n-values="${escapeUiHtml(JSON.stringify(values))}">${escapeUiHtml(resolveText(value))}</span>`;
 }

@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { CliError } from "../locale.js";
 
 function isWindowsShimPath(filePath: string): boolean {
   return /\.(cmd|bat|ps1)$/i.test(filePath);
@@ -52,7 +53,7 @@ export async function resolveCliEntrypointCandidatesFromWindowsShim(
 
 export async function resolveCliEntrypointPathForService(): Promise<string> {
   const argv1 = process.argv[1];
-  if (!argv1) throw new Error("Unable to resolve CLI entrypoint path");
+  if (!argv1) throw new CliError("service.cliEntrypointMissing");
 
   // Resolve symlinks so that globally-installed bins (npm, bun, nvm, etc.)
   // point back to the real package directory instead of the symlink location.
@@ -83,7 +84,5 @@ export async function resolveCliEntrypointPathForService(): Promise<string> {
     }
   }
 
-  throw new Error(
-    `Cannot find built CLI at ${distCandidates.join(" or ")}. Run "pnpm build:cli" (or "pnpm build") first, or pass --dev to install a dev daemon.`,
-  );
+  throw new CliError("service.cliBuildMissing", { paths: distCandidates.join(", ") });
 }

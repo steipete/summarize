@@ -127,6 +127,7 @@ export function isBrowserAiQuotaError(error: unknown): boolean {
   if (error instanceof DOMException && error.name === "QuotaExceededError") return true;
   if ((error as { name?: unknown } | null)?.name === "QuotaExceededError") return true;
   const message = error instanceof Error ? error.message : String(error);
+  // i18n-ignore: Native browser AI quota diagnostics, not translated UI text.
   return /context window|input quota|quota exceeded/i.test(message);
 }
 

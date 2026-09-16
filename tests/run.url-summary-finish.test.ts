@@ -79,8 +79,12 @@ describe("summary finish helpers", () => {
       }),
     ).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("txc="),
-        expect.stringContaining("transcript="),
+        expect.objectContaining({ kind: "compactTranscript", durationSeconds: 75, words: 200 }),
+        expect.objectContaining({
+          kind: "length",
+          key: "finish.transcriptLength",
+          values: { durationSeconds: 75, words: 200, chars: 1200, approximate: false },
+        }),
         "$0.02 tx",
       ]),
     );

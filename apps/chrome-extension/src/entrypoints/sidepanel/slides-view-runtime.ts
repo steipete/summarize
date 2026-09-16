@@ -1,6 +1,8 @@
 import { shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import type MarkdownIt from "markdown-it";
 import { logExtensionEvent } from "../../lib/extension-logs";
+import type { LocalizedText } from "../../lib/i18n";
+import { setText as setUiText, message as uiMessage } from "../../lib/i18n";
 import type { SseSlidesData } from "../../lib/runtime-contracts";
 import { patchPanelState } from "./panel-state-store";
 import { createSlideImageLoader, normalizeSlideImageUrl } from "./slide-images";
@@ -38,7 +40,7 @@ export function createSlidesViewRuntime({
   summaryCopyBtn: HTMLButtonElement;
   chatMessagesEl: HTMLElement;
   md: InstanceType<typeof MarkdownIt>;
-  headerSetStatus: (text: string) => void;
+  headerSetStatus: (text: LocalizedText) => void;
   headerSetProgressOverride: (busy: boolean) => void;
   slidesTextController: Pick<
     ReturnType<typeof createSlidesTextController>,
@@ -118,16 +120,18 @@ export function createSlidesViewRuntime({
   ) => {
     const formatted = formatSlideTimestamp(timestamp);
     const totalCount = typeof total === "number" && total > 0 ? total : null;
-    const slideLabel = totalCount ? `Slide ${index}/${totalCount}` : `Slide ${index}`;
+    const slideLabel = uiMessage("slides.position", {
+      index,
+      total: totalCount ?? 0,
+      hasTotal: Boolean(totalCount),
+      timestamp: formatted ?? "",
+      hasTimestamp: Boolean(formatted),
+    });
     if (title) {
-      el.textContent = formatted ? `${title} · ${formatted}` : title;
+      setUiText(el, formatted ? `${title} · ${formatted}` : title);
       return;
     }
-    if (formatted) {
-      el.textContent = `${slideLabel} · ${formatted}`;
-      return;
-    }
-    el.textContent = slideLabel;
+    setUiText(el, slideLabel);
   };
 
   const slidesRenderer = createSlidesRenderer({

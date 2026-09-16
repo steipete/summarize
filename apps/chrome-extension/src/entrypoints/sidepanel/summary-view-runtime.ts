@@ -1,5 +1,6 @@
 import { isYouTubeVideoUrl, shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import { buildIdleSubtitle } from "../../lib/header";
+import { message, type LocalizedText } from "../../lib/i18n";
 import type { PanelCachePayload } from "./panel-cache";
 import { patchPanelState, resetPanelSummary, restorePanelSession } from "./panel-state-store";
 import { normalizeSlideImageUrl } from "./slide-images";
@@ -25,8 +26,8 @@ type MetricsControllerLike = {
 };
 
 type HeaderControllerLike = {
-  setBaseTitle: (value: string) => void;
-  setBaseSubtitle: (value: string) => void;
+  setBaseTitle: (value: LocalizedText) => void;
+  setBaseSubtitle: (value: LocalizedText) => void;
 };
 
 type SummaryViewRuntimeOpts = {
@@ -55,7 +56,7 @@ type SummaryViewRuntimeOpts = {
   renderMarkdown: (markdown: string) => void;
   renderMarkdownDisplay: () => void;
   queueSlidesRender: () => void;
-  setPhase: (phase: PanelPhase, opts?: { error?: string | null }) => void;
+  setPhase: (phase: PanelPhase, opts?: { error?: PanelState["error"] }) => void;
 };
 
 export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
@@ -126,10 +127,11 @@ export function createSummaryViewRuntime(opts: SummaryViewRuntimeOpts) {
       pending: null,
       hadError: false,
     });
-    opts.headerController.setBaseTitle(payload.title || payload.url || "Summarize");
+    opts.headerController.setBaseTitle(payload.title || payload.url || message("brand.name"));
     opts.headerController.setBaseSubtitle(
       buildIdleSubtitle({
         inputSummary: opts.panelState.lastMeta.inputSummary,
+        inputSummaryMessage: opts.panelState.lastMeta.inputSummaryMessage,
         modelLabel: opts.panelState.lastMeta.modelLabel,
         model: opts.panelState.lastMeta.model,
       }),

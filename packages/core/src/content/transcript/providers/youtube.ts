@@ -1,3 +1,4 @@
+import type { TranscriptProgressStage } from "../../link-preview/deps.js";
 import { isYouTubeUrl } from "../../url.js";
 import { resolveTranscriptionConfig } from "../transcription-config.js";
 import type { ProviderContext, ProviderFetchOptions, ProviderResult } from "../types.js";
@@ -35,8 +36,8 @@ export const fetchTranscript = async (
   });
   const canRunYtDlp = transcriptionCapabilities.canRunYtDlp;
   const canTranscribe = transcriptionCapabilities.canTranscribe;
-  const pushHint = (hint: string) => {
-    progress?.({ kind: "transcript-start", url, service: "youtube", hint });
+  const pushHint = (hint: string, stage: TranscriptProgressStage) => {
+    progress?.({ kind: "transcript-start", url, service: "youtube", hint, stage });
   };
 
   if (mode === "yt-dlp" && !options.ytDlpPath) {

@@ -1,5 +1,8 @@
 import { buildIdleSubtitle } from "../../lib/header";
+import { message as uiMessage, type LocalizedText } from "../../lib/i18n";
+import type { LocalizedMetricPart } from "../../lib/metrics";
 import { createStreamController } from "./stream-controller";
+import { isSlidesProgressKey } from "./stream-controller-policy";
 import type { PanelPhase, PanelState } from "./types";
 
 export function createSummaryStreamRuntime({
@@ -30,15 +33,15 @@ export function createSummaryStreamRuntime({
   shouldRebuildSlideDescriptions,
   syncWithActiveTab,
 }: {
-  friendlyFetchError: (error: unknown, fallback: string) => string;
+  friendlyFetchError: typeof import("./setup-runtime").friendlyFetchError;
   getFallbackModel: () => string | null;
   getToken: () => Promise<string>;
   handleSlides: Parameters<typeof createStreamController>[0]["onSlides"];
   handleSummaryFromCache: (value: boolean | null) => void;
   headerArmProgress: () => void;
-  headerSetBaseSubtitle: (text: string) => void;
-  headerSetBaseTitle: (text: string) => void;
-  headerSetStatus: (text: string) => void;
+  headerSetBaseSubtitle: (text: LocalizedText) => void;
+  headerSetBaseTitle: (text: LocalizedText) => void;
+  headerSetStatus: (text: LocalizedText) => void;
   headerStopProgress: () => void;
   isStreaming: () => boolean;
   maybeApplyPendingSlidesSummary: () => void;
@@ -46,18 +49,18 @@ export function createSummaryStreamRuntime({
 
   queueSlidesRender: () => void;
   rebuildSlideDescriptions: () => void;
-  refreshSummaryMetrics: (summary: string) => void;
+  refreshSummaryMetrics: (summary: string, parts?: LocalizedMetricPart[] | null) => void;
   rememberUrl: (url: string) => void;
   renderMarkdown: (markdown: string) => void;
   resetSummaryView: (opts: { clearRunId?: boolean; stopSlides?: boolean }) => void;
   schedulePanelCacheSync: () => void;
   seedPlannedSlidesForPendingRun: () => void;
   setSlidesBusy: (value: boolean) => void;
-  setPhase: (phase: PanelPhase, opts?: { error?: string | null }) => void;
+  setPhase: (phase: PanelPhase, opts?: { error?: PanelState["error"] }) => void;
   shouldRebuildSlideDescriptions: () => boolean;
   syncWithActiveTab: () => Promise<void>;
 }) {
-  let lastStreamError: string | null = null;
+  let lastStreamError: LocalizedText | null = null;
 
   return {
     streamController: createStreamController({
@@ -66,6 +69,7 @@ export function createSummaryStreamRuntime({
         resetSummaryView({ clearRunId: false, stopSlides: false });
         const fallbackModel = getFallbackModel();
         panelState.lastMeta = {
+          inputSummaryMessage: null,
           inputSummary: null,
           model: fallbackModel,
           modelLabel: fallbackModel,
@@ -73,9 +77,9 @@ export function createSummaryStreamRuntime({
         lastStreamError = null;
         seedPlannedSlidesForPendingRun();
       },
-      onStatus: (text) => {
-        headerSetStatus(text);
-        if (/^slides?/i.test(text.trim())) {
+      onStatus: (text, message) => {
+        headerSetStatus(message ?? text);
+        if (message ? isSlidesProgressKey(message.key) : /^slides?/i.test(text.trim())) {
           setSlidesBusy(true);
         }
       },
@@ -100,6 +104,12 @@ export function createSummaryStreamRuntime({
       },
       onMeta: (data) => {
         panelState.lastMeta = {
+          inputSummaryMessage:
+            typeof data.inputSummary === "string"
+              ? (data.inputSummaryMessage ?? null)
+              : data.inputSummaryMessage === null
+                ? null
+                : (panelState.lastMeta.inputSummaryMessage ?? null),
           model: typeof data.model === "string" ? data.model : panelState.lastMeta.model,
           modelLabel:
             typeof data.modelLabel === "string" ? data.modelLabel : panelState.lastMeta.modelLabel,
@@ -111,6 +121,7 @@ export function createSummaryStreamRuntime({
         headerSetBaseSubtitle(
           buildIdleSubtitle({
             inputSummary: panelState.lastMeta.inputSummary,
+            inputSummaryMessage: panelState.lastMeta.inputSummaryMessage ?? null,
             modelLabel: panelState.lastMeta.modelLabel,
             model: panelState.lastMeta.model,
           }),
@@ -128,13 +139,13 @@ export function createSummaryStreamRuntime({
           headerArmProgress();
         }
       },
-      onMetrics: (summary) => {
-        refreshSummaryMetrics(summary);
+      onMetrics: (summary, parts) => {
+        refreshSummaryMetrics(summary, parts);
       },
       onRender: renderMarkdown,
       onSyncWithActiveTab: syncWithActiveTab,
       onError: (err) => {
-        const message = friendlyFetchError(err, "Stream failed");
+        const message = friendlyFetchError(err, uiMessage("stream.failed"));
         lastStreamError = message;
         return message;
       },

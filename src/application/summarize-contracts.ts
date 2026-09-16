@@ -6,6 +6,7 @@ import type {
   MediaCache,
 } from "../content/index.js";
 import type { RunMetricsReport } from "../costs.js";
+import type { CliMessage } from "../locale.js";
 import type { ExecFileFn } from "../markitdown.js";
 import type { AssetExtractResult } from "../run/flows/asset/extract.js";
 import type { MediaFileExecutionResult } from "../run/flows/asset/media.js";
@@ -100,7 +101,7 @@ export type SummarizeEvent =
   | { type: "model-selected"; modelId: string }
   | { type: "summary-cache"; cached: boolean }
   | { type: "summary-delta"; text: string }
-  | { type: "slides-progress"; text: string }
+  | { type: "slides-progress"; text: string; message?: CliMessage }
   | { type: "slides-extracted"; slides: SlideExtractionResult }
   | { type: "slides-completed"; ok: boolean; error?: string | null }
   | {

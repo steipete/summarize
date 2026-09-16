@@ -8,7 +8,7 @@ import { discoverOpenAiCompatibleModels } from "../daemon/model-discovery.js";
 import { buildModelPickerOptions } from "../daemon/models.js";
 import { resolveCliBinary } from "../llm/cli.js";
 import { getGatewayProviderProfile, type GatewayProvider } from "../llm/provider-capabilities.js";
-import { resolveCliLocaleFromArgs, translateCliText } from "../locale.js";
+import { type CliLocale, createCliTranslator, resolveCliLocaleFromArgs } from "../locale.js";
 import { buildStatusHelp } from "./help.js";
 
 type StatusModel = {
@@ -200,6 +200,7 @@ function resolveConfiguredProviders({
   } else if (!openaiBaseIsDefault) {
     pushProvider(providers, {
       id: "openai-compatible",
+      // i18n-ignore: Stable API label; the CLI formats status.compatibleApi from provider metadata.
       label: openaiHost ? `OpenAI-compatible API (${openaiHost})` : "OpenAI-compatible API",
       kind: "local",
       state: "configured",
@@ -229,6 +230,7 @@ function resolveConfiguredProviders({
   if (envState.deepgramApiKey) {
     pushProvider(providers, {
       id: "deepgram",
+      // i18n-ignore: Stable JSON label; the CLI renderer uses status.deepgram.
       label: "Deepgram transcription",
       kind: "api",
       state: "configured",
@@ -317,6 +319,7 @@ async function applyProviderProbes({
     return;
   }
 
+  // i18n-ignore: Match stable English discovery API labels; the UI never consumes these prefixes.
   const probeModels = new Map<string, string[]>([
     ["openai-compatible", discoveredModels(result.options, "Local (")],
     ["ollama", discoveredModels(result.options, "Ollama (")],
@@ -376,39 +379,54 @@ export async function buildStatusReport({
   };
 }
 
-function formatHumanStatus(report: StatusReport, verbose: boolean): string {
-  const lines = [
-    `Model: ${report.model.selection} (${report.model.source})`,
-    ...(report.config ? [`Config: ${report.config.path}`] : []),
-  ];
-
+function formatHumanStatus(report: StatusReport, verbose: boolean, locale: CliLocale): string {
+  const t = createCliTranslator(locale);
+  const lines = [t("status.model", { model: report.model.selection, source: report.model.source })];
+  if (report.config) lines.push(t("status.config", { path: report.config.path }));
   if (report.presets.length > 0) {
-    lines.push("", "Presets:");
+    lines.push("", t("presets"));
     for (const preset of report.presets) {
       const candidates =
         verbose && preset.candidates?.length ? ` -> ${preset.candidates.join(", ")}` : "";
       lines.push(`  ${preset.name}: ${preset.model}${candidates}`);
     }
   }
-
   if (report.providers.length > 0) {
-    lines.push("", "Providers:");
+    lines.push("", t("providers"));
     for (const provider of report.providers) {
-      const details = [
-        provider.model ? `model ${provider.model}` : null,
-        verbose && provider.path ? provider.path : null,
-        verbose && provider.endpoint ? provider.endpoint : null,
-        verbose && provider.source ? `via ${provider.source}` : null,
-      ].filter((value): value is string => Boolean(value));
+      const model = provider.model ?? "";
+      const path = verbose ? (provider.path ?? "") : "";
+      const endpoint = verbose ? (provider.endpoint ?? "") : "";
+      const source = verbose ? (provider.source ?? "") : "";
+      const details = [path, endpoint].filter(Boolean).join(", ");
+      const label =
+        provider.id === "openai-compatible"
+          ? t("status.compatibleApi", {
+              host: provider.endpoint ?? "",
+              hasHost: Boolean(provider.endpoint),
+            })
+          : provider.id === "deepgram"
+            ? t("status.deepgram")
+            : provider.label;
       lines.push(
-        `  ${provider.label}: ${provider.state}${details.length > 0 ? ` (${details.join(", ")})` : ""}`,
+        t("status.provider", {
+          provider: label,
+          state: provider.state,
+          model,
+          details,
+          source,
+          hasModel: Boolean(model),
+          hasDetails: Boolean(details),
+          hasSource: Boolean(source),
+          hasMeta: Boolean(model || details || source),
+          modelComma: Boolean(model && (details || source)),
+          detailsComma: Boolean(details && source),
+        }),
       );
-      if (provider.models?.length) {
-        for (const model of provider.models) lines.push(`    ${model}`);
-      }
+      if (provider.models?.length)
+        for (const modelId of provider.models) lines.push(`    ${modelId}`);
     }
   }
-
   return `${lines.join("\n")}\n`;
 }
 
@@ -431,13 +449,14 @@ export async function handleStatusCliRequest({
     normalizedArgv.includes("-h") ||
     normalizedArgv.includes("help");
   if (help) {
-    stdout.write(`${translateCliText(buildStatusHelp(), locale)}\n`);
+    stdout.write(`${buildStatusHelp(locale)}\n`);
     return true;
   }
 
   const allowed = new Set(["status", "--json", "--probe", "--verbose", "--no-color"]);
   const unknown = normalizedArgv.find((arg) => !allowed.has(arg));
-  if (unknown) throw new Error(`Unknown status option: ${unknown}`);
+  if (unknown)
+    throw new Error(createCliTranslator(locale)("status.unknownOption", { option: unknown }));
 
   const report = await buildStatusReport({
     env: envForRun,
@@ -447,29 +466,7 @@ export async function handleStatusCliRequest({
   if (normalizedArgv.includes("--json")) {
     stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
-    const protectedValues = [
-      report.model.selection,
-      report.config?.path,
-      ...report.presets.flatMap((preset) => [
-        preset.name,
-        preset.model,
-        ...(preset.candidates ?? []),
-      ]),
-      ...report.providers.flatMap((provider) => [
-        provider.path,
-        provider.model,
-        provider.endpoint,
-        provider.source,
-        ...(provider.models ?? []),
-      ]),
-    ].filter((value): value is string => typeof value === "string");
-    stdout.write(
-      translateCliText(
-        formatHumanStatus(report, normalizedArgv.includes("--verbose")),
-        locale,
-        protectedValues,
-      ),
-    );
+    stdout.write(formatHumanStatus(report, normalizedArgv.includes("--verbose"), locale));
   }
   return true;
 }

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHoverController } from "../apps/chrome-extension/src/entrypoints/background/hover-controller.js";
+import { readLocalizedMessage, resolveText } from "../apps/chrome-extension/src/lib/i18n";
 import { defaultSettings, type Settings } from "../apps/chrome-extension/src/lib/settings.js";
 
 const mocks = vi.hoisted(() => ({
@@ -72,10 +73,41 @@ function sender(): chrome.runtime.MessageSender {
 
 async function waitForResponse(sendResponse: ReturnType<typeof vi.fn>) {
   await expect.poll(() => sendResponse.mock.calls.length).toBeGreaterThan(0);
-  return sendResponse.mock.calls.at(-1)?.[0] as { ok?: boolean; error?: string };
+  return sendResponse.mock.calls.at(-1)?.[0] as {
+    ok?: boolean;
+    error?: string;
+    localized?: unknown;
+  };
 }
 
 describe("hover controller token routing", () => {
+  it("keeps a localization descriptor alongside legacy hover diagnostics", async () => {
+    const chromeMocks = installChromeMocks();
+    mocks.loadSettings.mockResolvedValue(
+      makeSettings({ token: "", summaryRuntime: "direct", provider: "ollama", model: "auto" }),
+    );
+    mocks.fetchBrowserUrlContent.mockRejectedValue(new TypeError("Failed to fetch"));
+    const controller = createController();
+    const reply = vi.fn();
+    controller.handleRuntimeMessage(
+      {
+        type: "hover:summarize",
+        requestId: "localized-hover",
+        url: "https://example.com/article",
+        title: "Fixture",
+      },
+      sender(),
+      reply,
+    );
+    const result = await waitForResponse(reply);
+    const localized = readLocalizedMessage(result.localized)!;
+    expect(localized).toBeDefined();
+    expect(resolveText(localized, "tr")).not.toContain("Failed to fetch");
+    expect(chromeMocks.sendMessage).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ type: "hover:error", localized }),
+    );
+  });
   beforeEach(() => {
     vi.restoreAllMocks();
     mocks.fetchBrowserUrlContent.mockReset();

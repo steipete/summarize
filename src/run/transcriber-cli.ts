@@ -4,13 +4,14 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { readCliOptionValue } from "../cli-args.js";
 import { loadSummarizeConfig } from "../config.js";
-import { resolveCliLocaleFromArgs, translateCliText } from "../locale.js";
+import { CliError } from "../locale.js";
+import { createCliTranslator, resolveCliLocaleFromArgs } from "../locale.js";
 import {
   createThemeRenderer,
   resolveThemeNameFromSources,
   resolveTrueColor,
 } from "../tty/theme.js";
-import { buildTranscriberHelp, TRANSCRIBER_AUTO_ORDER_DESCRIPTION } from "./help.js";
+import { buildTranscriberHelp } from "./help.js";
 import { supportsColor } from "./terminal.js";
 
 type TranscriberCliContext = {
@@ -33,7 +34,7 @@ const parseModel = (value: string | null): OnnxModel => {
   if (!value) return "parakeet";
   const normalized = value.trim().toLowerCase();
   if (normalized === "parakeet" || normalized === "canary") return normalized;
-  throw new Error(`Unsupported --model: ${value}`);
+  throw new CliError("error.transcriberModel", { value: String(value) });
 };
 
 const fileExists = async (filePath: string): Promise<boolean> => {
@@ -74,10 +75,12 @@ const resolveWhisperCppModelPath = (env: Record<string, string | undefined>): st
 
 const renderOnnxEnvExample = (model: OnnxModel): string[] => {
   if (model === "canary") {
+    // i18n-ignore: Literal shell command and tool placeholders must remain executable.
     return [
       `export ${ONNX_ENV.canary}='["sherpa-onnx", "--tokens", "{vocab}", "--offline-ctc-model", "{model}", "--input-wav", "{input}"]'`,
     ];
   }
+  // i18n-ignore: Literal shell command and tool placeholders must remain executable.
   return [
     `export ${ONNX_ENV.parakeet}='["sherpa-onnx", "--tokens", "{vocab}", "--offline-ctc-model", "{model}", "--input-wav", "{input}"]'`,
   ];
@@ -91,18 +94,18 @@ export async function handleTranscriberCliRequest({
   if (normalizedArgv[0]?.toLowerCase() !== "transcriber") return false;
 
   const locale = resolveCliLocaleFromArgs(normalizedArgv, envForRun);
-  const localize = (text: string) => translateCliText(text, locale);
+  const t = createCliTranslator(locale);
   const subcommand = normalizedArgv[1]?.toLowerCase() ?? "help";
   const help =
     subcommand === "help" || normalizedArgv.includes("--help") || normalizedArgv.includes("-h");
 
   if (help) {
-    stdout.write(`${localize(buildTranscriberHelp())}\n`);
+    stdout.write(`${buildTranscriberHelp(locale)}\n`);
     return true;
   }
 
   if (subcommand !== "setup") {
-    throw new Error(`Unknown transcriber command: ${subcommand}`);
+    throw new CliError("error.transcriberCommand", { subcommand: String(subcommand) });
   }
 
   const model = parseModel(readCliOptionValue(normalizedArgv, "--model"));
@@ -118,8 +121,7 @@ export async function handleTranscriberCliRequest({
     enabled: supportsColor(stdout, envForRun),
     trueColor: resolveTrueColor(envForRun),
   });
-  const heading = (text: string) => theme.heading(localize(text));
-  const label = (text: string) => theme.label(localize(text));
+  const heading = (text: string) => theme.heading(text);
   const value = (text: string) => theme.value(text);
   const dim = (text: string) => theme.dim(text);
   const transcriberEnv = envForRun.SUMMARIZE_TRANSCRIBER?.trim() || "auto";
@@ -141,51 +143,35 @@ export async function handleTranscriberCliRequest({
   const whisperModelPath = resolveWhisperCppModelPath(envForRun);
   const whisperModelReady = await fileExists(whisperModelPath);
 
-  stdout.write(`${heading("Transcriber setup")}\n`);
-  stdout.write(`${label("Transcriber mode:")} ${value(transcriberEnv)}\n`);
-  stdout.write(`${label("Auto order:")} ${value(localize(TRANSCRIBER_AUTO_ORDER_DESCRIPTION))}\n`);
-  stdout.write("\n");
+  stdout.write(`${heading(t("transcriber.setup"))}\n`);
+  stdout.write(`${t("transcriber.mode", { mode: value(transcriberEnv) })}\n`);
+  stdout.write(`${t("transcriber.order")}\n\n`);
   for (const entry of onnxStatus) {
     stdout.write(
-      `${label(`ONNX ${entry.model}:`)} ${value(
-        localize(entry.configured ? "configured" : "not configured"),
-      )} ${dim(`(${entry.envKey})`)}\n`,
+      `${t("transcriber.onnx", { model: entry.model, configured: entry.configured, env: entry.envKey })}\n`,
     );
   }
-  stdout.write(`${label("ONNX cache:")} ${value(onnxCacheDir)}\n`);
+  stdout.write(`${t("transcriber.cache", { path: value(onnxCacheDir) })}\n`);
+  stdout.write(`${t("transcriber.artifacts", { model, ready: modelReady })}\n\n`);
   stdout.write(
-    `${label(`ONNX ${model} artifacts:`)} ${value(localize(modelReady ? "present" : "missing"))}\n`,
-  );
-  stdout.write("\n");
-  stdout.write(
-    `${label("whisper.cpp:")} ${value(localize(whisperCliReady ? "binary ok" : "binary missing"))} ${dim(
-      `(${whisperBinary})`,
-    )}\n`,
+    `${t("transcriber.whisperBinary", { ready: whisperCliReady, path: value(whisperBinary) })}\n`,
   );
   stdout.write(
-    `${label("whisper.cpp model:")} ${value(
-      localize(whisperModelReady ? "present" : "missing"),
-    )} ${dim(`(${whisperModelPath})`)}\n`,
+    `${t("transcriber.whisperModel", { ready: whisperModelReady, path: value(whisperModelPath) })}\n\n`,
   );
-  stdout.write("\n");
-
   if (!onnxStatus.some((entry) => entry.configured)) {
-    stdout.write(`${heading("To enable ONNX locally:")}\n`);
+    stdout.write(`${heading(t("to.enable.onnx.locally"))}\n`);
     stdout.write(
-      `  ${dim(localize("Install sherpa-onnx from upstream binaries or build; Homebrew may not have a formula."))}\n`,
+      `  ${dim(t("install.sherpa.onnx.from.upstream.binaries.or.build.homebrew.may.not.have.a.formula"))}\n`,
     );
-    for (const line of renderOnnxEnvExample(model)) {
-      stdout.write(`  ${line}\n`);
-    }
-    stdout.write(
-      `  ${localize(`# ${localize("placeholders:")} {input}, {model}, {vocab}, {model_dir} (see docs/nvidia-onnx-transcription.md)`)}\n`,
-    );
-    stdout.write(`  ${dim("# docs: docs/nvidia-onnx-transcription.md")}\n`);
+    for (const line of renderOnnxEnvExample(model)) stdout.write(`  ${line}\n`);
+    stdout.write(`  ${t("transcriber.placeholders")}\n`);
     stdout.write("\n");
   }
-
-  stdout.write(`${heading("Next:")}\n`);
+  stdout.write(`${heading(t("next"))}\n`);
+  // i18n-ignore: Executable CLI example.
   stdout.write(`  ${value('summarize "https://..." --slides')}\n`);
+  // i18n-ignore: Literal CLI environment-variable example.
   stdout.write(
     `  ${value('SUMMARIZE_TRANSCRIBER=auto summarize "https://..." --extract --format md')}\n`,
   );

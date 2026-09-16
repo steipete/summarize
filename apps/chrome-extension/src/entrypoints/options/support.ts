@@ -1,4 +1,6 @@
-import { buildUserScriptsGuidance, getUserScriptsStatus } from "../../automation/userscripts";
+import { userScriptsGuidanceMessage, getUserScriptsStatus } from "../../automation/userscripts";
+import type { LocalizedText } from "../../lib/i18n";
+import { setText as setUiText, message as uiMessage } from "../../lib/i18n";
 
 const AUTOMATION_PERMISSIONS = ["userScripts"] as const;
 
@@ -26,12 +28,12 @@ export function resolveBuildInfoText({
 export function createStatusController(statusEl: HTMLElement) {
   let statusTimer = 0;
 
-  const setStatus = (text: string) => {
+  const setStatus = (text: LocalizedText) => {
     window.clearTimeout(statusTimer);
-    statusEl.textContent = text;
+    setUiText(statusEl, text);
   };
 
-  const flashStatus = (text: string, duration = 900) => {
+  const flashStatus = (text: LocalizedText, duration = 900) => {
     setStatus(text);
     statusTimer = window.setTimeout(() => setStatus(""), duration);
   };
@@ -45,23 +47,23 @@ export function applyBuildInfo(
 ) {
   if (!buildInfoEl) return;
   const text = resolveBuildInfoText(info);
-  buildInfoEl.textContent = text;
+  setUiText(buildInfoEl, text);
   buildInfoEl.toggleAttribute("hidden", text.length === 0);
 }
 
 export async function copyTokenToClipboard(options: {
   tokenEl: HTMLInputElement;
-  flashStatus: (text: string) => void;
+  flashStatus: (text: LocalizedText) => void;
 }) {
   const { tokenEl, flashStatus } = options;
   const token = tokenEl.value.trim();
   if (!token) {
-    flashStatus("Token empty");
+    flashStatus(uiMessage("token.empty"));
     return;
   }
   try {
     await navigator.clipboard.writeText(token);
-    flashStatus("Token copied");
+    flashStatus(uiMessage("token.copied"));
     return;
   } catch {
     // fallback
@@ -70,14 +72,14 @@ export async function copyTokenToClipboard(options: {
   tokenEl.select();
   tokenEl.setSelectionRange(0, token.length);
   const ok = document.execCommand("copy");
-  flashStatus(ok ? "Token copied" : "Copy failed");
+  flashStatus(ok ? uiMessage("token.copied") : uiMessage("copy.failed"));
 }
 
 export function createAutomationPermissionsController(options: {
   automationPermissionsBtn: HTMLButtonElement;
   userScriptsNoticeEl: HTMLElement;
   getAutomationEnabled: () => boolean;
-  flashStatus: (text: string) => void;
+  flashStatus: (text: LocalizedText) => void;
 }) {
   const { automationPermissionsBtn, userScriptsNoticeEl, getAutomationEnabled, flashStatus } =
     options;
@@ -94,11 +96,14 @@ export function createAutomationPermissionsController(options: {
 
     automationPermissionsBtn.disabled =
       !chrome.permissions || optionalPermissions.length === 0 || (hasPermissions && apiAvailable);
-    automationPermissionsBtn.textContent = needsChromeToggle
-      ? "Open Chrome User Scripts settings"
-      : hasPermissions
-        ? "Automation permissions granted"
-        : "Enable automation permissions";
+    setUiText(
+      automationPermissionsBtn,
+      needsChromeToggle
+        ? uiMessage("open.chrome.user.scripts.settings")
+        : hasPermissions
+          ? uiMessage("automation.permissions.granted")
+          : uiMessage("enable.automation.permissions"),
+    );
 
     if (!getAutomationEnabled()) {
       userScriptsNoticeEl.hidden = true;
@@ -110,8 +115,7 @@ export function createAutomationPermissionsController(options: {
       return;
     }
 
-    const steps = [buildUserScriptsGuidance(status)].filter(Boolean);
-    userScriptsNoticeEl.textContent = steps.join(" ");
+    setUiText(userScriptsNoticeEl, userScriptsGuidanceMessage(status));
     userScriptsNoticeEl.hidden = false;
   };
 
@@ -134,7 +138,7 @@ export function createAutomationPermissionsController(options: {
         permissions: optionalPermissions,
       });
       if (!ok) {
-        flashStatus("Permission request denied");
+        flashStatus(uiMessage("permission.request.denied"));
       }
     } catch {
       // ignore

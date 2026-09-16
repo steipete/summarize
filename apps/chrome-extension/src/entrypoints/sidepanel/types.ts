@@ -1,4 +1,6 @@
+import type { MessageDescriptor } from "@steipete/summarize-core/localization";
 import type { AgentMessage as Message } from "@steipete/summarize-core/runtime";
+import type { LocalizedText } from "../../lib/i18n";
 import type { BrowserAiSummaryInput, RunStart, UiState } from "../../lib/panel-contracts";
 import type { SseSlidesData } from "../../lib/runtime-contracts";
 import type { Settings } from "../../lib/settings";
@@ -96,7 +98,12 @@ export type PanelState = {
   runId: string | null;
   slidesRunId: string | null;
   currentSource: { url: string; title: string | null } | null;
-  lastMeta: { inputSummary: string | null; model: string | null; modelLabel: string | null };
+  lastMeta: {
+    inputSummary: string | null;
+    inputSummaryMessage?: MessageDescriptor | null;
+    model: string | null;
+    modelLabel: string | null;
+  };
   summaryMarkdown: string | null;
   summaryFromCache: boolean | null;
   retainedSlideSummary: {
@@ -110,5 +117,5 @@ export type PanelState = {
   };
   slides: SseSlidesData | null;
   phase: PanelPhase;
-  error: string | null;
+  error: LocalizedText | null;
 };

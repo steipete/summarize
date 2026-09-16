@@ -1,6 +1,8 @@
 import { parseTranscriptTimedText } from "@steipete/summarize-core/slides";
 import { buildSlidesCacheKey } from "../../../cache.js";
 import type { ExtractedLinkContent } from "../../../content/index.js";
+import type { CliMessageKey } from "../../../locale.js";
+import { emitCliMessage } from "../../../locale.js";
 import {
   extractSlidesForSource,
   resolveSlideSource,
@@ -120,7 +122,7 @@ export function createUrlSlidesSession({
   extracted: ExtractedLinkContent;
   cacheStore: UrlFlowContext["cache"]["store"] | null;
   progressStatus: ProgressStatusLike;
-  renderStatus: (label: string, detail?: string) => string;
+  renderStatus: (key: CliMessageKey) => string;
   renderStatusFromText: (text: string) => string;
   updateSummaryProgress: () => void;
 }): UrlSlidesSession {
@@ -226,7 +228,9 @@ export function createUrlSlidesSession({
           slidesExtracted = validated;
           resolveTimeline(validated);
           sessionHooks.onSlidesExtracted?.(slidesExtracted);
-          sessionHooks.onSlidesProgress?.("Slides: cached 100%");
+          emitCliMessage(sessionHooks.onSlidesProgress, "en", "progress.slidesCached", {
+            percent: 1,
+          });
           return slidesExtracted;
         }
         writeVerbose(
@@ -238,10 +242,10 @@ export function createUrlSlidesSession({
         );
       }
       if (flags.progressEnabled) {
-        progressStatus.setSlides(renderStatus("Extracting slides"));
+        progressStatus.setSlides(renderStatus("progress.extractSlides"));
       }
       const activeSlidesProgress = sessionHooks.onSlidesProgress;
-      activeSlidesProgress?.("Slides: extracting");
+      emitCliMessage(activeSlidesProgress, "en", "progress.slidesExtracting");
       const onSlidesLog = (message: string) => {
         writeVerbose(
           io.stderr,
@@ -281,9 +285,10 @@ export function createUrlSlidesSession({
       });
       if (slidesExtracted) {
         sessionHooks.onSlidesExtracted?.(slidesExtracted);
-        sessionHooks.onSlidesProgress?.(
-          `Slides: done (${slidesExtracted.slides.length.toString()} slides) 100%`,
-        );
+        emitCliMessage(sessionHooks.onSlidesProgress, "en", "progress.slidesDone", {
+          count: slidesExtracted.slides.length,
+          percent: 1,
+        });
         if (slidesCacheKey && cacheStore) {
           cacheStore.setJson("slides", slidesCacheKey, slidesExtracted, cacheState.ttlMs);
           writeVerbose(

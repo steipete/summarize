@@ -1,6 +1,7 @@
 import { Writable } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runCli } from "../src/run.js";
+import { createSlidesProgress } from "../src/slides/runtime.js";
 
 function collectStream({ isTTY }: { isTTY: boolean }) {
   let text = "";
@@ -73,6 +74,27 @@ vi.mock("../src/run/slides-render.js", async () => {
 });
 
 describe("cli slides mode", () => {
+  it("renders English-compatible progress descriptors in the selected CLI locale", async () => {
+    let legacyText = "";
+    mocks.extractSlidesForSource.mockImplementationOnce(async (args) => {
+      const progress = createSlidesProgress((text, message) => {
+        legacyText = text;
+        args.hooks?.onSlidesProgress?.(text, message);
+      });
+      progress?.("detect", 35);
+      return mocks.slidesResult;
+    });
+    const stdout = collectStream({ isTTY: false });
+    const stderr = collectStream({ isTTY: false });
+    await runCli(["slides", "https://example.com/video.mp4", "--locale", "tr", "--verbose"], {
+      env: {},
+      fetch: vi.fn() as unknown as typeof fetch,
+      stdout: stdout.stream,
+      stderr: stderr.stream,
+    });
+    expect(legacyText).toBe("Slides: detecting scenes 35%");
+    expect(stderr.getText()).toContain("Slaytlar: sahneler algılanıyor");
+  });
   it("strips the locale option before parsing slides arguments", async () => {
     const stdout = collectStream({ isTTY: false });
     const stderr = collectStream({ isTTY: false });
@@ -104,7 +126,7 @@ describe("cli slides mode", () => {
         stderr: stderr.stream,
       });
       expect(mocks.resolveSlideSourceFromUrl).toHaveBeenCalledWith(source);
-      expect(stdout.getText()).toContain("Çıkarılan slayt:");
+      expect(stdout.getText()).toContain("Çıkarılan slayt sayısı:");
     },
   );
 

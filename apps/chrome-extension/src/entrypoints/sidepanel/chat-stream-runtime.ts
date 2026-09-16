@@ -1,3 +1,4 @@
+import { message as uiMessage, localizedErrorText, type LocalizedText } from "../../lib/i18n";
 type ChatStreamRuntimeOpts = {
   chatEnabled: () => boolean;
   isChatStreaming: () => boolean;
@@ -14,8 +15,8 @@ type ChatStreamRuntimeOpts = {
   setLastActionChat: () => void;
   scrollToBottom: (force?: boolean) => void;
   persistChatHistory: () => void | Promise<void>;
-  setStatus: (value: string) => void;
-  showInlineError: (message: string) => void;
+  setStatus: (value: LocalizedText) => void;
+  showInlineError: (message: LocalizedText) => void;
   executeAgentLoop: () => Promise<void>;
 };
 
@@ -43,8 +44,10 @@ export function createChatStreamRuntime(opts: ChatStreamRuntimeOpts) {
       try {
         await opts.executeAgentLoop();
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        opts.setStatus(`Error: ${message}`);
+        const message = localizedErrorText(err);
+        opts.setStatus(
+          typeof message === "string" ? uiMessage("error.message", { error: message }) : message,
+        );
         opts.showInlineError(message);
       } finally {
         finishStreamingMessage();
@@ -78,8 +81,10 @@ export function createChatStreamRuntime(opts: ChatStreamRuntimeOpts) {
       try {
         await opts.executeAgentLoop();
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        opts.setStatus(`Error: ${message}`);
+        const message = localizedErrorText(err);
+        opts.setStatus(
+          typeof message === "string" ? uiMessage("error.message", { error: message }) : message,
+        );
         opts.showInlineError(message);
       } finally {
         finishStreamingMessage();

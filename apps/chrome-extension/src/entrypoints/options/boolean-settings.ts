@@ -1,3 +1,4 @@
+import { message as uiMessage } from "../../lib/i18n";
 import type { defaultSettings, SlideRuntime, SummaryRuntime } from "../../lib/settings";
 import { createBooleanToggleController } from "./toggles";
 
@@ -20,55 +21,55 @@ const booleanControls = [
     key: "autoSummarize",
     root: "autoToggleRoot",
     id: "options-auto",
-    label: "Auto-summarize when panel is open",
+    label: uiMessage("auto.summarize.when.panel.is.open.alternate"),
   },
   {
     key: "chatEnabled",
     root: "chatToggleRoot",
     id: "options-chat",
-    label: "Enable Chat mode in the side panel",
+    label: uiMessage("enable.chat.mode.in.the.side.panel"),
   },
   {
     key: "automationEnabled",
     root: "automationToggleRoot",
     id: "options-automation",
-    label: "Enable website automation",
+    label: uiMessage("enable.website.automation"),
   },
   {
     key: "hoverSummaries",
     root: "hoverSummariesToggleRoot",
     id: "options-hover-summaries",
-    label: "Hover summaries (experimental)",
+    label: uiMessage("hover.summaries.experimental"),
   },
   {
     key: "summaryTimestamps",
     root: "summaryTimestampsToggleRoot",
     id: "options-summary-timestamps",
-    label: "Summary timestamps (media only)",
+    label: uiMessage("summary.timestamps.media.only"),
   },
   {
     key: "slidesParallel",
     root: "slidesParallelToggleRoot",
     id: "options-slides-parallel",
-    label: "Show summary first (parallel slides)",
+    label: uiMessage("show.summary.first.parallel.slides"),
   },
   {
     key: "slidesOcrEnabled",
     root: "slidesOcrToggleRoot",
     id: "options-slides-ocr",
-    label: "Enable OCR slide text",
+    label: uiMessage("enable.ocr.slide.text"),
   },
   {
     key: "extendedLogging",
     root: "extendedLoggingToggleRoot",
     id: "options-extended-logging",
-    label: "Extended logging",
+    label: uiMessage("extended.logging"),
   },
   {
     key: "autoCliFallback",
     root: "autoCliFallbackToggleRoot",
     id: "options-auto-cli-fallback",
-    label: "Auto CLI fallback",
+    label: uiMessage("auto.cli.fallback"),
   },
 ] as const;
 

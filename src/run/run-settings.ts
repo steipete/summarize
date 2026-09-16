@@ -24,6 +24,7 @@ import {
 } from "../flags.js";
 import type { OutputLanguage } from "../language.js";
 import { resolveOutputLanguage } from "../language.js";
+import { CliError } from "../locale.js";
 import { formatPresetLengthGuidance, type SummaryLengthTarget } from "../prompts/index.js";
 import {
   parseOptionalBoolean,
@@ -173,7 +174,7 @@ export function resolveCliRunSettings({
   );
   const requireOverride = <T>(value: T | null, label: string): T => {
     if (value == null) {
-      throw new Error(`Missing ${label} override value.`);
+      throw new CliError("error.missingOverride", { label: String(label) });
     }
     return value;
   };
@@ -221,7 +222,7 @@ export function resolveRunOverrides(
         return Math.floor(timeout);
       }
       if (strict) {
-        throw new Error(`Unsupported --timeout: ${String(timeout)}`);
+        throw new CliError("error.timeout", { value: String(String(timeout)) });
       }
       return null;
     }
@@ -245,7 +246,7 @@ export function resolveRunOverrides(
         }
       }
       if (strict) {
-        throw new Error(`Unsupported --retries: ${String(retries)}`);
+        throw new CliError("error.retries", { value: String(String(retries)) });
       }
       return null;
     }
@@ -269,7 +270,7 @@ export function resolveRunOverrides(
         }
       }
       if (strict) {
-        throw new Error(`Unsupported --max-output-tokens: ${String(maxOutputTokens)}`);
+        throw new CliError("error.maxOutputTokens", { value: String(String(maxOutputTokens)) });
       }
       return null;
     }
@@ -294,7 +295,7 @@ export function resolveRunOverrides(
       return normalized;
     }
     if (strict) {
-      throw new Error(`Unsupported transcriber: ${transcriber}`);
+      throw new CliError("error.transcriber", { transcriber: String(transcriber) });
     }
     return null;
   })();

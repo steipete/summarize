@@ -1,60 +1,35 @@
-import { formatCompactCount, formatElapsedMs } from "../tty/format.js";
+import {
+  type CliLocale,
+  type CliMessage,
+  createCliTranslator,
+  resolveCliLocaleFromEnv,
+} from "../locale.js";
+import {
+  formatCompactCount,
+  formatElapsedMs,
+  formatDurationSecondsSmart,
+  formatMinutesSmart,
+} from "../tty/format.js";
 import {
   createThemeRenderer,
   resolveThemeNameFromSources,
   resolveTrueColor,
 } from "../tty/theme.js";
+import type { FinishLabel, FinishPart } from "./finish-line-types.js";
+import { formatUSD, sumNumbersOrNull } from "./format.js";
 export {
   buildExtractFinishLabel,
   buildSummaryFinishLabel,
   type ExtractDiagnosticsForFinishLine,
 } from "./finish-line-labels.js";
 export { buildLengthPartsForFinishLine, type ExtractedForLengths } from "./finish-line-lengths.js";
-import { resolveCliLocaleFromEnv, translateCliText } from "../locale.js";
-import { formatUSD, sumNumbersOrNull } from "./format.js";
 
-export type FinishLineText = {
-  line: string;
-  details: string | null;
-};
-
-export type FinishLineModel = {
-  lineParts: string[];
-  detailParts: string[];
-};
-
-export function formatModelLabelForDisplay(model: string): string {
-  const trimmed = model.trim();
-  if (!trimmed) return trimmed;
-
-  // Tricky UX: OpenRouter models routed via the OpenAI-compatible API often appear as
-  // `openai/<publisher>/<model>` in the "model" field, which reads like we're using OpenAI.
-  // Collapse that to `<publisher>/<model>` for display.
-  const parts = trimmed.split("/").filter(Boolean);
-  if (parts.length >= 3 && parts[0] === "openai") {
-    return `${parts[1]}/${parts.slice(2).join("/")}`;
-  }
-
-  return trimmed;
-}
-
-export function writeFinishLine({
-  stderr,
-  elapsedMs,
-  elapsedLabel,
-  label,
-  model,
-  report,
-  costUsd,
-  detailed,
-  extraParts,
-  color,
-  env,
-}: {
-  stderr: NodeJS.WritableStream;
+export type FinishLineText = { line: string; details: string | null };
+export type FinishLineModel = { lineParts: string[]; detailParts: string[] };
+type FinishLineOptions = {
   elapsedMs: number;
-  elapsedLabel?: string | null;
-  label?: string | null;
+  elapsedLabel?: string | CliMessage | null;
+  label?: FinishLabel | null;
   model: string | null;
   report: {
     llm: Array<{
@@ -66,11 +41,28 @@ export function writeFinishLine({
     services: { firecrawl: { requests: number }; apify: { requests: number } };
   };
   costUsd: number | null;
-  detailed: boolean;
-  extraParts?: string[] | null;
-  color: boolean;
-  env?: Record<string, string | undefined>;
-}): void {
+  extraParts?: FinishPart[] | null;
+  locale?: CliLocale;
+};
+
+export function formatModelLabelForDisplay(model: string): string {
+  const trimmed = model.trim();
+  const parts = trimmed.split("/").filter(Boolean);
+  return parts.length >= 3 && parts[0] === "openai"
+    ? `${parts[1]}/${parts.slice(2).join("/")}`
+    : trimmed;
+}
+
+export function writeFinishLine(
+  options: FinishLineOptions & {
+    stderr: NodeJS.WritableStream;
+    detailed: boolean;
+    color: boolean;
+    env?: Record<string, string | undefined>;
+  },
+): void {
+  const { stderr, detailed, env, color } = options;
+  const locale = resolveCliLocaleFromEnv(env ?? {});
   const theme =
     env && color
       ? createThemeRenderer({
@@ -79,122 +71,44 @@ export function writeFinishLine({
           trueColor: resolveTrueColor(env),
         })
       : null;
-  const { compact, detailed: detailedText } = buildFinishLineVariants({
-    elapsedMs,
-    elapsedLabel,
-    label,
-    model,
-    report,
-    costUsd,
-    compactExtraParts: extraParts,
-    detailedExtraParts: extraParts,
-  });
-  const text = detailed ? detailedText : compact;
-  const locale = resolveCliLocaleFromEnv(env ?? {});
-
-  stderr.write("\n");
-  const protectedValues = model ? [formatModelLabelForDisplay(model)] : [];
-  const line = translateCliText(text.line, locale, protectedValues);
-  const details = text.details ? translateCliText(text.details, locale, protectedValues) : null;
-  stderr.write(`${theme ? theme.success(line) : line}\n`);
-  if (detailed && details) {
-    stderr.write(`${theme ? theme.dim(details) : details}\n`);
-  }
+  const text = buildFinishLineText({ ...options, locale });
+  stderr.write(`\n${theme ? theme.success(text.line) : text.line}\n`);
+  if (detailed && text.details) stderr.write(`${theme ? theme.dim(text.details) : text.details}\n`);
 }
 
-export function buildFinishLineText({
-  elapsedMs,
-  elapsedLabel,
-  label,
-  model,
-  report,
-  costUsd,
-  detailed,
-  extraParts,
-}: {
-  elapsedMs: number;
-  elapsedLabel?: string | null;
-  label?: string | null;
-  model: string | null;
-  report: {
-    llm: Array<{
-      promptTokens: number | null;
-      completionTokens: number | null;
-      totalTokens: number | null;
-      calls: number;
-    }>;
-    services: { firecrawl: { requests: number }; apify: { requests: number } };
-  };
-  costUsd: number | null;
-  detailed: boolean;
-  extraParts?: string[] | null;
-}): FinishLineText {
-  const modelData = buildFinishLineModel({
-    elapsedMs,
-    elapsedLabel,
-    label,
-    model,
-    report,
-    costUsd,
-    extraParts,
-  });
-  return formatFinishLineText(modelData, detailed);
+export function buildFinishLineText(
+  options: FinishLineOptions & { detailed: boolean },
+): FinishLineText {
+  return formatFinishLineText(buildFinishLineModel(options), options.detailed);
 }
 
 export function buildFinishLineVariants({
-  elapsedMs,
-  elapsedLabel,
-  label,
-  model,
-  report,
-  costUsd,
   compactExtraParts,
   detailedExtraParts,
-}: {
-  elapsedMs: number;
-  elapsedLabel?: string | null;
-  label?: string | null;
-  model: string | null;
-  report: {
-    llm: Array<{
-      promptTokens: number | null;
-      completionTokens: number | null;
-      totalTokens: number | null;
-      calls: number;
-    }>;
-    services: { firecrawl: { requests: number }; apify: { requests: number } };
-  };
-  costUsd: number | null;
-  compactExtraParts?: string[] | null;
-  detailedExtraParts?: string[] | null;
+  ...options
+}: Omit<FinishLineOptions, "extraParts"> & {
+  compactExtraParts?: FinishPart[] | null;
+  detailedExtraParts?: FinishPart[] | null;
 }): { compact: FinishLineText; detailed: FinishLineText } {
-  const compact = buildFinishLineText({
-    elapsedMs,
-    elapsedLabel,
-    label,
-    model,
-    report,
-    costUsd,
-    detailed: false,
-    extraParts: compactExtraParts ?? detailedExtraParts ?? null,
-  });
-  const detailed = buildFinishLineText({
-    elapsedMs,
-    elapsedLabel,
-    label,
-    model,
-    report,
-    costUsd,
-    detailed: true,
-    extraParts: detailedExtraParts ?? compactExtraParts ?? null,
-  });
-  return { compact, detailed };
+  return {
+    compact: buildFinishLineText({
+      ...options,
+      detailed: false,
+      extraParts: compactExtraParts ?? detailedExtraParts ?? null,
+    }),
+    detailed: buildFinishLineText({
+      ...options,
+      detailed: true,
+      extraParts: detailedExtraParts ?? compactExtraParts ?? null,
+    }),
+  };
 }
 
 export function formatFinishLineText(model: FinishLineModel, detailed: boolean): FinishLineText {
-  const line = model.lineParts.join(" · ");
-  if (!detailed || model.detailParts.length === 0) return { line, details: null };
-  return { line, details: model.detailParts.join(" | ") };
+  return {
+    line: model.lineParts.join(" · "),
+    details: detailed && model.detailParts.length ? model.detailParts.join(" | ") : null,
+  };
 }
 
 export function buildFinishLineModel({
@@ -205,112 +119,97 @@ export function buildFinishLineModel({
   report,
   costUsd,
   extraParts,
-}: {
-  elapsedMs: number;
-  elapsedLabel?: string | null;
-  label?: string | null;
-  model: string | null;
-  report: {
-    llm: Array<{
-      promptTokens: number | null;
-      completionTokens: number | null;
-      totalTokens: number | null;
-      calls: number;
-    }>;
-    services: { firecrawl: { requests: number }; apify: { requests: number } };
-  };
-  costUsd: number | null;
-  extraParts?: string[] | null;
-}): FinishLineModel {
-  const resolvedElapsedLabel =
-    typeof elapsedLabel === "string" && elapsedLabel.trim().length > 0
-      ? elapsedLabel
-      : formatElapsedMs(elapsedMs);
-  const promptTokens = sumNumbersOrNull(report.llm.map((row) => row.promptTokens));
-  const completionTokens = sumNumbersOrNull(report.llm.map((row) => row.completionTokens));
-  const totalTokens = sumNumbersOrNull(report.llm.map((row) => row.totalTokens));
-
-  const hasAnyTokens = promptTokens !== null || completionTokens !== null || totalTokens !== null;
-  const tokensPart = hasAnyTokens
-    ? `↑${promptTokens != null ? formatCompactCount(promptTokens) : "unknown"} ↓${
-        completionTokens != null ? formatCompactCount(completionTokens) : "unknown"
-      } Δ${totalTokens != null ? formatCompactCount(totalTokens) : "unknown"}`
+  locale = "en",
+}: FinishLineOptions): FinishLineModel {
+  const t = createCliTranslator(locale);
+  const compact = extraParts?.find(
+    (part): part is Extract<FinishPart, { kind: "compactTranscript" }> =>
+      typeof part !== "string" && part.kind === "compactTranscript",
+  );
+  const count = (value: number | null) =>
+    value === null ? t("finish.unknown") : formatCompactCount(value, locale);
+  const compactText = compact
+    ? t("finish.compactTranscript", {
+        duration: compact.approximate
+          ? formatMinutesSmart(compact.durationSeconds / 60, locale)
+          : formatDurationSecondsSmart(compact.durationSeconds, locale),
+        media: compact.media,
+        words: compact.words,
+        count: count(compact.words),
+      })
     : null;
-
-  const compactTranscript = extraParts
-    ? (extraParts.find((part) => part.startsWith("txc=")) ?? null)
-    : null;
-  const compactTranscriptLabel = compactTranscript?.startsWith("txc=")
-    ? compactTranscript.slice("txc=".length)
-    : null;
-
-  const stripWordPrefix = (input: string): string | null => {
-    // Examples:
-    // - "2.9k words" => null
-    // - "2.9k words via firecrawl" => "via firecrawl"
-    const match = input.trim().match(/^~?\d[\d.]*[kmb]?\s+words(?:\s+via\s+(.+))?$/i);
-    if (!match) return input;
-    const via = match[1]?.trim();
-    return via ? `via ${via}` : null;
-  };
-
-  const effectiveLabel = (() => {
-    if (!label) return null;
-    if (!compactTranscriptLabel?.toLowerCase().includes("words")) return label;
-
-    const txLower = compactTranscriptLabel.toLowerCase();
-    if (txLower.includes("podcast")) return null;
-    if (txLower.includes("youtube") && /youtube|youtu\.be/i.test(label)) return null;
-
-    const stripped = stripWordPrefix(label);
-    if (stripped === null) return null;
-    if (stripped !== label) return stripped;
-    // If we still have a "… words" label here, drop it to avoid duplicated word counts.
-    if (/\bwords\b/i.test(label)) return null;
-    return label;
-  })();
-  const filteredExtraParts =
-    compactTranscriptLabel && extraParts
-      ? extraParts.filter((part) => part !== compactTranscript)
-      : extraParts;
-  const summaryParts: Array<string | null> = [
-    resolvedElapsedLabel,
-    compactTranscriptLabel,
-    costUsd != null ? formatUSD(costUsd) : null,
-    effectiveLabel,
+  let sourceLabel: string | null = null;
+  if (typeof label === "string") {
+    sourceLabel =
+      compact?.media === "podcast" ||
+      (compact?.media === "YouTube" && label.toLowerCase() === "youtube")
+        ? null
+        : label;
+  } else if (label && "key" in label) {
+    sourceLabel = t(label.key, label.values);
+  } else if (label?.kind === "extract") {
+    sourceLabel = t("finish.extracted", {
+      format: label.format,
+      source: label.via ?? "",
+      hasSource: Boolean(label.via),
+    });
+  } else if (label?.kind === "summary") {
+    const hasWords = !compact && label.words > 0;
+    if (hasWords || label.sources.length)
+      sourceLabel = t("finish.summary", {
+        words: label.words,
+        count: count(label.words),
+        hasWords,
+        source: label.sources.join("+"),
+        hasSource: label.sources.length > 0,
+      });
+  }
+  const prompt = sumNumbersOrNull(report.llm.map((row) => row.promptTokens));
+  const completion = sumNumbersOrNull(report.llm.map((row) => row.completionTokens));
+  const total = sumNumbersOrNull(report.llm.map((row) => row.totalTokens));
+  const tokens =
+    prompt !== null || completion !== null || total !== null
+      ? `↑${count(prompt)} ↓${count(completion)} Δ${count(total)}`
+      : null;
+  const lineParts = [
+    typeof elapsedLabel === "object" && elapsedLabel
+      ? t(elapsedLabel.key, elapsedLabel.values)
+      : elapsedLabel?.trim()
+        ? elapsedLabel
+        : formatElapsedMs(elapsedMs, locale),
+    compactText,
+    costUsd !== null ? formatUSD(costUsd, locale) : null,
+    sourceLabel,
     model ? formatModelLabelForDisplay(model) : null,
-    tokensPart,
-  ];
-  const lineParts = summaryParts.filter((part): part is string => typeof part === "string");
-
-  const totalCalls = report.llm.reduce((sum, row) => sum + row.calls, 0);
-  const lenParts =
-    filteredExtraParts?.filter(
-      (part) => part.startsWith("input=") || part.startsWith("transcript="),
-    ) ?? [];
-  const miscParts =
-    filteredExtraParts?.filter(
-      (part) => !part.startsWith("input=") && !part.startsWith("transcript="),
-    ) ?? [];
-
-  const line2Segments: string[] = [];
-  if (lenParts.length > 0) {
-    line2Segments.push(`len ${lenParts.join(" ")}`);
+    tokens,
+  ].filter((part): part is string => part !== null);
+  const lengths: string[] = [];
+  const misc: string[] = [];
+  for (const part of extraParts ?? []) {
+    if (typeof part === "string") misc.push(part);
+    else if (part.kind === "length")
+      lengths.push(
+        t(part.key, {
+          ...part.values,
+          duration:
+            typeof part.values.durationSeconds === "number"
+              ? part.values.approximate
+                ? formatMinutesSmart(part.values.durationSeconds / 60, locale)
+                : formatDurationSecondsSmart(part.values.durationSeconds, locale)
+              : "",
+        }),
+      );
+    else if (part.kind === "detail") misc.push(t(part.key, part.values));
   }
-  if (totalCalls > 1) line2Segments.push(`calls=${formatCompactCount(totalCalls)}`);
-  if (report.services.firecrawl.requests > 0 || report.services.apify.requests > 0) {
-    const svcParts: string[] = [];
-    if (report.services.firecrawl.requests > 0) {
-      svcParts.push(`firecrawl=${formatCompactCount(report.services.firecrawl.requests)}`);
-    }
-    if (report.services.apify.requests > 0) {
-      svcParts.push(`apify=${formatCompactCount(report.services.apify.requests)}`);
-    }
-    line2Segments.push(`svc ${svcParts.join(" ")}`);
-  }
-  if (miscParts.length > 0) {
-    line2Segments.push(...miscParts);
-  }
-
-  return { lineParts, detailParts: line2Segments };
+  const detailParts: string[] = [];
+  if (lengths.length) detailParts.push(t("finish.lengths", { lengths: lengths.join(" ") }));
+  const calls = report.llm.reduce((sum, row) => sum + row.calls, 0);
+  if (calls > 1) detailParts.push(t("finish.calls", { count: count(calls) }));
+  const services: string[] = [];
+  if (report.services.firecrawl.requests > 0)
+    services.push(`firecrawl=${count(report.services.firecrawl.requests)}`);
+  if (report.services.apify.requests > 0)
+    services.push(`apify=${count(report.services.apify.requests)}`);
+  if (services.length) detailParts.push(t("finish.services", { services: services.join(" ") }));
+  return { lineParts, detailParts: [...detailParts, ...misc] };
 }

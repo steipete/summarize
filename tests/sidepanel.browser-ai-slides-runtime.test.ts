@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBrowserAiSlidesRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/browser-ai-slides-runtime";
 import { createInitialPanelState } from "../apps/chrome-extension/src/entrypoints/sidepanel/panel-state-store";
 import type { PanelState, UiState } from "../apps/chrome-extension/src/entrypoints/sidepanel/types";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 import { defaultSettings } from "../apps/chrome-extension/src/lib/settings";
 
 function buildUiState(overrides: Partial<UiState["settings"]> = {}): UiState {
@@ -108,7 +109,7 @@ describe("sidepanel browser AI slides runtime", () => {
     expect(prompt).toHaveBeenCalledWith(
       expect.objectContaining({
         requestKey: "slides",
-        status: "Summarizing slides 1–2 with on-device AI…",
+        status: message("progress.browser.slideRange", { first: 1, last: 2 }),
       }),
     );
     const promptInput = prompt.mock.calls[0]?.[0]?.input;

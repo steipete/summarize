@@ -28,7 +28,10 @@ const installSqliteWarningFilter = () => {
       typeof args[0] === "string" ? args[0] : (args[0] as { type?: unknown } | undefined)?.type;
     const name = (warning as { name?: unknown } | undefined)?.name;
     const normalizedType = typeof type === "string" ? type : typeof name === "string" ? name : "";
-    if (normalizedType === "ExperimentalWarning" && message.toLowerCase().includes("sqlite")) {
+    if (
+      normalizedType === /* i18n-ignore: Node warning type identifier. */ "ExperimentalWarning" &&
+      message.toLowerCase().includes("sqlite")
+    ) {
       return;
     }
     return original(warning as never, ...(args as [never]));

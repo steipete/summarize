@@ -4,11 +4,13 @@ import { resolveEnvState } from "../application/environment-state.js";
 import { resolveCliAvailability } from "../application/environment.js";
 import type { CliProvider, SummarizeConfig } from "../config.js";
 import type { GatewayProvider } from "../llm/provider-capabilities.js";
+import { createCliTranslator, type CliMessage } from "../locale.js";
 import { discoverOpenAiCompatibleModels } from "./model-discovery.js";
 
 export type ModelPickerOption = {
   id: string;
   label: string;
+  labelMessage?: CliMessage;
 };
 
 type ModelPickerProviders = {
@@ -32,36 +34,44 @@ type ModelPickerProviders = {
   cliPi: boolean;
 };
 
+function modelOption(
+  id: string,
+  key: CliMessage["key"],
+  values: CliMessage["values"] = {},
+): ModelPickerOption {
+  return { id, label: createCliTranslator("en")(key, values), labelMessage: { key, values } };
+}
+
 const CLI_PICKER_OPTIONS = [
-  { provider: "claude", status: "cliClaude", id: "cli/claude", label: "CLI: Claude" },
-  { provider: "gemini", status: "cliGemini", id: "cli/gemini", label: "CLI: Gemini" },
-  { provider: "codex", status: "cliCodex", id: "cli/codex", label: "CLI: Codex" },
-  { provider: "agent", status: "cliAgent", id: "cli/agent", label: "CLI: Cursor Agent" },
+  { provider: "claude", status: "cliClaude", id: "cli/claude", name: "Claude" },
+  { provider: "gemini", status: "cliGemini", id: "cli/gemini", name: "Gemini" },
+  { provider: "codex", status: "cliCodex", id: "cli/codex", name: "Codex" },
+  { provider: "agent", status: "cliAgent", id: "cli/agent", name: "Cursor Agent" },
   {
     provider: "openclaw",
     status: "cliOpenclaw",
     id: "cli/openclaw",
-    label: "CLI: OpenClaw",
+    name: "OpenClaw",
   },
   {
     provider: "opencode",
     status: "cliOpencode",
     id: "cli/opencode",
-    label: "CLI: OpenCode",
+    name: "OpenCode",
   },
   {
     provider: "copilot",
     status: "cliCopilot",
     id: "cli/copilot",
-    label: "CLI: GitHub Copilot",
+    name: "GitHub Copilot",
   },
-  { provider: "agy", status: "cliAgy", id: "cli/agy", label: "CLI: Antigravity (agy)" },
-  { provider: "pi", status: "cliPi", id: "cli/pi", label: "CLI: pi" },
+  { provider: "agy", status: "cliAgy", id: "cli/agy", name: "Antigravity (agy)" },
+  { provider: "pi", status: "cliPi", id: "cli/pi", name: "pi" },
 ] as const satisfies ReadonlyArray<{
   provider: CliProvider;
   status: keyof ModelPickerProviders;
   id: string;
-  label: string;
+  name: string;
 }>;
 
 const CATALOG_PICKER_PROVIDERS = [
@@ -134,6 +144,7 @@ async function appendDiscoveredOpenAiCompatibleModels({
   options,
   provider,
   label,
+  local = false,
   baseUrl,
   apiKey,
   fetchImpl,
@@ -142,6 +153,7 @@ async function appendDiscoveredOpenAiCompatibleModels({
   options: ModelPickerOption[];
   provider: Extract<GatewayProvider, "openai" | "nvidia" | "minimax" | "ollama">;
   label: string;
+  local?: boolean;
   baseUrl: string;
   apiKey: string | null;
   fetchImpl: typeof fetch;
@@ -155,10 +167,14 @@ async function appendDiscoveredOpenAiCompatibleModels({
   });
   if (!result) return null;
   for (const id of result.modelIds) {
-    options.push({
-      id: `${provider}/${id}`,
-      label: `${label} (${result.baseUrlHost}): ${id}`,
-    });
+    options.push(
+      modelOption(`${provider}/${id}`, "model.discovered", {
+        local,
+        provider: label,
+        host: result.baseUrlHost,
+        model: id,
+      }),
+    );
   }
   return { baseUrlHost: result.baseUrlHost, count: result.modelIds.length };
 }
@@ -205,23 +221,23 @@ export async function buildModelPickerOptions({
   const cliAvailability = resolveCliAvailability({ env: envForRun, config: configForCli });
 
   const options: ModelPickerOption[] = [
-    { id: "auto", label: "Auto" },
-    { id: "fast", label: "OpenAI GPT-5.5 Fast" },
-    { id: "codex-fast", label: "GPT Fast (Codex)" },
+    modelOption("auto", "model.auto"),
+    modelOption("fast", "model.fast"),
+    modelOption("codex-fast", "model.codexFast"),
   ];
 
   for (const entry of CLI_PICKER_OPTIONS) {
     const available = Boolean(cliAvailability[entry.provider]);
     providers[entry.status] = available;
     if (available) {
-      options.push({ id: entry.id, label: entry.label });
+      options.push(modelOption(entry.id, "model.cli", { name: entry.name }));
     }
   }
 
   for (const entry of CATALOG_PICKER_PROVIDERS) {
     if (!providers[entry.status]) continue;
     if (entry.provider === "openrouter") {
-      options.push({ id: "free", label: "Free (OpenRouter)" });
+      options.push(modelOption("free", "model.free"));
     }
     pushPiAiModels({
       options,
@@ -289,7 +305,8 @@ export async function buildModelPickerOptions({
     const result = await appendDiscoveredOpenAiCompatibleModels({
       options,
       provider: "openai",
-      label: "Local",
+      label: "",
+      local: true,
       baseUrl: openaiBaseUrl,
       apiKey: envState.apiKey,
       fetchImpl,

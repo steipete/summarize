@@ -1,7 +1,10 @@
+import type { MessageDescriptor } from "@steipete/summarize-core/localization";
+
 export type DaemonUiState = {
   ok: boolean;
   authed: boolean;
   error?: string;
+  localized?: MessageDescriptor;
 };
 
 type DaemonStatusTrackerOptions = {
@@ -16,8 +19,11 @@ type ResolveOptions = {
 const DEFAULT_TRANSIENT_GRACE_MS = 90_000;
 
 export function isTransientDaemonState(state: DaemonUiState): boolean {
+  if (state.localized?.key === "error.daemonTimeout" || state.localized?.key === "error.fetch")
+    return true;
   const message = state.error?.trim().toLowerCase() ?? "";
   if (!message) return false;
+  // i18n-ignore: Transport health diagnostics, independent of rendered UI language.
   return message === "timed out" || message.includes("failed to fetch");
 }
 

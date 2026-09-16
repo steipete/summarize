@@ -1,12 +1,14 @@
 import type { JSX } from "preact";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { resolveText, type LocalizedText } from "../lib/i18n";
+import { useLocale } from "./localized-text";
 
 const OPEN_EVENT = "summarize:select-open";
 const VIEWPORT_GUTTER = 8;
 const POPOVER_GUTTER = 6;
 
 export type SelectItem = {
-  label: string;
+  label: LocalizedText;
   value: string;
   disabled?: boolean;
 };
@@ -19,6 +21,7 @@ type UseSelectArgs = {
 };
 
 export function useSelect({ id, items, value, onValueChange }: UseSelectArgs) {
+  const locale = useLocale();
   const [open, setOpenState] = useState(false);
   const [selectedValue, setSelectedValue] = useState(value);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -30,8 +33,8 @@ export function useSelect({ id, items, value, onValueChange }: UseSelectArgs) {
 
   const selectedIndex = items.findIndex((item) => item.value === selectedValue);
   const valueAsString = useMemo(
-    () => items.find((item) => item.value === selectedValue)?.label ?? "",
-    [items, selectedValue],
+    () => resolveText(items.find((item) => item.value === selectedValue)?.label ?? ""),
+    [items, selectedValue, locale],
   );
 
   useEffect(() => {
@@ -115,21 +118,24 @@ export function useSelect({ id, items, value, onValueChange }: UseSelectArgs) {
       const previous = typeaheadRef.current;
       const query =
         now - previous.updatedAt > 500
-          ? key.toLowerCase()
-          : `${previous.query}${key.toLowerCase()}`;
+          ? key.toLocaleLowerCase(locale)
+          : `${previous.query}${key.toLocaleLowerCase(locale)}`;
       typeaheadRef.current = { query, updatedAt: now };
       const start = highlightedIndex >= 0 ? highlightedIndex + 1 : 0;
       for (let offset = 0; offset < items.length; offset += 1) {
         const index = (start + offset) % items.length;
         const item = items[index];
-        if (!item?.disabled && item.label.toLowerCase().startsWith(query)) {
+        if (
+          !item?.disabled &&
+          resolveText(item.label).toLocaleLowerCase(locale).startsWith(query)
+        ) {
           if (!open) setOpen(true);
           focusItem(index);
           return;
         }
       }
     },
-    [focusItem, highlightedIndex, items, open, setOpen],
+    [focusItem, highlightedIndex, items, open, setOpen, locale],
   );
 
   useEffect(() => {

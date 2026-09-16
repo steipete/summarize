@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { CommanderError } from "commander";
+import { cliErrorText, createCliTranslator, resolveCliLocaleFromArgs } from "./locale.js";
 import { terminateTrackedProcesses } from "./processes.js";
 import { runCli } from "./run.js";
 import { isRichTty } from "./run/terminal.js";
@@ -152,8 +153,10 @@ export async function runCliMain({
     argv.includes("--debug") ||
     argv.includes("--debug=true");
 
+  let locale = resolveCliLocaleFromArgs(argv, env);
   try {
     const mergedEnv = env === process.env ? { ...(await loadDotenvFromCwd()), ...env } : env;
+    locale = resolveCliLocaleFromArgs(argv, mergedEnv);
     await runCli(argv, { env: mergedEnv, fetch, stdout, stderr });
   } catch (error: unknown) {
     if (error instanceof CommanderError) {
@@ -173,14 +176,13 @@ export async function runCliMain({
       stderr.write(`${error.stack}\n`);
       const cause = (error as Error & { cause?: unknown }).cause;
       if (cause instanceof Error && typeof cause.stack === "string") {
-        stderr.write(`Caused by: ${cause.stack}\n`);
+        stderr.write(`${createCliTranslator(locale)("error.cause", { stack: cause.stack })}\n`);
       }
       setExitCode(1);
       return;
     }
 
-    const message =
-      error instanceof Error ? error.message : error ? String(error) : "Unknown error";
+    const message = cliErrorText(error, locale);
     // Opaque errors can match UI catalog keys; preserve the original diagnostic.
     stderr.write(`${stripAnsi(message)}\n`);
     setExitCode(typeof exitCode === "number" ? exitCode : 1);

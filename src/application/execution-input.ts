@@ -1,6 +1,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { isDirectVideoInput } from "@steipete/summarize-core/content/url";
+import { CliError } from "../locale.js";
 import { MAX_PDF_EXTRACT_BYTES } from "../run/constants.js";
 import {
   acquireLocalAssetInput,
@@ -57,10 +58,10 @@ export async function prepareExecutionInput({
     let input: Exclude<SummarizeInput, { kind: "stdin" }>;
     if (request.input.kind === "stdin") {
       if (request.extractOnly) {
-        throw new Error("--extract is not supported for piped stdin input");
+        throw new CliError("error.extractStdin");
       }
       if (!runtime.stdin) {
-        throw new Error("Stdin execution requires a readable input stream");
+        throw new CliError("error.stdinStreamMissing");
       }
       const temp = await createTempFileFromStdin({ stream: runtime.stdin });
       cleanup = temp.cleanup;
@@ -75,9 +76,7 @@ export async function prepareExecutionInput({
       !isTranscribableAssetPath(input.filePath) &&
       !isPdfAssetPath(input.filePath)
     ) {
-      throw new Error(
-        "--extract for local files is only supported for media files (MP3, MP4, WAV, etc.) and PDF files",
-      );
+      throw new CliError("error.extractLocalFiles");
     }
     if (request.slides && isDirectVideoInput(input.filePath)) {
       return {

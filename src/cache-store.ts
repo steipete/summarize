@@ -91,7 +91,7 @@ export async function createCacheStore({
     "SELECT COALESCE(SUM(size_bytes), 0) AS total FROM cache_entries",
   );
   const stmtOldest = db.prepare(
-    "SELECT kind, key, value, size_bytes, created_at FROM cache_entries ORDER BY last_accessed_at ASC LIMIT ?",
+    /* i18n-ignore: SQL query, not interface copy. */ "SELECT kind, key, value, size_bytes, created_at FROM cache_entries ORDER BY last_accessed_at ASC LIMIT ?",
   );
   const stmtSlides = db.prepare("SELECT kind, key, value FROM cache_entries WHERE kind = 'slides'");
   const stmtClear = db.prepare("DELETE FROM cache_entries");

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildSummaryEmptyState } from "../apps/chrome-extension/src/entrypoints/sidepanel/summary-empty-state.js";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 
 describe("sidepanel summary empty state", () => {
   it("shows a ready state for manual summarize", () => {
@@ -12,8 +13,8 @@ describe("sidepanel summary empty state", () => {
         hasSlides: false,
       }),
     ).toEqual({
-      label: "Ready",
-      message: "Click Summarize to start.",
+      label: message("ready"),
+      message: message("click.summarize.to.start"),
       detail: "Example Video",
     });
   });
@@ -28,8 +29,8 @@ describe("sidepanel summary empty state", () => {
         hasSlides: false,
       }),
     ).toEqual({
-      label: "Loading",
-      message: "Preparing summary",
+      label: message("loading.alternate"),
+      message: message("preparing.summary"),
       detail: "Example Video",
     });
   });
@@ -44,8 +45,8 @@ describe("sidepanel summary empty state", () => {
         hasSlides: false,
       }),
     ).toEqual({
-      label: "No page",
-      message: "Open a page to summarize.",
+      label: message("no.page"),
+      message: message("open.a.page.to.summarize"),
       detail: null,
     });
   });

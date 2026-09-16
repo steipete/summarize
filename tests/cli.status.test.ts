@@ -13,6 +13,26 @@ function makeExecutable(dir: string, name: string): string {
 }
 
 describe("summarize status", () => {
+  it.each([false, true])(
+    "preserves the compatible-provider host without URL secrets (verbose=%s)",
+    async (verbose) => {
+      const stdout = collectStream();
+      await runCli(["status", ...(verbose ? ["--verbose"] : [])], {
+        env: {
+          HOME: mkdtempSync(join(tmpdir(), "summarize-status-host-")),
+          PATH: "",
+          OPENAI_BASE_URL:
+            "https://fixture-user:fixture-password@models.example.test:4443/private-path?key=fixture-secret",
+        },
+        fetch: vi.fn() as unknown as typeof fetch,
+        stdout: stdout.stream,
+        stderr: collectStream().stream,
+      });
+      expect(stdout.getText()).toContain("OpenAI-compatible API (models.example.test:4443)");
+      for (const secret of ["fixture-user", "fixture-password", "private-path", "fixture-secret"])
+        expect(stdout.getText()).not.toContain(secret);
+    },
+  );
   it("shows the effective model without missing-provider noise", async () => {
     const home = mkdtempSync(join(tmpdir(), "summarize-status-empty-"));
     const stdout = collectStream();

@@ -54,6 +54,7 @@ export type PrimaryMediaInfo =
   | { ok: false; error: string };
 
 function contentAccessError(message: string) {
+  // i18n-ignore: Chrome content-access diagnostics, not rendered UI text.
   return (
     message.toLowerCase().includes("cannot access") || message.toLowerCase().includes("denied")
   );
@@ -84,6 +85,7 @@ async function injectExtractScript(
 }
 
 function hasNoContentReceiver(message: string): boolean {
+  // i18n-ignore: Chrome extension messaging diagnostics, not rendered UI text.
   return (
     message.includes("Receiving end does not exist") ||
     message.includes("Could not establish connection")
@@ -109,7 +111,12 @@ async function retryContentMessage<Result extends { ok: true } | { ok: false; er
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const didTimeout = Boolean(extraction && message.includes("extract timed out"));
+      const didTimeout = Boolean(
+        extraction &&
+        message.includes(
+          /* i18n-ignore: Internal extraction timeout diagnostic. */ "extract timed out",
+        ),
+      );
       if (hasNoContentReceiver(message) || didTimeout) {
         const injected = await injectExtractScript(tabId, extraction);
         if (!injected.ok) return injected;

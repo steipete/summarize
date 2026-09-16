@@ -1,68 +1,76 @@
 import { type LinkPreviewProgressEvent, ProgressKind } from "@steipete/summarize-core/content";
+import { createCliTranslator, type CliMessage } from "../locale.js";
 
-function clampPercent(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.min(100, Math.max(0, Math.round(value)));
+function ratio(numerator: number | null, denominator: number | null): number | null {
+  if (
+    typeof numerator !== "number" ||
+    typeof denominator !== "number" ||
+    !Number.isFinite(numerator) ||
+    !Number.isFinite(denominator) ||
+    denominator <= 0
+  )
+    return null;
+  return Math.min(100, Math.max(0, Math.round((numerator / denominator) * 100))) / 100;
 }
 
-function formatPercentFromRatio(
-  numerator: number | null,
-  denominator: number | null,
-): string | null {
-  if (typeof numerator !== "number" || typeof denominator !== "number") return null;
-  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) return null;
-  return `${clampPercent((numerator / denominator) * 100)}%`;
-}
-
-export function formatProgress(event: LinkPreviewProgressEvent): string | null {
+export function describeProgress(event: LinkPreviewProgressEvent): CliMessage | null {
+  const message = (key: CliMessage["key"], values: CliMessage["values"] = {}): CliMessage => ({
+    key,
+    values,
+  });
+  const media = (service: string, step: string, percent: number | null = null) =>
+    message("progress.mediaStage", {
+      service,
+      step,
+      hasPercent: percent !== null,
+      percent: percent ?? 0,
+    });
   switch (event.kind) {
     case ProgressKind.FetchHtmlStart:
-      return "Fetching…";
+      return message("progress.fetchingPage");
     case ProgressKind.FirecrawlStart:
-      return `Firecrawl… (${event.reason})`;
+      return message("progress.firecrawlStart", { reason: event.reason });
     case ProgressKind.FirecrawlDone:
-      return event.ok ? "Firecrawl: done" : "Firecrawl: failed";
+      return message("progress.firecrawlDone", { ok: event.ok });
     case ProgressKind.TranscriptStart:
-      return event.hint?.trim() ? event.hint.trim() : "Transcript…";
+      if (event.stage)
+        return message("progress.transcriptHint", { stage: event.stage, service: event.service });
+      return event.hint?.trim() ? null : message("progress.transcript");
     case ProgressKind.TranscriptMediaDownloadStart:
-      return `${event.service}: downloading audio…`;
+      return media(event.service, "download");
     case ProgressKind.TranscriptMediaDownloadProgress:
-      return `${event.service}: downloading audio…${(() => {
-        const percent = formatPercentFromRatio(event.downloadedBytes, event.totalBytes);
-        return percent ? ` ${percent}` : "";
-      })()}`;
+      return media(event.service, "download", ratio(event.downloadedBytes, event.totalBytes));
     case ProgressKind.TranscriptWhisperStart:
-      return `${event.service}: transcribing…`;
+      return media(event.service, "transcribe");
     case ProgressKind.TranscriptWhisperProgress:
-      return `${event.service}: transcribing…${(() => {
-        const percentFromDuration = formatPercentFromRatio(
-          event.processedDurationSeconds,
-          event.totalDurationSeconds,
-        );
-        if (percentFromDuration) return ` ${percentFromDuration}`;
-        const percentFromParts = formatPercentFromRatio(
-          event.partIndex,
-          event.parts ? Math.max(1, event.parts) : null,
-        );
-        return percentFromParts ? ` ${percentFromParts}` : "";
-      })()}`;
+      return media(
+        event.service,
+        "transcribe",
+        ratio(event.processedDurationSeconds, event.totalDurationSeconds) ??
+          ratio(event.partIndex, event.parts ? Math.max(1, event.parts) : null),
+      );
     case ProgressKind.TranscriptDone:
-      return event.ok
-        ? `${event.service}: transcript ready`
-        : `${event.service}: transcript unavailable`;
+      return media(event.service, event.ok ? "ready" : "unavailable");
     case ProgressKind.BirdStart:
-      return event.client ? `X: extracting tweet (${event.client})…` : "X: extracting tweet…";
-    case ProgressKind.BirdDone:
-      return event.ok ? "X: extracted tweet" : "X: extract failed";
+      return message("progress.tweetExtract", {
+        method: event.client ? "client" : "none",
+        client: event.client ?? "",
+      });
     case ProgressKind.NitterStart:
-      return "X: extracting tweet (nitter)…";
-    case ProgressKind.NitterDone:
-      return event.ok ? "X: extracted tweet" : "X: extract failed";
+      return message("progress.tweetExtract", { method: "nitter", client: "" });
     case ProgressKind.TwitterSyndicationStart:
-      return "X: extracting tweet (syndication API)…";
+      return message("progress.tweetExtract", { method: "syndication", client: "" });
+    case ProgressKind.BirdDone:
+    case ProgressKind.NitterDone:
     case ProgressKind.TwitterSyndicationDone:
-      return event.ok ? "X: extracted tweet" : "X: extract failed";
+      return message("progress.tweetResult", { ok: event.ok });
     default:
       return null;
   }
+}
+
+export function formatProgress(event: LinkPreviewProgressEvent): string | null {
+  const message = describeProgress(event);
+  if (message) return createCliTranslator("en")(message.key, message.values);
+  return event.kind === ProgressKind.TranscriptStart ? event.hint?.trim() || null : null;
 }

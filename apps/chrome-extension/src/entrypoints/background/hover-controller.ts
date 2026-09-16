@@ -1,3 +1,4 @@
+import type { MessageDescriptor } from "@steipete/summarize-core/localization";
 import { parseSseStream } from "@steipete/summarize-core/runtime";
 import { fetchBrowserUrlContent, isPublicBrowserUrl } from "../../lib/browser-url-content";
 import { daemonFetch } from "../../lib/daemon-fetch";
@@ -22,7 +23,15 @@ export type HoverToBg =
 type BgToHover =
   | { type: "hover:chunk"; requestId: string; url: string; text: string }
   | { type: "hover:done"; requestId: string; url: string }
-  | { type: "hover:error"; requestId: string; url: string; message: string };
+  | {
+      type: "hover:error";
+      requestId: string;
+      url: string;
+      message: string;
+      localized?: MessageDescriptor;
+    };
+
+type HoverStartResult = { ok: boolean; error?: string; localized?: MessageDescriptor };
 
 function safeSendResponse(sendResponse: (response?: unknown) => void, value: unknown) {
   try {
@@ -76,11 +85,11 @@ export function createHoverController({
   const runHoverSummarize = async (
     tabId: number,
     msg: HoverToBg & { type: "hover:summarize" },
-    opts?: { onStart?: (result: { ok: boolean; error?: string }) => void },
+    opts?: { onStart?: (result: HoverStartResult) => void },
   ) => {
     abortHoverForTab(tabId);
     let didNotifyStart = false;
-    const notifyStart = (result: { ok: boolean; error?: string }) => {
+    const notifyStart = (result: HoverStartResult) => {
       if (didNotifyStart) return;
       didNotifyStart = true;
       opts?.onStart?.(result);
@@ -152,6 +161,7 @@ export function createHoverController({
         });
         if (!isStillActive()) return;
         notifyStart({ ok: true });
+        // i18n-ignore: Model context, independent of interface language.
         const prompt = `${settings.hoverPrompt}
 
 Source URL: ${content.url}
@@ -246,13 +256,12 @@ ${content.text}
       await sendHover(tabId, { type: "hover:done", requestId: msg.requestId, url: msg.url });
     } catch (err) {
       if (!isStillActive()) return;
-      const errorContext =
-        capabilityExecution === "direct"
-          ? "Direct hover summary failed"
-          : "Daemon hover summary failed";
+      const errorContext = capabilityExecution === "direct" ? "directHover" : "daemonHover";
+      const failure = friendlyFetchError(err, errorContext);
       notifyStart({
         ok: false,
-        error: friendlyFetchError(err, errorContext),
+        error: failure.message,
+        localized: failure.localized,
       });
       logHover("error", {
         tabId,
@@ -264,7 +273,8 @@ ${content.text}
         type: "hover:error",
         requestId: msg.requestId,
         url: msg.url,
-        message: friendlyFetchError(err, errorContext),
+        message: failure.message,
+        localized: failure.localized,
       });
     } finally {
       notifyStart({ ok: false, error: "Hover summarize aborted" });

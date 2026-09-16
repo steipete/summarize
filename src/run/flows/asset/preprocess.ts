@@ -2,6 +2,7 @@ import type { SummaryLength } from "@steipete/summarize-core";
 import type { OutputLanguage } from "../../../language.js";
 import type { Attachment } from "../../../llm/attachments.js";
 import { resolveOpenAiClientConfig } from "../../../llm/providers/openai.js";
+import { CliError } from "../../../locale.js";
 import type { FixedModelSpec } from "../../../model-spec.js";
 import { buildFileSummaryPrompt, buildFileTextSummaryPrompt } from "../../../prompts/index.js";
 import { formatBytes } from "../../../tty/format.js";
@@ -65,7 +66,7 @@ export function resolveDocumentHandling({
   if (!fileBytes) {
     return {
       mode: "error",
-      error: new Error("Internal error: missing file bytes for binary attachment"),
+      error: new CliError("error.binaryMissingBytes"),
     };
   }
 
@@ -110,9 +111,10 @@ export function resolveDocumentHandling({
     if (preprocessMode === "off") {
       return {
         mode: "error",
-        error: new Error(
-          `PDF is too large to attach (${formatBytes(fileBytes.byteLength)}). Max is ${formatBytes(MAX_DOCUMENT_BYTES_DEFAULT)}. Enable preprocessing or use a smaller file.`,
-        ),
+        error: new CliError("error.pdfTooLarge", {
+          value: String(formatBytes(fileBytes.byteLength)),
+          value2: String(formatBytes(MAX_DOCUMENT_BYTES_DEFAULT)),
+        }),
       };
     }
     return { mode: "preprocess" };
@@ -121,9 +123,7 @@ export function resolveDocumentHandling({
   if (preprocessMode === "off") {
     return {
       mode: "error",
-      error: new Error(
-        `This build does not support attaching binary files (${attachment.mediaType}). Enable preprocessing (e.g. --preprocess auto) and install uvx/markitdown.`,
-      ),
+      error: new CliError("error.attachBinary", { mediaType: String(attachment.mediaType) }),
     };
   }
 
@@ -164,7 +164,7 @@ export async function prepareAssetPrompt({
 
   if (attachment.kind === "image" || documentHandling.mode === "attach") {
     const bytes = attachment.kind === "image" ? attachment.bytes : fileBytes;
-    if (!bytes) throw new Error("Internal error: missing file bytes for document attachment");
+    if (!bytes) throw new CliError("error.documentMissingBytes");
     return {
       promptText: buildFileSummaryPrompt({
         ...promptOptions,
@@ -189,20 +189,19 @@ export async function prepareAssetPrompt({
     : null;
   const assetFooterParts: string[] = [];
   if (documentHandling.mode === "preprocess") {
-    if (!fileBytes)
-      throw new Error("Internal error: missing file bytes for markitdown preprocessing");
+    if (!fileBytes) throw new CliError("error.preprocessMissingBytes");
     if (!shouldMarkitdownConvertMediaType(attachment.mediaType)) {
-      throw new Error(
-        `Unsupported file type: ${attachment.filename ?? "file"} (${attachment.mediaType})\n` +
-          "This build can only send text or images to the model. Try a text-like file, an image, or convert this file to text first.",
-      );
+      throw new CliError("error.attachUnsupported", {
+        value: String(attachment.filename ?? "file"),
+        mediaType: String(attachment.mediaType),
+      });
     }
     const { markdown, usedOcr } = await convertAssetToMarkdown(ctx, attachment, fileBytes);
-    if (!markdown) throw new Error("Internal error: missing markitdown content for preprocessing");
+    if (!markdown) throw new CliError("error.preprocessMissingContent");
     inline = { content: markdown, mediaType: "text/markdown" };
     assetFooterParts.push(`markitdown${usedOcr ? "+ocr" : ""}(${attachment.mediaType})`);
   }
-  if (!inline) throw new Error("Internal error: no prompt text could be built for asset");
+  if (!inline) throw new CliError("error.assetPromptMissing");
   return {
     promptText: buildFileTextSummaryPrompt({
       ...promptOptions,

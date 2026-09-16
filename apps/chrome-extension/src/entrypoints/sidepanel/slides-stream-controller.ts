@@ -1,6 +1,14 @@
 import { parseSseStream } from "@steipete/summarize-core/runtime";
 import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
+import {
+  message as uiMessage,
+  resolveText,
+  readLocalizedMessage,
+  type LocalizedMessage,
+  type LocalizedDescriptor,
+  LocalizedError,
+} from "../../lib/i18n";
 import { parseSseEvent, type SseSlidesData } from "../../lib/runtime-contracts";
 import { nextSseMessage } from "../../lib/sse-reader";
 
@@ -13,12 +21,12 @@ export type SlidesStreamController = {
 export type SlidesStreamControllerOptions = {
   getToken: () => Promise<string>;
   onSlides: (slides: SseSlidesData) => void;
-  onStatus?: ((text: string) => void) | null;
+  onStatus?: ((text: string, message?: LocalizedMessage) => void) | null;
   onDone?: (() => void) | null;
-  onError?: ((error: unknown) => string) | null;
+  onError?: ((error: unknown) => string | LocalizedDescriptor) | null;
   fetchImpl?: typeof fetch;
   idleTimeoutMs?: number;
-  idleTimeoutMessage?: string;
+  idleTimeoutMessage?: string | LocalizedDescriptor;
 };
 
 export function createSlidesStreamController(
@@ -32,7 +40,7 @@ export function createSlidesStreamController(
     onError,
     fetchImpl,
     idleTimeoutMs = 300_000,
-    idleTimeoutMessage = "Timed out waiting for slide updates.",
+    idleTimeoutMessage = uiMessage("error.slidesTimeout"),
   } = options;
   let controller: AbortController | null = null;
   let streaming = false;
@@ -85,14 +93,14 @@ export function createSlidesStreamController(
         },
       );
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      if (!res.body) throw new Error("Missing stream body");
+      if (!res.body) throw new LocalizedError(uiMessage("error.streamBody"));
 
       const iterator = parseSseStream(res.body);
       while (true) {
         const { value: msg, done } = await nextSseMessage(
           iterator,
           idleTimeoutMs,
-          idleTimeoutMessage,
+          resolveText(idleTimeoutMessage),
         );
         if (done) break;
         if (generation !== activeGeneration) return;
@@ -102,8 +110,12 @@ export function createSlidesStreamController(
         if (event.event === "slides") {
           onSlides(event.data);
         } else if (event.event === "status") {
-          onStatus?.(event.data.text ?? "");
+          const localized = readLocalizedMessage(event.data.message);
+          if (localized) onStatus?.(event.data.text ?? "", localized);
+          else onStatus?.(event.data.text ?? "");
         } else if (event.event === "error") {
+          const localized = readLocalizedMessage(event.data.localized);
+          if (localized) throw new LocalizedError(localized);
           throw new Error(event.data.message);
         } else if (event.event === "done") {
           sawDone = true;
@@ -114,7 +126,7 @@ export function createSlidesStreamController(
       if (generation !== activeGeneration) return;
       if (nextController.signal.aborted) return;
       if (!sawDone) {
-        throw new Error("Stream ended unexpectedly. The daemon may have stopped.");
+        throw new LocalizedError(uiMessage("error.streamEnded"));
       }
     } catch (err) {
       if (err instanceof Error && err.name === "IdleTimeoutError") {
@@ -124,7 +136,11 @@ export function createSlidesStreamController(
         }
       }
       if (nextController.signal.aborted && abortState.reason !== "timeout") return;
-      onError?.(err);
+      const failure =
+        abortState.reason === "timeout" && typeof idleTimeoutMessage !== "string"
+          ? new LocalizedError(idleTimeoutMessage)
+          : err;
+      onError?.(failure);
     } finally {
       if (generation === activeGeneration && controller === nextController) {
         streaming = false;

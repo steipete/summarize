@@ -4,6 +4,7 @@ import path from "node:path";
 import mime from "mime";
 import type { loadLocalAsset } from "../content/asset.js";
 import type { LlmProvider } from "../llm/model-id.js";
+import { CliError } from "../locale.js";
 import { formatBytes } from "../tty/format.js";
 
 export type AssetAttachment = Awaited<ReturnType<typeof loadLocalAsset>>["attachment"];
@@ -16,7 +17,14 @@ export function isUnsupportedAttachmentError(error: unknown): boolean {
   const name = typeof err.name === "string" ? err.name : "";
   const message = typeof err.message === "string" ? err.message : "";
   if (name.toLowerCase().includes("unsupportedfunctionality")) return true;
-  if (message.toLowerCase().includes("functionality not supported")) return true;
+  if (
+    message
+      .toLowerCase()
+      .includes(
+        /* i18n-ignore: Provider diagnostic before UI formatting. */ "functionality not supported",
+      )
+  )
+    return true;
   return false;
 }
 
@@ -65,11 +73,7 @@ export function assertAssetMediaTypeSupported({
   const size = sizeLabel ?? (typeof bytes === "number" ? formatBytes(bytes) : null);
   const details = size ? `${attachment.mediaType}, ${size}` : attachment.mediaType;
 
-  throw new Error(
-    `Unsupported file type: ${name} (${details})\n` +
-      `Archive formats (zip/tar/7z/rar) can’t be sent to the model.\n` +
-      `Unzip and summarize a specific file instead (e.g. README.md).`,
-  );
+  throw new CliError("error.archiveUnsupported", { name: String(name), details: String(details) });
 }
 
 export function getTextContentFromAttachment(
@@ -105,7 +109,7 @@ export async function ensureCliAttachmentPath({
   if (sourceKind === "file") return sourceLabel;
   const bytes = getAttachmentBytes(attachment);
   if (!bytes) {
-    throw new Error("CLI attachment missing bytes");
+    throw new CliError("error.attachmentMissingBytes");
   }
   const ext =
     attachment.filename && path.extname(attachment.filename)

@@ -15,6 +15,8 @@ import { executeSummaryAttempts } from "../../../engine/summary-execution.js";
 import type { ModelAttempt } from "../../../engine/types.js";
 import { formatOutputLanguageForJson } from "../../../language.js";
 import type { Prompt } from "../../../llm/prompt.js";
+import { cliMessage } from "../../../locale.js";
+import { CliError, createCliTranslator, resolveCliLocaleFromEnv } from "../../../locale.js";
 import { SUMMARY_LENGTH_TARGET_CHARACTERS, SUMMARY_SYSTEM_PROMPT } from "../../../prompts/index.js";
 import { buildRunJsonEnv } from "../../../shared/run-api-status.js";
 import { countTokens } from "../../../tokenizer.js";
@@ -89,7 +91,7 @@ async function writeAssetMetrics(ctx: AssetSummaryContext, result: AssetSummaryR
     stderr: ctx.stderr,
     env: ctx.envForRun,
     elapsedMs: Date.now() - ctx.runStartedAtMs,
-    elapsedLabel: result.summaryFromCache ? "Cached" : null,
+    elapsedLabel: result.summaryFromCache ? cliMessage("finish.cached") : null,
     model: result.llm?.model ?? null,
     report,
     costUsd,
@@ -105,12 +107,16 @@ export async function presentAssetSummary(
   args: PresentAssetSummaryArgs,
   result: AssetSummaryResult,
 ) {
+  const t = createCliTranslator(resolveCliLocaleFromEnv(ctx.envForRun));
   if (result.outcome === "attempts-exhausted") {
     ctx.clearProgressForStdout();
     ctx.stdout.write(`${result.summary}\n`);
     ctx.restoreProgressAfterStdout?.();
     if (result.footerParts.length > 0) {
-      ctx.writeViaFooter([...result.footerParts, "no model"]);
+      ctx.writeViaFooter([
+        ...result.footerParts,
+        t("footer.outcome", { outcome: "none", model: "" }),
+      ]);
     }
     return;
   }
@@ -135,7 +141,7 @@ export async function presentAssetSummary(
         stderr: ctx.stderr,
         env: ctx.envForRun,
         elapsedMs: Date.now() - ctx.runStartedAtMs,
-        elapsedLabel: result.summaryFromCache ? "Cached" : null,
+        elapsedLabel: result.summaryFromCache ? cliMessage("finish.cached") : null,
         model: result.llm?.model ?? null,
         report: finishReport,
         costUsd,
@@ -171,12 +177,11 @@ export async function presentAssetSummary(
     ctx.restoreProgressAfterStdout?.();
   }
 
-  const footerLabel =
-    result.outcome === "model"
-      ? `model ${result.llm?.model ?? "unknown"}`
-      : result.outcome === "short-content"
-        ? "short content"
-        : "no model";
+  const footerLabel = t("footer.outcome", {
+    outcome:
+      result.outcome === "model" ? "model" : result.outcome === "short-content" ? "short" : "none",
+    model: result.llm?.model ?? "unknown",
+  });
   if (result.outcome === "model" || result.footerParts.length > 0) {
     ctx.writeViaFooter([...result.footerParts, footerLabel]);
   }
@@ -282,9 +287,7 @@ export async function executeAssetSummary(
   });
   const executableAttempts = filterUnsafeRemoteAssetCliAttempts({ attempts, args });
   if (attempts.length > 0 && executableAttempts.length === 0) {
-    throw new Error(
-      "Remote image and binary file summaries cannot use CLI providers that require broad local tools. Choose a native model or summarize a local file instead.",
-    );
+    throw new CliError("error.remoteCliAttachment");
   }
 
   const cliContext = await buildAssetCliContext({
@@ -346,8 +349,12 @@ export async function executeAssetSummary(
       }),
     onFixedModelError: (attempt, error) => {
       if (isUnsupportedAttachmentError(error)) {
-        throw new Error(
-          `Model ${attempt.userModelId} does not support attaching files of type ${args.attachment.mediaType}. Try a different --model.`,
+        throw new CliError(
+          "error.modelAttachment",
+          {
+            userModelId: String(attempt.userModelId),
+            mediaType: String(args.attachment.mediaType),
+          },
           { cause: error },
         );
       }
@@ -374,7 +381,7 @@ export async function executeAssetSummary(
       };
     }
     if (execution.failure.lastError instanceof Error) throw execution.failure.lastError;
-    throw new Error("No model available for this input");
+    throw new CliError("error.noModel");
   }
 
   const { summary, summaryEmitted, modelMeta, maxOutputTokensForCall } = execution.result;

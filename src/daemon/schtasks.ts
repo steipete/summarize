@@ -1,12 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execDaemonCommand } from "./command.js";
+import { CliError, createCliTranslator, resolveCliLocaleFromEnv } from "../locale.js";
+import { execDaemonCommand, serviceCommandError } from "./command.js";
 import { readDaemonConfig } from "./config.js";
 import { DAEMON_HOST, DAEMON_WINDOWS_TASK_NAME } from "./constants.js";
 
 function resolveHomeDir(env: Record<string, string | undefined>): string {
   const home = env.USERPROFILE?.trim() || env.HOME?.trim();
-  if (!home) throw new Error("Missing HOME");
+  if (!home) throw new CliError("error.missingHome");
   return home;
 }
 
@@ -27,7 +28,7 @@ function resolveTaskDefinitionPath(env: Record<string, string | undefined>): str
 
 function resolveCurrentUserPrincipal(env: Record<string, string | undefined>): string {
   const username = env.USERNAME?.trim();
-  if (!username) throw new Error("Missing USERNAME");
+  if (!username) throw new CliError("service.usernameMissing");
   const domain = env.USERDOMAIN?.trim() || env.COMPUTERNAME?.trim();
   return domain ? `${domain}\\${username}` : username;
 }
@@ -55,6 +56,7 @@ function buildScheduledTaskXml({
   // task silently no-ops every /Run with Last Result 0, which is what made the
   // daemon look like it was failing to start. Register via /XML so we can flip
   // those flags off and own every other relevant setting too.
+  // i18n-ignore: Windows Task Scheduler XML schema, not interface copy.
   return [
     '<?xml version="1.0" encoding="UTF-16"?>',
     '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">',
@@ -192,6 +194,7 @@ function buildTaskScript({
   programArguments: string[];
   workingDirectory?: string;
 }): string {
+  // i18n-ignore: Executable Windows batch directive.
   const lines: string[] = ["@echo off"];
   if (workingDirectory) {
     lines.push(`cd /d ${quoteCmdArg(workingDirectory)}`);
@@ -217,10 +220,12 @@ function buildLauncherVbs({
   // so it never allocates a console. Net effect: zero windows, zero conhost,
   // even on a logged-in interactive session.
   const command = programArguments.map(quoteCmdArg).join(" ");
+  // i18n-ignore: Executable VBScript launcher source.
   const lines = ['Set sh = CreateObject("WScript.Shell")'];
   if (workingDirectory) {
     lines.push(`sh.CurrentDirectory = ${quoteVbsString(workingDirectory)}`);
   }
+  // i18n-ignore: Executable VBScript launcher source.
   lines.push(`sh.Run ${quoteVbsString(command)}, 0, False`);
   lines.push("");
   return lines.join("\r\n");
@@ -230,6 +235,7 @@ const execSchtasks = (args: string[]) => execDaemonCommand("schtasks", args, { w
 const execTaskkill = (args: string[]) => execDaemonCommand("taskkill", args, { windowsHide: true });
 
 function isMissingProcessError(detail: string): boolean {
+  // i18n-ignore: Windows process-tool diagnostics, not interface text.
   return /not found|not running|no running instance|does not exist/i.test(detail);
 }
 
@@ -261,7 +267,7 @@ async function killRunningDaemon(env: Record<string, string | undefined>): Promi
   const res = await execTaskkill(["/PID", `${pid}`, "/T", "/F"]);
   const detail = (res.stderr || res.stdout).trim();
   if (res.code !== 0 && !isMissingProcessError(detail)) {
-    throw new Error(`taskkill failed: ${detail || "unknown error"}`.trim());
+    throw serviceCommandError("taskkill", detail);
   }
 }
 
@@ -269,7 +275,7 @@ async function assertSchtasksAvailable() {
   const res = await execSchtasks(["/Query"]);
   if (res.code === 0) return;
   const detail = res.stderr || res.stdout;
-  throw new Error(`schtasks unavailable: ${detail || "unknown error"}`.trim());
+  throw serviceCommandError("schtasks", detail, "unavailable");
 }
 
 async function removeLegacyPidArtifact(env: Record<string, string | undefined>): Promise<void> {
@@ -316,18 +322,22 @@ export async function installScheduledTask({
   ]);
   if (create.code !== 0) {
     const detail = (create.stderr || create.stdout).trim();
-    const hint = /access is denied/i.test(detail)
-      ? " (run `summarize daemon install` from an elevated PowerShell/cmd — schtasks /Create /XML requires Administrator)"
-      : "";
-    throw new Error(`schtasks create failed: ${detail}${hint}`);
+    const needsAdmin = /* i18n-ignore: schtasks permission diagnostic. */ /access is denied/i.test(
+      detail,
+    );
+    throw serviceCommandError("schtasks create", detail, "failed", needsAdmin);
   }
 
   const run = await execSchtasks(["/Run", "/TN", DAEMON_WINDOWS_TASK_NAME]);
   if (run.code !== 0) {
-    throw new Error(`schtasks run failed: ${run.stderr || run.stdout}`.trim());
+    throw serviceCommandError("schtasks run", run.stderr || run.stdout);
   }
-  stdout.write(`Installed Scheduled Task: ${DAEMON_WINDOWS_TASK_NAME}\n`);
-  stdout.write(`Task script: ${scriptPath}\n`);
+  stdout.write(
+    `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.taskInstalled", { name: DAEMON_WINDOWS_TASK_NAME })}\n`,
+  );
+  stdout.write(
+    `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.taskPath", { path: scriptPath })}\n`,
+  );
   return { scriptPath };
 }
 
@@ -346,9 +356,13 @@ export async function uninstallScheduledTask({
   const scriptPath = resolveTaskScriptPath(env);
   try {
     await fs.unlink(scriptPath);
-    stdout.write(`Removed task script: ${scriptPath}\n`);
+    stdout.write(
+      `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.taskRemoved", { path: scriptPath })}\n`,
+    );
   } catch {
-    stdout.write(`Task script not found at ${scriptPath}\n`);
+    stdout.write(
+      `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.taskMissing", { path: scriptPath })}\n`,
+    );
   }
   await fs.unlink(resolveTaskLauncherPath(env)).catch(() => {});
   await fs.unlink(resolveTaskDefinitionPath(env)).catch(() => {});
@@ -367,9 +381,11 @@ export async function restartScheduledTask({
   await execSchtasks(["/End", "/TN", DAEMON_WINDOWS_TASK_NAME]);
   const res = await execSchtasks(["/Run", "/TN", DAEMON_WINDOWS_TASK_NAME]);
   if (res.code !== 0) {
-    throw new Error(`schtasks run failed: ${res.stderr || res.stdout}`.trim());
+    throw serviceCommandError("schtasks run", res.stderr || res.stdout);
   }
-  stdout.write(`Restarted Scheduled Task: ${DAEMON_WINDOWS_TASK_NAME}\n`);
+  stdout.write(
+    `${createCliTranslator(resolveCliLocaleFromEnv(env))("service.taskRestarted", { name: DAEMON_WINDOWS_TASK_NAME })}\n`,
+  );
 }
 
 export async function isScheduledTaskInstalled(): Promise<boolean> {

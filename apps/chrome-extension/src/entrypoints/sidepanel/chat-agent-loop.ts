@@ -1,8 +1,10 @@
+import type { MessageDescriptor } from "@steipete/summarize-core/localization";
 import type {
   AgentMessage as Message,
   AgentToolCall as ToolCall,
   AgentToolResultMessage as ToolResultMessage,
 } from "@steipete/summarize-core/runtime";
+import { extensionMessage, LocalizedError, readLocalizedMessage } from "../../lib/i18n";
 import type { ChatController } from "./chat-controller";
 import type { ChatMessage } from "./types";
 
@@ -39,7 +41,12 @@ export async function runChatAgentLoop({
       tools: string[],
       summary?: string | null,
       opts?: { onChunk?: (text: string) => void },
-    ) => Promise<{ ok: boolean; assistant?: Message; error?: string }>;
+    ) => Promise<{
+      ok: boolean;
+      assistant?: Message;
+      error?: string;
+      localized?: MessageDescriptor;
+    }>;
   };
   createStreamingAssistantMessage: () => ChatMessage;
   confirmToolCall?: (call: ToolCall) => boolean | Promise<boolean>;
@@ -83,7 +90,9 @@ export async function runChatAgentLoop({
 
     if (!response.ok || !response.assistant) {
       chatController.removeMessage(streamingMessage.id);
-      throw new Error(response.error || "Agent failed");
+      const localized = readLocalizedMessage(response.localized);
+      if (localized) throw new LocalizedError(localized);
+      throw new Error(response.error || extensionMessage("error.agentFailed"));
     }
 
     const assistant = { ...response.assistant, id: streamingMessage.id } as ChatMessage;
@@ -114,6 +123,7 @@ export async function runChatAgentLoop({
               role: "toolResult",
               toolCallId,
               toolName: call.name,
+              // i18n-ignore: Cancellation result stored in the model conversation protocol.
               content: [
                 { type: "text", text: `Tool call ${call.name} was cancelled by the user.` },
               ],

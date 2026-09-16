@@ -61,7 +61,8 @@ summarize "https://example.com" --language turkish
 ```
 
 For Turkish CLI help and progress text, use `--locale tr` or set
-`SUMMARIZE_LOCALE=tr`. English remains the default interface language.
+`SUMMARIZE_LOCALE=tr`. The interface follows your system language when supported,
+with English as the fallback. Use `--locale en` to select English explicitly.
 
 ## What it handles
 

@@ -1,3 +1,4 @@
+import type { LocalizedText } from "../../lib/i18n";
 import { createDrawerControls } from "./drawer-controls";
 import { createModelPresetsController } from "./model-presets";
 import { createSetupRuntime } from "./setup-runtime";
@@ -26,10 +27,10 @@ export function createSetupControlsRuntime({
   defaultModel: string;
   drawerEl: HTMLElement;
   drawerToggleBtn: HTMLButtonElement;
-  friendlyFetchError: (error: unknown, fallback: string) => string;
+  friendlyFetchError: typeof import("./setup-runtime").friendlyFetchError;
   generateToken: () => string;
   getStatusResetText: () => string;
-  headerSetStatus: (text: string) => void;
+  headerSetStatus: (text: LocalizedText) => void;
   loadSettings: typeof import("../../lib/settings").loadSettings;
   modelCustomEl: HTMLInputElement;
   modelPresetEl: HTMLSelectElement;

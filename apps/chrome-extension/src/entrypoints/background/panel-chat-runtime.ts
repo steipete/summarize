@@ -1,3 +1,4 @@
+import { message as uiMessage, type LocalizedText } from "../../lib/i18n";
 import { resolveCapabilityExecution } from "../../lib/model-routing";
 import type { BgToPanel, PanelCachePayload, PanelToBg } from "../../lib/panel-contracts";
 import type { Settings } from "../../lib/settings";
@@ -77,7 +78,7 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
   canSummarizeUrl: (url: string | null | undefined) => boolean;
   panelSessionStore: PanelChatSessionStore;
   send: (session: Session, message: BgToPanel) => void;
-  sendStatus: (session: Session, status: string) => void;
+  sendStatus: (session: Session, status: LocalizedText) => void;
   extractFromTab: Parameters<typeof ensureChatExtract>[0]["extractFromTab"];
   fetchImpl: typeof fetch;
   daemonFetchImpl?: typeof fetch;
@@ -133,7 +134,7 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
     session: Session,
     tab: ChatTab,
     settings: Settings,
-    onStatus: (status: string) => void,
+    onStatus: (status: LocalizedText) => void,
   ) =>
     ensureChatExtractImpl({
       tab,
@@ -168,7 +169,7 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       send(session, { type: "run:error", message });
-      sendStatus(session, `Error: ${message}`);
+      sendStatus(session, uiMessage("error.message", { error: message }));
       return;
     }
 

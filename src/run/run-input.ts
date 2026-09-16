@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 import type { InputTarget } from "../content/asset.js";
 import { resolveInputTarget } from "../content/asset.js";
-import { resolveCliLocaleFromEnv, translateCliText } from "../locale.js";
+import { resolveCliLocaleFromEnv } from "../locale.js";
 import { buildConciseHelp } from "./help.js";
 
 export type InputResolution = {
@@ -35,8 +35,8 @@ export function resolveRunInput({
     }
   }
   if (!rawInput) {
-    const help = buildConciseHelp();
-    stdout.write(`${translateCliText(help, resolveCliLocaleFromEnv(env))}\n`);
+    const help = buildConciseHelp(resolveCliLocaleFromEnv(env));
+    stdout.write(`${help}\n`);
     throw Object.assign(new Error(help), { exitCode: 1, silent: true });
   }
 

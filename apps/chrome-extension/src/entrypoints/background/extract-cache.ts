@@ -1,5 +1,6 @@
 import { shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import { daemonOrigin } from "../../lib/daemon-url";
+import { message as uiMessage, type LocalizedText } from "../../lib/i18n";
 import { createCachedExtract, type CachedExtract } from "./cached-extract";
 import { routeExtract, type ExtractLog, type ExtractorContext } from "./extractors/router";
 import type { SlidesPayload } from "./panel-utils";
@@ -38,7 +39,7 @@ export async function ensureChatExtract({
   tab: chrome.tabs.Tab;
   settings: LoadSettingsResult;
   panelSessionStore: CachedExtractStore;
-  sendStatus: (status: string) => void;
+  sendStatus: (status: LocalizedText) => void;
   extractFromTab: ExtractorContext["extractFromTab"];
   fetchImpl: typeof fetch;
   daemonFetchImpl?: typeof fetch;
@@ -97,10 +98,10 @@ export async function ensureChatExtract({
     settings.slidesEnabled && settings.slideRuntime === "daemon" && shouldPreferUrlMode(tab.url);
   sendStatus(
     wantsSlides
-      ? "Extracting video + thumbnails…"
+      ? uiMessage("progress.panelExtract", { stage: "thumbnails" })
       : preferUrl
-        ? "Extracting video transcript…"
-        : "Extracting URL content…",
+        ? uiMessage("progress.panelExtract", { stage: "transcript" })
+        : uiMessage("progress.panelExtract", { stage: "url" }),
   );
   const extractTimeoutMs = wantsSlides ? 6 * 60_000 : 3 * 60_000;
   const extractController = new AbortController();

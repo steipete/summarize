@@ -120,6 +120,7 @@ export function startSpinner({
     if (ended || paused || !hasVisibleText(currentText)) return;
     const frame = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length] ?? "";
     frameIndex = (frameIndex + 1) % SPINNER_FRAMES.length;
+    // i18n-ignore: Terminal control sequence; the caller supplies the localized label.
     stream.write(`\r\u001b[2K\u001b[${colorCode}m${frame}\u001b[0m ${currentText}`);
   };
 

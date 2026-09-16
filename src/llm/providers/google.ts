@@ -88,9 +88,12 @@ export function normalizeGoogleAssistantError(
   if (!raw.trim() && response?.stopReason !== "error") return null;
   const message = extractGoogleErrorMessage(raw) ?? `Google request failed for model "${modelId}".`;
   const statusCode = extractGoogleErrorStatusCode(raw);
-  const error = /not found|not supported|Call ListModels/i.test(message)
-    ? new Error(`Google API rejected model "${modelId}": ${message}`)
-    : new Error(`Google request failed for model "${modelId}": ${message}`);
+  const error =
+    /* i18n-ignore: Google API rejection diagnostic. */ /not found|not supported|Call ListModels/i.test(
+      message,
+    )
+      ? new Error(`Google API rejected model "${modelId}": ${message}`)
+      : new Error(`Google request failed for model "${modelId}": ${message}`);
   if (statusCode !== null) (error as { statusCode?: number }).statusCode = statusCode;
   return error;
 }

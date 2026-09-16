@@ -1,6 +1,6 @@
-// @vitest-environment happy-dom
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
+// @vitest-environment happy-dom
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 
 vi.mock("../apps/chrome-extension/src/automation/skills-store.js", () => ({
   deleteSkill: vi.fn(async () => true),
@@ -168,7 +168,7 @@ describe("options skills controller", () => {
     await flush();
     restore.mockRestore();
 
-    expect(setStatus).toHaveBeenCalledWith("Invalid skills file: expected an array.");
+    expect(setStatus).toHaveBeenCalledWith(message("invalid.skills.file.expected.an.array"));
   });
 
   it("renders import conflicts and can cancel or import selected skills", async () => {
@@ -226,6 +226,6 @@ describe("options skills controller", () => {
 
     expect(saveSkill).toHaveBeenCalledWith(expect.objectContaining({ name: "beta" }));
     expect(saveSkill).not.toHaveBeenCalledWith(expect.objectContaining({ name: "alpha" }));
-    expect(flashStatus).toHaveBeenCalledWith("Imported 1 skill(s).");
+    expect(flashStatus).toHaveBeenCalledWith(message("skills.imported", { count: 1 }));
   });
 });

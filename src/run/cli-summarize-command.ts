@@ -2,7 +2,8 @@ import type { Command } from "commander";
 import { createSummarizeExecutionResources } from "../application/execution-resources.js";
 import { isTranscribableAssetPath } from "../application/input-acquisition.js";
 import { resolveSummarizeRun } from "../application/run-spec.js";
-import { resolveCliLocaleFromEnv, translateCliText } from "../locale.js";
+import { CliError } from "../locale.js";
+import { createCliTranslator, resolveCliLocaleFromEnv } from "../locale.js";
 import type { ExecFileFn } from "../markitdown.js";
 import { resolveSpeakerIdentificationSettings } from "../speaker-identification/index.js";
 import {
@@ -106,14 +107,14 @@ export async function executeCliSummarizeCommand(options: {
 
   if (extractMode && lengthExplicitlySet && !json && isRichTty(stderr)) {
     stderr.write(
-      `${translateCliText("Warning: --length is ignored with --extract (no summary is generated).", resolveCliLocaleFromEnv(envForRun))}\n`,
+      `${createCliTranslator(resolveCliLocaleFromEnv(envForRun))("warning.lengthIgnored")}\n`,
     );
   }
   const isDirectMediaInput =
     (inputTarget.kind === "file" && isTranscribableAssetPath(inputTarget.filePath)) ||
     (inputTarget.kind === "url" && isTranscribableAssetPath(inputTarget.url));
   if (diarizationMode && !isYoutubeUrl && !isDirectMediaInput) {
-    throw new Error("--diarize requires a YouTube URL or a direct audio/video file");
+    throw new CliError("error.diarizationInput");
   }
 
   const modelArg = typeof programOpts.model === "string" ? programOpts.model : null;
@@ -122,7 +123,7 @@ export async function executeCliSummarizeCommand(options: {
       ? parseCliProviderArg(cliProviderArgRaw)
       : null;
   if (cliFlagPresent && modelArg) {
-    throw new Error("Use either --model or --cli (not both).");
+    throw new CliError("error.modelAndCli");
   }
   const explicitModelArg = cliProviderArg
     ? `cli/${cliProviderArg}`
@@ -198,7 +199,7 @@ export async function executeCliSummarizeCommand(options: {
     perfTrace?.mark("plan:cache");
 
     if (markdownModeExplicitlySet && format !== "markdown") {
-      throw new Error("--markdown-mode is only supported with --format md");
+      throw new CliError("error.markdownFormat");
     }
     if (
       markdownModeExplicitlySet &&
@@ -206,16 +207,14 @@ export async function executeCliSummarizeCommand(options: {
       inputTarget.kind !== "file" &&
       inputTarget.kind !== "stdin"
     ) {
-      throw new Error("--markdown-mode is only supported for URL, file, or stdin inputs");
+      throw new CliError("error.markdownInput");
     }
     if (
       markdownModeExplicitlySet &&
       (inputTarget.kind === "file" || inputTarget.kind === "stdin") &&
       markdownMode !== "llm"
     ) {
-      throw new Error(
-        "Only --markdown-mode llm is supported for file/stdin inputs; other modes require a URL",
-      );
+      throw new CliError("error.markdownFileMode");
     }
 
     const verboseColor = supportsColor(stderr, envForRun);
@@ -261,7 +260,7 @@ export async function executeCliSummarizeCommand(options: {
       if (filtered.length === 0) return;
       clearProgressForStdout();
       stderr.write(
-        `${themeForStderr.dim(translateCliText(`via ${filtered.join(", ")}`, resolveCliLocaleFromEnv(envForRun)))}\n`,
+        `${themeForStderr.dim(createCliTranslator(resolveCliLocaleFromEnv(envForRun))("progress.providers", { providers: filtered.join(", ") }))}\n`,
       );
       restoreProgressAfterStdout?.();
     };

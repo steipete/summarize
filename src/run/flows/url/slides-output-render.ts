@@ -4,17 +4,20 @@ import {
   formatOsc8Link,
   formatTimestamp,
 } from "@steipete/summarize-core/slides";
+import { createCliTranslator, type CliLocale } from "../../../locale.js";
 import type { SlideExtractionResult } from "../../../slides/index.js";
 import type { SlideState } from "./slides-output-state.js";
 
 export function createInlineSlidesUnsupportedNotifier({
   inlineNoticeEnabled,
+  locale = "en",
   io,
   richTty,
   clearProgressForStdout,
   restoreProgressAfterStdout,
 }: {
   inlineNoticeEnabled: boolean;
+  locale?: CliLocale;
   io: {
     stderr: NodeJS.WritableStream;
   };
@@ -22,25 +25,26 @@ export function createInlineSlidesUnsupportedNotifier({
   clearProgressForStdout: () => void;
   restoreProgressAfterStdout?: (() => void) | null;
 }) {
+  const t = createCliTranslator(locale);
   let inlineNoticeShown = false;
 
   return (nextSlides: SlideExtractionResult) => {
     if (!inlineNoticeEnabled || inlineNoticeShown) return;
     if (!nextSlides.slidesDir) return;
     inlineNoticeShown = true;
-    const reason = richTty ? "terminal does not support inline images" : "stdout is not a TTY";
     clearProgressForStdout();
     io.stderr.write(
-      `Slides saved to ${nextSlides.slidesDir}. Inline images unavailable (${reason}).\n`,
+      `${t("slides.inlineUnsupported", { directory: nextSlides.slidesDir, richTty })}\n`,
     );
     const urlArg = JSON.stringify(nextSlides.sourceUrl);
     const dirArg = JSON.stringify(nextSlides.slidesDir);
-    io.stderr.write(`Use summarize slides ${urlArg} --output ${dirArg} to export only.\n`);
+    io.stderr.write(`${t("slides.exportCommand", { url: urlArg, directory: dirArg })}\n`);
     restoreProgressAfterStdout?.();
   };
 }
 
 export function createSlidesTerminalRenderer({
+  locale = "en",
   io,
   flags,
   inlineEnabled,
@@ -57,6 +61,7 @@ export function createSlidesTerminalRenderer({
   initialSlides,
 }: {
   io: { stdout: NodeJS.WritableStream };
+  locale?: CliLocale;
   flags: { slidesDebug?: boolean };
   inlineEnabled: boolean;
   richTty: boolean;
@@ -76,6 +81,7 @@ export function createSlidesTerminalRenderer({
   waitForSlide: (index: number) => Promise<SlideState | null>;
   initialSlides: SlideExtractionResult | null | undefined;
 }) {
+  const t = createCliTranslator(locale);
   let renderedCount = 0;
 
   return async (index: number, title?: string | null) => {
@@ -97,8 +103,13 @@ export function createSlidesTerminalRenderer({
         ? buildTimestampUrl(getSourceUrl(), timestamp)
         : null;
     const timeLink = timestampLabel ? formatOsc8Link(timestampLabel, timestampUrl, richTty) : null;
-    const slideLabelBase = total > 0 ? `Slide ${index}/${total}` : `Slide ${index}`;
-    const rawLabel = [slideLabelBase, timeLink].filter(Boolean).join(" · ");
+    const rawLabel = t("slides.position", {
+      index,
+      total,
+      hasTotal: total > 0,
+      timestamp: timeLink ?? "",
+      hasTime: Boolean(timeLink),
+    });
     const label = labelTheme.dim(rawLabel);
     const cleanTitle = title?.replace(/\s+/g, " ").trim() ?? "";
     const titleMax = 90;
@@ -117,13 +128,13 @@ export function createSlidesTerminalRenderer({
       await inlineRenderer.renderSlide({ index, timestamp: timestamp ?? 0, imagePath }, null);
     }
     if (flags.slidesDebug) {
-      let resolvedPath = imagePath ?? "(missing image path)";
+      let resolvedPath = imagePath ?? t("slides.missingPath");
       if (imagePath) {
         const exists = await fs
           .stat(imagePath)
           .then(() => true)
           .catch(() => false);
-        resolvedPath = exists ? imagePath : `${imagePath} (missing)`;
+        resolvedPath = exists ? imagePath : t("slides.missingFile", { path: imagePath });
       }
       io.stdout.write(`${headerLine}\n${resolvedPath}\n\n`);
     } else {
@@ -133,7 +144,7 @@ export function createSlidesTerminalRenderer({
 
     if (onProgressText && total > 0) {
       renderedCount = Math.min(total, renderedCount + 1);
-      onProgressText(`Slides ${renderedCount}/${total}`);
+      onProgressText(t("slides.rendered", { count: renderedCount, total }));
     }
   };
 }

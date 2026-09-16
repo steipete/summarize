@@ -1,3 +1,4 @@
+import { normalizeLocaleSetting } from "@steipete/summarize-core/localization";
 import { readPresetOrCustomValue, resolvePresetOrCustom } from "../../lib/combo";
 import type { createModelPresetsController } from "../../lib/model-presets";
 import { normalizeSettingChoices, type DirectProvider, type Settings } from "../../lib/settings";
@@ -48,7 +49,7 @@ export function buildSavedOptionsSettings({
   currentMode: ColorMode;
 }): Settings {
   return {
-    uiLocale: elements.uiLocaleEl.value as Settings["uiLocale"],
+    uiLocale: normalizeLocaleSetting(elements.uiLocaleEl.value),
     token: elements.tokenEl.value || defaults.token,
     daemonPort: elements.daemonPortEl.value || defaults.daemonPort,
     daemonHintDismissed: current.daemonHintDismissed,

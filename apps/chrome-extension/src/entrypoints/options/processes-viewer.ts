@@ -1,5 +1,11 @@
 import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
+import { uiNumber, type LocalizedText } from "../../lib/i18n";
+import {
+  setText as setUiText,
+  message as uiMessage,
+  setLocalizedAttribute as setUiAttribute,
+} from "../../lib/i18n";
 
 type ProcessStatus = "running" | "exited" | "error";
 
@@ -69,10 +75,10 @@ export type ProcessesViewerOptions = {
   fetchImpl?: typeof fetch;
 };
 
-const STATUS_LABELS: Record<ProcessStatus, string> = {
-  running: "RUNNING",
-  exited: "DONE",
-  error: "ERROR",
+const STATUS_LABELS: Record<ProcessStatus, LocalizedText> = {
+  running: uiMessage("running"),
+  exited: uiMessage("done"),
+  error: uiMessage("error.alternate"),
 };
 
 const formatElapsed = (elapsedMs: number): string => {
@@ -80,15 +86,15 @@ const formatElapsed = (elapsedMs: number): string => {
   const totalSeconds = Math.max(0, Math.round(elapsedMs / 1000));
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  if (minutes <= 0) return `${seconds}s`;
-  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+  if (minutes <= 0) return `${uiNumber(seconds)}s`;
+  return `${uiNumber(minutes)}m ${uiNumber(seconds, { minimumIntegerDigits: 2 })}s`;
 };
 
 const formatProgress = (item: ProcessListItem): string => {
   if (typeof item.progressPercent === "number") {
     const pct = Math.max(0, Math.min(100, Math.round(item.progressPercent)));
     const detail = item.progressDetail ? ` ${item.progressDetail}` : "";
-    return `${pct}%${detail}`;
+    return `${uiNumber(pct / 100, { style: "percent" })}${detail}`;
   }
   if (item.statusText) return item.statusText;
   return "";
@@ -136,13 +142,13 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
 
   logsCopyBtn.disabled = true;
 
-  const setMeta = (text: string) => {
-    metaEl.textContent = text;
+  const setMeta = (text: LocalizedText) => {
+    setUiText(metaEl, text);
   };
 
   const clearLogs = () => {
-    logsTitleEl.textContent = "Logs";
-    logsOutputEl.textContent = "";
+    setUiText(logsTitleEl, uiMessage("logs"));
+    setUiText(logsOutputEl, "");
     logsText = "";
     logsCopyBtn.disabled = true;
   };
@@ -154,7 +160,7 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
       const row = document.createElement("tr");
       const cell = document.createElement("td");
       cell.colSpan = 7;
-      cell.textContent = "No active processes.";
+      setUiText(cell, uiMessage("no.active.processes"));
       cell.className = "processEmpty";
       row.append(cell);
       rows.append(row);
@@ -168,32 +174,38 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
 
       const toolCell = document.createElement("td");
       toolCell.dataset.localeIgnore = "true";
-      toolCell.textContent = item.label || item.kind || item.command;
+      setUiText(toolCell, item.label || item.kind || item.command);
 
       const pidCell = document.createElement("td");
       pidCell.dataset.localeIgnore = "true";
-      pidCell.textContent = item.pid ? String(item.pid) : "—";
+      setUiText(pidCell, item.pid ? String(item.pid) : "—");
 
       const statusCell = document.createElement("td");
-      statusCell.textContent = STATUS_LABELS[item.status];
+      setUiText(statusCell, STATUS_LABELS[item.status]);
       statusCell.className = `status ${item.status}`;
 
       const elapsedCell = document.createElement("td");
-      elapsedCell.textContent = formatElapsed(item.elapsedMs);
+      setUiText(
+        elapsedCell,
+        uiMessage("common.value", () => ({ value: formatElapsed(item.elapsedMs) })),
+      );
 
       const progressCell = document.createElement("td");
       progressCell.dataset.localeIgnore = "true";
-      progressCell.textContent = formatProgress(item) || "—";
+      setUiText(
+        progressCell,
+        uiMessage("common.value", () => ({ value: formatProgress(item) || "—" })),
+      );
 
       const runCell = document.createElement("td");
       runCell.dataset.localeIgnore = "true";
-      runCell.textContent = item.runId ? item.runId.slice(0, 8) : "—";
+      setUiText(runCell, item.runId ? item.runId.slice(0, 8) : "—");
 
       const cmdCell = document.createElement("td");
       cmdCell.dataset.localeIgnore = "true";
       const cmd = buildCommandLabel(item);
-      cmdCell.textContent = cmd.length > 120 ? `${cmd.slice(0, 120)}…` : cmd;
-      cmdCell.title = cmd;
+      setUiText(cmdCell, cmd.length > 120 ? `${cmd.slice(0, 120)}…` : cmd);
+      setUiAttribute(cmdCell, "title", cmd);
       cmdCell.className = "command";
 
       row.append(toolCell, pidCell, statusCell, elapsedCell, progressCell, runCell, cmdCell);
@@ -241,11 +253,11 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
         clearLogs();
         return;
       }
-      logsTitleEl.textContent = `Logs · ${requestedId.slice(0, 8)}`;
+      setUiText(logsTitleEl, uiMessage("logs.runTitle", { id: requestedId.slice(0, 8) }));
       logsText = json.lines
         .map((line) => `${line.stream === "stderr" ? "err" : "out"} | ${line.line}`)
         .join("\n");
-      logsOutputEl.textContent = logsText;
+      setUiText(logsOutputEl, logsText);
       logsCopyBtn.disabled = logsText.trim().length === 0;
     } catch {
       clearLogsIfCurrent();
@@ -260,7 +272,7 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
     if (!isActive()) return;
     const token = getToken().trim();
     if (!token) {
-      setMeta("Add token to load processes.");
+      setMeta(uiMessage("add.token.to.load.processes"));
       renderTable([]);
       clearLogs();
       needsRefresh = true;
@@ -271,7 +283,7 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
     const limit = normalizeLimit(limitEl.value);
     limitEl.value = String(limit);
     if (!opts.auto) {
-      setMeta("Loading processes…");
+      setMeta(uiMessage("loading.processes"));
     }
     try {
       const origin = await getDaemonOrigin();
@@ -291,13 +303,13 @@ export function createProcessesViewer(options: ProcessesViewerOptions): Processe
       }
       const json = (await res.json()) as ProcessListResponse;
       if (!json?.ok || !Array.isArray(json.processes)) {
-        setMeta("No process data.");
+        setMeta(uiMessage("no.process.data"));
         renderTable([]);
         clearLogs();
         return;
       }
       renderTable(json.processes);
-      setMeta(`${json.processes.length} processes`);
+      setMeta(uiMessage("processes.count", { count: json.processes.length }));
       if (selectedId && !json.processes.some((item) => item.id === selectedId)) {
         selectedId = null;
         clearLogs();

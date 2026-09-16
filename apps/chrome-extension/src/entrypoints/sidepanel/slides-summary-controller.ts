@@ -1,3 +1,4 @@
+import { message as uiMessage } from "../../lib/i18n";
 import { buildSlidePresentation } from "../../lib/slides-presentation";
 import { createInitialSlidesSummaryState, patchPanelState } from "./panel-state-store";
 import { resolveSlidesLengthArg } from "./slides-state";
@@ -14,7 +15,7 @@ type SlidesSummarySnapshot = {
 type SlidesSummaryControllerOptions = {
   getToken: () => Promise<string>;
 
-  friendlyFetchError: (error: unknown, fallback: string) => string;
+  friendlyFetchError: typeof import("./setup-runtime").friendlyFetchError;
   panelUrlsMatch: (left: string, right: string) => boolean;
   getPanelState: () => PanelState;
   getUiState: () => UiState | null;
@@ -147,7 +148,7 @@ export function createSlidesSummaryController(options: SlidesSummaryControllerOp
       onStatus: () => {},
       onPhaseChange: () => {},
       idleTimeoutMs: 600_000,
-      idleTimeoutMessage: "Slides summary stalled. The daemon may have stopped.",
+      idleTimeoutMessage: uiMessage("error.slidesSummaryTimeout"),
       onMeta: (meta) => {
         if (!isCurrentGeneration(generation)) return;
         if (typeof meta.model === "string") {
@@ -180,7 +181,7 @@ export function createSlidesSummaryController(options: SlidesSummaryControllerOp
       onError: (error) => {
         if (!isCurrentGeneration(generation)) return "";
         updateState({ hadError: true });
-        return options.friendlyFetchError(error, "Slides summary failed");
+        return options.friendlyFetchError(error, uiMessage("slides.summary.failed"));
       },
       onDone: () => {
         if (!isCurrentGeneration(generation)) return;

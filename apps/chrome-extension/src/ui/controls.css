@@ -22,14 +22,14 @@
   border-right: 2px solid var(--muted);
   border-bottom: 2px solid var(--muted);
   position: absolute;
-  right: 12px;
+  inset-inline-end: 12px;
   top: 50%;
   transform: translateY(-50%) rotate(45deg);
   pointer-events: none;
 }
 
 .pickerTrigger .scheme-chips {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .pickerContent {
@@ -210,4 +210,19 @@
 .checkboxIndicator svg {
   width: 12px;
   height: 10px;
+}
+
+pre,
+code,
+input[type="url"],
+input[type="password"],
+#token {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+:root[dir="rtl"] select {
+  background-position:
+    11px center,
+    16px center;
 }

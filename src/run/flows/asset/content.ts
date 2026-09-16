@@ -1,5 +1,5 @@
+import { CliError } from "../../../locale.js";
 import { convertToMarkdownWithMarkitdown } from "../../../markitdown.js";
-import { formatBytes } from "../../../tty/format.js";
 import { type AssetAttachment, getTextContentFromAttachment } from "../../attachments.js";
 import { MAX_TEXT_BYTES_DEFAULT } from "../../constants.js";
 import { hasUvxCli } from "../../env.js";
@@ -14,7 +14,7 @@ export type AssetConversionContext = {
 
 export function readAssetText(attachment: AssetAttachment) {
   const text = getTextContentFromAttachment(attachment);
-  if (text) assertTextSize(text.bytes, "Text file");
+  if (text) assertTextSize(text.bytes, "text");
   return text;
 }
 
@@ -25,7 +25,7 @@ export async function convertAssetToMarkdown(
 ) {
   if (!hasUvxCli(ctx.env)) {
     throw withUvxTip(
-      new Error(`Missing uvx/markitdown for preprocessing ${attachment.mediaType}.`),
+      new CliError("error.preprocessMissing", { mediaType: String(attachment.mediaType) }),
       ctx.env,
     );
   }
@@ -43,16 +43,21 @@ export async function convertAssetToMarkdown(
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to preprocess ${attachment.mediaType} with markitdown: ${message}.`);
+    throw new CliError("error.preprocessFailed", {
+      mediaType: String(attachment.mediaType),
+      message: String(message),
+    });
   }
-  assertTextSize(Buffer.byteLength(converted.markdown, "utf8"), "Preprocessed Markdown");
+  assertTextSize(Buffer.byteLength(converted.markdown, "utf8"), "markdown");
   return converted;
 }
 
-function assertTextSize(bytes: number, label: string) {
+function assertTextSize(bytes: number, kind: "text" | "markdown") {
   if (bytes > MAX_TEXT_BYTES_DEFAULT) {
-    throw new Error(
-      `${label} too large (${formatBytes(bytes)}). Limit is ${formatBytes(MAX_TEXT_BYTES_DEFAULT)}.`,
-    );
+    throw new CliError("error.textTooLarge", {
+      kind,
+      size: bytes / 1024 ** 2,
+      limit: MAX_TEXT_BYTES_DEFAULT / 1024 ** 2,
+    });
   }
 }

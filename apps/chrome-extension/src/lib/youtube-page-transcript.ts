@@ -257,7 +257,9 @@ export async function readYouTubeTranscriptPanel(
     await delay(120);
     if (!isExpectedPage()) return null;
     const expand = buttons().find((element) =>
-      /\bmore\b/i.test(normalize(element.textContent ?? "")),
+      /* i18n-ignore: External YouTube page control, not extension interface copy. */ /\bmore\b/i.test(
+        normalize(element.textContent ?? ""),
+      ),
     ) as HTMLElement | undefined;
     expand?.click();
     await delay(250);
@@ -266,7 +268,9 @@ export async function readYouTubeTranscriptPanel(
       "ytd-video-description-transcript-section-renderer button",
     ) ??
       buttons().find((element) =>
-        /show transcript/i.test(normalize(element.textContent ?? "")),
+        /* i18n-ignore: Fallback label on the external YouTube page, independent of extension UI. */ /show transcript/i.test(
+          normalize(element.textContent ?? ""),
+        ),
       )) as HTMLElement | undefined;
     if (!transcriptButton) return null;
     transcriptButton.click();

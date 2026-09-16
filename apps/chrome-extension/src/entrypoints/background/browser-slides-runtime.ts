@@ -1,3 +1,4 @@
+import { message as uiMessage, type LocalizedText } from "../../lib/i18n";
 import { planMediaExtraction } from "../../lib/media-extraction-plan";
 import type { BgToPanel, PanelCachePayload } from "../../lib/panel-contracts";
 
@@ -30,7 +31,7 @@ export function createBrowserSlidesRuntime<Session extends BrowserSlidesSession>
     getPanelCache(tabId: number, url?: string | null): PanelCachePayload | null;
   };
   send: (session: Session, message: BgToPanel) => void;
-  sendStatus: (session: Session, status: string) => void;
+  sendStatus: (session: Session, status: LocalizedText) => void;
   summarizeActiveTab: (session: Session, reason: string, options?: SummarizeOptions) => unknown;
   runBrowserSlidesForTab: typeof import("./browser-slides").runBrowserSlidesForTab;
   extractYouTubeTranscriptInTab: typeof import("./youtube-transcript").extractYouTubeTranscriptInTab;
@@ -136,7 +137,7 @@ export function createBrowserSlidesRuntime<Session extends BrowserSlidesSession>
       key: captureKey,
       userInitiated: isUserInitiatedCapture,
     });
-    sendStatus(session, "Capturing slides in browser...");
+    sendStatus(session, uiMessage("progress.captureSlides"));
     delete (
       globalThis as typeof globalThis & {
         __summarizeBrowserMediaFallback?: string;
@@ -171,7 +172,7 @@ export function createBrowserSlidesRuntime<Session extends BrowserSlidesSession>
             scope: "slides",
             level: "verbose",
           });
-          sendStatus(session, "Capturing slides in browser...");
+          sendStatus(session, uiMessage("progress.captureSlides"));
         },
       });
     } catch (error) {
@@ -194,7 +195,7 @@ export function createBrowserSlidesRuntime<Session extends BrowserSlidesSession>
         return;
       }
       send(session, { type: "slides:run", ok: false, error: result.error });
-      sendStatus(session, `Slides failed: ${result.error}`);
+      sendStatus(session, uiMessage("error.slidesFailed", { error: result.error }));
       return;
     }
 

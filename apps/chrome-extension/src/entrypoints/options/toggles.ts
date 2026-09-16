@@ -1,9 +1,10 @@
+import type { LocalizedText } from "../../lib/i18n";
 import { mountCheckbox } from "../../ui/checkbox";
 
 type BooleanToggleArgs = {
   root: HTMLElement;
   id: string;
-  label: string;
+  label: LocalizedText;
   getValue: () => boolean;
   setValue: (checked: boolean) => void;
   scheduleAutoSave: (delay?: number) => void;

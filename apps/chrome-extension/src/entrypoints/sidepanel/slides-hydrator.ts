@@ -24,9 +24,9 @@ export type SlidesHydrator = {
 export type SlidesHydratorOptions = {
   getToken: () => Promise<string>;
   onSlides: (slides: SseSlidesData) => void;
-  onStatus?: ((text: string) => void) | null;
+  onStatus?: Parameters<typeof createSlidesStreamController>[0]["onStatus"];
   onDone?: (() => void) | null;
-  onError?: ((error: unknown) => string) | null;
+  onError?: ((error: unknown) => string | import("../../lib/i18n").LocalizedDescriptor) | null;
   onSnapshotError?: ((error: unknown) => void) | null;
   resolveLocalSlides?: ((runId: string) => Promise<SseSlidesData | null>) | null;
   streamFetchImpl?: typeof fetch;

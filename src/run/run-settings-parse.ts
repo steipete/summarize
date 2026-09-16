@@ -1,4 +1,5 @@
 import type { CliProvider } from "../config.js";
+import { CliError } from "../locale.js";
 
 export const parseOptionalSetting = <T>(
   raw: unknown,
@@ -30,7 +31,7 @@ export const parseOptionalBoolean = (
     return false;
   }
   if (strict) {
-    throw new Error(`Unsupported ${label}: ${raw}`);
+    throw new CliError("error.unsupportedOption", { label: String(label), raw: String(raw) });
   }
   return null;
 };
@@ -63,14 +64,14 @@ export const parseOptionalCliProviderOrder = (
           .filter(Boolean)
       : [];
   if (items.length === 0) {
-    if (strict) throw new Error(`Unsupported --auto-cli-order: ${String(raw)}`);
+    if (strict) throw new CliError("error.cliOrder", { value: String(String(raw)) });
     return null;
   }
   const out: CliProvider[] = [];
   for (const item of items) {
     const provider = parseCliProvider(item);
     if (!provider) {
-      if (strict) throw new Error(`Unsupported --auto-cli-order provider: ${item}`);
+      if (strict) throw new CliError("error.cliOrderProvider", { item: String(item) });
       return null;
     }
     if (!out.includes(provider)) out.push(provider);

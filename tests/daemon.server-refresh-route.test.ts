@@ -43,11 +43,13 @@ describe("daemon refresh-free route", () => {
     expect(mocks.refreshFree).not.toHaveBeenCalled();
   });
 
-  it("streams line-buffered status and completion events", async () => {
-    mocks.refreshFree.mockImplementationOnce(async ({ stdout, stderr }) => {
-      stdout.write("first");
-      stdout.write(" line\n\n");
-      stderr.end("last line");
+  it("streams keyed status and completion events without parsing terminal output", async () => {
+    mocks.refreshFree.mockImplementationOnce(async ({ stdout, onMessage }) => {
+      stdout.write("raw terminal-only diagnostic\n");
+      onMessage("Refresh Free: selected 2 candidates.", {
+        key: "refresh.selected",
+        values: { count: 2 },
+      });
     });
     const runtime = new DaemonRuntime({ maxActiveSummaries: 1 });
     const events: SessionEvent[] = [];
@@ -69,9 +71,17 @@ describe("daemon refresh-free route", () => {
     expect(readJsonResponse(response)).toEqual({ ok: true, id: "refresh-1" });
     await vi.waitFor(() => expect(runtime.activeRefreshSessionId).toBeNull());
     expect(events).toEqual([
-      { event: "status", data: { text: "Refresh free: starting…" } },
-      { event: "status", data: { text: "first line" } },
-      { event: "status", data: { text: "last line" } },
+      {
+        event: "status",
+        data: { text: "Refresh Free: starting…", message: { key: "refresh.begin", values: {} } },
+      },
+      {
+        event: "status",
+        data: {
+          text: "Refresh Free: selected 2 candidates.",
+          message: { key: "refresh.selected", values: { count: 2 } },
+        },
+      },
       { event: "done", data: {} },
     ]);
   });

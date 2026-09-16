@@ -50,7 +50,7 @@
   padding: 8px 10px;
   font-size: 12px;
   color: var(--muted);
-  text-align: left;
+  text-align: start;
   border-top: 1px solid var(--border);
 }
 
@@ -107,7 +107,7 @@
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   background: color-mix(in srgb, var(--panel) 70%, transparent);
-  text-align: left;
+  text-align: start;
   min-width: 140px;
 }
 
@@ -194,7 +194,7 @@
   background: color-mix(in srgb, var(--panel) 70%, transparent);
   display: grid;
   padding: 0;
-  text-align: left;
+  text-align: start;
   color: inherit;
   font: inherit;
   cursor: pointer;
@@ -204,7 +204,7 @@
   border: 0;
   padding: 0;
   background: transparent;
-  text-align: left;
+  text-align: start;
   width: 100%;
   display: block;
   border-radius: 0;

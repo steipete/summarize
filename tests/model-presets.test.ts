@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
 import { createModelPresetsController as createPanelController } from "../apps/chrome-extension/src/entrypoints/sidepanel/model-presets.js";
+import { applyExtensionLocale } from "../apps/chrome-extension/src/lib/i18n.js";
 import { createModelPresetsController as createSharedController } from "../apps/chrome-extension/src/lib/model-presets.js";
 import { defaultSettings } from "../apps/chrome-extension/src/lib/settings.js";
 
@@ -37,6 +38,24 @@ function createController(surface: "options" | "panel", fetchImpl: typeof fetch)
 }
 
 describe.each(["options", "panel"] as const)("%s model presets", (surface) => {
+  it("retranslates discovered placeholders while preserving model identifiers", async () => {
+    const { controller, customEl, presetEl } = createController(surface, async () =>
+      jsonResponse({ ok: true, providers: { openai: true }, localModelsSource: {}, options: [] }),
+    );
+    document.body.append(customEl, presetEl);
+    try {
+      applyExtensionLocale("en");
+      await controller.refreshPresets("token");
+      expect(customEl.placeholder).toContain("local: openai/<id>");
+      applyExtensionLocale("tr");
+      expect(customEl.placeholder).toContain("yerel: openai/<id>");
+      expect(customEl.placeholder).toContain("auto / gpt-fast / openai/…");
+    } finally {
+      applyExtensionLocale("en");
+      customEl.remove();
+      presetEl.remove();
+    }
+  });
   it("preserves a user selection made while refresh is pending", async () => {
     const refresh = Promise.withResolvers<Response>();
     const { controller, presetEl, customEl } = createController(

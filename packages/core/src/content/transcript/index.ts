@@ -181,6 +181,7 @@ export const resolveTranscriptForLink = async (
   if (shouldReportProgress) {
     deps.onProgress?.({
       kind: "transcript-start",
+      stage: "resolve",
       url: normalizedUrl,
       service: provider.id,
       hint:

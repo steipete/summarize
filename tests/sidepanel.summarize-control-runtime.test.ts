@@ -6,6 +6,7 @@ import {
 import type { SlideTextMode } from "../apps/chrome-extension/src/entrypoints/sidepanel/slides-state";
 import { createSummarizeControlRuntime } from "../apps/chrome-extension/src/entrypoints/sidepanel/summarize-control-runtime";
 import { createSummarizeControlView } from "../apps/chrome-extension/src/entrypoints/sidepanel/summarize-control-view";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 import type { Settings, SlidesLayout } from "../apps/chrome-extension/src/lib/settings";
 
 type SummarizeControlProps = {
@@ -252,7 +253,7 @@ describe("sidepanel summarize control runtime", () => {
 
     expect(fetchSpy).toHaveBeenCalledOnce();
     expect(calls.showSlideNotice).toHaveBeenCalledWith(
-      "Slide extraction requires ffmpeg. Install and restart the daemon.",
+      message("slides.requiresTools", { requirement: "tools", tools: "ffmpeg" }),
     );
     expect(calls.patchSettings).not.toHaveBeenCalled();
     expect(state.slidesSession.slidesEnabled).toBe(false);

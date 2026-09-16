@@ -2,7 +2,8 @@ import fs from "node:fs/promises";
 import { isDirectMediaUrl } from "@steipete/summarize-core/content/url";
 import { clearCacheFiles, DEFAULT_CACHE_MAX_MB, resolveCachePath } from "../cache.js";
 import { loadSummarizeConfig, mergeConfigEnv } from "../config.js";
-import { resolveCliLocaleFromEnv, translateCliText } from "../locale.js";
+import { CliError } from "../locale.js";
+import { type CliLocale, createCliTranslator, resolveCliLocaleFromEnv } from "../locale.js";
 import { formatVersionLine } from "../version.js";
 
 export function prepareRunEnvironment(
@@ -25,7 +26,7 @@ export function argvBeforeSeparator(argv: readonly string[]): string[] {
   return separatorIndex === -1 ? [...argv] : argv.slice(0, separatorIndex);
 }
 
-export function stripCliLocaleArgs(argv: readonly string[]): string[] {
+export function stripCliLocaleArgs(argv: readonly string[], locale: CliLocale = "en"): string[] {
   const stripped: string[] = [];
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -35,14 +36,14 @@ export function stripCliLocaleArgs(argv: readonly string[]): string[] {
     }
     if (arg === "--locale") {
       if (!argv[index + 1]?.trim() || argv[index + 1].startsWith("-")) {
-        throw new Error("--locale requires a value (en, tr, or auto).");
+        throw new Error(createCliTranslator(locale)("error.localeRequired"));
       }
       index += 1;
       continue;
     }
     if (arg.startsWith("--locale=")) {
       if (!arg.slice("--locale=".length).trim()) {
-        throw new Error("--locale requires a value (en, tr, or auto).");
+        throw new Error(createCliTranslator(locale)("error.localeRequired"));
       }
       continue;
     }
@@ -87,7 +88,7 @@ export function applyWidthOverride({
   const widthArg = typeof width === "string" ? Number(width) : undefined;
   if (widthArg === undefined) return;
   if (!Number.isFinite(widthArg) || widthArg < 20) {
-    throw new Error("--width must be a number >= 20.");
+    throw new CliError("width.must.be.a.number.20");
   }
   env.COLUMNS = String(Math.floor(widthArg));
 }
@@ -102,7 +103,7 @@ export async function resolvePromptOverride({
   const promptArg = typeof prompt === "string" ? prompt : null;
   const promptFileArg = typeof promptFile === "string" ? promptFile : null;
   if (promptArg && promptFileArg) {
-    throw new Error("Use either --prompt or --prompt-file (not both).");
+    throw new CliError("use.either.prompt.or.prompt.file.not.both");
   }
 
   if (promptFileArg) {
@@ -111,11 +112,14 @@ export async function resolvePromptOverride({
       text = await fs.readFile(promptFileArg, "utf8");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to read --prompt-file ${promptFileArg}: ${message}`);
+      throw new CliError("error.promptRead", {
+        promptFileArg: String(promptFileArg),
+        message: String(message),
+      });
     }
     const trimmed = text.trim();
     if (!trimmed) {
-      throw new Error(`Prompt file ${promptFileArg} is empty.`);
+      throw new CliError("error.promptEmpty", { promptFileArg: String(promptFileArg) });
     }
     return trimmed;
   }
@@ -123,7 +127,7 @@ export async function resolvePromptOverride({
   if (!promptArg) return null;
   const trimmed = promptArg.trim();
   if (!trimmed) {
-    throw new Error("Prompt must not be empty.");
+    throw new CliError("prompt.must.not.be.empty");
   }
   return trimmed;
 }
@@ -141,7 +145,7 @@ export async function handleCacheUtilityFlags({
   if (clearCacheFlag) {
     const extraArgs = normalizedArgv.filter((arg) => arg !== "--clear-cache");
     if (extraArgs.length > 0) {
-      throw new Error("--clear-cache must be used alone.");
+      throw new CliError("clear.cache.must.be.used.alone");
     }
     const { config } = loadSummarizeConfig({ env: envForRun });
     const cachePath = resolveCachePath({
@@ -149,10 +153,10 @@ export async function handleCacheUtilityFlags({
       cachePath: config?.cache?.path ?? null,
     });
     if (!cachePath) {
-      throw new Error("Unable to resolve cache path (missing HOME).");
+      throw new CliError("unable.to.resolve.cache.path.missing.home");
     }
     clearCacheFiles(cachePath);
-    stdout.write(`${translateCliText("Cache cleared.", resolveCliLocaleFromEnv(envForRun))}\n`);
+    stdout.write(`${createCliTranslator(resolveCliLocaleFromEnv(envForRun))("cache.cleared")}\n`);
     return true;
   }
 
@@ -161,7 +165,7 @@ export async function handleCacheUtilityFlags({
 
   const extraArgs = normalizedArgv.filter((arg) => arg !== "--cache-stats");
   if (extraArgs.length > 0) {
-    throw new Error("--cache-stats must be used alone.");
+    throw new CliError("cache.stats.must.be.used.alone");
   }
   const { config } = loadSummarizeConfig({ env: envForRun });
   const cachePath = resolveCachePath({
@@ -169,7 +173,7 @@ export async function handleCacheUtilityFlags({
     cachePath: config?.cache?.path ?? null,
   });
   if (!cachePath) {
-    throw new Error("Unable to resolve cache path (missing HOME).");
+    throw new CliError("unable.to.resolve.cache.path.missing.home");
   }
   const cacheMaxMb =
     typeof config?.cache?.maxMb === "number" ? config.cache.maxMb : DEFAULT_CACHE_MAX_MB;
@@ -178,16 +182,17 @@ export async function handleCacheUtilityFlags({
   const { formatBytes } = await import("../tty/format.js");
   const stats = await readCacheStats(cachePath);
   const locale = resolveCliLocaleFromEnv(envForRun);
-  stdout.write(`${translateCliText("Cache path:", locale)} ${cachePath}\n`);
+  const t = createCliTranslator(locale);
+  stdout.write(`${t("cache.path", { path: cachePath })}\n`);
   if (!stats) {
-    stdout.write(`${translateCliText("Cache is empty.", locale)}\n`);
+    stdout.write(`${t("cache.is.empty")}\n`);
     return true;
   }
-  const sizeLabel = formatBytes(stats.sizeBytes);
-  const maxLabel = cacheMaxBytes > 0 ? formatBytes(cacheMaxBytes) : "disabled";
-  stdout.write(`${translateCliText("Size:", locale)} ${sizeLabel} (max ${maxLabel})\n`);
+  const sizeLabel = formatBytes(stats.sizeBytes, locale);
+  const maxLabel = cacheMaxBytes > 0 ? formatBytes(cacheMaxBytes, locale) : "";
   stdout.write(
-    `${translateCliText("Entries:", locale)} total=${stats.totalEntries} extract=${stats.counts.extract} summary=${stats.counts.summary} transcript=${stats.counts.transcript}\n`,
+    `${t("cache.size", { size: sizeLabel, max: maxLabel, limited: cacheMaxBytes > 0 })}\n`,
   );
+  stdout.write(`${t("cache.entries", { total: stats.totalEntries, ...stats.counts })}\n`);
   return true;
 }

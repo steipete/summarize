@@ -15,7 +15,7 @@ export async function tryNativeYoutubeMediaTranscript(
     return null;
   }
 
-  flow.pushHint("YouTube: resolving audio without yt-dlp");
+  flow.pushHint("YouTube: resolving audio without yt-dlp", "nativeAudio");
   flow.attemptedProviders.push("youtube-media");
   try {
     const media = await resolveYoutubeAudio({

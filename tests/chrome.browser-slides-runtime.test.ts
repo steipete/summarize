@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBrowserSlidesRuntime } from "../apps/chrome-extension/src/entrypoints/background/browser-slides-runtime.js";
+import { message } from "../apps/chrome-extension/src/lib/i18n";
 import type { PanelCachePayload } from "../apps/chrome-extension/src/lib/panel-contracts.js";
 
 const session = { windowId: 3 };
@@ -249,7 +250,7 @@ describe("chrome browser slides runtime", () => {
       }),
     );
     expect(harness.sendStatus).toHaveBeenCalledWith(session, "Preparing frames");
-    expect(harness.sendStatus).toHaveBeenCalledWith(session, "Capturing slides in browser...");
+    expect(harness.sendStatus).toHaveBeenCalledWith(session, message("progress.captureSlides"));
     expect(harness.logExtensionEvent).toHaveBeenCalledWith({
       event: "slides.browser-media.fallback",
       detail: { error: "decoder failed", url: youtubeTab.url },
@@ -313,7 +314,10 @@ describe("chrome browser slides runtime", () => {
       ok: false,
       error: "capture failed",
     });
-    expect(harness.sendStatus).toHaveBeenLastCalledWith(session, "Slides failed: capture failed");
+    expect(harness.sendStatus).toHaveBeenLastCalledWith(
+      session,
+      message("error.slidesFailed", { error: "capture failed" }),
+    );
     expect(debugResult()).toEqual({
       ok: false,
       error: "capture failed",

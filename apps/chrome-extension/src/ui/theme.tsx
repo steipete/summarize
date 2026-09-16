@@ -1,3 +1,4 @@
+import { message, type ExtensionMessageKey } from "../lib/i18n";
 export function SchemeChips({ scheme }: { scheme: string }) {
   return (
     <span className={`scheme-chips scheme-${scheme}`} aria-hidden="true">
@@ -8,8 +9,20 @@ export function SchemeChips({ scheme }: { scheme: string }) {
     </span>
   );
 }
-import { colorModes, colorSchemes } from "../lib/theme";
+import { colorSchemes, type ColorScheme } from "../lib/theme";
 
-const themeItem = (value: string) => ({ value, label: value[0].toUpperCase() + value.slice(1) });
+const schemeLabels: Record<ColorScheme, ExtensionMessageKey> = {
+  slate: "slate",
+  cedar: "cedar",
+  mint: "mint",
+  ocean: "ocean",
+  ember: "ember",
+  iris: "iris",
+};
+const themeItem = (value: ColorScheme) => ({ value, label: message(schemeLabels[value]) });
 export const schemeItems = colorSchemes.map(themeItem);
-export const modeItems = colorModes.map(themeItem);
+export const modeItems = [
+  { value: "system", label: message("system") },
+  { value: "light", label: message("light") },
+  { value: "dark", label: message("dark") },
+];

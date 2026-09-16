@@ -1,6 +1,12 @@
 import { daemonFetch } from "../../lib/daemon-fetch";
 import { getDaemonOrigin } from "../../lib/daemon-url";
 import { readExtensionLogs } from "../../lib/extension-logs";
+import { uiNumber, uiDate, uiRelativeTime, type LocalizedText } from "../../lib/i18n";
+import {
+  setText as setUiText,
+  setLocalizedAttribute as setUiAttribute,
+  message as uiMessage,
+} from "../../lib/i18n";
 
 type LogLevel = "info" | "warn" | "error" | "verbose";
 
@@ -44,11 +50,11 @@ export type LogsViewerOptions = {
 };
 
 const LOG_LEVELS: LogLevel[] = ["info", "warn", "error", "verbose"];
-const LOG_LEVEL_LABELS: Record<LogLevel, string> = {
-  info: "INFO",
-  warn: "WARN",
-  error: "ERROR",
-  verbose: "VERBOSE",
+const LOG_LEVEL_LABELS: Record<LogLevel, LocalizedText> = {
+  info: uiMessage("logs.level.info"),
+  warn: uiMessage("logs.level.warn"),
+  error: uiMessage("logs.level.error"),
+  verbose: uiMessage("logs.level.verbose"),
 };
 const LOG_LEVEL_ALIASES: Record<string, LogLevel> = {
   info: "info",
@@ -85,7 +91,7 @@ const formatBytes = (bytes: number): string => {
     unitIndex += 1;
   }
   const digits = value < 10 && unitIndex > 0 ? 1 : 0;
-  return `${value.toFixed(digits)} ${units[unitIndex]}`;
+  return `${uiNumber(value, { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false })} ${units[unitIndex]}`;
 };
 
 const formatRelativeTime = (timeMs: number): string => {
@@ -93,21 +99,21 @@ const formatRelativeTime = (timeMs: number): string => {
   const diffMs = Date.now() - timeMs;
   if (!Number.isFinite(diffMs)) return "";
   const diffSeconds = Math.max(0, Math.round(diffMs / 1000));
-  if (diffSeconds < 10) return "just now";
-  if (diffSeconds < 60) return `${diffSeconds}s ago`;
+  if (diffSeconds < 10) return uiRelativeTime(0, "second");
+  if (diffSeconds < 60) return uiRelativeTime(-diffSeconds, "second");
   const diffMinutes = Math.round(diffSeconds / 60);
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  if (diffMinutes < 60) return uiRelativeTime(-diffMinutes, "minute");
   const diffHours = Math.round(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 24) return uiRelativeTime(-diffHours, "hour");
   const diffDays = Math.round(diffHours / 24);
-  return `${diffDays}d ago`;
+  return uiRelativeTime(-diffDays, "day");
 };
 
 const formatLogTime = (value: unknown): string => {
   if (typeof value !== "string") return "";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "";
-  return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return uiDate(parsed, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 };
 
 const normalizeLogLevel = (value: unknown): LogLevel => {
@@ -150,7 +156,7 @@ const parseLogLine = (line: string): LogEntry | null => {
       return {
         raw: trimmed,
         level,
-        time: formatLogTime(obj.date),
+        time: typeof obj.date === "string" ? obj.date : "",
         event: typeof obj.event === "string" ? obj.event : "",
         details: buildLogDetails(obj),
         isJson: true,
@@ -209,9 +215,9 @@ export function createLogsViewer(options: LogsViewerOptions): LogsViewer {
   let lines: string[] = [];
   let entries: LogEntry[] = [];
 
-  const setMeta = (text: string) => {
-    metaEl.textContent = text;
-    metaEl.title = "";
+  const setMeta = (text: LocalizedText) => {
+    setUiText(metaEl, text);
+    setUiAttribute(metaEl, "title", "");
   };
 
   const setMetaInfo = (info: {
@@ -220,20 +226,27 @@ export function createLogsViewer(options: LogsViewerOptions): LogsViewer {
     truncated?: boolean;
     warning?: string;
   }) => {
-    const summaryParts: string[] = [];
-    if (typeof info.sizeBytes === "number") {
-      summaryParts.push(`size ${formatBytes(info.sizeBytes)}`);
-    }
-    if (typeof info.mtimeMs === "number") {
-      const relative = formatRelativeTime(info.mtimeMs);
-      if (relative) summaryParts.push(`updated ${relative}`);
-      metaEl.title = new Date(info.mtimeMs).toLocaleString();
-    } else {
-      metaEl.title = "";
-    }
-    if (info.truncated) summaryParts.push("tail truncated");
-    if (info.warning) summaryParts.push(info.warning);
-    setMeta(summaryParts.join(" · "));
+    const hasSize = typeof info.sizeBytes === "number";
+    const hasTime = typeof info.mtimeMs === "number";
+    setMeta(
+      uiMessage("logs.meta", () => ({
+        size: hasSize ? formatBytes(info.sizeBytes!) : "",
+        updated: hasTime ? formatRelativeTime(info.mtimeMs!) : "",
+        hasSize,
+        hasTime,
+        hasSizeTime: hasSize && hasTime,
+        truncated: Boolean(info.truncated),
+        beforeTruncated: (hasSize || hasTime) && Boolean(info.truncated),
+        warning: info.warning ?? "",
+        hasWarning: Boolean(info.warning),
+        beforeWarning: (hasSize || hasTime || Boolean(info.truncated)) && Boolean(info.warning),
+      })),
+    );
+    setUiAttribute(
+      metaEl,
+      "title",
+      hasTime ? uiMessage("common.value", () => ({ value: uiDate(info.mtimeMs!) })) : "",
+    );
   };
 
   const render = () => {
@@ -250,7 +263,7 @@ export function createLogsViewer(options: LogsViewerOptions): LogsViewer {
     if (!parsedEnabled) {
       tableEl.hidden = true;
       rawEl.hidden = false;
-      rawEl.textContent = lines.join("\n");
+      setUiText(rawEl, lines.join("\n"));
       if (stickToBottom) scrollToBottom(outputEl);
       return;
     }
@@ -265,14 +278,18 @@ export function createLogsViewer(options: LogsViewerOptions): LogsViewer {
       const row = document.createElement("tr");
       row.dataset.localeIgnore = "true";
       const timeCell = document.createElement("td");
-      timeCell.textContent = entry.time || "—";
+      setUiText(
+        timeCell,
+        uiMessage("common.value", () => ({ value: formatLogTime(entry.time) || "—" })),
+      );
       const levelCell = document.createElement("td");
-      levelCell.textContent = LOG_LEVEL_LABELS[entry.level];
+      setUiText(levelCell, LOG_LEVEL_LABELS[entry.level]);
       levelCell.className = `level ${entry.level}`;
       const eventCell = document.createElement("td");
-      eventCell.textContent = entry.event || (entry.isJson ? "log" : "raw");
+      // i18n-ignore: Event identifiers belong to the diagnostic log format.
+      setUiText(eventCell, entry.event || (entry.isJson ? "log" : "raw"));
       const detailCell = document.createElement("td");
-      detailCell.textContent = entry.details || entry.raw;
+      setUiText(detailCell, entry.details || entry.raw);
       detailCell.className = "details";
       row.append(timeCell, levelCell, eventCell, detailCell);
       rows.append(row);
@@ -282,7 +299,7 @@ export function createLogsViewer(options: LogsViewerOptions): LogsViewer {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
       cell.colSpan = 4;
-      cell.textContent = "No matching log entries.";
+      setUiText(cell, uiMessage("no.matching.log.entries"));
       cell.className = "details";
       row.append(cell);
       rows.append(row);
@@ -309,7 +326,7 @@ export function createLogsViewer(options: LogsViewerOptions): LogsViewer {
     const isExtensionSource = source === "extension";
     const token = getToken().trim();
     if (!isExtensionSource && !token) {
-      setMeta("Add token to load daemon logs.");
+      setMeta(uiMessage("add.token.to.load.daemon.logs"));
       setLines([]);
       needsRefresh = true;
       return;
@@ -319,18 +336,18 @@ export function createLogsViewer(options: LogsViewerOptions): LogsViewer {
     const tail = normalizeTailCount(tailEl.value);
     tailEl.value = String(tail);
     if (!opts.auto) {
-      setMeta("Loading logs…");
+      setMeta(uiMessage("loading.logs"));
     }
     try {
       if (isExtensionSource) {
         const result = await readExtensionLogs(tail);
         if (!result.ok) {
-          setMeta("Extension logs unavailable.");
+          setMeta(uiMessage("extension.logs.unavailable"));
           setLines([]);
           return;
         }
         if (!result.lines.length) {
-          setMeta("No logs returned.");
+          setMeta(uiMessage("no.logs.returned"));
           setLines([]);
           return;
         }
@@ -362,7 +379,7 @@ export function createLogsViewer(options: LogsViewerOptions): LogsViewer {
         warning?: string;
       };
       if (!json?.ok || !Array.isArray(json.lines)) {
-        setMeta("No logs returned.");
+        setMeta(uiMessage("no.logs.returned"));
         setLines([]);
         return;
       }

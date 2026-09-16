@@ -4,7 +4,7 @@ import { formatProgress } from "../src/daemon/summarize-progress.js";
 
 describe("daemon/summarize-progress", () => {
   it("formats link preview progress events", () => {
-    const service = "YouTube";
+    const service = "youtube";
 
     const cases: Array<[LinkPreviewProgressEvent, string | null]> = [
       [{ kind: ProgressKind.FetchHtmlStart } as LinkPreviewProgressEvent, "Fetching…"],
@@ -27,11 +27,11 @@ describe("daemon/summarize-progress", () => {
       [{ kind: ProgressKind.TranscriptStart, hint: "" } as LinkPreviewProgressEvent, "Transcript…"],
       [
         { kind: ProgressKind.TranscriptMediaDownloadStart, service } as LinkPreviewProgressEvent,
-        `${service}: downloading audio…`,
+        `YouTube: downloading audio…`,
       ],
       [
         { kind: ProgressKind.TranscriptMediaDownloadProgress, service } as LinkPreviewProgressEvent,
-        `${service}: downloading audio…`,
+        `YouTube: downloading audio…`,
       ],
       [
         {
@@ -40,15 +40,15 @@ describe("daemon/summarize-progress", () => {
           downloadedBytes: 50,
           totalBytes: 100,
         } as LinkPreviewProgressEvent,
-        `${service}: downloading audio… 50%`,
+        `YouTube: downloading audio… 50%`,
       ],
       [
         { kind: ProgressKind.TranscriptWhisperStart, service } as LinkPreviewProgressEvent,
-        `${service}: transcribing…`,
+        `YouTube: transcribing…`,
       ],
       [
         { kind: ProgressKind.TranscriptWhisperProgress, service } as LinkPreviewProgressEvent,
-        `${service}: transcribing…`,
+        `YouTube: transcribing…`,
       ],
       [
         {
@@ -57,15 +57,15 @@ describe("daemon/summarize-progress", () => {
           processedDurationSeconds: 5,
           totalDurationSeconds: 10,
         } as LinkPreviewProgressEvent,
-        `${service}: transcribing… 50%`,
+        `YouTube: transcribing… 50%`,
       ],
       [
         { kind: ProgressKind.TranscriptDone, service, ok: true } as LinkPreviewProgressEvent,
-        `${service}: transcript ready`,
+        `YouTube: transcript ready`,
       ],
       [
         { kind: ProgressKind.TranscriptDone, service, ok: false } as LinkPreviewProgressEvent,
-        `${service}: transcript unavailable`,
+        `YouTube: transcript unavailable`,
       ],
       [{ kind: ProgressKind.BirdStart } as LinkPreviewProgressEvent, "X: extracting tweet…"],
       [

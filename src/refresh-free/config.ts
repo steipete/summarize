@@ -2,10 +2,11 @@ import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import JSON5 from "json5";
+import { CliError } from "../locale.js";
 
 export function resolveRefreshFreeConfigPath(env: Record<string, string | undefined>): string {
   const home = env.HOME?.trim() || homedir();
-  if (!home) throw new Error("Missing HOME");
+  if (!home) throw new CliError("error.missingHome");
   return join(home, ".summarize", "config.json");
 }
 
@@ -47,14 +48,18 @@ function assertNoComments(raw: string, path: string): void {
       continue;
     }
     if (ch === "/" && next === "/") {
-      throw new Error(
-        `Invalid config file ${path}: comments are not allowed (found // at ${line}:${col}).`,
-      );
+      throw new CliError("error.configLineComment", {
+        path: String(path),
+        line: String(line),
+        col: String(col),
+      });
     }
     if (ch === "/" && next === "*") {
-      throw new Error(
-        `Invalid config file ${path}: comments are not allowed (found /* at ${line}:${col}).`,
-      );
+      throw new CliError("error.configBlockComment", {
+        path: String(path),
+        line: String(line),
+        col: String(col),
+      });
     }
     if (ch === "\n") {
       line += 1;
@@ -75,7 +80,7 @@ async function readConfigRoot(configPath: string): Promise<Record<string, unknow
     assertNoComments(raw, configPath);
     const parsed = JSON5.parse(raw) as unknown;
     if (!isRecord(parsed)) {
-      throw new Error(`Invalid config file ${configPath}: expected an object at the top level`);
+      throw new CliError("error.configObject", { configPath: String(configPath) });
     }
     return parsed;
   } catch (error) {
@@ -100,7 +105,7 @@ export async function writeFreeModelConfig({
   const configModels = (() => {
     if (typeof configModelsRaw === "undefined") return {};
     if (!isRecord(configModelsRaw)) {
-      throw new Error(`Invalid config file ${configPath}: "models" must be an object.`);
+      throw new CliError("error.configModelsObject", { configPath: String(configPath) });
     }
     return { ...configModelsRaw };
   })();

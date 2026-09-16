@@ -1,32 +1,11 @@
 import type http from "node:http";
 import { Writable } from "node:stream";
+import { cliMessage } from "../locale.js";
+import { describeCliError, createCliTranslator, type CliMessage } from "../locale.js";
 import { refreshFree } from "../refresh-free.js";
 import { json } from "./server-http.js";
 import type { DaemonRuntime } from "./server-runtime.js";
 import { createSession, endSession, pushToSession, type SessionEvent } from "./server-session.js";
-
-function createLineWriter(onLine: (line: string) => void): Writable {
-  let buffer = "";
-  return new Writable({
-    write(chunk, _encoding, callback) {
-      buffer += chunk.toString();
-      let index = buffer.indexOf("\n");
-      while (index >= 0) {
-        const line = buffer.slice(0, index).trimEnd();
-        buffer = buffer.slice(index + 1);
-        if (line.trim().length > 0) onLine(line);
-        index = buffer.indexOf("\n");
-      }
-      callback();
-    },
-    final(callback) {
-      const line = buffer.trim();
-      if (line) onLine(line);
-      buffer = "";
-      callback();
-    },
-  });
-}
 
 export async function handleRefreshFreeRoute({
   req,
@@ -63,18 +42,24 @@ export async function handleRefreshFreeRoute({
   json(res, 200, { ok: true, id: session.id }, cors);
 
   void (async () => {
-    const pushStatus = (text: string) => {
-      pushToSession(session, { event: "status", data: { text } }, onSessionEvent);
+    const pushStatus = (text: string, message?: CliMessage) => {
+      pushToSession(
+        session,
+        { event: "status", data: { text, ...(message ? { message } : {}) } },
+        onSessionEvent,
+      );
     };
     try {
-      pushStatus("Refresh free: starting…");
-      const stdout = createLineWriter(pushStatus);
-      const stderr = createLineWriter(pushStatus);
-      await refreshFree({ env, fetchImpl, stdout, stderr });
+      pushStatus(createCliTranslator("en")("refresh.begin"), cliMessage("refresh.begin"));
+      const sink = new Writable({
+        write(_chunk, _encoding, callback) {
+          callback();
+        },
+      });
+      await refreshFree({ env, fetchImpl, stdout: sink, stderr: sink, onMessage: pushStatus });
       pushToSession(session, { event: "done", data: {} }, onSessionEvent);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      pushToSession(session, { event: "error", data: { message } }, onSessionEvent);
+      pushToSession(session, { event: "error", data: describeCliError(error) }, onSessionEvent);
       console.error("[summarize-daemon] refresh-free failed", error);
     } finally {
       runtime.finishRefreshSession(session.id);

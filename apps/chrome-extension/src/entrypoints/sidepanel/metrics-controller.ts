@@ -1,14 +1,17 @@
-import { buildMetricsParts, buildMetricsTokens } from "../../lib/metrics";
+import { setText as setUiText, resolveText, subscribeLocale } from "../../lib/i18n";
+import { buildMetricsParts, buildMetricsTokens, type LocalizedMetricPart } from "../../lib/metrics";
 
 export type MetricsMode = "summary" | "chat";
 
 type MetricsState = {
+  parts?: LocalizedMetricPart[] | null;
   summary: string | null;
   inputSummary: string | null;
   sourceUrl: string | null;
 };
 
 type MetricsRenderState = {
+  parts?: LocalizedMetricPart[] | null;
   summary: string | null;
   inputSummary: string | null;
   sourceUrl: string | null;
@@ -116,6 +119,27 @@ export function createMetricsController({
     },
   ) => {
     metricsEl.replaceChildren();
+    if (renderState.parts) {
+      renderState.parts.forEach((part, index) => {
+        if (index) metricsEl.append(document.createTextNode(" · "));
+        const element = document.createElement(part.href ? "a" : "span");
+        if (part.href && element instanceof HTMLAnchorElement) {
+          element.href = part.href;
+          element.target = "_blank";
+          element.rel = "noopener noreferrer";
+        }
+        const text =
+          options?.shortenOpenRouter && part.model && typeof part.text === "string"
+            ? part.text.replace(
+                /^openrouter\//iu,
+                /* i18n-ignore: Compact provider prefix in a literal model ID. */ "or/",
+              )
+            : part.text;
+        setUiText(element, text);
+        metricsEl.append(element);
+      });
+      return;
+    }
     const tokens = buildMetricsTokens({
       summary,
       inputSummary: options?.inputSummary ?? renderState.inputSummary,
@@ -128,7 +152,7 @@ export function createMetricsController({
       if (token.kind === "link") {
         const link = document.createElement("a");
         link.href = token.href;
-        link.textContent = token.text;
+        setUiText(link, token.text);
         link.target = "_blank";
         link.rel = "noopener noreferrer";
         metricsEl.append(link);
@@ -138,7 +162,7 @@ export function createMetricsController({
         if (token.before) metricsEl.append(document.createTextNode(token.before));
         const link = document.createElement("a");
         link.href = token.href;
-        link.textContent = token.label;
+        setUiText(link, token.label);
         link.target = "_blank";
         link.rel = "noopener noreferrer";
         metricsEl.append(link);
@@ -155,17 +179,19 @@ export function createMetricsController({
     renderState.rafId = window.requestAnimationFrame(() => {
       renderState.rafId = null;
       if (!renderState.summary) return;
-      const parts = buildMetricsParts({
-        summary: renderState.summary,
-        inputSummary: renderState.inputSummary,
-      });
+      const parts =
+        renderState.parts?.map((part) => resolveText(part.text)) ??
+        buildMetricsParts({
+          summary: renderState.summary,
+          inputSummary: renderState.inputSummary,
+        });
       if (parts.length === 0) return;
       const fullText = parts.join(" · ");
       if (!/\bopenrouter\//i.test(fullText)) return;
       if (metricsEl.clientWidth <= 0) return;
       const measureEl = ensureMetricsMeasureEl();
       syncMetricsMeasureStyles();
-      measureEl.textContent = fullText;
+      setUiText(measureEl, fullText);
       const shouldShorten = elementWrapsToMultipleLines(measureEl);
       if (shouldShorten === renderState.shortened) return;
       renderState.shortened = shouldShorten;
@@ -196,6 +222,7 @@ export function createMetricsController({
   const renderMode = (mode: MetricsMode) => {
     const state = metricsByMode[mode];
     renderState.summary = state.summary;
+    renderState.parts = state.parts;
     renderState.inputSummary = state.inputSummary;
     renderState.sourceUrl = state.sourceUrl;
     renderState.shortened = false;
@@ -210,7 +237,7 @@ export function createMetricsController({
     metricsEl.removeAttribute("data-details");
 
     if (!state.summary) {
-      metricsEl.textContent = "";
+      setUiText(metricsEl, "");
       metricsEl.classList.add("hidden");
       return;
     }
@@ -224,7 +251,18 @@ export function createMetricsController({
     scheduleFitCheck();
   };
 
+  const unsubscribe = subscribeLocale(() => renderMode(activeMode));
+  const dispose = () => {
+    unsubscribe();
+    renderState.observer?.disconnect();
+    if (renderState.rafId !== null) window.cancelAnimationFrame(renderState.rafId);
+    metricsMeasureEl?.remove();
+    window.removeEventListener("pagehide", dispose);
+  };
+  window.addEventListener("pagehide", dispose, { once: true });
+
   return {
+    dispose,
     clearForMode(mode: MetricsMode) {
       this.setForMode(mode, null, null, null);
     },
@@ -237,8 +275,9 @@ export function createMetricsController({
       summary: string | null,
       inputSummary: string | null,
       sourceUrl: string | null,
+      parts?: LocalizedMetricPart[] | null,
     ) {
-      metricsByMode[mode] = { summary, inputSummary, sourceUrl };
+      metricsByMode[mode] = { summary, inputSummary, sourceUrl, parts };
       if (activeMode === mode) {
         renderMode(mode);
       }

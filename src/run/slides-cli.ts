@@ -3,7 +3,8 @@ import { CommanderError } from "commander";
 import { resolveEnvState } from "../application/environment-state.js";
 import { loadSummarizeConfig } from "../config.js";
 import { parseDurationMs } from "../flags.js";
-import { hasTurkishTranslation, resolveCliLocaleFromArgs, translateCliText } from "../locale.js";
+import { CliError } from "../locale.js";
+import { type CliMessage, createCliTranslator, resolveCliLocaleFromArgs } from "../locale.js";
 import {
   extractSlidesForSource,
   resolveSlideSettings,
@@ -37,7 +38,7 @@ function parseRenderMode(raw: unknown): SlidesRenderMode {
   const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
   if (!value || value === "none") return "none";
   if (value === "auto" || value === "kitty" || value === "iterm") return value;
-  throw new Error(`Unsupported --render: ${String(raw)}`);
+  throw new CliError("error.renderMode", { value: String(String(raw)) });
 }
 
 export async function handleSlidesCliRequest({
@@ -49,11 +50,11 @@ export async function handleSlidesCliRequest({
   if (normalizedArgv[0]?.toLowerCase() !== "slides") return false;
 
   const locale = resolveCliLocaleFromArgs(normalizedArgv, envForRun);
-  const localize = (text: string) => translateCliText(text, locale);
-  const program = buildSlidesProgram();
+  const t = createCliTranslator(locale);
+  const program = buildSlidesProgram(locale);
   program.configureOutput({
     writeOut(str) {
-      stdout.write(localize(str));
+      stdout.write(str);
     },
     writeErr(str) {
       stderr.write(str);
@@ -78,7 +79,7 @@ export async function handleSlidesCliRequest({
 
   const url = program.args[0];
   if (!url) {
-    throw new Error("summarize slides requires a URL or local video file.");
+    throw new CliError("summarize.slides.requires.a.url.or.local.video.file");
   }
 
   const opts = program.opts() as {
@@ -100,7 +101,7 @@ export async function handleSlidesCliRequest({
 
   const renderMode = parseRenderMode(opts.render);
   if (opts.json && renderMode !== "none") {
-    throw new Error("--render is not supported with --json output.");
+    throw new CliError("render.is.not.supported.with.json.output");
   }
 
   const slidesSettings = resolveSlideSettings({
@@ -116,7 +117,7 @@ export async function handleSlidesCliRequest({
     cwd: process.cwd(),
   });
   if (!slidesSettings) {
-    throw new Error("Slides are disabled (enable --slides-ocr or check arguments).");
+    throw new CliError("slides.are.disabled.enable.slides.ocr.or.check.arguments");
   }
 
   const timeoutRaw = typeof opts.timeout === "string" && opts.timeout.trim() ? opts.timeout : "2m";
@@ -137,8 +138,8 @@ export async function handleSlidesCliRequest({
 
   const source = resolveSlideSourceFromUrl(url);
   if (!source) {
-    throw new Error(
-      "Slides are only supported for YouTube, direct video URLs, or local video files.",
+    throw new CliError(
+      "slides.are.only.supported.for.youtube.direct.video.urls.or.local.video.files",
     );
   }
 
@@ -149,25 +150,17 @@ export async function handleSlidesCliRequest({
     enabled: progressEnabled,
     trueColor: resolveTrueColor(envForRun),
   });
-  const renderStatus = (label: string, detail = "…") =>
-    `${theme.label(localize(label))}${theme.dim(detail)}`;
-  const renderStatusFromText = (text: string) => {
-    const match = text.match(/^([^:]+):(.*)$/);
-    if (!match) return hasTurkishTranslation(text) ? renderStatus(text) : theme.label(text);
-    const [, prefix, rest] = match;
-    const label = prefix.trim();
-    return `${theme.label(hasTurkishTranslation(label) ? localize(label) : label)}${theme.dim(`:${rest}`)}`;
-  };
+  const renderStatusFromText = (text: string) => theme.label(text);
   const oscProgress = progressEnabled
     ? createOscProgressController({
-        label: localize("Slides"),
+        label: t("slides"),
         env: envForRun,
         isTty: progressEnabled,
         write: (data: string) => stderr.write(data),
       })
     : null;
   const spinner = startSpinner({
-    text: renderStatus("Extracting slides"),
+    text: theme.label(t("progress.extractSlides")),
     enabled: progressEnabled,
     stream: stderr,
     color: theme.palette.spinner,
@@ -196,21 +189,22 @@ export async function handleSlidesCliRequest({
   const logSlides = (message: string) => {
     writeVerbose(stderr, verboseEnabled, `slides ${message}`, verboseColor, envForRun);
   };
-  const onSlidesProgress = (text: string) => {
+  const onSlidesProgress = (text: string, message?: CliMessage) => {
+    const rendered = message ? t(message.key, message.values) : text;
     if (progressEnabled) {
-      spinner.setText(renderStatusFromText(text));
-      const match = text.match(/(\d{1,3})%/);
-      const percent = match ? Number(match[1]) : null;
+      spinner.setText(renderStatusFromText(rendered));
+      const percent =
+        typeof message?.values.percent === "number" ? message.values.percent * 100 : null;
       if (Number.isFinite(percent) && percent !== null) {
-        oscProgress?.setPercent("Slides", Math.max(0, Math.min(100, percent)));
+        oscProgress?.setPercent(t("slides"), Math.max(0, Math.min(100, percent)));
       } else {
-        oscProgress?.setIndeterminate("Slides");
+        oscProgress?.setIndeterminate(t("slides"));
       }
       spinner.refresh?.();
       return;
     }
     if (verboseEnabled) {
-      stderr.write(`${text}\n`);
+      stderr.write(`${rendered}\n`);
     }
   };
 
@@ -247,12 +241,12 @@ export async function handleSlidesCliRequest({
   }
 
   const count = slidesExtracted.slides.length;
-  stdout.write(`${localize("Slides extracted:")} ${count}\n`);
-  stdout.write(`${localize("Slides dir:")} ${slidesExtracted.slidesDir}\n`);
+  stdout.write(`${t("slides.extractedCount", { count })}\n`);
+  stdout.write(`${t("slides.directory", { path: slidesExtracted.slidesDir })}\n`);
 
   if (renderMode !== "none") {
     if (!isRichTty(stdout)) {
-      throw new Error("--render requires a TTY stdout.");
+      throw new CliError("render.requires.a.tty.stdout");
     }
     await renderSlidesInline({
       slides: slidesExtracted.slides,
@@ -260,7 +254,11 @@ export async function handleSlidesCliRequest({
       env: envForRun,
       stdout,
       labelForSlide: (slide) =>
-        `${localize("Slide")} ${slide.index} · ${formatTimestamp(slide.timestamp)} (${slide.imagePath})`,
+        t("slides.image", {
+          index: slide.index,
+          timestamp: formatTimestamp(slide.timestamp),
+          path: slide.imagePath,
+        }),
     });
     return true;
   }

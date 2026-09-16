@@ -106,12 +106,13 @@ export function createSidepanelRunRuntime({
 
     queueSlidesRender,
     rebuildSlideDescriptions,
-    refreshSummaryMetrics: (summary) => {
+    refreshSummaryMetrics: (summary, parts) => {
       metricsController.setForMode(
         "summary",
         summary,
         panelState.lastMeta.inputSummary,
         panelState.currentSource?.url ?? null,
+        parts,
       );
       metricsController.setActiveMode("summary");
     },

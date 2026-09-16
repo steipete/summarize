@@ -1,3 +1,4 @@
+import { type CliLocale, createCliTranslator } from "../../../locale.js";
 import type { OscProgressController } from "../../../tty/osc-progress.js";
 import {
   applySlidesText,
@@ -11,13 +12,16 @@ export function createUrlProgressStatus({
   spinner,
   oscProgress,
   now = () => Date.now(),
+  locale = "en",
 }: {
+  locale?: CliLocale;
   enabled: boolean;
   spinner: { setText: (text: string) => void; refresh?: () => void };
   oscProgress: OscProgressController;
   now?: () => number;
 }) {
   const state = createUrlProgressStatusState();
+  const t = createCliTranslator(locale);
 
   const render = (text: string | null) => {
     if (!enabled || !text) return;
@@ -39,9 +43,9 @@ export function createUrlProgressStatus({
     setSlides(text: string, percent?: number | null) {
       render(applySlidesText(state, text, now()).renderText);
       if (typeof percent === "number" && Number.isFinite(percent)) {
-        oscProgress.setPercent("Slides", Math.max(0, Math.min(100, percent)));
+        oscProgress.setPercent(t("slides"), Math.max(0, Math.min(100, percent)));
       } else {
-        oscProgress.setIndeterminate("Slides");
+        oscProgress.setIndeterminate(t("slides"));
       }
       refresh();
     },
@@ -49,7 +53,7 @@ export function createUrlProgressStatus({
       const next = clearSlidesText(state);
       if (next.summaryText) {
         render(next.renderText);
-        oscProgress.setIndeterminate("Summarizing");
+        oscProgress.setIndeterminate(t("summarizing"));
         refresh();
       }
     },

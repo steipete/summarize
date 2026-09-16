@@ -1,3 +1,4 @@
+import { extensionMessage } from "../../lib/i18n";
 import { isPanelContentUrl, panelUrlsMatch } from "../../lib/panel-url";
 import type { NavigationRuntime } from "./navigation-runtime";
 
@@ -35,7 +36,7 @@ export async function syncNavigationWithActiveTab(options: ActiveTabSyncOptions)
       if (preserveChat) options.navigationRuntime.notePreserveChatForUrl(tab.url);
       options.setCurrentSource(null);
       options.resetForNavigation(preserveChat);
-      options.setBaseTitle(tab.title || tab.url || "Summarize");
+      options.setBaseTitle(tab.title || tab.url || extensionMessage("brand.name"));
       return;
     }
     if (tab.title && tab.title !== currentSource.title) {

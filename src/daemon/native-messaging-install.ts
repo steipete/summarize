@@ -78,6 +78,7 @@ export function buildNativeMessagingManifest({
 }) {
   return {
     name: NATIVE_MESSAGING_HOST_NAME,
+    // i18n-ignore: Chrome native-host registration metadata, not interface text.
     description: "Summarize local companion bridge",
     path: launcherPath,
     type: "stdio" as const,
