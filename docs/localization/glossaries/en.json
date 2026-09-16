@@ -1,0 +1,12 @@
+{
+  "locale": "en",
+  "summary": "summary",
+  "transcript": "transcript",
+  "sidePanel": "side panel",
+  "clipboard": "clipboard",
+  "slides": "slides",
+  "provider": "provider",
+  "prompt": "prompt",
+  "tone": "Concise, direct imperatives.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

@@ -2,7 +2,7 @@
 
 ## 0.23.0 - Unreleased
 
-- Localization: render CLI and extension copy from typed ICU catalogs, follow system/browser language preferences, preserve source content, and enforce catalog completeness, placeholders, key usage, and source-copy checks in CI, building on Turkish support from @husodrn46.
+- Localization: add complete German, French, Spanish, Italian, Brazilian Portuguese, Dutch, Polish, Russian, Japanese, Simplified/Traditional Chinese, and Korean interfaces alongside English and Turkish, with typed ICU catalogs, system/browser locale negotiation, and CI enforcement for missing, stale, mismatched, and uncatalogued messages; thanks @husodrn46 for the original Turkish support.
 - Network: handle bodyless and invalid responses in the DNS-pinned transport without crashing, and honor cancellation carried by Request objects.
 - Network: strip authorization and cookie headers on cross-origin guarded redirects, retain same-origin Request options, and cancel discarded redirect bodies.
 - Media cache: remove superseded files when a URL's cached filename extension changes so obsolete downloads do not escape the size cap.

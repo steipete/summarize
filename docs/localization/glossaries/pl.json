@@ -1,0 +1,12 @@
+{
+  "locale": "pl",
+  "summary": "podsumowanie",
+  "transcript": "transkrypcja",
+  "sidePanel": "panel boczny",
+  "clipboard": "schowek",
+  "slides": "slajdy",
+  "provider": "dostawca",
+  "prompt": "instrukcja",
+  "tone": "Direct singular imperatives; Polish one/few/many/other plurals.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

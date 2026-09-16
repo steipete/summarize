@@ -41,12 +41,12 @@ describe("CLI locale selection and keyed messages", () => {
       expect((wrapped as CliError).format("tr")).toBe(rendered);
     }
   });
-  it("uses explicit preferences before system locale and falls back for unregistered catalogs", () => {
+  it("uses explicit preferences, regional fallbacks, and then the system locale", () => {
     expect(resolveCliLocale("tr-TR")).toBe("tr");
     expect(resolveCliLocale("turkish")).toBe("tr");
-    expect(resolveCliLocale("fr")).toBe("en");
-    expect(resolveCliLocale("zh-TW")).toBe("en");
-    expect(resolveCliLocale("pt-PT")).toBe("en");
+    expect(resolveCliLocale("fr")).toBe("fr");
+    expect(resolveCliLocale("zh-TW")).toBe("zh-Hant");
+    expect(resolveCliLocale("pt-PT")).toBe("pt-BR");
     expect(resolveCliLocale("unknown")).toBe("en");
     expect(resolveCliLocaleFromEnv({ SUMMARIZE_LOCALE: "tr_TR.UTF-8", LANG: "de_DE.UTF-8" })).toBe(
       "tr",
@@ -56,12 +56,32 @@ describe("CLI locale selection and keyed messages", () => {
       resolveCliLocaleFromEnv({ LANG: "de_DE.UTF-8", LC_MESSAGES: "ja_JP.UTF-8", LC_ALL: "C" }),
     ).toBe("en");
     expect(resolveCliLocaleFromEnv({ SUMMARIZE_LOCALE: "tr", LANG: "de_DE.UTF-8" }, "auto")).toBe(
-      "en",
+      "de",
     );
     expect(resolveCliLocaleFromArgs(["--locale", "tr"], {})).toBe("tr");
     expect(resolveCliLocaleFromArgs(["--locale=tr", "--locale=en"], {})).toBe("en");
     expect(resolveCliLocaleFromArgs(["--", "--locale=tr"], {})).toBe("en");
     expect(resolveCliLocaleFromArgs(["--locale", "tr", "--", "--locale=en"], {})).toBe("tr");
+  });
+
+  it.each([
+    ["de", "Beispiele:", "Zusammenfassung kopieren"],
+    ["fr", "Exemples :", "Copier le résumé"],
+    ["es", "Ejemplos:", "Copiar resumen"],
+    ["it", "Esempi:", "Copia riassunto"],
+    ["pt-BR", "Exemplos:", "Copiar resumo"],
+    ["nl", "Voorbeelden:", "Samenvatting kopiëren"],
+    ["pl", "Przykłady:", "Kopiuj podsumowanie"],
+    ["ru", "Примеры:", "Копировать сводку"],
+    ["ja", "使用例:", "要約をコピー"],
+    ["zh-Hans", "示例：", "复制摘要"],
+    ["zh-Hant", "範例：", "複製摘要"],
+    ["ko", "예제:", "요약 복사"],
+  ] as const)("loads complete CLI and extension catalogs for %s", (locale, examples, copy) => {
+    expect(resolveCliLocale(locale)).toBe(locale);
+    expect(resolveExtensionLocale(locale, "en-US")).toBe(locale);
+    expect(createCliTranslator(locale)("help.examples")).toBe(examples);
+    expect(extensionMessage("copy.summary", {}, locale)).toBe(copy);
   });
 
   it("translates complete messages while retaining command and provider identifiers", () => {
@@ -168,8 +188,8 @@ describe("extension locale", () => {
     expect(resolveExtensionLocale("tr", "en-US")).toBe("tr");
     expect(resolveExtensionLocale("en", "tr-TR")).toBe("en");
     expect(resolveExtensionLocale("auto", ["unsupported", "tr-TR"])).toBe("tr");
-    expect(resolveExtensionLocale("auto", "fr-FR")).toBe("en");
-    expect(resolveExtensionLocale("auto", "zh-TW")).toBe("en");
+    expect(resolveExtensionLocale("auto", "fr-FR")).toBe("fr");
+    expect(resolveExtensionLocale("auto", "zh-TW")).toBe("zh-Hant");
   });
 
   it("updates explicit text and attribute bindings while preserving page and user content", async () => {

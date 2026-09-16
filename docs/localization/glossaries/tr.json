@@ -1,0 +1,12 @@
+{
+  "locale": "tr",
+  "summary": "özet",
+  "transcript": "transkript",
+  "sidePanel": "yan panel",
+  "clipboard": "pano",
+  "slides": "slaytlar",
+  "provider": "sağlayıcı",
+  "prompt": "istem",
+  "tone": "Polite guidance; preserve Turkish-specific casing and existing contributor terminology.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

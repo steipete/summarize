@@ -16,8 +16,20 @@ import {
   availableUiLocales,
   type RegisteredUiLocale,
 } from "@steipete/summarize-core/localization/messages";
+import ownde from "../localization/de.json" with { type: "json" };
 import ownEnglish from "../localization/en.json" with { type: "json" };
+import ownes from "../localization/es.json" with { type: "json" };
+import ownfr from "../localization/fr.json" with { type: "json" };
+import ownit from "../localization/it.json" with { type: "json" };
+import ownja from "../localization/ja.json" with { type: "json" };
+import ownko from "../localization/ko.json" with { type: "json" };
+import ownnl from "../localization/nl.json" with { type: "json" };
+import ownpl from "../localization/pl.json" with { type: "json" };
+import ownptBR from "../localization/pt-BR.json" with { type: "json" };
+import ownru from "../localization/ru.json" with { type: "json" };
 import ownTurkish from "../localization/tr.json" with { type: "json" };
+import ownzhHans from "../localization/zh-Hans.json" with { type: "json" };
+import ownzhHant from "../localization/zh-Hant.json" with { type: "json" };
 const english = { ...sharedEnglishMessages, ...ownEnglish };
 const turkish = { ...sharedMessageCatalogs.tr, ...ownTurkish };
 
@@ -29,7 +41,22 @@ export type LocalizedMessage = { key: ExtensionMessageKey; values: MessageValues
 export type LocalizedDescriptor = { key: ExtensionMessageKey; values: MessageValues };
 export type LocalizedText = string | LocalizedMessage;
 
-const catalogs = { en: english, tr: turkish } satisfies Record<RegisteredUiLocale, Catalog>;
+const catalogs = {
+  en: english,
+  tr: turkish,
+  de: { ...sharedMessageCatalogs["de"], ...ownde },
+  fr: { ...sharedMessageCatalogs["fr"], ...ownfr },
+  es: { ...sharedMessageCatalogs["es"], ...ownes },
+  it: { ...sharedMessageCatalogs["it"], ...ownit },
+  "pt-BR": { ...sharedMessageCatalogs["pt-BR"], ...ownptBR },
+  nl: { ...sharedMessageCatalogs["nl"], ...ownnl },
+  pl: { ...sharedMessageCatalogs["pl"], ...ownpl },
+  ru: { ...sharedMessageCatalogs["ru"], ...ownru },
+  ja: { ...sharedMessageCatalogs["ja"], ...ownja },
+  "zh-Hans": { ...sharedMessageCatalogs["zh-Hans"], ...ownzhHans },
+  "zh-Hant": { ...sharedMessageCatalogs["zh-Hant"], ...ownzhHant },
+  ko: { ...sharedMessageCatalogs["ko"], ...ownko },
+} satisfies Record<RegisteredUiLocale, Catalog>;
 const translators = new Map<ExtensionLocale, ReturnType<typeof createTranslator<typeof english>>>();
 let activeLocale: ExtensionLocale = "en";
 let observer: MutationObserver | null = null;

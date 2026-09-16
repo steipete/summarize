@@ -1,0 +1,12 @@
+{
+  "locale": "it",
+  "summary": "riassunto",
+  "transcript": "trascrizione",
+  "sidePanel": "pannello laterale",
+  "clipboard": "appunti",
+  "slides": "diapositive",
+  "provider": "fornitore",
+  "prompt": "prompt",
+  "tone": "Direct singular imperatives. Use preelaborazione consistently.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

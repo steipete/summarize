@@ -1,0 +1,12 @@
+{
+  "locale": "fr",
+  "summary": "résumé",
+  "transcript": "transcription",
+  "sidePanel": "panneau latéral",
+  "clipboard": "presse-papiers",
+  "slides": "diapositives",
+  "provider": "fournisseur",
+  "prompt": "instruction",
+  "tone": "Vous in guidance; infinitives for option descriptions and actions.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

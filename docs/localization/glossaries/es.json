@@ -1,0 +1,12 @@
+{
+  "locale": "es",
+  "summary": "resumen",
+  "transcript": "transcripción",
+  "sidePanel": "panel lateral",
+  "clipboard": "portapapeles",
+  "slides": "diapositivas",
+  "provider": "proveedor",
+  "prompt": "instrucción",
+  "tone": "Formal imperatives in guidance; infinitives for option descriptions and actions.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

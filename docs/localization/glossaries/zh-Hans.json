@@ -1,0 +1,12 @@
+{
+  "locale": "zh-Hans",
+  "summary": "摘要",
+  "transcript": "转录文本",
+  "sidePanel": "侧边栏",
+  "clipboard": "剪贴板",
+  "slides": "幻灯片",
+  "provider": "服务提供商",
+  "prompt": "提示词",
+  "tone": "Simplified Chinese; 缓存, 守护进程, 日志; distinguish model 词元 from auth 令牌.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

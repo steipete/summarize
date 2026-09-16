@@ -1,0 +1,12 @@
+{
+  "locale": "nl",
+  "summary": "samenvatting",
+  "transcript": "transcript",
+  "sidePanel": "zijpaneel",
+  "clipboard": "klembord",
+  "slides": "dia’s",
+  "provider": "aanbieder",
+  "prompt": "instructie",
+  "tone": "Direct imperatives; use u/uw when a pronoun is needed.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

@@ -1,0 +1,12 @@
+{
+  "locale": "ja",
+  "summary": "要約",
+  "transcript": "文字起こし",
+  "sidePanel": "サイドパネル",
+  "clipboard": "クリップボード",
+  "slides": "スライド",
+  "provider": "プロバイダー",
+  "prompt": "プロンプト",
+  "tone": "Polite です/ます guidance; compact noun labels.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

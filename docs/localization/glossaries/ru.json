@@ -1,0 +1,12 @@
+{
+  "locale": "ru",
+  "summary": "сводка",
+  "transcript": "расшифровка",
+  "sidePanel": "боковая панель",
+  "clipboard": "буфер обмена",
+  "slides": "слайды",
+  "provider": "провайдер",
+  "prompt": "инструкция",
+  "tone": "Polite plural imperatives; Russian one/few/many/other plurals.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

@@ -1,0 +1,12 @@
+{
+  "locale": "pt-BR",
+  "summary": "resumo",
+  "transcript": "transcrição",
+  "sidePanel": "painel lateral",
+  "clipboard": "área de transferência",
+  "slides": "slides",
+  "provider": "provedor",
+  "prompt": "prompt",
+  "tone": "Brazilian Portuguese; você/Use/Instale, infinitives for controls.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

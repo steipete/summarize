@@ -1,0 +1,12 @@
+{
+  "locale": "ko",
+  "summary": "요약",
+  "transcript": "녹취록",
+  "sidePanel": "사이드 패널",
+  "clipboard": "클립보드",
+  "slides": "슬라이드",
+  "provider": "제공업체",
+  "prompt": "프롬프트",
+  "tone": "Polite 하세요/합니다 guidance; compact noun labels.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

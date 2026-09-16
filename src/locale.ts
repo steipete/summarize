@@ -11,8 +11,20 @@ import {
   availableUiLocales,
   type RegisteredUiLocale,
 } from "@steipete/summarize-core/localization/messages";
+import deMessages from "./localization/de.json" with { type: "json" };
 import englishMessages from "./localization/en.json" with { type: "json" };
+import esMessages from "./localization/es.json" with { type: "json" };
+import frMessages from "./localization/fr.json" with { type: "json" };
+import itMessages from "./localization/it.json" with { type: "json" };
+import jaMessages from "./localization/ja.json" with { type: "json" };
+import koMessages from "./localization/ko.json" with { type: "json" };
+import nlMessages from "./localization/nl.json" with { type: "json" };
+import plMessages from "./localization/pl.json" with { type: "json" };
+import ptBRMessages from "./localization/pt-BR.json" with { type: "json" };
+import ruMessages from "./localization/ru.json" with { type: "json" };
 import turkishMessages from "./localization/tr.json" with { type: "json" };
+import zhHansMessages from "./localization/zh-Hans.json" with { type: "json" };
+import zhHantMessages from "./localization/zh-Hant.json" with { type: "json" };
 
 /** UI locale is independent of --language, which controls generated summaries. */
 export type CliLocale = UiLocale;
@@ -20,6 +32,18 @@ const english = { ...sharedEnglishMessages, ...englishMessages };
 const catalogs = {
   en: english,
   tr: { ...sharedMessageCatalogs.tr, ...turkishMessages },
+  de: { ...sharedMessageCatalogs["de"], ...deMessages },
+  fr: { ...sharedMessageCatalogs["fr"], ...frMessages },
+  es: { ...sharedMessageCatalogs["es"], ...esMessages },
+  it: { ...sharedMessageCatalogs["it"], ...itMessages },
+  "pt-BR": { ...sharedMessageCatalogs["pt-BR"], ...ptBRMessages },
+  nl: { ...sharedMessageCatalogs["nl"], ...nlMessages },
+  pl: { ...sharedMessageCatalogs["pl"], ...plMessages },
+  ru: { ...sharedMessageCatalogs["ru"], ...ruMessages },
+  ja: { ...sharedMessageCatalogs["ja"], ...jaMessages },
+  "zh-Hans": { ...sharedMessageCatalogs["zh-Hans"], ...zhHansMessages },
+  "zh-Hant": { ...sharedMessageCatalogs["zh-Hant"], ...zhHantMessages },
+  ko: { ...sharedMessageCatalogs["ko"], ...koMessages },
 } satisfies Record<RegisteredUiLocale, Catalog>;
 export type CliMessageKey = keyof typeof english;
 

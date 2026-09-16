@@ -1,0 +1,12 @@
+{
+  "locale": "zh-Hant",
+  "summary": "摘要",
+  "transcript": "逐字稿",
+  "sidePanel": "側邊欄",
+  "clipboard": "剪貼簿",
+  "slides": "投影片",
+  "provider": "服務供應商",
+  "prompt": "提示詞",
+  "tone": "Traditional Chinese; 快取, 常駐程式, 記錄; distinguish model 詞元 from auth 權杖.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}

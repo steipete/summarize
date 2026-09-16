@@ -1,0 +1,12 @@
+{
+  "locale": "de",
+  "summary": "Zusammenfassung",
+  "transcript": "Transkript",
+  "sidePanel": "Seitenleiste",
+  "clipboard": "Zwischenablage",
+  "slides": "Folien",
+  "provider": "Anbieter",
+  "prompt": "Prompt",
+  "tone": "Consistent Sie; concise noun labels, natural German developer terminology.",
+  "productNames": "Keep Summarize, Chrome, Firefox, provider/model names, commands, flags, and environment variables unchanged."
+}
