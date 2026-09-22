@@ -121,6 +121,9 @@ If `[input]` is omitted, summarize prints concise help and exits.
 `--language, --lang <language>`
 : `auto`, `en`, `de`, `english`, `german`, … Default `auto` (matches source). Configurable via `output.language`.
 
+`--locale <locale>`
+: CLI interface language: `auto` plus the shipped UI locales (`en`, `de`, `fr`, `es`, `it`, `pt-BR`, `nl`, `pl`, `ru`, `ja`, `zh-Hans`, `zh-Hant`, `ko`, `tr`). Default follows the system locale with English fallback. `SUMMARIZE_LOCALE` also works. See [Localization](../localization.md).
+
 `--prompt <text>` / `--prompt-file <path>`
 : Override the summary prompt. Content is appended after the override.
 
@@ -248,7 +251,7 @@ pbpaste | summarize -
 
 ## Environment
 
-The provider keys and binary paths picked up at runtime are listed in [LLM overview](../llm.md#env). `SUMMARIZE_MODEL` overrides the default model selection; `SUMMARIZE_THEME` picks the theme.
+The provider keys and binary paths picked up at runtime are listed in [LLM overview](../llm.md#env). `SUMMARIZE_MODEL` overrides the default model selection; `SUMMARIZE_THEME` picks the theme; `SUMMARIZE_LOCALE` picks the interface language.
 
 ## See also
 

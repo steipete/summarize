@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 import { describe, expect, it } from "vitest";
+import { availableUiLocales } from "../packages/core/src/localization/messages.js";
 import {
   parseExtractFormat,
   parseFirecrawlMode,
@@ -12,6 +13,7 @@ import {
   parseStreamMode,
   parseYoutubeMode,
 } from "../src/flags.js";
+import { CLI_PROVIDERS } from "../src/llm/provider-registry.js";
 import { buildProgram, buildSlidesProgram } from "../src/run/help.js";
 
 const completedChoiceValues = (fish: string, condition: string, longOption: string): string[] => {
@@ -169,6 +171,66 @@ describe("package bin wrappers", () => {
         expect(() => parse(value), `invalid Fish candidate --${longOption} ${value}`).not.toThrow();
       }
     }
+
+    const uiLocaleCandidates = ["auto", ...availableUiLocales].sort();
+    for (const condition of [
+      "__summarize_no_subcommand",
+      "__summarize_command_is help",
+      "__summarize_command_is slides",
+      "__summarize_command_is status",
+      "__summarize_command_is refresh-free",
+      "__summarize_command_is daemon",
+      "__summarize_command_is transcriber",
+    ]) {
+      expect(
+        completedChoiceValues(fish, condition, "locale").sort(),
+        `missing or stale Fish candidates for --locale under ${condition}`,
+      ).toEqual(uiLocaleCandidates);
+    }
+
+    expect(completedChoiceValues(fish, "__summarize_no_subcommand", "language").sort()).toEqual(
+      [
+        "auto",
+        ...availableUiLocales,
+        "chinese",
+        "dutch",
+        "english",
+        "french",
+        "german",
+        "italian",
+        "japanese",
+        "korean",
+        "polish",
+        "portuguese",
+        "russian",
+        "spanish",
+        "turkish",
+      ].sort(),
+    );
+
+    expect(completedChoiceValues(fish, "__summarize_no_subcommand", "cli").sort()).toEqual(
+      [...CLI_PROVIDERS].sort(),
+    );
+
+    const daemonInstallFlags = fish
+      .split("\n")
+      .filter((line) => line.includes("__summarize_nested_command_is daemon install"))
+      .flatMap((line) =>
+        Array.from(line.matchAll(/(?:^|\s)-l\s+([a-z0-9-]+)/g), (match) => match[1]),
+      );
+    expect(daemonInstallFlags).toEqual(
+      expect.arrayContaining(["dev", "port", "token", "extension-id"]),
+    );
+    expect(fish).toContain(
+      "-n '__summarize_nested_command_is daemon install' -l extension-id -d 'Unpacked Chrome extension id (requires --dev)' -x",
+    );
+  });
+
+  it("keeps fish completions syntactically valid", () => {
+    const probe = spawnSync("fish", ["--version"], { encoding: "utf8" });
+    if (probe.error || probe.status !== 0) return;
+    const result = spawnSync("fish", ["-n", "completions/summarize.fish"], { encoding: "utf8" });
+    expect(result.status, result.stderr).toBe(0);
   });
 
   it("documents extract and local video support in visible help", () => {

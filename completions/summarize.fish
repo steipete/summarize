@@ -2,6 +2,7 @@
 
 set -g __summarize_commands help slides status refresh-free daemon transcriber
 set -g __summarize_themes aurora ember moss mono
+set -g __summarize_ui_locales auto en de fr es it pt-BR nl pl ru ja zh-Hans zh-Hant ko tr
 
 function __summarize_needs_subcommand
     set -l tokens (commandline -opc)
@@ -35,6 +36,7 @@ function __summarize_needs_child_command
     end
     test (count $tokens) -eq 3
     and not contains -- $tokens[3] $argv
+    and not string match -q -- '-*' $tokens[3]
 end
 
 function __summarize_nested_command_is
@@ -74,15 +76,15 @@ for cmd in summarize summarizer
 
     # Content options
     complete -c $cmd -n '__summarize_no_subcommand' -l firecrawl -d 'Firecrawl usage' -xa 'off auto always'
-    complete -c $cmd -n '__summarize_no_subcommand' -l format -d 'Content format' -xa 'md markdown text plain'
+    complete -c $cmd -n '__summarize_no_subcommand' -l format -d 'Content format' -xa 'md markdown text txt plain'
     complete -c $cmd -n '__summarize_no_subcommand' -l preprocess -d 'Preprocess inputs' -xa 'off auto always'
     complete -c $cmd -n '__summarize_no_subcommand' -l markdown-mode -d 'Markdown conversion mode' -xa 'off auto llm readability'
 
     # Summary options
     complete -c $cmd -n '__summarize_no_subcommand' -l length -d 'Summary length' -xa 'short s medium m long l xl xxl'
     complete -c $cmd -n '__summarize_no_subcommand' -l max-extract-characters -d 'Max characters in --extract' -x
-    complete -c $cmd -n '__summarize_no_subcommand' -l language -l lang -d 'Output language' -xa 'auto en de tr english german turkish'
-    complete -c $cmd -n '__summarize_no_subcommand' -l locale -d 'CLI interface language' -xa 'auto en tr english turkish'
+    complete -c $cmd -n '__summarize_no_subcommand' -l language -l lang -d 'Output language' -xa 'auto en de fr es it pt-BR nl pl ru ja zh-Hans zh-Hant ko tr chinese dutch english french german italian japanese korean polish portuguese russian spanish turkish'
+    complete -c $cmd -n '__summarize_no_subcommand' -l locale -d 'CLI interface language' -xa "$__summarize_ui_locales"
     complete -c $cmd -n '__summarize_no_subcommand' -l max-output-tokens -d 'Hard cap for LLM output tokens' -x
     complete -c $cmd -n '__summarize_no_subcommand' -l force-summary -d 'Force LLM summary even for short content'
     complete -c $cmd -n '__summarize_no_subcommand' -l timeout -d 'Timeout for fetching/LLM' -x
@@ -121,6 +123,7 @@ for cmd in summarize summarizer
 
     # help topics
     complete -c $cmd -n '__summarize_needs_child_command help help slides status refresh-free daemon transcriber' -xa "$__summarize_commands" -d 'Help topic'
+    complete -c $cmd -n '__summarize_command_is help' -l locale -d 'CLI interface language' -xa "$__summarize_ui_locales"
 
     # slides subcommand
     complete -c $cmd -n '__summarize_command_is slides' -l slides-ocr -d 'Run OCR on extracted slides'
@@ -136,6 +139,7 @@ for cmd in summarize summarizer
     complete -c $cmd -n '__summarize_command_is slides' -l json -d 'Output JSON payload'
     complete -c $cmd -n '__summarize_command_is slides' -l verbose -d 'Print detailed progress to stderr'
     complete -c $cmd -n '__summarize_command_is slides' -l debug -d 'Alias for --verbose'
+    complete -c $cmd -n '__summarize_command_is slides' -l locale -d 'CLI interface language' -xa "$__summarize_ui_locales"
     complete -c $cmd -n '__summarize_command_is slides' -s V -l version -d 'Print version and exit'
 
     # status subcommand
@@ -143,6 +147,7 @@ for cmd in summarize summarizer
     complete -c $cmd -n '__summarize_command_is status' -l probe -d 'Probe model-list endpoints'
     complete -c $cmd -n '__summarize_command_is status' -l verbose -d 'Include detailed status'
     complete -c $cmd -n '__summarize_command_is status' -l no-color -d 'Disable ANSI colors'
+    complete -c $cmd -n '__summarize_command_is status' -l locale -d 'CLI interface language' -xa "$__summarize_ui_locales"
 
     # refresh-free subcommand
     complete -c $cmd -n '__summarize_command_is refresh-free' -l runs -d 'Smoke-test runs per model' -x
@@ -151,15 +156,20 @@ for cmd in summarize summarizer
     complete -c $cmd -n '__summarize_command_is refresh-free' -l max-age-days -d 'Maximum model age in days' -x
     complete -c $cmd -n '__summarize_command_is refresh-free' -l set-default -d 'Set free preset as default'
     complete -c $cmd -n '__summarize_command_is refresh-free' -l verbose -d 'Print detailed progress'
+    complete -c $cmd -n '__summarize_command_is refresh-free' -l debug -d 'Alias for --verbose'
+    complete -c $cmd -n '__summarize_command_is refresh-free' -l locale -d 'CLI interface language' -xa "$__summarize_ui_locales"
 
     # daemon subcommand
     complete -c $cmd -n '__summarize_needs_child_command daemon install restart status uninstall run' -xa 'install restart status uninstall run' -d 'Daemon command'
+    complete -c $cmd -n '__summarize_command_is daemon' -l locale -d 'CLI interface language' -xa "$__summarize_ui_locales"
     complete -c $cmd -n '__summarize_nested_command_is daemon install' -l dev -d 'Install dev-mode daemon'
+    complete -c $cmd -n '__summarize_nested_command_is daemon install' -l extension-id -d 'Unpacked Chrome extension id (requires --dev)' -x
     complete -c $cmd -n '__summarize_nested_command_is daemon install; or __summarize_nested_command_is daemon run' -l port -d 'Daemon port' -x
     complete -c $cmd -n '__summarize_nested_command_is daemon install; or __summarize_nested_command_is daemon run' -l token -d 'Daemon auth token' -x
 
     # transcriber subcommand
     complete -c $cmd -n '__summarize_needs_child_command transcriber setup' -xa 'setup' -d 'Transcriber command'
+    complete -c $cmd -n '__summarize_command_is transcriber' -l locale -d 'CLI interface language' -xa "$__summarize_ui_locales"
     complete -c $cmd -n '__summarize_nested_command_is transcriber setup' -l model -d 'ONNX transcription model' -xa 'parakeet canary'
     complete -c $cmd -n '__summarize_nested_command_is transcriber setup' -l theme -d 'CLI theme' -xa "$__summarize_themes"
 end

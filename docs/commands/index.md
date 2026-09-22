@@ -12,6 +12,7 @@ summary: "Every summarize subcommand and flag, with examples."
 ## Subcommands
 
 - [`summarize`](summarize.md) — main command. Takes a URL, file, or stdin and produces a summary or extracted content.
+- [`summarize status`](../cli.md#cli-discovery) — print the selected model, enabled providers, and runtime status.
 - [`summarize slides`](slides.md) — extract scene-change keyframes from a YouTube URL, direct video URL, or local video file into PNGs (and optional OCR text). Standalone version of the `--slides` flag.
 - [`summarize transcriber`](transcriber.md) — set up local ONNX transcription (Parakeet, Canary). Prints the env vars you need.
 - [`summarize daemon`](daemon.md) — manage the local HTTP daemon that the Chrome Side Panel talks to. Subcommands: `install`, `restart`, `status`, `uninstall`, `run`.
@@ -30,16 +31,17 @@ All subcommands keep the same output discipline — straight from gogcli's playb
 
 These flags apply to almost every subcommand:
 
-| Flag                          | Purpose                                                        |
-| ----------------------------- | -------------------------------------------------------------- |
-| `--json`                      | Stable JSON envelope on stdout. Disables streaming.            |
-| `--no-color`                  | Strip ANSI escapes from output.                                |
-| `--theme <name>`              | Pick a CLI theme (`SUMMARIZE_THEME` env var also works).       |
-| `--verbose` / `--debug`       | Detailed progress on stderr.                                   |
-| `--metrics off\|on\|detailed` | Token + timing metrics line. Default `on`.                     |
-| `--timeout <duration>`        | Cap fetching + LLM calls. Accepts `30`, `30s`, `2m`, `5000ms`. |
-| `-V`, `--version`             | Print version and exit.                                        |
-| `--help`                      | Print rich help with examples.                                 |
+| Flag                          | Purpose                                                                                         |
+| ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| `--json`                      | Stable JSON envelope on stdout. Disables streaming.                                             |
+| `--no-color`                  | Strip ANSI escapes from output.                                                                 |
+| `--theme <name>`              | Pick a CLI theme (`SUMMARIZE_THEME` env var also works).                                        |
+| `--verbose` / `--debug`       | Detailed progress on stderr.                                                                    |
+| `--locale <locale>`           | Interface language: `auto` plus the shipped UI locales (`SUMMARIZE_LOCALE` env var also works). |
+| `--metrics off\|on\|detailed` | Token + timing metrics line. Default `on`.                                                      |
+| `--timeout <duration>`        | Cap fetching + LLM calls. Accepts `30`, `30s`, `2m`, `5000ms`.                                  |
+| `-V`, `--version`             | Print version and exit.                                                                         |
+| `--help`                      | Print rich help with examples.                                                                  |
 
 ## Exit codes
 
