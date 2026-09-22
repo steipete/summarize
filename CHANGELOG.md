@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.23.1 - Unreleased
+
 ## 0.23.0 - 2026-09-21
 
 **Highlights:** complete multilingual interfaces, safer guarded networking, and resilient cache and daemon logging.
