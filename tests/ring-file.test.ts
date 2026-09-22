@@ -19,6 +19,20 @@ afterEach(async () => {
 });
 
 describe("ring file writer", () => {
+  it("recreates a log directory removed after successful writes", async () => {
+    const parent = join(makeTempDir(), "logs");
+    const filePath = join(parent, "daemon.jsonl");
+    const writer = createRingFileWriter({ filePath, maxBytes: 1024, maxFiles: 2 });
+    writer.write("initial");
+    await writer.flush();
+    await expect(fs.readFile(filePath, "utf8")).resolves.toBe("initial\n");
+
+    await fs.rm(parent, { recursive: true });
+    writer.write("recovered");
+    await writer.flush();
+    await expect(fs.readFile(filePath, "utf8")).resolves.toBe("recovered\n");
+  });
+
   it("contains directory failures even when the first write is delayed", async () => {
     const parent = join(makeTempDir(), "logs");
     await fs.writeFile(parent, "not a directory");

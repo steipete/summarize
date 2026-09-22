@@ -274,7 +274,7 @@ Notes:
 - Default: logging is off.
 - `format`: `json` (default) or `pretty`.
 - `maxMb` is per file; `maxFiles` controls rotation (ring).
-- File logging is best-effort: a write or directory-creation failure does not terminate the daemon. Failed directory initialization is retried on the next log write.
+- File logging is best-effort: a write or directory-creation failure does not terminate the daemon. Each write ensures its directory exists, including after the directory is removed while the daemon is running.
 - Extension “Extended logging” sends full input/output to daemon logs (large). Cache hits skip content logging.
 
 ## Presets

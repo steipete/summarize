@@ -7,6 +7,7 @@
 - Network: strip authorization and cookie headers on cross-origin guarded redirects, retain same-origin Request options, and cancel discarded redirect bodies.
 - Media cache: remove superseded files when a URL's cached filename extension changes so obsolete downloads do not escape the size cap.
 - Daemon logging: contain directory-creation failures within the write queue and retry initialization on later writes instead of crashing or permanently dropping logs.
+- Daemon logging: recreate a log directory removed while the daemon is running so later writes recover automatically.
 - Maintenance: refresh stabilized runtime, browser media, and development dependencies; replace local security backports with upstream fixes while retaining the asynchronous ZIP-extraction stop fix (#482, thanks @dependabot).
 - Pricing: retain fetched model pricing when the home directory or disk cache is unavailable.
 
