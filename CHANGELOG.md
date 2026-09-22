@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.23.0 - Unreleased
+## 0.23.0 - 2026-09-21
+
+**Highlights:** complete multilingual interfaces, safer guarded networking, and resilient cache and daemon logging.
 
 - Localization: add complete German, French, Spanish, Italian, Brazilian Portuguese, Dutch, Polish, Russian, Japanese, Simplified/Traditional Chinese, and Korean interfaces alongside English and Turkish, with typed ICU catalogs, system/browser locale negotiation, and CI enforcement for missing, stale, mismatched, and uncatalogued messages; thanks @husodrn46 for the original Turkish support.
 - Network: handle bodyless and invalid responses in the DNS-pinned transport without crashing, and honor cancellation carried by Request objects.
