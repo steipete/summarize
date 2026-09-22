@@ -15,7 +15,7 @@ summary: "Release checklist, Chrome Web Store submission, and Homebrew/core veri
 
 ## Checklist
 
-1. `scripts/release.sh all` (gates → build all assets → pack verify → publish → smoke → tag → GitHub release/assets).
+1. `scripts/release.sh all` (gates → build proof artifacts → pack verify → npm publish → smoke → tag). The tag-triggered Release workflow then builds, signs, notarizes, verifies, and publishes the GitHub release assets.
 2. Verify the GitHub release notes and uploaded Bun/extension assets.
 3. Submit the Chrome extension update:
    - Skip this step only when every shipped change is daemon-side and the packaged extension and its companion contract are unchanged.

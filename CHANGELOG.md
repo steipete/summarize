@@ -12,6 +12,7 @@
 - Daemon logging: recreate a log directory removed while the daemon is running so later writes recover automatically.
 - Maintenance: refresh stabilized runtime, browser media, and development dependencies; replace local security backports with upstream fixes while retaining the asynchronous ZIP-extraction stop fix (#482, thanks @dependabot).
 - Pricing: retain fetched model pricing when the home directory or disk cache is unavailable.
+- Release docs: use the Chrome archive helper so the manifest stays at the ZIP root, and clarify that CI publishes the verified release assets.
 
 ## 0.22.0 - 2026-09-14
 

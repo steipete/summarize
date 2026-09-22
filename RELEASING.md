@@ -42,9 +42,8 @@ Homebrew/core autobumps independently. Do not block a completed release on that 
    - Local artifacts are not releasable. The tag-triggered Release workflow rebuilds the frozen source, signs and notarizes both Mach-O executables, and packages those CI-produced bytes.
 
 4. Build Chrome extension artifact
-   - `pnpm -C apps/chrome-extension build`
-   - `mkdir -p dist-chrome`
-   - `zip -r dist-chrome/summarize-chrome-extension-v<ver>.zip apps/chrome-extension/.output/chrome-mv3`
+   - `scripts/release.sh chrome`
+   - The helper packages the extension contents with `manifest.json` at the ZIP root, as required by the Chrome Web Store.
 
 5. Build Firefox extension artifact
    - `pnpm -C apps/chrome-extension build:firefox`
