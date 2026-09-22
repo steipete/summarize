@@ -25,8 +25,8 @@
     "@mozilla/readability": "0.6.0",
     "@steipete/summarize-core": "workspace:*",
     "googlevideo": "4.1.1",
-    "markdown-it": "^15.0.1",
-    "mediabunny": "1.56.0",
+    "markdown-it": "^15.0.2",
+    "mediabunny": "1.56.2",
     "preact": "10.29.8"
   },
   "devDependencies": {

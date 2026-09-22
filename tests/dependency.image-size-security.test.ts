@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const extensionRequire = createRequire(resolve("apps/chrome-extension/package.json"));
 const webExtRequire = createRequire(extensionRequire.resolve("web-ext"));
 
-describe("patched image-size dependency", () => {
+describe("image-size dependency security", () => {
   it("rejects zero-length boxes and ICNS entries without looping", () => {
     const probe = String.raw`
       const { imageSize } = require(process.argv[1]);
@@ -30,7 +30,7 @@ describe("patched image-size dependency", () => {
         imageSize(zeroLengthIcns);
         throw new Error("zero-length ICNS entry was accepted");
       } catch (error) {
-        if (!/Invalid ICNS entry length/.test(String(error))) throw error;
+        if (!(error instanceof TypeError) || !/Invalid ICNS/.test(error.message)) throw error;
       }
     `;
 

@@ -11,15 +11,16 @@ allowBuilds:
 minimumReleaseAge: 10080
 
 overrides:
-  adm-zip: 0.6.0
+  adm-zip: 0.6.1
+  image-size: 2.0.4
   "js-yaml@^4.0.0": 4.3.2
-  nanoid: 3.3.18
+  nanoid: 3.3.19
   protobufjs: 7.6.6
   sharp: 0.35.4
   shell-quote: 1.10.0
   tmp: 0.2.7
   uuid: 14.0.2
-  vite: 8.2.2
+  vite: 8.3.0
   # Vite 8 uses Rolldown/Oxc here; do not auto-install its legacy optional peers.
   "vite>esbuild": "-"
   "vite>tsx": "-"
@@ -28,7 +29,5 @@ overrides:
   # WXT 0.20.26 declares esbuild but its shipped runtime does not import it.
   "wxt>esbuild": "-"
 patchedDependencies:
-  # Backport only GHSA-vwc7-r8mq-g2x9 while 0.6.1 completes its seven-day hold.
-  adm-zip@0.6.0: patches/adm-zip@0.6.0.patch
-  # Upstream has no patched release for GHSA-w3rx-r6r6-pgpr and GHSA-5p2g-fcmc-qvqq.
-  image-size@2.0.2: patches/image-size@2.0.2.patch
+  # Upstream rejects unsafe destinations but still continues after a directory error.
+  adm-zip@0.6.1: patches/adm-zip@0.6.1.patch

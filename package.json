@@ -65,22 +65,22 @@
     "@steipete/summarize-core": "workspace:*",
     "bpe-lite": "^0.5.2",
     "commander": "^15.0.0",
-    "file-type": "^22.0.2",
+    "file-type": "^22.1.0",
     "json5": "^2.2.3",
-    "markdansi": "^0.3.3",
+    "markdansi": "^0.3.4",
     "mime": "^4.1.0",
-    "osc-progress": "^0.3.3",
-    "tokentally": "^0.1.5",
+    "osc-progress": "^0.3.4",
+    "tokentally": "^0.1.7",
     "undici": "8.10.2"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
+    "@types/node": "^24.13.4",
     "@types/sanitize-html": "^2.16.1",
     "@vitest/coverage-v8": "^5.0.0",
-    "happy-dom": "^20.14.0",
-    "oxc-parser": "^0.149.0",
-    "oxfmt": "0.67.0",
-    "oxlint": "^1.81.0",
+    "happy-dom": "^20.14.5",
+    "oxc-parser": "^0.150.0",
+    "oxfmt": "0.68.0",
+    "oxlint": "^1.83.0",
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
@@ -88,5 +88,5 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@11.25.0"
+  "packageManager": "pnpm@11.27.0"
 }

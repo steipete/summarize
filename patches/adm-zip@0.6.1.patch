@@ -1,0 +1,13 @@
+diff --git a/adm-zip.js b/adm-zip.js
+--- a/adm-zip.js
++++ b/adm-zip.js
+@@ -876,8 +876,7 @@ module.exports = function (/**String*/ input, /** object */ options) {
+                     filetools.assertPathSafe(targetPath, dirPath);
+                     filetools.makeDir(dirPath);
+                 } catch (er) {
+-                    callback(getError("Unable to create folder", dirPath));
+-                    continue;
++                    return callback(getError("Unable to create folder", dirPath));
+                 }
+                 // defer restoring the directory permission until its files are written:
+                 // a restrictive mode applied now would block writing them

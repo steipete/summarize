@@ -110,18 +110,20 @@ describe("LiteLLM pricing catalog", () => {
     );
   });
 
-  it("does nothing without HOME (no cache, no network)", async () => {
-    const fetchMock = vi.fn(async () => {
-      throw new Error("unexpected fetch");
-    });
+  it("retains fetched pricing without HOME or a disk cache", async () => {
+    const catalog = {
+      "gpt-5.2": { input_cost_per_token: 0.1, output_cost_per_token: 0.2 },
+    };
+    const fetchMock = vi.fn(async () => Response.json(catalog));
 
     const result = await loadLiteLlmCatalog({
       env: {},
-      fetchImpl: fetchMock as unknown as typeof fetch,
+      fetchImpl: fetchMock,
     });
-    expect(result.source).toBe("none");
-    expect(result.catalog).toBeNull();
-    expect(fetchMock).toHaveBeenCalledTimes(0);
+    expect(result.source).toBe("network");
+    expect(result.catalog).toEqual(catalog);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(await loadCachedLiteLlmCatalog({ env: {} })).toBeNull();
   });
 
   it("honors TOKENTALLY_CACHE_DIR when set", async () => {
