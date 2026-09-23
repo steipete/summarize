@@ -87,9 +87,9 @@ If `[input]` is omitted, summarize prints concise help and exits.
 
 ### Slides
 
-`--slides [value]` / `--no-slides`
+`--slides [on|off]` / `--no-slides`
 : Extract slides from a YouTube URL, direct video URL, or local video file and render inline alongside the summary. Combine with `--extract` to interleave slides in the full transcript. See [Slides mode](../slides.md).
-: Use `--no-slides` to disable slide extraction enabled in the config file for one run.
+: The optional value accepts boolean words (`on`/`off`, `true`/`false`, `yes`/`no`, `1`/`0`); anything else is rejected. Use `--no-slides` to disable slide extraction enabled in the config file for one run.
 
 `--slides-ocr` / `--no-slides-ocr`
 : Run OCR on extracted slides. Requires `tesseract`.

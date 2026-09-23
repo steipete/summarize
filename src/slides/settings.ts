@@ -28,14 +28,16 @@ const DEFAULT_MIN_DURATION_SECONDS = 2;
 const DECIMAL_INT_PATTERN = /^\d+$/;
 const DECIMAL_NUMBER_PATTERN = /^\d+(?:\.\d+)?$/;
 
-const parseBoolean = (raw: unknown): boolean | null => {
+const parseBoolean = (raw: unknown, label: string): boolean | null => {
+  if (raw == null) return null;
   if (typeof raw === "boolean") return raw;
-  if (typeof raw !== "string") return null;
-  const normalized = raw.trim().toLowerCase();
-  if (!normalized) return null;
-  if (["1", "true", "yes", "on"].includes(normalized)) return true;
-  if (["0", "false", "no", "off"].includes(normalized)) return false;
-  return null;
+  if (typeof raw === "string") {
+    const normalized = raw.trim().toLowerCase();
+    if (!normalized) return null;
+    if (["1", "true", "yes", "on"].includes(normalized)) return true;
+    if (["0", "false", "no", "off"].includes(normalized)) return false;
+  }
+  throw new Error(`Unsupported ${label}: ${String(raw)}`);
 };
 
 const parsePositiveInt = (raw: unknown, label: string, min = 1): number | null => {
@@ -75,8 +77,8 @@ const parseNumberInRange = (
 };
 
 export function resolveSlideSettings(input: SlideSettingsInput): SlideSettings | null {
-  const slidesFlag = parseBoolean(input.slides);
-  const ocrFlag = parseBoolean(input.slidesOcr);
+  const slidesFlag = parseBoolean(input.slides, "--slides");
+  const ocrFlag = parseBoolean(input.slidesOcr, "--slides-ocr");
   const enabled = Boolean((slidesFlag ?? false) || (ocrFlag ?? false));
   if (!enabled) return null;
 

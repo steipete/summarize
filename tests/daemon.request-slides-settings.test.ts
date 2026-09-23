@@ -93,4 +93,33 @@ describe("parseSummarizeRequest slides settings", () => {
       sceneThreshold: 0.5,
     });
   });
+
+  it.each([
+    [{ slides: "bogus" }, /Unsupported --slides: bogus/],
+    [{ slides: 1 }, /Unsupported --slides: 1/],
+    [{ slidesOcr: "bogus" }, /Unsupported --slides-ocr: bogus/],
+    [{ slides: true, slidesMax: "bogus" }, /Unsupported --slides-max: bogus/],
+  ])("rejects invalid slide option %o with a 400 response", async (fields, errorPattern) => {
+    const writeHead = vi.fn();
+    const end = vi.fn();
+    const res = { writeHead, end } as unknown as http.ServerResponse;
+
+    const parsed = await parseSummarizeRequest({
+      req: createJsonRequest({
+        url: "https://example.com/video.mp4",
+        mode: "url",
+        ...fields,
+      }),
+      res,
+      cors: {},
+      env: { HOME: "/home/alice" },
+      resolveToolPath,
+    });
+
+    expect(parsed).toBeNull();
+    expect(writeHead).toHaveBeenCalledWith(400, expect.any(Object));
+    const body = JSON.parse(String(end.mock.calls[0]?.[0])) as { ok?: boolean; error?: string };
+    expect(body.ok).toBe(false);
+    expect(body.error).toMatch(errorPattern);
+  });
 });

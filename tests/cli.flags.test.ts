@@ -17,7 +17,12 @@ import {
 } from "../src/flags.js";
 import { buildProgram } from "../src/run/help.js";
 import { resolveRunnerFlags } from "../src/run/runner-flags.js";
-import { normalizeDiarizeArgv, prepareRunEnvironment } from "../src/run/runner-setup.js";
+import {
+  normalizeDiarizeArgv,
+  normalizeSlidesArgv,
+  prepareRunEnvironment,
+} from "../src/run/runner-setup.js";
+import { resolveSlideSettings } from "../src/slides/index.js";
 
 describe("cli flag parsing", () => {
   it("defaults summary length to long", () => {
@@ -69,6 +74,68 @@ describe("cli flag parsing", () => {
 
   it("keeps bare --diarize unchanged when no positional input follows", () => {
     expect(normalizeDiarizeArgv(["--diarize"])).toEqual(["--diarize"]);
+  });
+
+  it("treats a URL after bare --slides as the positional input", () => {
+    const url = "https://www.youtube.com/watch?v=abcdefghijk";
+    const argv = normalizeSlidesArgv(["--slides", url]);
+    const program = buildProgram();
+    program.parse(argv, { from: "user" });
+
+    expect(argv).toEqual(["--slides=true", url]);
+    expect(program.opts().slides).toBe("true");
+    expect(program.args).toEqual([url]);
+  });
+
+  it.each(["lecture.mp4", "/tmp/talk.mkv"])(
+    "treats %s after bare --slides as the positional input",
+    (input) => {
+      const argv = normalizeSlidesArgv(["--slides", input]);
+      const program = buildProgram();
+      program.parse(argv, { from: "user" });
+
+      expect(argv).toEqual(["--slides=true", input]);
+      expect(program.opts().slides).toBe("true");
+      expect(program.args).toEqual([input]);
+    },
+  );
+
+  it("keeps explicit boolean values after --slides intact", () => {
+    const url = "https://example.com";
+    expect(normalizeSlidesArgv(["--slides", "off", url])).toEqual(["--slides", "off", url]);
+    const program = buildProgram();
+    program.parse(["--slides", "off", url], { from: "user" });
+    expect(program.opts().slides).toBe("off");
+    expect(program.args).toEqual([url]);
+  });
+
+  it("keeps bare --slides unchanged when no positional input follows", () => {
+    expect(normalizeSlidesArgv(["--slides"])).toEqual(["--slides"]);
+    expect(normalizeSlidesArgv(["--slides", "--json"])).toEqual(["--slides", "--json"]);
+  });
+
+  it("keeps bare --slides before the -- separator unchanged", () => {
+    expect(normalizeSlidesArgv(["--slides", "--", "clip.mp4"])).toEqual([
+      "--slides",
+      "--",
+      "clip.mp4",
+    ]);
+  });
+
+  it("rejects unsupported --slides and --slides-ocr values", () => {
+    expect(() => resolveSlideSettings({ slides: "bogus", cwd: "/" })).toThrow(
+      /Unsupported --slides: bogus/,
+    );
+    expect(() => resolveSlideSettings({ slides: 1, cwd: "/" })).toThrow(/Unsupported --slides: 1/);
+    expect(() => resolveSlideSettings({ slides: true, slidesOcr: "bogus", cwd: "/" })).toThrow(
+      /Unsupported --slides-ocr: bogus/,
+    );
+  });
+
+  it("accepts boolean words for --slides and keeps empty values disabled", () => {
+    expect(resolveSlideSettings({ slides: "yes", cwd: "/" })?.enabled).toBe(true);
+    expect(resolveSlideSettings({ slides: "off", cwd: "/" })).toBeNull();
+    expect(resolveSlideSettings({ slides: "", cwd: "/" })).toBeNull();
   });
 
   it("parses speaker identity profiles and repeatable timestamp anchors", () => {

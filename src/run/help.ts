@@ -92,7 +92,7 @@ export function buildProgram(locale: CliLocale = "en") {
         .default("auto"),
     )
     .option(
-      "--slides [value]",
+      "--slides [on|off]",
       t(
         "extract.slides.for.youtube.direct.video.urls.or.local.video.files.and.render.them.inline.inside.the.summary.narrative.when.supported.combine.with.extract.to.interleave.slides.in.the.full.transcript",
       ),

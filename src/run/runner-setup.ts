@@ -10,7 +10,7 @@ export function prepareRunEnvironment(
   argv: string[],
   inputEnv: Record<string, string | undefined>,
 ) {
-  const normalizedArgv = normalizeDiarizeArgv(argv);
+  const normalizedArgv = normalizeSlidesArgv(normalizeDiarizeArgv(argv));
   const preSeparatorArgv = argvBeforeSeparator(normalizedArgv);
   const noColorFlag = preSeparatorArgv.includes("--no-color");
   let envForRun: Record<string, string | undefined> = noColorFlag
@@ -61,6 +61,20 @@ export function normalizeDiarizeArgv(argv: string[]): string[] {
     if (!next || next.startsWith("-")) return arg;
     if (["auto", "elevenlabs", "openai"].includes(next.toLowerCase())) return arg;
     return /^[a-z][a-z\d+.-]*:\/\//i.test(next) || isDirectMediaUrl(next) ? "--diarize=auto" : arg;
+  });
+}
+
+const SLIDES_BOOLEAN_VALUES = new Set(["1", "true", "yes", "on", "0", "false", "no", "off"]);
+
+export function normalizeSlidesArgv(argv: string[]): string[] {
+  const separatorIndex = argv.indexOf("--");
+  return argv.map((arg, index) => {
+    if (separatorIndex !== -1 && index > separatorIndex) return arg;
+    if (arg !== "--slides") return arg;
+    const next = argv[index + 1];
+    if (!next || next.startsWith("-")) return arg;
+    if (SLIDES_BOOLEAN_VALUES.has(next.toLowerCase())) return arg;
+    return /^[a-z][a-z\d+.-]*:\/\//i.test(next) || isDirectMediaUrl(next) ? "--slides=true" : arg;
   });
 }
 

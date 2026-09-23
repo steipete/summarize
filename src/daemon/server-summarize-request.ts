@@ -131,7 +131,6 @@ export async function parseSummarizeRequest({
   const format: "text" | "markdown" =
     formatRaw === "markdown" || formatRaw === "md" ? "markdown" : "text";
   const overrides = resolveRunOverrides(obj);
-  const slidesSettings = resolveRequestSlidesSettings({ env, request: obj, resolveToolPath });
   const diagnostics = parseDiagnostics(obj.diagnostics);
   const hasText = Boolean(textContent.trim());
 
@@ -147,6 +146,15 @@ export async function parseSummarizeRequest({
 
   if (mode === "page" && !hasText) {
     json(res, 400, { ok: false, error: "missing text" }, cors);
+    return null;
+  }
+
+  let slidesSettings: SlideSettings | null;
+  try {
+    slidesSettings = resolveRequestSlidesSettings({ env, request: obj, resolveToolPath });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    json(res, 400, { ok: false, error: message }, cors);
     return null;
   }
 
