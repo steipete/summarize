@@ -7,6 +7,12 @@ set -euo pipefail
 # npm@11 warns on unknown env configs; keep CI/logs clean.
 unset npm_config_manage_package_manager_versions || true
 
+# Keep verification codes out of command logs and process arguments.
+if [ -n "${NPM_OTP:-}" ]; then
+  export NPM_CONFIG_OTP="$NPM_OTP"
+fi
+unset NPM_OTP
+
 PHASE="${1:-all}"
 
 banner() {
@@ -227,16 +233,12 @@ phase_publish() {
   require_lockstep_versions
   require_npm_auth
   local version
-  local -a otp_args=()
   version="$(package_version)"
-  if [ -n "${NPM_OTP:-}" ]; then
-    otp_args=(--otp "${NPM_OTP}")
-  fi
   ensure_npm_version_absent "@steipete/summarize-core" "${version}"
   ensure_npm_version_absent "@steipete/summarize" "${version}"
   phase_verify_pack
-  run bash -c 'cd packages/core && pnpm publish --tag next --access public "$@"' bash ${otp_args[@]+"${otp_args[@]}"}
-  run pnpm publish --tag next --access public ${otp_args[@]+"${otp_args[@]}"}
+  run pnpm -C packages/core publish --tag next --access public
+  run pnpm publish --tag next --access public
   phase_smoke
   phase_promote_latest
 }
@@ -281,13 +283,9 @@ phase_promote_latest() {
   banner "Promote npm latest"
   require_npm_auth
   local version
-  local -a otp_args=()
   version="$(package_version)"
-  if [ -n "${NPM_OTP:-}" ]; then
-    otp_args=(--otp "${NPM_OTP}")
-  fi
-  run npm dist-tag add "@steipete/summarize-core@${version}" latest ${otp_args[@]+"${otp_args[@]}"}
-  run npm dist-tag add "@steipete/summarize@${version}" latest ${otp_args[@]+"${otp_args[@]}"}
+  run npm dist-tag add "@steipete/summarize-core@${version}" latest
+  run npm dist-tag add "@steipete/summarize@${version}" latest
   run npm view @steipete/summarize dist-tags.latest
   run npm view @steipete/summarize-core dist-tags.latest
 }
@@ -296,17 +294,13 @@ phase_deprecate() {
   banner "Deprecate broken npm CLI version"
   require_npm_auth
   local bad_version message
-  local -a otp_args=()
   bad_version="${BAD_VERSION:-}"
   if [ -z "${bad_version}" ]; then
     echo "Set BAD_VERSION=<version> to deprecate @steipete/summarize@<version>."
     exit 2
   fi
   message="${DEPRECATE_MESSAGE:-Broken package metadata. Use a newer version.}"
-  if [ -n "${NPM_OTP:-}" ]; then
-    otp_args=(--otp "${NPM_OTP}")
-  fi
-  run npm deprecate "@steipete/summarize@${bad_version}" "${message}" ${otp_args[@]+"${otp_args[@]}"}
+  run npm deprecate "@steipete/summarize@${bad_version}" "${message}"
   echo "ok"
 }
 
