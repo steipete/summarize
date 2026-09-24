@@ -226,11 +226,26 @@ describe("package bin wrappers", () => {
     );
   });
 
-  it("keeps fish completions syntactically valid", () => {
+  it("completes locales without mixing in daemon subcommands", ({ skip }) => {
     const probe = spawnSync("fish", ["--version"], { encoding: "utf8" });
-    if (probe.error || probe.status !== 0) return;
+    if (probe.error || probe.status !== 0) skip();
     const result = spawnSync("fish", ["-n", "completions/summarize.fish"], { encoding: "utf8" });
     expect(result.status, result.stderr).toBe(0);
+    for (const command of ["summarize", "summarizer", "summarize daemon"]) {
+      const completion = spawnSync(
+        "fish",
+        ["-c", `source completions/summarize.fish; complete --do-complete='${command} --locale '`],
+        { encoding: "utf8" },
+      );
+      expect(completion.status, completion.stderr).toBe(0);
+      expect(
+        completion.stdout
+          .trim()
+          .split("\n")
+          .map((line) => line.split("\t")[0])
+          .sort(),
+      ).toEqual(["auto", ...availableUiLocales].sort());
+    }
   });
 
   it("documents extract and local video support in visible help", () => {

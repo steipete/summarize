@@ -2,6 +2,8 @@
 
 ## 0.23.1 - Unreleased
 
+- CLI completions: offer every shipped interface locale across commands, keep locale values separate from daemon subcommands, and restore missing existing flag suggestions and documentation (#486, thanks @vincent-peng).
+
 ## 0.23.0 - 2026-09-21
 
 **Highlights:** complete multilingual interfaces, safer guarded networking, and resilient cache and daemon logging.
