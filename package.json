@@ -65,7 +65,7 @@
     "@steipete/summarize-core": "workspace:*",
     "bpe-lite": "^0.5.2",
     "commander": "^15.0.0",
-    "file-type": "^22.1.0",
+    "file-type": "^22.1.1",
     "json5": "^2.2.3",
     "markdansi": "^0.3.4",
     "mime": "^4.1.0",
@@ -74,16 +74,16 @@
     "undici": "8.10.2"
   },
   "devDependencies": {
-    "@types/node": "^24.13.4",
+    "@types/node": "^24.13.5",
     "@types/sanitize-html": "^2.16.1",
-    "@vitest/coverage-v8": "^5.0.0",
+    "@vitest/coverage-v8": "^5.0.1",
     "happy-dom": "^20.14.5",
     "oxc-parser": "^0.150.0",
     "oxfmt": "0.68.0",
     "oxlint": "^1.83.0",
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   },
   "engines": {
     "node": ">=24"

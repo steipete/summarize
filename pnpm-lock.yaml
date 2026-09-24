@@ -40,8 +40,8 @@ importers:
         specifier: ^15.0.0
         version: 15.0.0
       file-type:
-        specifier: ^22.1.0
-        version: 22.1.0(supports-color@10.2.2)
+        specifier: ^22.1.1
+        version: 22.1.1(supports-color@10.2.2)
       json5:
         specifier: ^2.2.3
         version: 2.2.3
@@ -62,13 +62,13 @@ importers:
         version: 8.10.2
     devDependencies:
       '@types/node':
-        specifier: ^24.13.4
+        specifier: ^24.13.5
         version: 24.13.5
       '@types/sanitize-html':
         specifier: ^2.16.1
         version: 2.16.1
       '@vitest/coverage-v8':
-        specifier: ^5.0.0
+        specifier: ^5.0.1
         version: 5.0.1(vitest@5.0.1)
       happy-dom:
         specifier: ^20.14.5
@@ -89,7 +89,7 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
-        specifier: ^5.0.0
+        specifier: ^5.0.1
         version: 5.0.1(@opentelemetry/api@1.9.0)(@types/node@24.13.5)(@vitest/coverage-v8@5.0.1)(happy-dom@20.14.5)(vite@8.3.0(@types/node@24.13.5)(jiti@2.7.0))
 
   apps/chrome-extension:
@@ -110,8 +110,8 @@ importers:
         specifier: ^15.0.2
         version: 15.0.2
       mediabunny:
-        specifier: 1.56.3
-        version: 1.56.3
+        specifier: 1.57.0
+        version: 1.57.0
       preact:
         specifier: 10.29.8
         version: 10.29.8
@@ -138,8 +138,8 @@ importers:
         specifier: 0.6.0
         version: 0.6.0
       intl-messageformat:
-        specifier: 12.0.0
-        version: 12.0.0
+        specifier: 11.2.15
+        version: 11.2.15
       linkedom:
         specifier: ^0.18.13
         version: 0.18.13
@@ -392,11 +392,11 @@ packages:
   '@formatjs/fast-memoize@3.1.7':
     resolution: {integrity: sha512-zXfhLpvA6T7+efdt9JLbBwZ00tT7NsBMDVnDu8rpHeNNv8KfRZAMo2gkG0k9lK/Nzc//3kJ9pImsfuJxk3KhUA==}
 
-  '@formatjs/icu-messageformat-parser@3.5.19':
-    resolution: {integrity: sha512-a5PAqgd3QPUge635SxrjPLIlTErcGwm3AMyTdmZXl0IqWXTdCx9AnuioEmvEZAV2HpeFdynLPXMvHv7dXGEWWw==}
+  '@formatjs/icu-messageformat-parser@3.5.18':
+    resolution: {integrity: sha512-wX1efcL8d7K5QapOTRsP/OLTA/kpwe4LwqWyNxDNg5iRs8i9jJbCyxB5P8jc4KOW5oiLzz2DJr+BRY5xMV9+bA==}
 
-  '@formatjs/icu-skeleton-parser@2.1.12':
-    resolution: {integrity: sha512-ca7tZMLpfHX3sUD7hP6gE/qr6Iq89EDd3ZLeRhbsB7r0UD55DGJq+tmFLzrGrnx5StahUevQmQQVtbDRHsfDHA==}
+  '@formatjs/icu-skeleton-parser@2.1.11':
+    resolution: {integrity: sha512-j8cUmOJzVgkHuS0QiQ6ga76UIoLOFSAMWhs7aZJztH3aAdCOAE6vpC8KVvFB4cU10ON0y2/5oOVmPJ43s2lTwA==}
 
   '@fregante/relaxed-json@2.0.0':
     resolution: {integrity: sha512-PyUXQWB42s4jBli435TDiYuVsadwRHnMc27YaLouINktvTWsL3FcKrRMGawTayFk46X+n5bE23RjUTWQwrukWw==}
@@ -2169,8 +2169,8 @@ packages:
     resolution: {integrity: sha512-XXTUwCvisa5oacNGRP9SfNtYBNAMi+RPwBFmblZEF7N7swHYQS6/Zfk7SRwx4D5j3CH211YNRco1DEMNVfZCnQ==}
     engines: {node: '>=16.0.0'}
 
-  file-type@22.1.0:
-    resolution: {integrity: sha512-fbvf9u6jnHWr1EP6V8R99E9iLMhNLXgZkUzWBiPpJ5/89UJ/Atuxjn5YXR+XaZWo2hc2/8mGfTez+NDAgOcpLA==}
+  file-type@22.1.1:
+    resolution: {integrity: sha512-sEB0oStmeLGtpmSAD88RDNuLsvhv4iC3u0lE25CUvfCULvj49xoQ3l3K525Vn+ZzsZ6DOLajQCV6RmhwwhqiJg==}
     engines: {node: '>=22'}
 
   filesize@11.0.24:
@@ -2366,8 +2366,8 @@ packages:
     resolution: {integrity: sha512-X7rqawQBvfdjS10YU1y1YVreA3SsLrW9dX2CewP2EbBJM4ypVNLDkO5y04gejPwKIY9lR+7r9gn3rFPt/kmWFg==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
-  intl-messageformat@12.0.0:
-    resolution: {integrity: sha512-DHF7YkwmXutmmcZg3hG7pizhjbznSMLM6Sb3frzmmNcW6VPGiiPtItHbP+wbZjbRiX0fIn5yuP31pXuPhbAt2Q==}
+  intl-messageformat@11.2.15:
+    resolution: {integrity: sha512-W4VNytsXyWgW5lvVchmsb9xgA5rSKqoflu3/IQ9UCtB0z4R+Bx9MoEkwFT/+30RCl/KzUoH0QGGe9lppF5SuvQ==}
 
   is-docker@2.2.1:
     resolution: {integrity: sha512-F+i2BKsFrH66iaUFc0woD8sLy8getkwTwtOBjvs56Cx4CgJDeKQeqfz8wAYiSb8JOprWhHH5p77PbmYCvvUuXQ==}
@@ -2697,8 +2697,8 @@ packages:
   mdurl@2.1.0:
     resolution: {integrity: sha512-1+HBaOx0zi/dQWht8rNv9MYf9qqpqL/kxI0hXImU6Y547zM6Sni8BQibt7ifgMcYtQg41ao3Ivd6cnSM86inpg==}
 
-  mediabunny@1.56.3:
-    resolution: {integrity: sha512-H3K0v/PNTaBdbjN3dVFcyS0grGOJQ50TT8WCgdj62AytTZSoL5DXmkdM4mfhzRUq3BTPfmiXDnlmI3Qun/dchg==}
+  mediabunny@1.57.0:
+    resolution: {integrity: sha512-j6L4DutGEcb5DQkWshZjJk6cP7bfmFXfIP6URTRXExMM2WSEQjQxWEV+U+PmYjLFyjRLymNGHWllg2OjHVbdog==}
 
   mime@4.1.0:
     resolution: {integrity: sha512-X5ju04+cAzsojXKes0B/S4tcYtFAJ6tTMuSPBEn9CPGlrWr8Fiw7qYeLT0XyH80HSoAoqWCaz+MWKh22P7G1cw==}
@@ -3994,11 +3994,11 @@ snapshots:
 
   '@formatjs/fast-memoize@3.1.7': {}
 
-  '@formatjs/icu-messageformat-parser@3.5.19':
+  '@formatjs/icu-messageformat-parser@3.5.18':
     dependencies:
-      '@formatjs/icu-skeleton-parser': 2.1.12
+      '@formatjs/icu-skeleton-parser': 2.1.11
 
-  '@formatjs/icu-skeleton-parser@2.1.12': {}
+  '@formatjs/icu-skeleton-parser@2.1.11': {}
 
   '@fregante/relaxed-json@2.0.0': {}
 
@@ -5331,7 +5331,7 @@ snapshots:
     dependencies:
       flat-cache: 4.0.1
 
-  file-type@22.1.0(supports-color@10.2.2):
+  file-type@22.1.1(supports-color@10.2.2):
     dependencies:
       '@tokenizer/inflate': 0.4.1(supports-color@10.2.2)
       strtok3: 10.3.5
@@ -5539,10 +5539,10 @@ snapshots:
 
   ini@4.1.3: {}
 
-  intl-messageformat@12.0.0:
+  intl-messageformat@11.2.15:
     dependencies:
       '@formatjs/fast-memoize': 3.1.7
-      '@formatjs/icu-messageformat-parser': 3.5.19
+      '@formatjs/icu-messageformat-parser': 3.5.18
 
   is-docker@2.2.1: {}
 
@@ -5840,7 +5840,7 @@ snapshots:
 
   mdurl@2.1.0: {}
 
-  mediabunny@1.56.3:
+  mediabunny@1.57.0:
     dependencies:
       '@types/dom-mediacapture-transform': 0.1.12
       '@types/dom-webcodecs': 0.1.13

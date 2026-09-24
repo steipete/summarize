@@ -7,7 +7,7 @@ Focused fixes, tests, and documentation improvements are welcome.
 Requirements:
 
 - Node.js 24 or newer
-- pnpm 11.25.0 through Corepack
+- The workspace's pinned pnpm version through Corepack
 - Git
 
 ```bash
@@ -69,7 +69,7 @@ docker run --rm summarize-test https://example.com --extract --plain
 
 The image uses the workspace's pinned pnpm version and frozen lockfile, including local dependency patches.
 
-Dependency patches live in `patches/` and have regression tests in `tests/dependency.*-security.test.ts`. The adm-zip 0.6.0 patch backports the destination-symlink extraction fix from 0.6.1 while that release completes the seven-day hold. It also stops asynchronous extraction after a directory rejection so the callback fires once; retain that correction until upstream fixes it, even after adopting 0.6.1. The image-size patch remains necessary until upstream publishes its parser-loop fixes. Registry audits still report patched versions by number, so verify the checked-in patches and tests rather than suppressing those advisories.
+Dependency patches live in `patches/` and have regression tests in `tests/dependency.*-security.test.ts`. The remaining adm-zip 0.6.1 patch stops asynchronous extraction after a directory rejection so the callback fires once; retain it until upstream fixes that behavior. The destination-symlink and image-size parser-loop fixes now come from upstream releases. Stable dependency releases must complete the workspace's seven-day stabilization hold before adoption.
 
 Daemon after extension or daemon changes:
 
