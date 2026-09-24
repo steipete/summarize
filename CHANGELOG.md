@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.23.2 - Unreleased
+
 ## 0.23.1 - 2026-09-24
 
 **Highlights:** reliable slide flags, complete fish suggestions, browser media cancellation fixes, and safer npm publication logs.
