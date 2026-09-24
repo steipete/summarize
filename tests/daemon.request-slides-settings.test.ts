@@ -95,31 +95,42 @@ describe("parseSummarizeRequest slides settings", () => {
   });
 
   it.each([
+    [{ slides: "" }, /Unsupported --slides:/],
+    [{ slidesOcr: " " }, /Unsupported --slides-ocr:/],
+    [{ slidesMax: "bogus" }, /Unsupported --slides-max: bogus/],
+    [{ slides: false, slidesSceneThreshold: 2 }, /Unsupported --slides-scene-threshold: 2/],
+    [{ slidesMax: true }, /Unsupported --slides-max: true/],
+    [{ slidesSceneThreshold: [0.5] }, /Unsupported --slides-scene-threshold: 0.5/],
+    [{ slidesMinDuration: false }, /Unsupported --slides-min-duration: false/],
     [{ slides: "bogus" }, /Unsupported --slides: bogus/],
     [{ slides: 1 }, /Unsupported --slides: 1/],
     [{ slidesOcr: "bogus" }, /Unsupported --slides-ocr: bogus/],
     [{ slides: true, slidesMax: "bogus" }, /Unsupported --slides-max: bogus/],
+    [{ slides: true, slidesSceneThreshold: 2 }, /Unsupported --slides-scene-threshold: 2/],
+    [{ slides: true, slidesMinDuration: -1 }, /Unsupported --slides-min-duration: -1/],
   ])("rejects invalid slide option %o with a 400 response", async (fields, errorPattern) => {
-    const writeHead = vi.fn();
-    const end = vi.fn();
-    const res = { writeHead, end } as unknown as http.ServerResponse;
+    for (const toolsAvailable of [true, false]) {
+      const writeHead = vi.fn();
+      const end = vi.fn();
+      const res = { writeHead, end } as unknown as http.ServerResponse;
 
-    const parsed = await parseSummarizeRequest({
-      req: createJsonRequest({
-        url: "https://example.com/video.mp4",
-        mode: "url",
-        ...fields,
-      }),
-      res,
-      cors: {},
-      env: { HOME: "/home/alice" },
-      resolveToolPath,
-    });
+      const parsed = await parseSummarizeRequest({
+        req: createJsonRequest({
+          url: "https://example.com/video.mp4",
+          mode: "url",
+          ...fields,
+        }),
+        res,
+        cors: {},
+        env: { HOME: "/home/alice" },
+        resolveToolPath: toolsAvailable ? resolveToolPath : () => null,
+      });
 
-    expect(parsed).toBeNull();
-    expect(writeHead).toHaveBeenCalledWith(400, expect.any(Object));
-    const body = JSON.parse(String(end.mock.calls[0]?.[0])) as { ok?: boolean; error?: string };
-    expect(body.ok).toBe(false);
-    expect(body.error).toMatch(errorPattern);
+      expect(parsed).toBeNull();
+      expect(writeHead).toHaveBeenCalledWith(400, expect.any(Object));
+      const body = JSON.parse(String(end.mock.calls[0]?.[0])) as { ok?: boolean; error?: string };
+      expect(body.ok).toBe(false);
+      expect(body.error).toMatch(errorPattern);
+    }
   });
 });

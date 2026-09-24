@@ -35,12 +35,9 @@ function resolveRequestSlidesSettings({
     explicitEnvKey?: string,
   ) => string | null;
 }): SlideSettings | null {
-  const slidesValue = request.slides;
-  const tesseractAvailable = resolveToolPath("tesseract", env, "TESSERACT_PATH") !== null;
-  const slidesOcrValue = tesseractAvailable ? request.slidesOcr : false;
-  return resolveSlideSettings({
-    slides: slidesValue,
-    slidesOcr: slidesOcrValue,
+  const input = {
+    slides: request.slides,
+    slidesOcr: request.slidesOcr,
     // Daemon/API callers may be browser-extension or localhost clients that
     // only need to request extraction, not select host filesystem paths. Keep
     // slide artifacts under the per-user Summarize directory so an authenticated
@@ -51,7 +48,11 @@ function resolveRequestSlidesSettings({
     slidesMax: request.slidesMax,
     slidesMinDuration: request.slidesMinDuration,
     cwd: resolveHomeDir(env),
-  });
+  };
+  const settings = resolveSlideSettings(input);
+  if (!settings?.ocr || resolveToolPath("tesseract", env, "TESSERACT_PATH") !== null)
+    return settings;
+  return resolveSlideSettings({ ...input, slidesOcr: false });
 }
 
 export type ParsedSummarizeRequest = {

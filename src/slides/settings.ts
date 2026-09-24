@@ -33,7 +33,6 @@ const parseBoolean = (raw: unknown, label: string): boolean | null => {
   if (typeof raw === "boolean") return raw;
   if (typeof raw === "string") {
     const normalized = raw.trim().toLowerCase();
-    if (!normalized) return null;
     if (["1", "true", "yes", "on"].includes(normalized)) return true;
     if (["0", "false", "no", "off"].includes(normalized)) return false;
   }
@@ -43,7 +42,10 @@ const parseBoolean = (raw: unknown, label: string): boolean | null => {
 const parsePositiveInt = (raw: unknown, label: string, min = 1): number | null => {
   if (raw == null) return null;
   const value = typeof raw === "string" ? raw.trim() : raw;
-  if (typeof value === "string" && !DECIMAL_INT_PATTERN.test(value)) {
+  if (
+    typeof value !== "number" &&
+    (typeof value !== "string" || !DECIMAL_INT_PATTERN.test(value))
+  ) {
     throw new Error(`Unsupported ${label}: ${String(raw)}`);
   }
   const numeric = typeof value === "number" ? value : Number(value);
@@ -63,7 +65,10 @@ const parseNumberInRange = (
 ): number | null => {
   if (raw == null) return null;
   const value = typeof raw === "string" ? raw.trim() : raw;
-  if (typeof value === "string" && !DECIMAL_NUMBER_PATTERN.test(value)) {
+  if (
+    typeof value !== "number" &&
+    (typeof value !== "string" || !DECIMAL_NUMBER_PATTERN.test(value))
+  ) {
     throw new Error(`Unsupported ${label}: ${String(raw)}`);
   }
   const numeric = typeof value === "number" ? value : Number(value);
@@ -80,10 +85,6 @@ export function resolveSlideSettings(input: SlideSettingsInput): SlideSettings |
   const slidesFlag = parseBoolean(input.slides, "--slides");
   const ocrFlag = parseBoolean(input.slidesOcr, "--slides-ocr");
   const enabled = Boolean((slidesFlag ?? false) || (ocrFlag ?? false));
-  if (!enabled) return null;
-
-  const dirRaw = typeof input.slidesDir === "string" ? input.slidesDir.trim() : DEFAULT_OUTPUT_DIR;
-  const outputDir = path.resolve(input.cwd, dirRaw || DEFAULT_OUTPUT_DIR);
 
   const sceneThreshold =
     parseNumberInRange(input.slidesSceneThreshold, "--slides-scene-threshold", {
@@ -96,6 +97,10 @@ export function resolveSlideSettings(input: SlideSettingsInput): SlideSettings |
       min: 0,
       max: 86_400,
     }) ?? DEFAULT_MIN_DURATION_SECONDS;
+  if (!enabled) return null;
+
+  const dirRaw = typeof input.slidesDir === "string" ? input.slidesDir.trim() : DEFAULT_OUTPUT_DIR;
+  const outputDir = path.resolve(input.cwd, dirRaw || DEFAULT_OUTPUT_DIR);
   return {
     enabled,
     ocr: Boolean(ocrFlag ?? false),

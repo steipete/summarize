@@ -2,6 +2,7 @@
 
 ## 0.23.1 - Unreleased
 
+- CLI slides: preserve URLs and media inputs following bare `--slides`, reject malformed per-run slide options, and return HTTP 400 for invalid daemon requests while preserving stored-config tolerance (#488, thanks @vincent-peng).
 - CLI completions: offer every shipped interface locale across commands, keep locale values separate from daemon subcommands, and restore missing existing flag suggestions and documentation (#486, thanks @vincent-peng).
 
 ## 0.23.0 - 2026-09-21

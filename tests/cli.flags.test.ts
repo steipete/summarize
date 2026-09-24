@@ -17,11 +17,7 @@ import {
 } from "../src/flags.js";
 import { buildProgram } from "../src/run/help.js";
 import { resolveRunnerFlags } from "../src/run/runner-flags.js";
-import {
-  normalizeDiarizeArgv,
-  normalizeSlidesArgv,
-  prepareRunEnvironment,
-} from "../src/run/runner-setup.js";
+import { normalizeMediaInputArgv, prepareRunEnvironment } from "../src/run/runner-setup.js";
 import { resolveSlideSettings } from "../src/slides/index.js";
 
 describe("cli flag parsing", () => {
@@ -41,7 +37,7 @@ describe("cli flag parsing", () => {
 
   it("treats a URL after bare --diarize as the positional input", () => {
     const url = "https://www.youtube.com/watch?v=abcdefghijk";
-    const argv = normalizeDiarizeArgv(["--diarize", url]);
+    const argv = normalizeMediaInputArgv(["--diarize", url]);
     const program = buildProgram();
     program.parse(argv, { from: "user" });
 
@@ -53,7 +49,7 @@ describe("cli flag parsing", () => {
   it.each(["recording.mp3", "/tmp/interview.mp4"])(
     "treats %s after bare --diarize as the positional input",
     (input) => {
-      const argv = normalizeDiarizeArgv(["--diarize", input]);
+      const argv = normalizeMediaInputArgv(["--diarize", input]);
       const program = buildProgram();
       program.parse(argv, { from: "user" });
 
@@ -65,7 +61,7 @@ describe("cli flag parsing", () => {
 
   it("keeps explicit diarization providers intact", () => {
     const url = "https://www.youtube.com/watch?v=abcdefghijk";
-    expect(normalizeDiarizeArgv(["--diarize", "openai", url])).toEqual([
+    expect(normalizeMediaInputArgv(["--diarize", "openai", url])).toEqual([
       "--diarize",
       "openai",
       url,
@@ -73,12 +69,12 @@ describe("cli flag parsing", () => {
   });
 
   it("keeps bare --diarize unchanged when no positional input follows", () => {
-    expect(normalizeDiarizeArgv(["--diarize"])).toEqual(["--diarize"]);
+    expect(normalizeMediaInputArgv(["--diarize"])).toEqual(["--diarize"]);
   });
 
   it("treats a URL after bare --slides as the positional input", () => {
     const url = "https://www.youtube.com/watch?v=abcdefghijk";
-    const argv = normalizeSlidesArgv(["--slides", url]);
+    const { normalizedArgv: argv } = prepareRunEnvironment(["--slides", url], {});
     const program = buildProgram();
     program.parse(argv, { from: "user" });
 
@@ -90,7 +86,7 @@ describe("cli flag parsing", () => {
   it.each(["lecture.mp4", "/tmp/talk.mkv"])(
     "treats %s after bare --slides as the positional input",
     (input) => {
-      const argv = normalizeSlidesArgv(["--slides", input]);
+      const argv = normalizeMediaInputArgv(["--slides", input]);
       const program = buildProgram();
       program.parse(argv, { from: "user" });
 
@@ -102,7 +98,7 @@ describe("cli flag parsing", () => {
 
   it("keeps explicit boolean values after --slides intact", () => {
     const url = "https://example.com";
-    expect(normalizeSlidesArgv(["--slides", "off", url])).toEqual(["--slides", "off", url]);
+    expect(normalizeMediaInputArgv(["--slides", "off", url])).toEqual(["--slides", "off", url]);
     const program = buildProgram();
     program.parse(["--slides", "off", url], { from: "user" });
     expect(program.opts().slides).toBe("off");
@@ -110,14 +106,19 @@ describe("cli flag parsing", () => {
   });
 
   it("keeps bare --slides unchanged when no positional input follows", () => {
-    expect(normalizeSlidesArgv(["--slides"])).toEqual(["--slides"]);
-    expect(normalizeSlidesArgv(["--slides", "--json"])).toEqual(["--slides", "--json"]);
+    expect(normalizeMediaInputArgv(["--slides"])).toEqual(["--slides"]);
+    expect(normalizeMediaInputArgv(["--slides", "--json"])).toEqual(["--slides", "--json"]);
   });
 
   it("keeps bare --slides before the -- separator unchanged", () => {
-    expect(normalizeSlidesArgv(["--slides", "--", "clip.mp4"])).toEqual([
+    expect(normalizeMediaInputArgv(["--slides", "--", "clip.mp4"])).toEqual([
       "--slides",
       "--",
+      "clip.mp4",
+    ]);
+    expect(normalizeMediaInputArgv(["--", "--slides", "clip.mp4"])).toEqual([
+      "--",
+      "--slides",
       "clip.mp4",
     ]);
   });
@@ -132,10 +133,10 @@ describe("cli flag parsing", () => {
     );
   });
 
-  it("accepts boolean words for --slides and keeps empty values disabled", () => {
+  it("accepts boolean words for --slides and rejects explicit empty values", () => {
     expect(resolveSlideSettings({ slides: "yes", cwd: "/" })?.enabled).toBe(true);
     expect(resolveSlideSettings({ slides: "off", cwd: "/" })).toBeNull();
-    expect(resolveSlideSettings({ slides: "", cwd: "/" })).toBeNull();
+    expect(() => resolveSlideSettings({ slides: "", cwd: "/" })).toThrow(/Unsupported --slides:/);
   });
 
   it("parses speaker identity profiles and repeatable timestamp anchors", () => {
