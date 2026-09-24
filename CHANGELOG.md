@@ -7,7 +7,7 @@
 - CLI slides: preserve URLs and media inputs following bare `--slides`, reject malformed per-run slide options, and return HTTP 400 for invalid daemon requests while preserving stored-config tolerance (#488, thanks @vincent-peng).
 - CLI completions: offer every shipped interface locale across commands, keep locale values separate from daemon subcommands, and restore missing existing flag suggestions and documentation (#486, thanks @vincent-peng).
 - Browser media: pick up upstream stream-disposal cancellation and transcription runtime fixes, alongside stabilized file detection and test tooling (#487, thanks @dependabot).
-- Release: keep npm verification codes out of command logs and arguments while preserving the documented `NPM_OTP` setting (#489).
+- Release: keep npm verification codes out of command logs while preserving the documented `NPM_OTP` setting and pnpm's required authentication argument (#489).
 
 ## 0.23.0 - 2026-09-21
 

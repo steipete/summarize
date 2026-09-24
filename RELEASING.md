@@ -97,7 +97,7 @@ Homebrew/core autobumps independently. Do not block a completed release on that 
 
 Notes:
 
-- npm may prompt for browser auth when `npm config get auth-type` is `web`. For scripted publishes, create auth in the `$npm` tmux/1Password workflow and pass a fresh code as `NPM_CONFIG_OTP` or the supported `NPM_OTP` alias only when needed. The helper passes codes through the environment so command logs and arguments do not expose them.
+- npm may prompt for browser auth when `npm config get auth-type` is `web`. For scripted publishes, create auth in the `$npm` tmux/1Password workflow and pass a fresh code as `NPM_CONFIG_OTP` or the supported `NPM_OTP` alias only when needed. The helper uses npm's environment setting and pnpm's required publish argument without including the code in command logs.
 - Publishing with raw `npm publish` is forbidden here. Use `pnpm publish` only; it rewrites `workspace:*` dependencies in the packed CLI metadata.
 - `scripts/release.sh publish` uses `next` first, then exact-version smoke, then `latest`. The annotated tag comes after that smoke passes; CI owns the GitHub Release.
 - `prepare` runs `pnpm build` automatically during publish.

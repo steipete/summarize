@@ -7,7 +7,7 @@ set -euo pipefail
 # npm@11 warns on unknown env configs; keep CI/logs clean.
 unset npm_config_manage_package_manager_versions || true
 
-# Keep verification codes out of command logs and process arguments.
+# Keep verification codes out of command logs.
 if [ -n "${NPM_OTP:-}" ]; then
   export NPM_CONFIG_OTP="$NPM_OTP"
 fi
@@ -22,6 +22,16 @@ banner() {
 run() {
   echo "+ $*"
   "$@"
+}
+
+publish_package() {
+  echo "+ pnpm $*"
+  # pnpm 11 requires its OTP argument; append it only after logging.
+  if [ -n "${NPM_CONFIG_OTP:-}" ]; then
+    pnpm "$@" --otp "$NPM_CONFIG_OTP"
+  else
+    pnpm "$@"
+  fi
 }
 
 require_clean_git() {
@@ -237,8 +247,8 @@ phase_publish() {
   ensure_npm_version_absent "@steipete/summarize-core" "${version}"
   ensure_npm_version_absent "@steipete/summarize" "${version}"
   phase_verify_pack
-  run pnpm -C packages/core publish --tag next --access public
-  run pnpm publish --tag next --access public
+  publish_package -C packages/core publish --tag next --access public
+  publish_package publish --tag next --access public
   phase_smoke
   phase_promote_latest
 }
