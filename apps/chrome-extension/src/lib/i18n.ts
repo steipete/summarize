@@ -111,11 +111,11 @@ export function resolveText(value: LocalizedText, locale = activeLocale): string
 
 /** Owned errors retain their descriptor across catches; native/provider diagnostics remain text. */
 export class LocalizedError extends Error {
-  constructor(
-    readonly localized: LocalizedDescriptor,
-    options?: ErrorOptions,
-  ) {
+  readonly localized: LocalizedDescriptor;
+
+  constructor(localized: LocalizedDescriptor, options?: ErrorOptions) {
     super(resolveText(localized, "en"), options);
+    this.localized = localized;
   }
 }
 
