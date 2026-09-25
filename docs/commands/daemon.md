@@ -73,7 +73,7 @@ summarize daemon run --port 8787
 : TCP port. Default `8787`. For a non-default port, set the same value in the extension under **Options → Runtime → Daemon → Port**. The native host reads `daemon.json` and rejects mismatched requests.
 
 `--token <token>`
-: Bearer token. Required for `install`. Stored in `~/.summarize/daemon.json` (mode `0600`).
+: Bearer token. Required for `install`; also accepted by `run`, which adds it alongside the stored tokens for that run (required when no `daemon.json` exists). Stored in `~/.summarize/daemon.json` (mode `0600`).
 
 `--dev`
 : Install a service that runs `src/cli.ts` via Node's native TypeScript support from the current repo. Useful while hacking on the daemon — don't ship it to users.
@@ -85,14 +85,14 @@ summarize daemon run --port 8787
 
 The daemon is documented in detail in [Chrome extension](../chrome-extension.md) and [Agent / daemon](../agent.md). At a glance:
 
-- `POST /summarize/execute` — start a run. Bearer-auth required. Streams progress + final summary.
-- `GET /session/{id}/status` — poll an in-progress run.
+- `POST /v1/summarize` — start a run. Bearer-auth required. Returns `{ ok, id }` JSON (`coalesced: true` when it joins an in-flight run for the same request).
+- `GET /v1/summarize/{id}/events` — SSE stream of progress events and the final result for a run.
 - `GET /health` — health probe (used by `status`).
 
 ## Files
 
 `~/.summarize/daemon.json`
-: Token, port, paired browser fingerprints. Mode `0600`.
+: Bearer token(s), port, and an env snapshot captured at install (includes provider API keys). Mode `0600`.
 
 `~/.summarize/daemon.log`
 : Rolling log written by the autostart service.

@@ -83,7 +83,7 @@ for cmd in summarize summarizer
     # Summary options
     complete -c $cmd -n '__summarize_no_subcommand' -l length -d 'Summary length' -xa 'short s medium m long l xl xxl'
     complete -c $cmd -n '__summarize_no_subcommand' -l max-extract-characters -d 'Max characters in --extract' -x
-    complete -c $cmd -n '__summarize_no_subcommand' -l language -l lang -d 'Output language' -xa 'auto en de fr es it pt-BR nl pl ru ja zh-Hans zh-Hant ko tr chinese dutch english french german italian japanese korean polish portuguese russian spanish turkish'
+    complete -c $cmd -n '__summarize_no_subcommand' -l language -l lang -d 'Output language' -xa 'auto en de fr es it pt pt-BR nl pl ru ja zh zh-Hans zh-Hant ko tr ar hi sv no da fi cs uk arabic chinese czech danish dutch english finnish french german hindi italian japanese korean norwegian polish portuguese russian spanish swedish turkish ukrainian deutsch espanol turkce'
     complete -c $cmd -n '__summarize_no_subcommand' -l locale -d 'CLI interface language' -xa "$__summarize_ui_locales"
     complete -c $cmd -n '__summarize_no_subcommand' -l max-output-tokens -d 'Hard cap for LLM output tokens' -x
     complete -c $cmd -n '__summarize_no_subcommand' -l force-summary -d 'Force LLM summary even for short content'
@@ -95,7 +95,7 @@ for cmd in summarize summarizer
     complete -c $cmd -n '__summarize_no_subcommand' -l cli -d 'Use CLI provider' -xa 'claude gemini codex agent openclaw opencode copilot agy pi'
     complete -c $cmd -n '__summarize_no_subcommand' -l fast -d 'Use OpenAI fast service tier'
     complete -c $cmd -n '__summarize_no_subcommand' -l service-tier -d 'OpenAI service tier' -xa 'default fast priority flex'
-    complete -c $cmd -n '__summarize_no_subcommand' -l thinking -d 'OpenAI reasoning effort' -xa 'none low medium high xhigh off min mid'
+    complete -c $cmd -n '__summarize_no_subcommand' -l thinking -d 'OpenAI reasoning effort' -xa 'none low medium high xhigh off min med mid x-high extra-high'
     complete -c $cmd -n '__summarize_no_subcommand' -l prompt -d 'Override summary prompt' -x
     complete -c $cmd -n '__summarize_no_subcommand' -l prompt-file -d 'Read prompt from file' -rF
 

@@ -20,7 +20,7 @@ Needs `OPENROUTER_API_KEY` in the environment.
 
 1. Pulls the OpenRouter model catalog.
 2. Filters to models tagged `:free` that meet `--min-params` and `--max-age-days`.
-3. Runs each candidate `--runs` times against a sanity prompt; ranks by `--smart` heuristics (latency, completion length, refusal rate).
+3. Benchmarks every candidate once against a sanity prompt, then probes the shortlisted candidates `--runs` more times; ranks by `--smart` heuristics (latency, completion length, refusal rate).
 4. Writes the survivors to `models.free` in `~/.summarize/config.json`.
 5. With `--set-default`, also sets top-level `model` to `free`.
 
@@ -29,7 +29,7 @@ After the run, `summarize "https://example.com" --model free` rotates through th
 ## Flags
 
 `--runs <n>`
-: How many times to probe each candidate. Default `2`.
+: Extra refinement probes per shortlisted candidate after the initial benchmark run (`1 + --runs` total). `0` skips refinement. Default `2`.
 
 `--smart <n>`
 : How many top candidates to keep. Default `3`.
@@ -43,7 +43,7 @@ After the run, `summarize "https://example.com" --model free` rotates through th
 `--set-default`
 : Also set `model: "free"` at the top level of `~/.summarize/config.json`.
 
-`--verbose`
+`--verbose` / `--debug`
 : Per-candidate progress, timings, and rejection reasons on stderr.
 
 ## Examples
@@ -74,7 +74,7 @@ summarize refresh-free --runs 3 --smart 5 --verbose
 }
 ```
 
-A short summary of survivors and rejected candidates is printed on stdout.
+A short summary of survivors and rejected candidates is printed on stderr. The only stdout line is the localized config-write confirmation, e.g. `Wrote /Users/you/.summarize/config.json (models.free)` — a sentence containing the path, not a bare path value.
 
 Color follows the rest of the CLI: `FORCE_COLOR=0` disables it, while a nonzero `FORCE_COLOR` takes precedence over `NO_COLOR`. Without an override, color requires a capable terminal.
 

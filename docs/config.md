@@ -152,6 +152,8 @@ Legacy shortcut (still supported):
 {
   "apiKeys": {
     "openai": "sk-...",
+    "nvidia": "...",
+    "minimax": "...",
     "groq": "gsk-...",
     "assemblyai": "...",
     "elevenlabs": "...",

@@ -41,7 +41,7 @@ If `[input]` is omitted, summarize prints concise help and exits.
 : Extraction can still use configured remote transcription, OCR, or Markdown providers for media/PDF inputs.
 
 `--format <format>`
-: `md` or `text`. Controls website extraction format and whether files are preprocessed to Markdown for model compatibility. Default: `text`. Default in `--extract` mode for URLs: `md`.
+: `md`/`markdown` or `text`/`txt`/`plain`. Controls website extraction format and whether files are preprocessed to Markdown for model compatibility. Default: `text`. Default in `--extract` mode for URLs: `md`.
 
 `--firecrawl <mode>`
 : `off`, `auto`, `always`. `auto` falls back to Firecrawl when local extraction looks blocked or thin. Needs `FIRECRAWL_API_KEY`.
@@ -51,7 +51,7 @@ If `[input]` is omitted, summarize prints concise help and exits.
 : Image-only PDFs can retry through OpenAI vision OCR when `OPENAI_API_KEY` is set. Set `MARKITDOWN_OCR_MODEL` to choose the OCR model, or `MARKITDOWN_OCR_DPI` to tune rendered page size.
 
 `--markdown-mode <mode>`
-: `off`, `auto`, `llm`, `readability`. For websites: HTML → Markdown strategy. For YouTube/transcripts: `llm` formats raw transcripts into clean Markdown with headings.
+: `off`, `auto`, `llm`, `readability`. For websites: HTML → Markdown strategy. For YouTube/transcripts: `llm` formats raw transcripts into clean Markdown with headings. The `--markdown` alias is hidden and deprecated.
 
 `--max-extract-characters <count>`
 : Cap printed characters in `--extract` mode. Default: unlimited.
@@ -66,6 +66,9 @@ If `[input]` is omitted, summarize prints concise help and exits.
 
 `--video-mode <mode>`
 : `auto`, `transcript`, `understand`. `understand` prefers vision/video understanding when supported.
+
+`--embedded-video <mode>`
+: `auto`, `off`, `prefer`, `both`. Controls embedded YouTube handling on regular web pages: `off` keeps the article text only, `prefer` favors the video transcript, `both` combines labeled article + transcript sections. Default `auto` — uses only high-confidence primary embeds. See [Website mode](../website.md).
 
 `--timestamps`
 : Include timestamps in transcripts when available.
@@ -130,13 +133,13 @@ If `[input]` is omitted, summarize prints concise help and exits.
 ### Models
 
 `--model <model>`
-: Model id. `auto`, `<config-preset>`, `cli/<provider>/<model>`, `xai/...`, `openai/...`, `nvidia/...`, `minimax/...`, `google/...`, `anthropic/...`, `zai/...`, `github-copilot/...`, or `openrouter/<author>/<slug>`. Default `auto`. See [LLM overview](../llm.md).
+: Model id. `auto`, `<config-preset>`, `cli/<provider>/<model>`, `xai/...`, `openai/...`, `nvidia/...`, `minimax/...`, `google/...`, `anthropic/...`, `zai/...`, `github-copilot/...`, `ollama/<model>` (local Ollama), `openclaw/<model>` (shorthand for `cli/openclaw/<model>`), or `openrouter/<author>/<slug>`. Default `auto`. See [LLM overview](../llm.md).
 
 `--cli [provider]`
 : Use a logged-in CLI provider: `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`, `copilot`, `agy`, `pi`. Equivalent to `--model cli/<provider>`. Without a value: enable CLI providers in auto-selection.
 
 `--thinking <effort>`
-: OpenAI reasoning effort. `none`, `low`, `medium`, `high`, `xhigh`. Aliases: `off`, `min`, `mid`. Only affects reasoning-capable OpenAI models.
+: Reasoning effort. `none`, `low`, `medium`, `high`, `xhigh`. Aliases: `off`, `min`, `med`, `mid`, `x-high`, `extra-high`. Affects reasoning-capable models on the dispatched provider (OpenAI, Anthropic Claude 4+, pi CLI).
 
 `--service-tier <tier>`
 : OpenAI service tier. `default`, `fast`, `priority`, `flex`. Maps to `service_tier` on the request.
@@ -148,7 +151,7 @@ If `[input]` is omitted, summarize prints concise help and exits.
 : Hard cap for LLM output tokens. Accepts `2000`, `2k`. Overrides provider defaults.
 
 `--retries <count>`
-: LLM retry attempts after timeouts or transient API failures. Default `1`.
+: LLM retry attempts after timeouts or transient API failures. `0`–`5`. Default `1`.
 
 ### Output
 
@@ -198,7 +201,7 @@ See [Cache internals](../cache.md) for what's cached and where.
 : `off`, `on`, `detailed`. Default `on`. Adds a compact second-line breakdown on stderr when `detailed`.
 
 `--timeout <duration>`
-: Cap the whole pipeline. `30`, `30s`, `2m`, `5000ms`. Default `2m`.
+: Per-operation timeout for content fetching and LLM requests (not an overall wall-clock deadline). `30`, `30s`, `2m`, `5000ms`. Default `2m`.
 
 `-V`, `--version`
 : Print version and exit.

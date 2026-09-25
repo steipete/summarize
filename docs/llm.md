@@ -94,7 +94,7 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
   - Only relevant for video inputs / video-only pages.
 - `--length short|medium|long|xl|xxl|<chars>`
   - This is _soft guidance_ to the model (no hard truncation).
-  - Minimum numeric value: 50 chars.
+  - Minimum numeric value: 10 chars.
   - Built-in default: `long`.
   - Config default: `output.length` in `~/.summarize/config.json`.
   - Output format is Markdown. Default URL summaries separate paragraphs, headings, and lists with blank lines; multi-point material uses descriptive headings or short bullets when they improve scanability.

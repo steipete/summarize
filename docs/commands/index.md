@@ -17,6 +17,7 @@ summary: "Every summarize subcommand and flag, with examples."
 - [`summarize transcriber`](transcriber.md) — set up local ONNX transcription (Parakeet, Canary). Prints the env vars you need.
 - [`summarize daemon`](daemon.md) — manage the local HTTP daemon that the Chrome Side Panel talks to. Subcommands: `install`, `restart`, `status`, `uninstall`, `run`.
 - [`summarize refresh-free`](refresh-free.md) — scan OpenRouter `:free` models, write working candidates to `~/.summarize/config.json`.
+- `summarize help [topic]` — print help for the CLI or a subcommand (`slides`, `status`, `daemon`, `transcriber`, `refresh-free`).
 
 ## Output discipline
 
@@ -29,27 +30,27 @@ All subcommands keep the same output discipline — straight from gogcli's playb
 
 ## Global behavior
 
-These flags apply to almost every subcommand:
+Only two flags apply to every subcommand; the rest are per-command:
 
-| Flag                          | Purpose                                                                                         |
-| ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| `--json`                      | Stable JSON envelope on stdout. Disables streaming.                                             |
-| `--no-color`                  | Strip ANSI escapes from output.                                                                 |
-| `--theme <name>`              | Pick a CLI theme (`SUMMARIZE_THEME` env var also works).                                        |
-| `--verbose` / `--debug`       | Detailed progress on stderr.                                                                    |
-| `--locale <locale>`           | Interface language: `auto` plus the shipped UI locales (`SUMMARIZE_LOCALE` env var also works). |
-| `--metrics off\|on\|detailed` | Token + timing metrics line. Default `on`.                                                      |
-| `--timeout <duration>`        | Cap fetching + LLM calls. Accepts `30`, `30s`, `2m`, `5000ms`.                                  |
-| `-V`, `--version`             | Print version and exit.                                                                         |
-| `--help`                      | Print rich help with examples.                                                                  |
+| Flag                          | Where it works                                                                                                                             |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--locale <locale>`           | Everywhere. Interface language: `auto` plus the shipped UI locales (`SUMMARIZE_LOCALE` too).                                               |
+| `--help`                      | Everywhere (`summarize help <topic>` prints topic help).                                                                                   |
+| `-V`, `--version`             | `summarize`, `summarize slides`.                                                                                                           |
+| `--json`                      | `summarize`, `summarize slides`, `summarize status`.                                                                                       |
+| `--no-color`                  | `summarize`, `summarize status`, `summarize refresh-free`, `summarize transcriber`.                                                        |
+| `--theme <name>`              | `summarize`, `summarize slides`, `summarize transcriber` (`SUMMARIZE_THEME` env var also works).                                           |
+| `--verbose` / `--debug`       | `summarize`, `summarize slides`, `summarize refresh-free`, `summarize daemon`, `summarize transcriber`. `status` accepts `--verbose` only. |
+| `--metrics off\|on\|detailed` | `summarize` only.                                                                                                                          |
+| `--timeout <duration>`        | `summarize`, `summarize slides`.                                                                                                           |
 
 ## Exit codes
 
-| Code  | Meaning                                                |
-| ----- | ------------------------------------------------------ |
-| `0`   | Success.                                               |
-| `1`   | Generic failure (extraction, model, network, parsing). |
-| `2`   | Usage error (bad flag, bad input).                     |
-| `124` | Timeout.                                               |
+| Code  | Meaning                                                                     |
+| ----- | --------------------------------------------------------------------------- |
+| `0`   | Success.                                                                    |
+| `1`   | Any failure — usage errors, extraction, model, network, and timeouts alike. |
+| `130` | Interrupted by SIGINT (Ctrl+C).                                             |
+| `143` | Terminated by SIGTERM.                                                      |
 
-`summarize daemon` and `summarize transcriber` may surface platform-specific exit codes from the underlying service install (launchd, systemd, schtasks); check `--verbose` output for the raw error.
+`summarize daemon` and `summarize transcriber` still exit `1` when the underlying service install (launchd, systemd, schtasks) fails; the platform's own error text is included in the message — check `--verbose` output for the raw error.
