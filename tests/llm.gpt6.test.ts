@@ -60,6 +60,22 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+it.each([false, true])("rejects Astra none before any API request (stream=%s)", async (stream) => {
+  const fetchImpl = mockResponse(stream);
+  const generate = stream ? streamTextWithModelId : generateTextWithModelId;
+  await expect(
+    generate({
+      modelId: "openai/gpt-6-astra",
+      apiKeys,
+      prompt: { userText: "Summarize this page" },
+      timeoutMs: 2000,
+      fetchImpl,
+      requestOptions: { reasoningEffort: "none" },
+    }),
+  ).rejects.toThrow(/Astra requires reasoning.*--thinking none/);
+  expect(fetchImpl).not.toHaveBeenCalled();
+});
+
 describe.each(models)("%s requests", (model) => {
   it.each([undefined, requestOptions])(
     "uses Responses without temperature (options=%j)",
@@ -391,13 +407,6 @@ describe("GPT-6 model boundaries", () => {
     expect(isOpenAiResponsesTextModelId(`openai/${model}`)).toBe(true);
     expect(
       resolveEffectiveTemperature({ provider: "openai", model, temperature: 0.3 }),
-    ).toBeUndefined();
-    expect(
-      resolveEffectiveTemperature({
-        provider: "github-copilot",
-        model: `openai/${model}`,
-        temperature: 0.3,
-      }),
     ).toBeUndefined();
   });
   it.each([

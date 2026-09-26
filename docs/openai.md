@@ -25,6 +25,11 @@ summarize https://summarize.sh/ --model openai/gpt-6-luna --thinking low
 ```
 
 These explicit model ids do not change the default model or existing presets.
+The model picker and built-in pricing catalog include all three models. Standard input/output
+prices per million tokens are $10/$50 for Astra, $2/$10 for Sol, and $0.10/$0.50 for Luna.
+Cost estimates use these standard rates; they do not include cache discounts, cache writes,
+fast/flex service tiers, or long-context premiums. See [OpenAI pricing](https://developers.openai.com/api/docs/pricing).
+An unsupported `--thinking none` request for Astra fails locally before sending an API request.
 See OpenAI's [GPT-6 guide](https://developers.openai.com/api/docs/guides/latest-model) and model pages for [Astra](https://developers.openai.com/api/docs/models/gpt-6-astra), [Sol](https://developers.openai.com/api/docs/models/gpt-6-sol), and [Luna](https://developers.openai.com/api/docs/models/gpt-6-luna).
 
 ## Fast mode

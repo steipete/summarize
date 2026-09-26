@@ -57,7 +57,6 @@ export function canStream({
     "zai",
     "nvidia",
     "minimax",
-    "github-copilot",
   ]);
   return streamableProviders.has(provider);
 }

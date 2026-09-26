@@ -11,6 +11,19 @@ import {
 } from "../src/pricing/litellm.js";
 
 describe("LiteLLM pricing catalog", () => {
+  it.each([
+    ["gpt-6-astra", 10, 50],
+    ["gpt-6-sol", 2, 10],
+    ["gpt-6-luna", 0.1, 0.5],
+  ] as const)("knows published %s prices and limits without a cache", (id, input, output) => {
+    expect(resolveLiteLlmPricingForModelId({}, `openai/${id}`)).toEqual({
+      inputUsdPerToken: input / 1_000_000,
+      outputUsdPerToken: output / 1_000_000,
+    });
+    expect(resolveLiteLlmMaxInputTokensForModelId({}, `openai/${id}`)).toBe(922_000);
+    expect(resolveLiteLlmMaxOutputTokensForModelId({}, `openai/${id}`)).toBe(128_000);
+    expect(resolveLiteLlmPricingForModelId({}, `openrouter/openai/${id}`)).toBeNull();
+  });
   it("resolves pricing for common gateway-style ids", () => {
     const catalog = {
       "gpt-5.2": { input_cost_per_token: 0.00000175, output_cost_per_token: 0.000014 },

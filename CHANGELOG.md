@@ -1,6 +1,15 @@
 # Changelog
 
-## 0.23.2 - Unreleased
+## 0.24.0 - 2026-09-25
+
+**Highlights:** GPT-6 support with pricing, compatibility guidance for the retired GitHub Models provider, and Node 26 and command-reference fixes.
+
+- OpenAI: support GPT-6 (Astra, Sol, Luna) models, omit the unsupported `temperature` parameter on reasoning requests, and keep `--thinking none` for Sol/Luna (#495, thanks @roboclaw-bot).
+- OpenAI: include GPT-6 in the model picker with published pricing and context limits, estimate costs without a downloaded pricing cache, and reject Astra's unsupported `--thinking none` before sending a request.
+- Compatibility: remove the retired GitHub Models API provider and its advertised integrations; saved `github-copilot/...` and browser GitHub provider settings fail with a clear retirement message instead of silently switching providers. The separate `cli/copilot` integration remains available (#494, thanks @vincent-peng).
+
+- Node.js: keep native extension catalog imports working on Node 26 while retaining the Node 24 minimum (#492, thanks @vincent-peng).
+- CLI docs and completions: match real daemon routes, flag scopes, exit codes, reasoning aliases, timeout semantics, and output-language suggestions (#493, thanks @vincent-peng).
 
 ## 0.23.1 - 2026-09-24
 

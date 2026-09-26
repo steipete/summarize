@@ -13,7 +13,7 @@ import {
 import { parseRequestedModelId } from "../src/model-spec.js";
 
 const path = "/tmp/provider-config.json";
-const compatibleProviders = ["zai", "nvidia", "minimax", "github-copilot", "ollama"] as const;
+const compatibleProviders = ["zai", "nvidia", "minimax", "ollama"] as const;
 
 describe("provider registry contracts", () => {
   it.each(compatibleProviders)("rejects unprefixed %s names as unknown models", (provider) => {
@@ -66,9 +66,7 @@ describe("provider registry contracts", () => {
       requestOptions: { serviceTier: "flex" },
     });
     expect(client.baseURL).toBe(profile.defaultBaseUrl);
-    expect(client.requestOptions).toEqual(
-      provider === "github-copilot" ? undefined : { serviceTier: "flex" },
-    );
+    expect(client.requestOptions).toEqual({ serviceTier: "flex" });
   });
 
   it("keeps legacy keys separate from the model-provider inventory", () => {

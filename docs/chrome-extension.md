@@ -174,7 +174,7 @@ See `docs/media.md` for detection and transcript rules.
   - Direct provider and credential/base URL (Options → Runtime). `auto` uses the configured provider, otherwise Gemini Nano; an explicit provider prefix overrides the selection.
   - Media/slide runtime (Options → Runtime): Browser | Daemon.
   - Daemon port (Options → Runtime; default `8787`): must match the installed daemon port.
-  - Model preset: `auto` | Gemini Nano | `free` | custom string (e.g. `openai/gpt-5-mini`, `openrouter/...`, `github-copilot/...`). Explicit Gemini Nano summaries stay on-device in either connection mode.
+  - Model preset: `auto` | Gemini Nano | `free` | custom string (e.g. `openai/gpt-5-mini`, `openrouter/...`). Explicit Gemini Nano summaries stay on-device in either connection mode.
   - Length: `short|medium|long|xl|xxl` (or a character target like `20k`). Tooltips show target ranges + paragraph guidance (from `packages/core/src/prompts/summary-lengths.ts`).
   - Language: `auto` (match source) or a tag like `en`, `de`, `pt-BR` (or free-form like “German”).
   - Prompt override (advanced): custom instruction prefix (context + content still appended).

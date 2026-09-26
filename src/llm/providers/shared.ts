@@ -1,5 +1,6 @@
 import type { Api, AssistantMessage, Context, KnownProvider, Model } from "@earendil-works/pi-ai";
 import { getModel, type BuiltinProvider } from "@earendil-works/pi-ai/compat";
+import { getOpenAiGpt6Model } from "../openai-catalog.js";
 
 export function resolveBaseUrlOverride(raw: string | null | undefined): string | null {
   const trimmed = typeof raw === "string" ? raw.trim() : "";
@@ -37,6 +38,8 @@ export function wantsImages(context: Context): boolean {
 }
 
 export function tryGetModel(provider: BuiltinProvider, modelId: string): Model<Api> | null {
+  const builtIn = provider === "openai" ? getOpenAiGpt6Model(modelId) : null;
+  if (builtIn) return builtIn;
   try {
     return getModel(provider, modelId as never) as unknown as Model<Api>;
   } catch {

@@ -1,5 +1,4 @@
 import { CliError } from "../locale.js";
-import { resolveGitHubCopilotBackendModelId } from "./github-models.js";
 import { isGatewayProvider, type GatewayProvider } from "./provider-registry.js";
 
 export type LlmProvider = GatewayProvider;
@@ -65,11 +64,7 @@ export function normalizeGatewayStyleModelId(raw: string): string {
   const provider = lower.slice(0, slash);
   const model = trimmed.slice(slash + 1);
   if (provider === "github-copilot") {
-    const resolved = resolveGitHubCopilotBackendModelId(model);
-    if (resolved.trim().length === 0) {
-      throw new CliError("error.modelIdMissing", { afterPrefix: true });
-    }
-    return `github-copilot/${resolved}`;
+    throw new CliError("error.githubModelsRetired");
   }
   if (!isGatewayProvider(provider)) {
     throw new CliError("error.modelProvider", { provider });

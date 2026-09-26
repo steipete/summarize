@@ -3,6 +3,7 @@ import { isOpenRouterBaseUrl } from "@steipete/summarize-core";
 import { resolveEnvState } from "../application/environment-state.js";
 import { resolveCliAvailability } from "../application/environment.js";
 import type { CliProvider, SummarizeConfig } from "../config.js";
+import { OPENAI_GPT6_MODELS } from "../llm/openai-catalog.js";
 import type { GatewayProvider } from "../llm/provider-capabilities.js";
 import { createCliTranslator, type CliMessage } from "../locale.js";
 import { discoverOpenAiCompatibleModels } from "./model-discovery.js";
@@ -130,6 +131,11 @@ function pushPiAiModels({
   prefix: string;
   labelPrefix: string;
 }) {
+  if (provider === "openai") {
+    for (const model of OPENAI_GPT6_MODELS) {
+      options.push({ id: `${prefix}${model.id}`, label: `${labelPrefix}${model.name}` });
+    }
+  }
   const models = getModels(provider)
     .slice()
     .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));

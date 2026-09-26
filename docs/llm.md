@@ -32,7 +32,6 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
 - `MINIMAX_API_KEY` (required for `minimax/...` models)
 - `MINIMAX_BASE_URL` (optional; override MiniMax OpenAI-compatible API endpoint; default: `https://api.minimax.io/v1`)
 - `OPENROUTER_API_KEY` (optional; required for `openrouter/...` models; also used when `OPENAI_BASE_URL` points to OpenRouter)
-- `GITHUB_TOKEN` / `GH_TOKEN` (required for `github-copilot/...` models via GitHub Models)
 - `Z_AI_API_KEY` (required for `zai/...` models; supports `ZAI_API_KEY` alias)
 - `Z_AI_BASE_URL` (optional; override default Z.AI base URL)
 - `OLLAMA_BASE_URL` (optional; override default Ollama OpenAI-compatible base URL — default `http://localhost:11434/v1`. Set this to enable Ollama auto-discovery in the extension model picker.)
@@ -64,7 +63,6 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
     - `google/gemini-3-flash`
     - `openai/gpt-5-mini`
     - `openai/gpt-5-nano`
-    - `github-copilot/gpt-5.4`
     - `nvidia/z-ai/glm5`
     - `minimax/MiniMax-M3`
     - `zai/glm-4.7`
@@ -143,23 +141,6 @@ Reasoning is requested through MiniMax’s separated response fields and omitted
 Use `--model ollama/<model>` (e.g. `ollama/qwen3:14b`, `ollama/gemma3:12b`) to talk to a local
 [Ollama](https://ollama.com) instance over its OpenAI-compatible endpoint. See `docs/ollama.md`
 for full setup, model recommendations, and limitations.
-
-## GitHub Copilot / GitHub Models
-
-Use `--model github-copilot/<model>` for explicit GitHub-hosted model calls.
-
-- Examples:
-  - `github-copilot/gpt-5.4`
-  - `github-copilot/gpt-5.4-mini`
-  - `github-copilot/gpt-5.4-nano`
-  - `github-copilot/gpt-5-mini`
-  - `github-copilot/gpt-5-nano`
-  - `github-copilot/anthropic/claude-haiku-4.5`
-- Auth: `GITHUB_TOKEN` or `GH_TOKEN`
-- Transport: GitHub Models chat completions (`https://models.github.ai/inference`)
-- Notes:
-  - bare shorthand like `github-copilot/gpt-5.4` or `github-copilot/claude-opus-4.6` auto-expands to the provider-qualified backend id
-  - document attachments stay unsupported in this mode
 
 ## Input limits
 

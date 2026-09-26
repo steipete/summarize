@@ -9,6 +9,22 @@ export function isOpenAiGpt6ModelId(modelId: string): boolean {
   return /^gpt-6-(astra|sol|luna)$/i.test(stripOpenAiProviderPrefix(modelId));
 }
 
+export function validateOpenAiReasoningEffort(
+  provider: string,
+  modelId: string,
+  options: ModelRequestOptions | undefined,
+): void {
+  if (
+    provider === "openai" &&
+    stripOpenAiProviderPrefix(modelId).toLowerCase() === "gpt-6-astra" &&
+    options?.reasoningEffort === "none"
+  ) {
+    throw new Error(
+      "GPT-6 Astra requires reasoning: --thinking none is unsupported. Use low, medium, high, or xhigh, or choose GPT-6 Sol/Luna.",
+    );
+  }
+}
+
 export function isOpenAiResponsesTextModelId(modelId: string): boolean {
   const normalized = stripOpenAiProviderPrefix(modelId).toLowerCase();
   return (

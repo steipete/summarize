@@ -9,6 +9,7 @@ import {
   resolveLiteLlmMaxOutputTokens as resolveLiteLlmMaxOutputTokensTokentally,
   resolveLiteLlmPricing as resolveLiteLlmPricingTokentally,
 } from "tokentally/node";
+import { getOpenAiGpt6Model } from "../llm/openai-catalog.js";
 
 function withDefaultCacheDir(
   env: Record<string, string | undefined>,
@@ -78,6 +79,13 @@ export function resolveLiteLlmPricingForModelId(
   catalog: LiteLlmCatalog,
   modelId: string,
 ): LlmPerTokenPricing | null {
+  const model = getOpenAiGpt6Model(modelId.replace(/^openai\//, ""));
+  if (model) {
+    return {
+      inputUsdPerToken: model.cost.input / 1_000_000,
+      outputUsdPerToken: model.cost.output / 1_000_000,
+    };
+  }
   return resolveLiteLlmPricingTokentally(catalog, modelId);
 }
 
@@ -85,6 +93,7 @@ export function resolveLiteLlmMaxOutputTokensForModelId(
   catalog: LiteLlmCatalog,
   modelId: string,
 ): number | null {
+  if (getOpenAiGpt6Model(modelId.replace(/^openai\//, ""))) return 128_000;
   return resolveLiteLlmMaxOutputTokensTokentally(catalog, modelId);
 }
 
@@ -92,5 +101,6 @@ export function resolveLiteLlmMaxInputTokensForModelId(
   catalog: LiteLlmCatalog,
   modelId: string,
 ): number | null {
+  if (getOpenAiGpt6Model(modelId.replace(/^openai\//, ""))) return 922_000;
   return resolveLiteLlmMaxInputTokensTokentally(catalog, modelId);
 }

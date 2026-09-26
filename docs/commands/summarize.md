@@ -133,7 +133,7 @@ If `[input]` is omitted, summarize prints concise help and exits.
 ### Models
 
 `--model <model>`
-: Model id. `auto`, `<config-preset>`, `cli/<provider>/<model>`, `xai/...`, `openai/...`, `nvidia/...`, `minimax/...`, `google/...`, `anthropic/...`, `zai/...`, `github-copilot/...`, `ollama/<model>` (local Ollama), `openclaw/<model>` (shorthand for `cli/openclaw/<model>`), or `openrouter/<author>/<slug>`. Default `auto`. See [LLM overview](../llm.md).
+: Model id. `auto`, `<config-preset>`, `cli/<provider>/<model>`, `xai/...`, `openai/...`, `nvidia/...`, `minimax/...`, `google/...`, `anthropic/...`, `zai/...`, `ollama/<model>` (local Ollama), `openclaw/<model>` (shorthand for `cli/openclaw/<model>`), or `openrouter/<author>/<slug>`. Default `auto`. See [LLM overview](../llm.md).
 
 `--cli [provider]`
 : Use a logged-in CLI provider: `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`, `copilot`, `agy`, `pi`. Equivalent to `--model cli/<provider>`. Without a value: enable CLI providers in auto-selection.
@@ -238,9 +238,6 @@ summarize "https://example.com" \
 # OpenAI fast tier with reasoning.
 summarize "https://example.com" \
   --model openai/gpt-5.5 --fast --thinking medium
-
-# GitHub Models via GITHUB_TOKEN.
-summarize "https://example.com" --model github-copilot/gpt-5.4
 
 # Config preset (alias defined in ~/.summarize/config.json).
 summarize "https://example.com" --model mymodel

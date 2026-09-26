@@ -1,5 +1,3 @@
-export const GITHUB_MODELS_BASE_URL = "https://models.github.ai/inference";
-
 export type ProviderExecution =
   | "simple"
   | "google"
@@ -75,15 +73,6 @@ export const GATEWAY_PROVIDER_PROFILES = {
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
     defaultBaseUrl: DEFAULT_MINIMAX_BASE_URL,
-    forceChatCompletions: true,
-  },
-  "github-copilot": {
-    requiredEnv: "GITHUB_TOKEN",
-    execution: "openai-http",
-    supportsDocuments: false,
-    supportsStreaming: true,
-    supportsVideoUnderstanding: false,
-    defaultBaseUrl: GITHUB_MODELS_BASE_URL,
     forceChatCompletions: true,
   },
   ollama: {

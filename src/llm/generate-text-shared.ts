@@ -251,10 +251,7 @@ export function isOpenAiGpt5Model(provider: string, model: string): boolean {
     .trim()
     .toLowerCase()
     .replace(/^openai\//, "");
-  return (
-    (provider === "openai" && /^gpt-5([-.].+)?$/i.test(normalized)) ||
-    (provider === "github-copilot" && /^openai\/gpt-5([-.].+)?$/i.test(model))
-  );
+  return provider === "openai" && /^gpt-5([-.].+)?$/i.test(normalized);
 }
 
 export function resolveEffectiveTemperature({
@@ -270,10 +267,7 @@ export function resolveEffectiveTemperature({
 }): number | undefined {
   if (typeof temperature !== "number") return undefined;
   if (isOpenAiGpt5Model(provider, model)) return undefined;
-  if (
-    (provider === "openai" || (provider === "github-copilot" && /^openai\//i.test(model))) &&
-    isOpenAiGpt6ModelId(model)
-  ) {
+  if (provider === "openai" && isOpenAiGpt6ModelId(model)) {
     // GPT-6 defaults to reasoning; only Sol/Luna support disabling it.
     const supportsNoReasoning = /(?:^|\/)gpt-6-(sol|luna)$/i.test(model.trim());
     if (reasoningEffort !== "none" || !supportsNoReasoning) return undefined;

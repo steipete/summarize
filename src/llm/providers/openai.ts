@@ -7,10 +7,9 @@ export {
 import { normalizeTokenUsage } from "../usage.js";
 import { resolveOpenAiModel } from "./models.js";
 import { completeOpenAiChatText, streamOpenAiChatText } from "./openai/chat-completions.js";
-import { completeGitHubModelsText } from "./openai/github-models.js";
 import { isOpenAiGpt6ModelId, isOpenAiResponsesTextModelId } from "./openai/request-options.js";
 import { completeOpenAiResponsesText, streamOpenAiResponsesText } from "./openai/responses.js";
-import { isApiOpenAiBaseUrl, isGitHubModelsBaseUrl } from "./openai/transport.js";
+import { isApiOpenAiBaseUrl } from "./openai/transport.js";
 import type {
   OpenAiStructuredOutput,
   OpenAiTextCompletionResult,
@@ -42,7 +41,7 @@ export async function completeOpenAiText({
   structuredOutput?: OpenAiStructuredOutput;
 }): Promise<OpenAiTextCompletionResult> {
   if (structuredOutput) {
-    if (openaiConfig.isOpenRouter || isGitHubModelsBaseUrl(openaiConfig.baseURL)) {
+    if (openaiConfig.isOpenRouter) {
       throw new Error(
         "Structured OpenAI Responses output requires an OpenAI-compatible Responses endpoint.",
       );
@@ -56,17 +55,6 @@ export async function completeOpenAiText({
       signal,
       fetchImpl,
       structuredOutput,
-    });
-  }
-  if (isGitHubModelsBaseUrl(openaiConfig.baseURL)) {
-    return completeGitHubModelsText({
-      modelId,
-      openaiConfig,
-      context,
-      temperature,
-      maxOutputTokens,
-      signal,
-      fetchImpl,
     });
   }
   if (

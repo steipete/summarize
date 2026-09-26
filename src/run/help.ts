@@ -369,7 +369,6 @@ ${heading(t("examples"))}
   ${cmd(/* i18n-ignore: Executable CLI example; descriptions use message keys. */ 'summarize "https://example.com" --length 20k --max-output-tokens 2k --timeout 2m --model openai/gpt-5-mini')}
   ${cmd(/* i18n-ignore: Executable CLI example; descriptions use message keys. */ 'summarize "https://example.com" --model openai/gpt-5.5 --fast --thinking medium')}
   ${cmd(/* i18n-ignore: Executable CLI example; descriptions use message keys. */ 'summarize "https://example.com" --model openai/gpt-5.4 --service-tier fast --thinking low')}
-  ${cmd(/* i18n-ignore: Executable CLI example; descriptions use message keys. */ 'summarize "https://example.com" --model github-copilot/gpt-5.4')} ${dim(`# ${t("github.models.via.github.token")}`)}
   ${cmd(/* i18n-ignore: Executable CLI example; descriptions use message keys. */ 'summarize "https://example.com" --model mymodel')} ${dim(`# ${t("config.preset")}`)}
   ${cmd(/* i18n-ignore: Executable CLI example; descriptions use message keys. */ 'summarize "https://example.com" --json --verbose')}
   ${cmd(/* i18n-ignore: Executable CLI example; descriptions use message keys. */ "pbpaste | summarize -")} ${dim(`# ${t("summarize.clipboard.content")}`)}

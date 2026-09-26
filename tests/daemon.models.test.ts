@@ -5,6 +5,18 @@ import { describe, expect, it, vi } from "vitest";
 import { buildModelPickerOptions } from "../src/daemon/models.js";
 
 describe("daemon /v1/models", () => {
+  it("includes each GPT-6 model once when OpenAI is configured", async () => {
+    const env = { OPENAI_API_KEY: "test-key" };
+    const result = await buildModelPickerOptions({
+      env,
+      envForRun: env,
+      configForCli: null,
+      fetchImpl: vi.fn(),
+    });
+    for (const id of ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"]) {
+      expect(result.options.filter((option) => option.id === `openai/${id}`)).toHaveLength(1);
+    }
+  });
   it("includes local OpenAI-compatible models without OPENAI_API_KEY", async () => {
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
       expect(init?.headers).toBeUndefined();

@@ -70,7 +70,7 @@ export type DirectProvider =
   | "zai"
   | "nvidia"
   | "minimax"
-  | "github"
+  | "github" // Retired saved-setting sentinel; rejected before direct requests.
   | "ollama";
 
 export type ProviderSettings = {

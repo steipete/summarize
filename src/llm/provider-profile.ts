@@ -1,4 +1,3 @@
-import { buildGitHubModelsHeaders, resolveGitHubModelsApiKey } from "./github-models.js";
 import { normalizeGatewayStyleModelId, parseGatewayStyleModelId } from "./model-id.js";
 import type { ModelRequestOptions } from "./model-options.js";
 import { resolveOpenAiClientConfig } from "./openai-client-config.js";
@@ -127,9 +126,6 @@ export function envHasRequiredKey(
   if (requiredEnv === "Z_AI_API_KEY") {
     return Boolean(env.Z_AI_API_KEY?.trim() || env.ZAI_API_KEY?.trim());
   }
-  if (requiredEnv === "GITHUB_TOKEN") {
-    return Boolean(resolveGitHubModelsApiKey(env));
-  }
   if (requiredEnv === "OLLAMA_BASE_URL") {
     return true;
   }
@@ -167,7 +163,7 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
   forceChatCompletions,
   requestOptions,
 }: {
-  provider: "openai" | "zai" | "nvidia" | "minimax" | "github-copilot" | "ollama";
+  provider: "openai" | "zai" | "nvidia" | "minimax" | "ollama";
   openaiApiKey: string | null;
   openrouterApiKey: string | null;
   forceOpenRouter?: boolean;
@@ -190,8 +186,7 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
   const profile = GATEWAY_PROVIDER_PROFILES[provider];
   const apiKey = provider === "ollama" ? openaiApiKey?.trim() || "ollama" : openaiApiKey;
   if (!apiKey) {
-    const requiredEnv =
-      provider === "github-copilot" ? "GITHUB_TOKEN (or GH_TOKEN)" : profile.requiredEnv;
+    const requiredEnv = profile.requiredEnv;
     throw new Error(`Missing ${requiredEnv} for ${provider}/... model`);
   }
   return {
@@ -199,10 +194,6 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
     baseURL: openaiBaseUrlOverride ?? profile.defaultBaseUrl,
     useChatCompletions: profile.forceChatCompletions,
     isOpenRouter: false,
-    ...(provider === "github-copilot"
-      ? { extraHeaders: buildGitHubModelsHeaders() }
-      : requestOptions
-        ? { requestOptions }
-        : {}),
+    ...(requestOptions ? { requestOptions } : {}),
   };
 }

@@ -30,7 +30,6 @@ describe("provider runtime bindings", () => {
         zai: "z-key",
         nvidia: "n-key",
         minimax: "m-key",
-        "github-copilot": "gh-key",
         ollama: null,
       },
       baseUrls: {

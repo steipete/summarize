@@ -81,8 +81,7 @@ export function createRunMetrics({
     modelId: string;
     requested: number;
   }): Promise<number> => {
-    const catalog = await getCachedLiteLlmCatalog();
-    if (!catalog) return requested;
+    const catalog = (await getCachedLiteLlmCatalog()) ?? {};
     const limit = resolveLiteLlmMaxOutputTokensForModelId(catalog, modelId);
     if (typeof limit === "number" && Number.isFinite(limit) && limit > 0) {
       return Math.min(requested, limit);
@@ -96,8 +95,7 @@ export function createRunMetrics({
   };
 
   const resolveMaxInputTokensForCall = async (modelId: string): Promise<number | null> => {
-    const catalog = await getCachedLiteLlmCatalog();
-    if (!catalog) return null;
+    const catalog = (await getCachedLiteLlmCatalog()) ?? {};
     const limit = resolveLiteLlmMaxInputTokensForModelId(catalog, modelId);
     if (typeof limit === "number" && Number.isFinite(limit) && limit > 0) {
       return limit;
@@ -156,8 +154,7 @@ export function createRunMetrics({
       return null;
     }
 
-    const catalog = await getCachedLiteLlmCatalog();
-    if (!catalog) return null;
+    const catalog = (await getCachedLiteLlmCatalog()) ?? {};
     const result = await tallyCosts({
       calls,
       resolvePricing: (modelId) => resolveLiteLlmPricingForModelId(catalog, modelId),

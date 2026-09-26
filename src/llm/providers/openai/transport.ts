@@ -41,15 +41,6 @@ export async function readOpenAiCompletion<Payload>(
   return { text, usage: normalizeOpenAiUsage(payload.usage) };
 }
 
-export function isGitHubModelsBaseUrl(baseUrl: string | undefined): boolean {
-  if (!baseUrl) return false;
-  try {
-    return new URL(baseUrl).host === "models.github.ai";
-  } catch {
-    return false;
-  }
-}
-
 export function isApiOpenAiBaseUrl(baseUrl: string | undefined): boolean {
   if (!baseUrl) return true;
   try {
@@ -77,14 +68,6 @@ export function resolveOpenAiResponsesUrl(baseUrl: string): URL {
 export function resolveOpenAiChatCompletionsUrl(baseUrl: string): URL {
   const url = new URL(baseUrl);
   const path = url.pathname.replace(/\/$/, "");
-  if (url.host === "models.github.ai") {
-    if (/\/chat\/completions$/.test(path)) {
-      url.pathname = path;
-      return url;
-    }
-    url.pathname = `${path}/chat/completions`;
-    return url;
-  }
   if (/\/chat\/completions$/.test(path)) {
     url.pathname = path;
     return url;
@@ -178,7 +161,6 @@ export function buildOpenAiRequestHeaders(
 }
 
 export function createOpenAiHttpError({
-  baseUrl,
   status,
   bodyText,
 }: {
@@ -186,10 +168,7 @@ export function createOpenAiHttpError({
   status: number;
   bodyText: string;
 }): Error {
-  const message =
-    isGitHubModelsBaseUrl(baseUrl) && status === 429
-      ? "GitHub Models rate limit exceeded (429). Try again later or use another model/token."
-      : `OpenAI API error (${status}).`;
+  const message = `OpenAI API error (${status}).`;
   const error = new Error(message);
   (error as { statusCode?: number }).statusCode = status;
   (error as { responseBody?: string }).responseBody = bodyText;

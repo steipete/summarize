@@ -63,7 +63,7 @@ describe("mergeRequestOptionsForProvider", () => {
   });
 
   it("isolates other non-openai providers (zai, google, xai) from openai-scoped defaults", () => {
-    for (const provider of ["zai", "google", "xai", "nvidia", "ollama", "github-copilot"]) {
+    for (const provider of ["zai", "google", "xai", "nvidia", "ollama"]) {
       const merged = mergeRequestOptionsForProvider({
         provider,
         openaiGlobalDefault,
@@ -119,7 +119,7 @@ describe("mergeRequestOptionsForProvider", () => {
   });
 
   it("forwards CLI --thinking to other non-openai providers (zai, google, xai, ...)", () => {
-    for (const provider of ["zai", "google", "xai", "nvidia", "ollama", "github-copilot"]) {
+    for (const provider of ["zai", "google", "xai", "nvidia", "ollama"]) {
       const merged = mergeRequestOptionsForProvider({
         provider,
         openaiGlobalDefault,

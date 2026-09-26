@@ -48,7 +48,6 @@ function createTestModelExecutor(
         zai: null,
         nvidia: null,
         minimax: "minimax-key",
-        "github-copilot": null,
         ollama: null,
       },
       baseUrls: {
@@ -59,7 +58,6 @@ function createTestModelExecutor(
         zai: "https://api.z.ai/api/paas/v4",
         nvidia: "https://integrate.api.nvidia.com/v1",
         minimax: "https://minimax.example.com/v1",
-        "github-copilot": null,
         ollama: "http://localhost:11434/v1",
       },
       openaiUseChatCompletions,
@@ -219,7 +217,6 @@ describe("model executor credential availability", () => {
     expect(engine.envHasKeyFor("MINIMAX_API_KEY")).toBe(true);
     expect(engine.envHasKeyFor("OPENROUTER_API_KEY")).toBe(true);
     expect(engine.envHasKeyFor("OLLAMA_BASE_URL")).toBe(true);
-    expect(engine.envHasKeyFor("GITHUB_TOKEN")).toBe(false);
     expect(engine.envHasKeyFor("CLI_CODEX")).toBe(false);
   });
 });

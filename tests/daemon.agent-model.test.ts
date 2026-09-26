@@ -13,10 +13,27 @@ const emptyApiKeys = {
   zaiApiKey: null,
   nvidiaApiKey: null,
   minimaxApiKey: null,
-  githubApiKey: null,
 };
 
 describe("daemon agent model resolution", () => {
+  it.each(["astra", "sol", "luna"])(
+    "resolves GPT-6 %s with reasoning and published limits",
+    async (tier) => {
+      const home = mkdtempSync(join(tmpdir(), "summarize-agent-gpt6-"));
+      const resolved = await resolveAgentModel({
+        env: { HOME: home, OPENAI_API_KEY: "test-key" },
+        pageContent: "Hello",
+        modelOverride: `openai/gpt-6-${tier}`,
+      });
+      expect(resolved.model).toMatchObject({
+        id: `gpt-6-${tier}`,
+        reasoning: true,
+        contextWindow: 1_050_000,
+        maxTokens: 128_000,
+      });
+      expect(resolved.model?.cost.input).toBeGreaterThan(0);
+    },
+  );
   it("uses synthetic local auth for Ollama agents without OPENAI_API_KEY", () => {
     expect(resolveApiKeyForModel({ provider: "ollama", apiKeys: emptyApiKeys })).toBe("ollama");
   });
@@ -37,33 +54,6 @@ describe("daemon agent model resolution", () => {
     expect(() => resolveApiKeyForModel({ provider: "unknown", apiKeys: emptyApiKeys })).toThrow(
       "Missing API key for provider: unknown",
     );
-  });
-
-  it("resolves GitHub Models credentials and gateway settings", async () => {
-    expect(
-      resolveApiKeyForModel({
-        provider: "github-copilot",
-        apiKeys: { ...emptyApiKeys, githubApiKey: "gh-token" },
-      }),
-    ).toBe("gh-token");
-
-    const home = mkdtempSync(join(tmpdir(), "summarize-agent-github-models-"));
-    const resolved = await resolveAgentModel({
-      env: { HOME: home, GH_TOKEN: "gh-token" },
-      pageContent: "Hello",
-      modelOverride: "github-copilot/gpt-5.4",
-    });
-
-    expect(resolved.provider).toBe("github-copilot");
-    expect(resolved.model).toMatchObject({
-      id: "openai/gpt-5.4",
-      api: "openai-completions",
-      baseUrl: "https://models.github.ai/inference",
-      headers: {
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2026-03-10",
-      },
-    });
   });
 
   it("honors explicit OpenAI Responses routing for agent custom base URLs", async () => {

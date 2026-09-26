@@ -86,12 +86,6 @@ const API_STATUS_PROVIDERS = [
     label: "MiniMax API",
     sources: ["MINIMAX_API_KEY"],
   },
-  {
-    provider: "github-copilot",
-    id: "github-models",
-    label: "GitHub Models API",
-    sources: ["GITHUB_TOKEN", "GH_TOKEN"],
-  },
 ] as const satisfies ReadonlyArray<{
   provider: Exclude<GatewayProvider, "openai" | "ollama">;
   id: string;

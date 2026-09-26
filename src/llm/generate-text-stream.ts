@@ -29,7 +29,10 @@ import {
   resolveXaiModel,
 } from "./providers/models.js";
 import { completeOpenAiText, streamOpenAiText } from "./providers/openai.js";
-import { isOpenAiGpt6ModelId } from "./providers/openai/request-options.js";
+import {
+  isOpenAiGpt6ModelId,
+  validateOpenAiReasoningEffort,
+} from "./providers/openai/request-options.js";
 import { isApiOpenAiBaseUrl } from "./providers/openai/transport.js";
 import { extractText } from "./providers/shared.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
@@ -245,6 +248,7 @@ export async function streamTextWithContext({
   requestOptions,
 }: StreamTextWithContextArgs): Promise<StreamTextResult> {
   const parsed = parseGatewayStyleModelId(modelId);
+  validateOpenAiReasoningEffort(parsed.provider, parsed.model, requestOptions);
   const providerProfile = getGatewayProviderProfile(parsed.provider);
   if (!supportsStreaming(parsed.provider)) {
     throw createUnsupportedFunctionalityError(
@@ -357,13 +361,7 @@ export async function streamTextWithContext({
       providerProfile.execution === "openai-http" ||
       isOpenAiCompatibleProvider(parsed.provider)
     ) {
-      const provider = parsed.provider as
-        | "openai"
-        | "zai"
-        | "nvidia"
-        | "minimax"
-        | "github-copilot"
-        | "ollama";
+      const provider = parsed.provider as "openai" | "zai" | "nvidia" | "minimax" | "ollama";
       const openaiConfig: OpenAiClientConfig = resolveOpenAiCompatibleClientConfigForProvider({
         provider,
         openaiApiKey: apiKeys.openaiApiKey,
@@ -377,12 +375,11 @@ export async function streamTextWithContext({
         requestOptions,
       });
       if (
-        parsed.provider === "github-copilot" ||
-        (parsed.provider === "openai" &&
-          (requestOptions ||
-            (isOpenAiGpt6ModelId(parsed.model) &&
-              !openaiConfig.isOpenRouter &&
-              isApiOpenAiBaseUrl(openaiConfig.baseURL))))
+        parsed.provider === "openai" &&
+        (requestOptions ||
+          (isOpenAiGpt6ModelId(parsed.model) &&
+            !openaiConfig.isOpenRouter &&
+            isApiOpenAiBaseUrl(openaiConfig.baseURL)))
       ) {
         if (parsed.provider === "openai") {
           const streamResult = await withRequestDeadline({

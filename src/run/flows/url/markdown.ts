@@ -31,7 +31,6 @@ export type MarkdownConverters = {
     | "zai"
     | "nvidia"
     | "minimax"
-    | "github-copilot"
     | "ollama";
   markdownModel: MarkdownModel | null;
   convertHtmlToMarkdown:
@@ -136,10 +135,8 @@ export function createMarkdownConverters(
     const required =
       markdownModel?.requiredEnv === "GEMINI_API_KEY"
         ? "GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY)"
-        : markdownModel?.requiredEnv === "GITHUB_TOKEN"
-          ? "GITHUB_TOKEN (or GH_TOKEN)"
-          : (markdownModel?.requiredEnv ??
-            "GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY)");
+        : (markdownModel?.requiredEnv ??
+          "GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY)");
     throw new CliError("error.markdownKey", { required: String(required) });
   }
 

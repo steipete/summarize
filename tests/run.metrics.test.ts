@@ -5,6 +5,20 @@ import { describe, expect, it, vi } from "vitest";
 import { createRunMetrics } from "../src/application/metrics.js";
 
 describe("run metrics cost estimation", () => {
+  it("estimates GPT-6 costs and limits without a pricing cache or network call", async () => {
+    const fetchImpl = vi.fn();
+    const metrics = createRunMetrics({ env: {}, fetchImpl, maxOutputTokensArg: 200_000 });
+    metrics.llmCalls.push({
+      provider: "openai",
+      model: "openai/gpt-6-sol",
+      usage: { promptTokens: 1000, completionTokens: 100, totalTokens: 1100 },
+      purpose: "summary",
+    });
+    await expect(metrics.estimateCostUsd()).resolves.toBeCloseTo(0.003);
+    await expect(metrics.resolveMaxInputTokensForCall("openai/gpt-6-sol")).resolves.toBe(922_000);
+    await expect(metrics.resolveMaxOutputTokensForCall("openai/gpt-6-sol")).resolves.toBe(128_000);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
   it("keeps the total unknown when any billable call lacks usage and an explicit cost", async () => {
     const home = mkdtempSync(join(tmpdir(), "summarize-run-metrics-"));
     try {

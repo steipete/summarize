@@ -1,5 +1,4 @@
 import type { SummarizeConfig } from "../config.js";
-import { resolveGitHubModelsApiKey } from "../llm/github-models.js";
 import type { ProviderRuntimeBindings } from "../llm/provider-profile.js";
 import type { EnvState } from "./environment-state.js";
 import { parseBooleanEnv } from "./environment.js";
@@ -36,7 +35,6 @@ export function resolveProviderRuntimeBindings({
       zai: envState.zaiApiKey,
       nvidia: envState.nvidiaApiKey,
       minimax: envState.minimaxApiKey,
-      "github-copilot": resolveGitHubModelsApiKey(env),
       ollama: null,
     },
     baseUrls: {

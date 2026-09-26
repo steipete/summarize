@@ -28,6 +28,7 @@ import { completeGoogleText } from "./providers/google.js";
 import { enableMinimaxReasoningSplit } from "./providers/minimax.js";
 import { resolveOpenAiCompatibleGatewayModel, resolveXaiModel } from "./providers/models.js";
 import { completeOpenAiText } from "./providers/openai.js";
+import { validateOpenAiReasoningEffort } from "./providers/openai/request-options.js";
 import { extractText, throwIfAssistantMessageFailed } from "./providers/shared.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
 import type { LlmTokenUsage } from "./types.js";
@@ -93,6 +94,7 @@ export async function generateTextWithModelId(args: GenerateTextArgs): Promise<{
     onRetry,
   } = args;
   const parsed = parseGatewayStyleModelId(modelId);
+  validateOpenAiReasoningEffort(parsed.provider, parsed.model, requestOptions);
   const providerProfile = getGatewayProviderProfile(parsed.provider);
   const effectiveTemperature = resolveEffectiveTemperature({
     provider: parsed.provider,
@@ -156,9 +158,7 @@ export async function generateTextWithModelId(args: GenerateTextArgs): Promise<{
 
   const context = promptToContext(prompt);
 
-  const resolveOpenAiConfig = (
-    provider: "openai" | "github-copilot" = "openai",
-  ): OpenAiClientConfig =>
+  const resolveOpenAiConfig = (provider: "openai" = "openai"): OpenAiClientConfig =>
     resolveOpenAiCompatibleClientConfigForProvider({
       provider,
       openaiApiKey: apiKeys.openaiApiKey,
@@ -298,7 +298,7 @@ export async function generateTextWithModelId(args: GenerateTextArgs): Promise<{
       }
 
       if (providerProfile.execution === "openai-http") {
-        const provider = parsed.provider as "openai" | "github-copilot";
+        const provider = parsed.provider as "openai";
         const openaiConfig = resolveOpenAiConfig(provider);
         const result = await completeOpenAiText({
           modelId: parsed.model,

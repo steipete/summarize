@@ -14,17 +14,8 @@ describe("model id parsing", () => {
     expect(normalizeGatewayStyleModelId("nvidia/z-ai/glm5")).toBe("nvidia/z-ai/glm5");
     expect(normalizeGatewayStyleModelId("ollama/qwen3:14b")).toBe("ollama/qwen3:14b");
     expect(normalizeGatewayStyleModelId("Ollama/Qwen3:14b")).toBe("ollama/Qwen3:14b");
-    expect(normalizeGatewayStyleModelId("github-copilot/gpt-5.4")).toBe(
-      "github-copilot/openai/gpt-5.4",
-    );
     expect(normalizeGatewayStyleModelId("openai/gpt-5.4-mini")).toBe("openai/gpt-5.4-mini");
     expect(normalizeGatewayStyleModelId("openai/gpt-5.4-nano")).toBe("openai/gpt-5.4-nano");
-    expect(normalizeGatewayStyleModelId("github-copilot/gpt-5.4-mini")).toBe(
-      "github-copilot/openai/gpt-5.4-mini",
-    );
-    expect(normalizeGatewayStyleModelId("github-copilot/gpt-5.4-nano")).toBe(
-      "github-copilot/openai/gpt-5.4-nano",
-    );
   });
 
   it("resolves short Anthropic model aliases to versioned form", () => {
@@ -104,16 +95,6 @@ describe("model id parsing", () => {
       provider: "xai",
       model: "grok-4-fast-non-reasoning",
       canonical: "xai/grok-4-fast-non-reasoning",
-    });
-    expect(parseGatewayStyleModelId("github-copilot/anthropic/claude-haiku-4.5")).toEqual({
-      provider: "github-copilot",
-      model: "anthropic/claude-haiku-4.5",
-      canonical: "github-copilot/anthropic/claude-haiku-4.5",
-    });
-    expect(parseGatewayStyleModelId("github-copilot/opus-4.6")).toEqual({
-      provider: "github-copilot",
-      model: "anthropic/claude-opus-4.6",
-      canonical: "github-copilot/anthropic/claude-opus-4.6",
     });
   });
 

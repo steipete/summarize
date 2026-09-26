@@ -207,11 +207,6 @@ describe("summarize status", () => {
           source: "NGC_API_KEY",
           endpoint: "integrate.api.nvidia.com",
         }),
-        expect.objectContaining({
-          id: "github-models",
-          source: "GH_TOKEN",
-          endpoint: "models.github.ai",
-        }),
       ]),
     );
     expect(stdout.getText()).not.toContain("secret");

@@ -76,10 +76,6 @@ export async function* streamOpenAiCompatible(
     headers["HTTP-Referer"] = "https://summarize.sh";
     headers["X-Title"] = "Summarize";
   }
-  if (config.provider === "github") {
-    headers.Accept = "application/vnd.github+json";
-    headers["X-GitHub-Api-Version"] = "2026-03-10";
-  }
   const response = await options.fetchImpl(`${config.baseUrl}/chat/completions`, {
     method: "POST",
     headers,

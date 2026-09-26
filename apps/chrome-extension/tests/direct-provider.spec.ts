@@ -43,7 +43,6 @@ test("direct provider resolves all supported gateways", () => {
     "zai",
     "nvidia",
     "minimax",
-    "github",
     "ollama",
   ];
   for (const provider of providers) {
@@ -52,6 +51,18 @@ test("direct provider resolves all supported gateways", () => {
     expect(resolved.model).not.toBe("");
     expect(resolved.baseUrl).toBe("https://provider.test");
   }
+});
+
+test("retired GitHub settings fail without silently choosing a stored OpenAI key", () => {
+  const settings = { provider: "github" as const, apiKeys: { openai: "test-key" }, baseUrls: {} };
+  expect(() => resolveDirectModel("auto", settings)).toThrow(/provider is retired/);
+  expect(() => resolveDirectModel("github-copilot/gpt-5.4", providerSettings("openai"))).toThrow(
+    /provider is retired/,
+  );
+  expect(() => resolveDirectModel("github/openai/gpt-5.4", providerSettings("openai"))).toThrow(
+    /provider is retired/,
+  );
+  expect(resolveDirectModel("openai/gpt-5-mini", settings).provider).toBe("openai");
 });
 
 test("direct provider routes the Free preset exclusively through OpenRouter", () => {

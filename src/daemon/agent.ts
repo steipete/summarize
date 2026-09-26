@@ -1,10 +1,6 @@
-import type { Api, AssistantMessage, Model, Tool } from "@earendil-works/pi-ai";
+import type { AssistantMessage, Tool } from "@earendil-works/pi-ai";
 import { completeSimple, streamSimple } from "@earendil-works/pi-ai/compat";
 import { buildPromptHash } from "../cache.js";
-import {
-  resolveGitHubModelsCompatFallbackModelId,
-  shouldRetryGitHubModelsCompat,
-} from "../llm/github-models.js";
 import { enableMinimaxReasoningSplit } from "../llm/providers/minimax.js";
 import { resolveAgentModel, resolveApiKeyForModel } from "./agent-model.js";
 import {
@@ -21,21 +17,6 @@ export function buildAgentPromptHash(automationEnabled: boolean): string {
 
 function resolveProviderPayloadOptions(provider: string) {
   return provider === "minimax" ? { onPayload: enableMinimaxReasoningSplit } : {};
-}
-
-function resolveAgentCompatFallbackModel({
-  provider,
-  model,
-  error,
-}: {
-  provider: string;
-  model: Model<Api>;
-  error: unknown;
-}): Model<Api> | null {
-  if (provider !== "github-copilot" || !shouldRetryGitHubModelsCompat(error)) return null;
-  const fallbackId = resolveGitHubModelsCompatFallbackModelId(model.id);
-  if (!fallbackId) return null;
-  return { ...model, id: fallbackId, name: fallbackId };
 }
 
 function assertAgentAssistantSucceeded(assistant: AssistantMessage): AssistantMessage {
@@ -380,45 +361,22 @@ export async function streamAgentResponse(
     onAssistant({ role: "assistant", content: prepared.text } as unknown as AssistantMessage);
     return;
   }
-  const { provider, model, context, options } = prepared;
-  let activeModel = model;
-  let usedCompatFallback = false;
-
-  while (true) {
-    let emittedText = false;
-    try {
-      const stream = streamSimple(activeModel, context, options);
-      let assistant: AssistantMessage | null = null;
-      for await (const event of stream) {
-        if (event.type === "text_delta") {
-          emittedText = true;
-          onChunk(event.delta);
-        } else if (event.type === "done") {
-          assistant = event.message;
-          break;
-        } else if (event.type === "error") {
-          throw new Error(event.error?.errorMessage || "Agent stream failed.");
-        }
-      }
-
-      if (!assistant) {
-        assistant = await stream.result().catch(() => null);
-      }
-      if (!assistant) {
-        throw new Error("Agent stream ended without a result.");
-      }
-      onAssistant(assertAgentAssistantSucceeded(assistant));
-      return;
-    } catch (error) {
-      const fallbackModel =
-        !emittedText && !usedCompatFallback
-          ? resolveAgentCompatFallbackModel({ provider, model: activeModel, error })
-          : null;
-      if (!fallbackModel) throw error;
-      activeModel = fallbackModel;
-      usedCompatFallback = true;
+  const { model, context, options } = prepared;
+  const stream = streamSimple(model, context, options);
+  let assistant: AssistantMessage | null = null;
+  for await (const event of stream) {
+    if (event.type === "text_delta") {
+      onChunk(event.delta);
+    } else if (event.type === "done") {
+      assistant = event.message;
+      break;
+    } else if (event.type === "error") {
+      throw new Error(event.error?.errorMessage || "Agent stream failed.");
     }
   }
+  if (!assistant) assistant = await stream.result().catch(() => null);
+  if (!assistant) throw new Error("Agent stream ended without a result.");
+  onAssistant(assertAgentAssistantSucceeded(assistant));
 }
 
 export async function completeAgentResponse(request: AgentRequest): Promise<AssistantMessage> {
@@ -426,11 +384,6 @@ export async function completeAgentResponse(request: AgentRequest): Promise<Assi
   if (prepared.transport === "cli") {
     return { role: "assistant", content: prepared.text } as unknown as AssistantMessage;
   }
-  const { provider, model, context, options } = prepared;
-  const assistant = await completeSimple(model, context, options);
-  if (assistant.stopReason !== "error" && assistant.stopReason !== "aborted") return assistant;
-
-  const fallbackModel = resolveAgentCompatFallbackModel({ provider, model, error: assistant });
-  if (!fallbackModel) return assertAgentAssistantSucceeded(assistant);
-  return assertAgentAssistantSucceeded(await completeSimple(fallbackModel, context, options));
+  const { model, context, options } = prepared;
+  return assertAgentAssistantSucceeded(await completeSimple(model, context, options));
 }

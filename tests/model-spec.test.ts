@@ -197,15 +197,12 @@ describe("model spec parsing", () => {
     }
   });
 
-  it("parses github-copilot model ids as native gateway models", () => {
-    const parsed = parseRequestedModelId("github-copilot/gpt-4.1");
-    expect(parsed.kind).toBe("fixed");
-    expect(parsed.transport).toBe("native");
-    expect(parsed.provider).toBe("github-copilot");
-    expect(parsed.requiredEnv).toBe("GITHUB_TOKEN");
-    expect(parsed.llmModelId).toBe("github-copilot/openai/gpt-4.1");
-    expect(parsed.forceChatCompletions).toBe(true);
-  });
+  it.each(["github-copilot/gpt-4.1", "GitHub-Copilot/openai/gpt-5.4", "github-copilot/"])(
+    "rejects retired provider %s with migration guidance",
+    (model) => {
+      expect(() => parseRequestedModelId(model)).toThrow(/provider is retired.*cli\/copilot/);
+    },
+  );
 
   it("rejects empty zai model id", () => {
     expect(() => parseRequestedModelId("zai/")).toThrow(/missing the model id/);
@@ -221,9 +218,5 @@ describe("model spec parsing", () => {
 
   it("rejects empty ollama model id", () => {
     expect(() => parseRequestedModelId("ollama/")).toThrow(/missing the model id/);
-  });
-
-  it("rejects empty github-copilot model id", () => {
-    expect(() => parseRequestedModelId("github-copilot/")).toThrow(/missing the model id/);
   });
 });

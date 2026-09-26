@@ -159,6 +159,7 @@ function normalizeProviderMap(value: unknown): Partial<Record<DirectProvider, st
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const out: Partial<Record<DirectProvider, string>> = {};
   for (const provider of directProviders) {
+    if (provider === "github") continue;
     const entry = (value as Record<string, unknown>)[provider];
     if (typeof entry === "string") out[provider] = entry.trim();
   }

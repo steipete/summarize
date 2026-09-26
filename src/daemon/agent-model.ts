@@ -11,8 +11,8 @@ import { resolveModelSelection } from "../application/model-selection.js";
 import { resolveProviderRuntimeBindings } from "../application/provider-runtime.js";
 import type { CliProvider } from "../config.js";
 import type { ModelAttempt } from "../engine/types.js";
-import { buildGitHubModelsHeaders, resolveGitHubModelsApiKey } from "../llm/github-models.js";
 import { parseGatewayStyleModelId } from "../llm/model-id.js";
+import { getOpenAiGpt6Model } from "../llm/openai-catalog.js";
 import {
   cliProviderForRequiredEnv,
   envHasRequiredKey,
@@ -34,7 +34,6 @@ type AgentApiKeys = {
   zaiApiKey: string | null;
   nvidiaApiKey: string | null;
   minimaxApiKey: string | null;
-  githubApiKey: string | null;
 };
 
 function isCustomOpenAiBaseUrl(baseUrl: string | null): boolean {
@@ -96,7 +95,9 @@ function resolveModelWithFallback({
   forceOpenAiChatCompletions: boolean | undefined;
 }): Model<Api> {
   try {
-    const model = getModel(provider as never, modelId as never);
+    const model =
+      (provider === "openai" ? getOpenAiGpt6Model(modelId) : null) ??
+      getModel(provider as never, modelId as never);
     if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
     return overrideModelGatewaySettings({
       provider,
@@ -155,7 +156,6 @@ export function resolveApiKeyForModel({
     zai: apiKeys.zaiApiKey,
     nvidia: apiKeys.nvidiaApiKey,
     minimax: apiKeys.minimaxApiKey,
-    "github-copilot": apiKeys.githubApiKey,
     ollama: apiKeys.openaiApiKey ?? "ollama",
   };
   const resolved = gatewayApiKeys[provider];
@@ -243,7 +243,6 @@ export async function resolveAgentModel({
     zaiApiKey,
     nvidiaApiKey,
     minimaxApiKey,
-    githubApiKey: resolveGitHubModelsApiKey(env),
   };
 
   const overrides = resolveRunOverrides({});
@@ -286,10 +285,7 @@ export async function resolveAgentModel({
         }),
       };
     }
-    const providerForPiAi =
-      provider === "nvidia" || provider === "github-copilot" || provider === "ollama"
-        ? "openai"
-        : provider;
+    const providerForPiAi = provider === "nvidia" || provider === "ollama" ? "openai" : provider;
     const model = resolveModelWithFallback({
       provider: providerForPiAi,
       modelId,
@@ -298,10 +294,7 @@ export async function resolveAgentModel({
     });
     return {
       provider,
-      model:
-        provider === "github-copilot"
-          ? { ...model, headers: buildGitHubModelsHeaders(model.headers) }
-          : model,
+      model,
     };
   };
 
