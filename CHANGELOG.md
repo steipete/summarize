@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.24.1 - Unreleased
+
 ## 0.24.0 - 2026-09-25
 
 **Highlights:** GPT-6 support with pricing, compatibility guidance for the retired GitHub Models provider, and Node 26 and command-reference fixes.
