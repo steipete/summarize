@@ -1,5 +1,5 @@
 import { normalizeOpenAiUsage } from "../../usage.js";
-import { buildOpenAiChatRequestOptions } from "./request-options.js";
+import { buildOpenAiChatRequestOptions, isOpenAiGpt6ModelId } from "./request-options.js";
 import { createOpenAiSseError, createOpenAiTextStream } from "./sse.js";
 import {
   contextToChatCompletionMessages,
@@ -42,7 +42,11 @@ function requestChatCompletion(request: OpenAiTextRequest, stream = false) {
     messages: contextToChatCompletionMessages(context),
     ...buildOpenAiChatRequestOptions(openaiConfig.requestOptions),
     ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
-    ...(typeof maxOutputTokens === "number" ? { max_tokens: maxOutputTokens } : {}),
+    ...(typeof maxOutputTokens === "number"
+      ? isOpenAiGpt6ModelId(modelId) && !openaiConfig.isOpenRouter
+        ? { max_completion_tokens: maxOutputTokens }
+        : { max_tokens: maxOutputTokens }
+      : {}),
     ...(typeof temperature === "number" ? { temperature } : {}),
   });
 }
@@ -61,15 +65,29 @@ export async function streamOpenAiChatText(
 ): Promise<OpenAiTextStreamResult> {
   const { modelId } = request;
   const response = await requestChatCompletion(request, true);
-  return createOpenAiTextStream(response, modelId, (event) => {
-    if (event.error) throw createOpenAiSseError(event);
-    const choices = Array.isArray(event.choices) ? event.choices : [];
-    const delta = choices[0]?.delta;
-    const content =
-      delta && typeof delta === "object" ? (delta as { content?: unknown }).content : null;
-    return {
-      ...(event.usage ? { usage: normalizeOpenAiUsage(event.usage) } : {}),
-      ...(typeof content === "string" ? { text: content } : {}),
-    };
-  });
+  return createOpenAiTextStream(
+    response,
+    modelId,
+    (event) => {
+      if (event.error) throw createOpenAiSseError(event);
+      const choices = Array.isArray(event.choices) ? event.choices : [];
+      const finishReason = choices[0]?.finish_reason;
+      const terminal = typeof finishReason === "string" && finishReason.length > 0;
+      if (
+        terminal &&
+        !["stop", "end", "length", "function_call", "tool_calls"].includes(finishReason)
+      ) {
+        throw new Error(`Provider finish_reason: ${finishReason}`);
+      }
+      const delta = choices[0]?.delta;
+      const content =
+        delta && typeof delta === "object" ? (delta as { content?: unknown }).content : null;
+      return {
+        terminal,
+        ...(event.usage ? { usage: normalizeOpenAiUsage(event.usage) } : {}),
+        ...(typeof content === "string" ? { text: content } : {}),
+      };
+    },
+    "OpenAI Chat stream ended without finish_reason.",
+  );
 }

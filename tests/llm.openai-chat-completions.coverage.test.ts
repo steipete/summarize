@@ -81,7 +81,7 @@ describe("OpenAI chat-completions coverage", () => {
   it.each([false, true])(
     "resolves usage when streaming ends (early close: %s)",
     async (earlyClose) => {
-      const textEvent = `data: ${JSON.stringify({ choices: [{ delta: { content: "one" } }] })}\n\n`;
+      const textEvent = `data: ${JSON.stringify({ choices: [{ delta: { content: "one" }, finish_reason: "stop" }] })}\n\n`;
       const usageEvent = `data: ${JSON.stringify({ choices: [null], usage: { input_tokens: 2, output_tokens: 3, total_tokens: 5 } })}\n\n`;
       const events = earlyClose ? [usageEvent, textEvent] : [textEvent, usageEvent];
       const response = new Response(events.join("") + "data: [DONE]\n\n");

@@ -98,6 +98,7 @@ export async function generateTextWithModelId(args: GenerateTextArgs): Promise<{
     provider: parsed.provider,
     model: parsed.model,
     temperature,
+    reasoningEffort: requestOptions?.reasoningEffort,
   });
   const maxRetries = Math.max(0, retries);
 

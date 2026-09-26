@@ -29,6 +29,8 @@ import {
   resolveXaiModel,
 } from "./providers/models.js";
 import { completeOpenAiText, streamOpenAiText } from "./providers/openai.js";
+import { isOpenAiGpt6ModelId } from "./providers/openai/request-options.js";
+import { isApiOpenAiBaseUrl } from "./providers/openai/transport.js";
 import { extractText } from "./providers/shared.js";
 import type { OpenAiClientConfig } from "./providers/types.js";
 import type { LlmTokenUsage } from "./types.js";
@@ -253,6 +255,7 @@ export async function streamTextWithContext({
     provider: parsed.provider,
     model: parsed.model,
     temperature,
+    reasoningEffort: requestOptions?.reasoningEffort,
   });
   const controller = new AbortController();
   let lastError: unknown = null;
@@ -375,7 +378,11 @@ export async function streamTextWithContext({
       });
       if (
         parsed.provider === "github-copilot" ||
-        (parsed.provider === "openai" && requestOptions)
+        (parsed.provider === "openai" &&
+          (requestOptions ||
+            (isOpenAiGpt6ModelId(parsed.model) &&
+              !openaiConfig.isOpenRouter &&
+              isApiOpenAiBaseUrl(openaiConfig.baseURL))))
       ) {
         if (parsed.provider === "openai") {
           const streamResult = await withRequestDeadline({

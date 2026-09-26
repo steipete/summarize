@@ -1,6 +1,8 @@
 import type { Context, Message } from "@earendil-works/pi-ai";
+import type { OpenAiReasoningEffort } from "./model-options.js";
 import type { Prompt } from "./prompt.js";
 import { userTextAndImageMessage } from "./prompt.js";
+import { isOpenAiGpt6ModelId } from "./providers/openai/request-options.js";
 import type { LlmTokenUsage } from "./types.js";
 import { normalizeTokenUsage } from "./usage.js";
 
@@ -156,6 +158,7 @@ const retryableErrorMessages = [
   /\bpremature close\b/i,
   /\b(?:websocket )?stream (?:closed|ended) before [a-z_.]+\b/i,
   /\bstream ended without finish_reason\b/i,
+  /\bstream ended before a terminal response event\b/i,
   /\bstream response was empty\b/i,
   /\bresponse with no body\b/i,
   /\bresponse body is empty\b/i,
@@ -258,13 +261,23 @@ export function resolveEffectiveTemperature({
   provider,
   model,
   temperature,
+  reasoningEffort,
 }: {
   provider: string;
   model: string;
   temperature?: number;
+  reasoningEffort?: OpenAiReasoningEffort;
 }): number | undefined {
   if (typeof temperature !== "number") return undefined;
   if (isOpenAiGpt5Model(provider, model)) return undefined;
+  if (
+    (provider === "openai" || (provider === "github-copilot" && /^openai\//i.test(model))) &&
+    isOpenAiGpt6ModelId(model)
+  ) {
+    // GPT-6 defaults to reasoning; only Sol/Luna support disabling it.
+    const supportsNoReasoning = /(?:^|\/)gpt-6-(sol|luna)$/i.test(model.trim());
+    if (reasoningEffort !== "none" || !supportsNoReasoning) return undefined;
+  }
   return temperature;
 }
 

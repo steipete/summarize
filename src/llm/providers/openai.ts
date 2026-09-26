@@ -8,7 +8,7 @@ import { normalizeTokenUsage } from "../usage.js";
 import { resolveOpenAiModel } from "./models.js";
 import { completeOpenAiChatText, streamOpenAiChatText } from "./openai/chat-completions.js";
 import { completeGitHubModelsText } from "./openai/github-models.js";
-import { isOpenAiResponsesTextModelId } from "./openai/request-options.js";
+import { isOpenAiGpt6ModelId, isOpenAiResponsesTextModelId } from "./openai/request-options.js";
 import { completeOpenAiResponsesText, streamOpenAiResponsesText } from "./openai/responses.js";
 import { isApiOpenAiBaseUrl, isGitHubModelsBaseUrl } from "./openai/transport.js";
 import type {
@@ -71,7 +71,7 @@ export async function completeOpenAiText({
   }
   if (
     openaiConfig.useChatCompletions &&
-    openaiConfig.requestOptions &&
+    (openaiConfig.requestOptions || isOpenAiGpt6ModelId(modelId)) &&
     !openaiConfig.isOpenRouter &&
     isApiOpenAiBaseUrl(openaiConfig.baseURL)
   ) {
@@ -147,7 +147,7 @@ export async function streamOpenAiText({
 }): Promise<OpenAiTextStreamResult | null> {
   if (
     openaiConfig.useChatCompletions &&
-    openaiConfig.requestOptions &&
+    (openaiConfig.requestOptions || isOpenAiGpt6ModelId(modelId)) &&
     !openaiConfig.isOpenRouter &&
     isApiOpenAiBaseUrl(openaiConfig.baseURL)
   ) {

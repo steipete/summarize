@@ -5,9 +5,16 @@ function stripOpenAiProviderPrefix(modelId: string): string {
   return modelId.trim().replace(/^openai\//i, "");
 }
 
+export function isOpenAiGpt6ModelId(modelId: string): boolean {
+  return /^gpt-6-(astra|sol|luna)$/i.test(stripOpenAiProviderPrefix(modelId));
+}
+
 export function isOpenAiResponsesTextModelId(modelId: string): boolean {
   const normalized = stripOpenAiProviderPrefix(modelId).toLowerCase();
-  return normalized.startsWith("gpt-5") && normalized !== "gpt-5-chat";
+  return (
+    (normalized.startsWith("gpt-5") && normalized !== "gpt-5-chat") ||
+    isOpenAiGpt6ModelId(normalized)
+  );
 }
 
 export function buildOpenAiResponsesRequestOptions(

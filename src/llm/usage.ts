@@ -38,15 +38,19 @@ export function normalizeAnthropicUsage(raw: unknown): LlmTokenUsage | null {
 
 export function normalizeOpenAiUsage(raw: unknown): LlmTokenUsage | null {
   if (!raw || typeof raw !== "object") return null;
-  const usage = raw as { input_tokens?: unknown; output_tokens?: unknown; total_tokens?: unknown };
+  const usage = raw as {
+    input_tokens?: unknown;
+    output_tokens?: unknown;
+    prompt_tokens?: unknown;
+    completion_tokens?: unknown;
+    total_tokens?: unknown;
+  };
+  const inputTokens = usage.input_tokens ?? usage.prompt_tokens;
+  const outputTokens = usage.output_tokens ?? usage.completion_tokens;
   const promptTokens =
-    typeof usage.input_tokens === "number" && Number.isFinite(usage.input_tokens)
-      ? usage.input_tokens
-      : null;
+    typeof inputTokens === "number" && Number.isFinite(inputTokens) ? inputTokens : null;
   const completionTokens =
-    typeof usage.output_tokens === "number" && Number.isFinite(usage.output_tokens)
-      ? usage.output_tokens
-      : null;
+    typeof outputTokens === "number" && Number.isFinite(outputTokens) ? outputTokens : null;
   const totalTokens =
     typeof usage.total_tokens === "number" && Number.isFinite(usage.total_tokens)
       ? usage.total_tokens

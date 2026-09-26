@@ -14,7 +14,7 @@ describe("OpenAI image requests", () => {
     const fetchImpl = vi.fn(async () => {
       const payload = stream
         ? chat
-          ? 'data: {"choices":[{"delta":{"content":"Blue triangle"}}]}\n\ndata: [DONE]\n\n'
+          ? 'data: {"choices":[{"delta":{"content":"Blue triangle"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'
           : 'data: {"type":"response.output_text.delta","delta":"Blue triangle"}\n\ndata: {"type":"response.completed","response":{}}\n\n'
         : JSON.stringify(
             chat

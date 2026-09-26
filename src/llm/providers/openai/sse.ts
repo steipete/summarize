@@ -7,7 +7,8 @@ export function createOpenAiTextStream(
   modelId: string,
   readEvent: (
     event: Record<string, unknown>,
-  ) => { text?: string; usage?: LlmTokenUsage | null } | null,
+  ) => { text?: string; usage?: LlmTokenUsage | null; terminal?: boolean } | null,
+  missingTerminalError: string,
 ): OpenAiTextStreamResult {
   const body = response.body;
   if (!body) throw new Error("OpenAI stream response was empty.");
@@ -15,11 +16,16 @@ export function createOpenAiTextStream(
   const textStream = {
     async *[Symbol.asyncIterator]() {
       let finalUsage: LlmTokenUsage | null = null;
+      let sawTerminalEvent = false;
       try {
         for await (const event of parseOpenAiSseJsonStream(body)) {
           const parsed = readEvent(event);
+          if (parsed?.terminal) sawTerminalEvent = true;
           if (parsed?.usage !== undefined) finalUsage = parsed.usage;
           if (typeof parsed?.text === "string") yield parsed.text;
+        }
+        if (!sawTerminalEvent) {
+          throw new Error(missingTerminalError);
         }
       } finally {
         usage.resolve(finalUsage);

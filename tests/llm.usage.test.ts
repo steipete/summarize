@@ -30,6 +30,11 @@ describe("llm usage normalization", () => {
   it("normalizes OpenAI usage payloads", () => {
     expect(normalizeOpenAiUsage(null)).toBeNull();
     expect(normalizeOpenAiUsage({})).toBeNull();
+    expect(normalizeOpenAiUsage({ prompt_tokens: 2, completion_tokens: 3 })).toEqual({
+      promptTokens: 2,
+      completionTokens: 3,
+      totalTokens: 5,
+    });
     expect(normalizeOpenAiUsage({ input_tokens: 2, output_tokens: 3 })).toEqual({
       promptTokens: 2,
       completionTokens: 3,

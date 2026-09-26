@@ -50,6 +50,7 @@ function requestResponsesText(request: ResponsesTextRequest, stream = false) {
   const url = resolveOpenAiResponsesUrl(openaiConfig.baseURL ?? "https://api.openai.com/v1");
   return postOpenAiJson(request, url, {
     model: modelId,
+    store: false,
     input: contextToResponsesInput(context),
     ...(context.systemPrompt?.trim() ? { instructions: context.systemPrompt.trim() } : {}),
     ...buildOpenAiResponsesRequestOptions(
@@ -76,17 +77,22 @@ export async function streamOpenAiResponsesText(
 ): Promise<OpenAiTextStreamResult> {
   const { modelId } = request;
   const response = await requestResponsesText(request, true);
-  return createOpenAiTextStream(response, modelId, (event) => {
-    if (event.type === "response.output_text.delta" && typeof event.delta === "string") {
-      return { text: event.delta };
-    }
-    if (event.type === "response.completed") {
-      return { usage: extractOpenAiResponsesStreamUsage(event) };
-    }
-    if (event.type === "response.failed" || event.type === "error")
-      throw createOpenAiSseError(event);
-    return null;
-  });
+  return createOpenAiTextStream(
+    response,
+    modelId,
+    (event) => {
+      if (event.type === "response.output_text.delta" && typeof event.delta === "string") {
+        return { text: event.delta };
+      }
+      if (event.type === "response.completed" || event.type === "response.incomplete") {
+        return { usage: extractOpenAiResponsesStreamUsage(event), terminal: true };
+      }
+      if (event.type === "response.failed" || event.type === "error")
+        throw createOpenAiSseError(event);
+      return null;
+    },
+    "OpenAI Responses stream ended before a terminal response event.",
+  );
 }
 
 export async function completeOpenAiDocument({
@@ -130,6 +136,7 @@ export async function completeOpenAiDocument({
   const filename = document.filename?.trim() || "document.pdf";
   const payload = {
     model: modelId,
+    store: false,
     input: [
       {
         role: "user",
