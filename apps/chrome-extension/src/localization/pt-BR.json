@@ -299,7 +299,6 @@
   "values.here.override.daemon.config.leave.blank.to.use.the.daemon.default": "Estes valores substituem a configuração do daemon. Deixe em branco para usar os padrões dele.",
   "include.full.input.output.in.daemon.logs.large.only.when.daemon.logging.is.enabled": "Incluir entradas e saídas completas nos logs do daemon. Gera muito conteúdo; somente com os logs do daemon ativados.",
   "when.model.is.auto.try.coding.clis.if.no.api.model.key.is.configured": "No modo Automático, tentar CLIs de programação se nenhuma chave de modelo API estiver configurada.",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi": "Provedores separados por vírgulas (claude, gemini, codex, agent, openclaw, opencode, copilot, pi).",
   "include.clickable.timestamps.in.summaries.for.media.default.on": "Incluir marcações de tempo clicáveis nos resumos de mídia (ativado por padrão).",
   "show.summary.first.while.slides.extract.in.parallel": "Mostrar o resumo primeiro enquanto os slides são extraídos em paralelo.",
   "show.hover.summary.tooltips.in.pages.experimental.default.off": "Mostrar resumos em dicas ao passar o mouse nas páginas. Experimental, desativado por padrão.",
@@ -428,5 +427,6 @@
   "error.transcriptPageChanged": "A página mudou antes da conclusão da transcrição no navegador",
   "error.standalone": "{kind, select, failed {Não foi possível transcrever esta mídia no modo independente: {error}. Selecione Daemon em Execução para ampliar o suporte a mídia.} noTranscript {Nenhum texto de transcrição estava disponível no modo independente. Selecione Daemon em Execução para ampliar o suporte a mídia.} other {Nenhum texto legível estava disponível no modo independente. Recarregue a página ou selecione Daemon em Execução para extração por URL.}}",
   "error.daemonSlidesToken": "Slides pelo daemon requerem um token do daemon. Abra Configurações para conectar o daemon.",
-  "model.placeholder": "{hints}{hasLocal, select, true { / local: openai/<id>} other {}}"
+  "model.placeholder": "{hints}{hasLocal, select, true { / local: openai/<id>} other {}}",
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Provedores separados por vírgulas (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
 }

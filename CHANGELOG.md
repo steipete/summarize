@@ -2,6 +2,8 @@
 
 ## 0.24.1 - Unreleased
 
+- Add Devin CLI (`devin`) as a supported CLI provider: `cli/devin[/model]`, `cli.devin.*` config, daemon + extension model pickers, isolated `XDG_CONFIG_HOME`/`XDG_DATA_HOME` homes with auth-only carryover and tool-deny rules for tool-free summaries, and token usage from ATIF exports.
+
 ## 0.24.0 - 2026-09-25
 
 **Highlights:** GPT-6 support with pricing, compatibility guidance for the retired GitHub Models provider, and Node 26 and command-reference fixes.

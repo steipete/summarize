@@ -50,7 +50,8 @@ export function parseCliProviderArg(raw: string): CliProvider {
     normalized === "opencode" ||
     normalized === "copilot" ||
     normalized === "agy" ||
-    normalized === "pi"
+    normalized === "pi" ||
+    normalized === "devin"
   ) {
     return normalized as CliProvider;
   }

@@ -68,6 +68,7 @@ export function createModelPresetsController({
               ["cliCopilot", "cli/copilot"],
               ["cliAgy", "cli/agy"],
               ["cliPi", "cli/pi"],
+              ["cliDevin", "cli/devin"],
             ]
           : []),
       ];

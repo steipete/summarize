@@ -158,6 +158,13 @@ export const CLI_PROVIDER_PROFILES = {
     installLabel: "pi",
     pathEnv: "PI_PATH",
   },
+  devin: {
+    requiredEnv: "CLI_DEVIN",
+    defaultModel: null,
+    missingBinaryLabel: "Devin CLI",
+    installLabel: "Devin CLI",
+    pathEnv: "DEVIN_PATH",
+  },
 } as const;
 
 export type GatewayProvider = keyof typeof GATEWAY_PROVIDER_PROFILES;
@@ -187,6 +194,7 @@ export const DEFAULT_AUTO_CLI_ORDER: CliProvider[] = [
   // agy is intentionally excluded from the default auto-fallback order.
   // Use --cli agy or --model cli/agy to opt in explicitly.
   // pi is also excluded; use --cli pi or --model cli/pi explicitly.
+  // devin is also excluded; use --cli devin or --model cli/devin explicitly.
 ];
 
 export function parseCliProviderName(raw: string): CliProvider | null {

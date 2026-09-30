@@ -299,7 +299,6 @@
   "values.here.override.daemon.config.leave.blank.to.use.the.daemon.default": "此處的值會覆寫常駐程式設定。留空即可使用常駐程式的預設值。",
   "include.full.input.output.in.daemon.logs.large.only.when.daemon.logging.is.enabled": "在常駐程式記錄中包含完整輸入與輸出。資料量較大，僅在啟用常駐程式記錄時使用。",
   "when.model.is.auto.try.coding.clis.if.no.api.model.key.is.configured": "模型設為「自動」且未設定 API 金鑰時，嘗試使用程式開發 CLI。",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi": "以逗號分隔的服務供應商（claude、gemini、codex、agent、openclaw、opencode、copilot、pi）。",
   "include.clickable.timestamps.in.summaries.for.media.default.on": "在媒體摘要中加入可點擊的時間戳記（預設啟用）。",
   "show.summary.first.while.slides.extract.in.parallel": "並行擷取投影片時，先顯示摘要。",
   "show.hover.summary.tooltips.in.pages.experimental.default.off": "滑鼠停留在頁面連結上時顯示摘要提示。實驗功能，預設停用。",
@@ -428,5 +427,6 @@
   "error.transcriptPageChanged": "瀏覽器轉錄完成前，頁面已變更",
   "error.standalone": "{kind, select, failed {獨立模式下無法轉錄此媒體：{error}。請在「執行環境」選擇「常駐程式」，以支援更多媒體格式。} noTranscript {獨立模式下沒有可用的逐字稿。請在「執行環境」選擇「常駐程式」，以支援更多媒體格式。} other {獨立模式下沒有可讀取的文字。請重新載入頁面，或在「執行環境」選擇「常駐程式」，以透過 URL 擷取內容。}}",
   "error.daemonSlidesToken": "透過常駐程式處理投影片需要常駐程式權杖。請開啟設定以連線至常駐程式。",
-  "model.placeholder": "{hints}{hasLocal, select, true { / 本機：openai/<id>} other {}}"
+  "model.placeholder": "{hints}{hasLocal, select, true { / 本機：openai/<id>} other {}}",
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "以逗號分隔的服務供應商（claude、gemini、codex、agent、openclaw、opencode、copilot、pi、agy、devin）。"
 }

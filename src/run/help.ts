@@ -229,7 +229,7 @@ export function buildProgram(locale: CliLocale = "en") {
       new Option(
         "--cli [provider]",
         t(
-          "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled",
+          "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled",
         ),
       ),
     )

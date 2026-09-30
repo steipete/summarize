@@ -168,6 +168,7 @@ describe("config section parser coverage", () => {
             copilot: provider,
             agy: provider,
             pi: provider,
+            devin: provider,
             autoFallback: {
               enabled: false,
               onlyWhenNoApiKeys: false,
@@ -185,6 +186,7 @@ describe("config section parser coverage", () => {
       enabled: ["claude", "codex"],
       claude: { binary: "tool", model: "model", extraArgs: ["--one", "two"], isolated: false },
       codex: { binary: "tool", model: "model", extraArgs: ["--one", "two"], isolated: false },
+      devin: { binary: "tool", model: "model", extraArgs: ["--one", "two"], isolated: false },
       autoFallback: { enabled: false, onlyWhenNoApiKeys: false, order: ["pi", "codex"] },
       promptOverride: "custom",
       allowTools: false,

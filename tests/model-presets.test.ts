@@ -118,7 +118,11 @@ describe.each(["options", "panel"] as const)("%s model presets", (surface) => {
     const { controller, presetEl, customEl, refreshButton, row } = createController(
       surface,
       async () =>
-        jsonResponse({ ok: true, providers: { openai: true, cliCodex: true }, options: [] }),
+        jsonResponse({
+          ok: true,
+          providers: { openai: true, cliCodex: true, cliDevin: true },
+          options: [],
+        }),
     );
     expect(Array.from(presetEl.options, (option) => option.value)).toEqual(
       surface === "panel"
@@ -127,7 +131,7 @@ describe.each(["options", "panel"] as const)("%s model presets", (surface) => {
     );
     await controller.refreshPresets("token");
     expect(customEl.placeholder).toBe(
-      `auto / gpt-fast / openai/…${surface === "options" ? " / cli/codex" : ""}`,
+      `auto / gpt-fast / openai/…${surface === "options" ? " / cli/codex / cli/devin" : ""}`,
     );
     controller.setValue("custom/model");
     customEl.value = " custom/model ";

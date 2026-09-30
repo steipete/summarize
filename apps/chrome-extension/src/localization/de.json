@@ -299,7 +299,6 @@
   "values.here.override.daemon.config.leave.blank.to.use.the.daemon.default": "Diese Werte überschreiben die Daemon-Konfiguration. Lassen Sie Felder leer, um die Daemon-Vorgaben zu verwenden.",
   "include.full.input.output.in.daemon.logs.large.only.when.daemon.logging.is.enabled": "Vollständige Ein- und Ausgaben in Daemon-Protokolle aufnehmen. Erzeugt große Protokolle; nur bei aktivierter Daemon-Protokollierung.",
   "when.model.is.auto.try.coding.clis.if.no.api.model.key.is.configured": "Bei automatischer Modellauswahl Coding-CLIs versuchen, wenn kein API-Schlüssel eingerichtet ist.",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi": "Anbieter durch Kommas getrennt (claude, gemini, codex, agent, openclaw, opencode, copilot, pi).",
   "include.clickable.timestamps.in.summaries.for.media.default.on": "Anklickbare Zeitmarken in Medienzusammenfassungen einfügen (standardmäßig an).",
   "show.summary.first.while.slides.extract.in.parallel": "Zusammenfassung zuerst anzeigen, während Folien parallel extrahiert werden.",
   "show.hover.summary.tooltips.in.pages.experimental.default.off": "Zusammenfassungen anzeigen, wenn der Mauszeiger über einem Link steht. Experimentell, standardmäßig aus.",
@@ -428,5 +427,6 @@
   "error.transcriptPageChanged": "Die Seite wurde gewechselt, bevor die Transkription im Browser abgeschlossen war",
   "error.standalone": "{kind, select, failed {Diese Mediendatei konnte ohne Daemon nicht transkribiert werden: {error}. Wählen Sie unter Ausführung die Option Daemon, um weitere Medienformate zu unterstützen.} noTranscript {Ohne Daemon war kein Transkript verfügbar. Wählen Sie unter Ausführung die Option Daemon, um weitere Medienformate zu unterstützen.} other {Ohne Daemon war kein lesbarer Text verfügbar. Laden Sie die Seite neu oder wählen Sie unter Ausführung die Option Daemon für die Extraktion per URL.}}",
   "error.daemonSlidesToken": "Für Folien über den Daemon wird ein Daemon-Token benötigt. Öffnen Sie die Einstellungen, um den Daemon zu verbinden.",
-  "model.placeholder": "{hints}{hasLocal, select, true { / lokal: openai/<id>} other {}}"
+  "model.placeholder": "{hints}{hasLocal, select, true { / lokal: openai/<id>} other {}}",
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Anbieter durch Kommas getrennt (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
 }

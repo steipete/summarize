@@ -49,6 +49,10 @@ const ENV_KEYS = [
   "COPILOT_PATH",
   "AGY_PATH",
   "ANTIGRAVITY_API_KEY",
+  "DEVIN_PATH",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "WINDSURF_API_KEY",
   "UVX_PATH",
 ] as const;
 

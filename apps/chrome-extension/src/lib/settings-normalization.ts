@@ -98,7 +98,8 @@ function normalizeAutoCliOrder(value: unknown): string {
       item !== "opencode" &&
       item !== "copilot" &&
       item !== "agy" &&
-      item !== "pi"
+      item !== "pi" &&
+      item !== "devin"
     ) {
       continue;
     }

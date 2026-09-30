@@ -10,7 +10,15 @@ import {
 
 describe("CLI provider output parser coverage", () => {
   it("classifies JSON and dedicated providers", () => {
-    for (const provider of ["codex", "openclaw", "opencode", "copilot", "agy", "pi"] as const) {
+    for (const provider of [
+      "codex",
+      "openclaw",
+      "opencode",
+      "copilot",
+      "agy",
+      "pi",
+      "devin",
+    ] as const) {
       expect(isJsonCliProvider(provider)).toBe(false);
     }
     for (const provider of ["claude", "gemini", "agent"] as const) {
