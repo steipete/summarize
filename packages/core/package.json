@@ -88,13 +88,13 @@
   },
   "dependencies": {
     "@mozilla/readability": "0.6.0",
-    "intl-messageformat": "11.2.15",
+    "intl-messageformat": "12.1.2",
     "linkedom": "^0.18.13",
     "sanitize-html": "^2.17.7",
-    "undici": "8.10.2"
+    "undici": "8.11.0"
   },
   "devDependencies": {
-    "@types/node": "^24.13.4",
+    "@types/node": "^24.13.6",
     "@types/sanitize-html": "^2.16.1",
     "typescript": "^7.0.2"
   },

@@ -133,7 +133,7 @@ Start with the [documentation index](docs/README.md), then follow the guide for 
 
 ## Development
 
-Requires Node.js 24 and pnpm 11.25.0.
+Requires Node.js 24 and the workspace's pinned pnpm version through Corepack.
 
 ```bash
 pnpm install --frozen-lockfile
