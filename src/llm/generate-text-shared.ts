@@ -2,7 +2,10 @@ import type { Context, Message } from "@earendil-works/pi-ai";
 import type { OpenAiReasoningEffort } from "./model-options.js";
 import type { Prompt } from "./prompt.js";
 import { userTextAndImageMessage } from "./prompt.js";
-import { isOpenAiGpt6ModelId } from "./providers/openai/request-options.js";
+import {
+  isOpenAiGpt6ModelId,
+  openAiGpt6RequiresReasoning,
+} from "./providers/openai/request-options.js";
 import type { LlmTokenUsage } from "./types.js";
 import { normalizeTokenUsage } from "./usage.js";
 
@@ -268,9 +271,8 @@ export function resolveEffectiveTemperature({
   if (typeof temperature !== "number") return undefined;
   if (isOpenAiGpt5Model(provider, model)) return undefined;
   if (provider === "openai" && isOpenAiGpt6ModelId(model)) {
-    // GPT-6 defaults to reasoning; only Sol/Luna support disabling it.
-    const supportsNoReasoning = /(?:^|\/)gpt-6-(sol|luna)$/i.test(model.trim());
-    if (reasoningEffort !== "none" || !supportsNoReasoning) return undefined;
+    // GPT-6 defaults to reasoning; only GPT-6 Sol/Luna support disabling it.
+    if (reasoningEffort !== "none" || openAiGpt6RequiresReasoning(model)) return undefined;
   }
   return temperature;
 }

@@ -16,6 +16,7 @@ const DEVIN_ALL_TOOLS = [
   "find_file_by_name",
   "edit",
   "write",
+  "apply_patch",
   "notebook_edit",
   "notebook_read",
   "exec",
@@ -47,42 +48,50 @@ function hasAnyFlag(args: string[], flags: string[]): boolean {
   return args.some((arg) => flags.some((flag) => arg === flag || arg.startsWith(`${flag}=`)));
 }
 
-// Returns { value } when the flag carries a value (`--flag x` or `--flag=x`),
-// { value: null } for a bare flag. `--export` takes an optional path, so a
-// following flag-shaped token is not its value.
-function findFlagValue(args: string[], flag: string): { present: boolean; value: string | null } {
-  for (let i = 0; i < args.length; i += 1) {
-    const arg = args[i];
-    if (arg === flag) {
-      const next = args[i + 1];
-      return { present: true, value: next !== undefined && !next.startsWith("-") ? next : null };
-    }
-    if (arg.startsWith(`${flag}=`)) {
-      return { present: true, value: arg.slice(flag.length + 1) || null };
-    }
-  }
-  return { present: false, value: null };
-}
-
 function devinHomeDir(env: Record<string, string | undefined>): string {
   return env.HOME?.trim() || env.USERPROFILE?.trim() || homedir();
 }
 
 function devinConfigRoot(env: Record<string, string | undefined>): string {
-  if (env.XDG_CONFIG_HOME?.trim()) return env.XDG_CONFIG_HOME.trim();
   // Devin keeps config.json and credentials.toml under Roaming %APPDATA%\devin.
   if (process.platform === "win32") {
     return env.APPDATA?.trim() || path.join(devinHomeDir(env), "AppData", "Roaming");
   }
+  if (env.XDG_CONFIG_HOME?.trim()) return env.XDG_CONFIG_HOME.trim();
   return path.join(devinHomeDir(env), ".config");
 }
 
 function devinDataRoot(env: Record<string, string | undefined>): string {
-  if (env.XDG_DATA_HOME?.trim()) return env.XDG_DATA_HOME.trim();
   if (process.platform === "win32") {
     return env.APPDATA?.trim() || path.join(devinHomeDir(env), "AppData", "Roaming");
   }
+  if (env.XDG_DATA_HOME?.trim()) return env.XDG_DATA_HOME.trim();
   return path.join(devinHomeDir(env), ".local", "share");
+}
+
+async function assertNoProjectAncestor(cwd: string): Promise<void> {
+  let directory = await fs.realpath(cwd);
+  for (;;) {
+    const markers = await Promise.all(
+      [".git", ".jj"].map(async (marker) => {
+        try {
+          await fs.lstat(path.join(directory, marker));
+          return true;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+          throw error;
+        }
+      }),
+    );
+    if (markers.some(Boolean)) {
+      throw new Error(
+        "Devin isolation requires a temporary directory outside a Git or Jujutsu checkout. Set TMPDIR or TEMP to a directory outside the checkout.",
+      );
+    }
+    const parent = path.dirname(directory);
+    if (parent === directory) return;
+    directory = parent;
+  }
 }
 
 async function copyDevinAuth(sourceRoot: string, targetRoot: string): Promise<void> {
@@ -155,14 +164,12 @@ export async function runDevinCli(options: ResolvedCliRunOptions): Promise<CliRu
   // Tool-enabled runs keep the caller's environment so attachments and the
   // user's own Devin config/rules apply. Tool-free summaries get a fabricated
   // XDG home (fresh sessions, no user rules/MCP config/hooks, all tools denied).
-  // Note: an explicit options.cwd is preserved under isolation (parity with
-  // codex), which means project-level .devin/ config in that directory can
-  // still apply — callers must treat cwd as trusted input.
+  // Isolated text summaries never load project config, even with an explicit cwd.
   const shouldIsolate = !options.allowTools && options.providerConfig?.isolated !== false;
   const workDir = await fs.mkdtemp(path.join(tmpdir(), "summarize-devin-"));
   const promptPath = path.join(workDir, "prompt.txt");
   const atifPath = path.join(workDir, "atif.json");
-  const isolatedCwd = shouldIsolate && !options.cwd ? path.join(workDir, "cwd") : null;
+  const isolatedCwd = shouldIsolate ? path.join(workDir, "cwd") : null;
   // On Windows Devin keeps config.json and credentials.toml in one Roaming
   // %APPDATA%\devin dir, so a single root backs both app-data vars.
   const unifiedHome = shouldIsolate && process.platform === "win32";
@@ -171,6 +178,11 @@ export async function runDevinCli(options: ResolvedCliRunOptions): Promise<CliRu
     : null;
   const isolatedDataRoot = shouldIsolate ? path.join(workDir, unifiedHome ? "home" : "data") : null;
   try {
+    if (isolatedCwd) {
+      await fs.mkdir(isolatedCwd, { recursive: true });
+      // Devin walks upwards for project config; a fresh child directory is not a boundary.
+      await assertNoProjectAncestor(isolatedCwd);
+    }
     // Mirror the env the child actually sees when locating the user's real
     // config/credentials to copy.
     const lookupEnv = { ...process.env, ...options.env };
@@ -181,7 +193,6 @@ export async function runDevinCli(options: ResolvedCliRunOptions): Promise<CliRu
           path.join(devinConfigRoot(lookupEnv), "devin", "config.json"),
           path.join(isolatedConfigRoot, "devin", "config.json"),
         ),
-        ...(isolatedCwd ? [fs.mkdir(isolatedCwd, { recursive: true })] : []),
       ]);
     }
     const prompt = options.systemPrompt
@@ -204,15 +215,17 @@ export async function runDevinCli(options: ResolvedCliRunOptions): Promise<CliRu
     }
     if (!hasAnyFlag(args, ["--prompt-file"])) args.push("--prompt-file", promptPath);
     if (!hasAnyFlag(args, ["-p", "--print"])) args.push("--print");
-    // A user-supplied --export wins (devin rejects duplicate flags); their path
-    // — or the agent_logs default for a bare --export — is read instead.
-    const exportFlag = findFlagValue(args, "--export");
-    if (!exportFlag.present) args.push("--export", atifPath);
-    // Pin deterministic mode: inherited DEVIN_PERMISSION_MODE / trust settings
-    // must not escalate or block a headless run.
+    if (hasAnyFlag(args, ["--export"])) {
+      throw new Error(
+        "cli.devin.extraArgs cannot override --export; Summarize requires a private result file for each run.",
+      );
+    }
+    args.push("--export", atifPath);
+    // Only our private empty cwd can bypass trust. Project hooks execute before
+    // tool permissions, so caller directories must retain Devin's trust check.
     if (!hasAnyFlag(args, ["--permission-mode"])) args.push("--permission-mode", "auto");
     if (!hasAnyFlag(args, ["--respect-workspace-trust"])) {
-      args.push("--respect-workspace-trust", "false");
+      args.push("--respect-workspace-trust", isolatedCwd ? "false" : "true");
     }
     // A user --model in extraArgs wins over the requested model: devin rejects
     // duplicate flags, and configured extras are the documented last word.
@@ -231,16 +244,6 @@ export async function runDevinCli(options: ResolvedCliRunOptions): Promise<CliRu
               : {}),
           }
         : options.env;
-    const effectiveCwd = isolatedCwd ?? options.cwd ?? process.cwd();
-    // Bare `--export` lands in <dataRoot>/devin/cli/agent_logs/devin-*.json;
-    // snapshot the dir so only files created by this run are candidates.
-    const agentLogsDir =
-      exportFlag.present && !exportFlag.value
-        ? path.join(isolatedDataRoot ?? devinDataRoot(lookupEnv), "devin", "cli", "agent_logs")
-        : null;
-    const priorLogs = agentLogsDir
-      ? new Set(await fs.readdir(agentLogsDir).catch(() => [] as string[]))
-      : null;
     const { stdout } = await execCliWithInput({
       execFileImpl: options.execFileImpl,
       cmd: options.binary,
@@ -251,24 +254,7 @@ export async function runDevinCli(options: ResolvedCliRunOptions): Promise<CliRu
       cwd: isolatedCwd ?? options.cwd,
       signal: options.signal,
     });
-    const readAtif = async (): Promise<string> => {
-      const explicit = exportFlag.value ? path.resolve(effectiveCwd, exportFlag.value) : atifPath;
-      const raw = await fs.readFile(explicit, "utf8").catch(() => "");
-      if (raw.trim()) return raw;
-      if (agentLogsDir && priorLogs) {
-        const fresh = (await fs.readdir(agentLogsDir).catch(() => [] as string[]))
-          .filter((name) => name.endsWith(".json") && !priorLogs.has(name))
-          .sort();
-        // In trusted mode a concurrent devin session can add logs too, so only
-        // an unambiguous single new file is usable; the isolated dir is private.
-        const candidate = shouldIsolate ? fresh.at(-1) : fresh.length === 1 ? fresh[0] : null;
-        if (candidate) {
-          return await fs.readFile(path.join(agentLogsDir, candidate), "utf8").catch(() => "");
-        }
-      }
-      return "";
-    };
-    const atifRaw = await readAtif();
+    const atifRaw = await fs.readFile(atifPath, "utf8").catch(() => "");
     if (atifRaw.trim()) {
       const parsed = (() => {
         try {

@@ -1,12 +1,18 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { parseDevinOutputFromAtif } from "../src/llm/cli-provider-output.js";
 import { resolveCliBinary, runCliModel } from "../src/llm/cli.js";
 import type { ExecFileFn } from "../src/markitdown.js";
 
 const fixtureHome = path.join(tmpdir(), `summarize-devin-test-${process.pid}`);
+const originalPlatform = process.platform;
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  Object.defineProperty(process, "platform", { value: originalPlatform });
+});
 
 afterAll(() => {
   rmSync(fixtureHome, { recursive: true, force: true });
@@ -126,11 +132,79 @@ describe("runCliModel - devin provider", () => {
     expect((seenConfig.read_config_from as Record<string, boolean>).claude).toBe(false);
     expect((seenConfig.read_config_from as Record<string, boolean>).vscode).toBe(false);
     const deny = (seenConfig.permissions as { deny: string[] }).deny;
-    expect(deny).toEqual(expect.arrayContaining(["exec", "write", "read", "mcp_call_tool"]));
+    expect(deny).toEqual(
+      expect.arrayContaining(["exec", "write", "apply_patch", "read", "mcp_call_tool"]),
+    );
     expect(copiedCreds).toBe('api_key = "k"\n');
     // Temp workdir (including prompt + export) is cleaned up.
     expect(existsSync(seenPromptPath)).toBe(false);
     expect(existsSync(path.join(String(seenEnv.XDG_CONFIG_HOME)))).toBe(false);
+  });
+
+  it.each([
+    { marker: ".git", file: false },
+    { marker: ".git", file: true },
+    { marker: ".jj", file: false },
+  ])("rejects a temporary directory inside a project (%j)", async ({ marker, file }) => {
+    const project = path.join(fixtureHome, `project-${marker}-${file}`);
+    const temp = path.join(project, "scratch");
+    mkdirSync(temp, { recursive: true });
+    if (file) writeFileSync(path.join(project, marker), "gitdir: /synthetic/worktree\n");
+    else mkdirSync(path.join(project, marker));
+    vi.stubEnv("TMPDIR", temp);
+    vi.stubEnv("TEMP", temp);
+    vi.stubEnv("TMP", temp);
+    const execFileImpl = vi.fn((_cmd, args, _options, cb) => {
+      writeFileSync(args[args.indexOf("--export") + 1], atifDocument("unsafe execution"));
+      cb?.(null, "", "");
+      return { stdin: { write: () => {}, end: () => {} } };
+    });
+
+    await expect(
+      runCliModel({
+        provider: "devin",
+        prompt: "Summarize.",
+        model: null,
+        allowTools: false,
+        timeoutMs: 1000,
+        env: {},
+        config: null,
+        execFileImpl: execFileImpl as unknown as ExecFileFn,
+      }),
+    ).rejects.toThrow(/temporary directory.*outside.*checkout/i);
+    expect(execFileImpl).not.toHaveBeenCalled();
+  });
+
+  it("uses Windows APPDATA for auth and config even when XDG roots are set", async () => {
+    const appData = path.join(fixtureHome, "windows-roaming");
+    mkdirSync(path.join(appData, "devin"), { recursive: true });
+    writeFileSync(path.join(appData, "devin", "credentials.toml"), 'api_key = "windows-fixture"\n');
+    writeFileSync(path.join(appData, "devin", "config.json"), '{"devin":{"org_id":"windows-org"}}');
+    Object.defineProperty(process, "platform", { value: "win32" });
+    let auth = "";
+    let copiedConfig: Record<string, unknown> = {};
+    const execFileImpl: ExecFileFn = ((_cmd, args, options, cb) => {
+      const env = options.env as Record<string, string>;
+      auth = readFileSync(path.join(env.APPDATA, "devin", "credentials.toml"), "utf8");
+      copiedConfig = JSON.parse(
+        readFileSync(path.join(env.APPDATA, "devin", "config.json"), "utf8"),
+      );
+      writeFileSync(args[args.indexOf("--export") + 1], atifDocument("windows answer"));
+      cb?.(null, "", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+    await runCliModel({
+      provider: "devin",
+      prompt: "Summarize.",
+      model: null,
+      allowTools: false,
+      timeoutMs: 1000,
+      env: { APPDATA: appData, XDG_CONFIG_HOME: "/wrong/config", XDG_DATA_HOME: "/wrong/data" },
+      config: null,
+      execFileImpl,
+    });
+    expect(auth).toBe('api_key = "windows-fixture"\n');
+    expect(copiedConfig.devin).toEqual({ org_id: "windows-org" });
   });
 
   it("keeps the caller cwd and real environment for tool-enabled runs", async () => {
@@ -168,10 +242,12 @@ describe("runCliModel - devin provider", () => {
     );
   });
 
-  it("respects an explicit cwd while still redirecting XDG homes", async () => {
+  it("uses a private cwd even when isolated text runs receive an explicit cwd", async () => {
     let seenEnv: Record<string, string | undefined> = {};
     let seenCwd = "";
+    let seenArgs: string[] = [];
     const execFileImpl: ExecFileFn = ((_cmd, args, options, cb) => {
+      seenArgs = args;
       seenEnv = (options?.env ?? {}) as Record<string, string | undefined>;
       seenCwd = typeof options?.cwd === "string" ? options.cwd : "";
       const exportPath = args[args.indexOf("--export") + 1] ?? "";
@@ -193,7 +269,10 @@ describe("runCliModel - devin provider", () => {
     });
 
     expect(result.text).toBe("explicit cwd answer");
-    expect(seenCwd).toBe("/tmp/devin-explicit-cwd");
+    expect(seenCwd).not.toBe("/tmp/devin-explicit-cwd");
+    expect(seenCwd).toContain("summarize-devin-");
+    expect(seenArgs[seenArgs.indexOf("--respect-workspace-trust") + 1]).toBe("false");
+    expect(existsSync(seenCwd)).toBe(false);
     expect(String(seenEnv.XDG_CONFIG_HOME)).toContain("summarize-devin-");
   });
 
@@ -221,6 +300,34 @@ describe("runCliModel - devin provider", () => {
 
     expect(result.text).toBe("trusted answer");
     expect(seenEnv.XDG_CONFIG_HOME).toBe("/real/xdg-config");
+  });
+
+  it.each([
+    { allowTools: true, isolated: true, cwd: "/tmp/devin-untrusted-project" },
+    { allowTools: false, isolated: false, cwd: "/tmp/devin-untrusted-project" },
+    { allowTools: false, isolated: false, cwd: undefined },
+  ])("preserves workspace trust outside the private cwd (%j)", async (scenario) => {
+    let invocation: string[] = [];
+    const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+      invocation = args;
+      writeFileSync(args[args.indexOf("--export") + 1], atifDocument("answer"));
+      cb?.(null, "", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    await runCliModel({
+      provider: "devin",
+      prompt: "Summarize the selected input.",
+      model: null,
+      allowTools: scenario.allowTools,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: { devin: { isolated: scenario.isolated } },
+      cwd: scenario.cwd,
+    });
+
+    expect(invocation[invocation.indexOf("--respect-workspace-trust") + 1]).toBe("true");
   });
 
   it("honors extraArgs overrides for managed flags", async () => {
@@ -253,77 +360,57 @@ describe("runCliModel - devin provider", () => {
     expect(invocation).toContain("--print");
   });
 
-  it("reads the ATIF from a user-supplied --export path", async () => {
-    const userAtif = path.join(fixtureHome, "user-export.json");
-    const seenArgs: string[][] = [];
+  it.each([["--export", "/shared/result.json"], ["--export=/shared/result.json"], ["--export"]])(
+    "rejects custom export flags (%j)",
+    async (...extraArgs) => {
+      const execFileImpl = vi.fn();
+      await expect(
+        runCliModel({
+          provider: "devin",
+          prompt: "Summarize.",
+          model: null,
+          allowTools: true,
+          timeoutMs: 1000,
+          env: {},
+          config: { devin: { extraArgs } },
+          execFileImpl: execFileImpl as unknown as ExecFileFn,
+        }),
+      ).rejects.toThrow(/cannot override --export/);
+      expect(execFileImpl).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps concurrent results in private export files", async () => {
+    const pending: Array<{ output: string; text: string; complete: () => void }> = [];
     const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
-      seenArgs.push(args);
-      writeFileSync(userAtif, atifDocument("from user export"));
-      cb?.(null, "", "");
+      pending.push({
+        output: args[args.indexOf("--export") + 1],
+        text: readFileSync(args[args.indexOf("--prompt-file") + 1], "utf8"),
+        complete: () => cb?.(null, "", ""),
+      });
+      if (pending.length === 2) {
+        for (const call of pending) writeFileSync(call.output, atifDocument(call.text));
+        for (const call of pending) call.complete();
+      }
       return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
     }) as ExecFileFn;
-
-    const result = await runCliModel({
-      provider: "devin",
-      prompt: "Summarize.",
-      model: null,
-      allowTools: true,
-      timeoutMs: 1000,
-      env: {},
-      execFileImpl,
-      config: { devin: { extraArgs: ["--export", userAtif] } },
-    });
-
-    expect(result.text).toBe("from user export");
-    // devin rejects duplicate --export flags, so ours must not be appended.
-    expect(seenArgs[0].filter((arg) => arg === "--export")).toHaveLength(1);
-  });
-
-  it("reads the ATIF from --export=<path> form", async () => {
-    const userAtif = path.join(fixtureHome, "user-export-eq.json");
-    const execFileImpl: ExecFileFn = ((_cmd, _args, _options, cb) => {
-      writeFileSync(userAtif, atifDocument("from equals export"));
-      cb?.(null, "", "");
-      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
-    }) as ExecFileFn;
-
-    const result = await runCliModel({
-      provider: "devin",
-      prompt: "Summarize.",
-      model: null,
-      allowTools: true,
-      timeoutMs: 1000,
-      env: {},
-      execFileImpl,
-      config: { devin: { extraArgs: [`--export=${userAtif}`] } },
-    });
-
-    expect(result.text).toBe("from equals export");
-  });
-
-  it("recovers a bare --export transcript from agent_logs", async () => {
-    let seenEnv: Record<string, string | undefined> = {};
-    const execFileImpl: ExecFileFn = ((_cmd, _args, options, cb) => {
-      seenEnv = (options?.env ?? {}) as Record<string, string | undefined>;
-      const logsDir = path.join(String(seenEnv.XDG_DATA_HOME), "devin", "cli", "agent_logs");
-      mkdirSync(logsDir, { recursive: true });
-      writeFileSync(path.join(logsDir, "devin-test-session.json"), atifDocument("bare export"));
-      cb?.(null, "", "");
-      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
-    }) as ExecFileFn;
-
-    const result = await runCliModel({
-      provider: "devin",
-      prompt: "Summarize.",
-      model: null,
-      allowTools: false,
-      timeoutMs: 1000,
-      env: {},
-      execFileImpl,
-      config: { devin: { extraArgs: ["--export"] } },
-    });
-
-    expect(result.text).toBe("bare export");
+    const results = await Promise.all(
+      ["first", "second"].map((prompt) =>
+        runCliModel({
+          provider: "devin",
+          prompt,
+          model: null,
+          allowTools: true,
+          timeoutMs: 1000,
+          env: {},
+          config: null,
+          execFileImpl,
+        }),
+      ),
+    );
+    expect(new Set(pending.map((call) => call.output)).size).toBe(2);
+    expect(results.map((result) => result.text)).toEqual(["first", "second"]);
+    for (const call of pending) expect(existsSync(call.output)).toBe(false);
   });
 
   it("inserts managed flags before a -- sentinel", async () => {
