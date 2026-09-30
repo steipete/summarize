@@ -14,23 +14,24 @@ For the full model/provider matrix, see `docs/llm.md`.
 
 ## GPT-6
 
-Use the documented model ids: `openai/gpt-6-astra`, `openai/gpt-6-sol`, or `openai/gpt-6-luna`.
+Use the documented model ids: `openai/gpt-6-astra`, `openai/gpt-6-sol`, `openai/gpt-6-luna`, or `openai/gpt-6.1-sol`.
 Summarize uses the Responses API by default for direct OpenAI text and image requests, including streaming, and for PDF inputs. `OPENAI_USE_CHAT_COMPLETIONS=1` still selects Chat Completions for text and images.
-Reasoning requests omit `temperature`, which GPT-6 rejects. Sol and Luna preserve temperature when explicitly using `--thinking none`; Astra requires reasoning.
+Reasoning requests omit `temperature`, which GPT-6 rejects. GPT-6 Sol and Luna preserve temperature when explicitly using `--thinking none`; Astra and GPT-6.1 Sol require reasoning.
 
 ```sh
 summarize https://summarize.sh/ --model openai/gpt-6-astra --thinking medium --fast
 summarize https://summarize.sh/ --model openai/gpt-6-sol --thinking medium
 summarize https://summarize.sh/ --model openai/gpt-6-luna --thinking low
+summarize https://summarize.sh/ --model openai/gpt-6.1-sol --thinking high
 ```
 
 These explicit model ids do not change the default model or existing presets.
-The model picker and built-in pricing catalog include all three models. Standard input/output
-prices per million tokens are $10/$50 for Astra, $2/$10 for Sol, and $0.10/$0.50 for Luna.
+The model picker and built-in pricing catalog include all four models. Standard input/output
+prices per million tokens are $10/$50 for Astra, $2/$10 for Sol and GPT-6.1 Sol, and $0.10/$0.50 for Luna.
 Cost estimates use these standard rates; they do not include cache discounts, cache writes,
 fast/flex service tiers, or long-context premiums. See [OpenAI pricing](https://developers.openai.com/api/docs/pricing).
-An unsupported `--thinking none` request for Astra fails locally before sending an API request.
-See OpenAI's [GPT-6 guide](https://developers.openai.com/api/docs/guides/latest-model) and model pages for [Astra](https://developers.openai.com/api/docs/models/gpt-6-astra), [Sol](https://developers.openai.com/api/docs/models/gpt-6-sol), and [Luna](https://developers.openai.com/api/docs/models/gpt-6-luna).
+An unsupported `--thinking none` request for Astra or GPT-6.1 Sol fails locally before sending an API request.
+See OpenAI's [GPT-6 guide](https://developers.openai.com/api/docs/guides/latest-model) and model pages for [Astra](https://developers.openai.com/api/docs/models/gpt-6-astra), [Sol](https://developers.openai.com/api/docs/models/gpt-6-sol), [Luna](https://developers.openai.com/api/docs/models/gpt-6-luna), and [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
 
 ## Fast mode
 

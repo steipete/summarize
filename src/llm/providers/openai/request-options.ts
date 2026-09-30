@@ -1,4 +1,5 @@
 import { toOpenAiServiceTierParam, type ModelRequestOptions } from "../../model-options.js";
+import { findOpenAiGpt6Entry } from "../../openai-catalog.js";
 import type { OpenAiStructuredOutput } from "./types.js";
 
 function stripOpenAiProviderPrefix(modelId: string): string {
@@ -6,7 +7,11 @@ function stripOpenAiProviderPrefix(modelId: string): string {
 }
 
 export function isOpenAiGpt6ModelId(modelId: string): boolean {
-  return /^gpt-6-(astra|sol|luna)$/i.test(stripOpenAiProviderPrefix(modelId));
+  return findOpenAiGpt6Entry(stripOpenAiProviderPrefix(modelId)) !== undefined;
+}
+
+export function openAiGpt6RequiresReasoning(modelId: string): boolean {
+  return findOpenAiGpt6Entry(stripOpenAiProviderPrefix(modelId))?.requiresReasoning ?? false;
 }
 
 export function validateOpenAiReasoningEffort(
@@ -14,15 +19,12 @@ export function validateOpenAiReasoningEffort(
   modelId: string,
   options: ModelRequestOptions | undefined,
 ): void {
-  if (
-    provider === "openai" &&
-    stripOpenAiProviderPrefix(modelId).toLowerCase() === "gpt-6-astra" &&
-    options?.reasoningEffort === "none"
-  ) {
-    throw new Error(
-      "GPT-6 Astra requires reasoning: --thinking none is unsupported. Use low, medium, high, or xhigh, or choose GPT-6 Sol/Luna.",
-    );
-  }
+  if (provider !== "openai" || options?.reasoningEffort !== "none") return;
+  const entry = findOpenAiGpt6Entry(stripOpenAiProviderPrefix(modelId));
+  if (!entry?.requiresReasoning) return;
+  throw new Error(
+    `${entry.name} requires reasoning: --thinking none is unsupported. Use low, medium, high, or xhigh, or choose GPT-6 Sol/Luna.`,
+  );
 }
 
 export function isOpenAiResponsesTextModelId(modelId: string): boolean {

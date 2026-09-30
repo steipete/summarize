@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@earendil-works/pi-ai/compat", () => mocks);
 
-const models = ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"];
+const models = ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol"];
 const apiKeys = {
   openaiApiKey: "test-key",
   openrouterApiKey: null,
@@ -60,19 +60,24 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-it.each([false, true])("rejects Astra none before any API request (stream=%s)", async (stream) => {
+it.each([
+  ["gpt-6-astra", "GPT-6 Astra", false],
+  ["gpt-6-astra", "GPT-6 Astra", true],
+  ["gpt-6.1-sol", "GPT-6.1 Sol", false],
+  ["gpt-6.1-sol", "GPT-6.1 Sol", true],
+] as const)("rejects %s none before any API request (stream=%s)", async (model, name, stream) => {
   const fetchImpl = mockResponse(stream);
   const generate = stream ? streamTextWithModelId : generateTextWithModelId;
   await expect(
     generate({
-      modelId: "openai/gpt-6-astra",
+      modelId: `openai/${model}`,
       apiKeys,
       prompt: { userText: "Summarize this page" },
       timeoutMs: 2000,
       fetchImpl,
       requestOptions: { reasoningEffort: "none" },
     }),
-  ).rejects.toThrow(/Astra requires reasoning.*--thinking none/);
+  ).rejects.toThrow(`${name} requires reasoning: --thinking none`);
   expect(fetchImpl).not.toHaveBeenCalled();
 });
 
@@ -392,16 +397,19 @@ describe("GPT-6 model boundaries", () => {
       }
     },
   );
-  it("never enables Astra temperature, including an unsupported none effort", () => {
-    expect(
-      resolveEffectiveTemperature({
-        provider: "openai",
-        model: "gpt-6-astra",
-        temperature: 0.3,
-        reasoningEffort: "none",
-      }),
-    ).toBeUndefined();
-  });
+  it.each(["gpt-6-astra", "gpt-6.1-sol"])(
+    "never enables %s temperature, including an unsupported none effort",
+    (model) => {
+      expect(
+        resolveEffectiveTemperature({
+          provider: "openai",
+          model,
+          temperature: 0.3,
+          reasoningEffort: "none",
+        }),
+      ).toBeUndefined();
+    },
+  );
   it.each(models)("recognizes only the documented model %s", (model) => {
     expect(isOpenAiResponsesTextModelId(model)).toBe(true);
     expect(isOpenAiResponsesTextModelId(`openai/${model}`)).toBe(true);
@@ -414,6 +422,8 @@ describe("GPT-6 model boundaries", () => {
     "gpt-6-mini",
     "gpt-6-astra-extra",
     "gpt-60",
+    "gpt-6.1",
+    "gpt-6.1-luna",
     "gpt-4.1",
     "gpt-5-chat",
     "anthropic/gpt-6-astra",

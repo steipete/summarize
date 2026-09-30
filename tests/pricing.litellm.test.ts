@@ -15,6 +15,7 @@ describe("LiteLLM pricing catalog", () => {
     ["gpt-6-astra", 10, 50],
     ["gpt-6-sol", 2, 10],
     ["gpt-6-luna", 0.1, 0.5],
+    ["gpt-6.1-sol", 2, 10],
   ] as const)("knows published %s prices and limits without a cache", (id, input, output) => {
     expect(resolveLiteLlmPricingForModelId({}, `openai/${id}`)).toEqual({
       inputUsdPerToken: input / 1_000_000,

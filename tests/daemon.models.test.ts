@@ -13,7 +13,7 @@ describe("daemon /v1/models", () => {
       configForCli: null,
       fetchImpl: vi.fn(),
     });
-    for (const id of ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"]) {
+    for (const id of ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol"]) {
       expect(result.options.filter((option) => option.id === `openai/${id}`)).toHaveLength(1);
     }
   });
