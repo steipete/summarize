@@ -358,6 +358,35 @@ describe("runCliModel - devin provider", () => {
     expect(invocation.slice(sentinel + 1)).toEqual(["trailing", "prompt", "text"]);
   });
 
+  it("lets a user --model in extraArgs win over the requested model", async () => {
+    const seenArgs: string[][] = [];
+    const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+      seenArgs.push(args);
+      const exportPath = args[args.indexOf("--export") + 1] ?? "";
+      writeFileSync(exportPath, atifDocument("user model wins"));
+      cb?.(null, "", "");
+      return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const result = await runCliModel({
+      provider: "devin",
+      prompt: "Summarize.",
+      model: "requested-model",
+      allowTools: true,
+      timeoutMs: 1000,
+      env: {},
+      execFileImpl,
+      config: { devin: { extraArgs: ["--model", "extraargs-model"] } },
+    });
+
+    expect(result.text).toBe("user model wins");
+    // devin hard-errors on duplicate flags, so the requested model is dropped.
+    const invocation = seenArgs[0];
+    expect(invocation.filter((arg) => arg === "--model")).toHaveLength(1);
+    expect(invocation[invocation.indexOf("--model") + 1]).toBe("extraargs-model");
+    expect(invocation).not.toContain("requested-model");
+  });
+
   it("detects --flag=value forms of managed flags", async () => {
     const seenArgs: string[][] = [];
     const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {

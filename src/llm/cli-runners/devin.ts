@@ -214,7 +214,11 @@ export async function runDevinCli(options: ResolvedCliRunOptions): Promise<CliRu
     if (!hasAnyFlag(args, ["--respect-workspace-trust"])) {
       args.push("--respect-workspace-trust", "false");
     }
-    if (options.requestedModel) args.push("--model", options.requestedModel);
+    // A user --model in extraArgs wins over the requested model: devin rejects
+    // duplicate flags, and configured extras are the documented last word.
+    if (options.requestedModel && !hasAnyFlag(args, ["-m", "--model"])) {
+      args.push("--model", options.requestedModel);
+    }
     args.push(...postSentinel);
     const env =
       isolatedConfigRoot && isolatedDataRoot
