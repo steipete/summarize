@@ -207,6 +207,7 @@ function technicalToken(value) {
       "GitHub Copilot CLI",
       "Antigravity CLI",
       "Pi CLI",
+      "Devin CLI",
       "ONNX (Parakeet/Canary)",
       "yt-dlp",
     ].includes(text) ||

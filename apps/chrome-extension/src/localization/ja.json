@@ -299,7 +299,6 @@
   "values.here.override.daemon.config.leave.blank.to.use.the.daemon.default": "ここで指定した値はデーモンの設定より優先されます。空欄の場合はデーモンの既定値を使用します。",
   "include.full.input.output.in.daemon.logs.large.only.when.daemon.logging.is.enabled": "入出力の全文をデーモンのログに記録します。容量が大きくなります。デーモンのログ記録が有効な場合にのみ使用します。",
   "when.model.is.auto.try.coding.clis.if.no.api.model.key.is.configured": "モデルが「自動」で API キーが未設定の場合、コーディング CLI を試します。",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi": "プロバイダーをコンマ区切りで指定します（claude、gemini、codex、agent、openclaw、opencode、copilot、pi）。",
   "include.clickable.timestamps.in.summaries.for.media.default.on": "メディアの要約にクリック可能な時刻リンクを含めます（既定では有効）。",
   "show.summary.first.while.slides.extract.in.parallel": "スライドを並列で抽出しながら、要約を先に表示します。",
   "show.hover.summary.tooltips.in.pages.experimental.default.off": "リンクにカーソルを合わせると要約を表示します。試験機能で、既定では無効です。",
@@ -428,5 +427,6 @@
   "error.transcriptPageChanged": "ブラウザーでの文字起こしが完了する前にページが変わりました",
   "error.standalone": "{kind, select, failed {単独動作モードではこのメディアを文字起こしできませんでした: {error}。「実行環境」で「デーモン」を選ぶと、より多くのメディアに対応できます。} noTranscript {単独動作モードでは文字起こしテキストを取得できませんでした。「実行環境」で「デーモン」を選ぶと、より多くのメディアに対応できます。} other {単独動作モードでは読み取り可能なテキストを取得できませんでした。ページを再読み込みするか、「実行環境」で「デーモン」を選んで URL から抽出してください。}}",
   "error.daemonSlidesToken": "デーモンによるスライド処理にはデーモントークンが必要です。設定を開いてデーモンに接続してください。",
-  "model.placeholder": "{hints}{hasLocal, select, true { / ローカル: openai/<id>} other {}}"
+  "model.placeholder": "{hints}{hasLocal, select, true { / ローカル: openai/<id>} other {}}",
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "プロバイダーをコンマ区切りで指定します（claude、gemini、codex、agent、openclaw、opencode、copilot、pi、agy、devin）。"
 }

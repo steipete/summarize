@@ -142,6 +142,32 @@ describe("run model selection", () => {
     }
   });
 
+  it("resolves provider-default devin CLI ids through summarize config", () => {
+    const config = {
+      cli: {
+        devin: {
+          model: "swe-2-max",
+        },
+      },
+    };
+
+    const result = resolveModelSelection({
+      config,
+      configForCli: config,
+      configPath: null,
+      envForRun: {},
+      explicitModelArg: "cli/devin",
+    });
+
+    expect(result.requestedModel.kind).toBe("fixed");
+    expect(result.requestedModel.userModelId).toBe("cli/devin/swe-2-max");
+    expect(result.requestedModelLabel).toBe("cli/devin/swe-2-max");
+    if (result.requestedModel.kind === "fixed" && result.requestedModel.transport === "cli") {
+      expect(result.requestedModel.cliProvider).toBe("devin");
+      expect(result.requestedModel.cliModel).toBe("swe-2-max");
+    }
+  });
+
   it("keeps bare OpenCode ids when no configured model is available", () => {
     const result = resolveModelSelection({
       config: { cli: { opencode: { model: "   " } } },

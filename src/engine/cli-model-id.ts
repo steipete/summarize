@@ -18,7 +18,8 @@ export function parseCliUserModelId(modelId: string): {
     provider !== "opencode" &&
     provider !== "copilot" &&
     provider !== "agy" &&
-    provider !== "pi"
+    provider !== "pi" &&
+    provider !== "devin"
   ) {
     throw new Error(`Invalid CLI model id "${modelId}". Expected cli/<provider>/<model>.`);
   }

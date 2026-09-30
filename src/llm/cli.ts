@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import type { CliConfig, CliProvider } from "../config.js";
 import type { ExecFileFn } from "../markitdown.js";
 import { runCodexCli } from "./cli-runners/codex.js";
+import { runDevinCli } from "./cli-runners/devin.js";
 import { runJsonCli } from "./cli-runners/json.js";
 import { runOpenClawCli } from "./cli-runners/openclaw.js";
 import { runOpenCodeCli } from "./cli-runners/opencode.js";
@@ -19,6 +20,7 @@ const DEFAULT_BINARIES: Record<CliProvider, string> = {
   copilot: "copilot",
   agy: "agy",
   pi: "pi",
+  devin: "devin",
 };
 
 const PROVIDER_PATH_ENV: Record<CliProvider, string> = {
@@ -31,6 +33,7 @@ const PROVIDER_PATH_ENV: Record<CliProvider, string> = {
   copilot: "COPILOT_PATH",
   agy: "AGY_PATH",
   pi: "PI_PATH",
+  devin: "DEVIN_PATH",
 };
 
 type RunCliModelOptions = {
@@ -126,5 +129,6 @@ export async function runCliModel({
   if (provider === "copilot") return await runCopilotCli(options);
   if (provider === "agy") return await runAgyCli(options);
   if (provider === "pi") return await runPiCli(options);
+  if (provider === "devin") return await runDevinCli(options);
   return await runJsonCli(provider, options);
 }

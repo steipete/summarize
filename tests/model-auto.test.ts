@@ -567,6 +567,53 @@ describe("auto model selection", () => {
     expect(attempts.some((attempt) => attempt.userModelId.startsWith("cli/pi"))).toBe(false);
   });
 
+  it("keeps devin out of the default auto CLI fallback order", () => {
+    const attempts = buildAutoModelAttempts({
+      kind: "text",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: {},
+      config: null,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+      cliAvailability: { devin: true },
+      isImplicitAutoSelection: true,
+    });
+
+    expect(attempts.some((attempt) => attempt.userModelId.startsWith("cli/devin"))).toBe(false);
+  });
+
+  it("uses configured devin models when devin is explicitly enabled for CLI fallback", () => {
+    const config: SummarizeConfig = {
+      model: { mode: "auto", rules: [{ candidates: ["openai/gpt-5-mini"] }] },
+      cli: {
+        autoFallback: {
+          enabled: true,
+          onlyWhenNoApiKeys: false,
+          order: ["devin"],
+        },
+        devin: {
+          model: "claude-sonnet-4.6",
+        },
+      },
+    };
+    const attempts = buildAutoModelAttempts({
+      kind: "text",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: {},
+      config,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+      cliAvailability: { devin: true },
+      isImplicitAutoSelection: true,
+    });
+
+    expect(attempts[0]?.userModelId).toBe("cli/devin/claude-sonnet-4.6");
+  });
+
   it("uses configured pi models when pi is explicitly enabled for CLI fallback", () => {
     const config: SummarizeConfig = {
       model: { mode: "auto", rules: [{ candidates: ["openai/gpt-5-mini"] }] },

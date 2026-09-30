@@ -92,7 +92,7 @@ for cmd in summarize summarizer
 
     # Model options
     complete -c $cmd -n '__summarize_no_subcommand' -l model -d 'LLM model id' -x
-    complete -c $cmd -n '__summarize_no_subcommand' -l cli -d 'Use CLI provider' -xa 'claude gemini codex agent openclaw opencode copilot agy pi'
+    complete -c $cmd -n '__summarize_no_subcommand' -l cli -d 'Use CLI provider' -xa 'claude gemini codex agent openclaw opencode copilot agy pi devin'
     complete -c $cmd -n '__summarize_no_subcommand' -l fast -d 'Use OpenAI fast service tier'
     complete -c $cmd -n '__summarize_no_subcommand' -l service-tier -d 'OpenAI service tier' -xa 'default fast priority flex'
     complete -c $cmd -n '__summarize_no_subcommand' -l thinking -d 'OpenAI reasoning effort' -xa 'none low medium high xhigh off min med mid x-high extra-high'

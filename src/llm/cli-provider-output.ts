@@ -8,16 +8,17 @@ export {
 } from "./cli-provider-output/codex.js";
 export { parseOpenCodeOutputFromJsonl } from "./cli-provider-output/opencode.js";
 export { parsePiOutputFromJsonl } from "./cli-provider-output/pi.js";
+export { parseDevinOutputFromAtif } from "./cli-provider-output/devin.js";
 
 export type JsonCliProvider = Exclude<
   CliProvider,
-  "codex" | "openclaw" | "opencode" | "copilot" | "agy" | "pi"
+  "codex" | "openclaw" | "opencode" | "copilot" | "agy" | "pi" | "devin"
 >;
 
 const JSON_RESULT_FIELDS = ["result", "response", "output", "message", "text"] as const;
 
 export function isJsonCliProvider(provider: CliProvider): provider is JsonCliProvider {
-  return !["codex", "openclaw", "opencode", "copilot", "agy", "pi"].includes(provider);
+  return !["codex", "openclaw", "opencode", "copilot", "agy", "pi", "devin"].includes(provider);
 }
 
 function parseJsonFromOutput(output: string): unknown | null {

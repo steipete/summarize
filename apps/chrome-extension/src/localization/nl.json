@@ -299,7 +299,6 @@
   "values.here.override.daemon.config.leave.blank.to.use.the.daemon.default": "Deze waarden vervangen de daemonconfiguratie. Laat leeg voor de standaardwaarden van de daemon.",
   "include.full.input.output.in.daemon.logs.large.only.when.daemon.logging.is.enabled": "Neem volledige invoer en uitvoer op in daemonlogboeken. Omvangrijk; alleen als daemonlogboeken zijn ingeschakeld.",
   "when.model.is.auto.try.coding.clis.if.no.api.model.key.is.configured": "Probeer bij model Automatisch programmeer-CLI’s als er geen API-modelsleutel is ingesteld.",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi": "Aanbieders gescheiden door komma’s (claude, gemini, codex, agent, openclaw, opencode, copilot, pi).",
   "include.clickable.timestamps.in.summaries.for.media.default.on": "Neem aanklikbare tijdstempels op in mediasamenvattingen (standaard aan).",
   "show.summary.first.while.slides.extract.in.parallel": "Toon de samenvatting alvast terwijl dia’s parallel worden geëxtraheerd.",
   "show.hover.summary.tooltips.in.pages.experimental.default.off": "Toon samenvattingen bij het aanwijzen van links op pagina’s. Experimenteel, standaard uit.",
@@ -428,5 +427,6 @@
   "error.transcriptPageChanged": "De pagina is gewijzigd voordat de browsertranscriptie voltooid was",
   "error.standalone": "{kind, select, failed {Deze media konden niet zonder daemon worden getranscribeerd: {error}. Kies Daemon bij Uitvoering voor uitgebreidere mediaondersteuning.} noTranscript {Geen transcripttekst beschikbaar zonder daemon. Kies Daemon bij Uitvoering voor uitgebreidere mediaondersteuning.} other {Geen leesbare tekst beschikbaar zonder daemon. Laad de pagina opnieuw of kies Daemon bij Uitvoering voor URL-extractie.}}",
   "error.daemonSlidesToken": "Dia’s via de daemon vereisen een daemontoken. Open Instellingen om de daemon te verbinden.",
-  "model.placeholder": "{hints}{hasLocal, select, true { / lokaal: openai/<id>} other {}}"
+  "model.placeholder": "{hints}{hasLocal, select, true { / lokaal: openai/<id>} other {}}",
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Aanbieders gescheiden door komma’s (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
 }

@@ -299,7 +299,6 @@
   "values.here.override.daemon.config.leave.blank.to.use.the.daemon.default": "Values here override daemon config. Leave blank to use the daemon default.",
   "include.full.input.output.in.daemon.logs.large.only.when.daemon.logging.is.enabled": "Include full input + output in daemon logs. Large; only when daemon logging is enabled.",
   "when.model.is.auto.try.coding.clis.if.no.api.model.key.is.configured": "When model is Auto, try coding CLIs if no API model key is configured.",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi": "Comma-separated providers (claude, gemini, codex, agent, openclaw, opencode, copilot, pi).",
   "include.clickable.timestamps.in.summaries.for.media.default.on": "Include clickable timestamps in summaries for media (default on).",
   "show.summary.first.while.slides.extract.in.parallel": "Show summary first while slides extract in parallel.",
   "show.hover.summary.tooltips.in.pages.experimental.default.off": "Show hover summary tooltips in pages. Experimental, default off.",
@@ -428,5 +427,6 @@
   "error.transcriptPageChanged": "The page changed before browser transcription completed",
   "error.standalone": "{kind, select, failed {Could not transcribe this media in standalone mode: {error}. Switch Runtime to Daemon for broader media support.} noTranscript {No transcript text was available in standalone mode. Switch Runtime to Daemon for broader media support.} other {No readable text was available in standalone mode. Reload the page or switch Runtime to Daemon for URL extraction.}}",
   "error.daemonSlidesToken": "Daemon slides require a daemon token. Open Settings to connect the daemon.",
-  "model.placeholder": "{hints}{hasLocal, select, true { / local: openai/<id>} other {}}"
+  "model.placeholder": "{hints}{hasLocal, select, true { / local: openai/<id>} other {}}",
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Comma-separated providers (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
 }

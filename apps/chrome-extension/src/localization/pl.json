@@ -299,7 +299,6 @@
   "values.here.override.daemon.config.leave.blank.to.use.the.daemon.default": "Te wartości zastępują konfigurację demona. Pozostaw puste, aby użyć jego wartości domyślnych.",
   "include.full.input.output.in.daemon.logs.large.only.when.daemon.logging.is.enabled": "Zapisuj pełne dane wejściowe i wyjściowe w dziennikach demona. Duża objętość; tylko gdy rejestrowanie demona jest włączone.",
   "when.model.is.auto.try.coding.clis.if.no.api.model.key.is.configured": "Gdy model to Automatycznie, próbuj CLI do programowania, jeśli nie skonfigurowano klucza modelu API.",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi": "Dostawcy oddzieleni przecinkami (claude, gemini, codex, agent, openclaw, opencode, copilot, pi).",
   "include.clickable.timestamps.in.summaries.for.media.default.on": "Dodawaj klikalne znaczniki czasu do podsumowań multimediów (domyślnie włączone).",
   "show.summary.first.while.slides.extract.in.parallel": "Pokaż najpierw podsumowanie, gdy slajdy są wyodrębniane równolegle.",
   "show.hover.summary.tooltips.in.pages.experimental.default.off": "Pokazuj podsumowania w dymkach po najechaniu na stronach. Eksperymentalne, domyślnie wyłączone.",
@@ -428,5 +427,6 @@
   "error.transcriptPageChanged": "Strona zmieniła się przed zakończeniem transkrypcji w przeglądarce",
   "error.standalone": "{kind, select, failed {Nie udało się wykonać transkrypcji tych multimediów w trybie samodzielnym: {error}. Wybierz Demon w sekcji Środowisko, aby rozszerzyć obsługę multimediów.} noTranscript {Brak tekstu transkrypcji w trybie samodzielnym. Wybierz Demon w sekcji Środowisko, aby rozszerzyć obsługę multimediów.} other {Brak czytelnego tekstu w trybie samodzielnym. Przeładuj stronę lub wybierz Demon w sekcji Środowisko, aby wyodrębnić treść z URL.}}",
   "error.daemonSlidesToken": "Slajdy przez demona wymagają jego tokena. Otwórz Ustawienia, aby połączyć demona.",
-  "model.placeholder": "{hints}{hasLocal, select, true { / lokalnie: openai/<id>} other {}}"
+  "model.placeholder": "{hints}{hasLocal, select, true { / lokalnie: openai/<id>} other {}}",
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Dostawcy oddzieleni przecinkami (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
 }

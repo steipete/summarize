@@ -106,6 +106,24 @@ describe("model spec parsing", () => {
     expect(explicitModel.requiredEnv).toBe("CLI_PI");
   });
 
+  it("uses the devin runtime default model and accepts model suffixes", () => {
+    const runtimeDefault = parseRequestedModelId("cli/devin");
+    expect(runtimeDefault.kind).toBe("fixed");
+    expect(runtimeDefault.transport).toBe("cli");
+    expect(runtimeDefault.userModelId).toBe("cli/devin");
+    expect(runtimeDefault.cliProvider).toBe("devin");
+    expect(runtimeDefault.cliModel).toBeNull();
+    expect(runtimeDefault.requiredEnv).toBe("CLI_DEVIN");
+
+    const explicitModel = parseRequestedModelId("cli/devin/swe-2-max");
+    expect(explicitModel.kind).toBe("fixed");
+    expect(explicitModel.transport).toBe("cli");
+    expect(explicitModel.userModelId).toBe("cli/devin/swe-2-max");
+    expect(explicitModel.cliProvider).toBe("devin");
+    expect(explicitModel.cliModel).toBe("swe-2-max");
+    expect(explicitModel.requiredEnv).toBe("CLI_DEVIN");
+  });
+
   it("rejects invalid cli providers", () => {
     expect(() => parseRequestedModelId("cli/unknown/model")).toThrow(/Invalid CLI model id/);
   });

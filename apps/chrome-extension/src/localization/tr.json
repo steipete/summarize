@@ -299,7 +299,6 @@
   "values.here.override.daemon.config.leave.blank.to.use.the.daemon.default": "Buradaki değerler daemon yapılandırmasını geçersiz kılar. Daemon varsayılanını kullanmak için boş bırakın.",
   "include.full.input.output.in.daemon.logs.large.only.when.daemon.logging.is.enabled": "Daemon günlüklerine tam girdi + çıktıyı dahil eder. Büyük miktardadır; yalnızca daemon günlükleme etkin olduğunda kullanın.",
   "when.model.is.auto.try.coding.clis.if.no.api.model.key.is.configured": "Model Otomatik olduğunda, API model anahtarı yapılandırılmamışsa kodlama CLI'larını deneyin.",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi": "Virgülle ayrılmış sağlayıcılar (claude, gemini, codex, agent, openclaw, opencode, copilot, pi).",
   "include.clickable.timestamps.in.summaries.for.media.default.on": "Medya özetlerine tıklanabilir zaman damgaları ekle (varsayılan açık).",
   "show.summary.first.while.slides.extract.in.parallel": "Slaytlar paralel çıkarılırken önce özeti göster.",
   "show.hover.summary.tooltips.in.pages.experimental.default.off": "Sayfalarda üzerine gelince özet ipuçlarını göster. Deneyseldir, varsayılan olarak kapalıdır.",
@@ -428,5 +427,6 @@
   "error.transcriptPageChanged": "Tarayıcı transkripsiyonu tamamlanmadan sayfa değişti",
   "error.standalone": "{kind, select, failed {Bu medya bağımsız modda yazıya dökülemedi: {error}. Daha geniş medya desteği için Çalışma zamanı ayarını Daemon olarak değiştirin.} noTranscript {Bağımsız modda transkript metni bulunamadı. Daha geniş medya desteği için Çalışma zamanı ayarını Daemon olarak değiştirin.} other {Bağımsız modda okunabilir metin bulunamadı. Sayfayı yeniden yükleyin veya URL’den çıkarma için Çalışma zamanı ayarını Daemon olarak değiştirin.}}",
   "error.daemonSlidesToken": "Daemon slaytları için bir daemon token’ı gereklidir. Daemon’a bağlanmak için Ayarlar’ı açın.",
-  "model.placeholder": "{hints}{hasLocal, select, true { / yerel: openai/<id>} other {}}"
+  "model.placeholder": "{hints}{hasLocal, select, true { / yerel: openai/<id>} other {}}",
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Virgülle ayrılmış sağlayıcılar (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
 }

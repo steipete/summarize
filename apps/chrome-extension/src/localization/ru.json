@@ -299,7 +299,6 @@
   "values.here.override.daemon.config.leave.blank.to.use.the.daemon.default": "Эти значения переопределяют настройки фоновой службы. Оставьте пустыми, чтобы использовать её значения по умолчанию.",
   "include.full.input.output.in.daemon.logs.large.only.when.daemon.logging.is.enabled": "Записывать полный ввод и вывод в журналы фоновой службы. Большой объём данных; только при включённом журналировании службы.",
   "when.model.is.auto.try.coding.clis.if.no.api.model.key.is.configured": "При выборе «Авто» пробовать CLI для программирования, если не задан API-ключ модели.",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi": "Провайдеры через запятую (claude, gemini, codex, agent, openclaw, opencode, copilot, pi).",
   "include.clickable.timestamps.in.summaries.for.media.default.on": "Включать кликабельные временные отметки в сводки медиа (по умолчанию включено).",
   "show.summary.first.while.slides.extract.in.parallel": "Сначала показывать сводку, пока слайды извлекаются параллельно.",
   "show.hover.summary.tooltips.in.pages.experimental.default.off": "Показывать всплывающие сводки при наведении на страницах. Экспериментально, по умолчанию выключено.",
@@ -428,5 +427,6 @@
   "error.transcriptPageChanged": "Страница изменилась до завершения расшифровки в браузере",
   "error.standalone": "{kind, select, failed {Не удалось расшифровать медиа без фоновой службы: {error}. Выберите «Фоновая служба» в разделе «Выполнение» для более широкой поддержки медиа.} noTranscript {Без фоновой службы текст расшифровки недоступен. Выберите «Фоновая служба» в разделе «Выполнение» для более широкой поддержки медиа.} other {Без фоновой службы читаемый текст недоступен. Перезагрузите страницу или выберите «Фоновая служба» в разделе «Выполнение» для извлечения по URL.}}",
   "error.daemonSlidesToken": "Для слайдов через фоновую службу нужен её токен. Откройте настройки, чтобы подключить фоновую службу.",
-  "model.placeholder": "{hints}{hasLocal, select, true { / локально: openai/<id>} other {}}"
+  "model.placeholder": "{hints}{hasLocal, select, true { / локально: openai/<id>} other {}}",
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Провайдеры через запятую (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
 }

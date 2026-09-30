@@ -136,7 +136,7 @@ If `[input]` is omitted, summarize prints concise help and exits.
 : Model id. `auto`, `<config-preset>`, `cli/<provider>/<model>`, `xai/...`, `openai/...`, `nvidia/...`, `minimax/...`, `google/...`, `anthropic/...`, `zai/...`, `ollama/<model>` (local Ollama), `openclaw/<model>` (shorthand for `cli/openclaw/<model>`), or `openrouter/<author>/<slug>`. Default `auto`. See [LLM overview](../llm.md).
 
 `--cli [provider]`
-: Use a logged-in CLI provider: `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`, `copilot`, `agy`, `pi`. Equivalent to `--model cli/<provider>`. Without a value: enable CLI providers in auto-selection.
+: Use a logged-in CLI provider: `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`, `copilot`, `agy`, `pi`, `devin`. Equivalent to `--model cli/<provider>`. Without a value: enable CLI providers in auto-selection.
 
 `--thinking <effort>`
 : Reasoning effort. `none`, `low`, `medium`, `high`, `xhigh`. Aliases: `off`, `min`, `med`, `mid`, `x-high`, `extra-high`. Affects reasoning-capable models on the dispatched provider (OpenAI, Anthropic Claude 4+, pi CLI).

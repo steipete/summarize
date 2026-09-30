@@ -299,7 +299,6 @@
   "values.here.override.daemon.config.leave.blank.to.use.the.daemon.default": "Estos valores sustituyen la configuración del daemon. Déjelos vacíos para usar sus valores predeterminados.",
   "include.full.input.output.in.daemon.logs.large.only.when.daemon.logging.is.enabled": "Incluir entradas y salidas completas en los registros del daemon. Genera mucho contenido; solo si el registro está activado.",
   "when.model.is.auto.try.coding.clis.if.no.api.model.key.is.configured": "En modo Automático, probar CLI de programación si no hay una clave de modelo API configurada.",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi": "Proveedores separados por comas (claude, gemini, codex, agent, openclaw, opencode, copilot, pi).",
   "include.clickable.timestamps.in.summaries.for.media.default.on": "Incluir marcas de tiempo pulsables en resúmenes multimedia (activado de forma predeterminada).",
   "show.summary.first.while.slides.extract.in.parallel": "Mostrar primero el resumen mientras se extraen las diapositivas en paralelo.",
   "show.hover.summary.tooltips.in.pages.experimental.default.off": "Mostrar resúmenes emergentes al pasar el cursor en las páginas. Experimental, desactivado de forma predeterminada.",
@@ -428,5 +427,6 @@
   "error.transcriptPageChanged": "La página cambió antes de finalizar la transcripción en el navegador",
   "error.standalone": "{kind, select, failed {No se pudo transcribir este archivo multimedia en modo independiente: {error}. Elija Daemon en Ejecución para ampliar la compatibilidad multimedia.} noTranscript {No había texto de transcripción disponible en modo independiente. Elija Daemon en Ejecución para ampliar la compatibilidad multimedia.} other {No había texto legible disponible en modo independiente. Recargue la página o elija Daemon en Ejecución para extraer por URL.}}",
   "error.daemonSlidesToken": "Las diapositivas mediante el daemon requieren un token. Abra Ajustes para conectar el daemon.",
-  "model.placeholder": "{hints}{hasLocal, select, true { / local: openai/<id>} other {}}"
+  "model.placeholder": "{hints}{hasLocal, select, true { / local: openai/<id>} other {}}",
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Proveedores separados por comas (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
 }
