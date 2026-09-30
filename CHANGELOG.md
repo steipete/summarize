@@ -2,7 +2,7 @@
 
 ## 0.24.1 - Unreleased
 
-- OpenAI: support GPT-6.1 Sol (`openai/gpt-6.1-sol`) with pricing and model-picker entries, omit its unsupported `temperature` parameter, and reject its unsupported `--thinking none` before sending a request.
+- OpenAI: support GPT-6.1 Sol (`openai/gpt-6.1-sol`) with pricing and model-picker entries, omit its unsupported `temperature` parameter, and reject its unsupported `--thinking none` before sending a request (#500, thanks @zackleman).
 
 ## 0.24.0 - 2026-09-25
 

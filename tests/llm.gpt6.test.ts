@@ -65,7 +65,7 @@ it.each([
   ["gpt-6-astra", "GPT-6 Astra", true],
   ["gpt-6.1-sol", "GPT-6.1 Sol", false],
   ["gpt-6.1-sol", "GPT-6.1 Sol", true],
-] as const)("rejects %s none before any API request (stream=%s)", async (model, name, stream) => {
+] as const)("rejects %s (%s) none before any API request (stream=%s)", async (model, name, stream) => {
   const fetchImpl = mockResponse(stream);
   const generate = stream ? streamTextWithModelId : generateTextWithModelId;
   await expect(
