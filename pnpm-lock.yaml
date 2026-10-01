@@ -110,8 +110,8 @@ importers:
         specifier: ^15.0.2
         version: 15.0.2
       mediabunny:
-        specifier: 1.59.0
-        version: 1.59.0
+        specifier: 1.59.1
+        version: 1.59.1
       preact:
         specifier: 10.29.8
         version: 10.29.8
@@ -2669,8 +2669,8 @@ packages:
   mdurl@2.1.0:
     resolution: {integrity: sha512-1+HBaOx0zi/dQWht8rNv9MYf9qqpqL/kxI0hXImU6Y547zM6Sni8BQibt7ifgMcYtQg41ao3Ivd6cnSM86inpg==}
 
-  mediabunny@1.59.0:
-    resolution: {integrity: sha512-m+nhRFI9gRQaDP22GCZwwL1nTtoAJtzHB7XzZmlff4P17+F/i5wZnDu4cc09a4ae5x41Px/C/GWdiROQHVM4eQ==}
+  mediabunny@1.59.1:
+    resolution: {integrity: sha512-K6vFvOZ7x36fqP3MaFFWFLYEfGF192qY4LQ6QB+L5eB74SUJjEgq9ZRztYpk9RJOjSyxooPZBV4WE0k8PKcjaQ==}
 
   mime@4.1.0:
     resolution: {integrity: sha512-X5ju04+cAzsojXKes0B/S4tcYtFAJ6tTMuSPBEn9CPGlrWr8Fiw7qYeLT0XyH80HSoAoqWCaz+MWKh22P7G1cw==}
@@ -5779,7 +5779,7 @@ snapshots:
 
   mdurl@2.1.0: {}
 
-  mediabunny@1.59.0:
+  mediabunny@1.59.1:
     dependencies:
       '@types/dom-mediacapture-transform': 0.1.12
       '@types/dom-webcodecs': 0.1.13

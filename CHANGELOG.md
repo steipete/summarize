@@ -1,11 +1,16 @@
 # Changelog
 
-## 0.24.1 - Unreleased
+## 0.25.1 - Unreleased
 
-- Maintenance: refresh stabilized provider, network, browser media, localization, and development dependencies while retaining Node 24 and the seven-day adoption hold.
-- OpenAI: support GPT-6.1 Sol (`openai/gpt-6.1-sol`) with pricing and model-picker entries, omit its unsupported `temperature` parameter, and reject its unsupported `--thinking none` before sending a request (#500, thanks @zackleman).
-- CLI providers: add opt-in Devin CLI summaries with private prompt files, ATIF token accounting, isolated configuration, and workspace trust checks for caller directories (#499, thanks @vincent-peng).
+## 0.25.0 - 2026-09-30
+
+**Highlights:** Grok and Devin CLI summaries with isolated configuration, new OpenAI model support, and stabilized dependencies.
+
 - CLI providers: add opt-in Grok CLI summaries with private prompt files, auth-only home isolation, disabled tools/web/MCP/subagents, strict sandboxing, usage/cost reporting, and daemon/Chrome model picker support (#498, thanks @vincent-peng).
+- CLI providers: add opt-in Devin CLI summaries with private prompt files, ATIF token accounting, isolated configuration, and workspace trust checks for caller directories (#499, thanks @vincent-peng).
+- OpenAI: support GPT-6.1 Sol (`openai/gpt-6.1-sol`) with pricing and model-picker entries, omit its unsupported `temperature` parameter, and reject its unsupported `--thinking none` before sending a request (#500, thanks @zackleman).
+- Maintenance: refresh stabilized provider, network, browser media, localization, and development dependencies while retaining Node 24 and the seven-day adoption hold.
+- Browser media: update MediaBunny to 1.59.1 after its seven-day stabilization hold.
 
 ## 0.24.0 - 2026-09-25
 
