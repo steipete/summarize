@@ -514,6 +514,21 @@ describe("config loading", () => {
     });
   });
 
+  it("parses grok cli config", () => {
+    const { root } = writeJsonConfig({
+      cli: {
+        enabled: ["grok"],
+        grok: { binary: "/usr/local/bin/grok", model: "grok-4.6", extraArgs: ["--verbose"] },
+      },
+    });
+    expect(loadSummarizeConfig({ env: { HOME: root } }).config).toEqual({
+      cli: {
+        enabled: ["grok"],
+        grok: { binary: "/usr/local/bin/grok", model: "grok-4.6", extraArgs: ["--verbose"] },
+      },
+    });
+  });
+
   it("parses openclaw cli config", () => {
     const { root } = writeJsonConfig({
       cli: {

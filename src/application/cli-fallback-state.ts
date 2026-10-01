@@ -21,7 +21,8 @@ function parseCliProvider(value: unknown): CliProvider | null {
     value === "copilot" ||
     value === "agy" ||
     value === "pi" ||
-    value === "devin"
+    value === "devin" ||
+    value === "grok"
   ) {
     return value;
   }

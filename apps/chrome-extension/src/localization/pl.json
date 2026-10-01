@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {Nie udało się wykonać transkrypcji tych multimediów w trybie samodzielnym: {error}. Wybierz Demon w sekcji Środowisko, aby rozszerzyć obsługę multimediów.} noTranscript {Brak tekstu transkrypcji w trybie samodzielnym. Wybierz Demon w sekcji Środowisko, aby rozszerzyć obsługę multimediów.} other {Brak czytelnego tekstu w trybie samodzielnym. Przeładuj stronę lub wybierz Demon w sekcji Środowisko, aby wyodrębnić treść z URL.}}",
   "error.daemonSlidesToken": "Slajdy przez demona wymagają jego tokena. Otwórz Ustawienia, aby połączyć demona.",
   "model.placeholder": "{hints}{hasLocal, select, true { / lokalnie: openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Dostawcy oddzieleni przecinkami (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "Dostawcy oddzieleni przecinkami (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin, grok)."
 }

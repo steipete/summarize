@@ -258,5 +258,5 @@
   "service.cliBuildMissing": "Nie znaleziono zbudowanego CLI w {paths}. Najpierw uruchom „pnpm build:cli” (lub „pnpm build”) albo użyj --dev, aby zainstalować demona deweloperskiego.",
   "service.healthUnreachable": "Demon niedostępny pod adresem {address}",
   "error.githubModelsRetired": "Dostawca github-copilot został wycofany: GitHub Models zamknięto 30 lipca 2026 r. Wybierz innego dostawcę w ustawieniach modelu. GitHub Copilot CLI pozostaje dostępny jako cli/copilot.",
-  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "Użyj dostawcy CLI: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi, devin (odpowiednik --model cli/<provider>). Jeśli pominięto: automatyczny wybór z włączonym CLI."
+  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.grok.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "Użyj dostawcy CLI: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi, devin, grok (odpowiednik --model cli/<provider>). Jeśli pominięto: automatyczny wybór z włączonym CLI."
 }

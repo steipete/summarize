@@ -644,6 +644,36 @@ describe("auto model selection", () => {
     expect(attempts[0]?.userModelId).toBe("cli/pi/anthropic/claude-sonnet-4-5");
   });
 
+  it("uses configured grok models when grok is explicitly enabled for CLI fallback", () => {
+    const config: SummarizeConfig = {
+      model: { mode: "auto", rules: [{ candidates: ["openai/gpt-5-mini"] }] },
+      cli: {
+        autoFallback: {
+          enabled: true,
+          onlyWhenNoApiKeys: false,
+          order: ["grok"],
+        },
+        grok: {
+          model: "grok-4.6",
+        },
+      },
+    };
+    const attempts = buildAutoModelAttempts({
+      kind: "text",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: {},
+      config,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+      cliAvailability: { grok: true },
+      isImplicitAutoSelection: true,
+    });
+
+    expect(attempts[0]?.userModelId).toBe("cli/grok/grok-4.6");
+  });
+
   it("dedupes configured CLI auto-fallback order", () => {
     const config: SummarizeConfig = {
       cli: {
@@ -729,5 +759,21 @@ describe("auto model selection", () => {
 
     expect(attempts[0]?.userModelId).toBe("cli/claude/sonnet");
     expect(attempts[1]?.userModelId).toBe("cli/gemini/flash");
+  });
+  it("keeps grok out of the default auto CLI fallback order", () => {
+    const attempts = buildAutoModelAttempts({
+      kind: "text",
+      promptTokens: 100,
+      desiredOutputTokens: 50,
+      requiresVideoUnderstanding: false,
+      env: {},
+      config: null,
+      catalog: null,
+      openrouterProvidersFromEnv: null,
+      cliAvailability: { grok: true },
+      isImplicitAutoSelection: true,
+    });
+
+    expect(attempts.some((attempt) => attempt.userModelId.startsWith("cli/grok"))).toBe(false);
   });
 });

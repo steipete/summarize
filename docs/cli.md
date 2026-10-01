@@ -1,14 +1,14 @@
 ---
 title: "CLI providers"
 kicker: "models"
-summary: "CLI model providers and config for Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, GitHub Copilot, Antigravity, pi, and Devin."
+summary: "CLI model providers and config for Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, GitHub Copilot, Antigravity, pi, Devin, and Grok."
 read_when:
   - "When changing CLI model integration."
 ---
 
 # CLI models
 
-Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, GitHub Copilot, Antigravity, pi, Devin) as local model backends.
+Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw, OpenCode, GitHub Copilot, Antigravity, pi, Devin, Grok) as local model backends.
 
 ## Model ids
 
@@ -27,6 +27,8 @@ Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw,
 - `cli/pi` (use pi's configured default model)
 - `cli/devin/<model>` (e.g. `cli/devin/swe-2-max`)
 - `cli/devin` (use the Devin CLI configured default model)
+- `cli/grok/<model>` (e.g. `cli/grok/grok-4.6`)
+- `cli/grok` (use the Grok CLI default model)
 
 Use `--cli [provider]` (case-insensitive) for the provider default, or `--model cli/<provider>/<model>` to pin a model.
 Bare `cli/codex` defaults to GPT-5.5; set `cli.codex.model` to override it.
@@ -49,7 +51,7 @@ Auto mode can prepend CLI attempts in two ways:
   - Applies only to **implicit** auto (when no model is set via flag/env/config).
   - Default behavior: only when no API key is configured.
   - Default order: `claude, gemini, codex, agent, openclaw, opencode, copilot`.
-  - Antigravity, pi, and devin are opt-in unless added to `cli.autoFallback.order`.
+  - Antigravity, pi, devin, and Grok are opt-in unless added to `cli.autoFallback.order`.
   - Remembers + prioritizes the last successful CLI provider (`~/.summarize/cli-state.json`).
 
 Gemini CLI performance: summarize sets `GEMINI_CLI_NO_RELAUNCH=true` for Gemini CLI runs to avoid a costly self-relaunch (can be overridden by setting it yourself).
@@ -98,6 +100,7 @@ Binary lookup:
 - `AGY_PATH` (optional override)
 - `PI_PATH` (optional override)
 - `DEVIN_PATH` (optional override)
+- `GROK_PATH` (optional override)
 - Otherwise uses `PATH`
 
 Run `summarize status` to list enabled CLI providers whose executable is currently available.
@@ -120,6 +123,7 @@ path-based prompt and enables the required tool flags:
 - Antigravity: `agy --print`; does not auto-approve tools for attachment prompts
 - pi: `pi --print --mode json`; passes `--system-prompt`, sends prompt over stdin, and uses `--no-tools` for isolated summaries
 - devin: `devin --print --prompt-file <file>`; keeps the caller cwd and real Devin config for attachments, preserves workspace trust checks, and uses `--permission-mode auto` so read-only tools are auto-approved
+- Grok: `grok --prompt-file <file> --output-format json --always-approve` for path-based prompts
 
 Remote image and binary-file URLs are limited to native providers and CLI backends that can consume the staged attachment without broad tool approval. Local file inputs keep the existing path-based CLI behavior because they are operator-selected files rather than untrusted remote content.
 
@@ -138,7 +142,8 @@ Remote image and binary-file URLs are limited to native providers and CLI backen
       "copilot",
       "agy",
       "pi",
-      "devin"
+      "devin",
+      "grok"
     ],
     "autoFallback": {
       "enabled": true,
@@ -174,6 +179,10 @@ Remote image and binary-file URLs are limited to native providers and CLI backen
     },
     "devin": {
       "binary": "/usr/local/bin/devin"
+    },
+    "grok": {
+      "binary": "/usr/local/bin/grok",
+      "model": "grok-4.6"
     }
   }
 }
@@ -191,6 +200,8 @@ Notes:
 - Devin reserves `--export` for a private result file per summary; `cli.devin.extraArgs` cannot override it. This prevents overlapping summaries from reading each other's output.
 - Devin isolated text summaries always use a private empty working directory, even when the caller supplies a directory. Workspace trust is bypassed only there. Attachment runs and `cli.devin.isolated: false` retain the caller's directory and trust check: print mode rejects an untrusted project until you trust it in Devin. This keeps project startup hooks behind the CLI's own trust boundary.
 - Devin isolation requires the system temporary directory to be outside a Git or Jujutsu checkout, because Devin searches parent directories for project configuration. If a custom `TMPDIR` or `TEMP` points inside a checkout, Summarize fails before launching Devin; choose a temporary directory outside the checkout. On Windows, authentication and user configuration come from `%APPDATA%\devin` even when XDG variables are set.
+- Grok CLI runs headless via `grok --prompt-file <file> --output-format json` and reports token usage and cost. Text summaries always use a private cwd and home: only `auth.json` is copied into `GROK_HOME`; other agent configuration, hooks, sessions, and MCP servers are not inherited. Both the system instructions and document go into a mode-0600 prompt file, never argv. Built-in tools are removed, all tool calls and MCP are denied, web search and subagents are disabled, and a generated `--sandbox summarize` profile extending `strict` is mandatory. This generated policy is the only configuration added to the isolated home; no user configuration is copied. If Grok cannot apply strict sandboxing, the summary fails rather than weakening it. Requires Grok 1.0.41 or newer and `grok login` or `XAI_API_KEY`.
+- Grok text isolation cannot be disabled with `cli.grok.isolated: false`. A custom temporary directory must be outside project and agent configuration trees. `cli.grok.extraArgs` accepts only `--reasoning-effort` (or `--effort`) and `--max-turns`; use `GROK_PATH` for the binary and `cli.grok.model` or `cli/grok/<model>` for model selection. Explicit local attachment prompts retain the caller cwd and real Grok configuration with `--always-approve --sandbox off`; untrusted remote attachments cannot use that mode.
 - Codex CLI normal text summaries run isolated by default: `codex exec --ephemeral --ignore-user-config --ignore-rules -C <temp-dir> ...` with a sanitized temporary `CODEX_HOME` that carries auth only. Set `cli.codex.isolated` to `false` only when you intentionally need Codex to inherit local config/rules.
 - Gemini CLI is invoked in headless mode with `--prompt` for compatibility with current Gemini CLI releases.
 - OpenClaw uses `openclaw agent --agent <model> --message <prompt> --json` because current OpenClaw requires `-m/--message`; very large extracted inputs are rejected before launch to avoid argv limits.
@@ -214,6 +225,7 @@ summarize --cli copilot --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli agy --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli pi --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 summarize --cli devin --plain --timeout 2m /tmp/summarize-cli-smoke.txt
+summarize --cli grok --plain --timeout 2m /tmp/summarize-cli-smoke.txt
 ```
 
 If Agent fails with auth, run `agent login` (interactive) or set `CURSOR_API_KEY`.

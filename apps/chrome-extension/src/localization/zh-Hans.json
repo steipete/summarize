@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {独立模式下无法转录此媒体：{error}。请在“运行环境”中选择“守护进程”以支持更多媒体格式。} noTranscript {独立模式下没有可用的转录文本。请在“运行环境”中选择“守护进程”以支持更多媒体格式。} other {独立模式下没有可读文本。请重新加载页面，或在“运行环境”中选择“守护进程”以通过 URL 提取内容。}}",
   "error.daemonSlidesToken": "通过守护进程处理幻灯片需要守护进程令牌。请打开设置连接守护进程。",
   "model.placeholder": "{hints}{hasLocal, select, true { / 本地：openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "以逗号分隔提供商，例如 claude、gemini、codex、agent、openclaw、opencode、copilot、pi、agy、devin。"
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "以逗号分隔提供商，例如 claude、gemini、codex、agent、openclaw、opencode、copilot、pi、agy、devin、grok。"
 }

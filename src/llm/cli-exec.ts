@@ -81,6 +81,12 @@ function abortReason(signal: AbortSignal): Error {
     : new DOMException("This operation was aborted", "AbortError");
 }
 
+// execFile errors do not carry buffered stdout, so runners that emit structured
+// errors on stdout (e.g. grok) can recover them from this property.
+function attachStdout(error: Error, stdout: string): Error {
+  return Object.assign(error, { stdout });
+}
+
 function errorOptions(error: CliExecError, redactedCommand?: string): ErrorOptions | undefined {
   return redactedCommand ? undefined : { cause: error };
 }
@@ -95,6 +101,7 @@ export async function execCliWithInput({
   cwd,
   signal,
   redactedCommand,
+  inheritEnv = true,
 }: {
   execFileImpl: ExecFileFn;
   cmd: string;
@@ -105,6 +112,7 @@ export async function execCliWithInput({
   cwd?: string;
   signal?: AbortSignal;
   redactedCommand?: string;
+  inheritEnv?: boolean;
 }): Promise<{ stdout: string; stderr: string }> {
   return await new Promise((resolve, reject) => {
     let interruptedSignal: NodeJS.Signals | null = null;
@@ -152,7 +160,7 @@ export async function execCliWithInput({
         args,
         {
           timeout: timeoutMs,
-          env: { ...process.env, ...env },
+          env: inheritEnv ? { ...process.env, ...env } : env,
           cwd,
           maxBuffer: 50 * 1024 * 1024,
         },
@@ -161,6 +169,7 @@ export async function execCliWithInput({
           // A sensitive argv value may be transformed or truncated before a CLI echoes it.
           // Suppress all child diagnostics instead of attempting unsafe substring redaction.
           const stderrText = redactedCommand ? "" : toUtf8String(stderr);
+          const stdoutText = redactedCommand ? "" : toUtf8String(stdout);
           if (aborted && signal) {
             reject(abortReason(signal));
             return;
@@ -175,9 +184,12 @@ export async function execCliWithInput({
                 `CLI command timed out after ${formatTimeoutLabel(timeoutMs)}: ${getExecCommand(error, cmd, args, redactedCommand)}. ` +
                 "Increase --timeout (e.g. 5m).";
               reject(
-                new Error(
-                  formatErrorMessageWithStderr(timeoutMessage, stderrText, "\n"),
-                  errorOptions(error, redactedCommand),
+                attachStdout(
+                  new Error(
+                    formatErrorMessageWithStderr(timeoutMessage, stderrText, "\n"),
+                    errorOptions(error, redactedCommand),
+                  ),
+                  stdoutText,
                 ),
               );
               return;
@@ -186,9 +198,12 @@ export async function execCliWithInput({
               ? `CLI command failed: ${redactedCommand}`
               : getExecErrorMessage(error);
             reject(
-              new Error(
-                formatErrorMessageWithStderr(errorMessage, stderrText),
-                errorOptions(error, redactedCommand),
+              attachStdout(
+                new Error(
+                  formatErrorMessageWithStderr(errorMessage, stderrText),
+                  errorOptions(error, redactedCommand),
+                ),
+                stdoutText,
               ),
             );
             return;

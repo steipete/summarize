@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {獨立模式下無法轉錄此媒體：{error}。請在「執行環境」選擇「常駐程式」，以支援更多媒體格式。} noTranscript {獨立模式下沒有可用的逐字稿。請在「執行環境」選擇「常駐程式」，以支援更多媒體格式。} other {獨立模式下沒有可讀取的文字。請重新載入頁面，或在「執行環境」選擇「常駐程式」，以透過 URL 擷取內容。}}",
   "error.daemonSlidesToken": "透過常駐程式處理投影片需要常駐程式權杖。請開啟設定以連線至常駐程式。",
   "model.placeholder": "{hints}{hasLocal, select, true { / 本機：openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "以逗號分隔的服務供應商（claude、gemini、codex、agent、openclaw、opencode、copilot、pi、agy、devin）。"
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "以逗號分隔的服務供應商（claude、gemini、codex、agent、openclaw、opencode、copilot、pi、agy、devin、grok）。"
 }

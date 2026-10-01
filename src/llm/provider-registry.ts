@@ -165,6 +165,13 @@ export const CLI_PROVIDER_PROFILES = {
     installLabel: "Devin CLI",
     pathEnv: "DEVIN_PATH",
   },
+  grok: {
+    requiredEnv: "CLI_GROK",
+    defaultModel: null,
+    missingBinaryLabel: "Grok CLI",
+    installLabel: "Grok CLI",
+    pathEnv: "GROK_PATH",
+  },
 } as const;
 
 export type GatewayProvider = keyof typeof GATEWAY_PROVIDER_PROFILES;
@@ -195,6 +202,7 @@ export const DEFAULT_AUTO_CLI_ORDER: CliProvider[] = [
   // Use --cli agy or --model cli/agy to opt in explicitly.
   // pi is also excluded; use --cli pi or --model cli/pi explicitly.
   // devin is also excluded; use --cli devin or --model cli/devin explicitly.
+  // grok is also excluded; use --cli grok or --model cli/grok explicitly.
 ];
 
 export function parseCliProviderName(raw: string): CliProvider | null {

@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {Could not transcribe this media in standalone mode: {error}. Switch Runtime to Daemon for broader media support.} noTranscript {No transcript text was available in standalone mode. Switch Runtime to Daemon for broader media support.} other {No readable text was available in standalone mode. Reload the page or switch Runtime to Daemon for URL extraction.}}",
   "error.daemonSlidesToken": "Daemon slides require a daemon token. Open Settings to connect the daemon.",
   "model.placeholder": "{hints}{hasLocal, select, true { / local: openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Comma-separated providers (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "Comma-separated providers (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin, grok)."
 }

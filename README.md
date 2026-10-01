@@ -101,7 +101,7 @@ The focused guides describe [YouTube extraction](docs/youtube.md), [media routin
 
 ## Models and configuration
 
-Model IDs use `provider/model` names. Summarize works with configured API providers, OpenAI-compatible endpoints, Ollama, OpenRouter free models, and authenticated coding CLIs such as Codex, Claude, Gemini, OpenClaw, and GitHub Copilot.
+Model IDs use `provider/model` names. Summarize works with configured API providers, OpenAI-compatible endpoints, Ollama, OpenRouter free models, and authenticated coding CLIs such as Codex, Claude, Gemini, OpenClaw, GitHub Copilot, and Grok.
 
 Configuration lives at `~/.summarize/config.json`; command-line flags take precedence. Inspect the effective setup without exposing keys:
 

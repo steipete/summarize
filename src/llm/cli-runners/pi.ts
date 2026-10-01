@@ -6,11 +6,12 @@ import { parsePiOutputFromJsonl } from "../cli-provider-output.js";
 import type { CliRunResult, ResolvedCliRunOptions } from "./types.js";
 
 export async function runPiCli(options: ResolvedCliRunOptions): Promise<CliRunResult> {
-  const isolatedCwd = !options.allowTools
-    ? await fs.mkdtemp(path.join(tmpdir(), "summarize-pi-"))
-    : null;
+  let isolatedCwd: string | null = null;
   let promptDir: string | null = null;
   try {
+    isolatedCwd = !options.allowTools
+      ? await fs.mkdtemp(path.join(tmpdir(), "summarize-pi-"))
+      : null;
     promptDir = await fs.mkdtemp(path.join(tmpdir(), "summarize-pi-prompt-"));
     const promptPath = path.join(promptDir, "prompt.txt");
     await fs.writeFile(promptPath, options.prompt, { mode: 0o600 });

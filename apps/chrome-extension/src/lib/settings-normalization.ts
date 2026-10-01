@@ -99,7 +99,8 @@ function normalizeAutoCliOrder(value: unknown): string {
       item !== "copilot" &&
       item !== "agy" &&
       item !== "pi" &&
-      item !== "devin"
+      item !== "devin" &&
+      item !== "grok"
     ) {
       continue;
     }

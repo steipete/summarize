@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {Não foi possível transcrever esta mídia no modo independente: {error}. Selecione Daemon em Execução para ampliar o suporte a mídia.} noTranscript {Nenhum texto de transcrição estava disponível no modo independente. Selecione Daemon em Execução para ampliar o suporte a mídia.} other {Nenhum texto legível estava disponível no modo independente. Recarregue a página ou selecione Daemon em Execução para extração por URL.}}",
   "error.daemonSlidesToken": "Slides pelo daemon requerem um token do daemon. Abra Configurações para conectar o daemon.",
   "model.placeholder": "{hints}{hasLocal, select, true { / local: openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Provedores separados por vírgulas (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "Provedores separados por vírgulas (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin, grok)."
 }

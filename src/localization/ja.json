@@ -258,5 +258,5 @@
   "service.cliBuildMissing": "ビルド済み CLI が {paths} に見つかりません。先に「pnpm build:cli」（または「pnpm build」）を実行するか、--dev を指定して開発用デーモンをインストールしてください。",
   "service.healthUnreachable": "{address} のデーモンに接続できません",
   "error.githubModelsRetired": "github-copilot プロバイダーは廃止されました。GitHub Models は2026年7月30日に終了しました。モデル設定で別のプロバイダーを選択してください。GitHub Copilot CLI は cli/copilot として引き続き利用できます。",
-  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "使用する CLI プロバイダー: claude、gemini、codex、agent、openclaw、opencode、copilot、agy、pi、devin（--model cli/<provider> と同じ）。プロバイダーを省略すると、CLI を含めて自動選択します。"
+  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.grok.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "使用する CLI プロバイダー: claude、gemini、codex、agent、openclaw、opencode、copilot、agy、pi、devin、grok（--model cli/<provider> と同じ）。プロバイダーを省略すると、CLI を含めて自動選択します。"
 }

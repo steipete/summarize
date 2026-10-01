@@ -258,5 +258,5 @@
   "service.cliBuildMissing": "Cannot find built CLI at {paths}. Run \"pnpm build:cli\" (or \"pnpm build\") first, or pass --dev to install a dev daemon.",
   "service.healthUnreachable": "Daemon not reachable at {address}",
   "error.githubModelsRetired": "The github-copilot provider is retired: GitHub Models shut down on July 30, 2026. Choose another provider in your model setting. GitHub Copilot CLI remains available as cli/copilot.",
-  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "Use a CLI provider: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi, devin (equivalent to --model cli/<provider>). If omitted, use auto selection with CLI enabled."
+  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.grok.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "Use a CLI provider: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi, devin, grok (equivalent to --model cli/<provider>). If omitted, use auto selection with CLI enabled."
 }

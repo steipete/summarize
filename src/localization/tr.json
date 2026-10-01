@@ -258,5 +258,5 @@
   "service.cliBuildMissing": "Derlenmiş CLI bulunamadı: {paths}. Önce \"pnpm build:cli\" (veya \"pnpm build\") çalıştırın ya da geliştirme daemon’u kurmak için --dev kullanın.",
   "service.healthUnreachable": "{address} adresindeki daemon’a erişilemiyor",
   "error.githubModelsRetired": "github-copilot sağlayıcısı kullanımdan kaldırıldı: GitHub Models 30 Temmuz 2026 tarihinde kapandı. Model ayarlarından başka bir sağlayıcı seçin. GitHub Copilot CLI, cli/copilot olarak kullanılabilir.",
-  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "Bir CLI sağlayıcısı kullan: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi, devin (--model cli/<provider> ile eşdeğer). Belirtilmezse CLI etkin otomatik seçim kullanılır."
+  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.grok.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "Bir CLI sağlayıcısı kullan: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi, devin, grok (--model cli/<provider> ile eşdeğer). Belirtilmezse CLI etkin otomatik seçim kullanılır."
 }

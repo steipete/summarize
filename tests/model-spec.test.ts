@@ -237,4 +237,21 @@ describe("model spec parsing", () => {
   it("rejects empty ollama model id", () => {
     expect(() => parseRequestedModelId("ollama/")).toThrow(/missing the model id/);
   });
+  it("uses the grok runtime default model and accepts model suffixes", () => {
+    const runtimeDefault = parseRequestedModelId("cli/grok");
+    expect(runtimeDefault.kind).toBe("fixed");
+    expect(runtimeDefault.transport).toBe("cli");
+    expect(runtimeDefault.userModelId).toBe("cli/grok");
+    expect(runtimeDefault.cliProvider).toBe("grok");
+    expect(runtimeDefault.cliModel).toBeNull();
+    expect(runtimeDefault.requiredEnv).toBe("CLI_GROK");
+
+    const explicitModel = parseRequestedModelId("cli/grok/grok-4.6");
+    expect(explicitModel.kind).toBe("fixed");
+    expect(explicitModel.transport).toBe("cli");
+    expect(explicitModel.userModelId).toBe("cli/grok/grok-4.6");
+    expect(explicitModel.cliProvider).toBe("grok");
+    expect(explicitModel.cliModel).toBe("grok-4.6");
+    expect(explicitModel.requiredEnv).toBe("CLI_GROK");
+  });
 });

@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {Bu medya bağımsız modda yazıya dökülemedi: {error}. Daha geniş medya desteği için Çalışma zamanı ayarını Daemon olarak değiştirin.} noTranscript {Bağımsız modda transkript metni bulunamadı. Daha geniş medya desteği için Çalışma zamanı ayarını Daemon olarak değiştirin.} other {Bağımsız modda okunabilir metin bulunamadı. Sayfayı yeniden yükleyin veya URL’den çıkarma için Çalışma zamanı ayarını Daemon olarak değiştirin.}}",
   "error.daemonSlidesToken": "Daemon slaytları için bir daemon token’ı gereklidir. Daemon’a bağlanmak için Ayarlar’ı açın.",
   "model.placeholder": "{hints}{hasLocal, select, true { / yerel: openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Virgülle ayrılmış sağlayıcılar (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "Virgülle ayrılmış sağlayıcılar (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin, grok)."
 }

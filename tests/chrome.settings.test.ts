@@ -206,15 +206,16 @@ describe("chrome/settings", () => {
     await saveSettings({
       ...defaultSettings,
       autoCliFallback: false,
-      autoCliOrder: " GeMiNi,openclaw,opencode,copilot,agy,pi,devin,unknown,CLAUDE,gemini,COPILOT ",
+      autoCliOrder:
+        " GeMiNi,openclaw,opencode,copilot,agy,pi,devin,grok,unknown,CLAUDE,gemini,COPILOT ",
     });
 
     const raw = storage.settings as Record<string, unknown>;
     expect(raw.autoCliFallback).toBe(false);
-    expect(raw.autoCliOrder).toBe("gemini,openclaw,opencode,copilot,agy,pi,devin,claude");
+    expect(raw.autoCliOrder).toBe("gemini,openclaw,opencode,copilot,agy,pi,devin,grok,claude");
 
     const loaded = await loadSettings();
     expect(loaded.autoCliFallback).toBe(false);
-    expect(loaded.autoCliOrder).toBe("gemini,openclaw,opencode,copilot,agy,pi,devin,claude");
+    expect(loaded.autoCliOrder).toBe("gemini,openclaw,opencode,copilot,agy,pi,devin,grok,claude");
   });
 });

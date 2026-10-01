@@ -34,6 +34,7 @@ type ModelPickerProviders = {
   cliAgy: boolean;
   cliPi: boolean;
   cliDevin: boolean;
+  cliGrok: boolean;
 };
 
 function modelOption(
@@ -70,6 +71,7 @@ const CLI_PICKER_OPTIONS = [
   { provider: "agy", status: "cliAgy", id: "cli/agy", name: "Antigravity (agy)" },
   { provider: "pi", status: "cliPi", id: "cli/pi", name: "pi" },
   { provider: "devin", status: "cliDevin", id: "cli/devin", name: "Devin" },
+  { provider: "grok", status: "cliGrok", id: "cli/grok", name: "Grok" },
 ] as const satisfies ReadonlyArray<{
   provider: CliProvider;
   status: keyof ModelPickerProviders;
@@ -226,6 +228,7 @@ export async function buildModelPickerOptions({
     cliAgy: false,
     cliPi: false,
     cliDevin: false,
+    cliGrok: false,
   };
   const cliAvailability = resolveCliAvailability({ env: envForRun, config: configForCli });
 

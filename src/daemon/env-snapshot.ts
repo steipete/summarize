@@ -53,6 +53,10 @@ const ENV_KEYS = [
   "XDG_CONFIG_HOME",
   "XDG_DATA_HOME",
   "WINDSURF_API_KEY",
+  "PI_PATH",
+  "GROK_PATH",
+  "CODEX_HOME",
+  "GROK_HOME",
   "UVX_PATH",
 ] as const;
 

@@ -345,4 +345,29 @@ describe("run model selection", () => {
       }),
     ).toThrow(/unsupported model config/);
   });
+  it("resolves provider-default grok CLI ids through summarize config", () => {
+    const config = {
+      cli: {
+        grok: {
+          model: "grok-4.6",
+        },
+      },
+    };
+
+    const result = resolveModelSelection({
+      config,
+      configForCli: config,
+      configPath: null,
+      envForRun: {},
+      explicitModelArg: "cli/grok",
+    });
+
+    expect(result.requestedModel.kind).toBe("fixed");
+    expect(result.requestedModel.userModelId).toBe("cli/grok/grok-4.6");
+    expect(result.requestedModelLabel).toBe("cli/grok/grok-4.6");
+    if (result.requestedModel.kind === "fixed" && result.requestedModel.transport === "cli") {
+      expect(result.requestedModel.cliProvider).toBe("grok");
+      expect(result.requestedModel.cliModel).toBe("grok-4.6");
+    }
+  });
 });

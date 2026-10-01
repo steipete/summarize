@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {Не удалось расшифровать медиа без фоновой службы: {error}. Выберите «Фоновая служба» в разделе «Выполнение» для более широкой поддержки медиа.} noTranscript {Без фоновой службы текст расшифровки недоступен. Выберите «Фоновая служба» в разделе «Выполнение» для более широкой поддержки медиа.} other {Без фоновой службы читаемый текст недоступен. Перезагрузите страницу или выберите «Фоновая служба» в разделе «Выполнение» для извлечения по URL.}}",
   "error.daemonSlidesToken": "Для слайдов через фоновую службу нужен её токен. Откройте настройки, чтобы подключить фоновую службу.",
   "model.placeholder": "{hints}{hasLocal, select, true { / локально: openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Провайдеры через запятую (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "Провайдеры через запятую (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin, grok)."
 }

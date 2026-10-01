@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {Impossibile trascrivere questo contenuto multimediale in modalità autonoma: {error}. Scegli Daemon in Esecuzione per un supporto multimediale più ampio.} noTranscript {Nessun testo di trascrizione disponibile in modalità autonoma. Scegli Daemon in Esecuzione per un supporto multimediale più ampio.} other {Nessun testo leggibile disponibile in modalità autonoma. Ricarica la pagina o scegli Daemon in Esecuzione per l’estrazione da URL.}}",
   "error.daemonSlidesToken": "Le diapositive tramite daemon richiedono un token. Apri le Impostazioni per connettere il daemon.",
   "model.placeholder": "{hints}{hasLocal, select, true { / locale: openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Fornitori separati da virgole (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "Fornitori separati da virgole (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin, grok)."
 }

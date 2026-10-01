@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {Deze media konden niet zonder daemon worden getranscribeerd: {error}. Kies Daemon bij Uitvoering voor uitgebreidere mediaondersteuning.} noTranscript {Geen transcripttekst beschikbaar zonder daemon. Kies Daemon bij Uitvoering voor uitgebreidere mediaondersteuning.} other {Geen leesbare tekst beschikbaar zonder daemon. Laad de pagina opnieuw of kies Daemon bij Uitvoering voor URL-extractie.}}",
   "error.daemonSlidesToken": "Dia’s via de daemon vereisen een daemontoken. Open Instellingen om de daemon te verbinden.",
   "model.placeholder": "{hints}{hasLocal, select, true { / lokaal: openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Aanbieders gescheiden door komma’s (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "Aanbieders gescheiden door komma’s (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin, grok)."
 }

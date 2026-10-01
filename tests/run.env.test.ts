@@ -97,12 +97,21 @@ describe("run/env", () => {
       provider: "devin",
       model: "swe-2-max",
     });
+    expect(parseCliUserModelId("cli/grok/grok-4.6")).toEqual({
+      provider: "grok",
+      model: "grok-4.6",
+    });
+    expect(parseCliUserModelId("cli/grok")).toEqual({
+      provider: "grok",
+      model: null,
+    });
     expect(parseCliProviderArg("  AGENT ")).toBe("agent");
     expect(parseCliProviderArg(" openclaw ")).toBe("openclaw");
     expect(parseCliProviderArg(" opencode ")).toBe("opencode");
     expect(parseCliProviderArg(" agy ")).toBe("agy");
     expect(parseCliProviderArg(" pi ")).toBe("pi");
     expect(parseCliProviderArg(" devin ")).toBe("devin");
+    expect(parseCliProviderArg(" Grok ")).toBe("grok");
   });
 
   it("detects OpenCode availability from PATH and respects cli.enabled", () => {

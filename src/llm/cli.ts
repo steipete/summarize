@@ -3,6 +3,7 @@ import type { CliConfig, CliProvider } from "../config.js";
 import type { ExecFileFn } from "../markitdown.js";
 import { runCodexCli } from "./cli-runners/codex.js";
 import { runDevinCli } from "./cli-runners/devin.js";
+import { runGrokCli } from "./cli-runners/grok.js";
 import { runJsonCli } from "./cli-runners/json.js";
 import { runOpenClawCli } from "./cli-runners/openclaw.js";
 import { runOpenCodeCli } from "./cli-runners/opencode.js";
@@ -21,6 +22,7 @@ const DEFAULT_BINARIES: Record<CliProvider, string> = {
   agy: "agy",
   pi: "pi",
   devin: "devin",
+  grok: "grok",
 };
 
 const PROVIDER_PATH_ENV: Record<CliProvider, string> = {
@@ -34,6 +36,7 @@ const PROVIDER_PATH_ENV: Record<CliProvider, string> = {
   agy: "AGY_PATH",
   pi: "PI_PATH",
   devin: "DEVIN_PATH",
+  grok: "GROK_PATH",
 };
 
 type RunCliModelOptions = {
@@ -130,5 +133,6 @@ export async function runCliModel({
   if (provider === "agy") return await runAgyCli(options);
   if (provider === "pi") return await runPiCli(options);
   if (provider === "devin") return await runDevinCli(options);
+  if (provider === "grok") return await runGrokCli(options);
   return await runJsonCli(provider, options);
 }

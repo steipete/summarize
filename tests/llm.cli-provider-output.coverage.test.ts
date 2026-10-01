@@ -18,6 +18,7 @@ describe("CLI provider output parser coverage", () => {
       "agy",
       "pi",
       "devin",
+      "grok",
     ] as const) {
       expect(isJsonCliProvider(provider)).toBe(false);
     }

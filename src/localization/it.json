@@ -258,5 +258,5 @@
   "service.cliBuildMissing": "CLI compilata non trovata in {paths}. Esegui prima «pnpm build:cli» (o «pnpm build»), oppure passa --dev per installare un daemon di sviluppo.",
   "service.healthUnreachable": "Daemon non raggiungibile su {address}",
   "error.githubModelsRetired": "Il provider github-copilot è stato ritirato: GitHub Models è stato disattivato il 30 luglio 2026. Scegli un altro provider nelle impostazioni del modello. GitHub Copilot CLI resta disponibile come cli/copilot.",
-  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "Usa un fornitore CLI: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi, devin (equivale a --model cli/<provider>). Se omesso, selezione automatica con CLI abilitata."
+  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.grok.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "Usa un fornitore CLI: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi, devin, grok (equivale a --model cli/<provider>). Se omesso, selezione automatica con CLI abilitata."
 }

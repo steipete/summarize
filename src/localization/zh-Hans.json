@@ -258,5 +258,5 @@
   "service.cliBuildMissing": "在 {paths} 找不到构建后的 CLI。请先运行“pnpm build:cli”（或“pnpm build”），或使用 --dev 安装开发版守护进程。",
   "service.healthUnreachable": "无法连接 {address} 上的守护进程",
   "error.githubModelsRetired": "github-copilot 提供商已停用：GitHub Models 已于 2026 年 7 月 30 日关闭。请在模型设置中选择其他提供商。GitHub Copilot CLI 仍可通过 cli/copilot 使用。",
-  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "使用 CLI 提供商：claude、gemini、codex、agent、openclaw、opencode、copilot、agy、pi、devin（等同于 --model cli/<provider>）。省略提供商时，会在包含 CLI 的范围内自动选择。"
+  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.grok.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "使用 CLI 提供商：claude、gemini、codex、agent、openclaw、opencode、copilot、agy、pi、devin、grok（等同于 --model cli/<provider>）。省略提供商时，会在包含 CLI 的范围内自动选择。"
 }

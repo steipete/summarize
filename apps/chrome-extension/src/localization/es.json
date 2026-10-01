@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {No se pudo transcribir este archivo multimedia en modo independiente: {error}. Elija Daemon en Ejecución para ampliar la compatibilidad multimedia.} noTranscript {No había texto de transcripción disponible en modo independiente. Elija Daemon en Ejecución para ampliar la compatibilidad multimedia.} other {No había texto legible disponible en modo independiente. Recargue la página o elija Daemon en Ejecución para extraer por URL.}}",
   "error.daemonSlidesToken": "Las diapositivas mediante el daemon requieren un token. Abra Ajustes para conectar el daemon.",
   "model.placeholder": "{hints}{hasLocal, select, true { / local: openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Proveedores separados por comas (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "Proveedores separados por comas (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin, grok)."
 }

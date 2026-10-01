@@ -169,6 +169,7 @@ describe("config section parser coverage", () => {
             agy: provider,
             pi: provider,
             devin: provider,
+            grok: provider,
             autoFallback: {
               enabled: false,
               onlyWhenNoApiKeys: false,

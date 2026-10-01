@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {Diese Mediendatei konnte ohne Daemon nicht transkribiert werden: {error}. Wählen Sie unter Ausführung die Option Daemon, um weitere Medienformate zu unterstützen.} noTranscript {Ohne Daemon war kein Transkript verfügbar. Wählen Sie unter Ausführung die Option Daemon, um weitere Medienformate zu unterstützen.} other {Ohne Daemon war kein lesbarer Text verfügbar. Laden Sie die Seite neu oder wählen Sie unter Ausführung die Option Daemon für die Extraktion per URL.}}",
   "error.daemonSlidesToken": "Für Folien über den Daemon wird ein Daemon-Token benötigt. Öffnen Sie die Einstellungen, um den Daemon zu verbinden.",
   "model.placeholder": "{hints}{hasLocal, select, true { / lokal: openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "Anbieter durch Kommas getrennt (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "Anbieter durch Kommas getrennt (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin, grok)."
 }

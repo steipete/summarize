@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {독립 실행 모드에서 이 미디어를 전사하지 못했습니다: {error}. 더 폭넓은 미디어 지원을 위해 실행 환경에서 데몬을 선택하세요.} noTranscript {독립 실행 모드에서 사용할 수 있는 녹취록 텍스트가 없습니다. 더 폭넓은 미디어 지원을 위해 실행 환경에서 데몬을 선택하세요.} other {독립 실행 모드에서 읽을 수 있는 텍스트가 없습니다. 페이지를 새로고침하거나 URL 추출을 위해 실행 환경에서 데몬을 선택하세요.}}",
   "error.daemonSlidesToken": "데몬 슬라이드에는 데몬 토큰이 필요합니다. 설정을 열어 데몬을 연결하세요.",
   "model.placeholder": "{hints}{hasLocal, select, true { / 로컬: openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "쉼표로 구분한 제공업체 (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin)."
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "쉼표로 구분한 제공업체 (claude, gemini, codex, agent, openclaw, opencode, copilot, pi, agy, devin, grok)."
 }

@@ -428,5 +428,5 @@
   "error.standalone": "{kind, select, failed {単独動作モードではこのメディアを文字起こしできませんでした: {error}。「実行環境」で「デーモン」を選ぶと、より多くのメディアに対応できます。} noTranscript {単独動作モードでは文字起こしテキストを取得できませんでした。「実行環境」で「デーモン」を選ぶと、より多くのメディアに対応できます。} other {単独動作モードでは読み取り可能なテキストを取得できませんでした。ページを再読み込みするか、「実行環境」で「デーモン」を選んで URL から抽出してください。}}",
   "error.daemonSlidesToken": "デーモンによるスライド処理にはデーモントークンが必要です。設定を開いてデーモンに接続してください。",
   "model.placeholder": "{hints}{hasLocal, select, true { / ローカル: openai/<id>} other {}}",
-  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin": "プロバイダーをコンマ区切りで指定します（claude、gemini、codex、agent、openclaw、opencode、copilot、pi、agy、devin）。"
+  "comma.separated.providers.claude.gemini.codex.agent.openclaw.opencode.copilot.pi.agy.devin.grok": "プロバイダーをコンマ区切りで指定します（claude、gemini、codex、agent、openclaw、opencode、copilot、pi、agy、devin、grok）。"
 }

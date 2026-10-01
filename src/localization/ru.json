@@ -258,5 +258,5 @@
   "service.cliBuildMissing": "Собранный CLI не найден по путям {paths}. Сначала выполните «pnpm build:cli» (или «pnpm build») либо укажите --dev для установки службы разработки.",
   "service.healthUnreachable": "Фоновая служба недоступна по адресу {address}",
   "error.githubModelsRetired": "Провайдер github-copilot больше не поддерживается: GitHub Models закрыт 30 июля 2026 года. Выберите другого провайдера в настройках модели. GitHub Copilot CLI по-прежнему доступен как cli/copilot.",
-  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "Использовать CLI-провайдера: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi, devin (эквивалент --model cli/<provider>). Если не указан, используется автоматический выбор с включённым CLI."
+  "use.a.cli.provider.claude.gemini.codex.agent.openclaw.opencode.copilot.agy.pi.devin.grok.equivalent.to.model.cli.provider.if.omitted.use.auto.selection.with.cli.enabled": "Использовать CLI-провайдера: claude, gemini, codex, agent, openclaw, opencode, copilot, agy, pi, devin, grok (эквивалент --model cli/<provider>). Если не указан, используется автоматический выбор с включённым CLI."
 }

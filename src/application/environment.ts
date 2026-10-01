@@ -52,6 +52,7 @@ export function resolveCliAvailability({
     "agy",
     "pi",
     "devin",
+    "grok",
   ];
   const availability: Partial<Record<CliProvider, boolean>> = {};
   for (const provider of providers) {

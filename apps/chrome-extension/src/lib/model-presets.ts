@@ -69,6 +69,7 @@ export function createModelPresetsController({
               ["cliAgy", "cli/agy"],
               ["cliPi", "cli/pi"],
               ["cliDevin", "cli/devin"],
+              ["cliGrok", "cli/grok"],
             ]
           : []),
       ];

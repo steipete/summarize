@@ -66,16 +66,19 @@ describe("daemon /v1/models", () => {
     const copilotPath = path.join(binDir, "copilot");
     const piPath = path.join(binDir, "pi");
     const devinPath = path.join(binDir, "devin");
+    const grokPath = path.join(binDir, "grok");
     writeFileSync(claudePath, "#!/bin/sh\nexit 0\n", "utf8");
     writeFileSync(opencodePath, "#!/bin/sh\nexit 0\n", "utf8");
     writeFileSync(copilotPath, "#!/bin/sh\nexit 0\n", "utf8");
     writeFileSync(piPath, "#!/bin/sh\nexit 0\n", "utf8");
     writeFileSync(devinPath, "#!/bin/sh\nexit 0\n", "utf8");
+    writeFileSync(grokPath, "#!/bin/sh\nexit 0\n", "utf8");
     chmodSync(claudePath, 0o755);
     chmodSync(opencodePath, 0o755);
     chmodSync(copilotPath, 0o755);
     chmodSync(piPath, 0o755);
     chmodSync(devinPath, 0o755);
+    chmodSync(grokPath, 0o755);
 
     const result = await buildModelPickerOptions({
       env: {},
@@ -90,11 +93,13 @@ describe("daemon /v1/models", () => {
     expect(result.providers.cliCopilot).toBe(true);
     expect(result.providers.cliPi).toBe(true);
     expect(result.providers.cliDevin).toBe(true);
+    expect(result.providers.cliGrok).toBe(true);
     expect(result.options.some((o) => o.id === "cli/claude")).toBe(true);
     expect(result.options.some((o) => o.id === "cli/opencode")).toBe(true);
     expect(result.options.some((o) => o.id === "cli/copilot")).toBe(true);
     expect(result.options.some((o) => o.id === "cli/pi")).toBe(true);
     expect(result.options.some((o) => o.id === "cli/devin")).toBe(true);
+    expect(result.options.some((o) => o.id === "cli/grok")).toBe(true);
   });
 
   it("includes Ollama models when OLLAMA_BASE_URL is set", async () => {

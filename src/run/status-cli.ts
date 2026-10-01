@@ -53,6 +53,7 @@ const CLI_PROVIDERS: Array<{ id: CliProvider; label: string }> = [
   { id: "agy", label: "Antigravity CLI" },
   { id: "pi", label: "Pi CLI" },
   { id: "devin", label: "Devin CLI" },
+  { id: "grok", label: "Grok CLI" },
 ];
 
 const API_STATUS_PROVIDERS = [

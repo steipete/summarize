@@ -416,7 +416,7 @@ Examples:
 ```json
 {
   "cli": {
-    "enabled": ["gemini", "agent", "openclaw", "opencode", "copilot", "agy", "pi", "devin"],
+    "enabled": ["gemini", "agent", "openclaw", "opencode", "copilot", "agy", "pi", "devin", "grok"],
     "autoFallback": {
       "enabled": true,
       "onlyWhenNoApiKeys": true,
@@ -430,7 +430,8 @@ Examples:
     "copilot": { "binary": "/usr/local/bin/copilot", "model": "gpt-5.2" },
     "agy": { "binary": "/usr/local/bin/agy" },
     "pi": { "binary": "/usr/local/bin/pi" },
-    "devin": { "binary": "/usr/local/bin/devin" }
+    "devin": { "binary": "/usr/local/bin/devin" },
+    "grok": { "binary": "/usr/local/bin/grok", "model": "grok-4.6" }
   }
 }
 ```
@@ -440,12 +441,14 @@ Notes:
 - `cli.enabled` is an allowlist (and order) for auto + explicit CLI model ids.
 - `cli.autoFallback` controls implicit-auto CLI fallback when `cli.enabled` is not set.
 - Default auto fallback order: `claude, gemini, codex, agent, openclaw, opencode, copilot`.
-- Antigravity, pi, and devin are opt-in unless added to `cli.autoFallback.order`.
+- Antigravity, pi, devin, and Grok are opt-in unless added to `cli.autoFallback.order`.
 - Auto fallback stores the last successful provider in `~/.summarize/cli-state.json` and prioritizes it on the next run.
 - `cli.<provider>.binary` overrides CLI binary discovery.
 - `cli.<provider>.extraArgs` appends extra CLI args.
 - Antigravity CLI uses the active agy session model; `cli.agy.model` is ignored by runtime selection.
 - pi CLI runs `pi --print --mode json`, passes extracted content over stdin, and accepts configured or per-call models; use `PI_PATH` to override binary.
+- Grok CLI runs `grok --prompt-file <file> --output-format json` in a tool-restricted sandbox for text summaries, accepts configured or per-call models, and reports token usage and cost; use `GROK_PATH` to override binary. Requires `grok login` or `XAI_API_KEY`; run `grok models` to list valid model ids.
+- `cli.grok.isolated` defaults to `true` for normal summaries, adding a temporary cwd, a restricted toolset, `--sandbox strict`, and a temporary `GROK_HOME` that carries `auth.json` only. Set it to `false` only when local Grok config/hooks/sessions are intentional.
 - `cli.codex.isolated` defaults to `true` for normal summaries, adding Codex ephemeral/no-user-config/no-rules flags, a temporary cwd, and a sanitized temporary `CODEX_HOME` that carries auth only. Set it to `false` only when local Codex config/rules are intentional.
 - Devin CLI runs `devin --print --prompt-file <file> --export <atif>`, and accepts configured or per-call models; use `DEVIN_PATH` to override binary. `cli.devin.isolated` defaults to `true` for normal summaries: a temporary cwd plus fabricated `XDG_CONFIG_HOME`/`XDG_DATA_HOME` carrying only `credentials.toml` and a merged `config.json` (tools denied, plugins/subagents/hooks disabled, other-agent rule imports suppressed). Usage is read from the ATIF export (no USD cost). Set it to `false` only when local Devin config/sessions are intentional.
 - In `cli.devin.extraArgs`, supported overrides replace managed defaults because Devin rejects duplicate flags. `--export` is reserved and rejected in every form: Summarize owns a private result file per run so overlapping summaries cannot share output. `--prompt-file` replaces the generated prompt entirely, and `--config` is rejected while `isolated` is on because it would replace the hardened config. See the [CLI guide](cli.md) for workspace trust and temporary-directory requirements.

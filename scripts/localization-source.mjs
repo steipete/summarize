@@ -208,6 +208,7 @@ function technicalToken(value) {
       "Antigravity CLI",
       "Pi CLI",
       "Devin CLI",
+      "Grok CLI",
       "ONNX (Parakeet/Canary)",
       "yt-dlp",
     ].includes(text) ||
