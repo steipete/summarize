@@ -6,6 +6,7 @@ settings:
 
 overrides:
   adm-zip: 0.6.1
+  brace-expansion@^1.0.0: 1.1.21
   image-size: 2.0.4
   js-yaml@^4.0.0: 4.3.2
   nanoid: 3.3.19
@@ -1683,8 +1684,8 @@ packages:
   bpe-lite@0.5.2:
     resolution: {integrity: sha512-gyQ+nptbm7OIWuCBxtE/8a0f0oQk0OEe6rRCnBGvGtLgwZrKj8qUt7A+EENU9wOjZbDtD2W4rwFEkQ1LRxkVJQ==}
 
-  brace-expansion@1.1.18:
-    resolution: {integrity: sha512-Edep/X9fGqVNmzKBVsDYIOtD+z1tuezV70LBjdCst9Tqu76lsnvRiZ6oTic1n+/BIwX6QDGAO94PN4N2SADvtw==}
+  brace-expansion@1.1.21:
+    resolution: {integrity: sha512-9zeA+KLZNNzglF2TPKRQEDyx6Yby7daAkuy8MiPzpXPsYDWi/DRM8jmwUDxokQjYqBpv5DgPiwD4h4ZZSy1Ujw==}
 
   buffer-equal-constant-time@1.0.1:
     resolution: {integrity: sha512-zRpUiDwd/xk6ADqPMATG8vc9VPrkck7T07OIx0gnjmJAnHnTVXNQG3vfvWNuiZIkwu9KrKdA1iJKfsfTVxE6NA==}
@@ -4826,7 +4827,7 @@ snapshots:
 
   bpe-lite@0.5.2: {}
 
-  brace-expansion@1.1.18:
+  brace-expansion@1.1.21:
     dependencies:
       balanced-match: 1.0.2
       concat-map: 0.0.1
@@ -5788,7 +5789,7 @@ snapshots:
 
   minimatch@3.1.5:
     dependencies:
-      brace-expansion: 1.1.18
+      brace-expansion: 1.1.21
 
   minimist@1.2.8: {}
 

@@ -12,6 +12,7 @@ minimumReleaseAge: 10080
 
 overrides:
   adm-zip: 0.6.1
+  "brace-expansion@^1.0.0": 1.1.21
   image-size: 2.0.4
   "js-yaml@^4.0.0": 4.3.2
   nanoid: 3.3.19
