@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # summarize release helper
-# Phases: gates | build | bun | chrome | firefox | verify | publish | smoke | promote | tag | github | homebrew | deprecate | all
+# Phases: gates | build | bun | chrome | firefox | verify | publish | publish-cli | smoke | promote | tag | github | homebrew | deprecate | all
 
 # npm@11 warns on unknown env configs; keep CI/logs clean.
 unset npm_config_manage_package_manager_versions || true
@@ -196,6 +196,7 @@ phase_verify_pack() {
     echo "Installed package FFmpeg WebAssembly fallback produced no slides."
     exit 1
   fi
+  VERIFIED_CORE_TARBALL="$core_tarball"
   echo "ok"
 }
 
@@ -248,6 +249,30 @@ phase_publish() {
   ensure_npm_version_absent "@steipete/summarize" "${version}"
   phase_verify_pack
   publish_package -C packages/core publish --tag next --access public
+  publish_package publish --tag next --access public
+  phase_smoke
+  phase_promote_latest
+}
+
+phase_publish_cli() {
+  banner "Resume CLI publish"
+  require_clean_git
+  require_lockstep_versions
+  require_npm_auth
+  local version expected_integrity published_integrity
+  version="$(package_version)"
+  ensure_npm_version_absent "@steipete/summarize" "${version}"
+  phase_verify_pack
+  expected_integrity="$(node -e '
+    const fs = require("node:fs");
+    const crypto = require("node:crypto");
+    console.log("sha512-" + crypto.createHash("sha512").update(fs.readFileSync(process.argv[1])).digest("base64"));
+  ' "$VERIFIED_CORE_TARBALL")"
+  published_integrity="$(npm view "@steipete/summarize-core@${version}" dist.integrity)"
+  if [ "$published_integrity" != "$expected_integrity" ]; then
+    echo "Published @steipete/summarize-core@${version} does not match the verified local tarball; refusing to resume."
+    exit 1
+  fi
   publish_package publish --tag next --access public
   phase_smoke
   phase_promote_latest
@@ -392,6 +417,7 @@ case "$PHASE" in
   bun) phase_bun ;;
   verify) phase_verify_pack ;;
   publish) phase_publish ;;
+  publish-cli) phase_publish_cli ;;
   smoke) phase_smoke ;;
   promote) phase_promote_latest ;;
   deprecate) phase_deprecate ;;
@@ -416,6 +442,7 @@ case "$PHASE" in
     echo "  bun       build + smoke Bun release tarballs"
     echo "  verify    pack + install tarball + --help"
     echo "  publish   pnpm publish --tag next, smoke exact version, then promote latest"
+    echo "  publish-cli resume after core publish, requiring identical verified core bytes"
     echo "  smoke     npm exact-version metadata + pnpm dlx --version/--help"
     echo "  promote   npm dist-tag add current version as latest"
     echo "  deprecate deprecate @steipete/summarize@BAD_VERSION"

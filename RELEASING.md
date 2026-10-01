@@ -58,6 +58,7 @@ Homebrew/core autobumps independently. Do not block a completed release on that 
      ```
    - This publishes core first, then CLI, both with `pnpm publish --tag next`. The CLI's prepublish guard refuses to proceed until that exact core version is visible on npm.
    - It blocks raw `npm publish` via `prepublishOnly`, verifies tarball metadata has no `workspace:*`, smokes the exact version with `pnpm dlx`, and only then promotes both packages to `latest`.
+   - If core published but the CLI was blocked before upload while npm propagated the new version, resume with `scripts/release.sh publish-cli`. It verifies the packages again, requires the published core integrity to match the local tarball exactly, publishes only the missing CLI version, then smokes and promotes both packages. Use a clean checkout of the same source; a changed core package is refused.
    - If exact-version smoke fails, do not tag or create a GitHub Release. Deprecate the broken CLI version and ship a patch:
      ```bash
      BAD_VERSION=<bad-version> DEPRECATE_MESSAGE="Broken package metadata. Use a newer version." scripts/release.sh deprecate
@@ -102,7 +103,7 @@ Notes:
 - `scripts/release.sh publish` uses `next` first, then exact-version smoke, then `latest`. The annotated tag comes after that smoke passes; CI owns the GitHub Release.
 - `prepare` runs `pnpm build` automatically during publish.
 
-Helper: `scripts/release.sh` (phases: `gates|build|bun|chrome|firefox|verify|publish|smoke|promote|tag|github|homebrew|deprecate|all`).
+Helper: `scripts/release.sh` (phases: `gates|build|bun|chrome|firefox|verify|publish|publish-cli|smoke|promote|tag|github|homebrew|deprecate|all`).
 
 ## Homebrew (Bun-compiled binary w/ bytecode) - details
 

@@ -32,6 +32,9 @@ summary: "Release checklist, Chrome Web Store submission, and Homebrew/core veri
 
 ## Common failure
 
+- Core npm publication succeeded, but the CLI guard could not yet see that version.
+  Once npm exposes the core version, run `scripts/release.sh publish-cli` from the clean verified checkout. Recovery requires an exact integrity match for the published core tarball before publishing the missing CLI, then runs smoke checks and promotes both packages.
+
 - NPM/GitHub release updated, but Homebrew/core still serves the old version.
   Expected while autobump is pending. Do not manually update the formula or block the release; step 4 can verify it later.
 - GitHub Release contains the extension ZIP, but the Chrome Web Store still serves an old version.

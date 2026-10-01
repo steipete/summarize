@@ -12,6 +12,7 @@
 - OpenAI: support GPT-6.1 Sol (`openai/gpt-6.1-sol`) with pricing and model-picker entries, omit its unsupported `temperature` parameter, and reject its unsupported `--thinking none` before sending a request (#500, thanks @zackleman).
 - Maintenance: refresh stabilized provider, network, browser media, localization, and development dependencies while retaining Node 24 and the seven-day adoption hold.
 - Browser media: update MediaBunny to 1.59.1 after its seven-day stabilization hold.
+- Release: safely resume CLI publication after npm core propagation delays by verifying the existing core tarball integrity before continuing.
 
 ## 0.24.0 - 2026-09-25
 
