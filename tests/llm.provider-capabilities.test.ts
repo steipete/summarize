@@ -154,6 +154,9 @@ describe("llm provider capabilities", () => {
       "NVIDIA_API_KEY",
     );
     expect(resolveRequiredEnvForModelId("minimax/MiniMax-M3")).toBe("MINIMAX_API_KEY");
+    expect(resolveRequiredEnvForModelId("cheaperinference/gpt-5.4-mini")).toBe(
+      "CHEAPER_INFERENCE_API_KEY",
+    );
     expect(resolveRequiredEnvForModelId("ollama/qwen3:14b")).toBe("OLLAMA_BASE_URL");
 
     expect(

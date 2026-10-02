@@ -1,5 +1,9 @@
 import type { Api, Context, Model } from "@earendil-works/pi-ai";
-import { DEFAULT_MINIMAX_BASE_URL, DEFAULT_OLLAMA_BASE_URL } from "../provider-registry.js";
+import {
+  DEFAULT_CHEAPER_INFERENCE_BASE_URL,
+  DEFAULT_MINIMAX_BASE_URL,
+  DEFAULT_OLLAMA_BASE_URL,
+} from "../provider-registry.js";
 import {
   createSyntheticModel,
   resolveBaseUrlOverride,
@@ -121,6 +125,28 @@ export function resolveMinimaxModel({
   };
 }
 
+export function resolveCheaperInferenceModel({
+  modelId,
+  context,
+  openaiBaseUrlOverride,
+}: {
+  modelId: string;
+  context: Context;
+  openaiBaseUrlOverride?: string | null;
+}): Model<Api> {
+  const allowImages = wantsImages(context);
+  // Cheaper Inference is an OpenAI-compatible gateway; treat it like an OpenAI gateway.
+  const base = tryGetModel("openai", modelId);
+  const api = "openai-completions";
+  const baseUrl = openaiBaseUrlOverride ?? DEFAULT_CHEAPER_INFERENCE_BASE_URL;
+  return {
+    ...(base ?? createSyntheticModel({ provider: "openai", modelId, api, baseUrl, allowImages })),
+    api,
+    baseUrl,
+    input: allowImages ? ["text", "image"] : ["text"],
+  };
+}
+
 export function resolveOllamaModel({
   modelId,
   context,
@@ -149,7 +175,7 @@ export function resolveOpenAiCompatibleGatewayModel({
   context,
   openaiConfig,
 }: {
-  provider: "zai" | "nvidia" | "minimax" | "ollama";
+  provider: "zai" | "nvidia" | "minimax" | "cheaperinference" | "ollama";
   modelId: string;
   context: Context;
   openaiConfig: OpenAiClientConfig;
@@ -169,6 +195,12 @@ export function resolveOpenAiCompatibleGatewayModel({
       });
     case "minimax":
       return resolveMinimaxModel({
+        modelId,
+        context,
+        openaiBaseUrlOverride: openaiConfig.baseURL,
+      });
+    case "cheaperinference":
+      return resolveCheaperInferenceModel({
         modelId,
         context,
         openaiBaseUrlOverride: openaiConfig.baseURL,

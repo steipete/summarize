@@ -154,6 +154,7 @@ Legacy shortcut (still supported):
     "openai": "sk-...",
     "nvidia": "...",
     "minimax": "...",
+    "cheaperinference": "...",
     "groq": "gsk-...",
     "assemblyai": "...",
     "elevenlabs": "...",
@@ -483,6 +484,7 @@ Override API endpoints for any provider to use proxies, gateways, or compatible 
   "xai": { "baseUrl": "https://my-xai-proxy.example.com" },
   "zai": { "baseUrl": "https://api.zhipuai.cn/paas/v4" },
   "minimax": { "baseUrl": "https://api.minimax.io/v1" },
+  "cheaperinference": { "baseUrl": "https://api.cheaperinference.com/v1" },
   "ollama": { "baseUrl": "http://localhost:11434/v1" }
 }
 ```

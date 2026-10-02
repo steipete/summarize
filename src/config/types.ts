@@ -180,6 +180,17 @@ export type MinimaxConfig = {
   baseUrl?: string;
 };
 
+export type CheaperInferenceConfig = {
+  /**
+   * Override the Cheaper Inference OpenAI-compatible API base URL.
+   *
+   * Default: https://api.cheaperinference.com/v1
+   *
+   * Prefer env `CHEAPER_INFERENCE_BASE_URL` when you need per-run overrides.
+   */
+  baseUrl?: string;
+};
+
 export type AutoRule = {
   /**
    * Input kinds this rule applies to.
@@ -287,6 +298,7 @@ export type SummarizeConfig = {
   openai?: OpenAiConfig;
   nvidia?: NvidiaConfig;
   minimax?: MinimaxConfig;
+  cheaperinference?: CheaperInferenceConfig;
   anthropic?: AnthropicConfig;
   google?: GoogleConfig;
   xai?: XaiConfig;

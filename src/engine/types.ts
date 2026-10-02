@@ -11,6 +11,7 @@ export type ModelAttemptRequiredEnv =
   | "OPENROUTER_API_KEY"
   | "Z_AI_API_KEY"
   | "MINIMAX_API_KEY"
+  | "CHEAPER_INFERENCE_API_KEY"
   | "OLLAMA_BASE_URL"
   | "CLI_CLAUDE"
   | "CLI_CODEX"

@@ -19,6 +19,8 @@ export const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434/v1";
 
 export const DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 
+export const DEFAULT_CHEAPER_INFERENCE_BASE_URL = "https://api.cheaperinference.com/v1";
+
 export const GATEWAY_PROVIDER_PROFILES = {
   xai: {
     requiredEnv: "XAI_API_KEY",
@@ -73,6 +75,15 @@ export const GATEWAY_PROVIDER_PROFILES = {
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
     defaultBaseUrl: DEFAULT_MINIMAX_BASE_URL,
+    forceChatCompletions: true,
+  },
+  cheaperinference: {
+    requiredEnv: "CHEAPER_INFERENCE_API_KEY",
+    execution: "openai-compatible",
+    supportsDocuments: false,
+    supportsStreaming: true,
+    supportsVideoUnderstanding: false,
+    defaultBaseUrl: DEFAULT_CHEAPER_INFERENCE_BASE_URL,
     forceChatCompletions: true,
   },
   ollama: {

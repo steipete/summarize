@@ -144,6 +144,7 @@ export const invariantLabels = new Set([
   "Gemini Nano",
   "NVIDIA",
   "MiniMax",
+  "Cheaper Inference",
   "Z.AI",
   "xAI",
   "Ollama",

@@ -31,6 +31,8 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
 - `NVIDIA_BASE_URL` (optional; override NVIDIA OpenAI-compatible API endpoint; default: `https://integrate.api.nvidia.com/v1`)
 - `MINIMAX_API_KEY` (required for `minimax/...` models)
 - `MINIMAX_BASE_URL` (optional; override MiniMax OpenAI-compatible API endpoint; default: `https://api.minimax.io/v1`)
+- `CHEAPER_INFERENCE_API_KEY` (required for `cheaperinference/...` models)
+- `CHEAPER_INFERENCE_BASE_URL` (optional; override Cheaper Inference OpenAI-compatible API endpoint; default: `https://api.cheaperinference.com/v1`)
 - `OPENROUTER_API_KEY` (optional; required for `openrouter/...` models; also used when `OPENAI_BASE_URL` points to OpenRouter)
 - `Z_AI_API_KEY` (required for `zai/...` models; supports `ZAI_API_KEY` alias)
 - `Z_AI_BASE_URL` (optional; override default Z.AI base URL)
@@ -67,6 +69,7 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
     - `openai/gpt-5-nano`
     - `nvidia/z-ai/glm5`
     - `minimax/MiniMax-M3`
+    - `cheaperinference/gpt-5.4-mini`
     - `zai/glm-4.7`
     - `ollama/qwen3:14b`
     - `ollama/llama3.1:8b`

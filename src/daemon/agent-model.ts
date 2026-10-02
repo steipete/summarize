@@ -34,6 +34,7 @@ type AgentApiKeys = {
   zaiApiKey: string | null;
   nvidiaApiKey: string | null;
   minimaxApiKey: string | null;
+  cheaperinferenceApiKey: string | null;
 };
 
 function isCustomOpenAiBaseUrl(baseUrl: string | null): boolean {
@@ -156,6 +157,7 @@ export function resolveApiKeyForModel({
     zai: apiKeys.zaiApiKey,
     nvidia: apiKeys.nvidiaApiKey,
     minimax: apiKeys.minimaxApiKey,
+    cheaperinference: apiKeys.cheaperinferenceApiKey,
     ollama: apiKeys.openaiApiKey ?? "ollama",
   };
   const resolved = gatewayApiKeys[provider];
@@ -230,6 +232,7 @@ export async function resolveAgentModel({
     zaiApiKey,
     nvidiaApiKey,
     minimaxApiKey,
+    cheaperinferenceApiKey,
     envForAuto,
     cliAvailability,
   } = context;
@@ -243,6 +246,7 @@ export async function resolveAgentModel({
     zaiApiKey,
     nvidiaApiKey,
     minimaxApiKey,
+    cheaperinferenceApiKey,
   };
 
   const overrides = resolveRunOverrides({});
@@ -285,7 +289,10 @@ export async function resolveAgentModel({
         }),
       };
     }
-    const providerForPiAi = provider === "nvidia" || provider === "ollama" ? "openai" : provider;
+    const providerForPiAi =
+      provider === "nvidia" || provider === "cheaperinference" || provider === "ollama"
+        ? "openai"
+        : provider;
     const model = resolveModelWithFallback({
       provider: providerForPiAi,
       modelId,

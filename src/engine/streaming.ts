@@ -57,6 +57,7 @@ export function canStream({
     "zai",
     "nvidia",
     "minimax",
+    "cheaperinference",
   ]);
   return streamableProviders.has(provider);
 }

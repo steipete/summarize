@@ -104,7 +104,7 @@ export function supportsStreaming(provider: GatewayProvider): boolean {
 
 export function isOpenAiCompatibleProvider(
   provider: GatewayProvider,
-): provider is "zai" | "nvidia" | "minimax" | "ollama" {
+): provider is "zai" | "nvidia" | "minimax" | "cheaperinference" | "ollama" {
   return getGatewayProviderProfile(provider).execution === "openai-compatible";
 }
 
@@ -163,7 +163,7 @@ export function resolveOpenAiCompatibleClientConfigForProvider({
   forceChatCompletions,
   requestOptions,
 }: {
-  provider: "openai" | "zai" | "nvidia" | "minimax" | "ollama";
+  provider: "openai" | "zai" | "nvidia" | "minimax" | "cheaperinference" | "ollama";
   openaiApiKey: string | null;
   openrouterApiKey: string | null;
   forceOpenRouter?: boolean;

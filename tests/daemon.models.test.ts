@@ -189,6 +189,28 @@ describe("daemon /v1/models", () => {
     expect(result.options.some((o) => o.id === "nvidia/z-ai/glm5")).toBe(true);
   });
 
+  it("includes Cheaper Inference models when CHEAPER_INFERENCE_API_KEY is set", async () => {
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe("https://api.cheaperinference.com/v1/models");
+      expect(init?.headers).toEqual({ authorization: "Bearer ci-test" });
+      return {
+        ok: true,
+        json: async () => ({ data: [{ id: "gpt-5.4-mini" }] }),
+      } as Response;
+    }) as unknown as typeof fetch;
+
+    const result = await buildModelPickerOptions({
+      env: {},
+      envForRun: { CHEAPER_INFERENCE_API_KEY: "ci-test" },
+      configForCli: null,
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.providers.cheaperinference).toBe(true);
+    expect(result.options.some((o) => o.id === "cheaperinference/gpt-5.4-mini")).toBe(true);
+  });
+
   it("discovers MiniMax models when MINIMAX_API_KEY is set", async () => {
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
       expect(url).toBe("https://api.minimax.io/v1/models");
