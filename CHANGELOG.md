@@ -2,6 +2,9 @@
 
 ## 0.25.1 - Unreleased
 
+- Daemon: keep Homebrew daemon and Chrome native-host launchers working across Summarize and Node upgrades by using verified stable `opt` paths.
+- Maintenance: refresh stabilized HTTP, browser media, Node 24 type definitions, and test tooling dependencies.
+
 ## 0.25.0 - 2026-09-30
 
 **Highlights:** Grok and Devin CLI summaries with isolated configuration, new OpenAI model support, and dependency security fixes.

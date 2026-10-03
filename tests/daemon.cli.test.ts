@@ -49,6 +49,10 @@ vi.mock("../src/daemon/cli-entrypoint.js", () => ({
   resolveCliEntrypointPathForService: mocks.resolveCliEntrypointPathForService,
 }));
 
+vi.mock("../src/daemon/service-paths.js", () => ({
+  resolveHomebrewServicePath: async (filePath: string) => filePath,
+}));
+
 vi.mock("../src/daemon/launchd.js", () => ({
   installLaunchAgent: mocks.installLaunchAgent,
   isLaunchAgentLoaded: mocks.isLaunchAgentLoaded,

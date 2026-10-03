@@ -19,6 +19,7 @@ import {
   restartScheduledTask,
   uninstallScheduledTask,
 } from "./schtasks.js";
+import { resolveHomebrewServicePath } from "./service-paths.js";
 import {
   installSystemdService,
   isSystemdServiceEnabled,
@@ -122,7 +123,7 @@ export async function resolveDaemonProgramArguments({
   dev: boolean;
   subcommand?: "run" | "native-host";
 }): Promise<DaemonProgram> {
-  const nodePath = process.execPath;
+  const nodePath = await resolveHomebrewServicePath(process.execPath);
   if (!dev) {
     try {
       const cliEntrypointPath = await resolveCliEntrypointPathForService();

@@ -87,6 +87,9 @@ Dev (repo checkout):
   - Re-run `summarize daemon install --token <TOKEN>` so the Chrome host manifest and launcher are refreshed.
   - Verify `summarize daemon status` reports `Chrome native messaging host: installed`.
   - The host is bound to Web Store ID `cejgnmmhbbpdmjnfppjdfkocebngehfg`; a normal unpacked build has a different ID unless a development host manifest explicitly allows it.
+- “Native host has exited” after a Homebrew upgrade:
+  - Re-run `summarize daemon install --token <TOKEN>` with the existing extension token to refresh both launchers. Restart alone does not rewrite an old installation's paths.
+  - New installations use Homebrew's stable `opt` paths for the CLI and runtime when they select the current keg, so upgrading Summarize or Node does not leave launchers pointing to removed versions.
 
 ## Architecture
 

@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { CliError } from "../locale.js";
+import { resolveHomebrewServicePath } from "./service-paths.js";
 
 function isWindowsShimPath(filePath: string): boolean {
   return /\.(cmd|bat|ps1)$/i.test(filePath);
@@ -62,7 +63,7 @@ export async function resolveCliEntrypointPathForService(): Promise<string> {
   const looksLikeDist = /[/\\]dist[/\\].+\.(cjs|js)$/.test(normalized);
   if (looksLikeDist) {
     await fs.access(normalized);
-    return normalized;
+    return resolveHomebrewServicePath(normalized);
   }
 
   const distCandidates = [
@@ -78,7 +79,7 @@ export async function resolveCliEntrypointPathForService(): Promise<string> {
   for (const candidate of distCandidates) {
     try {
       await fs.access(candidate);
-      return candidate;
+      return resolveHomebrewServicePath(candidate);
     } catch {
       // keep going
     }
