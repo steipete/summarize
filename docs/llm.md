@@ -105,8 +105,8 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
   - If omitted, no max token parameter is sent (provider default).
   - Minimum numeric value: 16.
   - Recommendation: prefer `--length` unless you need a hard cap (some providers count “reasoning” into the cap).
-- `--thinking none|low|medium|high|xhigh`
-  - Sets OpenAI reasoning effort for `openai/...` GPT-5-family models.
+- `--thinking none|low|medium|high|xhigh|max`
+  - Sets reasoning effort for supported `openai/...` models. `max` is supported for GPT-6 Astra, Sol, Luna, and GPT-6.1 Sol; Astra and GPT-6.1 Sol reject `none`.
   - Short aliases: `off`, `min` (low), `mid` / `med`, `x-high`, `extra-high`.
 - `--fast`
   - Shorthand for `--service-tier fast` on OpenAI models.
