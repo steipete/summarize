@@ -19,11 +19,16 @@ export function validateOpenAiReasoningEffort(
   modelId: string,
   options: ModelRequestOptions | undefined,
 ): void {
-  if (provider !== "openai" || options?.reasoningEffort !== "none") return;
+  if (provider !== "openai") return;
   const entry = findOpenAiGpt6Entry(stripOpenAiProviderPrefix(modelId));
-  if (!entry?.requiresReasoning) return;
+  if (options?.reasoningEffort === "max" && !entry) {
+    throw new Error(
+      `--thinking max is supported only for GPT-6 Astra, Sol, Luna, and GPT-6.1 Sol; received ${modelId}.`,
+    );
+  }
+  if (options?.reasoningEffort !== "none" || !entry?.requiresReasoning) return;
   throw new Error(
-    `${entry.name} requires reasoning: --thinking none is unsupported. Use low, medium, high, or xhigh, or choose GPT-6 Sol/Luna.`,
+    `${entry.name} requires reasoning: --thinking none is unsupported. Use low, medium, high, xhigh, or max, or choose GPT-6 Sol/Luna.`,
   );
 }
 

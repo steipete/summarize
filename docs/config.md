@@ -333,7 +333,9 @@ Or per preset:
 }
 ```
 
-`thinking` is an alias for `reasoningEffort`. Supported values: `none`, `low`, `medium`, `high`, `xhigh`; shorthand aliases include `off`, `min` (low), `mid`, `med`, `x-high`, and `extra-high`.
+`thinking` is an alias for `reasoningEffort`. Supported values: `none`, `low`, `medium`, `high`, `xhigh`, `max`; shorthand aliases include `off`, `min` (low), `mid`, `med`, `x-high`, and `extra-high`.
+
+`max` is supported for GPT-6 Astra, Sol, Luna, and GPT-6.1 Sol. Astra and GPT-6.1 Sol reject `none`. These limits apply to global defaults and presets as well as CLI flags.
 
 `serviceTier: "fast"` is the summarize/Codex-facing spelling. Direct OpenAI requests map it to `service_tier="priority"`. CLI `--service-tier default` clears a configured tier for one run.
 

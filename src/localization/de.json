@@ -69,7 +69,7 @@
   "slides.only.mode.with.inline.thumbnails": "reine Folienansicht mit eingebetteten Vorschaubildern",
   "show.configured.and.usable.model.providers": "eingerichtete und nutzbare Modellanbieter anzeigen",
   "extract.slides.for.youtube.direct.video.urls.or.local.video.files.and.render.them.inline.inside.the.summary.narrative.when.supported.combine.with.extract.to.interleave.slides.in.the.full.transcript": "Folien aus YouTube-Videos, direkten Video-URLs oder lokalen Videodateien extrahieren und an passenden Stellen in der Zusammenfassung anzeigen (sofern unterstützt). Mit --extract werden die Folien in das vollständige Transkript eingefügt.",
-  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI-Denkintensität: none, low, medium, high, xhigh (Aliasse: off, min, mid).",
+  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI-Denkintensität: none, low, medium, high, xhigh, max (Aliasse: off, min, mid).",
   "diarize.a.local.recording": "Sprecher in einer lokalen Aufnahme unterscheiden",
   "configure.local.onnx.transcription.parakeet.canary": "lokale ONNX-Transkription einrichten (parakeet/canary)",
   "config.preset": "Voreinstellung aus der Konfiguration",

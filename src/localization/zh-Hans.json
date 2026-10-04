@@ -69,7 +69,7 @@
   "slides.only.mode.with.inline.thumbnails": "带内嵌缩略图的纯幻灯片模式",
   "show.configured.and.usable.model.providers": "显示已配置和可用的模型提供商",
   "extract.slides.for.youtube.direct.video.urls.or.local.video.files.and.render.them.inline.inside.the.summary.narrative.when.supported.combine.with.extract.to.interleave.slides.in.the.full.transcript": "从 YouTube、视频直链或本地视频文件中提取幻灯片，并在支持时插入摘要正文。结合 --extract 可将幻灯片插入完整转录文本。",
-  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI 推理强度：none、low、medium、high、xhigh（别名：off、min、mid）。",
+  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI 推理强度：none、low、medium、high、xhigh、max（别名：off、min、mid）。",
   "diarize.a.local.recording": "区分本地录音中的说话人",
   "configure.local.onnx.transcription.parakeet.canary": "配置本地 ONNX 转录（parakeet/canary）",
   "config.preset": "配置文件中的预设",

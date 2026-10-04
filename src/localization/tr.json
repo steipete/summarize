@@ -69,7 +69,7 @@
   "slides.only.mode.with.inline.thumbnails": "satır içi küçük görsellerle yalnızca slayt modu",
   "show.configured.and.usable.model.providers": "yapılandırılmış ve kullanılabilir model sağlayıcılarını göster",
   "extract.slides.for.youtube.direct.video.urls.or.local.video.files.and.render.them.inline.inside.the.summary.narrative.when.supported.combine.with.extract.to.interleave.slides.in.the.full.transcript": "YouTube/doğrudan video URL'lerinden veya yerel video dosyalarından slaytları çıkarıp (desteklendiğinde) özet metnine satır içi olarak ekle. Tam dökümde slaytları araya yerleştirmek için --extract ile birlikte kullan.",
-  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI akıl yürütme düzeyi: none, low, medium, high, xhigh (diğer adlar: off, min, mid).",
+  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI akıl yürütme düzeyi: none, low, medium, high, xhigh, max (diğer adlar: off, min, mid).",
   "diarize.a.local.recording": "yerel bir kayıtta konuşmacı ayrımı yap",
   "configure.local.onnx.transcription.parakeet.canary": "yerel ONNX dökümünü yapılandır (parakeet/canary)",
   "config.preset": "yapılandırma ön ayarı",

@@ -69,7 +69,7 @@
   "slides.only.mode.with.inline.thumbnails": "인라인 미리보기가 있는 슬라이드 전용 모드",
   "show.configured.and.usable.model.providers": "설정되었거나 사용 가능한 모델 제공업체 표시",
   "extract.slides.for.youtube.direct.video.urls.or.local.video.files.and.render.them.inline.inside.the.summary.narrative.when.supported.combine.with.extract.to.interleave.slides.in.the.full.transcript": "YouTube/직접 동영상 URL 또는 로컬 동영상 파일에서 슬라이드를 추출해 요약 본문에 표시합니다 (지원되는 경우). --extract와 함께 사용하면 전체 녹취록 사이에 슬라이드를 삽입합니다.",
-  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI 추론 수준: none, low, medium, high, xhigh (별칭: off, min, mid).",
+  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI 추론 수준: none, low, medium, high, xhigh, max (별칭: off, min, mid).",
   "diarize.a.local.recording": "로컬 녹음에서 화자 구분",
   "configure.local.onnx.transcription.parakeet.canary": "로컬 ONNX 전사 설정 (parakeet/canary)",
   "config.preset": "설정 프리셋",

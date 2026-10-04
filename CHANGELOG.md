@@ -1,7 +1,10 @@
 # Changelog
 
-## 0.25.1 - Unreleased
+## 0.25.1 - 2026-10-03
 
+**Highlights:** maximum reasoning effort for GPT-6 models and reliable Homebrew companion launchers across upgrades.
+
+- OpenAI: support `--thinking max` for GPT-6 Astra, Sol, Luna, and GPT-6.1 Sol across CLI, daemon, and configured model presets, with complete localized help.
 - Daemon: keep Homebrew daemon and Chrome native-host launchers working across Summarize and Node upgrades by using verified stable `opt` paths.
 - Maintenance: refresh stabilized HTTP, browser media, Node 24 type definitions, and test tooling dependencies.
 

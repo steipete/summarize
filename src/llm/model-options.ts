@@ -1,4 +1,4 @@
-export type OpenAiReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh";
+export type OpenAiReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
 export type OpenAiServiceTier = "default" | "fast" | "priority" | "flex";
 
@@ -26,6 +26,7 @@ const REASONING_EFFORT_ALIASES: Record<string, OpenAiReasoningEffort> = {
   xhigh: "xhigh",
   "x-high": "xhigh",
   "extra-high": "xhigh",
+  max: "max",
 };
 
 export function parseOpenAiReasoningEffort(
@@ -35,7 +36,7 @@ export function parseOpenAiReasoningEffort(
   const normalized = raw.trim().toLowerCase();
   const parsed = REASONING_EFFORT_ALIASES[normalized];
   if (parsed) return parsed;
-  throw new Error(`Unsupported ${label}: ${raw} (expected none, low, medium, high, or xhigh)`);
+  throw new Error(`Unsupported ${label}: ${raw} (expected none, low, medium, high, xhigh, or max)`);
 }
 
 export function parseOpenAiTextVerbosity(

@@ -69,7 +69,7 @@
   "slides.only.mode.with.inline.thumbnails": "modo solo diapositivas con miniaturas integradas",
   "show.configured.and.usable.model.providers": "mostrar los proveedores de modelos configurados y disponibles",
   "extract.slides.for.youtube.direct.video.urls.or.local.video.files.and.render.them.inline.inside.the.summary.narrative.when.supported.combine.with.extract.to.interleave.slides.in.the.full.transcript": "Extraer diapositivas de URL de YouTube/vídeo directas o de archivos de vídeo locales e integrarlas en el resumen (si es compatible). Combine con --extract para intercalarlas en la transcripción completa.",
-  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "Esfuerzo de razonamiento de OpenAI: none, low, medium, high, xhigh (alias: off, min, mid).",
+  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "Esfuerzo de razonamiento de OpenAI: none, low, medium, high, xhigh, max (alias: off, min, mid).",
   "diarize.a.local.recording": "distinguir hablantes en una grabación local",
   "configure.local.onnx.transcription.parakeet.canary": "configurar la transcripción ONNX local (parakeet/canary)",
   "config.preset": "preajuste de configuración",

@@ -139,7 +139,7 @@ If `[input]` is omitted, summarize prints concise help and exits.
 : Use a logged-in CLI provider: `claude`, `gemini`, `codex`, `agent`, `openclaw`, `opencode`, `copilot`, `agy`, `pi`, `devin`, `grok`. Equivalent to `--model cli/<provider>`. Without a value: enable CLI providers in auto-selection.
 
 `--thinking <effort>`
-: Reasoning effort. `none`, `low`, `medium`, `high`, `xhigh`. Aliases: `off`, `min`, `med`, `mid`, `x-high`, `extra-high`. Affects reasoning-capable models on the dispatched provider (OpenAI, Anthropic Claude 4+, pi CLI).
+: Reasoning effort. `none`, `low`, `medium`, `high`, `xhigh`, `max` (GPT-6 models). Aliases: `off`, `min`, `med`, `mid`, `x-high`, `extra-high`. Affects reasoning-capable models on the dispatched provider (OpenAI, Anthropic Claude 4+, pi CLI).
 
 `--service-tier <tier>`
 : OpenAI service tier. `default`, `fast`, `priority`, `flex`. Maps to `service_tier` on the request.

@@ -30,6 +30,7 @@ const apiKeys = {
   xaiApiKey: null,
 };
 const requestOptions: ModelRequestOptions = { reasoningEffort: "medium", serviceTier: "fast" };
+const maxRequestOptions: ModelRequestOptions = { reasoningEffort: "max", serviceTier: "fast" };
 const usage = { input_tokens: 2, output_tokens: 3, total_tokens: 5 };
 
 function mockResponse(stream: boolean, chat = false) {
@@ -81,8 +82,29 @@ it.each([
   expect(fetchImpl).not.toHaveBeenCalled();
 });
 
+it.each(["gpt-5.5", "gpt-4.1", "gpt-6-astra-extra"])(
+  "rejects unsupported max for %s before sending a request",
+  async (model) => {
+    for (const stream of [false, true]) {
+      const fetchImpl = mockResponse(stream);
+      const generate = stream ? streamTextWithModelId : generateTextWithModelId;
+      await expect(
+        generate({
+          modelId: `openai/${model}`,
+          apiKeys,
+          prompt: { userText: "Summarize" },
+          timeoutMs: 2000,
+          fetchImpl,
+          requestOptions: maxRequestOptions,
+        }),
+      ).rejects.toThrow("--thinking max is supported only for GPT-6");
+      expect(fetchImpl).not.toHaveBeenCalled();
+    }
+  },
+);
+
 describe.each(models)("%s requests", (model) => {
-  it.each([undefined, requestOptions])(
+  it.each([undefined, requestOptions, maxRequestOptions])(
     "uses Responses without temperature (options=%j)",
     async (options) => {
       const fetchImpl = mockResponse(false);
@@ -105,12 +127,12 @@ describe.each(models)("%s requests", (model) => {
       expect(body.store).toBe(false);
       expect(body).not.toHaveProperty("temperature");
       expect(body.max_output_tokens).toBe(2000);
-      expect(body.reasoning).toEqual(options ? { effort: "medium" } : undefined);
+      expect(body.reasoning).toEqual(options ? { effort: options.reasoningEffort } : undefined);
       expect(body.service_tier).toBe(options ? "priority" : undefined);
     },
   );
 
-  it.each([undefined, requestOptions])(
+  it.each([undefined, requestOptions, maxRequestOptions])(
     "streams text and images through Responses (options=%j)",
     async (options) => {
       const fetchImpl = mockResponse(true);
@@ -144,50 +166,58 @@ describe.each(models)("%s requests", (model) => {
         image_url: "data:image/png;base64,AQID",
         detail: "auto",
       });
-      expect(body.reasoning).toEqual(options ? { effort: "medium" } : undefined);
+      expect(body.reasoning).toEqual(options ? { effort: options.reasoningEffort } : undefined);
       expect(body.service_tier).toBe(options ? "priority" : undefined);
     },
   );
 
-  it("omits temperature from PDF requests and preserves reasoning and fast mode", async () => {
-    const fetchImpl = mockResponse(false);
-    await generateTextWithModelId({
-      modelId: `openai/${model}`,
-      apiKeys,
-      prompt: {
-        userText: "Summarize",
-        attachments: [
-          {
-            kind: "document",
-            mediaType: "application/pdf",
-            filename: "sample.pdf",
-            bytes: buildMinimalPdf("Hello"),
-          },
-        ],
-      },
-      temperature: 0.3,
-      timeoutMs: 2000,
-      fetchImpl,
-      openaiBaseUrlOverride: "https://api.openai.com/v1",
-      requestOptions,
-    });
-    const { url, body } = readRequest(fetchImpl);
-    expect(url).toBe("https://api.openai.com/v1/responses");
-    expect(body).toMatchObject({
-      model,
-      reasoning: { effort: "medium" },
-      service_tier: "priority",
-      store: false,
-    });
-    expect(body).not.toHaveProperty("temperature");
-    expect(body.input[0].content[0]).toMatchObject({ type: "input_file", filename: "sample.pdf" });
-  });
+  it.each([requestOptions, maxRequestOptions])(
+    "omits temperature from PDF requests and preserves options=%j",
+    async (options) => {
+      const fetchImpl = mockResponse(false);
+      await generateTextWithModelId({
+        modelId: `openai/${model}`,
+        apiKeys,
+        prompt: {
+          userText: "Summarize",
+          attachments: [
+            {
+              kind: "document",
+              mediaType: "application/pdf",
+              filename: "sample.pdf",
+              bytes: buildMinimalPdf("Hello"),
+            },
+          ],
+        },
+        temperature: 0.3,
+        timeoutMs: 2000,
+        fetchImpl,
+        openaiBaseUrlOverride: "https://api.openai.com/v1",
+        requestOptions: options,
+      });
+      const { url, body } = readRequest(fetchImpl);
+      expect(url).toBe("https://api.openai.com/v1/responses");
+      expect(body).toMatchObject({
+        model,
+        reasoning: { effort: options.reasoningEffort },
+        service_tier: "priority",
+        store: false,
+      });
+      expect(body).not.toHaveProperty("temperature");
+      expect(body.input[0].content[0]).toMatchObject({
+        type: "input_file",
+        filename: "sample.pdf",
+      });
+    },
+  );
 
   it.each([
     [false, undefined],
     [true, undefined],
     [false, requestOptions],
     [true, requestOptions],
+    [false, maxRequestOptions],
+    [true, maxRequestOptions],
   ] as const)(
     "preserves explicit Chat Completions (stream=%s, options=%j)",
     async (stream, options) => {
@@ -220,7 +250,7 @@ describe.each(models)("%s requests", (model) => {
       });
       expect(body).not.toHaveProperty("temperature");
       expect(body).not.toHaveProperty("max_tokens");
-      expect(body.reasoning_effort).toBe(options ? "medium" : undefined);
+      expect(body.reasoning_effort).toBe(options?.reasoningEffort);
       expect(body.service_tier).toBe(options ? "priority" : undefined);
     },
   );

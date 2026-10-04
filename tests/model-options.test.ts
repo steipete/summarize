@@ -24,7 +24,12 @@ describe("model request options", () => {
     expect(parseOpenAiReasoningEffort("min")).toBe("low");
     expect(parseOpenAiReasoningEffort("mid")).toBe("medium");
     expect(parseOpenAiReasoningEffort("x-high")).toBe("xhigh");
+    expect(parseOpenAiReasoningEffort("max")).toBe("max");
+    expect(parseOpenAiReasoningEffort(" MAX ", "--thinking")).toBe("max");
     expect(() => parseOpenAiReasoningEffort("minimal")).toThrow(/expected none, low/);
+    expect(() => parseOpenAiReasoningEffort("ultra", "--thinking")).toThrow(
+      "Unsupported --thinking: ultra (expected none, low, medium, high, xhigh, or max)",
+    );
   });
 });
 

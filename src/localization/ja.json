@@ -69,7 +69,7 @@
   "slides.only.mode.with.inline.thumbnails": "サムネイル付きのスライド専用モード",
   "show.configured.and.usable.model.providers": "設定済み・利用可能なモデルプロバイダーを表示",
   "extract.slides.for.youtube.direct.video.urls.or.local.video.files.and.render.them.inline.inside.the.summary.narrative.when.supported.combine.with.extract.to.interleave.slides.in.the.full.transcript": "YouTube、動画の直接 URL、ローカル動画ファイルからスライドを抽出し、要約の文章中に表示します（対応環境のみ）。--extract と組み合わせると、文字起こしの全文にスライドを挿入します。",
-  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI の推論量: none、low、medium、high、xhigh（別名: off、min、mid）。",
+  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI の推論量: none、low、medium、high、xhigh、max（別名: off、min、mid）。",
   "diarize.a.local.recording": "ローカル録音の話者を分離",
   "configure.local.onnx.transcription.parakeet.canary": "ローカルの ONNX 文字起こしを設定（parakeet/canary）",
   "config.preset": "設定ファイルのプリセット",

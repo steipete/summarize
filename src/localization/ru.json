@@ -69,7 +69,7 @@
   "slides.only.mode.with.inline.thumbnails": "режим только слайдов со встроенными миниатюрами",
   "show.configured.and.usable.model.providers": "показать настроенных и доступных провайдеров моделей",
   "extract.slides.for.youtube.direct.video.urls.or.local.video.files.and.render.them.inline.inside.the.summary.narrative.when.supported.combine.with.extract.to.interleave.slides.in.the.full.transcript": "Извлечь слайды из YouTube, прямых ссылок на видео или локальных видеофайлов и встроить их в текст сводки (если поддерживается). Вместе с --extract слайды вставляются в полную расшифровку.",
-  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "Уровень рассуждения OpenAI: none, low, medium, high, xhigh (псевдонимы: off, min, mid).",
+  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "Уровень рассуждения OpenAI: none, low, medium, high, xhigh, max (псевдонимы: off, min, mid).",
   "diarize.a.local.recording": "разделить локальную запись по говорящим",
   "configure.local.onnx.transcription.parakeet.canary": "настроить локальную расшифровку ONNX (parakeet/canary)",
   "config.preset": "профиль конфигурации",

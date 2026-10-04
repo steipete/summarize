@@ -69,7 +69,7 @@
   "slides.only.mode.with.inline.thumbnails": "alleen dia’s met ingevoegde miniaturen",
   "show.configured.and.usable.model.providers": "ingestelde en bruikbare modelaanbieders tonen",
   "extract.slides.for.youtube.direct.video.urls.or.local.video.files.and.render.them.inline.inside.the.summary.narrative.when.supported.combine.with.extract.to.interleave.slides.in.the.full.transcript": "Extraheer dia’s uit YouTube-/directe video-URL’s of lokale videobestanden en voeg ze in de samenvatting in (indien ondersteund). Combineer met --extract om dia’s in het volledige transcript op te nemen.",
-  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI-redeneerniveau: none, low, medium, high, xhigh (aliassen: off, min, mid).",
+  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI-redeneerniveau: none, low, medium, high, xhigh, max (aliassen: off, min, mid).",
   "diarize.a.local.recording": "sprekers in een lokale opname onderscheiden",
   "configure.local.onnx.transcription.parakeet.canary": "lokale ONNX-transcriptie instellen (parakeet/canary)",
   "config.preset": "configuratievoorinstelling",

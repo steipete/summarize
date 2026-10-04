@@ -609,6 +609,18 @@ describe("config loading", () => {
     });
   });
 
+  it.each(["thinking", "reasoningEffort"])("parses max via %s in defaults and presets", (key) => {
+    const { root } = writeJsonConfig({
+      model: { id: "openai/gpt-6.1-sol", [key]: "max" },
+      models: { careful: { id: "openai/gpt-6-luna", [key]: "max" } },
+      openai: { [key]: "max" },
+    });
+    const { config } = loadSummarizeConfig({ env: { HOME: root } });
+    expect(config?.model).toEqual({ id: "openai/gpt-6.1-sol", reasoningEffort: "max" });
+    expect(config?.models?.careful).toEqual({ id: "openai/gpt-6-luna", reasoningEffort: "max" });
+    expect(config?.openai).toEqual({ reasoningEffort: "max" });
+  });
+
   it("parses provider baseUrl config sections", () => {
     const { root } = writeJsonConfig({
       model: { id: "openai/gpt-5.2" },

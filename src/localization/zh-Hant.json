@@ -69,7 +69,7 @@
   "slides.only.mode.with.inline.thumbnails": "含內嵌縮圖的純投影片模式",
   "show.configured.and.usable.model.providers": "顯示已設定與可用的模型供應商",
   "extract.slides.for.youtube.direct.video.urls.or.local.video.files.and.render.them.inline.inside.the.summary.narrative.when.supported.combine.with.extract.to.interleave.slides.in.the.full.transcript": "從 YouTube、影片直連網址或本機影片檔案擷取投影片，並在支援時嵌入摘要正文。搭配 --extract 可將投影片插入完整逐字稿。",
-  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI 推理強度：none、low、medium、high、xhigh（別名：off、min、mid）。",
+  "openai.reasoning.effort.none.low.medium.high.xhigh.aliases.off.min.mid": "OpenAI 推理強度：none、low、medium、high、xhigh、max（別名：off、min、mid）。",
   "diarize.a.local.recording": "區分本機錄音中的說話者",
   "configure.local.onnx.transcription.parakeet.canary": "設定本機 ONNX 轉錄（parakeet/canary）",
   "config.preset": "設定檔中的預設組合",

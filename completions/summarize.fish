@@ -95,7 +95,7 @@ for cmd in summarize summarizer
     complete -c $cmd -n '__summarize_no_subcommand' -l cli -d 'Use CLI provider' -xa 'claude gemini codex agent openclaw opencode copilot agy pi devin grok'
     complete -c $cmd -n '__summarize_no_subcommand' -l fast -d 'Use OpenAI fast service tier'
     complete -c $cmd -n '__summarize_no_subcommand' -l service-tier -d 'OpenAI service tier' -xa 'default fast priority flex'
-    complete -c $cmd -n '__summarize_no_subcommand' -l thinking -d 'OpenAI reasoning effort' -xa 'none low medium high xhigh off min med mid x-high extra-high'
+    complete -c $cmd -n '__summarize_no_subcommand' -l thinking -d 'OpenAI reasoning effort' -xa 'none low medium high xhigh max off min med mid x-high extra-high'
     complete -c $cmd -n '__summarize_no_subcommand' -l prompt -d 'Override summary prompt' -x
     complete -c $cmd -n '__summarize_no_subcommand' -l prompt-file -d 'Read prompt from file' -rF
 
