@@ -61,7 +61,7 @@
     "typecheck": "pnpm -C packages/core typecheck && tsc -p tsconfig.build.json --noEmit && pnpm -C apps/chrome-extension typecheck"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^0.87.1",
+    "@earendil-works/pi-ai": "^0.99.1",
     "@steipete/summarize-core": "workspace:*",
     "bpe-lite": "^0.5.2",
     "commander": "^15.0.0",
@@ -78,8 +78,8 @@
     "@types/sanitize-html": "^2.16.1",
     "@vitest/coverage-v8": "^5.0.2",
     "happy-dom": "^20.14.5",
-    "oxc-parser": "^0.151.0",
-    "oxfmt": "0.70.0",
+    "oxc-parser": "^0.152.0",
+    "oxfmt": "0.71.0",
     "oxlint": "^1.85.0",
     "oxlint-tsgolint": "^7.0.2003",
     "typescript": "^7.0.2",
