@@ -2,6 +2,8 @@
 
 ## 0.25.2 - Unreleased
 
+- Maintenance: refresh stabilized provider, browser media, Chrome typings, and Oxc tooling dependencies while retaining Node 24 and the seven-day adoption hold (#508, thanks @dependabot).
+
 ## 0.25.1 - 2026-10-03
 
 **Highlights:** maximum reasoning effort for GPT-6 models and reliable Homebrew companion launchers across upgrades.
