@@ -776,4 +776,22 @@ describe("auto model selection", () => {
 
     expect(attempts.some((attempt) => attempt.userModelId.startsWith("cli/grok"))).toBe(false);
   });
+
+  it("applies cli.agy.model when agy is enabled in auto CLI candidates", () => {
+    expect(
+      prependCliCandidates({
+        candidates: ["openai/gpt-5-mini"],
+        config: {
+          cli: {
+            enabled: ["agy"],
+            agy: { model: "gemini-3.8-flash-high" },
+          },
+        },
+        env: {},
+        isImplicitAutoSelection: true,
+        allowAutoCliFallback: false,
+        lastSuccessfulCliProvider: null,
+      }),
+    ).toEqual(["cli/agy/gemini-3.8-flash-high", "openai/gpt-5-mini"]);
+  });
 });

@@ -101,8 +101,7 @@ export function prependCliCandidates({
   };
 
   for (const provider of providerOrder) {
-    const modelOverride = provider === "agy" ? undefined : cli?.[provider]?.model;
-    add(provider, modelOverride);
+    add(provider, cli?.[provider]?.model);
   }
 
   if (cliCandidates.length === 0) return candidates;
