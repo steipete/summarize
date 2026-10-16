@@ -2,6 +2,7 @@
 
 ## 0.25.3 - Unreleased
 
+- OpenRouter: forward reasoning effort and omit implicit output limits for text completions and streams; retain provider error diagnostics (#527, fixes #519, thanks @Ehsan-hash).
 - Maintenance: refresh stabilized provider, localization, browser media, Preact, Oxc, and GitHub Actions dependencies; migrate picker style types for Preact 11 while retaining Node 24 and the seven-day adoption hold (#515, #516, thanks @dependabot).
 
 ## 0.25.2 - 2026-10-11

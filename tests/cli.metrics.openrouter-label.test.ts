@@ -56,8 +56,23 @@ describe("metrics model label", () => {
       "<!doctype html><html><head><title>Hello</title></head>" +
       "<body><article><p>Hi</p></article></body></html>";
 
-    const fetchMock = vi.fn(async () => {
-      return new Response(html, { status: 200, headers: { "Content-Type": "text/html" } });
+    let requestBody: Record<string, unknown> | null = null;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url === "https://example.com") {
+        return new Response(html, { status: 200, headers: { "Content-Type": "text/html" } });
+      }
+      if (url === "https://openrouter.ai/api/v1/chat/completions") {
+        requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "OK" } }],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      throw new Error(`Unexpected fetch call: ${url}`);
     });
 
     const stdout = collectStream();
@@ -85,5 +100,6 @@ describe("metrics model label", () => {
 
     expect(stderr.getText()).toContain("openrouter/xiaomi/mimo-v2-flash:free");
     expect(stderr.getText()).not.toContain("openai/xiaomi/mimo-v2-flash:free");
+    expect(requestBody).toMatchObject({ model: "xiaomi/mimo-v2-flash:free" });
   });
 });

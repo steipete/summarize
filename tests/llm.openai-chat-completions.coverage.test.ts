@@ -69,6 +69,39 @@ describe("OpenAI chat-completions coverage", () => {
     ).resolves.toMatchObject({ text: "string result" });
   });
 
+  it.each(["content_filter", "network_error"])(
+    "rejects completion text for an error finish reason (%s)",
+    async (finishReason) => {
+      const fetchImpl = vi.fn(async () =>
+        Response.json({
+          choices: [{ message: { content: "Partial" }, finish_reason: finishReason }],
+        }),
+      ) as typeof fetch;
+
+      await expect(completeOpenAiChatText(request(fetchImpl))).rejects.toThrow(
+        `Provider finish_reason: ${finishReason}`,
+      );
+    },
+  );
+
+  it("accepts a valid length finish reason and missing finish reason", async () => {
+    const lengthFetch = vi.fn(async () =>
+      Response.json({
+        choices: [{ message: { content: " Partial " }, finish_reason: "length" }],
+      }),
+    ) as typeof fetch;
+    await expect(completeOpenAiChatText(request(lengthFetch))).resolves.toMatchObject({
+      text: "Partial",
+    });
+
+    const missingReasonFetch = vi.fn(async () =>
+      Response.json({ choices: [{ message: { content: " Complete " } }] }),
+    ) as typeof fetch;
+    await expect(completeOpenAiChatText(request(missingReasonFetch))).resolves.toMatchObject({
+      text: "Complete",
+    });
+  });
+
   it("reports HTTP and empty completion failures", async () => {
     const errorFetch = vi.fn(async () => new Response("bad", { status: 500 })) as typeof fetch;
     await expect(completeOpenAiChatText(request(errorFetch))).rejects.toThrow("OpenAI API error");

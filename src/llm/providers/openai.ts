@@ -58,22 +58,11 @@ export async function completeOpenAiText({
     });
   }
   if (
-    openaiConfig.useChatCompletions &&
-    (openaiConfig.requestOptions || isOpenAiGpt6ModelId(modelId)) &&
-    !openaiConfig.isOpenRouter &&
-    isApiOpenAiBaseUrl(openaiConfig.baseURL)
+    openaiConfig.isOpenRouter ||
+    (openaiConfig.useChatCompletions &&
+      (openaiConfig.requestOptions || isOpenAiGpt6ModelId(modelId)) &&
+      isApiOpenAiBaseUrl(openaiConfig.baseURL))
   ) {
-    return completeOpenAiChatText({
-      modelId,
-      openaiConfig,
-      context,
-      temperature,
-      maxOutputTokens,
-      signal,
-      fetchImpl,
-    });
-  }
-  if (openaiConfig.isOpenRouter && isOpenAiResponsesTextModelId(modelId)) {
     return completeOpenAiChatText({
       modelId,
       openaiConfig,
@@ -134,10 +123,10 @@ export async function streamOpenAiText({
   fetchImpl?: typeof fetch;
 }): Promise<OpenAiTextStreamResult | null> {
   if (
-    openaiConfig.useChatCompletions &&
-    (openaiConfig.requestOptions || isOpenAiGpt6ModelId(modelId)) &&
-    !openaiConfig.isOpenRouter &&
-    isApiOpenAiBaseUrl(openaiConfig.baseURL)
+    openaiConfig.isOpenRouter ||
+    (openaiConfig.useChatCompletions &&
+      (openaiConfig.requestOptions || isOpenAiGpt6ModelId(modelId)) &&
+      isApiOpenAiBaseUrl(openaiConfig.baseURL))
   ) {
     return streamOpenAiChatText({
       modelId,

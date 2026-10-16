@@ -25,6 +25,7 @@ export async function postOpenAiJson(
       baseUrl: requestUrl,
       status: response.status,
       bodyText: await response.text(),
+      isOpenRouter: openaiConfig.isOpenRouter,
     });
   }
   return response;
@@ -163,14 +164,29 @@ export function buildOpenAiRequestHeaders(
 export function createOpenAiHttpError({
   status,
   bodyText,
+  isOpenRouter = false,
 }: {
   baseUrl: string;
   status: number;
   bodyText: string;
+  isOpenRouter?: boolean;
 }): Error {
-  const message = `OpenAI API error (${status}).`;
+  const diagnostic = isOpenRouter ? extractOpenRouterErrorMessage(bodyText) : null;
+  const message = `OpenAI API error (${status}).${diagnostic ? ` ${diagnostic}` : ""}`;
   const error = new Error(message);
   (error as { statusCode?: number }).statusCode = status;
   (error as { responseBody?: string }).responseBody = bodyText;
   return error;
+}
+
+function extractOpenRouterErrorMessage(bodyText: string): string | null {
+  try {
+    const payload = JSON.parse(bodyText) as { error?: unknown };
+    if (!payload || typeof payload !== "object" || !payload.error) return null;
+    if (typeof payload.error !== "object") return null;
+    const message = (payload.error as { message?: unknown }).message;
+    return typeof message === "string" && message.trim() ? message.trim() : null;
+  } catch {
+    return null;
+  }
 }

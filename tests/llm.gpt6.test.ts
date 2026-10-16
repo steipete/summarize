@@ -327,24 +327,43 @@ describe("GPT-6 model boundaries", () => {
     expect(body).not.toHaveProperty("max_completion_tokens");
     expect(body).not.toHaveProperty("temperature");
   });
-  it.each(["https://gateway.example/v1", "https://openrouter.ai/api/v1"])(
-    "keeps SDK streaming for %s without explicit options",
-    async (baseURL) => {
-      await expect(
-        streamTextWithModelId({
-          modelId: "openai/gpt-6-astra",
-          apiKeys,
-          prompt: { userText: "Summarize" },
-          openaiBaseUrlOverride: baseURL,
-          temperature: 0.3,
-          timeoutMs: 2000,
-          fetchImpl: mockResponse(true),
-        }),
-      ).rejects.toThrow("Unexpected SDK fallback");
-      expect(mocks.streamSimple).toHaveBeenCalledTimes(1);
-      expect(mocks.completeSimple).not.toHaveBeenCalled();
-    },
-  );
+  it("keeps SDK streaming for a custom gateway without explicit options", async () => {
+    await expect(
+      streamTextWithModelId({
+        modelId: "openai/gpt-6-astra",
+        apiKeys,
+        prompt: { userText: "Summarize" },
+        openaiBaseUrlOverride: "https://gateway.example/v1",
+        temperature: 0.3,
+        timeoutMs: 2000,
+        fetchImpl: mockResponse(true),
+      }),
+    ).rejects.toThrow("Unexpected SDK fallback");
+    expect(mocks.streamSimple).toHaveBeenCalledTimes(1);
+    expect(mocks.completeSimple).not.toHaveBeenCalled();
+  });
+  it("streams OpenRouter GPT-6 directly without explicit options", async () => {
+    const fetchImpl = mockResponse(true, true);
+    const result = await streamTextWithModelId({
+      modelId: "openai/gpt-6-astra",
+      apiKeys,
+      prompt: { userText: "Summarize" },
+      openaiBaseUrlOverride: "https://openrouter.ai/api/v1",
+      temperature: 0.3,
+      timeoutMs: 2000,
+      fetchImpl,
+    });
+    let text = "";
+    for await (const delta of result.textStream) text += delta;
+    expect(text).toBe("Summary");
+    const { url, body } = readRequest(fetchImpl);
+    expect(url).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect(body).toMatchObject({ model: "gpt-6-astra", stream: true });
+    expect(body).not.toHaveProperty("max_tokens");
+    expect(body).not.toHaveProperty("max_completion_tokens");
+    expect(mocks.streamSimple).not.toHaveBeenCalled();
+    expect(mocks.completeSimple).not.toHaveBeenCalled();
+  });
   it.each(["", "data: [DONE]\n\n"])(
     "rejects Responses EOF before a terminal event (%j)",
     async (ending) => {

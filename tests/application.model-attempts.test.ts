@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   resolveModelAttempts,
   selectPreferredInteractiveModelAttempt,
 } from "../src/application/model-attempts.js";
+import { runModelAttempts } from "../src/engine/model-attempts.js";
+import { generateTextWithModelId } from "../src/llm/generate-text.js";
 import type { ProviderRuntimeBindings } from "../src/llm/provider-profile.js";
 
 const providerRuntime: ProviderRuntimeBindings = {
@@ -113,5 +115,52 @@ describe("application model attempts", () => {
         cliAvailability: { codex: true },
       })?.userModelId,
     ).toBe("cli/codex/gpt-5.4");
+  });
+
+  it("detects OpenRouter no-provider diagnostics from the direct HTTP error", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: { message: "No allowed providers are available for the selected model" },
+          }),
+          { status: 400, headers: { "content-type": "application/json" } },
+        ),
+    );
+    const result = await runModelAttempts({
+      attempts: [
+        {
+          transport: "openrouter",
+          userModelId: "openrouter/meta-llama/llama-3.3-70b-instruct",
+          llmModelId: "openai/meta-llama/llama-3.3-70b-instruct",
+          openrouterProviders: null,
+          forceOpenRouter: true,
+          requiredEnv: "OPENROUTER_API_KEY",
+        },
+      ],
+      isFallbackModel: true,
+      isNamedModelSelection: true,
+      envHasKeyFor: () => true,
+      formatMissingModelError: () => "missing",
+      runAttempt: async () =>
+        generateTextWithModelId({
+          modelId: "openai/meta-llama/llama-3.3-70b-instruct",
+          apiKeys: {
+            openaiApiKey: null,
+            openrouterApiKey: "key",
+            googleApiKey: null,
+            anthropicApiKey: null,
+            xaiApiKey: null,
+          },
+          forceOpenRouter: true,
+          prompt: { userText: "hi" },
+          timeoutMs: 100,
+          fetchImpl,
+        }),
+    });
+
+    expect(result.sawOpenRouterNoAllowedProviders).toBe(true);
+    expect(result.lastError).toBeInstanceOf(Error);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });

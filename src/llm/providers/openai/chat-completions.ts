@@ -13,14 +13,44 @@ import type {
   OpenAiTextStreamResult,
 } from "./types.js";
 
+function buildChatCompletionRequestOptions(request: OpenAiTextRequest): Record<string, unknown> {
+  const options = buildOpenAiChatRequestOptions(request.openaiConfig.requestOptions);
+  if (!request.openaiConfig.isOpenRouter || !("reasoning_effort" in options)) return options;
+  const { reasoning_effort, ...rest } = options;
+  return {
+    ...rest,
+    ...(typeof reasoning_effort === "string" ? { reasoning: { effort: reasoning_effort } } : {}),
+  };
+}
+
+const acceptedChatCompletionFinishReasons: readonly string[] = [
+  "stop",
+  "end",
+  "length",
+  "function_call",
+  "tool_calls",
+] as const;
+
+function validateChatCompletionFinishReason(finishReason: unknown): void {
+  if (
+    typeof finishReason === "string" &&
+    finishReason.length > 0 &&
+    !acceptedChatCompletionFinishReasons.includes(finishReason)
+  ) {
+    throw new Error(`Provider finish_reason: ${finishReason}`);
+  }
+}
+
 function extractChatCompletionText(payload: {
   choices?: Array<{
+    finish_reason?: unknown;
     message?: {
       content?: unknown;
     };
   }>;
 }): string {
   const choices = Array.isArray(payload.choices) ? payload.choices : [];
+  validateChatCompletionFinishReason(choices[0]?.finish_reason);
   const content = choices[0]?.message?.content;
   if (typeof content === "string") return content.trim();
   if (!Array.isArray(content)) return "";
@@ -40,7 +70,7 @@ function requestChatCompletion(request: OpenAiTextRequest, stream = false) {
   return postOpenAiJson(request, url, {
     model: modelId,
     messages: contextToChatCompletionMessages(context),
-    ...buildOpenAiChatRequestOptions(openaiConfig.requestOptions),
+    ...buildChatCompletionRequestOptions(request),
     ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
     ...(typeof maxOutputTokens === "number"
       ? isOpenAiGpt6ModelId(modelId) && !openaiConfig.isOpenRouter
@@ -73,12 +103,7 @@ export async function streamOpenAiChatText(
       const choices = Array.isArray(event.choices) ? event.choices : [];
       const finishReason = choices[0]?.finish_reason;
       const terminal = typeof finishReason === "string" && finishReason.length > 0;
-      if (
-        terminal &&
-        !["stop", "end", "length", "function_call", "tool_calls"].includes(finishReason)
-      ) {
-        throw new Error(`Provider finish_reason: ${finishReason}`);
-      }
+      validateChatCompletionFinishReason(finishReason);
       const delta = choices[0]?.delta;
       const content =
         delta && typeof delta === "object" ? (delta as { content?: unknown }).content : null;

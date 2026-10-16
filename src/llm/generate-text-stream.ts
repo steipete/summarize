@@ -376,7 +376,8 @@ export async function streamTextWithContext({
       });
       if (
         parsed.provider === "openai" &&
-        (requestOptions ||
+        (openaiConfig.isOpenRouter ||
+          requestOptions ||
           (isOpenAiGpt6ModelId(parsed.model) &&
             !openaiConfig.isOpenRouter &&
             isApiOpenAiBaseUrl(openaiConfig.baseURL)))

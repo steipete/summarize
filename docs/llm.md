@@ -106,7 +106,8 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
   - Minimum numeric value: 16.
   - Recommendation: prefer `--length` unless you need a hard cap (some providers count “reasoning” into the cap).
 - `--thinking none|low|medium|high|xhigh|max`
-  - Sets reasoning effort for supported `openai/...` models. `max` is supported for GPT-6 Astra, Sol, Luna, and GPT-6.1 Sol; Astra and GPT-6.1 Sol reject `none`.
+  - Sets reasoning effort for supported `openai/...` models and models routed through OpenRouter. The allowed effort levels still depend on the selected model.
+  - OpenRouter text requests omit the output cap unless `--max-output-tokens` is supplied, so reasoning tokens do not consume an implicit budget before the summary is written.
   - Short aliases: `off`, `min` (low), `mid` / `med`, `x-high`, `extra-high`.
 - `--fast`
   - Shorthand for `--service-tier fast` on OpenAI models.

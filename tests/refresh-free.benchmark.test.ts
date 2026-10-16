@@ -115,6 +115,46 @@ describe("refresh-free benchmark", () => {
     expect(result.failureCounts.rateLimitMin).toBe(1);
   });
 
+  it("uses the OpenRouter rate-limit diagnostic for an HTTP cooldown and retry", async () => {
+    let nowMs = 10_000;
+    let requestCount = 0;
+    const sleep = vi.fn(async (ms: number) => {
+      nowMs += ms;
+    });
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        return new Response(
+          JSON.stringify({ error: { message: "Rate limit exceeded: free-models-per-min" } }),
+          { status: 429, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          choices: [{ message: { content: "OK" } }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    const result = await benchmarkOpenRouterModels({
+      models: [catalogModel("meta-llama/llama-3.3-70b-instruct:free")],
+      openrouterKey: "key",
+      concurrency: 1,
+      timeoutMs: 100,
+      fetchImpl,
+      cooldownMs: 65_000,
+      now: () => nowMs,
+      sleep,
+    });
+
+    expect(requestCount).toBe(2);
+    expect(sleep).toHaveBeenCalledWith(65_000);
+    expect(result.working).toHaveLength(1);
+    expect(result.failureCounts.rateLimitMin).toBe(1);
+  });
+
   it("selects smart candidates first, then fills by reliability and speed", () => {
     const selected = selectBenchmarkCandidates(
       [

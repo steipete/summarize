@@ -1034,7 +1034,24 @@ describe("llm generate/stream", () => {
     delete process.env.OPENAI_BASE_URL;
     mocks.completeSimple.mockClear();
 
-    await generateTextWithModelId({
+    let requestBody: Record<string, unknown> | null = null;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("https://openrouter.ai/api/v1/chat/completions");
+      requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      const headers = init?.headers as Record<string, string>;
+      expect(headers.authorization).toBe("Bearer openrouter-key");
+      expect(headers["HTTP-Referer"]).toBe("https://github.com/steipete/summarize");
+      expect(headers["X-Title"]).toBe("summarize");
+      return new Response(
+        JSON.stringify({
+          choices: [{ message: { content: "ok from openrouter" } }],
+          usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    const result = await generateTextWithModelId({
       modelId: "openai/openai/gpt-oss-20b",
       apiKeys: {
         openaiApiKey: null,
@@ -1045,18 +1062,15 @@ describe("llm generate/stream", () => {
       },
       prompt: { userText: "hi" },
       timeoutMs: 2000,
-      fetchImpl: globalThis.fetch.bind(globalThis),
+      fetchImpl: fetchMock,
     });
 
-    const model = mocks.completeSimple.mock.calls[0]?.[0] as {
-      baseUrl?: string;
-      api?: string;
-      headers?: Record<string, string>;
-    };
-    expect(model.baseUrl).toBe("https://openrouter.ai/api/v1");
-    expect(model.api).toBe("openai-completions");
-    expect(model.headers?.["HTTP-Referer"]).toBe("https://github.com/steipete/summarize");
-    expect(model.headers?.["X-Title"]).toBe("summarize");
+    expect(result.text).toBe("ok from openrouter");
+    expect(requestBody).toMatchObject({
+      model: "openai/gpt-oss-20b",
+      messages: [{ role: "user", content: "hi" }],
+    });
+    expect(mocks.completeSimple).not.toHaveBeenCalled();
   });
 
   it("applies provider baseUrl overrides (google/xai/zai)", async () => {
