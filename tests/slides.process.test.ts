@@ -40,6 +40,42 @@ function observeOutput() {
 
 describe("media subprocess lifecycle", () => {
   it.runIf(process.platform !== "win32")(
+    "closes inherited pipes when the process group leader exits before its deadline",
+    async () => {
+      const handle = observeOutput();
+      let childPid: number | undefined;
+      const source = [
+        'const { spawn } = require("node:child_process");',
+        "const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'inherit' });",
+        "console.log(child.pid);",
+        "child.unref();",
+      ].join("\n");
+      try {
+        await expect(
+          runProcess({
+            ...processOptions(source),
+            timeoutMs: 1000,
+            onStdoutLine: (line) => {
+              childPid = Number(line);
+            },
+          }),
+        ).rejects.toThrow("test tool timed out");
+        expect(childPid).toBeGreaterThan(0);
+        await vi.waitFor(() => expect(handle.finish).toHaveBeenCalled(), { timeout: 1000 });
+        expect(handle.finish).toHaveBeenCalledWith({ exitCode: 0, signal: null });
+      } finally {
+        if (childPid) {
+          try {
+            process.kill(childPid, "SIGKILL");
+          } catch {
+            /* Already gone. */
+          }
+        }
+      }
+    },
+  );
+
+  it.runIf(process.platform !== "win32")(
     "kills grandchildren when the command times out",
     async () => {
       let childPid: number | undefined;

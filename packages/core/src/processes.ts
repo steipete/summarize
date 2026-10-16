@@ -91,6 +91,17 @@ function registerActiveProcess(proc: ChildProcess, processGroup: boolean): void 
 
 export function signalTrackedProcess(proc: ChildProcess, signal: NodeJS.Signals): void {
   const metadata = activeTrackedProcesses.get(proc);
+  // Detached children are session leaders. Signaling the pid alone leaves
+  // grandchildren running after a timeout, even after the leader exits.
+  if (metadata?.processGroup && proc.pid) {
+    try {
+      process.kill(-proc.pid, signal);
+      return;
+    } catch {
+      // The group may have exited between the state check and signal.
+    }
+  }
+
   if (proc.exitCode !== null || proc.signalCode !== null) {
     if (metadata) activeTrackedProcesses.delete(proc);
     return;
@@ -102,17 +113,6 @@ export function signalTrackedProcess(proc: ChildProcess, signal: NodeJS.Signals)
       windowsHide: true,
     });
     if (result.status === 0) return;
-  }
-
-  // Detached children are session leaders. Signaling the pid alone leaves
-  // grandchildren running after a timeout.
-  if (metadata?.processGroup && proc.pid) {
-    try {
-      process.kill(-proc.pid, signal);
-      return;
-    } catch {
-      // The group may have exited between the state check and signal.
-    }
   }
 
   try {
