@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   FALLBACK_VERSION,
   formatVersionLine,
@@ -33,8 +33,17 @@ describe("version resolution coverage", () => {
   it("resolves package and Git metadata without an import URL", () => {
     process.env.SUMMARIZE_VERSION = " ";
     process.env.SUMMARIZE_GIT_SHA = " ";
-    expect(resolvePackageVersion()).toBe(FALLBACK_VERSION);
-    expect(resolveGitSha()).toMatch(/^[0-9a-f]{8}$/);
+    const root = makeRoot("summarize-version-cwd");
+    mkdirSync(join(root, ".git"));
+    writeFileSync(join(root, "package.json"), JSON.stringify({ version: FALLBACK_VERSION }));
+    writeFileSync(join(root, ".git", "HEAD"), "1234567890abcdef\n");
+    const cwd = vi.spyOn(process, "cwd").mockReturnValue(root);
+    try {
+      expect(resolvePackageVersion()).toBe(FALLBACK_VERSION);
+      expect(resolveGitSha()).toBe("12345678");
+    } finally {
+      cwd.mockRestore();
+    }
   });
 
   it("handles injected, nested, invalid, and fallback package versions", () => {
