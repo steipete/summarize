@@ -103,6 +103,7 @@ describe("cli main wiring", async () => {
   it.each([
     ["SIGINT", 130],
     ["SIGTERM", 143],
+    ...(process.platform === "win32" ? [] : [["SIGHUP", 129] as const]),
   ] as const)("terminates tracked children and exits on %s", async (signal, expectedExitCode) => {
     let finishRun: (() => void) | null = null;
     runCliMock.mockReset().mockImplementation(
@@ -115,6 +116,7 @@ describe("cli main wiring", async () => {
     const exit = vi.fn();
     const beforeSigint = process.listenerCount("SIGINT");
     const beforeSigterm = process.listenerCount("SIGTERM");
+    const beforeSighup = process.listenerCount("SIGHUP");
 
     const run = runCliMain({
       argv: [],
@@ -148,6 +150,9 @@ describe("cli main wiring", async () => {
     await run;
     expect(process.listenerCount("SIGINT")).toBe(beforeSigint);
     expect(process.listenerCount("SIGTERM")).toBe(beforeSigterm);
+    if (process.platform !== "win32") {
+      expect(process.listenerCount("SIGHUP")).toBe(beforeSighup);
+    }
   });
 
   it("strips ANSI control sequences from non-verbose errors", async () => {

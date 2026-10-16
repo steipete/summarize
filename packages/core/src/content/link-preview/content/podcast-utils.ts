@@ -21,11 +21,19 @@ const PODCAST_HOST_SUFFIXES = [
   "castbox.fm",
 ];
 
+function isSpotifyHostname(hostname: string): boolean {
+  const host = hostname
+    .toLowerCase()
+    .replace(/\.$/, "")
+    .replace(/^www\./, "");
+  return host === "spotify.com" || host.endsWith(".spotify.com");
+}
+
 export function extractSpotifyEpisodeId(url: string): string | null {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
-    if (!host.endsWith("spotify.com")) return null;
+    if (!isSpotifyHostname(host)) return null;
     const parts = parsed.pathname.split("/").filter(Boolean);
     const idx = parts.indexOf("episode");
     const id = idx >= 0 ? parts[idx + 1] : null;

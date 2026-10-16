@@ -1,5 +1,5 @@
 import type { ProcessHandle } from "../processes.js";
-import { spawnTracked } from "../processes.js";
+import { signalTrackedProcess, spawnTracked } from "../processes.js";
 
 export type ProcessCommand =
   | string
@@ -105,7 +105,7 @@ function runProcessWithOutput(
     }
 
     const timeout = setTimeout(() => {
-      proc.kill("SIGKILL");
+      signalTrackedProcess(proc, "SIGKILL");
       reject(new Error(`${errorLabel} timed out`));
     }, timeoutMs);
     proc.on("error", (error) => {

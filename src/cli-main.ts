@@ -29,7 +29,7 @@ export function handlePipeErrors(stream: NodeJS.WritableStream, exit: (code: num
 
 export function installCliSignalHandlers(exit: (code: number) => void): () => void {
   let handled = false;
-  const handleSignal = (signal: "SIGINT" | "SIGTERM", exitCode: number) => {
+  const handleSignal = (signal: "SIGINT" | "SIGTERM" | "SIGHUP", exitCode: number) => {
     if (handled) return;
     handled = true;
     terminateTrackedProcesses(signal);
@@ -37,11 +37,14 @@ export function installCliSignalHandlers(exit: (code: number) => void): () => vo
   };
   const handleSigint = () => handleSignal("SIGINT", 130);
   const handleSigterm = () => handleSignal("SIGTERM", 143);
+  const handleSighup = () => handleSignal("SIGHUP", 129);
   process.once("SIGINT", handleSigint);
   process.once("SIGTERM", handleSigterm);
+  if (process.platform !== "win32") process.once("SIGHUP", handleSighup);
   return () => {
     process.removeListener("SIGINT", handleSigint);
     process.removeListener("SIGTERM", handleSigterm);
+    if (process.platform !== "win32") process.removeListener("SIGHUP", handleSighup);
   };
 }
 

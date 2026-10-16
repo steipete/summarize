@@ -39,6 +39,50 @@ function observeOutput() {
 }
 
 describe("media subprocess lifecycle", () => {
+  it.runIf(process.platform !== "win32")(
+    "kills grandchildren when the command times out",
+    async () => {
+      let childPid: number | undefined;
+      const source = [
+        'const { spawn } = require("node:child_process");',
+        "const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });",
+        "console.log(child.pid);",
+        "setInterval(() => {}, 1000);",
+      ].join("\n");
+      try {
+        await expect(
+          runProcess({
+            ...processOptions(source),
+            timeoutMs: 1000,
+            onStdoutLine: (line) => {
+              childPid = Number(line);
+            },
+          }),
+        ).rejects.toThrow("test tool timed out");
+        expect(childPid).toBeGreaterThan(0);
+        let alive = true;
+        for (let attempt = 0; attempt < 40; attempt += 1) {
+          try {
+            process.kill(childPid!, 0);
+          } catch {
+            alive = false;
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        expect(alive).toBe(false);
+      } finally {
+        if (childPid) {
+          try {
+            process.kill(childPid, "SIGKILL");
+          } catch {
+            /* Already gone. */
+          }
+        }
+      }
+    },
+  );
+
   it.each([false, true])(
     "preserves line callbacks and stdout fallback: %s",
     async (separateStdout) => {

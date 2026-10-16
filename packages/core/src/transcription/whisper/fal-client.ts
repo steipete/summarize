@@ -159,11 +159,13 @@ async function initiateUpload({
   headers,
   file,
   multipart,
+  signal,
 }: {
   fetchImpl: typeof fetch;
   headers: Record<string, string>;
   file: Blob;
   multipart: boolean;
+  signal?: AbortSignal;
 }): Promise<FalUploadInitiation> {
   const route = multipart ? "initiate-multipart" : "initiate";
   const initiated = await fetchJson(
@@ -179,6 +181,7 @@ async function initiateUpload({
         content_type: file.type || "application/octet-stream",
         file_name: resolveUploadFilename(file),
       }),
+      signal,
     },
   );
   const uploadUrl = initiated.upload_url;
@@ -199,16 +202,19 @@ async function uploadSingle({
   fetchImpl,
   headers,
   file,
+  signal,
 }: {
   fetchImpl: typeof fetch;
   headers: Record<string, string>;
   file: Blob;
+  signal?: AbortSignal;
 }): Promise<string> {
   const { uploadUrl, fileUrl } = await initiateUpload({
     fetchImpl,
     headers,
     file,
     multipart: false,
+    signal,
   });
   const response = await fetchWithRetry(fetchImpl, uploadUrl, {
     method: "PUT",
@@ -216,7 +222,9 @@ async function uploadSingle({
       "Content-Type": file.type || "application/octet-stream",
     },
     body: file,
+    signal,
   });
+  await response.body?.cancel().catch(() => {});
   if (!response.ok) throw uploadFailure(response);
   return fileUrl;
 }
@@ -225,16 +233,19 @@ async function uploadMultipart({
   fetchImpl,
   headers,
   file,
+  signal,
 }: {
   fetchImpl: typeof fetch;
   headers: Record<string, string>;
   file: Blob;
+  signal?: AbortSignal;
 }): Promise<string> {
   const { uploadUrl, fileUrl } = await initiateUpload({
     fetchImpl,
     headers,
     file,
     multipart: true,
+    signal,
   });
   const parsedUploadUrl = new URL(uploadUrl);
   const parts: Array<{ partNumber: number; etag: string }> = [];
@@ -248,6 +259,7 @@ async function uploadMultipart({
         index * FAL_MULTIPART_CHUNK_BYTES,
         Math.min((index + 1) * FAL_MULTIPART_CHUNK_BYTES, file.size),
       ),
+      signal,
     });
     if (!response.ok) throw uploadFailure(response);
     const body = await readResponseBody(response);
@@ -262,7 +274,9 @@ async function uploadMultipart({
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ parts }),
+    signal,
   });
+  await completed.body?.cancel().catch(() => {});
   if (!completed.ok) throw uploadFailure(completed);
   return fileUrl;
 }
@@ -311,10 +325,10 @@ export function createFalClient({
 
   return {
     storage: {
-      upload: async (file: Blob): Promise<string> =>
+      upload: async (file: Blob, signal?: AbortSignal): Promise<string> =>
         file.size > FAL_SINGLE_UPLOAD_MAX_BYTES
-          ? await uploadMultipart({ fetchImpl, headers, file })
-          : await uploadSingle({ fetchImpl, headers, file }),
+          ? await uploadMultipart({ fetchImpl, headers, file, signal })
+          : await uploadSingle({ fetchImpl, headers, file, signal }),
     },
     subscribe: async (endpoint: string, options: FalSubscribeOptions) => {
       const normalizedEndpoint = endpoint

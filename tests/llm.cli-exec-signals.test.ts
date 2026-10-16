@@ -1,8 +1,44 @@
+import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import { CliInterruptedError, execCliWithInput } from "../src/llm/cli-exec.js";
 import type { ExecFileFn } from "../src/markitdown.js";
 
 describe("execCliWithInput signals", () => {
+  it("reports the CLI failure when stdin is already closed", async () => {
+    const stdin = new EventEmitter() as EventEmitter & {
+      write: (chunk: string) => boolean;
+      end: () => void;
+    };
+    stdin.write = () => {
+      queueMicrotask(() => {
+        stdin.emit("error", Object.assign(new Error("write EPIPE"), { code: "EPIPE" }));
+      });
+      return true;
+    };
+    stdin.end = () => {};
+    let callback: Parameters<ExecFileFn>[3] | undefined;
+    const execFileImpl: ExecFileFn = ((_cmd, _args, _options, cb) => {
+      callback = cb;
+      return { kill: vi.fn(), stdin } as unknown as ReturnType<ExecFileFn>;
+    }) as ExecFileFn;
+
+    const promise = execCliWithInput({
+      execFileImpl,
+      cmd: "slow-cli",
+      args: [],
+      input: "prompt",
+      timeoutMs: 10_000,
+      env: {},
+    });
+    callback?.(
+      Object.assign(new Error("CLI exited before reading the prompt"), { code: 1 }),
+      "",
+      "boom",
+    );
+
+    await expect(promise).rejects.toThrow("CLI exited before reading the prompt");
+  });
+
   it("terminates the active child when the request aborts", async () => {
     const kill = vi.fn();
     let callback: Parameters<ExecFileFn>[3] | undefined;

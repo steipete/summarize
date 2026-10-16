@@ -226,8 +226,20 @@ export async function execCliWithInput({
     }
 
     if (child.stdin) {
-      child.stdin.write(input);
-      child.stdin.end();
+      const stdin = child.stdin;
+      if (typeof stdin.on === "function") {
+        stdin.on("error", (error: NodeJS.ErrnoException) => {
+          if (error?.code === "EPIPE" || error?.code === "ERR_STREAM_DESTROYED") return;
+          reject(error);
+        });
+      }
+      try {
+        stdin.write(input);
+        stdin.end();
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException | null)?.code;
+        if (code !== "EPIPE" && code !== "ERR_STREAM_DESTROYED") reject(error);
+      }
     }
   });
 }

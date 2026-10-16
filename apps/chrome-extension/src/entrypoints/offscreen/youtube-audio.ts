@@ -5,6 +5,7 @@ import type { BrowserYoutubeMediaContext } from "../background/youtube-media";
 import type { CapturedYoutubeSabrRequest } from "../background/youtube-sabr-capture";
 
 const MAX_BROWSER_AUDIO_BYTES = 128 * 1024 * 1024;
+const YOUTUBE_AUDIO_FETCH_TIMEOUT_MS = 120_000;
 const RANGE_ATTEMPTS = 3;
 
 export type DownloadedYoutubeAudio = {
@@ -24,14 +25,16 @@ export async function downloadYoutubeAudio({
   context,
   capturedSabr,
   ignoreContextDirect = false,
+  fetchTimeoutMs = YOUTUBE_AUDIO_FETCH_TIMEOUT_MS,
 }: {
   context: BrowserYoutubeMediaContext;
   capturedSabr: CapturedYoutubeSabrRequest | null;
   ignoreContextDirect?: boolean;
+  fetchTimeoutMs?: number;
 }): Promise<DownloadedYoutubeAudio> {
   let directError: unknown;
   try {
-    return await downloadViaDirectAudio(context, ignoreContextDirect);
+    return await downloadViaDirectAudio(context, ignoreContextDirect, fetchTimeoutMs);
   } catch (error) {
     directError = error;
   }
@@ -79,6 +82,7 @@ export async function resolveYoutubeDirectAudio(
 async function downloadViaDirectAudio(
   context: BrowserYoutubeMediaContext,
   ignoreContextDirect: boolean,
+  fetchTimeoutMs: number,
 ): Promise<DownloadedYoutubeAudio> {
   const media = await resolveYoutubeDirectAudio(context, { ignoreContextDirect });
   let bytes: Uint8Array;
@@ -88,8 +92,11 @@ async function downloadViaDirectAudio(
       contentLength: media.contentLength,
     });
   } else {
-    const response = await fetch(media.url);
-    if (!response.ok) throw new Error(`YouTube audio download failed (${response.status}).`);
+    const response = await fetch(media.url, { signal: AbortSignal.timeout(fetchTimeoutMs) });
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => {});
+      throw new Error(`YouTube audio download failed (${response.status}).`);
+    }
     bytes = await readResponseWithLimit(response, MAX_BROWSER_AUDIO_BYTES);
   }
   return {
@@ -140,7 +147,7 @@ async function downloadYoutubeRange({
       const response = await fetchImpl(url, {
         credentials: "omit",
         headers: { Range: `bytes=${start}-${end}` },
-        signal: AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(YOUTUBE_AUDIO_FETCH_TIMEOUT_MS),
       });
       if (response.status !== 206 && !(response.status === 200 && start === 0)) {
         await response.body?.cancel();
@@ -228,6 +235,7 @@ async function downloadViaSabr(
 async function readResponseWithLimit(response: Response, maxBytes: number): Promise<Uint8Array> {
   const contentLength = Number(response.headers.get("content-length"));
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    await response.body?.cancel().catch(() => {});
     throw new Error("YouTube audio is too large for local browser transcription.");
   }
   if (!response.body) {

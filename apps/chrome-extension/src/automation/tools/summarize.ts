@@ -14,6 +14,20 @@ import { parseSseEvent } from "../../lib/runtime-contracts";
 import { getProviderSettings, loadSettings } from "../../lib/settings";
 import { getActiveTabUrl } from "./active-tab";
 
+const BROWSER_SUMMARIZE_FETCH_TIMEOUT_MS = 120_000;
+
+function resolveBrowserFetchTimeout(raw: string | undefined): number {
+  if (!raw?.trim()) return BROWSER_SUMMARIZE_FETCH_TIMEOUT_MS;
+  const match = /^(\d+(?:\.\d+)?)(ms|s|m|h)?$/i.exec(raw.trim());
+  const unit = match?.[2]?.toLowerCase() ?? "s";
+  const multiplier = unit === "ms" ? 1 : unit === "s" ? 1000 : unit === "m" ? 60_000 : 3_600_000;
+  const timeoutMs = Math.floor(Number(match?.[1]) * multiplier);
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 4_294_967_295) {
+    throw new Error(`Invalid browser fetch timeout: ${raw}`);
+  }
+  return timeoutMs;
+}
+
 export type SummarizeToolArgs = {
   url?: string;
   extractOnly?: boolean;
@@ -71,6 +85,7 @@ export async function executeSummarizeTool(args: SummarizeToolArgs): Promise<Sum
         typeof args.maxCharacters === "number" && Number.isFinite(args.maxCharacters)
           ? args.maxCharacters
           : settings.maxChars,
+      signal: AbortSignal.timeout(resolveBrowserFetchTimeout(args.timeout ?? settings.timeout)),
     });
     if (extractOnly) {
       return {

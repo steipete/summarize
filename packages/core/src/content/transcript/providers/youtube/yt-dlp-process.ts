@@ -1,4 +1,4 @@
-import { spawnTracked } from "../../../../processes.js";
+import { signalTrackedProcess, spawnTracked } from "../../../../processes.js";
 import {
   buildYtDlpDownloadArgs,
   parseYtDlpMetadataOutput,
@@ -34,7 +34,7 @@ export async function fetchMediaMetadataWithYtDlp({
 
     const timeout = setTimeout(
       () => {
-        proc.kill("SIGKILL");
+        signalTrackedProcess(proc, "SIGKILL");
         resolve(null);
       },
       Math.max(1, Math.min(timeoutMs, 30_000)),
@@ -157,7 +157,7 @@ export function runYtDlpDownload({
     }
 
     const timeout = setTimeout(() => {
-      proc.kill("SIGTERM");
+      signalTrackedProcess(proc, "SIGTERM");
       reject(new Error("yt-dlp download timeout"));
     }, YT_DLP_TIMEOUT_MS);
 

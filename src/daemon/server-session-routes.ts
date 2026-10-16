@@ -1,4 +1,5 @@
-import { createReadStream, promises as fs } from "node:fs";
+import { createReadStream, promises as fs, type ReadStream } from "node:fs";
+import type { ServerResponse } from "node:http";
 import path from "node:path";
 import { encodeSseEvent } from "@steipete/summarize-core/runtime";
 import { resolveValidSlideImagePath, type SlideExtractionResult } from "../slides/index.js";
@@ -7,6 +8,20 @@ import type { Session } from "./server-session.js";
 import { attachBufferedSseSession } from "./server-sse.js";
 import { buildSlidesPayload } from "./server-summarize-events.js";
 import { resolveHomeDir } from "./server-summarize-request.js";
+
+function pipeSlideImage(res: ServerResponse, stream: ReadStream): void {
+  if (res.destroyed) {
+    stream.destroy();
+    return;
+  }
+  res.on("close", () => {
+    stream.destroy();
+  });
+  stream.on("error", () => {
+    if (!res.writableEnded) res.end();
+  });
+  stream.pipe(res);
+}
 
 export async function handleSessionRoutes(options: {
   req: import("node:http").IncomingMessage;
@@ -66,9 +81,7 @@ export async function handleSessionRoutes(options: {
         "cache-control": "no-cache",
         ...cors,
       });
-      const stream = createReadStream(slide.imagePath);
-      stream.pipe(res);
-      stream.on("error", () => res.end());
+      pipeSlideImage(res, createReadStream(slide.imagePath));
     } catch {
       json(res, 404, { ok: false, error: "not found" }, cors);
     }
@@ -147,9 +160,7 @@ export async function handleSessionRoutes(options: {
         "x-summarize-slide-ready": "1",
         ...cors,
       });
-      const stream = createReadStream(filePath);
-      stream.pipe(res);
-      stream.on("error", () => res.end());
+      pipeSlideImage(res, createReadStream(filePath));
     } catch {
       json(res, 404, { ok: false, error: "not found" }, cors);
     }

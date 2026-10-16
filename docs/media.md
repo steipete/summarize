@@ -36,6 +36,7 @@ read_when:
 - Operators who accept the disk/DoS tradeoff for larger remote podcast/media files can opt in with `SUMMARIZE_REMOTE_MEDIA_MAX_BYTES=<positive integer byte limit>`. The override must be a finite positive integer byte count; fractional, sub-byte, or otherwise invalid values are ignored and the default 512 MB cap remains in effect.
 - Remote transcription providers: `ASSEMBLYAI_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` / `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `FAL_KEY`, `DEEPGRAM_API_KEY` (plus `GROQ_API_KEY` before local/remote fallback). Gemini defaults to `gemini-2.5-flash`; override with `SUMMARIZE_GEMINI_TRANSCRIPTION_MODEL`. Deepgram defaults to `nova-3`; override with `SUMMARIZE_DEEPGRAM_TRANSCRIPTION_MODEL`. Diarization uses `ELEVENLABS_API_KEY` or `OPENAI_API_KEY`.
 - Gemini uses the Files API automatically for larger uploads.
+- FAL uploads and each AssemblyAI upload/submission have a ten-minute deadline that also covers reading response bodies. Their existing ten-minute processing allowance starts after upload (FAL) or submission (AssemblyAI), so uploading does not shorten transcription time.
 
 ## Shared helpers
 

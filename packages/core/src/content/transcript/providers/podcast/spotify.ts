@@ -1,11 +1,19 @@
 import { BLOCKED_HTML_HINT_PATTERN, TRANSCRIPTION_TIMEOUT_MS } from "./constants.js";
 import { getJsonNumber, getJsonPath, getJsonString } from "./json.js";
 
+function isSpotifyHostname(hostname: string): boolean {
+  const host = hostname
+    .toLowerCase()
+    .replace(/\.$/, "")
+    .replace(/^www\./, "");
+  return host === "spotify.com" || host.endsWith(".spotify.com");
+}
+
 export function extractSpotifyEpisodeId(url: string): string | null {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.toLowerCase();
-    if (!host.endsWith("spotify.com")) return null;
+    if (!isSpotifyHostname(host)) return null;
 
     const parts = parsed.pathname.split("/").filter(Boolean);
     const idx = parts.indexOf("episode");

@@ -3,6 +3,10 @@
 ## 0.25.3 - Unreleased
 
 - OpenRouter: forward reasoning effort and omit implicit output limits for text completions and streams; retain provider error diagnostics (#527, fixes #519, thanks @Ehsan-hash).
+- Media and CLI: terminate timed-out process trees, handle early child stdin closure, and close slide image streams on disconnect without masking extraction failures during cleanup (#520, #521, #524, thanks @SebTardif).
+- Transcription: abort stalled FAL and AssemblyAI uploads and response bodies while preserving the existing post-upload processing allowance (#522, thanks @SebTardif).
+- Browser extraction: bound YouTube audio downloads without a content length and honor the configured summarize fetch timeout, with a two-minute fallback (#523, #526, thanks @SebTardif).
+- Spotify: reject lookalike hostnames when resolving episode IDs (#525, thanks @SebTardif).
 - Maintenance: refresh stabilized provider, localization, browser media, Preact, Oxc, and GitHub Actions dependencies; migrate picker style types for Preact 11 while retaining Node 24 and the seven-day adoption hold (#515, #516, thanks @dependabot).
 
 ## 0.25.2 - 2026-10-11
