@@ -27,10 +27,10 @@
     "googlevideo": "4.1.1",
     "markdown-it": "^15.0.2",
     "mediabunny": "1.61.3",
-    "preact": "11.0.0"
+    "preact": "11.0.1"
   },
   "devDependencies": {
-    "@playwright/test": "1.63.0",
+    "@playwright/test": "1.64.0",
     "@types/chrome": "^0.3.0",
     "typescript": "^7.0.2",
     "web-ext": "10.7.0",
