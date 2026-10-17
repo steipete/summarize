@@ -370,4 +370,30 @@ describe("run model selection", () => {
       expect(result.requestedModel.cliModel).toBe("grok-4.6");
     }
   });
+
+  it("resolves provider-default agy CLI ids through summarize config", () => {
+    const config = {
+      cli: {
+        agy: {
+          model: "gemini-3.8-flash-high",
+        },
+      },
+    };
+
+    const result = resolveModelSelection({
+      config,
+      configForCli: config,
+      configPath: null,
+      envForRun: {},
+      explicitModelArg: "cli/agy",
+    });
+
+    expect(result.requestedModel.kind).toBe("fixed");
+    expect(result.requestedModel.userModelId).toBe("cli/agy/gemini-3.8-flash-high");
+    expect(result.requestedModelLabel).toBe("cli/agy/gemini-3.8-flash-high");
+    if (result.requestedModel.kind === "fixed" && result.requestedModel.transport === "cli") {
+      expect(result.requestedModel.cliProvider).toBe("agy");
+      expect(result.requestedModel.cliModel).toBe("gemini-3.8-flash-high");
+    }
+  });
 });

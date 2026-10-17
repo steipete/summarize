@@ -75,17 +75,22 @@ describe("model spec parsing", () => {
     expect(parsed.requiredEnv).toBe("CLI_OPENCODE");
   });
 
-  it("uses agy's active session model and rejects model suffixes", () => {
-    const parsed = parseRequestedModelId("cli/agy");
-    expect(parsed.kind).toBe("fixed");
-    expect(parsed.transport).toBe("cli");
-    expect(parsed.userModelId).toBe("cli/agy");
-    expect(parsed.cliProvider).toBe("agy");
-    expect(parsed.cliModel).toBeNull();
-    expect(parsed.requiredEnv).toBe("CLI_AGY");
-    expect(() => parseRequestedModelId("cli/agy/Gemini 3.5 Flash (Medium)")).toThrow(
-      /without a model suffix/,
-    );
+  it("uses agy's active session model by default and accepts model suffixes", () => {
+    const runtimeDefault = parseRequestedModelId("cli/agy");
+    expect(runtimeDefault.kind).toBe("fixed");
+    expect(runtimeDefault.transport).toBe("cli");
+    expect(runtimeDefault.userModelId).toBe("cli/agy");
+    expect(runtimeDefault.cliProvider).toBe("agy");
+    expect(runtimeDefault.cliModel).toBeNull();
+    expect(runtimeDefault.requiredEnv).toBe("CLI_AGY");
+
+    const explicitModel = parseRequestedModelId("cli/agy/gemini-3.8-flash-high");
+    expect(explicitModel.kind).toBe("fixed");
+    expect(explicitModel.transport).toBe("cli");
+    expect(explicitModel.userModelId).toBe("cli/agy/gemini-3.8-flash-high");
+    expect(explicitModel.cliProvider).toBe("agy");
+    expect(explicitModel.cliModel).toBe("gemini-3.8-flash-high");
+    expect(explicitModel.requiredEnv).toBe("CLI_AGY");
   });
 
   it("uses the pi runtime default model and accepts model suffixes", () => {
