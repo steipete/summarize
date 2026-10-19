@@ -113,14 +113,17 @@ jobs:
         with:
           node-version: 24
 
-      - name: Build and validate npm package state
+      - name: Build and validate npm package manifests
         run: |
           corepack enable
           corepack install
           pnpm install --frozen-lockfile
           pnpm build
           PACK_DIR="$RUNNER_TEMP/npm-pack" scripts/release.sh pack
-          node scripts/npm-release.mjs check "$RUNNER_TEMP/npm-pack"
+
+      - name: Check npm publication state
+        if: github.event_name == 'push'
+        run: node scripts/npm-release.mjs check "$RUNNER_TEMP/npm-pack"
 
   build:
     name: Build, sign, and notarize
