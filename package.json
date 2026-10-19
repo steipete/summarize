@@ -71,23 +71,23 @@
     "commander": "^15.0.0",
     "file-type": "^22.1.1",
     "json5": "^2.2.3",
-    "markdansi": "^0.3.4",
-    "mime": "^4.1.0",
+    "markdansi": "^0.3.5",
+    "mime": "^4.1.1",
     "osc-progress": "^0.3.4",
     "tokentally": "^0.1.7",
     "undici": "8.11.2"
   },
   "devDependencies": {
-    "@types/node": "^24.19.1",
-    "@types/sanitize-html": "^2.16.1",
-    "@vitest/coverage-v8": "^5.0.3",
+    "@types/node": "^24.19.2",
+    "@types/sanitize-html": "^2.16.2",
+    "@vitest/coverage-v8": "^5.0.4",
     "happy-dom": "^20.14.6",
     "oxc-parser": "^0.153.0",
     "oxfmt": "0.72.0",
-    "oxlint": "^1.85.0",
-    "oxlint-tsgolint": "^7.0.2003",
+    "oxlint": "^1.87.0",
+    "oxlint-tsgolint": "^7.0.2004",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.4"
   },
   "engines": {
     "node": ">=24"

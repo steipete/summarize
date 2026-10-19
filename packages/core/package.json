@@ -99,8 +99,8 @@
     "undici": "8.11.2"
   },
   "devDependencies": {
-    "@types/node": "^24.19.1",
-    "@types/sanitize-html": "^2.16.1",
+    "@types/node": "^24.19.2",
+    "@types/sanitize-html": "^2.16.2",
     "typescript": "^7.0.2"
   },
   "engines": {
