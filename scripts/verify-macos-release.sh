@@ -24,7 +24,7 @@ for secret_name in MACOS_SIGNING_P12 MACOS_SIGNING_P12_PASSWORD ASC_KEY_ID ASC_I
     exit 1
   }
 done
-for tool in codesign csreq lipo mktemp otool plutil tar; do
+for tool in arch codesign csreq lipo mktemp otool plutil tar; do
   command -v "$tool" >/dev/null 2>&1 || {
     echo "missing required command: $tool" >&2
     exit 1
@@ -65,22 +65,7 @@ actual_arch=$(lipo -archs "$BINARY" | tr -d '[:space:]')
   exit 1
 }
 
-build_version=$(otool -l "$BINARY")
-printf '%s\n' "$build_version" | grep -A3 LC_BUILD_VERSION
-printf '%s\n' "$build_version" | node -e '
-let input = "";
-process.stdin.on("data", chunk => input += chunk);
-process.stdin.on("end", () => {
-  const blocks = input.split(/Load command \d+/).filter(block => /cmd LC_BUILD_VERSION\b/.test(block));
-  const version = blocks[0]?.match(/\bminos (\d+(?:\.\d+){0,2})\b/)?.[1];
-  const parts = version?.split(".").map(Number);
-  if (blocks.length !== 1 || !/\bplatform (?:1|macos)\b/i.test(blocks[0]) ||
-      !parts || parts[0] > 13 || (parts[0] === 13 && parts.slice(1).some(part => part > 0))) {
-    console.error(`release binary minimum macOS version ${version ?? "missing"} exceeds macOS 13.0 or is invalid`);
-    process.exitCode = 1;
-  }
-});
-'
+"$(dirname "${BASH_SOURCE[0]}")/check-macos-target.sh" "$BINARY"
 
 signature=$(codesign -dvvv "$BINARY" 2>&1)
 grep -Fqx "Identifier=$IDENTIFIER" <<<"$signature"
@@ -127,7 +112,8 @@ if (
 }
 NODE
 
-version_output=$(env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin "$BINARY" --version)
+arch_tool=$(command -v arch)
+version_output=$(env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin "$arch_tool" "-$EXPECTED_ARCH" "$BINARY" --version)
 if [[ "$version_output" != "$EXPECTED_VERSION" &&
   ! "$version_output" =~ ^${EXPECTED_VERSION//./\.}[[:space:]]+\([0-9a-f]{8}\)$ ]]; then
   echo "release binary reports $version_output, expected $EXPECTED_VERSION" >&2

@@ -2,6 +2,8 @@
 
 ## 0.25.3 - Unreleased
 
+- Maintenance: move macOS CI and release jobs to macOS 27, verify x86_64 under Rosetta, and retain the macOS 13 minimum with a shared artifact gate; add a publish-disabled release dry run.
+
 - OpenRouter: forward reasoning effort and omit implicit output limits for text completions and streams; retain provider error diagnostics (#527, fixes #519, thanks @Ehsan-hash).
 - Media and CLI: terminate timed-out process trees, handle early child stdin closure, and close slide image streams on disconnect without masking extraction failures during cleanup (#520, #521, #524, thanks @SebTardif).
 - Transcription: abort stalled FAL and AssemblyAI uploads and response bodies while preserving the existing post-upload processing allowance (#522, thanks @SebTardif).

@@ -19,6 +19,10 @@ Homebrew/core autobumps independently. Do not block a completed release on that 
 
 ## Fast path (recommended)
 
+To validate the current version on merged `main` without creating tags or publishing, run `gh workflow run release.yml --repo steipete/summarize --ref main -f version=0.25.2 -F dry_run=true`. Manual runs require dry-run mode; they build, sign, notarize, and independently verify both macOS archives, but skip npm and GitHub publication.
+
+macOS builds and verification use Apple Silicon `xcode-27` runners. The x86_64 verifier explicitly uses Rosetta. CI builds both architectures and checks their Mach-O minimum remains at most macOS 13.0; `MACOSX_DEPLOYMENT_TARGET=13.0` is explicit in both build jobs.
+
 0. Preflight
    - Clean git: `git status`
    - Auth: `gh auth status`

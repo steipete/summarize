@@ -26,6 +26,14 @@ cat >"$MOCK_BIN/lipo" <<'EOF'
 echo "${MOCK_ARCH:-arm64}"
 EOF
 
+cat >"$MOCK_BIN/arch" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'arch %s\n' "$*" >>"$(dirname "$0")/../commands.log"
+shift
+exec "$@"
+EOF
+
 cat >"$MOCK_BIN/otool" <<'EOF'
 #!/bin/sh
 cat <<META
@@ -168,6 +176,11 @@ env \
   PATH="$MOCK_BIN:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" \
   MOCK_LOG="$LOG" \
   "$ROOT/scripts/verify-macos-release.sh" "$TEST_DIR/release.tar.gz" arm64 0.21.6
+
+env "${COMMON_ENV[@]}" MOCK_ARCH=x86_64 \
+  env -u CODESIGN_IDENTITY -u CODESIGN_KEYCHAIN -u ASC_KEY_ID -u ASC_ISSUER_ID -u ASC_PRIVATE_KEY_PATH \
+  "$ROOT/scripts/verify-macos-release.sh" "$TEST_DIR/release.tar.gz" x86_64 0.21.6
+grep -F -- 'arch -x86_64' "$LOG" >/dev/null || fail "x86_64 verification skipped Rosetta execution"
 
 if env \
   -u MACOS_SIGNING_P12 \

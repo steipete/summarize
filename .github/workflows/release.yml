@@ -1,6 +1,16 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Current version to build and verify
+        required: true
+        type: string
+      dry_run:
+        description: Validate without publishing (required for manual runs)
+        type: boolean
+        default: true
   push:
     tags:
       - "v*"
@@ -33,28 +43,46 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_SHA: ${{ github.sha }}
           RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_EVENT: ${{ github.event_name }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
-          version=${RELEASE_TAG#v}
+          git fetch --no-tags origin main
+          if [[ "$RELEASE_EVENT" == workflow_dispatch ]]; then
+            [[ "$DRY_RUN" == true && "$GITHUB_REF" == refs/heads/main ]] || {
+              echo "manual release validation requires dry_run=true on main" >&2
+              exit 1
+            }
+            target_sha=$(git rev-parse origin/main)
+            [[ "$RELEASE_SHA" == "$target_sha" ]] || {
+              echo "dry run must use the current main head" >&2
+              exit 1
+            }
+            version=$RELEASE_VERSION
+          else
+            version=${RELEASE_TAG#v}
+          fi
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
             echo "release tag must be v-prefixed SemVer" >&2
             exit 1
           fi
-          if [[ "$(git cat-file -t "refs/tags/$RELEASE_TAG")" != tag ]]; then
-            echo "release tag must be annotated" >&2
-            exit 1
+          if [[ "$RELEASE_EVENT" != workflow_dispatch ]]; then
+            if [[ "$(git cat-file -t "refs/tags/$RELEASE_TAG")" != tag ]]; then
+              echo "release tag must be annotated" >&2
+              exit 1
+            fi
+            tag_object=$(git rev-parse "refs/tags/$RELEASE_TAG")
+            target_sha=$(git rev-parse "refs/tags/$RELEASE_TAG^{}")
+            if [[ "$RELEASE_SHA" != "$tag_object" && "$RELEASE_SHA" != "$target_sha" ]]; then
+              echo "release event does not match the annotated tag object or its commit" >&2
+              exit 1
+            fi
+            git merge-base --is-ancestor "$target_sha" origin/main || {
+              echo "release commit is not reachable from main" >&2
+              exit 1
+            }
           fi
-          tag_object=$(git rev-parse "refs/tags/$RELEASE_TAG")
-          target_sha=$(git rev-parse "refs/tags/$RELEASE_TAG^{}")
-          if [[ "$RELEASE_SHA" != "$tag_object" && "$RELEASE_SHA" != "$target_sha" ]]; then
-            echo "release event does not match the annotated tag object or its commit" >&2
-            exit 1
-          fi
-          git fetch --no-tags origin main
-          git merge-base --is-ancestor "$target_sha" origin/main || {
-            echo "release commit is not reachable from main" >&2
-            exit 1
-          }
           root_version=$(node -p 'require("./package.json").version')
           core_version=$(node -p 'require("./packages/core/package.json").version')
           fallback_version=$(sed -nE 's/^export const FALLBACK_VERSION = "([^"]+)";.*/\1/p' src/version.ts)
@@ -73,7 +101,7 @@ jobs:
             echo "release commit has no successful push CI run" >&2
             exit 1
           fi
-          if gh release view "$RELEASE_TAG" --json tagName >/dev/null 2>&1; then
+          if [[ "$RELEASE_EVENT" != workflow_dispatch ]] && gh release view "$RELEASE_TAG" --json tagName >/dev/null 2>&1; then
             echo "GitHub Release $RELEASE_TAG already exists" >&2
             exit 1
           fi
@@ -97,7 +125,9 @@ jobs:
   build:
     name: Build, sign, and notarize
     needs: validate
-    runs-on: macos-15
+    runs-on: xcode-27
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
     timeout-minutes: 60
     permissions:
       contents: read
@@ -241,10 +271,10 @@ jobs:
       matrix:
         include:
           - arch: arm64
-            runner: macos-15
+            runner: xcode-27
             archive_arch: arm64
           - arch: x86_64
-            runner: macos-15-intel
+            runner: xcode-27
             archive_arch: x64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
@@ -252,6 +282,14 @@ jobs:
       actions: read
       contents: read
     steps:
+      - name: Ensure Rosetta for x86_64 verification
+        if: matrix.arch == 'x86_64'
+        run: |
+          if ! arch -x86_64 /usr/bin/true; then
+            sudo softwareupdate --install-rosetta --agree-to-license
+          fi
+          arch -x86_64 /usr/bin/true
+
       - name: Checkout frozen tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -284,6 +322,7 @@ jobs:
             "$VERSION"
 
   npm:
+    if: github.event_name == 'push'
     name: Publish verified npm packages
     needs: [validate, verify]
     runs-on: ubuntu-latest
@@ -319,6 +358,7 @@ jobs:
         run: env -u NODE_AUTH_TOKEN -u NPM_TOKEN node scripts/npm-release.mjs publish "$RUNNER_TEMP/npm-pack"
 
   publish:
+    if: github.event_name == 'push'
     name: Publish verified GitHub Release
     needs: [validate, build, verify, npm]
     runs-on: ubuntu-latest
