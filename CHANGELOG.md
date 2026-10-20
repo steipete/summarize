@@ -2,6 +2,9 @@
 
 ## 0.25.3 - Unreleased
 
+- Security: backport Markdown rendering denial-of-service fixes and update Vite editor-launch protection while retaining the seven-day dependency stabilization policy.
+- Maintenance: refresh stabilized nanoid and UUID overrides.
+
 - Maintenance: update the provider runtime and lint tooling after their seven-day stabilization hold.
 
 - Maintenance: refresh stabilized terminal rendering, MIME detection, browser media, AWS provider, and test dependencies while retaining Node 24 and the seven-day adoption hold.

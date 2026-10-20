@@ -15,14 +15,14 @@ overrides:
   "brace-expansion@^1.0.0": 1.1.21
   image-size: 2.0.4
   "js-yaml@^4.0.0": 4.3.2
-  nanoid: 3.3.19
+  nanoid: 3.3.20
   protobufjs: 7.6.6
   sharp: 0.35.5
   shell-quote: 1.12.0
   source-map-js: 1.2.2
   tmp: 0.2.7
-  uuid: 14.0.2
-  vite: 8.3.2
+  uuid: 14.0.3
+  vite: 8.3.4
   # Vite 8 uses Rolldown/Oxc here; do not auto-install its legacy optional peers.
   "vite>esbuild": "-"
   "vite>tsx": "-"
@@ -33,3 +33,5 @@ overrides:
 patchedDependencies:
   # Upstream rejects unsafe destinations but still continues after a directory error.
   adm-zip@0.6.1: patches/adm-zip@0.6.1.patch
+  # Backport renderer DoS fixes while 15.0.3 completes its stabilization hold.
+  markdown-it@15.0.2: patches/markdown-it@15.0.2.patch
