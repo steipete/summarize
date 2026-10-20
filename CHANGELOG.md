@@ -2,6 +2,8 @@
 
 ## 0.25.3 - Unreleased
 
+- Maintenance: update the provider runtime and lint tooling after their seven-day stabilization hold.
+
 - Maintenance: refresh stabilized terminal rendering, MIME detection, browser media, AWS provider, and test dependencies while retaining Node 24 and the seven-day adoption hold.
 
 - Maintenance: move macOS CI and release jobs to macOS 27, verify x86_64 under Rosetta, and retain the macOS 13 minimum with a shared artifact gate; add a publish-disabled release dry run.
