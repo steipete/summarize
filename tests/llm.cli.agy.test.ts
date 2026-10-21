@@ -172,6 +172,43 @@ describe("runCliModel - agy provider", () => {
     expect(seenCwd).toBe("/tmp/agy-tools-cwd");
   });
 
+  it.each(["explicit", "configured", "extraArgs"])(
+    "fails clearly for an unknown %s model without leaking child diagnostics",
+    async (source) => {
+      const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
+        expect(args).toContain("missing-model");
+        cb?.(
+          Object.assign(new Error("private command prompt"), { code: 1 }),
+          "private stdout",
+          "Unknown model missing-model; private prompt excerpt",
+        );
+        return { stdin: { write: () => {}, end: () => {} } } as unknown as ReturnType<ExecFileFn>;
+      }) as ExecFileFn;
+      const error = await runCliModel({
+        provider: "agy",
+        prompt: "private prompt",
+        model: source === "explicit" ? "missing-model" : null,
+        allowTools: false,
+        timeoutMs: 1000,
+        env: {},
+        execFileImpl,
+        config:
+          source === "configured"
+            ? { agy: { model: "missing-model" } }
+            : source === "extraArgs"
+              ? { agy: { extraArgs: ["--model", "missing-model"] } }
+              : null,
+      }).catch((error: unknown) => error);
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("--model missing-model");
+      expect((error as Error).message).toContain("agy models");
+      expect((error as Error).message).toContain("Unknown models fail in print mode");
+      expect(JSON.stringify(error)).not.toContain("private");
+      expect((error as Error).message).not.toContain("private");
+      expect((error as Error).cause).toBeUndefined();
+    },
+  );
+
   it("passes summarize timeout to agy unless extra args override it", async () => {
     const seen: string[][] = [];
     const execFileImpl = makeStub((args) => {

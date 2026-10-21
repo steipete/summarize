@@ -2,6 +2,10 @@
 
 ## 0.25.4 - Unreleased
 
+### Changed
+
+- Antigravity: honor `cli.agy.model` (previously ignored) and support `cli/agy/<model>`; require valid model settings, report failed model selections with `agy models` guidance, and retain the active session default when no model is set (#518, thanks @kevin820606).
+
 ## 0.25.3 - 2026-10-20
 
 **Highlights:** security fixes for Markdown rendering and Vite, plus more reliable OpenRouter reasoning, media extraction, and transcription uploads.

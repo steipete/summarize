@@ -448,6 +448,7 @@ Notes:
 - `cli.<provider>.binary` overrides CLI binary discovery.
 - `cli.<provider>.extraArgs` appends extra CLI args.
 - Antigravity CLI uses the active agy session model by default and accepts configured (`cli.agy.model`) or per-call (`cli/agy/<model>`) models; run `agy models` to list valid model slugs.
+- Upgrade note: `cli.agy.model` was previously ignored and now selects the model. Remove it to retain the session default. Use agy 1.1.5 or newer; invalid settings are rejected and unknown models fail instead of silently using another model. See [CLI models](cli.md) for precedence and auto fallback behavior.
 - pi CLI runs `pi --print --mode json`, passes extracted content over stdin, and accepts configured or per-call models; use `PI_PATH` to override binary.
 - Grok CLI runs `grok --prompt-file <file> --output-format json` in a tool-restricted sandbox for text summaries, accepts configured or per-call models, and reports token usage and cost; use `GROK_PATH` to override binary. Requires `grok login` or `XAI_API_KEY`; run `grok models` to list valid model ids.
 - `cli.grok.isolated` defaults to `true` for normal summaries, adding a temporary cwd, a restricted toolset, `--sandbox strict`, and a temporary `GROK_HOME` that carries `auth.json` only. Set it to `false` only when local Grok config/hooks/sessions are intentional.

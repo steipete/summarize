@@ -36,6 +36,8 @@ Bare `cli/codex` defaults to GPT-5.5; set `cli.codex.model` to override it.
 Antigravity supports `cli/agy/<model>` or a configured `cli.agy.model` (run `agy models` to list available model slugs), or bare `cli/agy` to use the active session model. pi supports `cli/pi/<model>` or a configured `cli.pi.model`. devin supports `cli/devin/<model>` or a configured `cli.devin.model`; run `devin models list` to see the available model families.
 If `--cli` is provided without a provider, auto selection is used with CLI enabled.
 
+Antigravity model selection requires agy 1.1.5 or newer. Existing `cli.agy.model` settings, which older Summarize versions ignored, now control execution (including auto CLI candidates). Remove that setting to keep using the active session model. An explicit `cli/agy/<model>` takes precedence over `cli.agy.model`; a model flag in `cli.agy.extraArgs` overrides both. Invalid settings are rejected, and unknown models fail in agy's print mode with guidance to check `agy models`. Summarize does not silently substitute the session model; auto mode can still try the next configured candidate after a failure.
+
 Codex GPT Fast:
 
 - `--model codex-fast` maps to `cli/codex/gpt-fast`.

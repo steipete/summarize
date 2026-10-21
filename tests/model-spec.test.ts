@@ -93,6 +93,13 @@ describe("model spec parsing", () => {
     expect(explicitModel.requiredEnv).toBe("CLI_AGY");
   });
 
+  it.each(["cli/agy/", "cli/agy/  ", "cli/agy/one/two", "cli/agy/bad\0model"])(
+    "rejects malformed Antigravity model ids: %s",
+    (id) => {
+      expect(() => parseRequestedModelId(id)).toThrow(/Invalid Antigravity model.*agy models/);
+    },
+  );
+
   it("uses the pi runtime default model and accepts model suffixes", () => {
     const runtimeDefault = parseRequestedModelId("cli/pi");
     expect(runtimeDefault.kind).toBe("fixed");
