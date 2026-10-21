@@ -14,14 +14,15 @@ const { pathToFileURL } = require("node:url");
     : require(process.argv[1]);
   const MarkdownIt = loaded.default ?? loaded;
   const markdown = new MarkdownIt({ html: true });
-  const inputs = [
-    '[a]: /u "' + 'x\\n'.repeat(200000),
-    '[' + 'a\\n'.repeat(200000),
-    ...['<!--', '<?x', '<!A', '<![CDATA['].map(opener => 'x ' + opener.repeat(100000)),
-  ];
-  for (const input of inputs) {
-    if (!markdown.render(input).length) throw new Error("Missing rendered text");
-  }
+  const inputs = {
+    title: () => '[a]: /u "' + 'x\\n'.repeat(200000),
+    label: () => '[' + 'a\\n'.repeat(200000),
+    comment: () => 'x ' + '<!--'.repeat(100000),
+    processing: () => 'x ' + '<?x'.repeat(100000),
+    declaration: () => 'x ' + '<!A'.repeat(100000),
+    cdata: () => 'x ' + '<![CDATA['.repeat(100000),
+  };
+  if (!markdown.render(inputs[process.argv[3]]()).length) throw new Error("Missing rendered text");
   const normal = markdown.render('[label][ref]\\n\\n[ref]: /safe "title"\\n');
   if (!normal.includes('<a href="/safe" title="title">label</a>')) {
     throw new Error("Valid reference link changed");
@@ -30,18 +31,23 @@ const { pathToFileURL } = require("node:url");
 `;
 
 describe("patched markdown-it dependency", () => {
-  it.each([
+  for (const [kind, filename] of [
     ["esm", "markdown-it.mjs"],
     ["cjs", "markdown-it.cjs.js"],
-  ])("bounds unclosed references and inline HTML in %s", (kind, filename) => {
-    // A subprocess deadline also contains regressions that block the JS event loop.
-    const result = spawnSync(
-      process.execPath,
-      ["-e", renderPathologicalMarkdown, join(packageDir, "dist", filename), kind],
-      { encoding: "utf8", timeout: 5_000 },
+  ]) {
+    it.each(["title", "label", "comment", "processing", "declaration", "cdata"])(
+      `bounds unclosed %s input (${kind})`,
+      (input) => {
+        // Give each attack its own deadline instead of sharing one budget across the batch.
+        const result = spawnSync(
+          process.execPath,
+          ["-e", renderPathologicalMarkdown, join(packageDir, "dist", filename), kind, input],
+          { encoding: "utf8", timeout: 5_000 },
+        );
+        expect(result.error).toBeUndefined();
+        expect(result.stderr).toBe("");
+        expect(result.status).toBe(0);
+      },
     );
-    expect(result.error).toBeUndefined();
-    expect(result.stderr).toBe("");
-    expect(result.status).toBe(0);
-  });
+  }
 });
