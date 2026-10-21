@@ -1,21 +1,21 @@
 # Changelog
 
-## 0.25.3 - Unreleased
+## 0.25.4 - Unreleased
+
+## 0.25.3 - 2026-10-20
+
+**Highlights:** security fixes for Markdown rendering and Vite, plus more reliable OpenRouter reasoning, media extraction, and transcription uploads.
 
 - Security: backport Markdown rendering denial-of-service fixes and update Vite editor-launch protection while retaining the seven-day dependency stabilization policy.
-- Maintenance: refresh stabilized nanoid and UUID overrides.
-
-- Maintenance: update the provider runtime and lint tooling after their seven-day stabilization hold.
-
-- Maintenance: refresh stabilized terminal rendering, MIME detection, browser media, AWS provider, and test dependencies while retaining Node 24 and the seven-day adoption hold.
-
-- Maintenance: move macOS CI and release jobs to macOS 27, verify x86_64 under Rosetta, and retain the macOS 13 minimum with a shared artifact gate; add a publish-disabled release dry run.
-
 - OpenRouter: forward reasoning effort and omit implicit output limits for text completions and streams; retain provider error diagnostics (#527, fixes #519, thanks @Ehsan-hash).
 - Media and CLI: terminate timed-out process trees, handle early child stdin closure, and close slide image streams on disconnect without masking extraction failures during cleanup (#520, #521, #524, thanks @SebTardif).
 - Transcription: abort stalled FAL and AssemblyAI uploads and response bodies while preserving the existing post-upload processing allowance (#522, thanks @SebTardif).
 - Browser extraction: bound YouTube audio downloads without a content length and honor the configured summarize fetch timeout, with a two-minute fallback (#523, #526, thanks @SebTardif).
 - Spotify: reject lookalike hostnames when resolving episode IDs (#525, thanks @SebTardif).
+- Maintenance: refresh stabilized nanoid and UUID overrides.
+- Maintenance: update the provider runtime and lint tooling after their seven-day stabilization hold.
+- Maintenance: refresh stabilized terminal rendering, MIME detection, browser media, AWS provider, and test dependencies while retaining Node 24 and the seven-day adoption hold.
+- Maintenance: move macOS CI and release jobs to macOS 27, verify x86_64 under Rosetta, and retain the macOS 13 minimum with a shared artifact gate; add a publish-disabled release dry run.
 - Maintenance: update the provider runtime, Preact, Playwright, and DOM test dependencies after their seven-day stabilization hold, retaining Node 24.
 - Maintenance: refresh stabilized provider, localization, browser media, Preact, Oxc, and GitHub Actions dependencies; migrate picker style types for Preact 11 while retaining Node 24 and the seven-day adoption hold (#515, #516, thanks @dependabot).
 
