@@ -1,3 +1,4 @@
+import { shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import { message as uiMessage, type LocalizedText } from "../../lib/i18n";
 import { resolveCapabilityExecution } from "../../lib/model-routing";
 import type { BgToPanel, PanelCachePayload, PanelToBg } from "../../lib/panel-contracts";
@@ -139,10 +140,13 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
   ) => {
     const transcript =
       panelCache?.transcriptTimedText ?? panelCache?.slides?.transcriptTimedText ?? null;
+    const cachedExtract = panelSessionStore.getCachedExtract(tab.id, tab.url);
+    const hasSourceContext =
+      cachedExtract && (!shouldPreferUrlMode(tab.url) || cachedExtract.source === "url");
     if (
       settings.slideRuntime === "browser" &&
       panelCache &&
-      (transcript || panelCache.slides || panelCache.summaryMarkdown?.trim())
+      (transcript || panelCache.slides || (!hasSourceContext && panelCache.summaryMarkdown?.trim()))
     ) {
       return createPanelCachedExtract({ cache: panelCache, tab, transcript });
     }

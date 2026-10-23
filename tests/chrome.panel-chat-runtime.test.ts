@@ -122,7 +122,7 @@ function createHarness({
   const buildSlidesTextImpl = vi.fn(() => ({ count: 1, text: "slide context" }));
   const panelSessionStore = {
     getPanelCacheAsync: vi.fn(async () => cache),
-    getCachedExtract: vi.fn(() => null),
+    getCachedExtract: vi.fn((): CachedExtract | null => null),
     setCachedExtract: vi.fn(),
     getLastMediaProbe: vi.fn(() => null),
     rememberMediaProbe: vi.fn(),
@@ -484,6 +484,34 @@ describe("chrome panel chat runtime", () => {
       }),
     );
   });
+
+  it.each([
+    ["https://example.com/article", "page"],
+    ["https://www.youtube.com/watch?v=example", "url"],
+  ] as const)(
+    "preserves full %s context ahead of a summary-only browser cache",
+    async (url, source) => {
+      const extract = { ...baseExtract, url, source };
+      const harness = createHarness({
+        activeTab: { ...tab, url },
+        cache: panelCache({ url }),
+        extract,
+      });
+      harness.panelSessionStore.getCachedExtract.mockReturnValue(extract);
+
+      await harness.runtime.handleAgent(harness.session, {
+        type: "panel:agent",
+        requestId: "full-source",
+        messages: [],
+        tools: [],
+      });
+
+      expect(harness.ensureChatExtractImpl).toHaveBeenCalledTimes(1);
+      expect(harness.handlePanelAgentRequestImpl).toHaveBeenCalledWith(
+        expect.objectContaining({ cachedExtract: extract }),
+      );
+    },
+  );
 
   it("reports agent extraction failures with panel status", async () => {
     const harness = createHarness();
