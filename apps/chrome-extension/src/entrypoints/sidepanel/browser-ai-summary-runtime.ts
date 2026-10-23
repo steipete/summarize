@@ -4,6 +4,7 @@ import type { BrowserAiSummaryInput } from "../../lib/panel-contracts";
 import {
   browserAiErrorDetail,
   buildLanguageModelOptions,
+  type BrowserAiAvailability,
   defaultGetLanguageModelApi,
   defaultGetSummarizerApi,
   defaultIsUserActive,
@@ -127,29 +128,50 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
     return promise;
   };
 
-  const ensureSession = async (
-    length: BrowserAiSummaryInput["length"],
-    requestKey: BrowserAiRequestKey,
-    statusToken: symbol,
-  ): Promise<BrowserSummarizerSession | null> => {
-    const key = sessionKey(requestKey, length);
-    const cached = sessions.get(key);
-    if (cached) return await cached;
-    const api = getApi();
+  const ensureSessionWithCache = async <S, A>(
+    cache: Map<string, Promise<S | null>>,
+    key: string,
+    config: {
+      consumeCacheHit?: boolean;
+      getApi: () => A | null;
+      checkAvailability: (api: A) => Promise<BrowserAiAvailability>;
+      availabilityEvent: string;
+      availabilityDetail?: Record<string, unknown>;
+      create: (api: A) => Promise<S | null>;
+    },
+  ): Promise<S | null> => {
+    const cached = cache.get(key);
+    if (cached) {
+      if (config.consumeCacheHit) cache.delete(key);
+      return await cached;
+    }
+    const api = config.getApi();
     if (!api) return null;
-    const availability = await api.availability().catch((error) => {
+    const availability = await config.checkAvailability(api).catch((error) => {
       logExtensionEvent({
-        event: "browser-ai:availability-error",
+        event: config.availabilityEvent,
         level: "warn",
         scope: "sidepanel",
-        detail: browserAiErrorDetail(error),
+        detail: { ...config.availabilityDetail, ...browserAiErrorDetail(error) },
       });
       return "unavailable" as const;
     });
     if (availability === "unavailable") return null;
     if (availability === "downloadable" && !isUserActive()) return null;
-    return await createSession(api, length, requestKey, statusToken);
+    return await config.create(api);
   };
+
+  const ensureSession = (
+    length: BrowserAiSummaryInput["length"],
+    requestKey: BrowserAiRequestKey,
+    statusToken: symbol,
+  ): Promise<BrowserSummarizerSession | null> =>
+    ensureSessionWithCache(sessions, sessionKey(requestKey, length), {
+      getApi,
+      checkAvailability: (api) => api.availability(),
+      availabilityEvent: "browser-ai:availability-error",
+      create: (api) => createSession(api, length, requestKey, statusToken),
+    });
 
   const createPromptSession = (
     api: BrowserLanguageModelApi,
@@ -173,34 +195,19 @@ export function createBrowserAiSummaryRuntime(options: RuntimeOptions) {
       });
   };
 
-  const ensurePromptSession = async (
+  const ensurePromptSession = (
     requestKey: BrowserAiRequestKey,
     imageInput: boolean,
     statusToken: symbol,
-  ): Promise<BrowserLanguageModelSession | null> => {
-    const key = promptSessionKey(requestKey, imageInput);
-    const cached = promptSessions.get(key);
-    if (cached) {
-      promptSessions.delete(key);
-      return await cached;
-    }
-    const api = getLanguageModelApi();
-    if (!api) return null;
-    const availability = await api
-      .availability(buildLanguageModelOptions(imageInput))
-      .catch((error) => {
-        logExtensionEvent({
-          event: "browser-ai:prompt-availability-error",
-          level: "warn",
-          scope: "sidepanel",
-          detail: { imageInput, ...browserAiErrorDetail(error) },
-        });
-        return "unavailable" as const;
-      });
-    if (availability === "unavailable") return null;
-    if (availability === "downloadable" && !isUserActive()) return null;
-    return await createPromptSession(api, requestKey, imageInput, statusToken);
-  };
+  ): Promise<BrowserLanguageModelSession | null> =>
+    ensureSessionWithCache(promptSessions, promptSessionKey(requestKey, imageInput), {
+      consumeCacheHit: true,
+      getApi: getLanguageModelApi,
+      checkAvailability: (api) => api.availability(buildLanguageModelOptions(imageInput)),
+      availabilityEvent: "browser-ai:prompt-availability-error",
+      availabilityDetail: { imageInput },
+      create: (api) => createPromptSession(api, requestKey, imageInput, statusToken),
+    });
 
   const prepare = (
     length: BrowserAiSummaryInput["length"],

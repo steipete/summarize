@@ -9,6 +9,14 @@ import { resolveSlidesRenderLayout } from "./slides-view-policy";
 
 const MAX_SLIDE_STRIP = 12;
 
+type SlideItem = SseSlidesData["slides"][number];
+
+const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className: string) => {
+  const element = document.createElement(tag);
+  element.className = className;
+  return element;
+};
+
 type SlidesRendererState = {
   slidesEnabled: boolean;
   inputMode: "page" | "video";
@@ -69,12 +77,8 @@ export function createSlidesRenderer({
     el.onclick = () => onSeek(timestamp);
   };
 
-  const clearSlideStrip = (container: HTMLElement) => {
-    container.querySelector(".slideStrip")?.remove();
-  };
-
-  const clearSlideGallery = (container: HTMLElement) => {
-    container.querySelector(".slideGallery")?.remove();
+  const clearSlideRoot = (container: HTMLElement, className: string) => {
+    container.querySelector(`.${className}`)?.remove();
   };
 
   const stripSlidePlaceholders = (container: HTMLElement) => {
@@ -83,59 +87,113 @@ export function createSlidesRenderer({
     }
   };
 
-  const renderSlideStrip = (container: HTMLElement) => {
-    if (resolveLayout() !== "strip") {
-      clearSlideStrip(container);
-      return;
+  const ensureSlideRoot = (
+    container: HTMLElement,
+    className: string,
+    sourceId: string,
+    mode: string | null,
+    buildBody: (root: HTMLDivElement) => void,
+  ): HTMLDivElement => {
+    let root = container.querySelector<HTMLDivElement>(`.${className}`);
+    if (
+      !root ||
+      root.dataset.sourceId !== sourceId ||
+      (mode !== null && root.dataset.mode !== mode)
+    ) {
+      root?.remove();
+      root = document.createElement("div");
+      root.className = className;
+      root.dataset.sourceId = sourceId;
+      if (mode !== null) root.dataset.mode = mode;
+      buildBody(root);
+      container.prepend(root);
     }
-    if (!shouldRenderSlides()) {
-      clearSlideStrip(container);
-      return;
+    return root;
+  };
+
+  const reconcileSlideItems = (
+    host: HTMLElement,
+    itemSelector: string,
+    slides: SlideItem[],
+    createItem: (slide: SlideItem) => HTMLButtonElement,
+    updateItem: (item: HTMLButtonElement, slide: SlideItem) => boolean,
+  ) => {
+    const existingItems = new Map<number, HTMLButtonElement>();
+    for (const item of Array.from(host.querySelectorAll<HTMLButtonElement>(itemSelector))) {
+      const index = Number(item.dataset.slideIndex);
+      if (Number.isFinite(index)) existingItems.set(index, item);
+    }
+
+    const wanted = new Set<number>(slides.map((slide) => slide.index));
+    for (const [index, item] of existingItems) {
+      if (!wanted.has(index)) item.remove();
+    }
+
+    for (const slide of slides) {
+      let item = existingItems.get(slide.index);
+      if (!item) {
+        item = createItem(slide);
+        host.appendChild(item);
+      }
+      if (updateItem(item, slide)) host.appendChild(item);
+    }
+  };
+
+  const resolveRenderContext = (
+    container: HTMLElement,
+    layout: SlidesLayout,
+    rootClassName: string,
+    clearOnMissingSlides: boolean,
+  ) => {
+    if (resolveLayout() !== layout || !shouldRenderSlides()) {
+      clearSlideRoot(container, rootClassName);
+      return null;
     }
     const state = getState();
-    if (!state.slides) return;
-    if (state.slides.slides.length > 0 && state.descriptions.size === 0) {
+    const slidesData = state.slides;
+    if (!slidesData) {
+      if (clearOnMissingSlides) clearSlideRoot(container, rootClassName);
+      return null;
+    }
+    if (slidesData.slides.length > 0 && state.descriptions.size === 0) {
       ensureDescriptions();
     }
-    const allSlides = state.slides.slides;
+    return { state, slidesData, allSlides: slidesData.slides };
+  };
+
+  const renderSlideStrip = (container: HTMLElement) => {
+    const context = resolveRenderContext(container, "strip", "slideStrip", false);
+    if (!context) return;
+    const { state, slidesData, allSlides } = context;
     const slides = state.slidesExpanded ? allSlides : allSlides.slice(0, MAX_SLIDE_STRIP);
-    if (allSlides.length === 0 || slides.length === 0) {
-      clearSlideStrip(container);
+    if (slides.length === 0) {
+      clearSlideRoot(container, "slideStrip");
       return;
     }
 
     const expectedMode = state.slidesExpanded ? "expanded" : "collapsed";
-    const sourceId = state.slides.sourceId;
-    let root = container.querySelector<HTMLDivElement>(".slideStrip");
-    if (!root || root.dataset.sourceId !== sourceId || root.dataset.mode !== expectedMode) {
-      clearSlideStrip(container);
-      root = document.createElement("div");
-      root.className = "slideStrip";
-      root.dataset.sourceId = sourceId;
-      root.dataset.mode = expectedMode;
+    const root = ensureSlideRoot(
+      container,
+      "slideStrip",
+      slidesData.sourceId,
+      expectedMode,
+      (element) => {
+        const header = el("div", "slideStrip__header");
+        const title = el("div", "slideStrip__title");
+        header.appendChild(title);
 
-      const header = document.createElement("div");
-      header.className = "slideStrip__header";
+        const toggle = el("button", "slideStrip__toggle");
+        toggle.type = "button";
+        toggle.addEventListener("click", () => {
+          setExpanded(!getState().slidesExpanded);
+          renderSlideStrip(container);
+        });
+        header.appendChild(toggle);
+        element.appendChild(header);
 
-      const title = document.createElement("div");
-      title.className = "slideStrip__title";
-      header.appendChild(title);
-
-      const toggle = document.createElement("button");
-      toggle.type = "button";
-      toggle.className = "slideStrip__toggle";
-      toggle.addEventListener("click", () => {
-        setExpanded(!getState().slidesExpanded);
-        renderSlideStrip(container);
-      });
-      header.appendChild(toggle);
-      root.appendChild(header);
-
-      const grid = document.createElement("div");
-      grid.className = "slideStrip__grid";
-      root.appendChild(grid);
-      container.prepend(root);
-    }
+        element.appendChild(el("div", "slideStrip__grid"));
+      },
+    );
 
     const title = root.querySelector<HTMLDivElement>(".slideStrip__title");
     const toggle = root.querySelector<HTMLButtonElement>(".slideStrip__toggle");
@@ -155,181 +213,131 @@ export function createSlidesRenderer({
     toggle.setAttribute("aria-pressed", state.slidesExpanded ? "true" : "false");
     grid.classList.toggle("isExpanded", state.slidesExpanded);
 
-    const existingButtons = new Map<number, HTMLButtonElement>();
-    for (const button of Array.from(
-      grid.querySelectorAll<HTMLButtonElement>(".slideStrip__item"),
-    )) {
-      const idx = Number(button.dataset.slideIndex);
-      if (Number.isFinite(idx)) existingButtons.set(idx, button);
-    }
-
-    const wanted = new Set<number>(slides.map((slide) => slide.index));
-    for (const [idx, button] of existingButtons) {
-      if (!wanted.has(idx)) button.remove();
-    }
-
-    for (const slide of slides) {
-      let button = existingButtons.get(slide.index);
-      if (!button) {
-        button = document.createElement("button");
+    reconcileSlideItems(
+      grid,
+      ".slideStrip__item",
+      slides,
+      (slide) => {
+        const button = el("button", "slideStrip__item");
         button.type = "button";
-        button.className = "slideStrip__item";
         button.dataset.slideIndex = String(slide.index);
 
-        const thumb = document.createElement("div");
-        thumb.className = "slideStrip__thumb";
-        const img = document.createElement("img");
+        const thumb = el("div", "slideStrip__thumb");
+        const img = el("img", "slideStrip__thumbImage");
         setUiAttribute(img, "alt", uiMessage("slides.imageAlt", { index: slide.index }));
-        img.className = "slideStrip__thumbImage";
         thumb.appendChild(img);
 
-        const meta = document.createElement("div");
-        meta.className = "slideStrip__meta";
+        const meta = el("div", "slideStrip__meta");
         meta.dataset.localeIgnore = "true";
 
         button.append(thumb, meta);
-        grid.appendChild(button);
-      }
+        return button;
+      },
+      (button, slide) => {
+        const thumb = button.querySelector<HTMLDivElement>(".slideStrip__thumb");
+        const img = button.querySelector<HTMLImageElement>("img.slideStrip__thumbImage");
+        const meta = button.querySelector<HTMLDivElement>(".slideStrip__meta");
+        if (!thumb || !img || !meta) return false;
 
-      const thumb = button.querySelector<HTMLDivElement>(".slideStrip__thumb");
-      const img = button.querySelector<HTMLImageElement>("img.slideStrip__thumbImage");
-      const meta = button.querySelector<HTMLDivElement>(".slideStrip__meta");
-      if (!thumb || !img || !meta) continue;
+        updateThumb(img, thumb, slide.imageUrl);
+        updateMeta(
+          meta,
+          slide.index,
+          slide.timestamp,
+          state.titles.get(slide.index) ?? null,
+          slides.length,
+        );
 
-      updateThumb(img, thumb, slide.imageUrl);
-      updateMeta(
-        meta,
-        slide.index,
-        slide.timestamp,
-        state.titles.get(slide.index) ?? null,
-        slides.length,
-      );
+        const existingText = button.querySelector<HTMLDivElement>(".slideStrip__text");
+        if (state.slidesExpanded) {
+          const textEl =
+            existingText ??
+            (() => {
+              const description = el("div", "slideStrip__text");
+              description.dataset.localeIgnore = "true";
+              button.appendChild(description);
+              return description;
+            })();
+          setUiText(textEl, state.descriptions.get(slide.index) ?? "");
+        } else {
+          existingText?.remove();
+        }
 
-      const existingText = button.querySelector<HTMLDivElement>(".slideStrip__text");
-      if (state.slidesExpanded) {
-        const textEl =
-          existingText ??
-          (() => {
-            const description = document.createElement("div");
-            description.className = "slideStrip__text";
-            description.dataset.localeIgnore = "true";
-            button.appendChild(description);
-            return description;
-          })();
-        setUiText(textEl, state.descriptions.get(slide.index) ?? "");
-      } else {
-        existingText?.remove();
-      }
-
-      bindSeek(button, slide.timestamp);
-      grid.appendChild(button);
-    }
+        bindSeek(button, slide.timestamp);
+        return true;
+      },
+    );
   };
 
   const renderSlideGallery = (container: HTMLElement) => {
-    if (resolveLayout() !== "gallery") {
-      clearSlideGallery(container);
-      return;
-    }
-    if (!shouldRenderSlides()) {
-      clearSlideGallery(container);
-      return;
-    }
-    const state = getState();
-    if (!state.slides) {
-      clearSlideGallery(container);
-      return;
-    }
-    if (state.slides.slides.length > 0 && state.descriptions.size === 0) {
-      ensureDescriptions();
-    }
-    const slides = state.slides.slides;
+    const context = resolveRenderContext(container, "gallery", "slideGallery", true);
+    if (!context) return;
+    const { state, slidesData, allSlides: slides } = context;
     if (slides.length === 0) {
-      clearSlideGallery(container);
+      clearSlideRoot(container, "slideGallery");
       return;
     }
 
-    let root = container.querySelector<HTMLDivElement>(".slideGallery");
-    if (!root || root.dataset.sourceId !== state.slides.sourceId) {
-      clearSlideGallery(container);
-      root = document.createElement("div");
-      root.className = "slideGallery";
-      root.dataset.sourceId = state.slides.sourceId;
-
-      const list = document.createElement("div");
-      list.className = "slideGallery__list";
-      root.appendChild(list);
-
-      container.prepend(root);
-    }
+    const root = ensureSlideRoot(
+      container,
+      "slideGallery",
+      slidesData.sourceId,
+      null,
+      (element) => {
+        element.appendChild(el("div", "slideGallery__list"));
+      },
+    );
 
     const list = root.querySelector<HTMLDivElement>(".slideGallery__list");
     if (!list) return;
 
-    const existingItems = new Map<number, HTMLButtonElement>();
-    for (const item of Array.from(
-      list.querySelectorAll<HTMLButtonElement>(".slideGallery__item"),
-    )) {
-      const idx = Number(item.dataset.slideIndex);
-      if (Number.isFinite(idx)) existingItems.set(idx, item);
-    }
-
-    const wanted = new Set<number>(slides.map((slide) => slide.index));
-    for (const [idx, item] of existingItems) {
-      if (!wanted.has(idx)) item.remove();
-    }
-
-    for (const slide of slides) {
-      let item = existingItems.get(slide.index);
-      if (!item) {
-        item = document.createElement("button");
+    reconcileSlideItems(
+      list,
+      ".slideGallery__item",
+      slides,
+      (slide) => {
+        const item = el("button", "slideGallery__item");
         item.type = "button";
-        item.className = "slideGallery__item";
         item.dataset.slideIndex = String(slide.index);
 
-        const media = document.createElement("div");
-        media.className = "slideGallery__media";
-
+        const media = el("div", "slideGallery__media");
         const thumb = document.createElement("div");
         thumb.className = "slideInline__thumb slideGallery__thumb isPlaceholder";
-        const img = document.createElement("img");
+        const img = el("img", "slideInline__thumbImage");
         setUiAttribute(img, "alt", uiMessage("slides.imageAlt", { index: slide.index }));
-        img.className = "slideInline__thumbImage";
         thumb.appendChild(img);
         media.appendChild(thumb);
 
-        const body = document.createElement("div");
-        body.className = "slideGallery__body";
-        const meta = document.createElement("div");
-        meta.className = "slideGallery__meta";
+        const body = el("div", "slideGallery__body");
+        const meta = el("div", "slideGallery__meta");
         meta.dataset.localeIgnore = "true";
-        const text = document.createElement("div");
-        text.className = "slideGallery__text";
+        const text = el("div", "slideGallery__text");
         text.dataset.localeIgnore = "true";
         body.append(meta, text);
 
         item.append(media, body);
-        list.appendChild(item);
-      }
+        return item;
+      },
+      (item, slide) => {
+        const thumb = item.querySelector<HTMLDivElement>(".slideGallery__thumb");
+        const img = item.querySelector<HTMLImageElement>("img.slideInline__thumbImage");
+        const meta = item.querySelector<HTMLDivElement>(".slideGallery__meta");
+        const text = item.querySelector<HTMLDivElement>(".slideGallery__text");
+        if (!thumb || !img || !meta || !text) return false;
 
-      const thumb = item.querySelector<HTMLDivElement>(".slideGallery__thumb");
-      const img = item.querySelector<HTMLImageElement>("img.slideInline__thumbImage");
-      const meta = item.querySelector<HTMLDivElement>(".slideGallery__meta");
-      const text = item.querySelector<HTMLDivElement>(".slideGallery__text");
-      if (!thumb || !img || !meta || !text) continue;
-
-      updateThumb(img, thumb, slide.imageUrl);
-      updateMeta(
-        meta,
-        slide.index,
-        slide.timestamp,
-        state.titles.get(slide.index) ?? null,
-        slides.length,
-      );
-      setUiText(text, state.descriptions.get(slide.index) ?? "");
-      bindSeek(item, slide.timestamp);
-      list.appendChild(item);
-    }
+        updateThumb(img, thumb, slide.imageUrl);
+        updateMeta(
+          meta,
+          slide.index,
+          slide.timestamp,
+          state.titles.get(slide.index) ?? null,
+          slides.length,
+        );
+        setUiText(text, state.descriptions.get(slide.index) ?? "");
+        bindSeek(item, slide.timestamp);
+        return true;
+      },
+    );
   };
 
   const renderInline = (container: HTMLElement, opts?: { fallback?: boolean }) => {
@@ -340,7 +348,7 @@ export function createSlidesRenderer({
     }
     const state = getState();
     if (!state.slides) {
-      if (opts?.fallback) clearSlideStrip(hostEl);
+      if (opts?.fallback) clearSlideRoot(hostEl, "slideStrip");
       return;
     }
     const slidesByIndex = new Map(state.slides.slides.map((slide) => [slide.index, slide]));
@@ -350,19 +358,16 @@ export function createSlidesRenderer({
       const index = Number(placeholder.getAttribute("data-slide-index"));
       const slide = slidesByIndex.get(index);
       if (!slide) continue;
-      const wrapper = document.createElement("div");
-      wrapper.className = "slideInline";
+      const wrapper = el("div", "slideInline");
       wrapper.dataset.slideIndex = String(index);
       const button = document.createElement("button");
       button.type = "button";
       const thumb = document.createElement("div");
       thumb.className = "slideInline__thumb isPlaceholder";
-      const img = document.createElement("img");
+      const img = el("img", "slideInline__thumbImage");
       setUiAttribute(img, "alt", uiMessage("slides.imageAlt", { index }));
-      img.className = "slideInline__thumbImage";
       updateThumb(img, thumb, slide.imageUrl);
-      const caption = document.createElement("div");
-      caption.className = "slideCaption";
+      const caption = el("div", "slideCaption");
       caption.dataset.localeIgnore = "true";
       updateMeta(caption, index, slide.timestamp, state.titles.get(index) ?? null, slideTotal);
       thumb.appendChild(img);
@@ -379,7 +384,7 @@ export function createSlidesRenderer({
 
   const queueSlideStripRender = () => {
     if (resolveLayout() !== "strip") {
-      clearSlideStrip(hostEl);
+      clearSlideRoot(hostEl, "slideStrip");
       return;
     }
     if (stripRenderQueued) return;
@@ -391,7 +396,7 @@ export function createSlidesRenderer({
 
   const queueSlideGalleryRender = () => {
     if (resolveLayout() !== "gallery") {
-      clearSlideGallery(hostEl);
+      clearSlideRoot(hostEl, "slideGallery");
       return;
     }
     if (galleryRenderQueued) return;
@@ -411,17 +416,17 @@ export function createSlidesRenderer({
 
   const applyLayout = () => {
     if (resolveLayout() === "gallery") {
-      clearSlideStrip(hostEl);
+      clearSlideRoot(hostEl, "slideStrip");
       queueSlideGalleryRender();
       return;
     }
-    clearSlideGallery(hostEl);
+    clearSlideRoot(hostEl, "slideGallery");
     queueSlideStripRender();
   };
 
   const clear = () => {
-    clearSlideStrip(hostEl);
-    clearSlideGallery(hostEl);
+    clearSlideRoot(hostEl, "slideStrip");
+    clearSlideRoot(hostEl, "slideGallery");
   };
 
   const forceRender = () => {
