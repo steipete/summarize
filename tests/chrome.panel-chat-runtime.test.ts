@@ -122,7 +122,7 @@ function createHarness({
   const buildSlidesTextImpl = vi.fn(() => ({ count: 1, text: "slide context" }));
   const panelSessionStore = {
     getPanelCacheAsync: vi.fn(async () => cache),
-    getCachedExtract: vi.fn(() => null),
+    getCachedExtract: vi.fn((): CachedExtract | null => null),
     setCachedExtract: vi.fn(),
     getLastMediaProbe: vi.fn(() => null),
     rememberMediaProbe: vi.fn(),
@@ -197,8 +197,10 @@ describe("chrome panel chat runtime", () => {
     });
 
     expect(send).toHaveBeenCalledWith(session, {
-      type: "run:error",
-      message: "Chat is disabled in settings",
+      type: "agent:response",
+      requestId: "agent-defaults",
+      ok: false,
+      error: "Chat is disabled in settings",
     });
   });
 
@@ -215,8 +217,10 @@ describe("chrome panel chat runtime", () => {
     });
 
     expect(harness.send).toHaveBeenCalledWith(harness.session, {
-      type: "run:error",
-      message: "Chat is disabled in settings",
+      type: "agent:response",
+      requestId: "agent-1",
+      ok: false,
+      error: "Chat is disabled in settings",
     });
     expect(harness.ensureChatExtractImpl).not.toHaveBeenCalled();
   });
@@ -252,8 +256,10 @@ describe("chrome panel chat runtime", () => {
     });
 
     expect(harness.send).toHaveBeenCalledWith(harness.session, {
-      type: "run:error",
-      message: "Cannot chat on this page",
+      type: "agent:response",
+      requestId: "agent-2",
+      ok: false,
+      error: "Cannot chat on this page",
     });
     expect(harness.panelSessionStore.getPanelCacheAsync).not.toHaveBeenCalled();
   });
@@ -435,6 +441,78 @@ describe("chrome panel chat runtime", () => {
     );
   });
 
+  it("reuses a summary-only browser cache for direct follow-up chat", async () => {
+    const harness = createHarness({
+      settings: {
+        ...defaultSettings,
+        summaryRuntime: "direct",
+        slideRuntime: "browser",
+        provider: "openai",
+        providerApiKeys: { openai: "test-key" },
+        token: "",
+      },
+      cache: panelCache(),
+    });
+
+    await harness.runtime.handleAgent(harness.session, {
+      type: "panel:agent",
+      requestId: "summary-only",
+      messages: [],
+      tools: [],
+    });
+
+    expect(harness.ensureChatExtractImpl).not.toHaveBeenCalled();
+    expect(harness.handlePanelAgentRequestImpl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cachedExtract: expect.objectContaining({ text: "cached summary" }),
+      }),
+    );
+  });
+
+  it("reuses a summary-only browser cache when loading chat history", async () => {
+    const harness = createHarness({ cache: panelCache() });
+
+    await harness.runtime.handleHistory(harness.session, {
+      type: "panel:chat-history",
+      requestId: "summary-history",
+    });
+
+    expect(harness.ensureChatExtractImpl).not.toHaveBeenCalled();
+    expect(harness.handlePanelChatHistoryRequestImpl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cachedExtract: expect.objectContaining({ text: "cached summary" }),
+      }),
+    );
+  });
+
+  it.each([
+    ["https://example.com/article", "page"],
+    ["https://www.youtube.com/watch?v=example", "url"],
+  ] as const)(
+    "preserves full %s context ahead of a summary-only browser cache",
+    async (url, source) => {
+      const extract = { ...baseExtract, url, source };
+      const harness = createHarness({
+        activeTab: { ...tab, url },
+        cache: panelCache({ url }),
+        extract,
+      });
+      harness.panelSessionStore.getCachedExtract.mockReturnValue(extract);
+
+      await harness.runtime.handleAgent(harness.session, {
+        type: "panel:agent",
+        requestId: "full-source",
+        messages: [],
+        tools: [],
+      });
+
+      expect(harness.ensureChatExtractImpl).toHaveBeenCalledTimes(1);
+      expect(harness.handlePanelAgentRequestImpl).toHaveBeenCalledWith(
+        expect.objectContaining({ cachedExtract: extract }),
+      );
+    },
+  );
+
   it("reports agent extraction failures with panel status", async () => {
     const harness = createHarness();
     harness.ensureChatExtractImpl.mockRejectedValueOnce(new Error("extract failed"));
@@ -447,8 +525,10 @@ describe("chrome panel chat runtime", () => {
     });
 
     expect(harness.send).toHaveBeenCalledWith(harness.session, {
-      type: "run:error",
-      message: "extract failed",
+      type: "agent:response",
+      requestId: "agent-5",
+      ok: false,
+      error: "extract failed",
     });
     expect(harness.sendStatus).toHaveBeenCalledWith(
       harness.session,
@@ -467,8 +547,10 @@ describe("chrome panel chat runtime", () => {
       tools: [],
     });
     expect(agentHarness.send).toHaveBeenCalledWith(agentHarness.session, {
-      type: "run:error",
-      message: "agent failed",
+      type: "agent:response",
+      requestId: "agent-string-error",
+      ok: false,
+      error: "agent failed",
     });
 
     const historyHarness = createHarness();

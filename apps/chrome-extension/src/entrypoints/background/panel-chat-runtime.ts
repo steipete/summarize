@@ -1,3 +1,4 @@
+import { shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import { message as uiMessage, type LocalizedText } from "../../lib/i18n";
 import { resolveCapabilityExecution } from "../../lib/model-routing";
 import type { BgToPanel, PanelCachePayload, PanelToBg } from "../../lib/panel-contracts";
@@ -130,13 +131,26 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
     return { ok: true, settings, tab: tab as ChatTab };
   }
 
-  const extractChatContext = (
+  const extractChatContext = async (
     session: Session,
     tab: ChatTab,
     settings: Settings,
     onStatus: (status: LocalizedText) => void,
-  ) =>
-    ensureChatExtractImpl({
+    panelCache: PanelCachePayload | null,
+  ) => {
+    const transcript =
+      panelCache?.transcriptTimedText ?? panelCache?.slides?.transcriptTimedText ?? null;
+    const cachedExtract = panelSessionStore.getCachedExtract(tab.id, tab.url);
+    const hasSourceContext =
+      cachedExtract && (!shouldPreferUrlMode(tab.url) || cachedExtract.source === "url");
+    if (
+      settings.slideRuntime === "browser" &&
+      panelCache &&
+      (transcript || panelCache.slides || (!hasSourceContext && panelCache.summaryMarkdown?.trim()))
+    ) {
+      return createPanelCachedExtract({ cache: panelCache, tab, transcript });
+    }
+    return ensureChatExtractImpl({
       tab,
       settings,
       panelSessionStore,
@@ -146,29 +160,40 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
       daemonFetchImpl,
       log: logExtract(session.windowId),
     });
+  };
 
   async function handleAgent(session: Session, request: PanelAgentRequest): Promise<void> {
     const target = await resolveChatTarget(session);
     if (!target.ok) {
-      send(session, { type: "run:error", message: target.error });
+      send(session, {
+        type: "agent:response",
+        requestId: request.requestId,
+        ok: false,
+        error: target.error,
+      });
       return;
     }
 
     const { settings, tab } = target;
-    const panelCache = await panelSessionStore.getPanelCacheAsync(tab.id, tab.url);
-    const panelTranscript =
-      panelCache?.transcriptTimedText ?? panelCache?.slides?.transcriptTimedText ?? null;
+    let panelCache: PanelCachePayload | null;
     let cachedExtract: CachedExtract;
     try {
-      cachedExtract =
-        settings.slideRuntime === "browser" && panelCache && (panelTranscript || panelCache.slides)
-          ? createPanelCachedExtract({ cache: panelCache, tab, transcript: panelTranscript })
-          : await extractChatContext(session, tab, settings, (status) =>
-              sendStatus(session, status),
-            );
+      panelCache = await panelSessionStore.getPanelCacheAsync(tab.id, tab.url);
+      cachedExtract = await extractChatContext(
+        session,
+        tab,
+        settings,
+        (status) => sendStatus(session, status),
+        panelCache,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      send(session, { type: "run:error", message });
+      send(session, {
+        type: "agent:response",
+        requestId: request.requestId,
+        ok: false,
+        error: message,
+      });
       sendStatus(session, uiMessage("error.message", { error: message }));
       return;
     }
@@ -211,7 +236,8 @@ export function createPanelChatRuntime<Session extends PanelChatSession>(options
     const { settings, tab } = target;
     let cachedExtract: CachedExtract;
     try {
-      cachedExtract = await extractChatContext(session, tab, settings, () => {});
+      const panelCache = await panelSessionStore.getPanelCacheAsync(tab.id, tab.url);
+      cachedExtract = await extractChatContext(session, tab, settings, () => {}, panelCache);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       send(session, {

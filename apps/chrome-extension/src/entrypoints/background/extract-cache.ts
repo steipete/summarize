@@ -62,6 +62,7 @@ export async function ensureChatExtract({
       maxChars: settings.maxChars,
       minTextChars: 1,
       token: settings.token,
+      allowDaemon: settings.slideRuntime === "daemon",
       includeDiagnostics: settings.extendedLogging,
       fetchImpl,
       daemonFetchImpl,
@@ -76,6 +77,7 @@ export async function ensureChatExtract({
       maxChars: CHAT_FULL_TRANSCRIPT_MAX_CHARS,
       minTextChars: MIN_CHAT_CHARS,
       token: settings.token,
+      allowDaemon: settings.slideRuntime === "daemon",
       includeDiagnostics: settings.extendedLogging,
       fetchImpl,
       daemonFetchImpl,
@@ -92,6 +94,12 @@ export async function ensureChatExtract({
       panelSessionStore.setCachedExtract(tab.id, next);
       return next;
     }
+  }
+
+  if (settings.slideRuntime === "browser") {
+    throw new Error(
+      "No browser chat context is available. Generate a summary or transcript first, or select the Daemon media runtime.",
+    );
   }
 
   const wantsSlides =
