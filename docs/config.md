@@ -430,7 +430,7 @@ Examples:
     "openclaw": { "binary": "/usr/local/bin/openclaw", "model": "main" },
     "opencode": { "binary": "/usr/local/bin/opencode", "model": "openai/gpt-5.4" },
     "copilot": { "binary": "/usr/local/bin/copilot", "model": "gpt-5.2" },
-    "agy": { "binary": "/usr/local/bin/agy" },
+    "agy": { "binary": "/usr/local/bin/agy", "model": "gemini-3.8-flash-high" },
     "pi": { "binary": "/usr/local/bin/pi" },
     "devin": { "binary": "/usr/local/bin/devin" },
     "grok": { "binary": "/usr/local/bin/grok", "model": "grok-4.6" }
@@ -447,7 +447,8 @@ Notes:
 - Auto fallback stores the last successful provider in `~/.summarize/cli-state.json` and prioritizes it on the next run.
 - `cli.<provider>.binary` overrides CLI binary discovery.
 - `cli.<provider>.extraArgs` appends extra CLI args.
-- Antigravity CLI uses the active agy session model; `cli.agy.model` is ignored by runtime selection.
+- Antigravity CLI uses the active agy session model by default and accepts configured (`cli.agy.model`) or per-call (`cli/agy/<model>`) models; run `agy models` to list valid model slugs.
+- Upgrade note: `cli.agy.model` was previously ignored and now selects the model. Remove it to retain the session default. Use agy 1.1.5 or newer; invalid settings are rejected and unknown models fail instead of silently using another model. See [CLI models](cli.md) for precedence and auto fallback behavior.
 - pi CLI runs `pi --print --mode json`, passes extracted content over stdin, and accepts configured or per-call models; use `PI_PATH` to override binary.
 - Grok CLI runs `grok --prompt-file <file> --output-format json` in a tool-restricted sandbox for text summaries, accepts configured or per-call models, and reports token usage and cost; use `GROK_PATH` to override binary. Requires `grok login` or `XAI_API_KEY`; run `grok models` to list valid model ids.
 - `cli.grok.isolated` defaults to `true` for normal summaries, adding a temporary cwd, a restricted toolset, `--sandbox strict`, and a temporary `GROK_HOME` that carries `auth.json` only. Set it to `false` only when local Grok config/hooks/sessions are intentional.

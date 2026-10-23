@@ -151,7 +151,6 @@ function resolveConfiguredCliModel(
   provider: CliProvider,
   config: SummarizeConfig | null,
 ): string | null {
-  if (provider === "agy") return null;
   const providerConfig = config?.cli?.[provider];
   return nonEmpty(providerConfig?.model);
 }

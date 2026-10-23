@@ -55,7 +55,7 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
     - `cli/openclaw/main`
     - `cli/opencode/openai/gpt-5.4`
     - `cli/copilot/gpt-5.2`
-    - `cli/agy`
+    - `cli/agy` / `cli/agy/gemini-3.8-flash-high`
     - `cli/pi/openai/gpt-5.4`
     - `cli/devin/swe-2-max`
     - `cli/grok` / `cli/grok/grok-4.6`

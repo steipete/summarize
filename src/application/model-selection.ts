@@ -20,7 +20,7 @@ function resolveConfiguredCliModel(
     if (provider === "agent") return cli?.agent?.model;
     if (provider === "openclaw") return cli?.openclaw?.model;
     if (provider === "opencode") return cli?.opencode?.model;
-    if (provider === "agy") return null;
+    if (provider === "agy") return cli?.agy?.model;
     if (provider === "pi") return cli?.pi?.model;
     if (provider === "devin") return cli?.devin?.model;
     if (provider === "grok") return cli?.grok?.model;

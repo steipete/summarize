@@ -16,6 +16,16 @@ const writeConfig = (raw: string) => {
 const writeJsonConfig = (value: unknown) => writeConfig(JSON.stringify(value));
 
 describe("config loading", () => {
+  it.each([null, false, 42, {}, [], "", "   ", "bad\nmodel", "bad/model"])(
+    "rejects invalid cli.agy.model values instead of ignoring them: %j",
+    (model) => {
+      const { root } = writeJsonConfig({ cli: { agy: { model } } });
+      expect(() => loadSummarizeConfig({ env: { HOME: root } })).toThrow(
+        /Invalid Antigravity model.*agy models/,
+      );
+    },
+  );
+
   it("loads ~/.summarize/config.json by default", () => {
     const { root, configPath } = writeJsonConfig({ model: { id: "openai/gpt-5.2" } });
 
@@ -503,13 +513,21 @@ describe("config loading", () => {
     const { root } = writeJsonConfig({
       cli: {
         enabled: ["agy"],
-        agy: { binary: "/usr/local/bin/agy", extraArgs: ["--sandbox"] },
+        agy: {
+          binary: "/usr/local/bin/agy",
+          model: "gemini-3.8-flash-high",
+          extraArgs: ["--sandbox"],
+        },
       },
     });
     expect(loadSummarizeConfig({ env: { HOME: root } }).config).toEqual({
       cli: {
         enabled: ["agy"],
-        agy: { binary: "/usr/local/bin/agy", extraArgs: ["--sandbox"] },
+        agy: {
+          binary: "/usr/local/bin/agy",
+          model: "gemini-3.8-flash-high",
+          extraArgs: ["--sandbox"],
+        },
       },
     });
   });

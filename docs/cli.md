@@ -22,6 +22,7 @@ Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw,
 - `cli/opencode` (use the OpenCode runtime default model)
 - `cli/copilot/<model>` (e.g. `cli/copilot/gpt-5.2`)
 - `cli/copilot` (use the Copilot CLI runtime default model)
+- `cli/agy/<model>` (e.g. `cli/agy/gemini-3.8-flash-high`)
 - `cli/agy` (use the Antigravity CLI active session model)
 - `cli/pi/<model>` (e.g. `cli/pi/sonnet`)
 - `cli/pi` (use pi's configured default model)
@@ -32,8 +33,10 @@ Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw,
 
 Use `--cli [provider]` (case-insensitive) for the provider default, or `--model cli/<provider>/<model>` to pin a model.
 Bare `cli/codex` defaults to GPT-5.5; set `cli.codex.model` to override it.
-Antigravity does not support per-call model selection in print mode, so use `cli/agy` without a model suffix. pi supports `cli/pi/<model>` or a configured `cli.pi.model`. devin supports `cli/devin/<model>` or a configured `cli.devin.model`; run `devin models list` to see the available model families.
+Antigravity supports `cli/agy/<model>` or a configured `cli.agy.model` (run `agy models` to list available model slugs), or bare `cli/agy` to use the active session model. pi supports `cli/pi/<model>` or a configured `cli.pi.model`. devin supports `cli/devin/<model>` or a configured `cli.devin.model`; run `devin models list` to see the available model families.
 If `--cli` is provided without a provider, auto selection is used with CLI enabled.
+
+Antigravity model selection requires agy 1.1.5 or newer. Existing `cli.agy.model` settings, which older Summarize versions ignored, now control execution (including auto CLI candidates). Remove that setting to keep using the active session model. An explicit `cli/agy/<model>` takes precedence over `cli.agy.model`; a model flag in `cli.agy.extraArgs` overrides both. Invalid settings are rejected, and unknown models fail in agy's print mode with guidance to check `agy models`. Summarize does not silently substitute the session model; auto mode can still try the next configured candidate after a failure.
 
 Codex GPT Fast:
 
@@ -172,7 +175,8 @@ Remote image and binary-file URLs are limited to native providers and CLI backen
       "binary": "/usr/local/bin/copilot"
     },
     "agy": {
-      "binary": "/usr/local/bin/agy"
+      "binary": "/usr/local/bin/agy",
+      "model": "gemini-3.8-flash-high"
     },
     "pi": {
       "binary": "/usr/local/bin/pi"
@@ -193,7 +197,7 @@ Notes:
 - CLI providers that emit structured output report token usage (and USD cost where the CLI exposes it); plain-output providers such as Copilot report none.
 - If a CLI call fails, auto mode falls back to the next candidate.
 - Cursor Agent CLI uses the `agent` binary and relies on Cursor CLI auth (login or `CURSOR_API_KEY`).
-- Antigravity CLI uses the active agy session model; `cli.agy.model` is ignored by runtime selection.
+- Antigravity CLI uses the active agy session model when no model is specified, or passes `--model <model>` when configured via `cli.agy.model` or `cli/agy/<model>` (run `agy models` to list valid model slugs).
 - Antigravity normal text summaries run `agy --print <prompt>` in a temporary cwd with `--sandbox`. When the prompt or command length exceeds platform argv limits (e.g. 120 KB on Linux/macOS), the document `<content>` payload is automatically offloaded to a temporary file (`document.txt`) with restricted `0o600` permissions and referenced via `file://` in `--print`, preserving instructions before and after the content block in argv while cleaning up the single temporary directory on success, failure, or timeout. Untagged prompts are offloaded as a complete request. Short text prompts retain best-effort no-tools guidance; offloaded prompts permit reading the supplied document while discouraging file edits, local file links, and work-log narration. This is prompt steering, not a hard capability boundary. Attachment prompts keep the caller cwd so agy can inspect the requested path but do not auto-approve tools.
 - pi runs in JSON mode (`--print --mode json`) with `--no-tools`, `--no-context-files`, `--no-extensions`, `--no-skills`, `--no-session` for isolated summarization. It receives the summarize system prompt via `--system-prompt`, the summarize prompt over stdin, and reports usage/cost via JSONL events. Use `PI_PATH` to override the binary path.
 - devin runs `devin --print --prompt-file <file> --export <atif>`. Normal text summaries run isolated by default: a temporary cwd plus fabricated `XDG_CONFIG_HOME`/`XDG_DATA_HOME` that carry only `credentials.toml` and a merged `config.json` (user config preserved but tools denied via `permissions.deny`, plugins/subagents/auto-update disabled, and other-agent rule imports suppressed). Token usage is read from the ATIF export; Devin does not report USD cost. Set `cli.devin.isolated` to `false` only when you intentionally need Devin to inherit your real config/sessions. Attachment prompts keep the caller cwd and real Devin home so read-only tools can inspect the requested path. Auth comes from `devin auth login` credentials or `WINDSURF_API_KEY`; use `DEVIN_PATH` to override the binary path.

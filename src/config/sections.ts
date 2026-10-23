@@ -1,3 +1,4 @@
+import { parseAgyModel } from "../agy-model.js";
 import { parseLengthArg } from "../flags.js";
 import { CLI_PROVIDERS } from "../llm/provider-registry.js";
 import { isCliThemeName, listCliThemes } from "../tty/theme.js";
@@ -68,7 +69,12 @@ function parseCliProviderConfig(raw: unknown, path: string, label: string): CliP
     );
   }
   const binaryValue = typeof raw.binary === "string" ? raw.binary.trim() : undefined;
-  const modelValue = typeof raw.model === "string" ? raw.model.trim() : undefined;
+  const modelValue =
+    label === "agy" && typeof raw.model !== "undefined"
+      ? parseAgyModel(raw.model)
+      : typeof raw.model === "string"
+        ? raw.model.trim()
+        : undefined;
   const extraArgs =
     typeof raw.extraArgs === "undefined"
       ? undefined

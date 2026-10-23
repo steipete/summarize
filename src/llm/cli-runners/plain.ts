@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { parseAgyModel } from "../../agy-model.js";
 import { execCliWithInput } from "../cli-exec.js";
 import type { CliRunResult, ResolvedCliRunOptions } from "./types.js";
 
@@ -89,6 +90,9 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
   try {
     const args = [...options.providerExtraArgs];
     if (!options.allowTools && !hasAnyFlag(args, ["--sandbox"])) args.push("--sandbox");
+    if (options.requestedModel && !hasAnyFlag(args, ["--model", "-model"])) {
+      args.push("--model", parseAgyModel(options.requestedModel));
+    }
     if (options.prompt.includes("\0")) {
       throw new Error(
         "Antigravity CLI cannot receive prompts containing NUL characters over argv. " +
@@ -159,6 +163,9 @@ export async function runAgyCli(options: ResolvedCliRunOptions): Promise<CliRunR
       cwd: options.allowTools ? options.cwd : (temporaryDirectory ?? options.cwd),
       signal: options.signal,
       redactedCommand,
+      failureHint: hasAnyFlag(args, ["--model", "-model"])
+        ? "Check the selected Antigravity model with `agy models` and use agy 1.1.5 or newer. Unknown models fail in print mode; remove cli.agy.model and model extraArgs to use the active session model."
+        : undefined,
     });
     const text = stdout.trim();
     if (!text) throw new Error("CLI returned empty output");

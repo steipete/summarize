@@ -1,3 +1,4 @@
+import { parseAgyModel } from "./agy-model.js";
 import type { CliProvider } from "./config.js";
 import { normalizeGatewayStyleModelId, parseGatewayStyleModelId } from "./llm/model-id.js";
 import type { LlmProvider } from "./llm/model-id.js";
@@ -98,12 +99,10 @@ export function parseRequestedModelId(raw: string): RequestedModel {
     if (!cliProvider) {
       throw new Error(`Invalid CLI model id "${trimmed}". Expected cli/<provider>/<model>.`);
     }
-    const requestedModel = parts.slice(2).join("/").trim();
-    if (cliProvider === "agy" && requestedModel.length > 0) {
-      throw new Error(
-        `Invalid CLI model id "${trimmed}". Antigravity CLI uses cli/agy without a model suffix.`,
-      );
-    }
+    const requestedModel =
+      cliProvider === "agy" && trimmed.split("/").length > 2
+        ? parseAgyModel(trimmed.split("/").slice(2).join("/"))
+        : parts.slice(2).join("/").trim();
     const cliModel = requestedModel.length > 0 ? requestedModel : DEFAULT_CLI_MODELS[cliProvider];
     const requiredEnv = requiredEnvForCliProvider(cliProvider);
     const userModelId = cliModel ? `cli/${cliProvider}/${cliModel}` : `cli/${cliProvider}`;
