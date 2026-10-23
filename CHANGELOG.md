@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Browser chat: reuse existing summaries for follow-up questions and history, honor Browser media mode during context extraction, and return context errors promptly to the pending chat request (#537, thanks @laolxun).
 - Antigravity: honor `cli.agy.model` (previously ignored) and support `cli/agy/<model>`; require valid model settings, report failed model selections with `agy models` guidance, and retain the active session default when no model is set (#518, thanks @kevin820606).
 
 ## 0.25.3 - 2026-10-20
