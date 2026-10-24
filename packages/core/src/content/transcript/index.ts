@@ -137,9 +137,9 @@ export const resolveTranscriptForLink = async (
 
   const bilibiliIdentityMismatch = Boolean(
     bilibili &&
-    cacheOutcome.resolution &&
-    (cacheOutcome.resolution.metadata?.site !== "bilibili" ||
-      cacheOutcome.resolution.metadata?.videoUrl !== bilibili.url),
+    cacheOutcome.cached &&
+    (cacheOutcome.cached.metadata?.site !== "bilibili" ||
+      cacheOutcome.cached.metadata?.videoUrl !== bilibili.url),
   );
   if (cacheOutcome.resolution && !embeddedVideoIdentityMismatch && !bilibiliIdentityMismatch) {
     return {
@@ -147,7 +147,7 @@ export const resolveTranscriptForLink = async (
       diagnostics,
     };
   }
-  if (bilibiliIdentityMismatch) {
+  if (bilibiliIdentityMismatch && cacheMode !== "bypass") {
     diagnostics.cacheStatus = "miss";
     diagnostics.notes = appendNote(
       diagnostics.notes,
@@ -301,6 +301,7 @@ export const resolveTranscriptForLink = async (
   if (
     !providerResult.text &&
     !embeddedVideoIdentityMismatch &&
+    !bilibiliIdentityMismatch &&
     cacheOutcome.cached?.content &&
     cacheMode !== "bypass" &&
     isCachedDiarizationCompatible(cacheOutcome.cached.metadata, transcriptDiarization ?? null)

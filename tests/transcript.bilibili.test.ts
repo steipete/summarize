@@ -220,6 +220,132 @@ describe("Bilibili CLI transcript acquisition", () => {
     expect(result.text).toContain("stronger knot");
     expect(download).toHaveBeenCalledWith(expect.objectContaining({ url: `${url}?p=2` }));
   });
+
+  it.each(
+    [
+      { identity: "missing metadata", metadata: undefined },
+      {
+        identity: "another video",
+        metadata: {
+          site: "bilibili",
+          videoUrl: "https://www.bilibili.com/video/BV1ipnr6cExW/?p=2",
+        },
+      },
+      { identity: "another part", metadata: { site: "bilibili", videoUrl: url } },
+    ].flatMap((entry) =>
+      [false, true].flatMap((expired) =>
+        [false, true].map((failed) => ({ ...entry, expired, failed })),
+      ),
+    ),
+  )(
+    "does not fall back to $identity (expired=$expired, downloader failed=$failed)",
+    async ({ metadata, expired, failed }) => {
+      download.mockResolvedValue({
+        text: null,
+        provider: null,
+        notes: [],
+        error: failed ? new Error("HTTP Error 567") : null,
+      });
+      const result = await resolveTranscriptForLink(
+        `${url}?p=2`,
+        null,
+        {
+          ...options(),
+          transcriptCache: {
+            get: async () => ({
+              content: "Rejected captions",
+              source: "captionTracks",
+              expired,
+              metadata,
+            }),
+            set: vi.fn(),
+          },
+        },
+        { mediaTranscriptMode: "prefer" },
+      );
+
+      expect(download).toHaveBeenCalledOnce();
+      expect(result.text).toBeNull();
+      expect(result.source).toBeNull();
+      expect(result.diagnostics?.cacheStatus).toBe("miss");
+      expect(result.diagnostics?.notes).toContain(
+        "Bilibili recording identity could not be verified",
+      );
+    },
+  );
+
+  it("does not fall back to an unverified cache entry that cannot satisfy timestamps", async () => {
+    download.mockResolvedValue({ text: null, provider: null, notes: [], error: null });
+    const opts = {
+      ...options(),
+      transcriptCache: {
+        get: async () => ({
+          content: "Untimed legacy captions",
+          source: "captionTracks",
+          expired: false,
+        }),
+        set: vi.fn(),
+      },
+    };
+    await expect(
+      fetchLinkContent(url, { mediaTranscript: "prefer", transcriptTimestamps: true }, opts),
+    ).rejects.toThrow(/Failed to transcribe Bilibili video/);
+    expect(download).toHaveBeenCalledOnce();
+  });
+
+  it("preserves bypass diagnostics when an unverified cache entry is present", async () => {
+    download.mockResolvedValue({ text: null, provider: null, notes: [], error: null });
+    const result = await resolveTranscriptForLink(
+      url,
+      null,
+      {
+        ...options(),
+        transcriptCache: {
+          get: async () => ({
+            content: "Legacy captions",
+            source: "captionTracks",
+            expired: false,
+          }),
+          set: vi.fn(),
+        },
+      },
+      { mediaTranscriptMode: "prefer", cacheMode: "bypass" },
+    );
+    expect(result.text).toBeNull();
+    expect(result.diagnostics?.cacheStatus).toBe("bypassed");
+  });
+
+  it.each([false, true])(
+    "preserves fallback for a verified expired transcript (downloader failed=%s)",
+    async (failed) => {
+      download.mockResolvedValue({
+        text: null,
+        provider: null,
+        notes: [],
+        error: failed ? new Error("HTTP Error 567") : null,
+      });
+      const result = await resolveTranscriptForLink(
+        `${url}?p=2`,
+        null,
+        {
+          ...options(),
+          transcriptCache: {
+            get: async () => ({
+              content: "Verified second-part transcript",
+              source: "yt-dlp",
+              expired: true,
+              metadata: { site: "bilibili", videoUrl: `${url}?p=2` },
+            }),
+            set: vi.fn(),
+          },
+        },
+        { mediaTranscriptMode: "prefer" },
+      );
+      expect(download).toHaveBeenCalledOnce();
+      expect(result.text).toBe("Verified second-part transcript");
+      expect(result.diagnostics?.cacheStatus).toBe("fallback");
+    },
+  );
 });
 
 describe("Bilibili recording URL identity", () => {
