@@ -79,6 +79,83 @@ function createHarness(overrides: Record<string, unknown> = {}) {
 }
 
 describe("chrome panel content preparation", () => {
+  it("uses logged-in Bilibili captions before page extraction in default mode", async () => {
+    const url = "https://www.bilibili.com/video/BV1ipnr6cExW/?p=2";
+    const extractBilibiliTranscript = vi.fn(async () => ({
+      ok: true as const,
+      url,
+      text: "Transcript:\n[0:01] Second part captions",
+      transcriptTimedText: "[0:01] Second part captions",
+      truncated: false,
+      durationSeconds: 567,
+      language: "ai-en",
+      generated: true,
+    }));
+    const harness = createHarness({
+      tab: { id: 7, url, title: "Bilibili video" },
+      tabUrl: url,
+      extractBilibiliTranscript,
+    });
+
+    const result = await preparePanelContent(harness.args);
+
+    expect(result).toMatchObject({
+      kind: "ready",
+      content: {
+        payload: {
+          url,
+          text: "Transcript:\n[0:01] Second part captions",
+          mediaDurationSeconds: 567,
+          media: { hasVideo: true, hasAudio: true, hasCaptions: true },
+        },
+        transcriptTimedText: "[0:01] Second part captions",
+        diagnostics: {
+          strategy: "bilibili-captions",
+          transcript: { provider: "bilibili-ai-captions/ai-en" },
+        },
+      },
+    });
+    expect(extractBilibiliTranscript).toHaveBeenCalledWith(7, defaultSettings.maxChars, url);
+    expect(harness.extractFromTab).not.toHaveBeenCalled();
+    expect(harness.routeExtractImpl).not.toHaveBeenCalled();
+  });
+
+  it("does not use a Bilibili description as a failed video transcript", async () => {
+    const url = "https://www.bilibili.com/video/BV1ipnr6cExW/";
+    const harness = createHarness({
+      tab: { id: 7, url, title: "Bilibili video" },
+      tabUrl: url,
+      requestedInputMode: "video",
+      extractBilibiliTranscript: vi.fn(async () => ({
+        ok: false as const,
+        reason: "failed",
+        error: "No Bilibili caption tracks are available in this browser session.",
+      })),
+    });
+    const result = await preparePanelContent(harness.args);
+    expect(result).toMatchObject({
+      kind: "ready",
+      content: { payload: { url, text: "", media: { hasCaptions: false } } },
+    });
+    expect(harness.extractFromTab).not.toHaveBeenCalled();
+    expect(harness.routeExtractImpl).not.toHaveBeenCalled();
+  });
+
+  it("discards Bilibili captions when the tab changes part during retrieval", async () => {
+    const url = "https://www.bilibili.com/video/BV1ipnr6cExW/";
+    const harness = createHarness({
+      tab: { id: 7, url, title: "Bilibili video" },
+      tabUrl: url,
+      extractBilibiliTranscript: vi.fn(async () => ({
+        ok: false,
+        reason: "stale",
+        error: "Page changed",
+      })),
+    });
+    expect(await preparePanelContent(harness.args)).toEqual({ kind: "stale" });
+    expect(harness.extractFromTab).not.toHaveBeenCalled();
+  });
+
   it("preserves routed source and diagnostics behind a prepared content contract", async () => {
     const harness = createHarness();
 

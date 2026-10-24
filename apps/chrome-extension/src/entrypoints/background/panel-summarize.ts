@@ -311,8 +311,11 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
           ? {
               timedText: browserTranscriptTimedText,
               text: resolvedPayload.text,
-              source: "browser",
-              provider: "browser",
+              source:
+                preparedContent.diagnostics?.strategy === "bilibili-captions"
+                  ? "bilibili-captions"
+                  : "browser",
+              provider: preparedContent.diagnostics?.transcript?.provider ?? "browser",
             }
           : null,
       }),
