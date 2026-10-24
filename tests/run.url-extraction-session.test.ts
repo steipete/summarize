@@ -215,6 +215,48 @@ describe("createUrlExtractionSession", () => {
     );
   });
 
+  it("keeps guarded yt-dlp disabled for Bilibili transcript requests", () => {
+    const ctx = createCtx();
+    ctx.io.urlFetch = vi.fn() as unknown as typeof fetch;
+    ctx.flags.videoMode = "transcript";
+    ctx.model.apiStatus.ytDlpPath = "/usr/bin/yt-dlp";
+    createUrlExtractionSession({
+      ctx: ctx as never,
+      targetUrl: "https://www.bilibili.com/video/BV1js411R7qA/",
+      markdown: {
+        convertHtmlToMarkdown: vi.fn(),
+        effectiveMarkdownMode: "off",
+        markdownRequested: false,
+      },
+      onProgress: null,
+    });
+    expect(createLinkPreviewClient).toHaveBeenCalledWith(
+      expect.objectContaining({ ytDlpPath: null }),
+    );
+  });
+
+  it("refreshes legacy Bilibili description-only extracts for explicit transcript requests", async () => {
+    const ctx = createCtx();
+    ctx.flags.videoMode = "transcript";
+    ctx.cache.store.getJson.mockReturnValue({
+      content: "Just a description",
+      transcriptCharacters: null,
+      transcriptMetadata: null,
+    });
+    const session = createUrlExtractionSession({
+      ctx: ctx as never,
+      markdown: {
+        convertHtmlToMarkdown: vi.fn(),
+        effectiveMarkdownMode: "off",
+        markdownRequested: false,
+      },
+      onProgress: null,
+    });
+    const result = await session.fetchWithCache("https://www.bilibili.com/video/BV1js411R7qA/");
+    expect(result.content).toBe("video transcript");
+    expect(fetchLinkContentWithBirdTip).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps remember-speakers out of earlier identity cache entries", async () => {
     const ctx = createCtx();
     ctx.flags.speakerIdentification = {
