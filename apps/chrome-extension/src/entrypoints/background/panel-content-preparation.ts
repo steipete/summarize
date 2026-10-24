@@ -86,6 +86,8 @@ export async function preparePanelContent({
   let source: CachedExtract["source"] = "page";
   let diagnostics: CachedExtract["diagnostics"] = null;
   let transcriptTimedText: string | null = null;
+  let localTranscriptError: string | null = null;
+  let localTranscriptMessage: PreparedPanelContent["localTranscriptMessage"];
 
   if (extractionPlan.directBilibiliTranscript) {
     sendStatus(uiMessage("progress.panelExtract", { stage: "video" }));
@@ -118,6 +120,8 @@ export async function preparePanelContent({
       };
     } else {
       extracted = emptyExtract(tab, { hasVideo: true, hasAudio: true, hasCaptions: false });
+      localTranscriptError = transcript.error;
+      localTranscriptMessage = uiMessage("error.bilibiliCaptionsUnavailable");
     }
   } else if (extractionPlan.directYouTubeTranscript) {
     logPanel("extractor.route.start", { tabId: tab.id, preferUrl: prefersUrlMode });
@@ -287,7 +291,8 @@ export async function preparePanelContent({
       payload: { ...payload, title },
       title,
       transcriptTimedText,
-      localTranscriptError: null,
+      localTranscriptError,
+      ...(localTranscriptMessage ? { localTranscriptMessage } : {}),
       source,
       diagnostics,
       prefersUrlMode,
@@ -347,6 +352,7 @@ export async function ensurePreparedPanelTranscript({
         : "extract:browser-media:local-transcript-failed",
       { error: localTranscript.error },
     );
+    if (content.localTranscriptMessage?.key === "error.bilibiliCaptionsUnavailable") return content;
     return {
       ...content,
       localTranscriptError: localTranscript.error,

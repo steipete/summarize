@@ -78,7 +78,68 @@ function createHarness(overrides: Record<string, unknown> = {}) {
   };
 }
 
+async function prepareBilibiliWithoutCaptions() {
+  const url = "https://www.bilibili.com/video/BV1ipnr6cExW/";
+  const captionError = "No Bilibili caption tracks are available in this browser session.";
+  const harness = createHarness({
+    tab: { id: 7, url, title: "Bilibili video" },
+    tabUrl: url,
+    useBrowserSummary: true,
+    extractBilibiliTranscript: vi.fn(async () => ({
+      ok: false,
+      reason: "failed",
+      error: captionError,
+    })),
+  });
+  const prepared = await preparePanelContent(harness.args);
+  if (prepared.kind !== "ready") throw new Error("Expected ready Bilibili content");
+  return { harness, content: prepared.content, captionError, url };
+}
+
 describe("chrome panel content preparation", () => {
+  it("retains the actionable Bilibili caption error when local audio cannot recover", async () => {
+    const { harness, content, captionError } = await prepareBilibiliWithoutCaptions();
+    const mediaError = "The active media source is not fetchable outside the page.";
+    const result = await ensurePreparedPanelTranscript({
+      ...harness.args,
+      content,
+      transcribeYouTubeLocally: vi.fn(),
+      transcribeMediaLocally: vi.fn(async () => ({ ok: false as const, error: mediaError })),
+    });
+    expect(result.payload.text).toBe("");
+    expect(result.localTranscriptError).toBe(captionError);
+    expect(result.localTranscriptMessage).toEqual({
+      key: "error.bilibiliCaptionsUnavailable",
+      values: {},
+    });
+    expect(harness.logPanel).toHaveBeenCalledWith("extract:browser-media:local-transcript-failed", {
+      error: mediaError,
+    });
+  });
+
+  it("clears the Bilibili caption error when local audio recovers", async () => {
+    const { harness, content, url } = await prepareBilibiliWithoutCaptions();
+    const result = await ensurePreparedPanelTranscript({
+      ...harness.args,
+      content,
+      transcribeYouTubeLocally: vi.fn(),
+      transcribeMediaLocally: vi.fn(async () => ({
+        ok: true as const,
+        url,
+        text: "Recovered audio transcript",
+        transcriptTimedText: "[0:00] Recovered audio transcript",
+        truncated: false,
+        durationSeconds: 42,
+        source: "embedded" as const,
+        diagnostics: browserMediaDiagnostics,
+      })),
+    });
+    expect(result.payload.text).toBe("Recovered audio transcript");
+    expect(result.transcriptTimedText).toBe("[0:00] Recovered audio transcript");
+    expect(result.localTranscriptError).toBeNull();
+    expect(result.localTranscriptMessage).toBeUndefined();
+  });
+
   it("uses logged-in Bilibili captions before page extraction in default mode", async () => {
     const url = "https://www.bilibili.com/video/BV1ipnr6cExW/?p=2";
     const extractBilibiliTranscript = vi.fn(async () => ({
