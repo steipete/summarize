@@ -238,17 +238,19 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
       browserExtractionPlan.isYouTubeVideo ||
       isDirectMediaUrl(resolvedPayload.url) ||
       Boolean(resolvedPayload.media?.hasVideo || resolvedPayload.media?.hasAudio);
+    const localTranscriptMessage = readLocalizedMessage(preparedContent.localTranscriptMessage);
     const localTranscriptError =
-      readLocalizedMessage(preparedContent.localTranscriptMessage) ??
-      preparedContent.localTranscriptError?.trim().replace(/[.!?]+$/, "");
+      localTranscriptMessage ?? preparedContent.localTranscriptError?.trim().replace(/[.!?]+$/, "");
     const browserError =
-      localTranscriptError && requiresMediaTranscript
-        ? uiMessage("error.standalone", { kind: "failed", error: localTranscriptError })
-        : resolvedPayload.text.trim().length === 0
-          ? browserExtractionPlan.localTranscriptKind
-            ? uiMessage("error.standalone", { kind: "noTranscript", error: "" })
-            : uiMessage("error.standalone", { kind: "noText", error: "" })
-          : null;
+      localTranscriptMessage?.key === "error.bilibiliCaptionsUnavailable" && requiresMediaTranscript
+        ? localTranscriptMessage
+        : localTranscriptError && requiresMediaTranscript
+          ? uiMessage("error.standalone", { kind: "failed", error: localTranscriptError })
+          : resolvedPayload.text.trim().length === 0
+            ? browserExtractionPlan.localTranscriptKind
+              ? uiMessage("error.standalone", { kind: "noTranscript", error: "" })
+              : uiMessage("error.standalone", { kind: "noText", error: "" })
+            : null;
     if (browserError) {
       send({
         type: "run:error",
@@ -311,8 +313,11 @@ export async function summarizeActiveTab<Session extends BackgroundSummarizeSess
           ? {
               timedText: browserTranscriptTimedText,
               text: resolvedPayload.text,
-              source: "browser",
-              provider: "browser",
+              source:
+                preparedContent.diagnostics?.strategy === "bilibili-captions"
+                  ? "bilibili-captions"
+                  : "browser",
+              provider: preparedContent.diagnostics?.transcript?.provider ?? "browser",
             }
           : null,
       }),
