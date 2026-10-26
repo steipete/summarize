@@ -24,7 +24,6 @@ overrides:
 
 patchedDependencies:
   adm-zip@0.6.1: 06727f42955759beb932b9f15e8dbad1f01c0786b28a08d1d6f14593a4c61560
-  markdown-it@15.0.2: 260b2bb60ee97445556e7ec8bcc3563167234698771522a016ffdf60acb20da9
 
 importers:
 
@@ -110,8 +109,8 @@ importers:
         specifier: 4.1.1
         version: 4.1.1
       markdown-it:
-        specifier: ^15.0.2
-        version: 15.0.2(patch_hash=260b2bb60ee97445556e7ec8bcc3563167234698771522a016ffdf60acb20da9)
+        specifier: ^15.0.3
+        version: 15.0.3
       mediabunny:
         specifier: 1.61.4
         version: 1.61.4
@@ -147,7 +146,7 @@ importers:
         specifier: ^0.18.13
         version: 0.18.13
       sanitize-html:
-        specifier: ^2.18.0
+        specifier: ^2.18.1
         version: 2.18.1
       undici:
         specifier: 8.11.2
@@ -1629,8 +1628,8 @@ packages:
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
-  argparse@3.0.2:
-    resolution: {integrity: sha512-mFdDM6WqWKraGLsVb+C9CahPnzTXOefAOLq3jYcca2YZ8bEWpr++Tzj+zSaKW9+X9L5uSxcm1AZ3Y6aZJ09OhQ==}
+  argparse@3.0.3:
+    resolution: {integrity: sha512-Sn98ftV3KfsO8xfLPHG6oT8y+b0yvbrLgZjgPDXsharNY15tTAjqIsIju4S32nl6/iEUNNE4v+yL2Zhm8ooP3w==}
 
   array-differ@4.0.0:
     resolution: {integrity: sha512-Q6VPTLMsmXZ47ENG3V+wQyZS1ZxXMxFyYzA+Z/GMrJ6yIutAIEf9wTyroTzmGjNfox9/h3GdGBCVh43GVFx4Uw==}
@@ -2650,8 +2649,8 @@ packages:
     engines: {node: '>=22'}
     hasBin: true
 
-  markdown-it@15.0.2:
-    resolution: {integrity: sha512-q4IGxMv56jCqT4OCRCADBoDP3LO4MhmTXjFbphHPXs4g3j9Xg5RDnxqN8IF/3vIWEU+VCnUq+7JUg/cfy2E6Qw==}
+  markdown-it@15.0.3:
+    resolution: {integrity: sha512-+Az7Ojz3iRGu8KYMvJ6xVhvrxP3eE+vEtJX75Ow88XBpcQNV/0lGX5ZynIIBftREo4DC2jsveAMDaeltmm8QvQ==}
     hasBin: true
 
   marked@18.1.1:
@@ -4785,7 +4784,7 @@ snapshots:
 
   argparse@2.0.1: {}
 
-  argparse@3.0.2: {}
+  argparse@3.0.3: {}
 
   array-differ@4.0.0: {}
 
@@ -5767,9 +5766,9 @@ snapshots:
       strip-ansi: 7.2.0
       supports-hyperlinks: 4.6.0
 
-  markdown-it@15.0.2(patch_hash=260b2bb60ee97445556e7ec8bcc3563167234698771522a016ffdf60acb20da9):
+  markdown-it@15.0.3:
     dependencies:
-      argparse: 3.0.2
+      argparse: 3.0.3
       entities: 8.1.0
       linkify-it: 6.1.0
       mdurl: 2.1.0

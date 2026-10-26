@@ -33,5 +33,3 @@ overrides:
 patchedDependencies:
   # Upstream rejects unsafe destinations but still continues after a directory error.
   adm-zip@0.6.1: patches/adm-zip@0.6.1.patch
-  # Backport renderer DoS fixes while 15.0.3 completes its stabilization hold.
-  markdown-it@15.0.2: patches/markdown-it@15.0.2.patch

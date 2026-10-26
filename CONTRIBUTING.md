@@ -71,7 +71,7 @@ docker run --rm summarize-test https://example.com --extract --plain
 
 The image uses the workspace's pinned pnpm version and frozen lockfile, including local dependency patches.
 
-Dependency patches live in `patches/` and have regression tests in `tests/dependency.*-security.test.ts`. The remaining adm-zip 0.6.1 patch stops asynchronous extraction after a directory rejection so the callback fires once; retain it until upstream fixes that behavior. The destination-symlink and image-size parser-loop fixes now come from upstream releases. Stable dependency releases must complete the workspace's seven-day stabilization hold before adoption.
+Dependency patches live in `patches/` and have regression tests in `tests/dependency.*-security.test.ts`. The remaining adm-zip 0.6.1 patch stops asynchronous extraction after a directory rejection so the callback fires once; retain it until upstream fixes that behavior. The destination-symlink, image-size parser-loop, Markdown renderer, and sanitize-html iframe-recursion fixes now come from upstream releases. Stable dependency releases must complete the workspace's seven-day stabilization hold before adoption.
 
 Daemon after extension or daemon changes:
 

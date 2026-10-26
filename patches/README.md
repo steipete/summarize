@@ -1,17 +1,11 @@
 # Dependency patches
 
-## markdown-it 15.0.2
+## adm-zip 0.6.1
 
-The patch backports the reference parser and inline HTML security fixes from the
-published 15.0.3 package while that release completes our seven-day stabilization
-hold. It addresses [GHSA-gfr2-rv44-r23c](https://github.com/advisories/GHSA-gfr2-rv44-r23c)
-and [GHSA-vfgh-jcmw-g37q](https://github.com/advisories/GHSA-vfgh-jcmw-g37q).
+The patch stops asynchronous extraction after a rejected directory so that the
+callback fires only once. Keep it until an upstream release fixes that behavior.
 
-Only the three affected parser sections are copied into the ESM and CommonJS
-entrypoints. These are the package entrypoints used by the extension and tests;
-the unused standalone `markdown-it/browser` bundles and source maps are unchanged.
-The regression test exercises both patched entrypoints with unclosed reference
-labels/titles and all four inline HTML constructs in subprocesses with deadlines.
-
-Remove the patch when adopting 15.0.3 or newer after the stabilization hold. Keep
-the behavioral regression tests.
+Markdown-it's reference parser and inline HTML security fixes now come from
+15.0.3. The retained regression tests exercise its ESM and CommonJS entrypoints
+with unclosed reference labels/titles and four inline HTML constructs in
+subprocesses with deadlines.

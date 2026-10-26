@@ -95,7 +95,7 @@
     "@mozilla/readability": "0.6.0",
     "intl-messageformat": "12.1.3",
     "linkedom": "^0.18.13",
-    "sanitize-html": "^2.18.0",
+    "sanitize-html": "^2.18.1",
     "undici": "8.11.2"
   },
   "devDependencies": {

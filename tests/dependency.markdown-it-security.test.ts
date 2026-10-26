@@ -30,7 +30,7 @@ const { pathToFileURL } = require("node:url");
 })().catch(error => { console.error(error); process.exitCode = 1; });
 `;
 
-describe("patched markdown-it dependency", () => {
+describe("markdown-it dependency security", () => {
   for (const [kind, filename] of [
     ["esm", "markdown-it.mjs"],
     ["cjs", "markdown-it.cjs.js"],
