@@ -14,7 +14,7 @@ Short scope
 - Preserve existing plain transcript text; add structured segments + timed text.
 - Chat mode: include timed transcript + prompt for `[mm:ss]` references.
 - Sidepanel: click timestamp → seek media (video or audio), keep play state.
-- Coverage: YouTube, podcasts, embedded captions, generic media; whisper.cpp = no segments unless we add verbose output later.
+- Coverage: YouTube, podcasts, embedded captions, generic media; whisper.cpp decodes timestamp tokens to preserve speech at window boundaries, but currently returns plain text without exposed segments.
 
 ## 1) API / data model
 
@@ -122,5 +122,5 @@ Chrome extension
 
 ## 9) Notes / open
 
-- “VisPoR” = whisper.cpp: no timestamps unless we add verbose output path.
+- “VisPoR” = whisper.cpp: no exposed timestamp segments until a structured output path is added.
 - Decide exact format of `transcriptTimedText` (recommend `[mm:ss] text` per line).

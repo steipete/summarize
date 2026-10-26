@@ -40,3 +40,45 @@ it("styles advanced settings before opening and measuring them", () => {
   controls.toggleAdvancedSettings(true);
   expect(seen).toEqual(["true:0px"]);
 });
+
+it("reconciles slide order, removed slides, seek targets, and source changes", () => {
+  const hostEl = document.createElement("div");
+  const onSeek = vi.fn();
+  const state = {
+    slidesEnabled: true,
+    inputMode: "video",
+    slidesExpanded: false,
+    slides: {
+      sourceId: "first",
+      slides: [0, 1, 2].map((index) => ({ index, timestamp: index * 10 })),
+    },
+    descriptions: new Map([[0, "description"]]),
+    titles: new Map(),
+  };
+  const renderer = createSlidesRenderer({
+    hostEl,
+    getState: () => state,
+    updateThumb: vi.fn(),
+    updateMeta: vi.fn(),
+    onSeek,
+  } as never);
+  renderer.forceRender();
+  const root = hostEl.querySelector(".slideStrip");
+  const retained = hostEl.querySelector('[data-slide-index="2"]');
+  state.slides.slides = [
+    { index: 2, timestamp: 25 },
+    { index: 0, timestamp: 0 },
+  ];
+  renderer.forceRender();
+  expect(hostEl.querySelector(".slideStrip")).toBe(root);
+  const items = Array.from(hostEl.querySelectorAll<HTMLButtonElement>(".slideStrip__item"));
+  expect(items.map((item) => item.dataset.slideIndex)).toEqual(["2", "0"]);
+  expect(items[0]).toBe(retained);
+  items[0].click();
+  expect(onSeek).toHaveBeenCalledExactlyOnceWith(25);
+
+  state.slides.sourceId = "second";
+  renderer.forceRender();
+  expect(hostEl.querySelector(".slideStrip")).not.toBe(root);
+  expect(hostEl.querySelector('[data-slide-index="2"]')).not.toBe(retained);
+});
