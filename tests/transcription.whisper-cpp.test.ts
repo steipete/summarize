@@ -23,7 +23,7 @@ describe("transcription/whisper local whisper.cpp", () => {
     await expect(resolveWhisperCppModelNameForDisplay()).resolves.toBe("base");
   });
 
-  it("prefers whisper.cpp when enabled and available (no API keys required)", async () => {
+  it("keeps timestamp decoding enabled across whisper.cpp windows without API keys", async () => {
     const root = await mkdtemp(join(tmpdir(), "summarize-whisper-cpp-"));
     const modelPath = join(root, "ggml-base.bin");
     await writeFile(modelPath, new Uint8Array([1, 2, 3]));
@@ -60,6 +60,9 @@ describe("transcription/whisper local whisper.cpp", () => {
         const maxContextIdx = args.indexOf("-mc");
         expect(maxContextIdx).toBeGreaterThanOrEqual(0);
         expect(args[maxContextIdx + 1]).toBe("0");
+        expect(args).not.toContain("--no-timestamps");
+        expect(args).not.toContain("-nt");
+        expect(args).toContain("--output-txt");
 
         // transcription run: create output file and close 0
         const outIdx = args.indexOf("--output-file");

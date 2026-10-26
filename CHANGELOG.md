@@ -5,6 +5,7 @@
 ### Changed
 
 - Security: update stabilized Undici releases, including the HTML extractor's HTTP client, and omit unused optional Zod SDK helpers (#545, thanks @dependabot).
+- Transcription: keep whisper.cpp timestamp decoding enabled to preserve speech at 30-second window boundaries while retaining plain-text output (#543, thanks @vlauciani).
 - Security: update stabilized sanitize-html and Markdown-it releases, bound discarded-iframe recursion, and replace the Markdown renderer backport with upstream fixes (#540, thanks @dependabot).
 - Maintenance: update stabilized Happy DOM and Oxc tooling while retaining Node 24 and the seven-day dependency hold (#538, thanks @dependabot).
 - Browser chat: reuse existing summaries for follow-up questions and history, honor Browser media mode during context extraction, and return context errors promptly to the pending chat request (#537, thanks @laolxun).

@@ -113,7 +113,7 @@ export async function transcribeWithWhisperCppFile({
       // Prevent one bad long-form window from seeding cascading repetition in later windows.
       "-mc",
       "0",
-      "--no-timestamps",
+      // Timestamp tokens let Whisper resume at segment boundaries instead of dropping words.
       "--no-prints",
       "--print-progress",
       "--output-txt",
