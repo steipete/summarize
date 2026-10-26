@@ -74,7 +74,7 @@ importers:
         version: 5.0.4(vitest@5.0.4)
       happy-dom:
         specifier: ^21.0.1
-        version: 21.0.1
+        version: 21.0.4
       oxc-parser:
         specifier: ^0.154.0
         version: 0.154.0
@@ -92,7 +92,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.4
-        version: 5.0.4(@opentelemetry/api@1.9.0)(@types/node@24.19.2)(@vitest/coverage-v8@5.0.4)(happy-dom@21.0.1)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0))
+        version: 5.0.4(@opentelemetry/api@1.9.0)(@types/node@24.19.2)(@vitest/coverage-v8@5.0.4)(happy-dom@21.0.4)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0))
 
   apps/chrome-extension:
     dependencies:
@@ -2258,8 +2258,8 @@ packages:
   guid-typescript@1.0.9:
     resolution: {integrity: sha512-Y8T4vYhEfwJOTbouREvG+3XDsjr8E3kIr7uf+JZ0BYloFsttiHU0WfvANVsR7TxNUJa/WpCnw/Ino/p+DeBhBQ==}
 
-  happy-dom@21.0.1:
-    resolution: {integrity: sha512-pRBs/u9fhrncyByOl58DMex0R2uAj6ZPKWIjV5j5yNGZBqLw3P6BTRhlc0DD5b/Ht4/6JYTMuE2LJhUWRC6SGw==}
+  happy-dom@21.0.4:
+    resolution: {integrity: sha512-tFm+GaLBgo6o0awHnvHaNoraVo27qJ+2tZEtZ+cIa08hXbeitrxAJajLI05hsUy/2/YTKcUjQYzHe5mCcraLBw==}
     engines: {node: '>=20.0.0'}
 
   has-flag@4.0.0:
@@ -4658,7 +4658,7 @@ snapshots:
       obug: 3.0.0
       std-env: 4.3.0
       tinyrainbow: 3.2.0
-      vitest: 5.0.4(@opentelemetry/api@1.9.0)(@types/node@24.19.2)(@vitest/coverage-v8@5.0.4)(happy-dom@21.0.1)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0))
+      vitest: 5.0.4(@opentelemetry/api@1.9.0)(@types/node@24.19.2)(@vitest/coverage-v8@5.0.4)(happy-dom@21.0.4)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0))
 
   '@vitest/istanbul-lib-coverage@1.0.2': {}
 
@@ -5400,7 +5400,7 @@ snapshots:
 
   guid-typescript@1.0.9: {}
 
-  happy-dom@21.0.1:
+  happy-dom@21.0.4:
     dependencies:
       '@types/node': 24.19.2
       '@types/whatwg-mimetype': 3.0.2
@@ -6585,7 +6585,7 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.7.0
 
-  vitest@5.0.4(@opentelemetry/api@1.9.0)(@types/node@24.19.2)(@vitest/coverage-v8@5.0.4)(happy-dom@21.0.1)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0)):
+  vitest@5.0.4(@opentelemetry/api@1.9.0)(@types/node@24.19.2)(@vitest/coverage-v8@5.0.4)(happy-dom@21.0.4)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0)):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/mocker': 5.0.4(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0))
@@ -6605,7 +6605,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@types/node': 24.19.2
       '@vitest/coverage-v8': 5.0.4(vitest@5.0.4)
-      happy-dom: 21.0.1
+      happy-dom: 21.0.4
     transitivePeerDependencies:
       - msw
 
