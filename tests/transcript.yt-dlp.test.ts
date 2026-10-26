@@ -382,7 +382,7 @@ describe("yt-dlp transcript helper", () => {
     );
   });
 
-  it("restricts transcription downloads to audio-capable formats", async () => {
+  it("excludes known video-only formats from transcription downloads", async () => {
     (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
       new Response(JSON.stringify({ text: "OpenAI transcript" }), { status: 200 }),
     );
@@ -400,7 +400,7 @@ describe("yt-dlp transcript helper", () => {
     const formats = String(args[formatIndex + 1] ?? "").split("/");
     expect(args).toEqual(expect.arrayContaining(["-x", "--audio-format", "mp3"]));
     expect(formats[0]).toBe("bestaudio[vcodec=none]");
-    expect(formats.slice(1).every((format) => format.includes("[acodec!=none]"))).toBe(true);
+    expect(formats.slice(1).every((format) => /\[acodec!=\??none\]/u.test(format))).toBe(true);
     expect(formats).not.toContain("best");
   });
 

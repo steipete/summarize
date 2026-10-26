@@ -24,7 +24,7 @@ read_when:
 - RSS and Atom feed URLs use the podcast/content pipeline rather than raw XML file handling. Published feed transcripts take precedence over media transcription; ordinary XML documents remain file inputs.
 - Podcast episode title matching preserves non-Latin letters and combining marks while ignoring case, punctuation, and Latin accents. Explicit titles without letters or numbers do not select an arbitrary RSS episode; feed requests without an episode title still use the first available transcript.
 - `--video-mode transcript` prefers transcript-first media handling even when a page has text.
-- Direct media URLs (mp4/webm/m4a/etc) skip HTML and transcribe.
+- Direct media URLs (mp4/webm/m4a/etc) skip HTML and transcribe. Unknown codec metadata is allowed as a final download fallback; formats explicitly marked as having no audio are excluded.
 - Local audio/video files are routed through the same transcript-first pipeline.
 - `--diarize [auto|elevenlabs|openai]` adds speaker labels to local files and direct media URLs; `--identify-speakers`, anchors, profiles, and remembered mappings use the same naming pass as YouTube. Local files do not require `yt-dlp`. Local video is converted once to mono 16 kHz MP3 before upload, then reused if diarization falls back between providers.
 - YouTube diarization selects audio-only media. Combined `--slides --diarize` downloads separate video-only and audio-only streams in one yt-dlp run, then shares the video with slide extraction.
