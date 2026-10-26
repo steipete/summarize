@@ -74,6 +74,9 @@ export function createVitestConfig({
       maxWorkers,
       fsModuleCache: true,
       environment: "node",
+      environmentOptions: {
+        happyDOM: { settings: { enableJavaScriptEvaluation: false } },
+      },
       include: ["tests/**/*.test.ts"],
       setupFiles: ["tests/setup.ts"],
       hookTimeout: 15_000,

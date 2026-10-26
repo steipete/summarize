@@ -73,6 +73,8 @@ The image uses the workspace's pinned pnpm version and frozen lockfile, includin
 
 Dependency patches live in `patches/` and have regression tests in `tests/dependency.*-security.test.ts`. The remaining adm-zip 0.6.1 patch stops asynchronous extraction after a directory rejection so the callback fires once; retain it until upstream fixes that behavior. The destination-symlink, image-size parser-loop, Markdown renderer, and sanitize-html iframe-recursion fixes now come from upstream releases. Stable dependency releases must complete the workspace's seven-day stabilization hold before adoption.
 
+Happy DOM is used only for trusted unit-test fixtures, with its JavaScript evaluation disabled by default. Keep it out of production extraction and do not enable script evaluation for untrusted input. The development-only `web-ext`/`addons-linter` chain uses `fast-uri` through Ajv for extension schema validation; it does not handle production URLs or access-control decisions.
+
 Daemon after extension or daemon changes:
 
 ```bash

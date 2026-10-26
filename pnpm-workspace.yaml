@@ -21,8 +21,12 @@ overrides:
   shell-quote: 1.12.0
   source-map-js: 1.2.2
   tmp: 0.2.7
+  "cheerio>undici": 7.30.1
   uuid: 14.0.3
   vite: 8.3.4
+  # Provider requests use plain JSON schemas, not the SDKs' optional Zod helpers.
+  "openai>zod": "-"
+  "@anthropic-ai/sdk>zod": "-"
   # Vite 8 uses Rolldown/Oxc here; do not auto-install its legacy optional peers.
   "vite>esbuild": "-"
   "vite>tsx": "-"
