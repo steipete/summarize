@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Media: accept direct MP4 downloads with unknown codec metadata while continuing to reject known video-only formats (#549, fixes #548, thanks @zewelor).
 - Security: update stabilized Undici releases, including the HTML extractor's HTTP client, and omit unused optional Zod SDK helpers (#545, thanks @dependabot).
 - Transcription: keep whisper.cpp timestamp decoding enabled to preserve speech at 30-second window boundaries while retaining plain-text output (#543, thanks @vlauciani).
 - Security: update stabilized sanitize-html and Markdown-it releases, bound discarded-iframe recursion, and replace the Markdown renderer backport with upstream fixes (#540, thanks @dependabot).
