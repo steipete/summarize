@@ -52,7 +52,7 @@ importers:
         version: 2.2.3
       markdansi:
         specifier: ^0.3.5
-        version: 0.3.5
+        version: 0.3.6
       mime:
         specifier: ^4.1.1
         version: 4.1.1
@@ -109,8 +109,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
       googlevideo:
-        specifier: 4.1.1
-        version: 4.1.1
+        specifier: 5.0.0
+        version: 5.0.0
       markdown-it:
         specifier: ^15.0.3
         version: 15.0.3
@@ -2245,8 +2245,8 @@ packages:
     resolution: {integrity: sha512-WE9av4wKDZgRjBwgVUabocx8T6/7o3Ca1Fat46FXDhXVAFibzNadedcOXrdgd1Kzmk8tsk/9ZH89Wyf/SqeZ3A==}
     engines: {node: '>=18'}
 
-  googlevideo@4.1.1:
-    resolution: {integrity: sha512-14o64O+CXXlQ1stYZK/+ypCEwZb25lzEuzhbFYYEzf26R+HhBDOR+Dkdk7MKkZ3qXeIjvZfeC0AJlVKjwQCFjw==}
+  googlevideo@5.0.0:
+    resolution: {integrity: sha512-gWiWaUinPIgGSmqJi+78P1eiYSkOolYs1818VC9KSv7PX61RxbHAhDcMmLcsv7s1pw9FM5j7aKv4d5ZAeYWdaQ==}
 
   gopd@1.2.0:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
@@ -2647,8 +2647,8 @@ packages:
     resolution: {integrity: sha512-1DiZmDHPXMBgMRjeUtHy1q1VYmeJscHxhIAexX9z/zjRMP80+0ETuPfssi8z+kMY4DwUgsKuHqpjxgmeA9gBNA==}
     engines: {node: '>=18'}
 
-  markdansi@0.3.5:
-    resolution: {integrity: sha512-lfbXpRP/sd5qHyHL4LRfx4eZAnpb8vtek92ZWKh3VKCVDowSkBaQqrop/K+3KyKXBR1TEaLc5y1jwGm9ttkbDg==}
+  markdansi@0.3.6:
+    resolution: {integrity: sha512-MuccvbziHg8eVnsU+aMQ1g9ZDiB//LMzpC3PNrMcQn0qRLWdfzUE9bfg41FBSZRmRn9uLjb9d2qCM6LoQqqNeA==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -5386,7 +5386,7 @@ snapshots:
 
   google-logging-utils@1.2.0: {}
 
-  googlevideo@4.1.1:
+  googlevideo@5.0.0:
     dependencies:
       '@bufbuild/protobuf': 2.16.0
 
@@ -5754,8 +5754,9 @@ snapshots:
 
   many-keys-map@3.0.3: {}
 
-  markdansi@0.3.5:
+  markdansi@0.3.6:
     dependencies:
+      ansi-regex: 6.4.0
       chalk: 6.0.1
       decode-named-character-reference: 1.3.0
       marked: 18.1.1
