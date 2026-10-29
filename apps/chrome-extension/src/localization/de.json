@@ -424,6 +424,7 @@
   "error.providerStreamEmpty": "Der Anbieter hat den Datenstrom ohne Antwort beendet.",
   "error.daemonAgentUnavailable": "Der Daemon unterstützt /v1/agent nicht. Starten Sie ihn nach dem Update neu (summarize daemon restart).",
   "error.localTranscriptUnavailable": "{kind, select, youtube {Die lokale YouTube-Transkription} other {Die lokale Medientranskription}} ist in diesem Browser nicht verfügbar",
+  "error.bilibiliCaptionsUnavailable": "Bilibili-Untertitel sind in dieser Browsersitzung nicht verfügbar. Prüfen Sie, ob Sie bei Bilibili angemeldet sind, oder wählen Sie Seite, um den Seitentext zusammenzufassen.",
   "error.transcriptPageChanged": "Die Seite wurde gewechselt, bevor die Transkription im Browser abgeschlossen war",
   "error.standalone": "{kind, select, failed {Diese Mediendatei konnte ohne Daemon nicht transkribiert werden: {error}. Wählen Sie unter Ausführung die Option Daemon, um weitere Medienformate zu unterstützen.} noTranscript {Ohne Daemon war kein Transkript verfügbar. Wählen Sie unter Ausführung die Option Daemon, um weitere Medienformate zu unterstützen.} other {Ohne Daemon war kein lesbarer Text verfügbar. Laden Sie die Seite neu oder wählen Sie unter Ausführung die Option Daemon für die Extraktion per URL.}}",
   "error.daemonSlidesToken": "Für Folien über den Daemon wird ein Daemon-Token benötigt. Öffnen Sie die Einstellungen, um den Daemon zu verbinden.",
