@@ -2,10 +2,16 @@ import {
   isTwitterBroadcastUrl,
   isTwitterStatusUrl,
 } from "../../link-preview/content/twitter-utils.js";
-import { inferDirectMediaKind, isDirectMediaUrl, isLoomVideoUrl } from "../../url.js";
+import {
+  inferDirectMediaKind,
+  isDirectMediaUrl,
+  isLoomVideoUrl,
+  parseBilibiliVideoUrl,
+} from "../../url.js";
 import { normalizeTranscriptText } from "../normalize.js";
 import { resolveTranscriptionConfig } from "../transcription-config.js";
 import type { ProviderContext, ProviderFetchOptions, ProviderResult } from "../types.js";
+import { fetchBilibiliTranscript } from "./generic-bilibili.js";
 import { fetchDirectMediaTranscript } from "./generic-direct-media.js";
 import { detectEmbeddedMedia, fetchCaptionTrack } from "./generic-embedded.js";
 import { fetchTwitterMediaTranscript } from "./generic-twitter.js";
@@ -19,6 +25,16 @@ export const fetchTranscript = async (
   const attemptedProviders: ProviderResult["attemptedProviders"] = [];
   const notes: string[] = [];
   const transcription = resolveTranscriptionConfig(options);
+  const bilibili = parseBilibiliVideoUrl(context.url);
+  if (bilibili && options.mediaTranscriptMode === "prefer") {
+    return fetchBilibiliTranscript({
+      video: bilibili,
+      options,
+      transcription,
+      notes,
+      attemptedProviders,
+    });
+  }
 
   const embedded = context.html ? detectEmbeddedMedia(context.html, context.url) : null;
   const twitterStatus = isTwitterStatusUrl(context.url);

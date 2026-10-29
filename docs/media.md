@@ -38,6 +38,25 @@ read_when:
 - Gemini uses the Files API automatically for larger uploads.
 - FAL uploads and each AssemblyAI upload/submission have a ten-minute deadline that also covers reading response bodies. Their existing ten-minute processing allowance starts after upload (FAL) or submission (AssemblyAI), so uploading does not shorten transcription time.
 
+## Bilibili CLI transcripts
+
+Use explicit transcript mode for standard Bilibili BV video URLs:
+
+```sh
+summarize "https://www.bilibili.com/video/BV1js411R7qA/" --video-mode transcript
+summarize "https://www.bilibili.com/video/BV1js411R7qA/?p=2" --video-mode transcript --extract --timestamps
+```
+
+Language-prefixed video URLs such as `/en/video/` and `/zh-Hans/video/` are normalized to the recording URL. The `p` parameter selects one part; playlists, short links, and livestreams are outside this path.
+
+This path downloads audio with `yt-dlp` and uses the configured transcription provider. It requires `yt-dlp`, `ffmpeg`, and a usable local or cloud transcriber. `YT_DLP_PATH` can select a user-managed downloader. Bilibili downloads use 1 MiB HTTP chunks to handle media CDNs that reject non-ranged requests with HTTP 567.
+
+Cookie access is optional. Public videos may work anonymously. When a session is required, explicitly set `SUMMARIZE_YT_DLP_COOKIES_FROM_BROWSER=chrome` or a yt-dlp browser/profile selector such as `chrome:Profile 1`. `YT_DLP_COOKIES_FROM_BROWSER` is also accepted. No browser is selected automatically.
+
+An explicit transcript request fails if acquisition fails; it does not summarize the landing-page description instead. Auto mode retains page extraction. This CLI path does not add browser-only subtitle retrieval or enable external downloaders in guarded daemon requests.
+
+If the downloader reports `Unable to extract initial state`, see [yt-dlp issue 17894](https://github.com/yt-dlp/yt-dlp/issues/17894) and [PR 17898](https://github.com/yt-dlp/yt-dlp/pull/17898). The live validation used release 2026.10.21 with that PR applied; stock 2026.10.21 failed on the tested videos. Summarize does not bundle that patch or install a downloader automatically.
+
 ## Shared helpers
 
 - Transcription normalizes file and byte inputs into one run with shared settings and accumulated notes. Local and remote providers share dispatch and result handling; native-file providers keep lazy file access. Groq/OpenAI share decode retries, while upload limits, chunking, and preservation of full input for later providers remain explicit source-specific policies.
