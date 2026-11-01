@@ -12,7 +12,8 @@ export function createBackgroundPanelRuntime<
 >(options: {
   panelSessionStore: {
     isPanelOpen: (session: Session) => boolean;
-  } & import("./extract-cache").CachedExtractStore;
+  } & import("./extract-cache").CachedExtractStore &
+    import("./cached-extract").MediaHintStore;
   loadSettings: typeof import("../../lib/settings").loadSettings;
   getActiveTab: typeof import("./panel-utils").getActiveTab;
   daemonHealth: typeof import("./daemon-client").daemonHealth;
@@ -107,7 +108,6 @@ export function createBackgroundPanelRuntime<
         session,
         ...next.shouldPrimeMedia,
         panelSessionStore,
-        urlsMatch,
         extractFromTab,
         emitState: (currentSession, nextStatus) => {
           void emitState(currentSession, nextStatus);

@@ -29,6 +29,18 @@ export type CachedExtract = {
   } | null;
 };
 
+export type MediaHint = {
+  url: string;
+  media: NonNullable<CachedExtract["media"]>;
+  mediaDurationSeconds: number | null;
+  wordCount: number;
+};
+
+export type MediaHintStore = {
+  getMediaHint(tabId: number, url?: string | null): MediaHint | null;
+  setMediaHint(tabId: number, hint: MediaHint): void;
+};
+
 function countWords(text: string): number {
   return text.length > 0 ? text.split(/\s+/).filter(Boolean).length : 0;
 }

@@ -34,6 +34,7 @@ describe("chrome panel state", () => {
       panelSessionStore: {
         isPanelOpen: () => true,
         getCachedExtract: () => null,
+        getMediaHint: () => null,
       },
       urlsMatch: (left, right) => left === right,
       canSummarizeUrl: () => false,
