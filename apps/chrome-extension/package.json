@@ -21,19 +21,19 @@
     "typecheck": "wxt prepare && tsc --noEmit"
   },
   "dependencies": {
-    "@huggingface/transformers": "4.3.1",
+    "@huggingface/transformers": "4.3.2",
     "@mozilla/readability": "0.6.0",
     "@steipete/summarize-core": "workspace:*",
-    "googlevideo": "4.1.1",
+    "googlevideo": "5.0.1",
     "markdown-it": "^15.0.3",
-    "mediabunny": "1.62.0",
-    "preact": "11.0.1"
+    "mediabunny": "1.62.1",
+    "preact": "11.1.0"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
     "@types/chrome": "^0.3.5",
     "typescript": "^7.0.2",
     "web-ext": "10.8.0",
-    "wxt": "0.21.4"
+    "wxt": "0.21.5"
   }
 }
