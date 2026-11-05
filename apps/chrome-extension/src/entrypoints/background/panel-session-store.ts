@@ -1,3 +1,5 @@
+import type { MediaHint } from "./cached-extract";
+
 export type PanelSession<Recovery, Status> = {
   windowId: number;
   port: chrome.runtime.Port;
@@ -58,6 +60,7 @@ export function createPanelSessionStore<
   const panelSessions = new Map<number, PanelSession<Recovery, Status>>();
   const lastMediaProbeByTab = new Map<number, string>();
   const cachedExtracts = new Map<number, CachedExtract>();
+  const mediaHints = new Map<number, MediaHint>();
   const panelCacheByTabId = new Map<number, PanelCachePayload>();
   const panelCacheWriteGenerationByUrl = new Map<string, number>();
   const panelCacheGenerationByTabId = new Map<number, number>();
@@ -139,6 +142,13 @@ export function createPanelSessionStore<
     setCachedExtract(tabId: number, payload: CachedExtract) {
       cachedExtracts.set(tabId, payload);
     },
+    getMediaHint(tabId: number, url?: string | null) {
+      const hint = mediaHints.get(tabId) ?? null;
+      return hint && (!url || hint.url === url) ? hint : null;
+    },
+    setMediaHint(tabId: number, hint: MediaHint) {
+      mediaHints.set(tabId, hint);
+    },
     rememberMediaProbe(tabId: number, url: string) {
       lastMediaProbeByTab.set(tabId, url);
     },
@@ -197,6 +207,7 @@ export function createPanelSessionStore<
         for (const tab of tabs) {
           if (!tab.id) continue;
           cachedExtracts.delete(tab.id);
+          mediaHints.delete(tab.id);
           lastMediaProbeByTab.delete(tab.id);
         }
       } catch {
@@ -205,6 +216,7 @@ export function createPanelSessionStore<
     },
     clearTab(tabId: number) {
       cachedExtracts.delete(tabId);
+      mediaHints.delete(tabId);
       lastMediaProbeByTab.delete(tabId);
       panelCacheByTabId.delete(tabId);
       panelCacheGeneration += 1;

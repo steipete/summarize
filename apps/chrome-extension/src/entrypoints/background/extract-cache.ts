@@ -1,7 +1,7 @@
 import { shouldPreferUrlMode } from "@steipete/summarize-core/content/url";
 import { daemonOrigin } from "../../lib/daemon-url";
 import { message as uiMessage, type LocalizedText } from "../../lib/i18n";
-import { createCachedExtract, type CachedExtract } from "./cached-extract";
+import { createCachedExtract, type CachedExtract, type MediaHintStore } from "./cached-extract";
 import { routeExtract, type ExtractLog, type ExtractorContext } from "./extractors/router";
 import type { SlidesPayload } from "./panel-utils";
 
@@ -210,9 +210,7 @@ export async function primeMediaHint<Session>({
   session,
   tabId,
   url,
-  title,
   panelSessionStore,
-  urlsMatch,
   extractFromTab,
   emitState,
 }: {
@@ -220,29 +218,33 @@ export async function primeMediaHint<Session>({
   tabId: number;
   url: string;
   title: string | null;
-  panelSessionStore: CachedExtractStore;
-  urlsMatch: (left: string, right: string) => boolean;
+  panelSessionStore: CachedExtractStore & Pick<MediaHintStore, "setMediaHint">;
   extractFromTab: ExtractorContext["extractFromTab"];
   emitState: (session: Session, status: string) => void;
 }): Promise<void> {
   const lastProbeUrl = panelSessionStore.getLastMediaProbe(tabId);
-  if (lastProbeUrl && urlsMatch(lastProbeUrl, url)) return;
-  const existing = panelSessionStore.getCachedExtract(tabId, url);
-  if (existing?.media) {
+  if (lastProbeUrl === url) return;
+  const existing = panelSessionStore.getCachedExtract(tabId);
+  if (existing?.url === url && existing.media) {
     panelSessionStore.rememberMediaProbe(tabId, url);
     return;
   }
 
   panelSessionStore.rememberMediaProbe(tabId, url);
   const attempt = await extractFromTab(tabId, 1200);
-  if (!attempt.ok || !attempt.data.media) return;
+  if (
+    !attempt.ok ||
+    !attempt.data.media ||
+    attempt.data.url !== url ||
+    panelSessionStore.getLastMediaProbe(tabId) !== url
+  )
+    return;
 
-  panelSessionStore.setCachedExtract(
-    tabId,
-    createCachedExtract({
-      extracted: attempt.data,
-      title,
-    }),
-  );
+  panelSessionStore.setMediaHint(tabId, {
+    url,
+    media: attempt.data.media,
+    mediaDurationSeconds: attempt.data.mediaDurationSeconds ?? null,
+    wordCount: attempt.data.text.split(/\s+/).filter(Boolean).length,
+  });
   emitState(session, "");
 }

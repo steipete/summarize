@@ -168,6 +168,7 @@ See `docs/media.md` for detection and transcript rules.
 
 ## Timestamp Links (Chat)
 
+- You can ask questions about an article before generating a summary; chat retrieves its readable page content.
 - In Browser media mode, follow-up chat and chat history reuse the current summary, transcript, and slides without requesting daemon extraction. Generate a summary first if no browser context is available, or select Daemon media mode for fresh server-side extraction.
 - When timed transcripts are available, chat context includes `[mm:ss]` lines.
 - Assistant is prompted to cite timestamps; clicking them seeks the current media (video/audio) while preserving play/pause state.

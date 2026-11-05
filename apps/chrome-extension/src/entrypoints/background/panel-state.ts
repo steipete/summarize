@@ -1,6 +1,7 @@
 import type { DaemonUiState } from "../../lib/daemon-status";
 import { hasDirectProviderCredentials } from "../../lib/model-routing";
 import type { UiState as PanelUiState } from "../../lib/panel-contracts";
+import type { MediaHintStore } from "./cached-extract";
 import type { DaemonCheck } from "./daemon-client";
 
 export type { PanelUiState };
@@ -52,7 +53,7 @@ export async function resolvePanelState<Session extends SessionLike>({
   panelSessionStore: {
     isPanelOpen: (session: Session) => boolean;
     getCachedExtract: (tabId: number, url?: string | null) => CachedExtractLike | null;
-  };
+  } & Pick<MediaHintStore, "getMediaHint">;
   urlsMatch: (a: string, b: string) => boolean;
   canSummarizeUrl: (url: string) => boolean;
 }): Promise<{
@@ -76,6 +77,7 @@ export async function resolvePanelState<Session extends SessionLike>({
   const currentUrlMatches = Boolean(pendingUrl && tab?.url && urlsMatch(tab.url, pendingUrl));
   const isIdle = !session.runController && !session.inflightUrl;
   const cached = tab?.id ? panelSessionStore.getCachedExtract(tab.id, tab.url ?? null) : null;
+  const mediaHint = tab?.id ? panelSessionStore.getMediaHint(tab.id, tab.url ?? null) : null;
   const shouldRecover = checkRecovery
     ? session.daemonRecovery.maybeRecover({
         isReady: daemonReady,
@@ -102,11 +104,14 @@ export async function resolvePanelState<Session extends SessionLike>({
       panelOpen: panelSessionStore.isPanelOpen(session),
       daemon,
       tab: { id: tab?.id ?? null, url: tab?.url ?? null, title: tab?.title ?? null },
-      media: cached?.media ?? null,
+      media: cached?.media ?? mediaHint?.media ?? null,
       stats: {
-        pageWords: typeof cached?.wordCount === "number" ? cached.wordCount : null,
+        pageWords:
+          typeof cached?.wordCount === "number" ? cached.wordCount : (mediaHint?.wordCount ?? null),
         videoDurationSeconds:
-          typeof cached?.mediaDurationSeconds === "number" ? cached.mediaDurationSeconds : null,
+          typeof cached?.mediaDurationSeconds === "number"
+            ? cached.mediaDurationSeconds
+            : (mediaHint?.mediaDurationSeconds ?? null),
       },
       settings: {
         autoSummarize: settings.autoSummarize,
