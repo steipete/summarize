@@ -424,6 +424,7 @@
   "error.providerStreamEmpty": "Le flux du fournisseur s’est terminé sans réponse.",
   "error.daemonAgentUnavailable": "Le daemon ne prend pas en charge /v1/agent. Redémarrez-le après la mise à jour (summarize daemon restart).",
   "error.localTranscriptUnavailable": "{kind, select, youtube {La transcription YouTube locale} other {La transcription multimédia locale}} n’est pas disponible dans ce navigateur",
+  "error.bilibiliCaptionsUnavailable": "Les sous-titres Bilibili ne sont pas disponibles dans cette session du navigateur. Vérifiez que vous êtes connecté à Bilibili, ou choisissez Page pour résumer le texte de la page.",
   "error.transcriptPageChanged": "La page a changé avant la fin de la transcription dans le navigateur",
   "error.standalone": "{kind, select, failed {Impossible de transcrire ce média en mode autonome : {error}. Choisissez Daemon dans Exécution pour une prise en charge multimédia plus étendue.} noTranscript {Aucune transcription disponible en mode autonome. Choisissez Daemon dans Exécution pour une prise en charge multimédia plus étendue.} other {Aucun texte lisible disponible en mode autonome. Rechargez la page ou choisissez Daemon dans Exécution pour l’extraction par URL.}}",
   "error.daemonSlidesToken": "Les diapositives via le daemon nécessitent un jeton. Ouvrez les paramètres pour connecter le daemon.",

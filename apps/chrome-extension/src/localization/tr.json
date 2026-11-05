@@ -424,6 +424,7 @@
   "error.providerStreamEmpty": "Sağlayıcı akışı yanıt vermeden sona erdi.",
   "error.daemonAgentUnavailable": "Daemon /v1/agent yolunu desteklemiyor. Güncelledikten sonra daemon’ı yeniden başlatın (summarize daemon restart).",
   "error.localTranscriptUnavailable": "{kind, select, youtube {Yerel YouTube transkripsiyonu} other {Tarayıcıda yerel medya transkripsiyonu}} bu tarayıcıda kullanılamıyor",
+  "error.bilibiliCaptionsUnavailable": "Bu tarayıcı oturumunda Bilibili altyazıları kullanılamıyor. Bilibili'de oturum açtığınızı kontrol edin veya sayfa metnini özetlemek için Sayfa'yı seçin.",
   "error.transcriptPageChanged": "Tarayıcı transkripsiyonu tamamlanmadan sayfa değişti",
   "error.standalone": "{kind, select, failed {Bu medya bağımsız modda yazıya dökülemedi: {error}. Daha geniş medya desteği için Çalışma zamanı ayarını Daemon olarak değiştirin.} noTranscript {Bağımsız modda transkript metni bulunamadı. Daha geniş medya desteği için Çalışma zamanı ayarını Daemon olarak değiştirin.} other {Bağımsız modda okunabilir metin bulunamadı. Sayfayı yeniden yükleyin veya URL’den çıkarma için Çalışma zamanı ayarını Daemon olarak değiştirin.}}",
   "error.daemonSlidesToken": "Daemon slaytları için bir daemon token’ı gereklidir. Daemon’a bağlanmak için Ayarlar’ı açın.",

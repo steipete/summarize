@@ -143,6 +143,14 @@ When the page contains embedded audio/video, the Summarize button gains a dropdo
 
 See `docs/media.md` for detection and transcript rules.
 
+Bilibili BV video pages use captions from the open browser tab, including AI captions that
+require a logged-in Bilibili session. The extension resolves the selected `p=` part and
+prefers human English captions, then AI English, then Chinese, then other languages.
+Caption timestamps and language/source diagnostics remain available for summaries and chat.
+Choose Page explicitly to summarize the page text instead. If the session has no usable
+caption tracks, the extension does not substitute the video description for a transcript.
+This browser path does not require yt-dlp or export browser cookies to the daemon or CLI.
+
 ## Slides (Side Panel)
 
 - The slides toggle lights up on media-friendly URLs (YouTube/watch|shorts, youtu.be, direct media) or when the page reports video/audio. Defaults to Video on those pages.
