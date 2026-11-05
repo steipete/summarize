@@ -191,7 +191,7 @@ async function downloadViaSabr(
       audioQuality: format.audioQuality,
       bitrate: format.bitrate,
       averageBitrate: format.averageBitrate,
-      audioTrackId: format.audioTrackId,
+      audioTrack: format.audioTrackId ? { id: format.audioTrackId } : undefined,
       approxDurationMs: format.approxDurationMs,
       contentLength: format.contentLength,
       isDrc: false,
@@ -201,7 +201,8 @@ async function downloadViaSabr(
   if (!selected) throw new Error("The selected SABR audio format is unavailable.");
 
   const stream = new SabrStream({
-    fetch: (input, init) => fetch(input, { ...init, credentials: "include" }),
+    videoId: context.videoId,
+    fetchFunction: (input, init) => fetch(input, { ...init, credentials: "include" }),
     serverAbrStreamingUrl: captured.url || sabr.serverAbrStreamingUrl,
     videoPlaybackUstreamerConfig: sabr.videoPlaybackUstreamerConfig,
     clientInfo: {
@@ -210,16 +211,14 @@ async function downloadViaSabr(
     },
     poToken: captured.poToken ?? undefined,
     formats,
-    durationMs: Math.round(
-      Number(audioFormat.approxDurationMs) || (context.durationSeconds ?? 0) * 1000,
-    ),
   });
   try {
-    const { audioStream } = await stream.start({
+    const { audioStream } = stream.start({
       audioFormat: selected,
       enabledTrackTypes: EnabledTrackTypes.AUDIO_ONLY,
       maxRetries: 2,
       stallDetectionMs: 20_000,
+      isPostLiveDvr: false,
     });
     return {
       bytes: await readStreamWithLimit(audioStream, MAX_BROWSER_AUDIO_BYTES),
@@ -227,7 +226,7 @@ async function downloadViaSabr(
       mediaSource: "sabr",
     };
   } catch (error) {
-    stream.abort();
+    await stream.abort().catch(() => {});
     throw error;
   }
 }
@@ -249,7 +248,7 @@ async function readResponseWithLimit(response: Response, maxBytes: number): Prom
 }
 
 async function readStreamWithLimit(
-  stream: ReadableStream<Uint8Array>,
+  stream: ReadableStream<ArrayBufferView>,
   maxBytes: number,
 ): Promise<Uint8Array> {
   const reader = stream.getReader();
@@ -263,7 +262,7 @@ async function readStreamWithLimit(
       await reader.cancel();
       throw new Error("YouTube audio is too large for local browser transcription.");
     }
-    chunks.push(value);
+    chunks.push(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
   }
   const result = new Uint8Array(total);
   let offset = 0;

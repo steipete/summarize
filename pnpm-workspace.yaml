@@ -15,6 +15,8 @@ overrides:
   "brace-expansion@^1.0.0": 1.1.21
   image-size: 2.0.4
   "js-yaml@^4.0.0": 4.3.2
+  # 0.18.14 selects a non-module CSSOM browser bundle; allow the fixed line after cooldown.
+  linkedom: "0.18.13 || ^0.18.15"
   nanoid: 3.3.20
   protobufjs: 7.6.6
   sharp: 0.35.5

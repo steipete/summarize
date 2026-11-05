@@ -75,6 +75,8 @@ Dependency patches live in `patches/` and have regression tests in `tests/depend
 
 Happy DOM is used only for trusted unit-test fixtures, with its JavaScript evaluation disabled by default. Keep it out of production extraction and do not enable script evaluation for untrusted input. The development-only `web-ext`/`addons-linter` chain uses `fast-uri` through Ajv for extension schema validation; it does not handle production URLs or access-control decisions.
 
+That same development chain uses `deepmerge` only to combine bundled Firefox schemas with fixed schema patches. Keep untrusted manifests and page content out of those merges; deepmerge 4.3.1 has no upstream fix for GHSA-gcqx-w48m-w2h4.
+
 Daemon after extension or daemon changes:
 
 ```bash
