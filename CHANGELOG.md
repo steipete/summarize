@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Browser chat: keep media previews separate from full source content so the first question includes the whole article, preserving transcript provenance and navigation safety (#553, thanks @vincent-peng).
+
 - Transcription: pass configured environment variables and PATH to whisper.cpp discovery and transcription processes (#554, thanks @vincent-peng).
 
 - Maintenance: refresh stabilized provider, HTTP, media, localization, browser-test, and Oxc dependencies while retaining Node 24 and the seven-day adoption hold.
