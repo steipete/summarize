@@ -1,26 +1,24 @@
 # Changelog
 
-## 0.25.4 - Unreleased
+## 0.26.1 - Unreleased
 
-### Changed
+## 0.26.0 - 2026-11-05
 
-- Security: pin stabilized node-forge 1.4.2 in browser tooling to fix certificate, ASN.1, TLS, and parsing advisories while retaining the seven-day dependency hold.
-
-- Maintenance: refresh stabilized runtime and browser tooling, adapt YouTube SABR to googlevideo 5, and exclude linkedom’s broken browser build while retaining Node 24 and the seven-day dependency hold (#555, thanks @dependabot).
+**Highlights:** complete browser chat context, reliable whisper.cpp transcription and direct media downloads, Antigravity model selection, and security fixes for node-forge, Undici, and HTML/Markdown processing.
 
 - Browser chat: keep media previews separate from full source content so the first question includes the whole article, preserving transcript provenance and navigation safety (#553, thanks @vincent-peng).
-
 - Transcription: pass configured environment variables and PATH to whisper.cpp discovery and transcription processes (#554, thanks @vincent-peng).
-
-- Maintenance: refresh stabilized provider, HTTP, media, localization, browser-test, and Oxc dependencies while retaining Node 24 and the seven-day adoption hold.
 - Media: accept direct MP4 downloads with unknown codec metadata while continuing to reject known video-only formats (#549, fixes #548, thanks @zewelor).
-- Security: update stabilized Undici releases, including the HTML extractor's HTTP client, and omit unused optional Zod SDK helpers (#545, thanks @dependabot).
 - Transcription: keep whisper.cpp timestamp decoding enabled to preserve speech at 30-second window boundaries while retaining plain-text output (#543, thanks @vlauciani).
-- Security: update stabilized sanitize-html and Markdown-it releases, bound discarded-iframe recursion, and replace the Markdown renderer backport with upstream fixes (#540, thanks @dependabot).
-- Maintenance: update stabilized Happy DOM and Oxc tooling while retaining Node 24 and the seven-day dependency hold (#538, thanks @dependabot).
 - Browser chat: reuse existing summaries for follow-up questions and history, honor Browser media mode during context extraction, and return context errors promptly to the pending chat request (#537, thanks @laolxun).
-- Maintenance: share sidepanel animation, slide rendering, and browser AI session helpers while preserving their existing behavior (#510, thanks @copiumnicus).
 - Antigravity: honor `cli.agy.model` (previously ignored) and support `cli/agy/<model>`; require valid model settings, report failed model selections with `agy models` guidance, and retain the active session default when no model is set (#518, thanks @kevin820606).
+- Security: pin stabilized node-forge 1.4.2 in browser tooling to fix certificate, ASN.1, TLS, and parsing advisories while retaining the seven-day dependency hold.
+- Security: update stabilized Undici releases, including the HTML extractor's HTTP client, and omit unused optional Zod SDK helpers (#545, thanks @dependabot).
+- Security: update stabilized sanitize-html and Markdown-it releases, bound discarded-iframe recursion, and replace the Markdown renderer backport with upstream fixes (#540, thanks @dependabot).
+- Maintenance: refresh stabilized runtime and browser tooling, adapt YouTube SABR to googlevideo 5, and exclude linkedom’s broken browser build while retaining Node 24 and the seven-day dependency hold (#555, thanks @dependabot).
+- Maintenance: refresh stabilized provider, HTTP, media, localization, browser-test, and Oxc dependencies while retaining Node 24 and the seven-day adoption hold.
+- Maintenance: update stabilized Happy DOM and Oxc tooling while retaining Node 24 and the seven-day dependency hold (#538, thanks @dependabot).
+- Maintenance: share sidepanel animation, slide rendering, and browser AI session helpers while preserving their existing behavior (#510, thanks @copiumnicus).
 
 ## 0.25.3 - 2026-10-20
 
