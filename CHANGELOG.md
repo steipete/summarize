@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Transcription: pass configured environment variables and PATH to whisper.cpp discovery and transcription processes (#554, thanks @vincent-peng).
+
 - Maintenance: refresh stabilized provider, HTTP, media, localization, browser-test, and Oxc dependencies while retaining Node 24 and the seven-day adoption hold.
 - Media: accept direct MP4 downloads with unknown codec metadata while continuing to reject known video-only formats (#549, fixes #548, thanks @zewelor).
 - Security: update stabilized Undici releases, including the HTML extractor's HTTP client, and omit unused optional Zod SDK helpers (#545, thanks @dependabot).
