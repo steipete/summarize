@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Security: pin stabilized node-forge 1.4.2 in browser tooling to fix certificate, ASN.1, TLS, and parsing advisories while retaining the seven-day dependency hold.
+
 - Maintenance: refresh stabilized runtime and browser tooling, adapt YouTube SABR to googlevideo 5, and exclude linkedom’s broken browser build while retaining Node 24 and the seven-day dependency hold (#555, thanks @dependabot).
 
 - Browser chat: keep media previews separate from full source content so the first question includes the whole article, preserving transcript provenance and navigation safety (#553, thanks @vincent-peng).
