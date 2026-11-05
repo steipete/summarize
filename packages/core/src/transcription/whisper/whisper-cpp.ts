@@ -125,6 +125,7 @@ export async function transcribeWithWhisperCppFile({
     try {
       await new Promise<void>((resolve, reject) => {
         const { proc, handle } = spawnTracked(resolveWhisperCppBinary(env), args, {
+          env: { ...process.env, ...env },
           stdio: ["ignore", "ignore", "pipe"],
           label: "whisper.cpp",
           kind: "whisper.cpp",
@@ -206,6 +207,7 @@ async function isWhisperCliAvailable(env?: Record<string, string | undefined>): 
   const bin = resolveWhisperCppBinary(env);
   return new Promise((resolve) => {
     const { proc } = spawnTracked(bin, ["--help"], {
+      env: { ...process.env, ...env },
       stdio: ["ignore", "ignore", "ignore"],
       label: "whisper.cpp",
       kind: "whisper.cpp",

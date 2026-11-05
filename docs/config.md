@@ -134,6 +134,8 @@ Example:
 
 Set any env var in config (process env still wins):
 
+The resolved environment also applies to whisper.cpp binary lookup and transcription child processes.
+
 ```json
 {
   "env": {
