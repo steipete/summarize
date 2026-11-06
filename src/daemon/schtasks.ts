@@ -235,8 +235,9 @@ const execSchtasks = (args: string[]) => execDaemonCommand("schtasks", args, { w
 
 function scheduledTaskIsAbsent(result: { stdout: string; stderr: string }): boolean {
   const detail = `${result.stderr}\n${result.stdout}`;
-  // English schtasks text for a task that is already gone. "Access is denied"
-  // does not match, so a real delete failure still stops before file cleanup.
+  // "Access is denied" does not match, so a real delete failure still stops
+  // before file cleanup.
+  // i18n-ignore: English schtasks text for a task that is already gone.
   return /cannot find the (?:file|path) specified/i.test(detail) || /does not exist/i.test(detail);
 }
 
