@@ -15,6 +15,7 @@ type ServiceCommand =
   | "launchctl kickstart"
   | "schtasks"
   | "schtasks create"
+  | "schtasks delete"
   | "schtasks run"
   | "taskkill";
 

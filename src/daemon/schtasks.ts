@@ -232,6 +232,15 @@ function buildLauncherVbs({
 }
 
 const execSchtasks = (args: string[]) => execDaemonCommand("schtasks", args, { windowsHide: true });
+
+function scheduledTaskIsAbsent(result: { stdout: string; stderr: string }): boolean {
+  const detail = `${result.stderr}\n${result.stdout}`;
+  // "Access is denied" does not match, so a real delete failure still stops
+  // before file cleanup.
+  // i18n-ignore: English schtasks text for a task that is already gone.
+  return /cannot find the (?:file|path) specified/i.test(detail) || /does not exist/i.test(detail);
+}
+
 const execTaskkill = (args: string[]) => execDaemonCommand("taskkill", args, { windowsHide: true });
 
 function isMissingProcessError(detail: string): boolean {
@@ -350,8 +359,12 @@ export async function uninstallScheduledTask({
 }): Promise<void> {
   await assertSchtasksAvailable();
   await killRunningDaemon(env);
+  // /End is nonzero when the task is not running. That is not an uninstall failure.
   await execSchtasks(["/End", "/TN", DAEMON_WINDOWS_TASK_NAME]);
-  await execSchtasks(["/Delete", "/F", "/TN", DAEMON_WINDOWS_TASK_NAME]);
+  const deleted = await execSchtasks(["/Delete", "/F", "/TN", DAEMON_WINDOWS_TASK_NAME]);
+  if (deleted.code !== 0 && !scheduledTaskIsAbsent(deleted)) {
+    throw serviceCommandError("schtasks delete", deleted.stderr || deleted.stdout);
+  }
 
   const scriptPath = resolveTaskScriptPath(env);
   try {
