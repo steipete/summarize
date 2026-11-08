@@ -12,6 +12,9 @@ describe("model id parsing", () => {
       "anthropic/claude-sonnet-4-5",
     );
     expect(normalizeGatewayStyleModelId("nvidia/z-ai/glm5")).toBe("nvidia/z-ai/glm5");
+    expect(normalizeGatewayStyleModelId("runcrate/meta-llama/Llama-3.3-70B-Instruct-Turbo")).toBe(
+      "runcrate/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    );
     expect(normalizeGatewayStyleModelId("ollama/qwen3:14b")).toBe("ollama/qwen3:14b");
     expect(normalizeGatewayStyleModelId("Ollama/Qwen3:14b")).toBe("ollama/Qwen3:14b");
     expect(normalizeGatewayStyleModelId("openai/gpt-5.4-mini")).toBe("openai/gpt-5.4-mini");

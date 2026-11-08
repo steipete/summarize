@@ -31,6 +31,8 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
 - `NVIDIA_BASE_URL` (optional; override NVIDIA OpenAI-compatible API endpoint; default: `https://integrate.api.nvidia.com/v1`)
 - `MINIMAX_API_KEY` (required for `minimax/...` models)
 - `MINIMAX_BASE_URL` (optional; override MiniMax OpenAI-compatible API endpoint; default: `https://api.minimax.io/v1`)
+- `RUNCRATE_API_KEY` (required for `runcrate/...` models)
+- `RUNCRATE_BASE_URL` (optional; override Runcrate OpenAI-compatible API endpoint; default: `https://api.runcrate.ai/v1`)
 - `OPENROUTER_API_KEY` (optional; required for `openrouter/...` models; also used when `OPENAI_BASE_URL` points to OpenRouter)
 - `Z_AI_API_KEY` (required for `zai/...` models; supports `ZAI_API_KEY` alias)
 - `Z_AI_BASE_URL` (optional; override default Z.AI base URL)
@@ -67,6 +69,7 @@ installed, auto mode can use local CLI models via `cli.enabled` or implicit auto
     - `openai/gpt-5-nano`
     - `nvidia/z-ai/glm5`
     - `minimax/MiniMax-M3`
+    - `runcrate/meta-llama/Llama-3.3-70B-Instruct-Turbo`
     - `zai/glm-4.7`
     - `ollama/qwen3:14b`
     - `ollama/llama3.1:8b`
@@ -138,6 +141,14 @@ MiniMax’s OpenAI-compatible base URL (`https://api.minimax.io/v1`) and uses ch
 Override the endpoint with `MINIMAX_BASE_URL` or `minimax.baseUrl` in config (e.g. the China
 endpoint). The model id is passed through verbatim, so use MiniMax’s exact casing (e.g. `MiniMax-M3`).
 Reasoning is requested through MiniMax’s separated response fields and omitted from summary text.
+
+## Runcrate
+
+Use `--model runcrate/<model>` (e.g. `runcrate/meta-llama/Llama-3.3-70B-Instruct-Turbo`). Requires
+`RUNCRATE_API_KEY`. Defaults to [Runcrate](https://www.runcrate.ai)’s OpenAI-compatible base URL
+(`https://api.runcrate.ai/v1`) and uses chat completions. Override the endpoint with
+`RUNCRATE_BASE_URL` or `runcrate.baseUrl` in config. The model id is passed through verbatim, so use
+the exact id from the provider’s `/v1/models` list.
 
 ## Ollama
 

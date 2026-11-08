@@ -167,6 +167,51 @@ describe("cli LLM provider selection (direct keys)", () => {
     expect(model.baseUrl).toBe("https://integrate.api.nvidia.com/v1");
   });
 
+  it("uses Runcrate when --model is runcrate/...", async () => {
+    mocks.completeSimple.mockClear();
+
+    const html =
+      "<!doctype html><html><head><title>Hello</title></head>" +
+      "<body><article><p>Hi</p></article></body></html>";
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url === "https://example.com") return htmlResponse(html);
+      throw new Error(`Unexpected fetch call: ${url}`);
+    });
+
+    const out = collectStdout();
+    await runCli(
+      [
+        "--model",
+        "runcrate/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        "--timeout",
+        "2s",
+        "https://example.com",
+      ],
+      {
+        env: { RUNCRATE_API_KEY: "runcrate-test" },
+        fetch: fetchMock as unknown as typeof fetch,
+        stdout: out.stdout,
+        stderr: new Writable({
+          write(_c, _e, cb) {
+            cb();
+          },
+        }),
+      },
+    );
+
+    expect(out.getText().trim()).toBe("OK");
+    const model = mocks.completeSimple.mock.calls[0]?.[0] as {
+      provider?: string;
+      baseUrl?: string;
+    };
+    const options = mocks.completeSimple.mock.calls[0]?.[2] as { apiKey?: string };
+    expect(model.provider).toBe("openai");
+    expect(options.apiKey).toBe("runcrate-test");
+    expect(model.baseUrl).toBe("https://api.runcrate.ai/v1");
+  });
+
   it("uses MiniMax with separated reasoning when --model is minimax/...", async () => {
     mocks.completeSimple.mockClear();
 

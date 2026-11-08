@@ -2,6 +2,8 @@
 
 ## 0.26.1 - Unreleased
 
+- LLM providers: add `runcrate/<model>` models through Runcrate’s OpenAI-compatible API, using `RUNCRATE_API_KEY` and an optional `RUNCRATE_BASE_URL`.
+
 ## 0.26.0 - 2026-11-05
 
 **Highlights:** complete browser chat context, reliable whisper.cpp transcription and direct media downloads, Antigravity model selection, and security fixes for node-forge, Undici, and HTML/Markdown processing.

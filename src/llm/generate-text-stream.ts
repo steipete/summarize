@@ -361,7 +361,13 @@ export async function streamTextWithContext({
       providerProfile.execution === "openai-http" ||
       isOpenAiCompatibleProvider(parsed.provider)
     ) {
-      const provider = parsed.provider as "openai" | "zai" | "nvidia" | "minimax" | "ollama";
+      const provider = parsed.provider as
+        | "openai"
+        | "zai"
+        | "nvidia"
+        | "minimax"
+        | "runcrate"
+        | "ollama";
       const openaiConfig: OpenAiClientConfig = resolveOpenAiCompatibleClientConfigForProvider({
         provider,
         openaiApiKey: apiKeys.openaiApiKey,

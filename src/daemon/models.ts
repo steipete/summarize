@@ -19,6 +19,7 @@ type ModelPickerProviders = {
   openai: boolean;
   nvidia: boolean;
   minimax: boolean;
+  runcrate: boolean;
   google: boolean;
   anthropic: boolean;
   openrouter: boolean;
@@ -161,7 +162,7 @@ async function appendDiscoveredOpenAiCompatibleModels({
   timeoutMs,
 }: {
   options: ModelPickerOption[];
-  provider: Extract<GatewayProvider, "openai" | "nvidia" | "minimax" | "ollama">;
+  provider: Extract<GatewayProvider, "openai" | "nvidia" | "minimax" | "runcrate" | "ollama">;
   label: string;
   local?: boolean;
   baseUrl: string;
@@ -213,6 +214,7 @@ export async function buildModelPickerOptions({
     openai: Boolean(envState.apiKey),
     nvidia: Boolean(envState.nvidiaApiKey),
     minimax: Boolean(envState.minimaxApiKey),
+    runcrate: Boolean(envState.runcrateApiKey),
     google: envState.googleConfigured,
     anthropic: envState.anthropicConfigured,
     openrouter: envState.openrouterConfigured,
@@ -273,6 +275,13 @@ export async function buildModelPickerOptions({
       enabled: providers.minimax,
       baseUrl: envState.minimaxBaseUrl,
       apiKey: envState.minimaxApiKey,
+    },
+    {
+      provider: "runcrate",
+      label: "Runcrate",
+      enabled: providers.runcrate,
+      baseUrl: envState.runcrateBaseUrl,
+      apiKey: envState.runcrateApiKey,
     },
   ] as const;
   for (const entry of discoveryProviders) {

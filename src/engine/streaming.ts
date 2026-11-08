@@ -57,6 +57,7 @@ export function canStream({
     "zai",
     "nvidia",
     "minimax",
+    "runcrate",
   ]);
   return streamableProviders.has(provider);
 }

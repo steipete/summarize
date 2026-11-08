@@ -1,6 +1,10 @@
 import { isOpenRouterBaseUrl, resolveConfiguredBaseUrl } from "@steipete/summarize-core";
 import type { CliProvider, SummarizeConfig } from "../config.js";
-import { DEFAULT_MINIMAX_BASE_URL, DEFAULT_OLLAMA_BASE_URL } from "../llm/provider-registry.js";
+import {
+  DEFAULT_MINIMAX_BASE_URL,
+  DEFAULT_OLLAMA_BASE_URL,
+  DEFAULT_RUNCRATE_BASE_URL,
+} from "../llm/provider-registry.js";
 import type { RunApiStatus } from "../shared/run-api-status.js";
 import { resolveCliAvailability, resolveExecutableInPath } from "./environment.js";
 
@@ -52,6 +56,10 @@ export function resolveEnvState({
     envValue: envForRun.MINIMAX_BASE_URL,
     configValue: configForCli?.minimax?.baseUrl,
   });
+  const runcrateBaseUrl = resolveConfiguredBaseUrl({
+    envValue: envForRun.RUNCRATE_BASE_URL,
+    configValue: configForCli?.runcrate?.baseUrl,
+  });
   const ollamaBaseUrl = resolveConfiguredBaseUrl({
     envValue: envForRun.OLLAMA_BASE_URL,
     configValue: configForCli?.ollama?.baseUrl,
@@ -74,6 +82,8 @@ export function resolveEnvState({
         : null;
   const minimaxKeyRaw =
     typeof envForRun.MINIMAX_API_KEY === "string" ? envForRun.MINIMAX_API_KEY : null;
+  const runcrateKeyRaw =
+    typeof envForRun.RUNCRATE_API_KEY === "string" ? envForRun.RUNCRATE_API_KEY : null;
   const apiKey =
     typeof openaiBaseUrl === "string" && isOpenRouterBaseUrl(openaiBaseUrl)
       ? (openRouterKeyRaw ?? openaiKeyRaw)
@@ -133,6 +143,8 @@ export function resolveEnvState({
     (nvidiaBaseUrl?.trim() ?? "") || "https://integrate.api.nvidia.com/v1";
   const minimaxApiKey = minimaxKeyRaw?.trim() ?? null;
   const minimaxBaseUrlEffective = (minimaxBaseUrl?.trim() ?? "") || DEFAULT_MINIMAX_BASE_URL;
+  const runcrateApiKey = runcrateKeyRaw?.trim() ?? null;
+  const runcrateBaseUrlEffective = (runcrateBaseUrl?.trim() ?? "") || DEFAULT_RUNCRATE_BASE_URL;
   const ollamaBaseUrlEffective = (ollamaBaseUrl?.trim() ?? "") || DEFAULT_OLLAMA_BASE_URL;
   const googleApiKey = googleKeyRaw?.trim() ?? null;
   const anthropicApiKey = anthropicKeyRaw?.trim() ?? null;
@@ -180,6 +192,8 @@ export function resolveEnvState({
     nvidiaBaseUrl: nvidiaBaseUrlEffective,
     minimaxApiKey,
     minimaxBaseUrl: minimaxBaseUrlEffective,
+    runcrateApiKey,
+    runcrateBaseUrl: runcrateBaseUrlEffective,
     ollamaBaseUrl: ollamaBaseUrlEffective,
     firecrawlApiKey,
     firecrawlConfigured,

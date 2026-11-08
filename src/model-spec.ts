@@ -150,7 +150,7 @@ export function parseRequestedModelId(raw: string): RequestedModel {
       };
     }
     throw new Error(
-      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., anthropic/..., xai/..., zai/..., nvidia/..., minimax/..., openrouter/... or cli/....`,
+      `Unknown model "${trimmed}". Expected "auto" or a provider-prefixed id like openai/..., google/..., anthropic/..., xai/..., zai/..., nvidia/..., minimax/..., runcrate/..., openrouter/... or cli/....`,
     );
   }
 

@@ -16,6 +16,7 @@ describe("provider runtime bindings", () => {
       ZAI_API_KEY: "z-key",
       NVIDIA_API_KEY: "n-key",
       MINIMAX_API_KEY: "m-key",
+      RUNCRATE_API_KEY: "r-key",
       GH_TOKEN: "gh-key",
       OLLAMA_BASE_URL: "http://ollama.example:11434/v1",
     };
@@ -30,6 +31,7 @@ describe("provider runtime bindings", () => {
         zai: "z-key",
         nvidia: "n-key",
         minimax: "m-key",
+        runcrate: "r-key",
         ollama: null,
       },
       baseUrls: {

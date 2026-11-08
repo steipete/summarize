@@ -210,4 +210,28 @@ describe("daemon /v1/models", () => {
     expect(result.providers.minimax).toBe(true);
     expect(result.options.some((o) => o.id === "minimax/MiniMax-M3")).toBe(true);
   });
+
+  it("discovers Runcrate models when RUNCRATE_API_KEY is set", async () => {
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe("https://api.runcrate.ai/v1/models");
+      expect(init?.headers).toEqual({ authorization: "Bearer runcrate-test" });
+      return {
+        ok: true,
+        json: async () => ({ data: [{ id: "meta-llama/Llama-3.3-70B-Instruct-Turbo" }] }),
+      } as Response;
+    }) as unknown as typeof fetch;
+
+    const result = await buildModelPickerOptions({
+      env: {},
+      envForRun: { RUNCRATE_API_KEY: "runcrate-test" },
+      configForCli: null,
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.providers.runcrate).toBe(true);
+    expect(
+      result.options.some((o) => o.id === "runcrate/meta-llama/Llama-3.3-70B-Instruct-Turbo"),
+    ).toBe(true);
+  });
 });

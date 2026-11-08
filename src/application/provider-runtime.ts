@@ -35,6 +35,7 @@ export function resolveProviderRuntimeBindings({
       zai: envState.zaiApiKey,
       nvidia: envState.nvidiaApiKey,
       minimax: envState.minimaxApiKey,
+      runcrate: envState.runcrateApiKey,
       ollama: null,
     },
     baseUrls: {
@@ -45,6 +46,7 @@ export function resolveProviderRuntimeBindings({
       zai: envState.zaiBaseUrl,
       nvidia: envState.nvidiaBaseUrl,
       minimax: envState.minimaxBaseUrl,
+      runcrate: envState.runcrateBaseUrl,
       ollama: envState.ollamaBaseUrl,
     },
     openaiUseChatCompletions: resolveOpenAiUseChatCompletions({ env, configForCli }),

@@ -112,6 +112,24 @@ describe("daemon agent model resolution", () => {
     expect(resolved.model?.baseUrl).toBe("https://integrate.api.nvidia.com/v1");
   });
 
+  it("keeps Runcrate agent models on chat completions", async () => {
+    const home = mkdtempSync(join(tmpdir(), "summarize-agent-runcrate-"));
+
+    const resolved = await resolveAgentModel({
+      env: {
+        HOME: home,
+        RUNCRATE_API_KEY: "sk-runcrate",
+        OPENAI_USE_CHAT_COMPLETIONS: "false",
+      },
+      pageContent: "Hello",
+      modelOverride: "runcrate/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    });
+
+    expect(resolved.provider).toBe("runcrate");
+    expect(resolved.model?.api).toBe("openai-completions");
+    expect(resolved.model?.baseUrl).toBe("https://api.runcrate.ai/v1");
+  });
+
   it("keeps MiniMax agent metadata and compatibility settings", async () => {
     const home = mkdtempSync(join(tmpdir(), "summarize-agent-minimax-"));
 
