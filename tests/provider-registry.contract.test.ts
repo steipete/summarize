@@ -13,7 +13,7 @@ import {
 import { parseRequestedModelId } from "../src/model-spec.js";
 
 const path = "/tmp/provider-config.json";
-const compatibleProviders = ["zai", "nvidia", "minimax", "runcrate", "ollama"] as const;
+const compatibleProviders = ["zai", "nvidia", "minimax", "ollama"] as const;
 
 describe("provider registry contracts", () => {
   it.each(compatibleProviders)("rejects unprefixed %s names as unknown models", (provider) => {

@@ -154,9 +154,6 @@ describe("llm provider capabilities", () => {
       "NVIDIA_API_KEY",
     );
     expect(resolveRequiredEnvForModelId("minimax/MiniMax-M3")).toBe("MINIMAX_API_KEY");
-    expect(resolveRequiredEnvForModelId("runcrate/meta-llama/Llama-3.3-70B-Instruct-Turbo")).toBe(
-      "RUNCRATE_API_KEY",
-    );
     expect(resolveRequiredEnvForModelId("ollama/qwen3:14b")).toBe("OLLAMA_BASE_URL");
 
     expect(

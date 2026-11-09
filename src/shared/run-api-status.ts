@@ -16,8 +16,6 @@ export type RunApiStatus = {
   nvidiaBaseUrl: string;
   minimaxApiKey: string | null;
   minimaxBaseUrl: string;
-  runcrateApiKey: string | null;
-  runcrateBaseUrl: string;
   ollamaBaseUrl: string;
   firecrawlApiKey: string | null;
   firecrawlConfigured: boolean;

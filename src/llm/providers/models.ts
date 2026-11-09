@@ -1,9 +1,5 @@
 import type { Api, Context, Model } from "@earendil-works/pi-ai";
-import {
-  DEFAULT_MINIMAX_BASE_URL,
-  DEFAULT_OLLAMA_BASE_URL,
-  DEFAULT_RUNCRATE_BASE_URL,
-} from "../provider-registry.js";
+import { DEFAULT_MINIMAX_BASE_URL, DEFAULT_OLLAMA_BASE_URL } from "../provider-registry.js";
 import {
   createSyntheticModel,
   resolveBaseUrlOverride,
@@ -125,26 +121,6 @@ export function resolveMinimaxModel({
   };
 }
 
-export function resolveRuncrateModel({
-  modelId,
-  context,
-  openaiBaseUrlOverride,
-}: {
-  modelId: string;
-  context: Context;
-  openaiBaseUrlOverride?: string | null;
-}): Model<Api> {
-  const allowImages = wantsImages(context);
-  const api = "openai-completions";
-  const baseUrl = openaiBaseUrlOverride ?? DEFAULT_RUNCRATE_BASE_URL;
-  return {
-    ...createSyntheticModel({ provider: "openai", modelId, api, baseUrl, allowImages }),
-    api,
-    baseUrl,
-    input: allowImages ? ["text", "image"] : ["text"],
-  };
-}
-
 export function resolveOllamaModel({
   modelId,
   context,
@@ -173,7 +149,7 @@ export function resolveOpenAiCompatibleGatewayModel({
   context,
   openaiConfig,
 }: {
-  provider: "zai" | "nvidia" | "minimax" | "runcrate" | "ollama";
+  provider: "zai" | "nvidia" | "minimax" | "ollama";
   modelId: string;
   context: Context;
   openaiConfig: OpenAiClientConfig;
@@ -193,12 +169,6 @@ export function resolveOpenAiCompatibleGatewayModel({
       });
     case "minimax":
       return resolveMinimaxModel({
-        modelId,
-        context,
-        openaiBaseUrlOverride: openaiConfig.baseURL,
-      });
-    case "runcrate":
-      return resolveRuncrateModel({
         modelId,
         context,
         openaiBaseUrlOverride: openaiConfig.baseURL,

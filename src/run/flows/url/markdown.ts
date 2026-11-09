@@ -31,7 +31,6 @@ export type MarkdownConverters = {
     | "zai"
     | "nvidia"
     | "minimax"
-    | "runcrate"
     | "ollama";
   markdownModel: MarkdownModel | null;
   convertHtmlToMarkdown:

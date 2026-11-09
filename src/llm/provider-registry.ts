@@ -19,8 +19,6 @@ export const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434/v1";
 
 export const DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 
-export const DEFAULT_RUNCRATE_BASE_URL = "https://api.runcrate.ai/v1";
-
 export const GATEWAY_PROVIDER_PROFILES = {
   xai: {
     requiredEnv: "XAI_API_KEY",
@@ -75,15 +73,6 @@ export const GATEWAY_PROVIDER_PROFILES = {
     supportsStreaming: true,
     supportsVideoUnderstanding: false,
     defaultBaseUrl: DEFAULT_MINIMAX_BASE_URL,
-    forceChatCompletions: true,
-  },
-  runcrate: {
-    requiredEnv: "RUNCRATE_API_KEY",
-    execution: "openai-compatible",
-    supportsDocuments: false,
-    supportsStreaming: true,
-    supportsVideoUnderstanding: false,
-    defaultBaseUrl: DEFAULT_RUNCRATE_BASE_URL,
     forceChatCompletions: true,
   },
   ollama: {

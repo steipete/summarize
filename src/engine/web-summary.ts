@@ -70,8 +70,6 @@ export type WebSummaryContext = {
       | "nvidiaBaseUrl"
       | "minimaxApiKey"
       | "minimaxBaseUrl"
-      | "runcrateApiKey"
-      | "runcrateBaseUrl"
       | "ollamaBaseUrl"
     >;
     summaryEngine: ReturnType<typeof createModelExecutor>;

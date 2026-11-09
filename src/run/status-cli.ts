@@ -88,12 +88,6 @@ const API_STATUS_PROVIDERS = [
     label: "MiniMax API",
     sources: ["MINIMAX_API_KEY"],
   },
-  {
-    provider: "runcrate",
-    id: "runcrate",
-    label: "Runcrate API",
-    sources: ["RUNCRATE_API_KEY"],
-  },
 ] as const satisfies ReadonlyArray<{
   provider: Exclude<GatewayProvider, "openai" | "ollama">;
   id: string;
@@ -326,7 +320,6 @@ async function applyProviderProbes({
     ["ollama", discoveredModels(result.options, "Ollama (")],
     ["nvidia", discoveredModels(result.options, "NVIDIA (")],
     ["minimax", discoveredModels(result.options, "MiniMax (")],
-    ["runcrate", discoveredModels(result.options, "Runcrate (")],
   ]);
 
   for (const provider of providers) {

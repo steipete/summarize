@@ -204,17 +204,6 @@ describe("model spec parsing", () => {
     expect(nvidia.requiredEnv).toBe("NVIDIA_API_KEY");
     expect(nvidia.llmModelId).toBe("nvidia/z-ai/glm5");
 
-    const runcrate = parseRequestedModelId("runcrate/meta-llama/Llama-3.3-70B-Instruct-Turbo");
-    expect(runcrate.kind).toBe("fixed");
-    expect(runcrate.transport).toBe("native");
-    expect(runcrate.provider).toBe("runcrate");
-    expect(runcrate.requiredEnv).toBe("RUNCRATE_API_KEY");
-    expect(runcrate.llmModelId).toBe("runcrate/meta-llama/Llama-3.3-70B-Instruct-Turbo");
-    if (runcrate.kind === "fixed" && runcrate.transport === "native") {
-      expect(runcrate.openaiBaseUrlOverride).toBe("https://api.runcrate.ai/v1");
-      expect(runcrate.forceChatCompletions).toBe(true);
-    }
-
     const minimax = parseRequestedModelId("minimax/MiniMax-M3");
     expect(minimax.kind).toBe("fixed");
     expect(minimax.transport).toBe("native");
@@ -255,10 +244,6 @@ describe("model spec parsing", () => {
 
   it("rejects empty minimax model id", () => {
     expect(() => parseRequestedModelId("minimax/")).toThrow(/missing the model id/);
-  });
-
-  it("rejects empty runcrate model id", () => {
-    expect(() => parseRequestedModelId("runcrate/")).toThrow(/missing the model id/);
   });
 
   it("rejects empty ollama model id", () => {

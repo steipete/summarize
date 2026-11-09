@@ -156,7 +156,6 @@ Legacy shortcut (still supported):
     "openai": "sk-...",
     "nvidia": "...",
     "minimax": "...",
-    "runcrate": "...",
     "groq": "gsk-...",
     "assemblyai": "...",
     "elevenlabs": "...",
@@ -489,7 +488,6 @@ Override API endpoints for any provider to use proxies, gateways, or compatible 
   "xai": { "baseUrl": "https://my-xai-proxy.example.com" },
   "zai": { "baseUrl": "https://api.zhipuai.cn/paas/v4" },
   "minimax": { "baseUrl": "https://api.minimax.io/v1" },
-  "runcrate": { "baseUrl": "https://api.runcrate.ai/v1" },
   "ollama": { "baseUrl": "http://localhost:11434/v1" }
 }
 ```
@@ -505,5 +503,4 @@ Or via environment variables (which take precedence over config):
 | xAI       | `XAI_BASE_URL`                               |
 | Z.AI      | `Z_AI_BASE_URL` (alias: `ZAI_BASE_URL`)      |
 | MiniMax   | `MINIMAX_BASE_URL`                           |
-| Runcrate  | `RUNCRATE_BASE_URL`                          |
 | Ollama    | `OLLAMA_BASE_URL`                            |

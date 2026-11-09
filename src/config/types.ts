@@ -180,17 +180,6 @@ export type MinimaxConfig = {
   baseUrl?: string;
 };
 
-export type RuncrateConfig = {
-  /**
-   * Override the Runcrate OpenAI-compatible API base URL.
-   *
-   * Default: https://api.runcrate.ai/v1
-   *
-   * Prefer env `RUNCRATE_BASE_URL` when you need per-run overrides.
-   */
-  baseUrl?: string;
-};
-
 export type AutoRule = {
   /**
    * Input kinds this rule applies to.
@@ -298,7 +287,6 @@ export type SummarizeConfig = {
   openai?: OpenAiConfig;
   nvidia?: NvidiaConfig;
   minimax?: MinimaxConfig;
-  runcrate?: RuncrateConfig;
   anthropic?: AnthropicConfig;
   google?: GoogleConfig;
   xai?: XaiConfig;

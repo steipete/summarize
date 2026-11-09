@@ -102,7 +102,6 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
   for (const provider of [
     "nvidia",
     "minimax",
-    "runcrate",
     "anthropic",
     "google",
     "xai",
