@@ -2,7 +2,11 @@ import fs from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { execCliWithInput } from "../cli-exec.js";
-import { parseCodexOutputFromJsonl, parseCodexUsageFromJsonl } from "../cli-provider-output.js";
+import {
+  extractCodexTurnFailureFromJsonl,
+  parseCodexOutputFromJsonl,
+  parseCodexUsageFromJsonl,
+} from "../cli-provider-output.js";
 import type { CliRunResult, ResolvedCliRunOptions } from "./types.js";
 
 const CODEX_DEFAULT_MODEL = "gpt-5.5";
@@ -66,16 +70,27 @@ export async function runCodexCli(options: ResolvedCliRunOptions): Promise<CliRu
     if (!args.some((arg) => arg.includes("text.verbosity"))) {
       args.push("-c", 'text.verbosity="medium"');
     }
-    const { stdout } = await execCliWithInput({
-      execFileImpl: options.execFileImpl,
-      cmd: options.binary,
-      args,
-      input: options.prompt,
-      timeoutMs: options.timeoutMs,
-      env: isolatedHome ? { ...options.env, CODEX_HOME: isolatedHome } : options.env,
-      cwd: isolatedCwd ?? options.cwd,
-      signal: options.signal,
-    });
+    let stdout: string;
+    try {
+      ({ stdout } = await execCliWithInput({
+        execFileImpl: options.execFileImpl,
+        cmd: options.binary,
+        args,
+        input: options.prompt,
+        timeoutMs: options.timeoutMs,
+        env: isolatedHome ? { ...options.env, CODEX_HOME: isolatedHome } : options.env,
+        cwd: isolatedCwd ?? options.cwd,
+        signal: options.signal,
+      }));
+    } catch (error) {
+      // execCliWithInput attaches the failed run's stdout, where Codex reports the
+      // terminal turn failure; the exit error itself only carries argv and stderr.
+      const failedStdout = (error as { stdout?: unknown } | null)?.stdout;
+      const reason =
+        typeof failedStdout === "string" ? extractCodexTurnFailureFromJsonl(failedStdout) : null;
+      if (reason) throw new Error(`Codex CLI failed: ${reason}`, { cause: error });
+      throw error;
+    }
     const { usage, costUsd } = parseCodexUsageFromJsonl(stdout);
     const fileText = await fs
       .readFile(outputPath, "utf8")
@@ -84,7 +99,10 @@ export async function runCodexCli(options: ResolvedCliRunOptions): Promise<CliRu
     if (fileText) return { text: fileText, usage, costUsd };
     const parsed = parseCodexOutputFromJsonl(stdout);
     if (parsed.text) return { text: parsed.text, usage, costUsd };
-    if (parsed.sawStructuredEvent) throw new Error("CLI returned empty output");
+    if (parsed.sawStructuredEvent) {
+      const reason = extractCodexTurnFailureFromJsonl(stdout);
+      throw new Error(reason ? `Codex CLI failed: ${reason}` : "CLI returned empty output");
+    }
     const stdoutText = stdout.trim();
     if (stdoutText) return { text: stdoutText, usage, costUsd };
     throw new Error("CLI returned empty output");
