@@ -67,7 +67,7 @@ function buildAssetExtracted(args: SummarizeAssetArgs): AssetSummaryResult["extr
   };
 }
 
-function buildAssetJsonInput(ctx: AssetSummaryContext, args: PresentAssetSummaryArgs) {
+export function buildAssetJsonInput(ctx: AssetSummaryContext, args: PresentAssetSummaryArgs) {
   const shared = {
     timeoutMs: ctx.timeoutMs,
     length:

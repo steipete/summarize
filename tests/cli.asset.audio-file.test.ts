@@ -86,6 +86,62 @@ describe("cli asset inputs (media files)", () => {
     },
   );
 
+  it.each(["talk.wav", "talk.mp4"])(
+    "emits the JSON envelope for %s extraction",
+    async (filename) => {
+      const root = mkdtempSync(join(tmpdir(), "summarize-media-extract-json-"));
+      const cacheDir = join(root, "onnx");
+      const modelDir = join(cacheDir, "parakeet");
+      mkdirSync(modelDir, { recursive: true });
+      writeFileSync(join(modelDir, "model.onnx"), "fixture");
+      writeFileSync(join(modelDir, "vocab.txt"), "fixture");
+      const mediaPath = join(root, filename);
+      writeFileSync(mediaPath, "RIFF fixture WAVE");
+
+      const stdout = collectStream();
+      const stderr = collectStream();
+
+      await runCli(
+        [
+          "--extract",
+          "--json",
+          "--metrics",
+          "off",
+          "--no-cache",
+          "--no-media-cache",
+          "--transcriber",
+          "parakeet",
+          mediaPath,
+        ],
+        {
+          env: {
+            HOME: root,
+            SUMMARIZE_DISABLE_LOCAL_WHISPER_CPP: "1",
+            SUMMARIZE_ONNX_CACHE_DIR: cacheDir,
+            SUMMARIZE_ONNX_PARAKEET_CMD: JSON.stringify([
+              process.execPath,
+              "-e",
+              'process.stdout.write("Local media transcript")',
+              "{input}",
+            ]),
+          },
+          fetch: vi.fn(async () => {
+            throw new Error("unexpected fetch");
+          }) as unknown as typeof fetch,
+          stdout: stdout.stream,
+          stderr: stderr.stream,
+        },
+      );
+
+      const payload = JSON.parse(stdout.getText()) as Record<string, any>;
+      expect(payload.input).toMatchObject({ kind: "file", filePath: mediaPath });
+      expect(payload.extracted.content).toContain("Local media transcript");
+      expect(payload.extracted.transcriptionProvider).toBe("onnx-parakeet");
+      expect(payload).toMatchObject({ prompt: null, llm: null, metrics: null, summary: null });
+      expect(stderr.getText()).toBe("");
+    },
+  );
+
   it("detects missing transcription provider and provides setup guidance", async () => {
     mocks.streamSimple.mockClear();
 
