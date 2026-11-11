@@ -26,8 +26,8 @@
     "@steipete/summarize-core": "workspace:*",
     "googlevideo": "5.0.1",
     "markdown-it": "^15.0.3",
-    "mediabunny": "1.62.1",
-    "preact": "11.1.0"
+    "mediabunny": "1.65.1",
+    "preact": "11.1.1"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
