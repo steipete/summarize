@@ -424,6 +424,7 @@
   "error.providerStreamEmpty": "Lo streaming del fornitore è terminato senza una risposta.",
   "error.daemonAgentUnavailable": "Il daemon non supporta /v1/agent. Riavvialo dopo l’aggiornamento (summarize daemon restart).",
   "error.localTranscriptUnavailable": "{kind, select, youtube {La trascrizione YouTube locale} other {La trascrizione multimediale locale}} non è disponibile in questo browser",
+  "error.bilibiliCaptionsUnavailable": "I sottotitoli di Bilibili non sono disponibili in questa sessione del browser. Verifica di aver effettuato l'accesso a Bilibili oppure scegli Pagina per riassumere il testo della pagina.",
   "error.transcriptPageChanged": "La pagina è cambiata prima del completamento della trascrizione nel browser",
   "error.standalone": "{kind, select, failed {Impossibile trascrivere questo contenuto multimediale in modalità autonoma: {error}. Scegli Daemon in Esecuzione per un supporto multimediale più ampio.} noTranscript {Nessun testo di trascrizione disponibile in modalità autonoma. Scegli Daemon in Esecuzione per un supporto multimediale più ampio.} other {Nessun testo leggibile disponibile in modalità autonoma. Ricarica la pagina o scegli Daemon in Esecuzione per l’estrazione da URL.}}",
   "error.daemonSlidesToken": "Le diapositive tramite daemon richiedono un token. Apri le Impostazioni per connettere il daemon.",

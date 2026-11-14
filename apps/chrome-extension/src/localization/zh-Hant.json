@@ -424,6 +424,7 @@
   "error.providerStreamEmpty": "服務供應商的串流未傳回回應便已結束。",
   "error.daemonAgentUnavailable": "常駐程式不支援 /v1/agent。請在更新後重新啟動常駐程式（summarize daemon restart）。",
   "error.localTranscriptUnavailable": "此瀏覽器不支援{kind, select, youtube {本機 YouTube 轉錄} other {本機媒體轉錄}}",
+  "error.bilibiliCaptionsUnavailable": "目前的瀏覽器工作階段無法取得嗶哩嗶哩字幕。請確認已登入嗶哩嗶哩，或選擇「頁面」來摘要頁面文字。",
   "error.transcriptPageChanged": "瀏覽器轉錄完成前，頁面已變更",
   "error.standalone": "{kind, select, failed {獨立模式下無法轉錄此媒體：{error}。請在「執行環境」選擇「常駐程式」，以支援更多媒體格式。} noTranscript {獨立模式下沒有可用的逐字稿。請在「執行環境」選擇「常駐程式」，以支援更多媒體格式。} other {獨立模式下沒有可讀取的文字。請重新載入頁面，或在「執行環境」選擇「常駐程式」，以透過 URL 擷取內容。}}",
   "error.daemonSlidesToken": "透過常駐程式處理投影片需要常駐程式權杖。請開啟設定以連線至常駐程式。",

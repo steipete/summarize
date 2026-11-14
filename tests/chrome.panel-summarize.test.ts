@@ -85,6 +85,53 @@ function createHarness() {
 }
 
 describe("chrome panel summarize", () => {
+  it("shows Bilibili login and Page choices when captions and blob audio are unavailable", async () => {
+    const harness = createHarness();
+    const url = "https://www.bilibili.com/video/BV1ipnr6cExW/";
+    const transcribeMediaLocally = vi.fn(async () => ({
+      ok: false as const,
+      error: "The active media source is not fetchable outside the page.",
+    }));
+    vi.stubGlobal("chrome", {
+      scripting: {
+        executeScript: vi.fn(async () => [
+          {
+            result: {
+              ok: false,
+              reason: "failed",
+              error: "No Bilibili caption tracks are available in this browser session.",
+            },
+          },
+        ]),
+      },
+    });
+    try {
+      await harness.summarize({
+        reason: "manual",
+        loadSettings: vi.fn(async () => ({
+          ...defaultSettings,
+          token: "",
+          model: "browser/gemini-nano",
+          slidesEnabled: false,
+        })),
+        getActiveTab: vi.fn(async () => ({ id: 7, windowId: 1, url, title: "Bilibili video" })),
+        transcribeMediaLocally,
+      });
+      expect(transcribeMediaLocally).toHaveBeenCalledOnce();
+      expect(harness.fetchImpl).not.toHaveBeenCalled();
+      expect(harness.sent).toEqual([
+        {
+          type: "run:error",
+          message:
+            "Bilibili captions are unavailable in this browser session. Check that you are signed in to Bilibili, or choose Page to summarize the page text.",
+          localized: { key: "error.bilibiliCaptionsUnavailable", values: {} },
+        },
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("uses one daemon summarize request for YouTube slides", async () => {
     const harness = createHarness();
 

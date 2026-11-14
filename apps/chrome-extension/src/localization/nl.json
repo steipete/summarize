@@ -424,6 +424,7 @@
   "error.providerStreamEmpty": "Stream van aanbieder beëindigd zonder antwoord.",
   "error.daemonAgentUnavailable": "De daemon ondersteunt /v1/agent niet. Herstart de daemon na het bijwerken (summarize daemon restart).",
   "error.localTranscriptUnavailable": "{kind, select, youtube {Lokale YouTube-transcriptie} other {Lokale mediatranscriptie}} is niet beschikbaar in deze browser",
+  "error.bilibiliCaptionsUnavailable": "Bilibili-ondertiteling is niet beschikbaar in deze browsersessie. Controleer of je bent aangemeld bij Bilibili, of kies Pagina om de paginatekst samen te vatten.",
   "error.transcriptPageChanged": "De pagina is gewijzigd voordat de browsertranscriptie voltooid was",
   "error.standalone": "{kind, select, failed {Deze media konden niet zonder daemon worden getranscribeerd: {error}. Kies Daemon bij Uitvoering voor uitgebreidere mediaondersteuning.} noTranscript {Geen transcripttekst beschikbaar zonder daemon. Kies Daemon bij Uitvoering voor uitgebreidere mediaondersteuning.} other {Geen leesbare tekst beschikbaar zonder daemon. Laad de pagina opnieuw of kies Daemon bij Uitvoering voor URL-extractie.}}",
   "error.daemonSlidesToken": "Dia’s via de daemon vereisen een daemontoken. Open Instellingen om de daemon te verbinden.",

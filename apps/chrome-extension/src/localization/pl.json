@@ -424,6 +424,7 @@
   "error.providerStreamEmpty": "Strumień dostawcy zakończył się bez odpowiedzi.",
   "error.daemonAgentUnavailable": "Demon nie obsługuje /v1/agent. Uruchom go ponownie po aktualizacji (summarize daemon restart).",
   "error.localTranscriptUnavailable": "{kind, select, youtube {Lokalna transkrypcja YouTube} other {Lokalna transkrypcja multimediów}} jest niedostępna w tej przeglądarce",
+  "error.bilibiliCaptionsUnavailable": "Napisy Bilibili są niedostępne w tej sesji przeglądarki. Sprawdź, czy jesteś zalogowany w Bilibili, lub wybierz Strona, aby podsumować tekst strony.",
   "error.transcriptPageChanged": "Strona zmieniła się przed zakończeniem transkrypcji w przeglądarce",
   "error.standalone": "{kind, select, failed {Nie udało się wykonać transkrypcji tych multimediów w trybie samodzielnym: {error}. Wybierz Demon w sekcji Środowisko, aby rozszerzyć obsługę multimediów.} noTranscript {Brak tekstu transkrypcji w trybie samodzielnym. Wybierz Demon w sekcji Środowisko, aby rozszerzyć obsługę multimediów.} other {Brak czytelnego tekstu w trybie samodzielnym. Przeładuj stronę lub wybierz Demon w sekcji Środowisko, aby wyodrębnić treść z URL.}}",
   "error.daemonSlidesToken": "Slajdy przez demona wymagają jego tokena. Otwórz Ustawienia, aby połączyć demona.",
