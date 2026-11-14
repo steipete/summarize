@@ -2,6 +2,8 @@
 
 ## 0.26.1 - Unreleased
 
+- Maintenance: refresh stabilized provider, HTTP, media, Preact, Playwright, and Oxc/test dependencies while retaining Node 24, security overrides, and the seven-day adoption hold (#569, thanks @dependabot).
+
 - CLI extraction: honor `--json` for local audio/video transcripts and accurately report transcription and Markdown-conversion providers (#570, fixes #562, #566, #567, thanks @officialasishkumar and @coygeek).
 - Codex: use the installed CLI's supported default model, omit the unrecognized verbosity setting, and surface backend turn-failure reasons (#571, fixes #563, #564, #565, thanks @officialasishkumar and @coygeek).
 - OpenRouter: include response-body reads in optional provider-diagnostic timeouts while preserving routing guidance (#560, thanks @vincent-peng).
