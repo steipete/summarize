@@ -3,6 +3,7 @@ import { toNumber } from "./cli-provider-output/shared.js";
 import type { LlmTokenUsage } from "./generate-text.js";
 
 export {
+  extractCodexTurnFailureFromJsonl,
   parseCodexOutputFromJsonl,
   parseCodexUsageFromJsonl,
 } from "./cli-provider-output/codex.js";

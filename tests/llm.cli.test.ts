@@ -437,7 +437,7 @@ describe("runCliModel", () => {
     expect(result.text).toBe("ok");
   });
 
-  it("pins bare Codex runs to GPT-5.5", async () => {
+  it("lets Codex select its supported default model", async () => {
     let seenArgs: string[] = [];
     const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
       seenArgs = [...args];
@@ -470,7 +470,8 @@ describe("runCliModel", () => {
     });
 
     expect(result.text).toBe("ok");
-    expect(seenArgs[seenArgs.indexOf("-m") + 1]).toBe("gpt-5.5");
+    expect(seenArgs).not.toContain("-m");
+    expect(seenArgs.some((arg) => arg.includes("text.verbosity"))).toBe(false);
   });
 
   it("isolates Codex summary runs from user config and repo rules", async () => {
@@ -615,7 +616,7 @@ describe("runCliModel", () => {
     expect(seenArgs).not.toContain("-C");
   });
 
-  it("maps Codex GPT fast alias to GPT-5.5 fast service tier", async () => {
+  it("maps Codex GPT fast alias to the default model with fast service tier", async () => {
     let seenArgs: string[] = [];
     const execFileImpl: ExecFileFn = ((_cmd, args, _options, cb) => {
       seenArgs = [...args];
@@ -650,8 +651,8 @@ describe("runCliModel", () => {
     expect(result.text).toBe("ok");
     expect(seenArgs).toContain("-c");
     expect(seenArgs).toContain('service_tier="fast"');
-    expect(seenArgs).toContain("-m");
-    expect(seenArgs[seenArgs.indexOf("-m") + 1]).toBe("gpt-5.5");
+    expect(seenArgs).not.toContain("-m");
+    expect(seenArgs.some((arg) => arg.includes("text.verbosity"))).toBe(false);
   });
 
   it("returns Codex stdout when present", async () => {

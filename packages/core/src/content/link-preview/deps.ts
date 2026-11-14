@@ -157,7 +157,7 @@ export type ConvertHtmlToMarkdown = (args: {
   title: string | null;
   siteName: string | null;
   timeoutMs: number;
-}) => Promise<string>;
+}) => Promise<string | { markdown: string; provider: "llm" | "markitdown" }>;
 
 export type BirdTweetMedia = {
   kind: "video" | "audio";

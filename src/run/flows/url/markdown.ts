@@ -1,3 +1,4 @@
+import type { ConvertHtmlToMarkdown } from "@steipete/summarize-core/content";
 import { resolveFixedModelAttempt } from "../../../application/model-attempts.js";
 import type { ModelAttempt } from "../../../engine/types.js";
 import {
@@ -33,15 +34,7 @@ export type MarkdownConverters = {
     | "minimax"
     | "ollama";
   markdownModel: MarkdownModel | null;
-  convertHtmlToMarkdown:
-    | ((args: {
-        url: string;
-        html: string;
-        title: string | null;
-        siteName: string | null;
-        timeoutMs: number;
-      }) => Promise<string>)
-    | null;
+  convertHtmlToMarkdown: ConvertHtmlToMarkdown | null;
   convertTranscriptToMarkdown: ConvertTranscriptToMarkdown | null;
 };
 
@@ -212,11 +205,11 @@ export function createMarkdownConverters(
             env: ctx.io.env,
             execFileImpl: ctx.io.execFileImpl,
           });
-          return markdown;
+          return { markdown, provider: "markitdown" as const };
         }
       : null;
 
-  const convertHtmlToMarkdown = markdownRequested
+  const convertHtmlToMarkdown: ConvertHtmlToMarkdown | null = markdownRequested
     ? async (args: {
         url: string;
         html: string;
@@ -228,7 +221,7 @@ export function createMarkdownConverters(
           if (!llmHtmlToMarkdown) {
             throw new CliError("error.markdownConverter");
           }
-          return llmHtmlToMarkdown(args);
+          return { markdown: await llmHtmlToMarkdown(args), provider: "llm" };
         }
 
         if (ctx.flags.extractMode) {
@@ -240,7 +233,7 @@ export function createMarkdownConverters(
 
         if (llmHtmlToMarkdown) {
           try {
-            return await llmHtmlToMarkdown(args);
+            return { markdown: await llmHtmlToMarkdown(args), provider: "llm" };
           } catch (error) {
             if (!markitdownHtmlToMarkdown) throw error;
             return await markitdownHtmlToMarkdown(args);

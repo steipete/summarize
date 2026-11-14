@@ -2,6 +2,12 @@
 
 ## 0.26.1 - Unreleased
 
+- CLI extraction: honor `--json` for local audio/video transcripts and accurately report transcription and Markdown-conversion providers (#570, fixes #562, #566, #567, thanks @officialasishkumar and @coygeek).
+- Codex: use the installed CLI's supported default model, omit the unrecognized verbosity setting, and surface backend turn-failure reasons (#571, fixes #563, #564, #565, thanks @officialasishkumar and @coygeek).
+- OpenRouter: include response-body reads in optional provider-diagnostic timeouts while preserving routing guidance (#560, thanks @vincent-peng).
+- Windows: preserve daemon launcher files and report failure when Task Scheduler refuses deletion, while allowing cleanup when the task is already absent (#559, thanks @SebTardif).
+- Docs: correct the YouTube fallback order and document OpenAI-compatible gateways (#568, fixes #561, thanks @heydryft and @coygeek).
+
 ## 0.26.0 - 2026-11-05
 
 **Highlights:** complete browser chat context, reliable whisper.cpp transcription and direct media downloads, Antigravity model selection, and security fixes for node-forge, Undici, and HTML/Markdown processing.

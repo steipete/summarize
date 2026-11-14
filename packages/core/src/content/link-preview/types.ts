@@ -45,7 +45,7 @@ export interface FirecrawlDiagnostics {
 export interface MarkdownDiagnostics {
   requested: boolean;
   used: boolean;
-  provider: "firecrawl" | "llm" | null;
+  provider: "firecrawl" | "llm" | "markitdown" | null;
   notes?: string | null;
 }
 

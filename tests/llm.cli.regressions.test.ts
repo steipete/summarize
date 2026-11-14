@@ -137,7 +137,6 @@ describe("runCliModel regressions", () => {
     const secondImageIndex = seenArgs.indexOf("/tmp/image-2.jpg");
     const outputIndex = seenArgs.indexOf("--output-last-message");
     const modelIndex = seenArgs.indexOf("-m");
-    const verbosityIndex = seenArgs.indexOf("-c");
 
     expect(result.text).toBe("ok");
     expect(execIndex).toBe(0);
@@ -146,7 +145,8 @@ describe("runCliModel regressions", () => {
     expect(secondImageIndex).toBe(firstImageIndex + 1);
     expect(outputIndex).toBeGreaterThan(secondImageIndex);
     expect(modelIndex).toBeGreaterThan(execIndex);
-    expect(verbosityIndex).toBeGreaterThan(execIndex);
+    expect(seenArgs[modelIndex + 1]).toBe("gpt-5.2");
+    expect(seenArgs.some((arg) => arg.includes("text.verbosity"))).toBe(false);
     expect(seenArgs).not.toContain(prompt);
     expect(stdinText).toBe(prompt);
   });
@@ -187,12 +187,11 @@ describe("runCliModel regressions", () => {
       "--output-last-message",
       "--skip-git-repo-check",
       "--json",
-      "-m",
       "-c",
     ]) {
       expect(seenArgs.indexOf(flag)).toBeGreaterThan(execIndex);
     }
-    expect(seenArgs).toContain("gpt-5.5");
+    expect(seenArgs).not.toContain("-m");
     expect(seenArgs).toContain('service_tier="fast"');
   });
 
@@ -223,5 +222,93 @@ describe("runCliModel regressions", () => {
         },
       }),
     ).rejects.toThrow("CLI returned empty output");
+  });
+
+  it("surfaces the Codex turn failure reason when the process exits non-zero", async () => {
+    const execError = new Error("Command failed: codex exec --json -m bad-model");
+    let thrown: unknown;
+    try {
+      await runCliModel({
+        provider: "codex",
+        prompt: "hi",
+        model: "bad-model",
+        allowTools: false,
+        timeoutMs: 1000,
+        env: {},
+        config: null,
+        execFileImpl: (_cmd, _args, _opts, cb) => {
+          cb(
+            execError,
+            [
+              '{"type":"thread.started","thread_id":"abc"}',
+              '{"type":"item.completed","item":{"id":"item_0","type":"error","message":"Codex is ignoring 1 unrecognized configuration setting."}}',
+              '{"type":"turn.started"}',
+              '{"type":"error","message":"Reconnecting... 1/5"}',
+              '{"type":"turn.failed","error":{"message":"The \'bad-model\' model is not supported when using Codex with a ChatGPT account."}}',
+            ].join("\n"),
+            "Reading prompt from stdin...",
+          );
+          return { stdin: { write() {}, end() {} } } as unknown as ChildProcess;
+        },
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe(
+      "Codex CLI failed: The 'bad-model' model is not supported when using Codex with a ChatGPT account.",
+    );
+    expect((thrown as Error).cause).toBeInstanceOf(Error);
+    expect(((thrown as Error).cause as Error).message).toContain(execError.message);
+  });
+
+  it("keeps the exec error when a failed Codex run has no turn failure", async () => {
+    await expect(
+      runCliModel({
+        provider: "codex",
+        prompt: "hi",
+        model: null,
+        allowTools: false,
+        timeoutMs: 1000,
+        env: {},
+        config: null,
+        execFileImpl: (_cmd, _args, _opts, cb) => {
+          cb(
+            new Error("Command failed: codex exec"),
+            ['{"type":"turn.started"}', '{"type":"error","message":"Reconnecting... 1/5"}'].join(
+              "\n",
+            ),
+            "boom",
+          );
+          return { stdin: { write() {}, end() {} } } as unknown as ChildProcess;
+        },
+      }),
+    ).rejects.toThrow(/^Command failed: codex exec: boom$/);
+  });
+
+  it("reports a Codex turn failure instead of empty output when the process exits zero", async () => {
+    await expect(
+      runCliModel({
+        provider: "codex",
+        prompt: "hi",
+        model: null,
+        allowTools: false,
+        timeoutMs: 1000,
+        env: {},
+        config: null,
+        execFileImpl: (_cmd, _args, _opts, cb) => {
+          cb(
+            null,
+            [
+              '{"type":"thread.started","thread_id":"abc"}',
+              '{"type":"turn.failed","error":{"message":"usage limit reached"}}',
+            ].join("\n"),
+            "",
+          );
+          return { stdin: { write() {}, end() {} } } as unknown as ChildProcess;
+        },
+      }),
+    ).rejects.toThrow("Codex CLI failed: usage limit reached");
   });
 });

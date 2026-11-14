@@ -139,6 +139,22 @@ Override the endpoint with `MINIMAX_BASE_URL` or `minimax.baseUrl` in config (e.
 endpoint). The model id is passed through verbatim, so use MiniMax’s exact casing (e.g. `MiniMax-M3`).
 Reasoning is requested through MiniMax’s separated response fields and omitted from summary text.
 
+## OpenAI-compatible gateways
+
+Gateways that support OpenAI Chat Completions can use the OpenAI settings, with no dedicated provider. Point
+`OPENAI_BASE_URL` (or `openai.baseUrl` in config) at the gateway and use the gateway's key as
+`OPENAI_API_KEY`. For example, [Runcrate](https://www.runcrate.ai), an AI cloud with an
+OpenAI-compatible API:
+
+```bash
+export OPENAI_BASE_URL=https://api.runcrate.ai/v1
+export OPENAI_API_KEY="your-runcrate-api-key"
+summarize https://example.com --model openai/meta-llama/Llama-3.3-70B-Instruct-Turbo
+```
+
+Custom hosts use chat completions by default. The model id after `openai/` is passed through
+verbatim.
+
 ## Ollama
 
 Use `--model ollama/<model>` (e.g. `ollama/qwen3:14b`, `ollama/gemma3:12b`) to talk to a local

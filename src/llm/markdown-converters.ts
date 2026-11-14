@@ -111,7 +111,7 @@ type MarkdownInput =
   | (Parameters<ConvertTranscriptToMarkdown>[0] & { kind: "transcript" });
 
 export function createLlmMarkdownConverters(options: MarkdownConverterOptions): {
-  html: ConvertHtmlToMarkdown;
+  html: (args: Parameters<ConvertHtmlToMarkdown>[0]) => Promise<string>;
   transcript: ConvertTranscriptToMarkdown;
 } {
   const { onUsage, retries = 0 } = options;

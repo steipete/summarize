@@ -1,5 +1,3 @@
-import { fetchWithTimeout } from "./fetch-with-timeout.js";
-
 function truncateList(items: string[], max: number): string {
   const normalized = items.map((item) => item.trim()).filter(Boolean);
   if (normalized.length <= max) return normalized.join(", ");
@@ -33,12 +31,10 @@ async function resolveOpenRouterProvidersForModels({
       if (!parsed) return;
       const url = `https://openrouter.ai/api/v1/models/${encodeURIComponent(parsed.author)}/${encodeURIComponent(parsed.slug)}/endpoints`;
       try {
-        const response = await fetchWithTimeout(
-          fetchImpl,
-          url,
-          { headers: { Accept: "application/json" } },
-          Math.min(timeoutMs, 15_000),
-        );
+        const response = await fetchImpl(url, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(Math.min(timeoutMs, 15_000)),
+        });
         if (!response.ok) return;
         const payload = (await response.json()) as {
           data?: { endpoints?: Array<{ provider_name?: unknown } | null> };

@@ -49,7 +49,7 @@ summarize "https://youtu.be/I845O57ZSy4"
 summarize "https://podcasts.apple.com/.../episode-..."
 ```
 
-YouTube prefers official caption tracks, falls back through `youtubei` and Apify, and finally pulls audio with `yt-dlp` and transcribes with Whisper. Podcasts behave the same way: published transcript first, then `ffmpeg` + Whisper.
+YouTube prefers official caption tracks, falls back through `youtubei`, eligible audio transcription with `yt-dlp`, and then Apify and transcribes with Whisper. Podcasts behave the same way: published transcript first, then `ffmpeg` + Whisper.
 
 Add scene-change keyframes for video:
 

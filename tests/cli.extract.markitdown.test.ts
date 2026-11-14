@@ -31,7 +31,7 @@ describe("cli --extract --format md (markitdown fallback)", () => {
       },
     });
 
-    await runCli(["--extract", "--format", "md", "https://example.com"], {
+    await runCli(["--extract", "--format", "md", "--json", "https://example.com"], {
       env: { UVX_PATH: "uvx" },
       fetch: fetchMock as unknown as typeof fetch,
       execFile: execFileMock as unknown as ExecFileFn,
@@ -44,7 +44,9 @@ describe("cli --extract --format md (markitdown fallback)", () => {
     });
 
     expect(execFileMock).toHaveBeenCalledTimes(1);
-    expect(stdoutText).toContain("# Converted");
+    const payload = JSON.parse(stdoutText);
+    expect(payload.extracted.content).toContain("# Converted");
+    expect(payload.extracted.diagnostics.markdown.provider).toBe("markitdown");
   });
 
   it("falls back gracefully when markitdown returns empty (no OCR retry for URL path)", async () => {

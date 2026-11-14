@@ -10,3 +10,5 @@ The content entry point also exports DNS-pinned network helpers. `fetchWithDnsPi
 The network guard revalidates every followed redirect and cancels discarded redirect bodies. Same-origin redirects retain request options and credentials; origin changes strip explicit authorization and cookie headers, including changes of scheme or port. Manual redirects remain available for the caller to consume.
 
 The `@steipete/summarize-core/processes` entry point provides `signalTrackedProcess(child, signal)` for stopping one tracked command and its process tree, alongside `terminateTrackedProcesses(signal)` for all tracked commands. Use the per-command helper for deadlines so sibling work continues.
+
+HTML-to-Markdown converters may return `{ markdown, provider: "llm" | "markitdown" }` to preserve their provenance in `diagnostics.markdown.provider`. Existing converters that return a string remain supported and retain the `llm` label.

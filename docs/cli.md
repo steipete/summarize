@@ -32,7 +32,7 @@ Summarize can use installed CLIs (Claude, Codex, Gemini, Cursor Agent, OpenClaw,
 - `cli/grok` (use the Grok CLI default model)
 
 Use `--cli [provider]` (case-insensitive) for the provider default, or `--model cli/<provider>/<model>` to pin a model.
-Bare `cli/codex` defaults to GPT-5.5; set `cli.codex.model` to override it.
+Bare `cli/codex` lets the installed Codex CLI choose its supported default model; set `cli.codex.model` or use `cli/codex/<model>` to select one explicitly. The generic `gpt-fast` alias uses that default with the fast service tier; `gpt-5.5-fast` continues to select GPT-5.5 explicitly. Failed Codex turns include the backend reason in the error message.
 Antigravity supports `cli/agy/<model>` or a configured `cli.agy.model` (run `agy models` to list available model slugs), or bare `cli/agy` to use the active session model. pi supports `cli/pi/<model>` or a configured `cli.pi.model`. devin supports `cli/devin/<model>` or a configured `cli.devin.model`; run `devin models list` to see the available model families.
 If `--cli` is provided without a provider, auto selection is used with CLI enabled.
 

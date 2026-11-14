@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractCodexTurnFailureFromJsonl,
   isJsonCliProvider,
   parseCodexOutputFromJsonl,
   parseCodexUsageFromJsonl,
@@ -112,6 +113,30 @@ describe("CLI provider output parser coverage", () => {
       text: null,
       sawStructuredEvent: true,
     });
+  });
+
+  it("extracts only terminal Codex turn failures", () => {
+    expect(extractCodexTurnFailureFromJsonl("")).toBeNull();
+    expect(
+      extractCodexTurnFailureFromJsonl(
+        [
+          "plain",
+          "{bad}",
+          JSON.stringify({ type: "error", message: "Reconnecting... 1/5" }),
+          JSON.stringify({ type: "item.completed", item: { type: "error", message: "ignored" } }),
+          JSON.stringify({ type: "turn.failed", error: null }),
+          JSON.stringify({ type: "turn.failed", error: { message: "  " } }),
+        ].join("\n"),
+      ),
+    ).toBeNull();
+    expect(
+      extractCodexTurnFailureFromJsonl(
+        [
+          JSON.stringify({ type: "turn.failed", error: { message: "first" } }),
+          JSON.stringify({ type: "turn.failed", error: { message: " model not supported " } }),
+        ].join("\r\n"),
+      ),
+    ).toBe("model not supported");
   });
 
   it("parses OpenCode text, usage, costs, errors, and fallback output", () => {

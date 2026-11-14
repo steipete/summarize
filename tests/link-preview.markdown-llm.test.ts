@@ -48,6 +48,24 @@ describe("link preview extraction (LLM HTML→Markdown)", () => {
     expect(convertHtmlToMarkdownMock).toHaveBeenCalledTimes(1);
   });
 
+  it.each(["llm", "markitdown"] as const)(
+    "retains explicit %s conversion provenance",
+    async (provider) => {
+      const client = createLinkPreviewClient({
+        fetch: vi.fn(async () =>
+          htmlResponse("<html><body><article><p>Hello world</p></article></body></html>"),
+        ) as unknown as typeof fetch,
+        convertHtmlToMarkdown: async () => ({ markdown: "# Converted", provider }),
+      });
+      const result = await client.fetchLinkContent("https://example.com", {
+        format: "markdown",
+        firecrawl: "off",
+      });
+      expect(result.content).toContain("# Converted");
+      expect(result.diagnostics.markdown.provider).toBe(provider);
+    },
+  );
+
   it("does not call the converter when format=text", async () => {
     const html = `<!doctype html><html><head><title>Hello</title></head><body><article><p>${"A".repeat(
       260,

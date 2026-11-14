@@ -34,6 +34,8 @@ Behavior:
 - If you pass an `openrouter/...` model id, the request uses OpenRouter (and requires `OPENROUTER_API_KEY`).
 - If you pass a native model id, the CLI prefers the native provider SDK when its key is available, and can fall back to OpenRouter when no native key exists (and `OPENROUTER_API_KEY` is set).
 
+When a named preset such as `free` fails because no OpenRouter providers are allowed, the CLI prints routing guidance. Each optional provider lookup uses the smaller of `--timeout` and 15 seconds, including response-body reads. Lookup failures leave the routing guidance intact.
+
 ## How selection works
 
 - Uses the order you provide in `model.rules[].candidates[]` (or `bands[].candidates[]`).
