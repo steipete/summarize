@@ -143,3 +143,24 @@ export function parseCodexOutputFromJsonl(output: string): {
   const deltaText = deltaParts.join("").trim();
   return { text: deltaText || fullText, sawStructuredEvent };
 }
+
+// `turn.failed` carries Codex's terminal reason for a failed turn: the turn error,
+// else the last critical stream error. Top-level `error` events can be transient
+// retry notices and item-level errors are non-fatal, so neither is reported here.
+export function extractCodexTurnFailureFromJsonl(output: string): string | null {
+  let reason: string | null = null;
+  for (const rawLine of output.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line.startsWith("{")) continue;
+    try {
+      const parsed = JSON.parse(line) as Record<string, unknown>;
+      if (parsed.type !== "turn.failed") continue;
+      const error = parsed.error as Record<string, unknown> | null | undefined;
+      const message = typeof error?.message === "string" ? error.message.trim() : "";
+      if (message) reason = message;
+    } catch {
+      // Ignore malformed JSON lines.
+    }
+  }
+  return reason;
+}

@@ -14,6 +14,7 @@ import {
 import { createFirecrawlScraper } from "../../../firecrawl.js";
 import { CliError } from "../../../locale.js";
 import { createCliTranslator, resolveCliLocaleFromEnv } from "../../../locale.js";
+import { buildRunJsonEnv } from "../../../shared/run-api-status.js";
 import {
   identifySpeakersInExtractedContent,
   rememberSpeakerMappings,
@@ -25,7 +26,7 @@ import { resolveTwitterCookies } from "../../cookies/twitter.js";
 import { hasBirdCli, hasXurlCli } from "../../env.js";
 import { writeVerbose } from "../../logging.js";
 import { MAX_LOCAL_MEDIA_BYTES, MAX_LOCAL_MEDIA_LABEL } from "./media-policy.js";
-import { executeAssetSummary, presentAssetSummary } from "./summary.js";
+import { buildAssetJsonInput, executeAssetSummary, presentAssetSummary } from "./summary.js";
 import type {
   AssetSummaryContext,
   AssetSummaryResult,
@@ -37,6 +38,7 @@ export type MediaFileExecutionResult =
   | {
       kind: "extraction";
       extracted: ExtractedLinkContent;
+      extractionArgs: PresentAssetSummaryArgs;
     }
   | {
       kind: "summary";
@@ -322,13 +324,22 @@ export async function executeMediaFile(
     writeVerbose(
       ctx.stderr,
       ctx.verbose,
-      `transcription done media file: ${extracted.diagnostics?.transcript?.provider ?? "unknown"}`,
+      `transcription done media file: ${extracted.transcriptionProvider ?? extracted.diagnostics?.transcript?.provider ?? "unknown"}`,
       false,
       ctx.envForRun,
     );
 
     if (ctx.extractMode) {
-      return { kind: "extraction", extracted };
+      const extractionArgs: PresentAssetSummaryArgs = {
+        sourceKind: args.sourceKind,
+        sourceLabel: args.sourceLabel,
+        attachment: {
+          kind: args.attachment.kind,
+          mediaType: args.attachment.mediaType,
+          filename: args.attachment.filename,
+        },
+      };
+      return { kind: "extraction", extracted, extractionArgs };
     }
 
     const summaryExecutionArgs: SummarizeAssetArgs = {
@@ -371,6 +382,22 @@ export async function presentMediaFileResult(
     return;
   }
   ctx.clearProgressForStdout();
+  if (ctx.json) {
+    const report = ctx.shouldComputeReport ? await ctx.buildReport() : null;
+    const payload = {
+      input: buildAssetJsonInput(ctx, result.extractionArgs),
+      env: buildRunJsonEnv(ctx.apiStatus),
+      extracted: result.extracted,
+      prompt: null,
+      llm: null,
+      metrics: ctx.metricsEnabled ? report : null,
+      summary: null,
+    };
+    // i18n-ignore: --json emits the stable machine schema and literal extracted content.
+    ctx.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    ctx.restoreProgressAfterStdout?.();
+    return;
+  }
   ctx.stdout.write(result.extracted.content);
   if (!result.extracted.content.endsWith("\n")) {
     ctx.stdout.write("\n");

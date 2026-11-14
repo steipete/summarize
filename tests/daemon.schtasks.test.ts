@@ -320,4 +320,89 @@ describe("daemon/schtasks lifecycle", () => {
     expect(existsSync(legacyLauncher)).toBe(false);
     expect(existsSync(legacyPid)).toBe(false);
   });
+
+  function mockSchtasksFailure(failures: Record<string, string>) {
+    mocks.execFile.mockImplementation(
+      (
+        _file: string,
+        args: string[],
+        _options: { encoding: string; windowsHide: boolean },
+        callback: (error: NodeJS.ErrnoException | null, stdout: string, stderr: string) => void,
+      ) => {
+        const stderr = failures[args[0] ?? ""];
+        if (stderr) {
+          const error = Object.assign(new Error(stderr), { code: 1, stdout: "", stderr });
+          callback(error, "", stderr);
+          return {} as never;
+        }
+        callback(null, "", "");
+        return {} as never;
+      },
+    );
+  }
+
+  it("still removes the task script when schtasks /End says the task is not running", async () => {
+    mockSchtasksFailure({ "/End": "ERROR: The scheduled task is not currently running." });
+    setFetchPid(null);
+    const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
+    writeDaemonConfig(home);
+    const scriptPath = path.join(home, ".summarize", "daemon.cmd");
+    writeFileSync(scriptPath, "script", "utf8");
+    const out = collectStream();
+
+    await uninstallScheduledTask({ env: { HOME: home }, stdout: out.stream });
+
+    expect(out.getText()).toContain("Removed task script");
+    expect(existsSync(scriptPath)).toBe(false);
+  });
+
+  it("still removes leftover task files when schtasks /Delete says the task is already gone", async () => {
+    mockSchtasksFailure({ "/Delete": "ERROR: The system cannot find the file specified." });
+    setFetchPid(null);
+    const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
+    writeDaemonConfig(home);
+    const scriptPath = path.join(home, ".summarize", "daemon.cmd");
+    const launcherPath = path.join(home, ".summarize", "daemon-launch.vbs");
+    writeFileSync(scriptPath, "script", "utf8");
+    writeFileSync(launcherPath, "launcher", "utf8");
+    const out = collectStream();
+
+    await uninstallScheduledTask({ env: { HOME: home }, stdout: out.stream });
+
+    expect(out.getText()).toContain("Removed task script");
+    expect(existsSync(scriptPath)).toBe(false);
+    expect(existsSync(launcherPath)).toBe(false);
+  });
+
+  it("still removes leftover task files when schtasks says the task name does not exist", async () => {
+    mockSchtasksFailure({
+      "/Delete": 'ERROR: The specified task name "\\Summarize" does not exist in the system.',
+    });
+    setFetchPid(null);
+    const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
+    writeDaemonConfig(home);
+    const scriptPath = path.join(home, ".summarize", "daemon.cmd");
+    writeFileSync(scriptPath, "script", "utf8");
+    const out = collectStream();
+
+    await uninstallScheduledTask({ env: { HOME: home }, stdout: out.stream });
+
+    expect(existsSync(scriptPath)).toBe(false);
+  });
+
+  it("keeps the task files when schtasks /Delete is denied", async () => {
+    mockSchtasksFailure({ "/Delete": "ERROR: Access is denied." });
+    setFetchPid(null);
+    const home = mkdtempSync(path.join(tmpdir(), "summarize-schtasks-"));
+    writeDaemonConfig(home);
+    const scriptPath = path.join(home, ".summarize", "daemon.cmd");
+    writeFileSync(scriptPath, "script", "utf8");
+    const out = collectStream();
+
+    await expect(
+      uninstallScheduledTask({ env: { HOME: home }, stdout: out.stream }),
+    ).rejects.toThrow(/schtasks delete failed: ERROR: Access is denied/);
+    expect(out.getText()).not.toContain("Removed task script");
+    expect(existsSync(scriptPath)).toBe(true);
+  });
 });

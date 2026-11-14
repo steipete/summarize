@@ -111,7 +111,15 @@ describe("executeMediaFile options", () => {
       },
     });
 
-    expect(result).toEqual({ kind: "extraction", extracted });
+    expect(result).toEqual({
+      kind: "extraction",
+      extracted,
+      extractionArgs: {
+        sourceKind: "file",
+        sourceLabel: audioPath,
+        attachment: { kind: "file", mediaType: "audio/mpeg", filename: "audio.mp3" },
+      },
+    });
     expect(stdoutText).toBe("");
     expect(clearProgressForStdout).not.toHaveBeenCalled();
   });

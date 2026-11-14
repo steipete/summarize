@@ -162,13 +162,15 @@ export async function buildResultFromHtmlDocument(
           ? readabilityHtml
           : html;
       const sanitizedHtml = sanitizeHtmlForMarkdownConversion(htmlForMarkdown);
-      const markdown = await deps.convertHtmlToMarkdown({
+      const conversion = await deps.convertHtmlToMarkdown({
         url,
         html: sanitizedHtml,
         title: mergedTitle ?? title,
         siteName,
         timeoutMs,
       });
+      const markdown = typeof conversion === "string" ? conversion : conversion.markdown;
+      const provider = typeof conversion === "string" ? "llm" : conversion.provider;
       const normalizedMarkdown = normalizeForPrompt(markdown);
       if (normalizedMarkdown.length === 0) {
         return {
@@ -183,7 +185,7 @@ export async function buildResultFromHtmlDocument(
       return {
         requested: true,
         used: true,
-        provider: "llm",
+        provider,
         notes:
           markdownMode === "readability" && readabilityHtml && !isNormalizedRedditThread
             ? "Readability HTML used for markdown input"

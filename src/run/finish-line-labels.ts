@@ -1,9 +1,14 @@
+import type { ExtractedLinkContent } from "@steipete/summarize-core/content";
 import type { FinishLabel } from "./finish-line-types.js";
 
 export type ExtractDiagnosticsForFinishLine = {
   strategy: "bird" | "xurl" | "twitter-syndication" | "nitter" | "firecrawl" | "html";
   firecrawl: { used: boolean };
-  markdown: { used: boolean; provider: "firecrawl" | "llm" | null; notes?: string | null };
+  markdown: {
+    used: boolean;
+    provider: ExtractedLinkContent["diagnostics"]["markdown"]["provider"];
+    notes?: string | null;
+  };
   transcript: { textProvided: boolean; provider: string | null };
 };
 

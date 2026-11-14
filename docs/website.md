@@ -62,3 +62,5 @@ Daemon note:
 
 - Optional: `FIRECRAWL_API_KEY` (for Firecrawl fallback / `--firecrawl always`)
 - Optional: `XAI_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` (also accepts `GOOGLE_GENERATIVE_AI_API_KEY` / `GOOGLE_API_KEY`) (required only when `--markdown-mode llm` is used, or when `--markdown-mode auto` falls back to LLM conversion)
+
+For HTML-to-Markdown extraction, `extracted.diagnostics.markdown.provider` identifies `markitdown` for local conversion and `llm` for model conversion. Library converters may return `{ markdown, provider }`; existing string-returning converters retain the `llm` label.

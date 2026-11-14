@@ -37,3 +37,5 @@ Deprecated alias: `--extract-only`.
 Daemon note:
 
 - `/v1/summarize` supports `format: "markdown"` + `markdownMode` for extract-only output (use `extractOnly: true`).
+
+Local audio/video extraction also honors `--json`: the transcript is in `.extracted.content`, with null `llm` and `summary` fields. Verbose completion output names the actual transcriber.
