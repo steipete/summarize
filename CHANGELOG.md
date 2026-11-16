@@ -1,13 +1,16 @@
 # Changelog
 
-## 0.26.1 - Unreleased
+## 0.26.2 - Unreleased
 
-- Maintenance: refresh stabilized provider, HTTP, media, Preact, Playwright, and Oxc/test dependencies while retaining Node 24, security overrides, and the seven-day adoption hold (#569, thanks @dependabot).
+## 0.26.1 - 2026-11-15
+
+**Highlights:** reliable CLI transcript JSON and provider diagnostics, supported Codex defaults, bounded OpenRouter diagnostics, and safer Windows daemon cleanup.
 
 - CLI extraction: honor `--json` for local audio/video transcripts and accurately report transcription and Markdown-conversion providers (#570, fixes #562, #566, #567, thanks @officialasishkumar and @coygeek).
 - Codex: use the installed CLI's supported default model, omit the unrecognized verbosity setting, and surface backend turn-failure reasons (#571, fixes #563, #564, #565, thanks @officialasishkumar and @coygeek).
 - OpenRouter: include response-body reads in optional provider-diagnostic timeouts while preserving routing guidance (#560, thanks @vincent-peng).
 - Windows: preserve daemon launcher files and report failure when Task Scheduler refuses deletion, while allowing cleanup when the task is already absent (#559, thanks @SebTardif).
+- Maintenance: refresh stabilized provider, HTTP, media, Preact, Playwright, and Oxc/test dependencies while retaining Node 24, security overrides, and the seven-day adoption hold (#569, thanks @dependabot).
 - Docs: correct the YouTube fallback order and document OpenAI-compatible gateways (#568, fixes #561, thanks @heydryft and @coygeek).
 
 ## 0.26.0 - 2026-11-05
