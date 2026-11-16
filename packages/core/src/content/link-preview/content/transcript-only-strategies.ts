@@ -1,7 +1,12 @@
 import { resolveTranscriptForLink } from "../../transcript/index.js";
 import { resolveTranscriptionAvailability } from "../../transcript/providers/transcription-start.js";
 import type { resolveTranscriptionConfig } from "../../transcript/transcription-config.js";
-import { extractApplePodcastIds, isDirectMediaUrl, isLoomVideoUrl } from "../../url.js";
+import {
+  extractApplePodcastIds,
+  isDirectMediaUrl,
+  isLoomVideoUrl,
+  parseBilibiliVideoUrl,
+} from "../../url.js";
 import type { LinkPreviewDeps } from "../deps.js";
 import type { CacheMode } from "../types.js";
 import { extractSpotifyEpisodeId, extractXiaoyuzhouEpisodeId } from "./podcast-utils.js";
@@ -29,6 +34,19 @@ type TranscriptOnlyStrategy = {
 };
 
 const TRANSCRIPT_ONLY_STRATEGIES: readonly TranscriptOnlyStrategy[] = [
+  {
+    matches: (url, mode) => mode === "prefer" && parseBilibiliVideoUrl(url) !== null,
+    requiresTranscriptionProvider: false,
+    availabilityError: null,
+    transcriptMode: (mode) => mode,
+    failureLabel: "Bilibili video",
+    transcriptNote: "Bilibili video: transcript-only",
+    firecrawlNote: "Bilibili video short-circuit skipped HTML/Firecrawl extraction",
+    markdownNote: "Bilibili video uses transcript content",
+    siteName: "Bilibili",
+    video: () => null,
+    isVideoOnly: true,
+  },
   {
     matches: (url) => Boolean(extractXiaoyuzhouEpisodeId(url)),
     requiresTranscriptionProvider: true,

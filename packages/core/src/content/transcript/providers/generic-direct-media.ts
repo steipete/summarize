@@ -12,6 +12,7 @@ export async function fetchDirectMediaTranscript({
   notes,
   attemptedProviders,
   kind,
+  extraArgs,
 }: {
   url: string;
   options: ProviderFetchOptions;
@@ -19,6 +20,7 @@ export async function fetchDirectMediaTranscript({
   notes: string[];
   attemptedProviders: ProviderResult["attemptedProviders"];
   kind: DirectMediaKind | null;
+  extraArgs?: string[];
 }): Promise<ProviderResult | null> {
   const mediaKind = kind ?? options.mediaKindHint ?? null;
   const localMedia = resolveLocalDirectMediaSource(url, mediaKind);
@@ -47,6 +49,7 @@ export async function fetchDirectMediaTranscript({
     url,
     onProgress: options.onProgress ?? null,
     service: "generic",
+    extraArgs,
     mediaKind,
     diarization: options.transcriptDiarization ?? null,
   });

@@ -85,6 +85,42 @@ export function extractYouTubeVideoId(rawUrl: string): string | null {
 
 const LOOM_VIDEO_ID_PATTERN = /^[a-f0-9]{32}$/;
 
+export function parseBilibiliVideoUrl(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    if (
+      (url.protocol !== "http:" && url.protocol !== "https:") ||
+      url.port !== "" ||
+      url.username !== "" ||
+      url.password !== "" ||
+      (url.hostname !== "bilibili.com" && url.hostname !== "www.bilibili.com")
+    ) {
+      return null;
+    }
+    const videoId = url.pathname.match(
+      /^\/(?:[a-z]{2}(?:-Hans)?\/)?video\/(BV[a-zA-Z0-9]{10})\/?$/,
+    )?.[1];
+    const parts = url.searchParams.getAll("p");
+    const part = parts.length === 0 ? 1 : Number(parts[0]);
+    if (
+      !videoId ||
+      parts.length > 1 ||
+      (parts.length === 1 && !/^\d+$/.test(parts[0] ?? "")) ||
+      !Number.isSafeInteger(part) ||
+      part < 1
+    ) {
+      return null;
+    }
+    return {
+      videoId,
+      part,
+      url: `https://www.bilibili.com/video/${videoId}/${part > 1 ? `?p=${part}` : ""}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function isLoomVideoUrl(rawUrl: string): boolean {
   try {
     const url = new URL(rawUrl);
