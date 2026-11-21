@@ -1,6 +1,7 @@
 import { message as uiMessage, resolveText, type LocalizedText } from "../../lib/i18n";
 import { planMediaExtraction } from "../../lib/media-extraction-plan";
 import type { Settings } from "../../lib/settings";
+import { extractBilibiliTranscriptInTab } from "./bilibili-transcript";
 import type { BrowserLocalMediaTranscript } from "./browser-local-transcript";
 import type { CachedExtract } from "./cached-extract";
 import type { ExtractResponse } from "./content-script-bridge";
@@ -61,6 +62,7 @@ export async function preparePanelContent({
   extractYouTubeTranscript = extractYouTubeTranscriptInTab,
   hasYouTubeCaptionTracks = hasYouTubeCaptionTracksInTab,
   youtubeTranscriptTimeoutMs = 12_000,
+  extractBilibiliTranscript = extractBilibiliTranscriptInTab,
 }: CommonPreparationOptions & {
   reason: string;
   refresh: boolean;
@@ -75,6 +77,7 @@ export async function preparePanelContent({
   extractYouTubeTranscript?: typeof extractYouTubeTranscriptInTab;
   hasYouTubeCaptionTracks?: typeof hasYouTubeCaptionTracksInTab;
   youtubeTranscriptTimeoutMs?: number;
+  extractBilibiliTranscript?: typeof extractBilibiliTranscriptInTab;
 }): Promise<PreparationResult> {
   const extractionPlan = planMediaExtraction({ url: tabUrl, requestedInputMode });
   const { prefersUrlMode } = extractionPlan;
@@ -83,8 +86,44 @@ export async function preparePanelContent({
   let source: CachedExtract["source"] = "page";
   let diagnostics: CachedExtract["diagnostics"] = null;
   let transcriptTimedText: string | null = null;
+  let localTranscriptError: string | null = null;
+  let localTranscriptMessage: PreparedPanelContent["localTranscriptMessage"];
 
-  if (extractionPlan.directYouTubeTranscript) {
+  if (extractionPlan.directBilibiliTranscript) {
+    sendStatus(uiMessage("progress.panelExtract", { stage: "video" }));
+    const transcript = await extractBilibiliTranscript(tab.id, settings.maxChars, tabUrl);
+    if (isSuperseded()) return { kind: "superseded" };
+    if (!transcript.ok && transcript.reason === "stale") return { kind: "stale" };
+    if (transcript.ok && !urlsMatch(transcript.url, tabUrl)) return { kind: "stale" };
+    logPanel("extract:bilibili:captions", {
+      ok: transcript.ok,
+      ...(transcript.ok
+        ? { language: transcript.language, generated: transcript.generated }
+        : { error: transcript.error }),
+    });
+    if (transcript.ok) {
+      transcriptTimedText = transcript.transcriptTimedText;
+      extracted = {
+        ok: true,
+        url: transcript.url,
+        title: tab.title ?? null,
+        text: transcript.text,
+        truncated: transcript.truncated,
+        mediaDurationSeconds: transcript.durationSeconds,
+        media: { hasVideo: true, hasAudio: true, hasCaptions: true },
+      };
+      diagnostics = {
+        strategy: "bilibili-captions",
+        transcript: {
+          provider: `bilibili-${transcript.generated ? "ai-captions" : "captions"}/${transcript.language}`,
+        },
+      };
+    } else {
+      extracted = emptyExtract(tab, { hasVideo: true, hasAudio: true, hasCaptions: false });
+      localTranscriptError = transcript.error;
+      localTranscriptMessage = uiMessage("error.bilibiliCaptionsUnavailable");
+    }
+  } else if (extractionPlan.directYouTubeTranscript) {
     logPanel("extractor.route.start", { tabId: tab.id, preferUrl: prefersUrlMode });
     logPanel("extractor.route.preferUrlHardSwitch", { tabId: tab.id });
     sendStatus(uiMessage("progress.panelExtract", { stage: "video" }));
@@ -252,7 +291,8 @@ export async function preparePanelContent({
       payload: { ...payload, title },
       title,
       transcriptTimedText,
-      localTranscriptError: null,
+      localTranscriptError,
+      ...(localTranscriptMessage ? { localTranscriptMessage } : {}),
       source,
       diagnostics,
       prefersUrlMode,
@@ -312,6 +352,7 @@ export async function ensurePreparedPanelTranscript({
         : "extract:browser-media:local-transcript-failed",
       { error: localTranscript.error },
     );
+    if (content.localTranscriptMessage?.key === "error.bilibiliCaptionsUnavailable") return content;
     return {
       ...content,
       localTranscriptError: localTranscript.error,

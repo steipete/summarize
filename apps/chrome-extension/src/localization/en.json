@@ -424,6 +424,7 @@
   "error.providerStreamEmpty": "Provider stream ended without a response.",
   "error.daemonAgentUnavailable": "Daemon does not support /v1/agent. Restart the daemon after updating (summarize daemon restart).",
   "error.localTranscriptUnavailable": "{kind, select, youtube {Local YouTube transcription} other {Local browser media transcription}} is unavailable in this browser",
+  "error.bilibiliCaptionsUnavailable": "Bilibili captions are unavailable in this browser session. Check that you are signed in to Bilibili, or choose Page to summarize the page text.",
   "error.transcriptPageChanged": "The page changed before browser transcription completed",
   "error.standalone": "{kind, select, failed {Could not transcribe this media in standalone mode: {error}. Switch Runtime to Daemon for broader media support.} noTranscript {No transcript text was available in standalone mode. Switch Runtime to Daemon for broader media support.} other {No readable text was available in standalone mode. Reload the page or switch Runtime to Daemon for URL extraction.}}",
   "error.daemonSlidesToken": "Daemon slides require a daemon token. Open Settings to connect the daemon.",

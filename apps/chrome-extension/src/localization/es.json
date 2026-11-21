@@ -424,6 +424,7 @@
   "error.providerStreamEmpty": "El flujo del proveedor terminó sin respuesta.",
   "error.daemonAgentUnavailable": "El daemon no admite /v1/agent. Reinícielo después de actualizar (summarize daemon restart).",
   "error.localTranscriptUnavailable": "{kind, select, youtube {La transcripción local de YouTube} other {La transcripción local de multimedia}} no está disponible en este navegador",
+  "error.bilibiliCaptionsUnavailable": "Los subtítulos de Bilibili no están disponibles en esta sesión del navegador. Comprueba que has iniciado sesión en Bilibili o elige Página para resumir el texto de la página.",
   "error.transcriptPageChanged": "La página cambió antes de finalizar la transcripción en el navegador",
   "error.standalone": "{kind, select, failed {No se pudo transcribir este archivo multimedia en modo independiente: {error}. Elija Daemon en Ejecución para ampliar la compatibilidad multimedia.} noTranscript {No había texto de transcripción disponible en modo independiente. Elija Daemon en Ejecución para ampliar la compatibilidad multimedia.} other {No había texto legible disponible en modo independiente. Recargue la página o elija Daemon en Ejecución para extraer por URL.}}",
   "error.daemonSlidesToken": "Las diapositivas mediante el daemon requieren un token. Abra Ajustes para conectar el daemon.",

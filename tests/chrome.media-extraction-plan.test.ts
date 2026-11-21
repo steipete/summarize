@@ -2,6 +2,19 @@ import { describe, expect, it } from "vitest";
 import { planMediaExtraction } from "../apps/chrome-extension/src/lib/media-extraction-plan.js";
 
 describe("chrome media extraction plan", () => {
+  it("uses browser captions for default Bilibili video extraction and honors page mode", () => {
+    const url = "https://www.bilibili.com/video/BV1ipnr6cExW/?p=2";
+    expect(planMediaExtraction({ url })).toMatchObject({
+      directBilibiliTranscript: true,
+      inputMode: "video",
+      prefersUrlMode: true,
+    });
+    expect(planMediaExtraction({ url, requestedInputMode: "page" })).toMatchObject({
+      directBilibiliTranscript: false,
+      contentScriptInputMode: "page",
+      localTranscriptKind: null,
+    });
+  });
   it("routes default YouTube requests through browser captions and video mode", () => {
     expect(
       planMediaExtraction({
@@ -10,6 +23,7 @@ describe("chrome media extraction plan", () => {
     ).toEqual({
       contentScriptInputMode: "video",
       directYouTubeTranscript: true,
+      directBilibiliTranscript: false,
       inputMode: "video",
       isYouTubeVideo: true,
       localTranscriptKind: "youtube",
@@ -26,6 +40,7 @@ describe("chrome media extraction plan", () => {
     ).toEqual({
       contentScriptInputMode: "page",
       directYouTubeTranscript: false,
+      directBilibiliTranscript: false,
       inputMode: "page",
       isYouTubeVideo: true,
       localTranscriptKind: "youtube",
