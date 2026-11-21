@@ -9,6 +9,11 @@ import {
   localeDirection,
   negotiateLocale,
 } from "../packages/core/src/localization/index.js";
+import {
+  availableUiLocales,
+  sharedEnglishMessages,
+  sharedMessageCatalogs,
+} from "../packages/core/src/localization/messages.js";
 import { validateCatalogs } from "../packages/core/src/localization/validation.js";
 
 const base = {
@@ -17,6 +22,18 @@ const base = {
 };
 
 describe("shared localization runtime", () => {
+  it.each(availableUiLocales)("formats elapsed seconds in %s", (locale) => {
+    const translate = createTranslator(sharedEnglishMessages, sharedMessageCatalogs, locale);
+    expect(translate("metrics.elapsed", { seconds: 1.5 })).toBe(
+      new Intl.NumberFormat(locale, {
+        style: "unit",
+        unit: "second",
+        unitDisplay: "narrow",
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }).format(1.5),
+    );
+  });
   it("negotiates only catalogs actually registered by a surface", () => {
     expect(negotiateLocale("de", ["tr-TR"], ["en", "tr"])).toBe("tr");
     expect(negotiateLocale("auto", ["de-DE"], ["en", "tr"])).toBe("en");
