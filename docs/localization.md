@@ -69,6 +69,8 @@ Keep placeholder names and types consistent. Preserve exact plural cases such as
 
 Use ICU number/date arguments or `Intl` formatting at the rendering boundary. Keep numbers numeric in messages sent between processes. CLI emphasis uses the reserved `<uiLabel>`, `<uiDetail>`, and `<uiValue>` tags; these style complete messages without interpreting interpolated data as markup.
 
+For ICU measure names, use skeletons such as `::measure-unit/duration-second unit-width-narrow .0`. The `unit/second` form takes a JavaScript unit name; `unit/duration-second` is invalid and fails when the message renders.
+
 Use typed helpers (`cliMessage`, `sharedMessage`, or extension `message`) for descriptors. CLI `CliError` and extension `LocalizedError` retain owned error descriptors through catches. Nested owned errors stay structured until the final UI renders them; opaque provider or operating-system details stay literal. Daemon and background events carry optional localization descriptors alongside compatibility text. Validate incoming descriptors with `readLocalizedMessage` before rendering.
 
 For extension DOM text, use `setText`, `setLocalizedAttribute`, `LocalizedText`, or `data-i18n` bindings. Attribute bindings include titles, placeholders, accessible labels, and visible `value`/`label` attributes. Use `localizedHtml` when an existing template needs a localized text node; it escapes text and values. Source and user content belongs in the literal-content path, with `data-locale-ignore` where needed. Locale changes must not rewrite that content.

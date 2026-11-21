@@ -2,6 +2,9 @@
 
 ## 0.26.2 - Unreleased
 
+- Update stabilized extraction, provider, media, browser-test, and Oxc dependencies while retaining the Node 24 floor and security patches. Thanks @dependabot!
+- Preserve localized elapsed-time metrics with the updated ICU parser by using explicit measure-unit skeletons in all 14 locales.
+
 ## 0.26.1 - 2026-11-15
 
 **Highlights:** reliable CLI transcript JSON and provider diagnostics, supported Codex defaults, bounded OpenRouter diagnostics, and safer Windows daemon cleanup.

@@ -155,7 +155,7 @@
   "refresh.begin": "Modèles gratuits : démarrage…",
   "refresh.candidate": "- {model} Δ {latency} (n={count, number}) {metadata}",
   "finish.cached": "En cache",
-  "metrics.elapsed": "{seconds, number, ::unit/duration-second unit-width-narrow .0}",
+  "metrics.elapsed": "{seconds, number, ::measure-unit/duration-second unit-width-narrow .0}",
   "metrics.cost": "{cost, number, ::currency/USD precision-increment/0.0001}",
   "metrics.tokens": "↑{hasPrompt, select, true {{prompt, number, ::compact-short}} other {?}} ↓{hasCompletion, select, true {{completion, number, ::compact-short}} other {?}} Δ{hasTotal, select, true {{total, number, ::compact-short}} other {?}}",
   "progress.primaryFallback": "Échec du modèle principal. Essai du modèle de secours…",
