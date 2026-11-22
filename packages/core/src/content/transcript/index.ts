@@ -5,6 +5,7 @@ import type {
   TranscriptDiagnostics,
   TranscriptResolution,
 } from "../link-preview/types.js";
+import { parseBilibiliVideoUrl } from "../url.js";
 import {
   isCachedDiarizationCompatible,
   mapCachedSource,
@@ -74,6 +75,7 @@ export const resolveTranscriptForLink = async (
   }: ResolveTranscriptOptions = {},
 ): Promise<TranscriptResolution> => {
   const normalizedUrl = url.trim();
+  const bilibili = mediaTranscriptMode === "prefer" ? parseBilibiliVideoUrl(normalizedUrl) : null;
   const detectedEmbeddedMediaUrl =
     typeof embeddedMediaUrl === "undefined" && html
       ? detectPrimaryVideoDetailsFromHtml(html, normalizedUrl)?.video.url
@@ -81,6 +83,7 @@ export const resolveTranscriptForLink = async (
   const embeddedYoutubeUrl =
     !isYouTubeUrlInternal(normalizedUrl) &&
     !isLoomVideoUrl(normalizedUrl) &&
+    !bilibili &&
     typeof detectedEmbeddedMediaUrl === "string" &&
     isYouTubeUrlInternal(detectedEmbeddedMediaUrl)
       ? detectedEmbeddedMediaUrl.trim()
@@ -132,11 +135,24 @@ export const resolveTranscriptForLink = async (
     cacheOutcome.cached && embeddedYoutubeUrl && resourceKey && cachedVideoIdentity !== resourceKey,
   );
 
-  if (cacheOutcome.resolution && !embeddedVideoIdentityMismatch) {
+  const bilibiliIdentityMismatch = Boolean(
+    bilibili &&
+    cacheOutcome.cached &&
+    (cacheOutcome.cached.metadata?.site !== "bilibili" ||
+      cacheOutcome.cached.metadata?.videoUrl !== bilibili.url),
+  );
+  if (cacheOutcome.resolution && !embeddedVideoIdentityMismatch && !bilibiliIdentityMismatch) {
     return {
       ...cacheOutcome.resolution,
       diagnostics,
     };
+  }
+  if (bilibiliIdentityMismatch && cacheMode !== "bypass") {
+    diagnostics.cacheStatus = "miss";
+    diagnostics.notes = appendNote(
+      diagnostics.notes,
+      "Cached transcript ignored because the Bilibili recording identity could not be verified",
+    );
   }
   if (embeddedVideoIdentityMismatch) {
     diagnostics.cacheStatus = "miss";
@@ -285,6 +301,7 @@ export const resolveTranscriptForLink = async (
   if (
     !providerResult.text &&
     !embeddedVideoIdentityMismatch &&
+    !bilibiliIdentityMismatch &&
     cacheOutcome.cached?.content &&
     cacheMode !== "bypass" &&
     isCachedDiarizationCompatible(cacheOutcome.cached.metadata, transcriptDiarization ?? null)

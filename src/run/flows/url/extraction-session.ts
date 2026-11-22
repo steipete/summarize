@@ -167,7 +167,16 @@ export function createUrlExtractionSession({
         : null;
     if (!bypassExtractCache && !flags.speakerIdentification?.remember && cacheKey && cacheStore) {
       const cached = cacheStore.getJson<ExtractedLinkContent>("extract", cacheKey);
-      if (cached) {
+      const bilibili =
+        options.mediaTranscript === "prefer" ? urlUtils.parseBilibiliVideoUrl(targetUrl) : null;
+      const needsBilibiliTranscript = Boolean(
+        bilibili &&
+        cached &&
+        (!cached.transcriptCharacters ||
+          cached.transcriptMetadata?.site !== "bilibili" ||
+          cached.transcriptMetadata?.videoUrl !== bilibili.url),
+      );
+      if (cached && !needsBilibiliTranscript) {
         const cachedVideoId = resolveYoutubeVideoId(cached, targetUrl);
         const separatelyCachedMetrics = cacheStore.getJson<
           NonNullable<ExtractedLinkContent["sourceMetrics"]>
