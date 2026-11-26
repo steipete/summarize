@@ -178,6 +178,7 @@
   "error.optionMinimum": "Valor no compatible para {label}: {raw} (mínimo {min, number}{unit, select, chars { {min, plural, one {carácter} other {caracteres}}} other {}})",
   "error.optionRange": "Valor no compatible para {label}: {raw} (intervalo {min, number}–{max, number})",
   "error.configField": "Archivo de configuración {path} no válido: «{field}» {constraint, select, string {debe ser una cadena de texto} other {no debe estar vacío}}.",
+  "error.configTimeout": "Archivo de configuración {path} no válido: «timeout» debe ser una duración como 30s, 2m o 5000ms (valor recibido: {value}).",
   "error.modelIdMissing": "Falta el ID del modelo{afterPrefix, select, true { después del prefijo del proveedor} other {}}",
   "error.modelProvider": "Proveedor de modelos «{provider}» no compatible. Use xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/... u ollama/..."
 }

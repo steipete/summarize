@@ -262,6 +262,12 @@ export type SummarizeConfig = {
     minDuration?: number;
   };
   speakers?: SpeakersConfig;
+  /**
+   * Timeout for content fetching and LLM requests (same values as `--timeout`).
+   *
+   * Examples: "30s", "2m", "5m". The `--timeout` flag overrides it.
+   */
+  timeout?: string;
   output?: {
     /**
      * Output language for the summary (e.g. "auto", "en", "de", "English").

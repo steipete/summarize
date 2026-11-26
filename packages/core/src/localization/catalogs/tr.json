@@ -178,6 +178,7 @@
   "error.optionMinimum": "Desteklenmeyen {label}: {raw} (en az {min, number}{unit, select, chars { {min, plural, other {karakter}}} other {}})",
   "error.optionRange": "Desteklenmeyen {label}: {raw} (aralık {min, number}-{max, number})",
   "error.configField": "Geçersiz yapılandırma dosyası {path}: \"{field}\" {constraint, select, string {bir metin olmalıdır} other {boş olmamalıdır}}.",
+  "error.configTimeout": "Geçersiz yapılandırma dosyası {path}: \"timeout\" 30s, 2m veya 5000ms gibi bir süre olmalıdır (alınan: {value}).",
   "error.modelIdMissing": "{afterPrefix, select, true {Sağlayıcı önekinden sonra model kimliği eksik} other {Model kimliği eksik}}",
   "error.modelProvider": "Desteklenmeyen model sağlayıcısı \"{provider}\". xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/... veya ollama/... kullanın."
 }

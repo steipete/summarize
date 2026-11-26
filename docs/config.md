@@ -61,6 +61,12 @@ For prompt:
 2. Config file `prompt`
 3. Built-in default prompt
 
+For the content and LLM request timeout:
+
+1. CLI flag `--timeout`
+2. Config file `timeout` (for example `"timeout": "5m"`; same values as the flag: `30s`, `2m`, `5000ms`)
+3. Built-in default `2m`
+
 For environment variables:
 
 1. Process environment variables

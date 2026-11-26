@@ -178,6 +178,7 @@
   "error.optionMinimum": "{label} の値はサポートされていません: {raw}（最小 {min, number}{unit, select, chars {{min, plural, other {文字}}} other {}}）",
   "error.optionRange": "{label} の値はサポートされていません: {raw}（範囲 {min, number}–{max, number}）",
   "error.configField": "設定ファイル {path} が無効です。「{field}」{constraint, select, string {は文字列である必要があります} other {を空にすることはできません}}。",
+  "error.configTimeout": "設定ファイル {path} が無効です。「timeout」は 30s、2m、5000ms のような時間の長さである必要があります（指定された値: {value}）。",
   "error.modelIdMissing": "{afterPrefix, select, true {プロバイダーのプレフィックスの後にモデル ID がありません} other {モデル ID がありません}}",
   "error.modelProvider": "モデルプロバイダー「{provider}」はサポートされていません。xai/...、openai/...、google/...、anthropic/...、zai/...、nvidia/...、minimax/...、github-copilot/...、または ollama/... を使用してください。"
 }

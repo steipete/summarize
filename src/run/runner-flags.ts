@@ -1,4 +1,5 @@
 import { isYouTubeUrl } from "@steipete/summarize-core/content/url";
+import { loadSummarizeConfig } from "../config.js";
 import {
   type FirecrawlMode,
   type DiarizationMode,
@@ -83,6 +84,10 @@ export function resolveRunnerFlags({
   envForRun: Record<string, string | undefined>;
   url: string | null;
 }): RunnerFlagResolution {
+  const timeoutExplicitlySet = hasFlag(normalizedArgv, "--timeout");
+  const configTimeout = timeoutExplicitlySet
+    ? null
+    : (loadSummarizeConfig({ env: envForRun }).config?.timeout ?? null);
   const videoModeExplicitlySet = hasFlag(normalizedArgv, "--video-mode");
   const embeddedVideoExplicitlySet = hasFlag(normalizedArgv, "--embedded-video");
   const lengthExplicitlySet = hasFlag(normalizedArgv, "--length");
@@ -152,7 +157,9 @@ export function resolveRunnerFlags({
     format,
     preprocess: String(programOpts.preprocess),
     youtube: String(programOpts.youtube),
-    timeout: String(programOpts.timeout),
+    timeout: timeoutExplicitlySet
+      ? String(programOpts.timeout)
+      : (configTimeout ?? String(programOpts.timeout)),
     retries: String(programOpts.retries),
     maxOutputTokens:
       typeof programOpts.maxOutputTokens === "string"

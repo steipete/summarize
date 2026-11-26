@@ -178,6 +178,7 @@
   "error.optionMinimum": "Valeur non prise en charge pour {label} : {raw} (minimum {min, number}{unit, select, chars { {min, plural, one {caractère} other {caractères}}} other {}})",
   "error.optionRange": "Valeur non prise en charge pour {label} : {raw} (plage {min, number}–{max, number})",
   "error.configField": "Fichier de configuration {path} invalide : « {field} » {constraint, select, string {doit être une chaîne de caractères} other {ne doit pas être vide}}.",
+  "error.configTimeout": "Fichier de configuration {path} invalide : « timeout » doit être une durée comme 30s, 2m ou 5000ms (valeur reçue : {value}).",
   "error.modelIdMissing": "Identifiant de modèle manquant{afterPrefix, select, true { après le préfixe du fournisseur} other {}}",
   "error.modelProvider": "Fournisseur de modèle « {provider} » non pris en charge. Utilisez xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/... ou ollama/..."
 }
