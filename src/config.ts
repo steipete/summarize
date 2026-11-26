@@ -15,6 +15,7 @@ import {
 } from "./config/sections.js";
 import { parseSpeakersConfig } from "./config/speakers.js";
 import type { SummarizeConfig } from "./config/types.js";
+import { parseDurationMs } from "./flags.js";
 import { CliError } from "./locale.js";
 
 export type {
@@ -87,6 +88,24 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
     return trimmed;
   })();
 
+  const timeout = (() => {
+    const value = (parsed as Record<string, unknown>).timeout;
+    if (typeof value === "undefined") return undefined;
+    if (typeof value !== "string") {
+      throw new CliError("error.configField", { path, field: "timeout", constraint: "string" });
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      throw new CliError("error.configField", { path, field: "timeout", constraint: "empty" });
+    }
+    try {
+      parseDurationMs(trimmed);
+    } catch (error) {
+      throw new CliError("error.configTimeout", { path, value: trimmed }, { cause: error });
+    }
+    return trimmed;
+  })();
+
   const models = parseModelsConfig(parsed, path);
   const cache = parseCacheConfig(parsed, path);
   const media = parseMediaConfig(parsed);
@@ -120,6 +139,7 @@ export function loadSummarizeConfig({ env }: { env: Record<string, string | unde
       ...(model ? { model } : {}),
       ...(language ? { language } : {}),
       ...(prompt ? { prompt } : {}),
+      ...(timeout ? { timeout } : {}),
       ...(cache ? { cache } : {}),
       ...(models ? { models } : {}),
       ...(media ? { media } : {}),

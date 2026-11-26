@@ -178,6 +178,7 @@
   "error.optionMinimum": "不支援的 {label} 值：{raw}（至少 {min, number}{unit, select, chars {{min, plural, other { 個字元}}} other {}}）",
   "error.optionRange": "不支援的 {label} 值：{raw}（範圍 {min, number}–{max, number}）",
   "error.configField": "設定檔 {path} 無效：「{field}」{constraint, select, string {必須是字串} other {不能為空}}。",
+  "error.configTimeout": "設定檔 {path} 無效：「timeout」必須是類似 30s、2m 或 5000ms 的時間長度（收到：{value}）。",
   "error.modelIdMissing": "{afterPrefix, select, true {服務供應商前綴後缺少模型 ID} other {缺少模型 ID}}",
   "error.modelProvider": "不支援的模型服務供應商「{provider}」。請使用 xai/...、openai/...、google/...、anthropic/...、zai/...、nvidia/...、minimax/...、github-copilot/... 或 ollama/...。"
 }

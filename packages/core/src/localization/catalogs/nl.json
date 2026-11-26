@@ -178,6 +178,7 @@
   "error.optionMinimum": "Niet-ondersteunde waarde voor {label}: {raw} (minimaal {min, number}{unit, select, chars { {min, plural, one {teken} other {tekens}}} other {}})",
   "error.optionRange": "Niet-ondersteunde waarde voor {label}: {raw} (bereik {min, number}–{max, number})",
   "error.configField": "Ongeldig configuratiebestand {path}: ‘{field}’ {constraint, select, string {moet een tekenreeks zijn} other {mag niet leeg zijn}}.",
+  "error.configTimeout": "Ongeldig configuratiebestand {path}: ‘timeout’ moet een duur zijn zoals 30s, 2m of 5000ms (ontvangen: {value}).",
   "error.modelIdMissing": "Model-ID ontbreekt{afterPrefix, select, true { na het aanbiedervoorvoegsel} other {}}",
   "error.modelProvider": "Niet-ondersteunde modelaanbieder ‘{provider}’. Gebruik xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/... of ollama/..."
 }

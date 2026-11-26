@@ -178,6 +178,7 @@
   "error.optionMinimum": "Неподдерживаемое значение {label}: {raw} (минимум {min, number}{unit, select, chars { {min, plural, one {символ} few {символа} many {символов} other {символа}}} other {}})",
   "error.optionRange": "Неподдерживаемое значение {label}: {raw} (диапазон {min, number}–{max, number})",
   "error.configField": "Некорректный файл конфигурации {path}: поле «{field}» {constraint, select, string {должно быть строкой} other {не должно быть пустым}}.",
+  "error.configTimeout": "Некорректный файл конфигурации {path}: поле «timeout» должно быть длительностью, например 30s, 2m или 5000ms (получено: {value}).",
   "error.modelIdMissing": "Отсутствует ID модели{afterPrefix, select, true { после префикса провайдера} other {}}",
   "error.modelProvider": "Неподдерживаемый провайдер моделей «{provider}». Используйте xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/... или ollama/..."
 }

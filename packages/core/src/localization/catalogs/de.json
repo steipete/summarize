@@ -178,6 +178,7 @@
   "error.optionMinimum": "Ungültiger Wert für {label}: {raw} (mindestens {min, number}{unit, select, chars { {min, plural, one {Zeichen} other {Zeichen}}} other {}})",
   "error.optionRange": "Ungültiger Wert für {label}: {raw} (zulässiger Bereich: {min, number}–{max, number})",
   "error.configField": "Ungültige Konfigurationsdatei {path}: „{field}“ {constraint, select, string {muss eine Zeichenfolge sein} other {darf nicht leer sein}}.",
+  "error.configTimeout": "Ungültige Konfigurationsdatei {path}: „timeout“ muss eine Dauer wie 30s, 2m oder 5000ms sein (angegeben: {value}).",
   "error.modelIdMissing": "{afterPrefix, select, true {Nach dem Anbieterpräfix fehlt die Modell-ID} other {Die Modell-ID fehlt}}",
   "error.modelProvider": "Nicht unterstützter Modellanbieter „{provider}“. Verwenden Sie xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/... oder ollama/..."
 }

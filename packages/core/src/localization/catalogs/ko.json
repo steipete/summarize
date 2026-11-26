@@ -178,6 +178,7 @@
   "error.optionMinimum": "지원하지 않는 {label}: {raw} (최소 {min, number}{unit, select, chars {{min, plural, other {자}}} other {}})",
   "error.optionRange": "지원하지 않는 {label}: {raw} (범위 {min, number}–{max, number})",
   "error.configField": "잘못된 설정 파일 {path}: “{field}”{constraint, select, string {은(는) 문자열이어야 합니다} other {은(는) 비워 둘 수 없습니다}}.",
+  "error.configTimeout": "잘못된 설정 파일 {path}: “timeout”은(는) 30s, 2m, 5000ms와 같은 기간이어야 합니다(입력값: {value}).",
   "error.modelIdMissing": "{afterPrefix, select, true {제공업체 접두부 뒤에 모델 ID가 없습니다} other {모델 ID가 없습니다}}",
   "error.modelProvider": "지원하지 않는 모델 제공업체 “{provider}”입니다. xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/... 또는 ollama/...를 사용하세요."
 }

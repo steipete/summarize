@@ -178,6 +178,7 @@
   "error.optionMinimum": "Unsupported {label}: {raw} (minimum {min, number}{unit, select, chars { {min, plural, one {char} other {chars}}} other {}})",
   "error.optionRange": "Unsupported {label}: {raw} (range {min, number}-{max, number})",
   "error.configField": "Invalid config file {path}: \"{field}\" must {constraint, select, string {be a string} other {not be empty}}.",
+  "error.configTimeout": "Invalid config file {path}: \"timeout\" must be a duration such as 30s, 2m or 5000ms (got {value}).",
   "error.modelIdMissing": "Missing model id{afterPrefix, select, true { after provider prefix} other {}}",
   "error.modelProvider": "Unsupported model provider \"{provider}\". Use xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/..., or ollama/..."
 }

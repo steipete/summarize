@@ -178,6 +178,7 @@
   "error.optionMinimum": "Nieobsługiwana wartość {label}: {raw} (minimum {min, number}{unit, select, chars { {min, plural, one {znak} few {znaki} many {znaków} other {znaku}}} other {}})",
   "error.optionRange": "Nieobsługiwana wartość {label}: {raw} (zakres {min, number}–{max, number})",
   "error.configField": "Nieprawidłowy plik konfiguracji {path}: pole „{field}” {constraint, select, string {musi być ciągiem znaków} other {nie może być puste}}.",
+  "error.configTimeout": "Nieprawidłowy plik konfiguracji {path}: pole „timeout” musi być czasem trwania, np. 30s, 2m lub 5000ms (otrzymano: {value}).",
   "error.modelIdMissing": "Brak identyfikatora modelu{afterPrefix, select, true { po prefiksie dostawcy} other {}}",
   "error.modelProvider": "Nieobsługiwany dostawca modeli „{provider}”. Użyj xai/..., openai/..., google/..., anthropic/..., zai/..., nvidia/..., minimax/..., github-copilot/... lub ollama/..."
 }
